@@ -1,0 +1,5 @@
+<svg viewBox="0.59375 0.59375 38.8125 38.8125" fill="none" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g transform="translate(2.0000,2.0000) scale(0.720000)">
+<mask id="b" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="0" y="0" width="50" height="50"><path d="M0 16A16 16 0 0 1 16 0h18a16 16 0 0 1 16 16v18a16 16 0 0 1-16 16H16A16 16 0 0 1 0 34V16Z" fill="#D9D9D9"></path></mask><g clip-path="url(#a)" mask="url(#b)"><path d="M50 0H0v50h50V0Z" fill="#FF5226"></path><path fill-rule="evenodd" clip-rule="evenodd" d="m50 31.66-.04-.06-7.16 1.63 3.15-13.21-8.06-5.39-9.68 12.19 4-16.04-11.08-7.4L0 36.35V46.9h6.02l15.4-23.97-4.15 16.66 9.46 1.66 8.88-11.16-2.97 12.56L50 39.35v-7.69Z" fill="#FD0"></path><path fill-rule="evenodd" clip-rule="evenodd" d="M0 46.9h6.02l15.4-23.97-4.15 16.66 9.46 1.66 8.88-11.16-2.97 12.56 8.29-1.58 5.02-21.05-8.05-5.39-9.7 12.19 4-16.04-11.07-7.4L0 36.35V46.9Z" fill="#FD0"></path></g><defs><clipPath id="a"><path fill="#fff" d="M0 0h50v50H0z"></path></clipPath></defs>
+</g>
+</svg>

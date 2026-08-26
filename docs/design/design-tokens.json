@@ -1,0 +1,492 @@
+{
+  "$description": "Токены «Уклада». Источник истины — src/index.css и tailwind.config.js; файл сгенерирован скриптом npm run tokens.",
+  "color": {
+    "light": {
+      "background": {
+        "$type": "color",
+        "$value": "#FFFFFF",
+        "$description": "CSS: hsl(var(--background))"
+      },
+      "foreground": {
+        "$type": "color",
+        "$value": "#1B1D22",
+        "$description": "CSS: hsl(var(--foreground))"
+      },
+      "card": {
+        "$type": "color",
+        "$value": "#FFFFFF",
+        "$description": "CSS: hsl(var(--card))"
+      },
+      "card-foreground": {
+        "$type": "color",
+        "$value": "#1B1D22",
+        "$description": "CSS: hsl(var(--card-foreground))"
+      },
+      "popover": {
+        "$type": "color",
+        "$value": "#FFFFFF",
+        "$description": "CSS: hsl(var(--popover))"
+      },
+      "popover-foreground": {
+        "$type": "color",
+        "$value": "#1B1D22",
+        "$description": "CSS: hsl(var(--popover-foreground))"
+      },
+      "primary": {
+        "$type": "color",
+        "$value": "#2463EB",
+        "$description": "CSS: hsl(var(--primary))"
+      },
+      "primary-foreground": {
+        "$type": "color",
+        "$value": "#FFFFFF",
+        "$description": "CSS: hsl(var(--primary-foreground))"
+      },
+      "secondary": {
+        "$type": "color",
+        "$value": "#F3F4F6",
+        "$description": "CSS: hsl(var(--secondary))"
+      },
+      "secondary-foreground": {
+        "$type": "color",
+        "$value": "#2D3039",
+        "$description": "CSS: hsl(var(--secondary-foreground))"
+      },
+      "muted": {
+        "$type": "color",
+        "$value": "#F3F4F6",
+        "$description": "CSS: hsl(var(--muted))"
+      },
+      "muted-foreground": {
+        "$type": "color",
+        "$value": "#6B7280",
+        "$description": "CSS: hsl(var(--muted-foreground))"
+      },
+      "accent": {
+        "$type": "color",
+        "$value": "#F3F4F6",
+        "$description": "CSS: hsl(var(--accent))"
+      },
+      "accent-foreground": {
+        "$type": "color",
+        "$value": "#2D3039",
+        "$description": "CSS: hsl(var(--accent-foreground))"
+      },
+      "destructive": {
+        "$type": "color",
+        "$value": "#DC2828",
+        "$description": "CSS: hsl(var(--destructive))"
+      },
+      "destructive-foreground": {
+        "$type": "color",
+        "$value": "#FFFFFF",
+        "$description": "CSS: hsl(var(--destructive-foreground))"
+      },
+      "border": {
+        "$type": "color",
+        "$value": "#E5E7EB",
+        "$description": "CSS: hsl(var(--border))"
+      },
+      "input": {
+        "$type": "color",
+        "$value": "#E5E7EB",
+        "$description": "CSS: hsl(var(--input))"
+      },
+      "ring": {
+        "$type": "color",
+        "$value": "#2463EB",
+        "$description": "CSS: hsl(var(--ring))"
+      },
+      "canvas-bg": {
+        "$type": "color",
+        "$value": "#F9FAFB",
+        "$description": "CSS: hsl(var(--canvas-bg))"
+      },
+      "grid-minor": {
+        "$type": "color",
+        "$value": "#E1E4EA",
+        "$description": "CSS: hsl(var(--grid-minor))"
+      },
+      "grid-major": {
+        "$type": "color",
+        "$value": "#CED2DA",
+        "$description": "CSS: hsl(var(--grid-major))"
+      },
+      "floor": {
+        "$type": "color",
+        "$value": "#F9FAFB",
+        "$description": "CSS: hsl(var(--floor))"
+      },
+      "floor-edge": {
+        "$type": "color",
+        "$value": "#E5E7EB",
+        "$description": "CSS: hsl(var(--floor-edge))"
+      },
+      "m-section": {
+        "$type": "color",
+        "$value": "#C7D7FA",
+        "$description": "CSS: hsl(var(--m-section))"
+      },
+      "m-section-fg": {
+        "$type": "color",
+        "$value": "#214DAB",
+        "$description": "CSS: hsl(var(--m-section-fg))"
+      },
+      "m-aisle": {
+        "$type": "color",
+        "$value": "#E7EAEE",
+        "$description": "CSS: hsl(var(--m-aisle))"
+      },
+      "m-aisle-fg": {
+        "$type": "color",
+        "$value": "#656C7B",
+        "$description": "CSS: hsl(var(--m-aisle-fg))"
+      },
+      "m-stairs": {
+        "$type": "color",
+        "$value": "#FCDBBA",
+        "$description": "CSS: hsl(var(--m-stairs))"
+      },
+      "m-stairs-fg": {
+        "$type": "color",
+        "$value": "#C36213",
+        "$description": "CSS: hsl(var(--m-stairs-fg))"
+      },
+      "m-elevator": {
+        "$type": "color",
+        "$value": "#DECFF7",
+        "$description": "CSS: hsl(var(--m-elevator))"
+      },
+      "m-elevator-fg": {
+        "$type": "color",
+        "$value": "#6837BE",
+        "$description": "CSS: hsl(var(--m-elevator-fg))"
+      }
+    },
+    "dark": {
+      "background": {
+        "$type": "color",
+        "$value": "#14151A",
+        "$description": "CSS: hsl(var(--background))"
+      },
+      "foreground": {
+        "$type": "color",
+        "$value": "#E8EAED",
+        "$description": "CSS: hsl(var(--foreground))"
+      },
+      "card": {
+        "$type": "color",
+        "$value": "#181A20",
+        "$description": "CSS: hsl(var(--card))"
+      },
+      "card-foreground": {
+        "$type": "color",
+        "$value": "#E8EAED",
+        "$description": "CSS: hsl(var(--card-foreground))"
+      },
+      "popover": {
+        "$type": "color",
+        "$value": "#181A20",
+        "$description": "CSS: hsl(var(--popover))"
+      },
+      "popover-foreground": {
+        "$type": "color",
+        "$value": "#E8EAED",
+        "$description": "CSS: hsl(var(--popover-foreground))"
+      },
+      "primary": {
+        "$type": "color",
+        "$value": "#3C83F6",
+        "$description": "CSS: hsl(var(--primary))"
+      },
+      "primary-foreground": {
+        "$type": "color",
+        "$value": "#14151A",
+        "$description": "CSS: hsl(var(--primary-foreground))"
+      },
+      "secondary": {
+        "$type": "color",
+        "$value": "#262931",
+        "$description": "CSS: hsl(var(--secondary))"
+      },
+      "secondary-foreground": {
+        "$type": "color",
+        "$value": "#E8EAED",
+        "$description": "CSS: hsl(var(--secondary-foreground))"
+      },
+      "muted": {
+        "$type": "color",
+        "$value": "#24272E",
+        "$description": "CSS: hsl(var(--muted))"
+      },
+      "muted-foreground": {
+        "$type": "color",
+        "$value": "#9096A2",
+        "$description": "CSS: hsl(var(--muted-foreground))"
+      },
+      "accent": {
+        "$type": "color",
+        "$value": "#282C33",
+        "$description": "CSS: hsl(var(--accent))"
+      },
+      "accent-foreground": {
+        "$type": "color",
+        "$value": "#E8EAED",
+        "$description": "CSS: hsl(var(--accent-foreground))"
+      },
+      "destructive": {
+        "$type": "color",
+        "$value": "#D02F2F",
+        "$description": "CSS: hsl(var(--destructive))"
+      },
+      "destructive-foreground": {
+        "$type": "color",
+        "$value": "#FFFFFF",
+        "$description": "CSS: hsl(var(--destructive-foreground))"
+      },
+      "border": {
+        "$type": "color",
+        "$value": "#2D3039",
+        "$description": "CSS: hsl(var(--border))"
+      },
+      "input": {
+        "$type": "color",
+        "$value": "#31353F",
+        "$description": "CSS: hsl(var(--input))"
+      },
+      "ring": {
+        "$type": "color",
+        "$value": "#3C83F6",
+        "$description": "CSS: hsl(var(--ring))"
+      },
+      "canvas-bg": {
+        "$type": "color",
+        "$value": "#121317",
+        "$description": "CSS: hsl(var(--canvas-bg))"
+      },
+      "grid-minor": {
+        "$type": "color",
+        "$value": "#24272E",
+        "$description": "CSS: hsl(var(--grid-minor))"
+      },
+      "grid-major": {
+        "$type": "color",
+        "$value": "#31353F",
+        "$description": "CSS: hsl(var(--grid-major))"
+      },
+      "floor": {
+        "$type": "color",
+        "$value": "#121317",
+        "$description": "CSS: hsl(var(--floor))"
+      },
+      "floor-edge": {
+        "$type": "color",
+        "$value": "#262931",
+        "$description": "CSS: hsl(var(--floor-edge))"
+      },
+      "m-section": {
+        "$type": "color",
+        "$value": "#1D366D",
+        "$description": "CSS: hsl(var(--m-section))"
+      },
+      "m-section-fg": {
+        "$type": "color",
+        "$value": "#A1BCF7",
+        "$description": "CSS: hsl(var(--m-section-fg))"
+      },
+      "m-aisle": {
+        "$type": "color",
+        "$value": "#31353F",
+        "$description": "CSS: hsl(var(--m-aisle))"
+      },
+      "m-aisle-fg": {
+        "$type": "color",
+        "$value": "#A0A5B1",
+        "$description": "CSS: hsl(var(--m-aisle-fg))"
+      },
+      "m-stairs": {
+        "$type": "color",
+        "$value": "#6A5639",
+        "$description": "CSS: hsl(var(--m-stairs))"
+      },
+      "m-stairs-fg": {
+        "$type": "color",
+        "$value": "#FAD589",
+        "$description": "CSS: hsl(var(--m-stairs-fg))"
+      },
+      "m-elevator": {
+        "$type": "color",
+        "$value": "#432A6F",
+        "$description": "CSS: hsl(var(--m-elevator))"
+      },
+      "m-elevator-fg": {
+        "$type": "color",
+        "$value": "#C8AFF4",
+        "$description": "CSS: hsl(var(--m-elevator-fg))"
+      }
+    }
+  },
+  "radius": {
+    "sm": {
+      "$type": "borderRadius",
+      "$value": "6px"
+    },
+    "DEFAULT": {
+      "$type": "borderRadius",
+      "$value": "8px"
+    },
+    "md": {
+      "$type": "borderRadius",
+      "$value": "8px"
+    },
+    "lg": {
+      "$type": "borderRadius",
+      "$value": "10px"
+    },
+    "xl": {
+      "$type": "borderRadius",
+      "$value": "12px"
+    },
+    "2xl": {
+      "$type": "borderRadius",
+      "$value": "16px"
+    },
+    "full": {
+      "$type": "borderRadius",
+      "$value": "9999px"
+    }
+  },
+  "size": {
+    "control-sm": {
+      "$type": "sizing",
+      "$value": "32px",
+      "$description": "Button size=sm, Input, Segmented size=sm"
+    },
+    "control-md": {
+      "$type": "sizing",
+      "$value": "36px",
+      "$description": "Button size=default, Segmented size=md, поля форм"
+    },
+    "control-lg": {
+      "$type": "sizing",
+      "$value": "40px",
+      "$description": "Button size=lg"
+    },
+    "scan-field": {
+      "$type": "sizing",
+      "$value": "44px",
+      "$description": "Поле скана: под палец и под сканер"
+    },
+    "icon-sm": {
+      "$type": "sizing",
+      "$value": "14px"
+    },
+    "icon-md": {
+      "$type": "sizing",
+      "$value": "16px"
+    },
+    "nav-rail": {
+      "$type": "sizing",
+      "$value": "72px"
+    },
+    "cell": {
+      "$type": "sizing",
+      "$value": "28px",
+      "$description": "Клетка сетки плана (CELL в constants.ts)"
+    }
+  },
+  "typography": {
+    "label": {
+      "$type": "typography",
+      "$value": {
+        "fontSize": "11px",
+        "fontWeight": "600",
+        "textCase": "uppercase",
+        "letterSpacing": "0.05em"
+      }
+    },
+    "body": {
+      "$type": "typography",
+      "$value": {
+        "fontSize": "14px",
+        "fontWeight": "400",
+        "lineHeight": "1.45"
+      }
+    },
+    "bodySmall": {
+      "$type": "typography",
+      "$value": {
+        "fontSize": "12px",
+        "fontWeight": "400"
+      }
+    },
+    "caption": {
+      "$type": "typography",
+      "$value": {
+        "fontSize": "11px",
+        "fontWeight": "400"
+      }
+    },
+    "titleScreen": {
+      "$type": "typography",
+      "$value": {
+        "fontSize": "18px",
+        "fontWeight": "600",
+        "letterSpacing": "-0.01em"
+      }
+    },
+    "titleSection": {
+      "$type": "typography",
+      "$value": {
+        "fontSize": "14px",
+        "fontWeight": "600"
+      }
+    },
+    "mono": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "ui-monospace",
+        "fontSize": "12px",
+        "$description": "Адреса, артикулы, штрихкоды"
+      }
+    }
+  },
+  "spacing": {
+    "1": {
+      "$type": "spacing",
+      "$value": "4px"
+    },
+    "2": {
+      "$type": "spacing",
+      "$value": "8px"
+    },
+    "3": {
+      "$type": "spacing",
+      "$value": "12px"
+    },
+    "4": {
+      "$type": "spacing",
+      "$value": "16px"
+    },
+    "5": {
+      "$type": "spacing",
+      "$value": "20px"
+    },
+    "6": {
+      "$type": "spacing",
+      "$value": "24px"
+    },
+    "8": {
+      "$type": "spacing",
+      "$value": "32px"
+    },
+    "10": {
+      "$type": "spacing",
+      "$value": "40px"
+    },
+    "12": {
+      "$type": "spacing",
+      "$value": "48px"
+    }
+  }
+}

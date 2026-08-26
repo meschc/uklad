@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 100 100" enable-background="new 0 0 100 100" xml:space="preserve">
+<g>
+&#x9;<defs>
+&#x9;&#x9;<path id="SVGID_1_" d="M51.6,0.8L51.6,0.8C77.2,0.8,98,21.6,98,47.2V53c0,25.6-20.8,46.4-46.4,46.4l0,0C25.9,99.4,5.1,78.6,5.1,53&#xA;&#x9;&#x9;&#x9;v-5.7C5.1,21.6,25.9,0.8,51.6,0.8z"></path>
+&#x9;</defs>
+&#x9;<clipPath id="SVGID_2_">
+&#x9;&#x9;<use xlink:href="#SVGID_1_" overflow="visible"></use>
+&#x9;</clipPath>
+&#x9;<g clip-path="url(#SVGID_2_)">
+&#x9;&#x9;<path fill="#E6E6E6" d="M51.6,0.8L51.6,0.8C77.2,0.8,98,21.6,98,47.2V53c0,25.6-20.8,46.4-46.4,46.4l0,0&#xA;&#x9;&#x9;&#x9;C25.9,99.4,5.1,78.6,5.1,53v-5.7C5.1,21.6,25.9,0.8,51.6,0.8z"></path>
+&#x9;&#x9;<g>
+&#x9;&#x9;&#x9;<defs>
+&#x9;&#x9;&#x9;&#x9;<rect id="SVGID_3_" x="1.9" y="7.2" width="81.3" height="86.3"></rect>
+&#x9;&#x9;&#x9;</defs>
+&#x9;&#x9;&#x9;<clipPath id="SVGID_4_">
+&#x9;&#x9;&#x9;&#x9;<use xlink:href="#SVGID_3_" overflow="visible"></use>
+&#x9;&#x9;&#x9;</clipPath>
+&#x9;&#x9;&#x9;<g clip-path="url(#SVGID_4_)">
+&#x9;&#x9;&#x9;&#x9;<path fill="#FF7751" d="M1.9,22.7L42.5,7.2l40.6,15.5V78L42.5,93.5L1.9,78V22.7z"></path>
+&#x9;&#x9;&#x9;&#x9;<path fill="#E13100" d="M1.9,22.7l40.6,15.5v55.2L1.9,78V22.7z"></path>
+&#x9;&#x9;&#x9;&#x9;<path fill="#FC4714" d="M83.1,22.7L42.5,38.3v55.2L83.1,78V22.7z"></path>
+&#x9;&#x9;&#x9;&#x9;<path fill="#FFFFFF" d="M78.7,68.1C69.9,77,56,82.2,47,80.3v-4.9c8.8,1.9,22.9-2.7,31.7-12.2V68.1z M60.7,53.9L57.8,55v13&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;l-7.2,2.8v-13l-2.9,1.1l6.5-18.8L60.7,53.9z M78,47.2l-2.9,1.1v13l-7.2,2.8v-13L65,52.2l6.5-18.8L78,47.2z"></path>
+&#x9;&#x9;&#x9;</g>
+&#x9;&#x9;</g>
+&#x9;</g>
+</g>
+</svg>

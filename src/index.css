@@ -1,0 +1,287 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 224 12% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 224 12% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 224 12% 12%;
+
+    --primary: 221 83% 53%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 224 12% 20%;
+
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;
+
+    --accent: 220 14% 96%;
+    --accent-foreground: 224 12% 20%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 221 83% 53%;
+
+    /* База шкалы скруглений. Ступени в tailwind.config.js идут от неё с шагом
+       2px — ровно на типовой отступ вложения (p-0.5), чтобы вложенные углы
+       считались по формуле «внутренний = внешний − отступ». */
+    --radius: 0.625rem; /* 10px */
+
+    /* Канвас-сетка «тетрадь в клетку» */
+    --canvas-bg: 220 20% 98%;
+    --grid-minor: 220 16% 90%;
+    --grid-major: 220 14% 83%;
+    /* Пол склада = проход: тот же тон, что и общий фон редактора (canvas-bg),
+       чтобы проход между секциями сливался с фоном страницы (п.14). Плита лишь
+       очерчивает габарит плана тонкой кромкой. */
+    --floor: 220 20% 98%;
+    --floor-edge: 220 15% 91%;
+
+    /* Модули склада — насыщенные заливки (без обводки, цвет держит форму) */
+    --m-section: 221 83% 88%;
+    --m-section-fg: 221 68% 40%;
+    --m-aisle: 220 16% 92%;
+    --m-aisle-fg: 220 10% 44%;
+    --m-stairs: 30 92% 86%;
+    --m-stairs-fg: 27 82% 42%;
+    --m-elevator: 262 72% 89%;
+    --m-elevator-fg: 262 55% 48%;
+  }
+
+  .dark {
+    --background: 224 14% 9%;
+    --foreground: 220 14% 92%;
+
+    --card: 224 13% 11%;
+    --card-foreground: 220 14% 92%;
+
+    --popover: 224 13% 11%;
+    --popover-foreground: 220 14% 92%;
+
+    /* Тёмная тема тянет цвет на себя: тот же синий, что читался на белом, на
+       угольном фоне выглядит приглушённым. Поэтому в тёмной палитре акценты
+       живут на максимальной насыщенности — «неон», а не «пастель». */
+    --primary: 214 100% 63%;
+    --primary-foreground: 224 14% 9%;
+
+    --secondary: 223 12% 17%;
+    --secondary-foreground: 220 14% 92%;
+
+    --muted: 223 12% 16%;
+    --muted-foreground: 220 9% 60%;
+
+    --accent: 223 12% 18%;
+    --accent-foreground: 220 14% 92%;
+
+    --destructive: 0 63% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 223 12% 20%;
+    --input: 223 12% 22%;
+    --ring: 214 100% 63%;
+
+    --canvas-bg: 224 14% 8%;
+    --grid-minor: 223 12% 16%;
+    --grid-major: 223 12% 22%;
+    --floor: 224 14% 8%;
+    --floor-edge: 223 12% 17%;
+
+    --m-section: 216 72% 26%;
+    --m-section-fg: 213 100% 76%;
+    --m-aisle: 223 12% 22%;
+    --m-aisle-fg: 220 10% 66%;
+    /* Оранжевый на тёмном уходит в «грязный» коричневый, если гасить
+       насыщенность. Лечим наоборот: тон держим на #ff5e1f (hsl 17 100% 56%),
+       заливку делаем тёмной, но такой же насыщенной, а знак — полным неоном.
+       Приглушённая заливка + яркий знак читаются как свечение, а не как грязь. */
+    --m-stairs: 19 78% 27%;
+    --m-stairs-fg: 19 100% 65%;
+    --m-elevator: 265 60% 30%;
+    --m-elevator-fg: 266 100% 80%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  /* Иконки lucide нарисованы штрихом 2 при сетке 24 — рядом с подписью в 10–13 px
+     они выглядят жирнее самого текста и перетягивают внимание на себя. Утоньшаем
+     глобально: CSS перебивает presentation-атрибут, поэтому править каждый вызов
+     не нужно. Крупные иконки (size-5 и больше) остаются чуть плотнее — на них
+     1.5 уже начинает «рассыпаться». */
+  svg.lucide {
+    stroke-width: 1.6;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    overscroll-behavior: none;
+  }
+
+  /* Запрет висячих строк. `pretty` не отпускает последнее слово абзаца на
+     отдельную строку, `balance` выравнивает короткий заголовок по строкам.
+     Короткие слова и числа склеиваются неразрывным пробелом в `i18n.ts` —
+     это две половины одного правила. */
+  p,
+  li,
+  dd,
+  figcaption,
+  blockquote,
+  label,
+  th,
+  td {
+    text-wrap: pretty;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    text-wrap: balance;
+  }
+
+  /* На бумаге браузер разрывает абзац между страницами: не меньше двух строк
+     с каждой стороны разрыва. */
+  @media print {
+    p,
+    li {
+      orphans: 2;
+      widows: 2;
+    }
+  }
+
+  /* Убираем выделение текста при взаимодействии с канвасом */
+  .no-select {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+}
+
+@layer utilities {
+  /* Полосатая «предупреждающая» заливка (как сигнальная лента) для алертов.
+     Мягкие янтарные диагонали поверх фона — тон одинаково читается в обеих
+     темах, поэтому цвет фиксированный. */
+  /* Предупреждающая штриховка. Держится у ПРАВОГО края и гаснет к центру:
+     под текстом она превращала заголовок алерта в кашу (п.17). */
+  .hazard-stripes {
+    background-image: repeating-linear-gradient(
+      -45deg,
+      rgb(245 158 11 / 0.16) 0,
+      rgb(245 158 11 / 0.16) 5px,
+      transparent 5px,
+      transparent 11px
+    );
+    background-repeat: no-repeat;
+    background-position: right center;
+    background-size: 40% 100%;
+    -webkit-mask-image: linear-gradient(to left, #000 0, #000 55%, transparent 100%);
+    mask-image: linear-gradient(to left, #000 0, #000 55%, transparent 100%);
+  }
+
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--border));
+    border-radius: 9999px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  /* Скролл без видимой полосы: содержимое прокручивается, но «элемента
+     скролла» на плавающей панели нет — она читается как цельная карточка. */
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
+}
+
+/* Доступность: уважаем системную настройку «меньше движения». */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Печать (п.9): на бумагу уходит только план для сверки — интерфейс редактора
+   в распечатке бесполезен и съедает лист.
+
+   Один этаж — один лист A4 (п.2). Размер и ориентацию страницы задаёт сам
+   компонент печати (он знает пропорции плана), а высоту рисунка ограничиваем
+   в миллиметрах: иначе высокий план растягивается на несколько страниц. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-root,
+  .print-root * {
+    visibility: visible;
+  }
+  .print-root {
+    position: absolute;
+    inset: 0;
+    padding: 0;
+    background: #fff;
+    color: #000;
+  }
+  .print-sheet {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  /* Наклейки печатаются рулоном: страница равна самой наклейке (её размер
+     задаёт @page прямо на экране наклеек). Корневой блок печати тогда не
+     растягивается на лист, а отдаёт поток самим наклейкам. */
+  .print-root.print-flow {
+    position: static;
+    inset: auto;
+  }
+  .print-label {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    break-after: page;
+    page-break-after: always;
+  }
+  .print-label:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+  /* Свободная высота листа за вычетом шапки и легенды. Значение приходит из
+     компонента: у альбомной страницы её меньше, чем у книжной. */
+  .print-plan {
+    width: 100%;
+    height: auto;
+    max-height: var(--print-plan-h, 240mm);
+  }
+}
