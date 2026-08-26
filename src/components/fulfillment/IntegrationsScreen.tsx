@@ -78,8 +78,13 @@ export function IntegrationsScreen() {
  * Плитка под логотипом всегда белая: часть знаков идёт со своей подложкой (WB,
  * Lamoda), часть без неё (Авито), и на общем белом они выравниваются в один ряд
  * в обеих темах.
+ *
+ * Знак всегда в полном цвете, даже у неподключённой системы. Приглушать его
+ * незачем: подключение видно по бейджу «вкл» и по счётчику заполненных полей, а
+ * выцветший логотип мешает ровно тому, ради чего он здесь, — найти свою систему
+ * в списке из двадцати одной, не читая подписи.
  */
-function BrandMark({ brand, muted }: { brand: BrandMarkSpec; muted: boolean }) {
+function BrandMark({ brand }: { brand: BrandMarkSpec }) {
   // Логотип не загрузился — показываем монограмму: битая картинка в списке
   // подключений читается как сломанная интеграция, хотя сломан только файл.
   const [logoFailed, setLogoFailed] = useState(false);
@@ -88,10 +93,7 @@ function BrandMark({ brand, muted }: { brand: BrandMarkSpec; muted: boolean }) {
     return (
       <span
         aria-hidden
-        className={cn(
-          "flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white ring-1 ring-black/10 transition-opacity dark:ring-white/15",
-          muted && "opacity-60",
-        )}
+        className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white ring-1 ring-black/10 dark:ring-white/15"
       >
         <img
           // BASE_URL, а не «/brands/…»: при сборке в подкаталог (GitHub Pages)
@@ -109,12 +111,9 @@ function BrandMark({ brand, muted }: { brand: BrandMarkSpec; muted: boolean }) {
   return (
     <span
       aria-hidden
-      className={cn(
-        // Тонкая обводка: у тёмных марок (Lamoda) плитка иначе сливается с
-        // карточкой в тёмной теме и читается как дырка в вёрстке.
-        "flex size-9 shrink-0 items-center justify-center rounded-lg text-[11px] font-bold tracking-tight ring-1 ring-black/10 transition-opacity dark:ring-white/15",
-        muted && "opacity-60",
-      )}
+      // Тонкая обводка: у тёмных марок (Lamoda) плитка иначе сливается с
+      // карточкой в тёмной теме и читается как дырка в вёрстке.
+      className="flex size-9 shrink-0 items-center justify-center rounded-lg text-[11px] font-bold tracking-tight ring-1 ring-black/10 dark:ring-white/15"
       style={{ backgroundColor: brand.bg, color: brand.fg ?? "#ffffff" }}
     >
       {brand.short}
@@ -140,7 +139,7 @@ function IntegrationCard({
   return (
     <section className="overflow-hidden rounded-xl border border-border bg-card">
       <div className="flex flex-wrap items-center gap-3 px-4 py-3">
-        <BrandMark brand={spec.brand} muted={!config.enabled} />
+        <BrandMark brand={spec.brand} />
         <div className="min-w-0 flex-1">
           <p className="flex items-center gap-1.5 text-sm font-semibold">
             {spec.title}
