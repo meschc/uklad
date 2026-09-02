@@ -1,0 +1,860 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Уклад — карта экранов и переходов</title>
+<meta name="description" content="Полная карта продукта «Уклад»: витрина складов и WMS-система — все экраны, оверлеи и переходы между ними." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+/*
+ * Карта делается на одном файле намеренно: её вставляют в чужую страницу
+ * портфолио, где ни сборки, ни отдельных ассетов не будет. Внешняя зависимость
+ * ровно одна — шрифт, и он с честным запасным набором.
+ *
+ * Палитра взята из самого продукта (site.css), а не подобрана заново: карта
+ * должна выглядеть частью «Уклада», а не приложением к нему.
+ */
+:root {
+  --bg: hsl(220 33% 99%);
+  --fg: hsl(222 24% 10%);
+  --card: #fff;
+  --muted: hsl(220 20% 96%);
+  --mfg: hsl(220 10% 40%);
+  --border: hsl(220 16% 88%);
+  --line: hsl(220 14% 80%);
+  --primary: hsl(226 100% 55%);
+  --seller: hsl(190 92% 32%);
+  /* Тупики и пустые состояния. Красный был бы неправдой: половина из них —
+     не поломка, а честный ответ «здесь ничего нет». */
+  --state: hsl(28 82% 44%);
+  --shadow: 0 1px 2px hsl(222 24% 10% / 0.04), 0 8px 24px hsl(222 24% 10% / 0.05);
+  --r: 14px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: hsl(222 24% 5%);
+    --fg: hsl(220 16% 93%);
+    --card: hsl(222 20% 8%);
+    --muted: hsl(222 16% 12%);
+    --mfg: hsl(220 10% 62%);
+    --border: hsl(222 14% 17%);
+    --line: hsl(222 12% 28%);
+    --primary: hsl(226 100% 66%);
+    --seller: hsl(190 85% 52%);
+    --state: hsl(30 90% 62%);
+    --shadow: 0 1px 2px hsl(0 0% 0% / 0.4), 0 12px 32px hsl(0 0% 0% / 0.3);
+  }
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: "Golos Text", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, h4 { margin: 0; font-weight: 500; letter-spacing: -0.02em; }
+p { margin: 0; }
+ul { margin: 0; padding: 0; list-style: none; }
+
+.wrap { max-width: 1360px; margin: 0 auto; padding: 40px 20px 96px; }
+
+/* ── Шапка ──────────────────────────────────────────────────────────────── */
+
+.top { max-width: 760px; }
+.eyebrow {
+  margin-bottom: 10px;
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+h1 { font-size: clamp(28px, 5vw, 42px); line-height: 1.05; }
+.lead { margin-top: 14px; color: var(--mfg); font-size: 16px; }
+
+.stats { display: flex; flex-wrap: wrap; gap: 28px; margin: 28px 0 0; }
+.stat b { display: block; font-size: 26px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.stat span { font-size: 12px; color: var(--mfg); }
+
+/* Легенда и переключатели — одна полоса: и то и другое объясняет, как читать
+   схему, и разносить их по разным углам незачем. */
+.controls {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 18px;
+  margin: 32px 0 8px;
+  padding: 12px 0;
+  background: linear-gradient(var(--bg) 70%, transparent);
+}
+.key { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; color: var(--mfg); }
+.dot { width: 12px; height: 12px; border-radius: 4px; border: 1.5px solid var(--line); background: var(--card); }
+.dot.page { border-color: var(--primary); }
+.dot.seller { border-color: var(--seller); }
+.dot.state { border-color: var(--state); }
+.dot.overlay { border-style: dashed; }
+.sample { width: 26px; height: 0; border-top: 2px solid var(--line); }
+.sample.main { border-color: var(--primary); }
+.sample.back { border-top-style: dashed; }
+.sample.chrome { border-top-style: dotted; }
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-left: auto;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--card);
+  font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+.toggle input { accent-color: var(--primary); margin: 0; }
+
+/* ── Доска ──────────────────────────────────────────────────────────────── */
+
+.board { margin-top: 34px; }
+.board > header { max-width: 700px; margin-bottom: 18px; }
+.board > header h2 { font-size: 22px; }
+.board > header p { margin-top: 6px; color: var(--mfg); font-size: 14px; }
+
+/* Без scroll-behavior: smooth намеренно. Доводка доски вбок делается
+   присваиванием scrollLeft, а в браузерах и средах, где плавная прокрутка
+   отключена, такое присваивание вместе с ней и пропадает — сдвиг просто не
+   происходит. Прыжок здесь короткий и сразу после клика, так что терять из-за
+   него работающую механику незачем. */
+.scroller { overflow-x: auto; padding: 4px 4px 18px; }
+.canvas { position: relative; display: inline-block; min-width: 100%; }
+.cols { display: flex; align-items: flex-start; gap: 84px; }
+/* Пока открыта панель разбора, доске нужен запас справа: без него она ровно
+   помещается в окно, прокручивать нечего, и выбранная карточка остаётся под
+   панелью. Запас добавляется хвостом внутри холста — колонки не двигаются,
+   значит и линии остаются на месте. */
+@media (min-width: 720px) {
+  body.with-panel .cols { padding-right: 380px; }
+}
+.col { display: flex; flex-direction: column; gap: 18px; width: 244px; }
+.col-title {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--mfg);
+  padding-bottom: 2px;
+}
+
+.wires { position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: visible; }
+.wires path { fill: none; stroke: var(--line); stroke-width: 1.5; }
+.wires path.main { stroke: color-mix(in srgb, var(--primary) 55%, transparent); }
+.wires path.back { stroke-dasharray: 5 5; }
+.wires path.chrome { stroke-dasharray: 1 5; stroke-linecap: round; opacity: 0.75; }
+.wires path.window { stroke: var(--seller); stroke-dasharray: 7 4; }
+.wires path.on { stroke: var(--primary); stroke-width: 2.5; opacity: 1; }
+/* Когда что-то выбрано, остальные связи не исчезают, а отступают: карта
+   должна оставаться картой, а не превращаться в один подсвеченный маршрут. */
+.canvas.focused .wires path:not(.on) { opacity: 0.12; }
+.canvas.focused .node:not(.on) { opacity: 0.4; }
+
+.node {
+  position: relative;
+  z-index: 1;
+  padding: 12px 14px 13px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--r);
+  background: var(--card);
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  transition: border-color 0.15s, transform 0.15s, opacity 0.2s;
+}
+.node:hover { transform: translateY(-1px); border-color: var(--primary); }
+.node.sel { border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent); }
+.node[data-kind="page"] { border-left: 3px solid var(--primary); }
+.node[data-kind="seller"] { border-left: 3px solid var(--seller); }
+.node[data-kind="overlay"] { border-style: dashed; background: var(--muted); box-shadow: none; }
+.node[data-kind="chrome"] { border-style: dotted; background: var(--muted); box-shadow: none; }
+.node[data-kind="entry"] { border-radius: 999px; padding: 10px 18px; }
+.node[data-kind="bridge"] { border-left: 3px solid var(--seller); }
+.node[data-kind="state"] { border-left: 3px solid var(--state); background: var(--muted); box-shadow: none; }
+
+.node h3 { font-size: 14px; }
+.node .meta {
+  margin-top: 3px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: var(--mfg);
+}
+.node .count { margin-top: 8px; font-size: 11px; color: var(--mfg); }
+.node .tag {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--seller) 14%, transparent);
+  color: var(--seller);
+  font-size: 10px;
+  font-weight: 500;
+}
+
+/* ── Панель разбора ─────────────────────────────────────────────────────── */
+
+.panel {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 60;
+  width: 348px;
+  max-height: min(74vh, 640px);
+  overflow-y: auto;
+  padding: 18px 18px 20px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: 0 18px 50px hsl(222 24% 10% / 0.18);
+}
+.panel[hidden] { display: none; }
+.panel h3 { font-size: 17px; padding-right: 28px; }
+.panel .meta { margin-top: 4px; font-family: ui-monospace, monospace; font-size: 11px; color: var(--mfg); }
+.panel .desc { margin-top: 12px; font-size: 13px; color: var(--mfg); }
+.panel h4 {
+  margin: 18px 0 7px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--mfg);
+}
+.panel li { font-size: 13px; padding: 3px 0 3px 14px; position: relative; }
+.panel li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 11px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--line);
+}
+.panel .edge { cursor: pointer; }
+.panel .edge b { font-weight: 500; }
+.panel .edge:hover b { color: var(--primary); }
+.panel .edge em { font-style: normal; color: var(--mfg); }
+.close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--muted);
+  color: var(--mfg);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.foot { margin-top: 56px; padding-top: 22px; border-top: 1px solid var(--border); color: var(--mfg); font-size: 13px; max-width: 760px; }
+
+@media (max-width: 720px) {
+  .wrap { padding: 28px 14px 80px; }
+  .panel { right: 10px; left: 10px; width: auto; bottom: 10px; max-height: 62vh; }
+  .controls { position: static; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="top">
+    <p class="eyebrow">Уклад · карта продукта</p>
+    <h1>Все экраны и переходы</h1>
+    <p class="lead">
+      Продукт состоит из двух половин: публичной витрины складов, куда селлер
+      приходит выбирать подрядчика, и складской системы, в которой этот же
+      товар потом принимают, хранят и отгружают. Ниже — обе, целиком: каждый
+      экран, каждое всплывающее окно, каждый тупик и каждый переход между
+      ними. Наведите на карточку, чтобы увидеть её связи, нажмите — чтобы
+      прочитать разбор.
+    </p>
+    <div class="stats" id="stats"></div>
+  </div>
+
+  <div class="controls">
+    <span class="key"><i class="dot page"></i> страница сайта</span>
+    <span class="key"><i class="dot"></i> экран системы</span>
+    <span class="key"><i class="dot seller"></i> роль «селлер»</span>
+    <span class="key"><i class="dot overlay"></i> окно поверх экрана</span>
+    <span class="key"><i class="dot state"></i> тупик и пустое состояние</span>
+    <span class="key"><i class="sample main"></i> переход</span>
+    <span class="key"><i class="sample back"></i> возврат</span>
+    <span class="key"><i class="sample chrome"></i> сквозная навигация</span>
+    <label class="toggle"><input type="checkbox" id="chrome-toggle" checked /> шапка, подвал и рельс</label>
+  </div>
+
+  <section class="board" id="board-site">
+    <header>
+      <h2>Сайт — витрина складов</h2>
+      <p>
+        Маршруты живут в хэше и раскладываются статикой. Отличает адрес
+        раздела от якоря секции одна косая черта: «#how» ведёт на лендинг и
+        будет работать годами, «#/sklad» — честное «не найдено». Дверь в
+        систему на всём сайте одна — в подвале.
+      </p>
+    </header>
+    <div class="scroller"><div class="canvas"><svg class="wires"></svg><div class="cols"></div></div></div>
+  </section>
+
+  <section class="board" id="board-app">
+    <header>
+      <h2>Система — WMS склада и кабинет селлера</h2>
+      <p>
+        Одна и та же база данных, два набора экранов. Роль выбирается при входе
+        и переключается в кабинете: она решает не «какие кнопки спрятать», а с
+        чьей стороны человек смотрит на склад — со стороны кладовщика или со
+        стороны владельца товара.
+      </p>
+    </header>
+    <div class="scroller"><div class="canvas"><svg class="wires"></svg><div class="cols"></div></div></div>
+  </section>
+
+  <p class="foot">
+    Сплошная линия — переход вперёд, пунктир — возврат, точки — сквозная
+    навигация, доступная с любого экрана (шапка, подвал, боковой рельс).
+    Бирюзовым отмечено то, что открывается отдельным окном.
+  </p>
+</div>
+
+<aside class="panel" id="panel" hidden>
+  <button class="close" id="panel-close" aria-label="Закрыть">×</button>
+  <h3 id="p-title"></h3>
+  <p class="meta" id="p-meta"></p>
+  <p class="desc" id="p-desc"></p>
+  <div id="p-items"></div>
+  <div id="p-in"></div>
+  <div id="p-out"></div>
+</aside>
+
+<script>
+/*
+ * Схема описана данными, а не размеченным вручную SVG: узлы раскладывает
+ * обычный CSS-грид по колонкам, а связи дорисовываются поверх по фактическим
+ * координатам. Двигая карточку, не нужно чинить кривые — они пересчитываются
+ * сами, в том числе при смене ширины окна и размера шрифта.
+ */
+
+const NODES = [
+  /* ── Сайт ────────────────────────────────────────────────────────────── */
+  { board: "site", col: 0, id: "enter", kind: "entry", title: "Заход на сайт", meta: "любой адрес",
+    desc: "Точка входа одна на все сценарии: поиск, прямая ссылка, ссылка из переписки. Дальше адрес расходится на три: якорь секции («#how») ведёт на лендинг, неизвестный раздел («#/sklad») — на страницу «не найдено», а обычный путь без хэша («/market») вообще не доходит до приложения и попадает на страницу хостинга." },
+
+  { board: "site", col: 0, id: "header", kind: "chrome", title: "Шапка", meta: "на всех страницах",
+    desc: "Сквозная навигация. На телефоне сворачивается в кнопку меню с укороченным набором разделов.",
+    items: ["Логотип — на главную", "Как это работает — к шагам лендинга", "Складам — к блоку для операторов", "Селлеру — отдельная страница", "Витрина — к тизеру каталога", "Тарифы", "Вопросы", "Кнопка «Подобрать склад»", "Меню на телефоне: Селлеру, Тарифы, Контакты, Правовая информация"] },
+
+  { board: "site", col: 0, id: "footer", kind: "chrome", title: "Подвал", meta: "на всех страницах",
+    desc: "Три колонки ссылок, правовой блок и почта. Здесь же единственный на всём сайте вход в демонстрацию системы: демо — не то, за чем на витрину приходит селлер, и несколько дверей в него делили бы внимание с единственным нужным действием.",
+    items: ["Уклад для складов", "Демо WMS — единственный вход в систему", "Тарифы", "Контакты", "Как это работает", "Подобрать склад", "Вопросы", "Семь правовых документов", "Настройки cookie", "Почта для обращений"] },
+
+  { board: "site", col: 0, id: "cookie", kind: "overlay", title: "Cookie-бар", meta: "первый заход",
+    desc: "Полоса согласия при первом визите. Вызывается повторно из подвала — «Настройки cookie»." },
+
+  { board: "site", col: 1, id: "landing", kind: "page", title: "Лендинг", meta: "#/",
+    desc: "Порядок секций повторяет порядок вопросов селлера: что это → почему сейчас плохо → как будет → что я увижу → сколько этого есть → где смотреть склады → а мне-то, складу, что → вопросы → действие.",
+    items: ["Первый экран с макетом кабинета", "Бегущая строка площадок", "Проблема: долго, бумаги, ничего не видно", "Как это работает — пять шагов (#how)", "Что видит селлер — вкладки", "Цифры витрины", "Слоган про несколько площадок", "Тизер витрины (#warehouses)", "Складам и фулфилменту (#operators)", "Вопросы (#faq)", "Финальный блок с переходом в каталог"] },
+
+  { board: "site", col: 1, id: "sellers", kind: "page", title: "Селлеру", meta: "#/sellers",
+    desc: "Вторая аудитория со своим вопросом «а мне-то что с этого». Отвечать на него посреди страницы про WMS значит не ответить ни одной из сторон, поэтому у селлера отдельная ветка.",
+    items: ["Путь от выбора склада до отгрузки — пять шагов", "Что открыто в кабинете — четыре блока", "Документы и чат", "Живой макет заявки на отгрузку"] },
+
+  { board: "site", col: 1, id: "pricing", kind: "page", title: "Тарифы", meta: "#/pricing",
+    desc: "Страница обязательная, а не маркетинговая: оферта ссылается на неё как на свою неотъемлемую часть. Порядок блоков — от бесплатного к платному: у витрины два кошелька, и если начать с подписки, селлер решит, что каталог платный.",
+    items: ["Бесплатное навсегда: поиск, фильтры, заявки", "Платные дополнения селлеру — поштучно", "Подписка склада", "Ссылка на оферту"] },
+
+  { board: "site", col: 2, id: "market", kind: "page", title: "Витрина складов", meta: "#/market",
+    desc: "Каталог с одинаковыми карточками и одинаковым прайсом. Отбор живёт в состоянии экрана, а не в адресе: ссылку со всеми фильтрами никто не пересылает — пересылают ссылку на склад.",
+    items: ["Фильтры: город, схема, площадки, услуги, потолок цены", "Панель объёма — меняет не выдачу, а расчёт в карточках", "Сортировка", "Два вида: списком и картой", "«Показать ещё» постранично", "Пустое состояние со сбросом отбора"] },
+
+  { board: "site", col: 2, id: "filters", kind: "overlay", title: "Шторка фильтров", meta: "телефон",
+    desc: "На узком экране колонка фильтров уезжает в шторку поверх каталога: Esc закрывает, список под ней стоит на месте." },
+
+  { board: "site", col: 2, id: "contacts", kind: "page", title: "Контакты", meta: "#/contacts",
+    desc: "Кроме формы обращения — обязательное раскрытие владельца: наименование, адрес, почта и режим работы. Печатаются из того же источника, что и правовые страницы, чтобы данные не разъехались.",
+    items: ["Форма обращения с согласием на обработку данных", "Реквизиты и режим работы", "Ссылка на полное раскрытие"] },
+
+  { board: "site", col: 2, id: "legal", kind: "page", title: "Правовая информация", meta: "#/legal",
+    desc: "Список документов и сам документ — один экран на оба состояния: отличаются они только содержимым." },
+
+  { board: "site", col: 3, id: "warehouse", kind: "page", title: "Страница склада", meta: "#/warehouse/:id",
+    desc: "Отдельная страница, а не всплывающая карточка: склады сравнивают, открывая по одному в своей вкладке. Поэтому карточка в каталоге — настоящая ссылка, со всем, что ссылка умеет. Старый адрес #/market/:id продолжает работать.",
+    items: ["Обложка, значок «Уклад», проверка", "Прайс по одинаковым строкам", "Паспорт объекта и услуги", "Свободные места", "Заявка на склад — без комиссии", "Панель чата со складом"] },
+
+  { board: "site", col: 3, id: "doc", kind: "page", title: "Правовой документ", meta: "#/legal/:slug",
+    desc: "Семь документов с оглавлением и датой редакции. Порядок в списке — как их читают: сначала «кто вы такие», потом «на каких условиях», потом «что с моими данными».",
+    items: ["Реквизиты и раскрытие", "Пользовательское соглашение", "Оферта", "Политика обработки ПДн", "Согласие на обработку ПДн", "Cookie", "Рекомендательные технологии"] },
+
+  { board: "site", col: 3, id: "demo", kind: "bridge", title: "Демо WMS", meta: "/app/",
+    desc: "Переход из витрины в систему — отдельное приложение по собственному адресу. Дальше начинается вторая доска." },
+
+  { board: "site", col: 4, id: "hostmiss", kind: "state", title: "404 хостинга", meta: "/что-угодно",
+    desc: "Витрина живёт на хэше, поэтому обычный путь до неё не доходит вовсе: файла с таким именем на диске нет, и статический хостинг отдаёт свою страницу ошибки — у GitHub Pages это чужой бренд в лицо человеку, который искал наш склад. Отдельный public/404.html подменяет её собой: без сборки, со своими стилями, потому что выполниться здесь ничего не обязано.",
+    items: ["Своя вёрстка вместо страницы хостинга", "Известное имя раздела перебрасывается на настоящий адрес", "«Смотреть склады» и «На главную»", "noindex — в поиске такой странице делать нечего"] },
+
+  { board: "site", col: 4, id: "notfound", kind: "state", title: "Страница не найдена", meta: "#/что-угодно",
+    desc: "Один экран на три случая. Показывать вместо него лендинг нельзя: человек шёл по ссылке за конкретной страницей и решит, что такого раздела у сервиса нет вовсе. Заголовок вкладки меняется тоже — иначе закладка «Оферта» год за годом открывает тупик, а в истории браузера написано «Оферта».",
+    items: ["Неизвестный раздел: #/sklad", "Склад снят с витрины: #/warehouse/старый-id", "Документ переименован: #/legal/старый-код", "Якорь секции (#how) сюда не приводит — он ведёт на лендинг"] },
+
+  { board: "site", col: 4, id: "empty", kind: "state", title: "Пустая выдача", meta: "фильтры без совпадений",
+    desc: "Не ошибка, а ответ: складов с таким набором условий нет. Тупиком это становится, когда из него не выйти, поэтому сброс отбора стоит прямо в пустом состоянии, а не в шапке фильтров." },
+
+  { board: "site", col: 4, id: "crash", kind: "state", title: "Сбой витрины", meta: "падение рендера",
+    desc: "Аналог пятисотой для статики: сервера, который мог бы ответить пятисоткой, у витрины нет — упасть она может только в браузере. Без границы ошибок падение любого компонента оставляло белый лист. Границу намеренно сделали без общих компонентов и иконок: тянуть их сюда значит рисковать вторым падением поверх первого.",
+    items: ["Текст ошибки мелким моноширинным — чтобы прислать скриншот", "«Обновить страницу»", "«Написать нам» — на контакты"] },
+
+  { board: "site", col: 4, id: "nojs", kind: "state", title: "Без JavaScript", meta: "noscript",
+    desc: "Витрина рисуется скриптами целиком, и с отключённым JS от неё остаётся пустой лист. Пустой лист читается как «сайт не работает», хотя дело в блокировщике. Почта стоит здесь же: связаться с нами можно и без скриптов, а по закону эти данные должны быть доступны." },
+
+  /* ── Система ─────────────────────────────────────────────────────────── */
+  { board: "app", col: 0, id: "login", kind: "screen", title: "Вход", meta: "login",
+    desc: "Вход, регистрация и восстановление пароля. Авторизации в прототипе нет, поэтому экран проверяет то, что проверяется на клиенте, а остальное честно показывает заглушкой. Роль решает не набор полей, а то, куда человек попадёт после входа. Демонстрация открывается сразу в кабинете — сюда возвращаются через выход из профиля.",
+    items: ["Вход по почте и паролю", "Регистрация: только почта и пароль", "Восстановление пароля", "Выбор роли: склад или селлер", "Кнопка «Посмотреть демо»"] },
+
+  { board: "app", col: 0, id: "rail", kind: "chrome", title: "Боковой рельс", meta: "на всех экранах склада",
+    desc: "Двухуровневая навигация: одиночные пункты и группы, раскрывающиеся вбок. Логотип — единственный выход в кабинет. На «Заданиях» и «Чате» висят счётчики: сколько заявок ждут и сколько сообщений не прочитано.",
+    items: ["План", "Поток: приёмка, задания, сборка", "Чат", "Печать: наклейки, документы", "Настройки: паспорт, персонал, интеграции", "Аналитика", "Что это?", "Смена темы", "Логотип — в кабинет"] },
+
+  { board: "app", col: 1, id: "dashboard", kind: "screen", title: "Кабинет", meta: "dashboard",
+    desc: "Список складов аккаунта карточками с занятостью. Роль переключается здесь, а не в рельсе склада: это выбор «с чьей стороны я смотрю», и он должен быть виден до входа на склад.",
+    items: ["Карточки складов с занятостью", "Создать склад", "Правка склада", "«О складе» — сразу к персоналу", "Переключатель роли", "Тема", "Настройки профиля"] },
+
+  { board: "app", col: 1, id: "profile", kind: "screen", title: "Профиль", meta: "profile",
+    desc: "Имя, почта, реквизиты компании, тема и язык. Каждое поле правится отдельно: карандаш открывает одну строку, галочка сохраняет только её. Почта меняется через подтверждение — до ввода кода старая остаётся рабочей.",
+    items: ["Личные данные", "Смена почты с подтверждением", "Реквизиты компании по ИНН", "Тема и язык", "Выход из аккаунта"] },
+
+  { board: "app", col: 1, id: "whdialog", kind: "overlay", title: "Диалог склада", meta: "поверх кабинета",
+    desc: "Создание и правка склада: название, адрес на карте, габариты и параметры сетки." },
+
+  { board: "app", col: 2, id: "editor", kind: "screen", title: "План склада", meta: "editor",
+    desc: "Ядро системы: этаж в клетках, а не в пикселях. Три режима на одном экране — план, таблица номенклатуры и объём. Продавцу тот же план открывается на чтение.",
+    items: ["2D-план: холст, слои, структура, инспектор", "Таблица номенклатуры", "3D-режим (выключен флагом)", "Библиотека шаблонов", "Предложение ряда", "Адресация ячеек", "Автосохранение", "Печать плана", "Тепловая карта — отдельным окном"] },
+
+  { board: "app", col: 2, id: "receiving", kind: "screen", title: "Приёмка", meta: "receiving",
+    desc: "Последовательный мастер, а не форма с десятком полей: поставка → скан товара → фактическое количество со сверкой → коробка → место → паллета. Приёмка — это сверка партии: сканируется одна единица, чтобы опознать артикул, количество вводится руками." },
+
+  { board: "app", col: 2, id: "tasks", kind: "screen", title: "Задания", meta: "tasks",
+    desc: "Обзор заявок продавцов во всех статусах, включая выполненные. Группировка по назначению: одна машина увозит всё, что адресовано одному получателю, а дата только говорит когда. Просроченные подсвечены." },
+
+  { board: "app", col: 2, id: "picking", kind: "screen", title: "Сборка", meta: "picking",
+    desc: "Зеркало приёмки по духу, но с обратной строгостью: считается каждая единица — на кону точная отгрузка по конкретной заявке. Заявка переходит в «в работе» в тот момент, когда сборщик открывает её здесь, а не когда кто-то нажал кнопку заранее." },
+
+  { board: "app", col: 2, id: "chat", kind: "screen", title: "Чат", meta: "chat",
+    desc: "Переписка склада с продавцами. Две колонки у склада, одна лента у продавца — собеседник у него один. Сообщение, пришедшее на любом другом экране, показывается уведомлением и ведёт сюда." },
+
+  { board: "app", col: 2, id: "labels", kind: "screen", title: "Наклейки", meta: "labels",
+    desc: "Тару подписывают до приёмки: печатают пачку пустых наклеек, клеят на короба, а на приёмке просто сканируют. Конструктор здесь — не редактор вёрстки, а параметры печати: размер ленты, набор реквизитов, величина кода." },
+
+  { board: "app", col: 2, id: "documents", kind: "screen", title: "Документы", meta: "documents",
+    desc: "Лист сборки, накладная на отгрузку, лист приёмки. Экран устроен как «выбрал источник → увидел лист → напечатал»: документ на складе никогда не сочиняют с нуля, его формируют по существующей пачке заявок, рейсу или поставке." },
+
+  { board: "app", col: 2, id: "spec", kind: "screen", title: "Паспорт склада", meta: "spec",
+    desc: "Сорок характеристик объекта: класс, режимы хранения, оснащение, что можно хранить. Один экран на две роли — склад правит поля на месте, продавец видит те же данные на чтение." },
+
+  { board: "app", col: 2, id: "staff", kind: "screen", title: "Склад и персонал", meta: "staff",
+    desc: "Контакты склада, ответственное лицо отдельной карточкой, партнёры и список сотрудников с правкой на месте, фотографиями и импортом из CSV." },
+
+  { board: "app", col: 2, id: "integrations", kind: "screen", title: "Интеграции", meta: "integrations",
+    desc: "Подготовленная площадка под обмен данными: по каждой системе указано, какой это API, какая авторизация и какие поля она требует. Список разбит по разделам — продавцу важно увидеть «мой маркетплейс здесь есть» за секунду." },
+
+  { board: "app", col: 2, id: "analytics", kind: "screen", title: "Аналитика", meta: "analytics",
+    desc: "Дашборд склада на тех же данных, что и остальные экраны: занятость берётся из общего расчёта, на котором стоит и тепловая карта. Второй версии расчёта в проекте нет." },
+
+  { board: "app", col: 2, id: "lookup", kind: "screen", title: "Что это?", meta: "lookup",
+    desc: "Один экран на все вопросы к коду: товар → карточка и места хранения, тара → содержимое, паллета → её тара, ячейка → что в ней лежит. Кладовщик держит коробку в руках и стреляет в поиск, не выбирая заранее, что именно он ищет." },
+
+  { board: "app", col: 3, id: "seller", kind: "seller", title: "Кабинет продавца", meta: "seller",
+    desc: "Те же локальные данные, другой набор экранов и без прав на структуру склада. Остатки — не отдельная маленькая табличка, а та же таблица номенклатуры, что у склада: своя урезанная копия разъехалась бы с настоящей на первой же правке.",
+    items: ["Вкладка «Остатки» — общая таблица", "Вкладка «Заявки» на отгрузку", "Рельс продавца: кабинет, чат, план, паспорт, персонал"] },
+
+  { board: "app", col: 3, id: "reqdialog", kind: "overlay", title: "Заявка на отгрузку", meta: "поверх кабинета продавца",
+    desc: "Одиночная заявка и пакетная — из выделенных строк таблицы остатков." },
+
+  { board: "app", col: 3, id: "tabledialogs", kind: "overlay", title: "Окна таблицы", meta: "поверх таблицы",
+    desc: "Всё, что открывается из номенклатуры.",
+    items: ["Карточка товара", "Импорт из файла", "Назначение на места", "Лист сборки", "Штрихкод и QR"] },
+
+  { board: "app", col: 3, id: "flowdialogs", kind: "overlay", title: "Окна потока", meta: "поверх приёмки и документов",
+    desc: "Рабочие окна фулфилмента.",
+    items: ["Поставка", "Заявка", "Отгрузка", "Лист документа", "Расхождения при приёмке", "Выбор рейса"] },
+
+  { board: "app", col: 3, id: "printplan", kind: "overlay", title: "Печать плана", meta: "поверх плана",
+    desc: "Предпросмотр печатного плана этажа для сверки на месте." },
+
+  { board: "app", col: 3, id: "heatmap", kind: "overlay", title: "Тепловая карта", meta: "?heatmap=1 · отдельное окно",
+    desc: "View-only окно с планом этажа, раскрашенным по занятости. Данные читает из того же хранилища, что и редактор, и обновляется, когда в основном окне что-то меняется — его вешают на второй монитор." },
+
+  { board: "app", col: 4, id: "screencrash", kind: "state", title: "Сбой экрана", meta: "своя граница у каждого экрана",
+    desc: "Данные в системе общие, а падение рендера одного экрана не должно ронять всё приложение и мешать уйти в соседний пункт рельса. Граница ставится вокруг каждого экрана и сбрасывается ключом при переходе — иначе старая ошибка залипала бы на новом содержимом.",
+    items: ["«Попробовать снова» — перерисовать экран", "Рельс остаётся живым: можно уйти на соседний экран"] },
+
+  { board: "app", col: 4, id: "appempty", kind: "state", title: "Пустые состояния", meta: "один компонент на все экраны",
+    desc: "Первый рабочий день на складе — это девять пустых экранов подряд. Общий компонент вместо девяти самодельных заглушек: одинаковая рамка, значок и подпись, которая говорит не «нет данных», а что сделать дальше.",
+    items: ["Задания", "Чат и переписка", "Документы", "Кабинет продавца", "Выбор поставки", "Сборка", "Персонал", "«Что это?» — до и после поиска", "Инспектор плана без выделения"] },
+
+  { board: "app", col: 4, id: "appnojs", kind: "state", title: "Без JavaScript", meta: "noscript",
+    desc: "Рабочее место без скриптов не работает вовсе, и сказать об этом нужно прямо: кладовщик, открывший смену на чужом или урезанном браузере, иначе видит белый экран и идёт искать администратора." },
+];
+
+const EDGES = [
+  /* Сайт */
+  ["enter", "landing", "неизвестный адрес открывает лендинг", "main"],
+  ["header", "landing", "логотип и якоря разделов", "chrome"],
+  ["header", "sellers", "«Селлеру»", "chrome"],
+  ["header", "pricing", "«Тарифы»", "chrome"],
+  ["header", "market", "кнопка «Подобрать склад»", "chrome"],
+  ["header", "contacts", "меню на телефоне", "chrome"],
+  ["header", "legal", "меню на телефоне", "chrome"],
+  ["footer", "landing", "«Уклад для складов», «Вопросы»", "chrome"],
+  ["footer", "sellers", "«Как это работает»", "chrome"],
+  ["footer", "market", "«Подобрать склад»", "chrome"],
+  ["footer", "pricing", "«Тарифы»", "chrome"],
+  ["footer", "contacts", "«Контакты»", "chrome"],
+  ["footer", "doc", "семь документов", "chrome"],
+  ["footer", "cookie", "«Настройки cookie»", "chrome"],
+  ["footer", "demo", "«Демо WMS» — единственный вход в систему", "main"],
+  ["cookie", "doc", "«Подробнее» — политика cookie", "main"],
+  ["landing", "sellers", "первый экран: «Как это работает»", "main"],
+  ["landing", "market", "первый экран, тизер витрины, финальный блок", "main"],
+  ["landing", "contacts", "блок для складов: «Подключить склад»", "main"],
+  ["sellers", "market", "«Подобрать склад», «Открыть витрину»", "main"],
+  ["sellers", "pricing", "«Сколько это стоит»", "main"],
+  ["sellers", "landing", "«Уклад для складов» — к блоку операторов", "back"],
+  ["pricing", "market", "«Подобрать склад»", "main"],
+  ["pricing", "doc", "«Оферта»", "main"],
+  ["contacts", "doc", "полное раскрытие владельца", "main"],
+  ["legal", "doc", "выбор документа", "main"],
+  ["doc", "legal", "назад к списку", "back"],
+  ["market", "warehouse", "карточка-ссылка и метка на карте", "main"],
+  ["market", "filters", "кнопка «Фильтры» на телефоне", "main"],
+  ["warehouse", "market", "«Назад к витрине»", "back"],
+  ["warehouse", "doc", "реквизиты владельца агрегатора", "main"],
+
+  /* Сайт: тупики */
+  ["enter", "hostmiss", "путь без хэша: /market, /sklad", "main"],
+  ["enter", "notfound", "неизвестный раздел: #/sklad", "main"],
+  ["enter", "nojs", "скрипты отключены или заблокированы", "main"],
+  ["hostmiss", "market", "известный раздел — переброс на настоящий адрес", "main"],
+  ["hostmiss", "landing", "«На главную»", "back"],
+  ["warehouse", "notfound", "склад снят с витрины", "main"],
+  ["doc", "notfound", "документ переименован", "main"],
+  ["notfound", "market", "«Смотреть склады»", "back"],
+  ["notfound", "landing", "«На главную»", "back"],
+  ["market", "empty", "фильтры без совпадений", "main"],
+  ["empty", "market", "«Сбросить фильтры»", "back"],
+  ["landing", "crash", "падение рендера — граница вокруг всей витрины", "main"],
+  ["crash", "contacts", "«Написать нам»", "back"],
+
+  /* Система */
+  ["login", "dashboard", "роль «склад» и кнопка демо", "main"],
+  ["login", "seller", "роль «селлер»", "main"],
+  ["dashboard", "editor", "открыть склад", "main"],
+  ["dashboard", "staff", "«О складе» — сразу к контактам и персоналу", "main"],
+  ["dashboard", "profile", "«Настройки»", "main"],
+  ["dashboard", "whdialog", "создать или править склад", "main"],
+  ["dashboard", "seller", "переключатель роли", "main"],
+  ["profile", "dashboard", "назад в кабинет", "back"],
+  ["profile", "login", "выход из аккаунта", "back"],
+  ["profile", "editor", "к плану склада", "main"],
+  ["rail", "dashboard", "логотип рельса", "chrome"],
+  ["rail", "editor", "«План»", "chrome"],
+  ["rail", "receiving", "группа «Поток»", "chrome"],
+  ["rail", "tasks", "группа «Поток», со счётчиком заявок", "chrome"],
+  ["rail", "picking", "группа «Поток»", "chrome"],
+  ["rail", "chat", "«Чат», со счётчиком непрочитанных", "chrome"],
+  ["rail", "labels", "группа «Печать»", "chrome"],
+  ["rail", "documents", "группа «Печать»", "chrome"],
+  ["rail", "spec", "группа «Настройки»", "chrome"],
+  ["rail", "staff", "группа «Настройки»", "chrome"],
+  ["rail", "integrations", "группа «Настройки»", "chrome"],
+  ["rail", "analytics", "«Аналитика»", "chrome"],
+  ["rail", "lookup", "«Что это?»", "chrome"],
+  ["editor", "dashboard", "название склада в шапке — назад", "back"],
+  ["editor", "tabledialogs", "режим «Таблица»", "main"],
+  ["editor", "printplan", "печать плана", "main"],
+  ["editor", "heatmap", "тепловая карта — новое окно", "window"],
+  ["tasks", "picking", "взять заявку в работу", "main"],
+  ["picking", "tasks", "вернуться к заданиям", "back"],
+  ["lookup", "editor", "показать место на плане", "main"],
+  ["receiving", "flowdialogs", "поставка, расхождения", "main"],
+  ["documents", "flowdialogs", "источник документа, лист", "main"],
+  ["seller", "tabledialogs", "остатки — та же таблица", "main"],
+  ["seller", "reqdialog", "заявка: одиночная и пакетом", "main"],
+  ["seller", "chat", "рельс продавца", "chrome"],
+  ["seller", "editor", "рельс продавца — план на чтение", "chrome"],
+  ["seller", "spec", "рельс продавца — паспорт на чтение", "chrome"],
+  ["seller", "staff", "рельс продавца", "chrome"],
+
+  /* Система: тупики */
+  ["login", "appnojs", "скрипты отключены или заблокированы", "main"],
+  ["dashboard", "screencrash", "падение рендера любого экрана", "main"],
+  ["screencrash", "dashboard", "«Попробовать снова» и соседний пункт рельса", "back"],
+  ["tasks", "appempty", "заявок нет", "main"],
+  ["chat", "appempty", "переписок нет", "main"],
+  ["documents", "appempty", "документов нет", "main"],
+];
+
+const COLS = {
+  site: ["Вход и сквозной каркас", "Первое знакомство", "Каталог и обязательное", "Конкретика", "Тупики и сбои"],
+  app: ["Вход и навигация", "Аккаунт", "Роль «склад»", "Роль «селлер» и окна", "Тупики и сбои"],
+};
+
+const byId = new Map(NODES.map((n) => [n.id, n]));
+const KIND_TITLE = {
+  page: "страница сайта", screen: "экран системы", seller: "роль «селлер»",
+  overlay: "окно поверх экрана", chrome: "сквозная навигация", entry: "точка входа", bridge: "переход",
+  state: "тупик или пустое состояние",
+};
+
+/* ── Отрисовка узлов ────────────────────────────────────────────────────── */
+
+for (const board of ["site", "app"]) {
+  const host = document.querySelector(`#board-${board} .cols`);
+  COLS[board].forEach((title, i) => {
+    const col = document.createElement("div");
+    col.className = "col";
+    col.innerHTML = `<div class="col-title">${title}</div>`;
+    NODES.filter((n) => n.board === board && n.col === i).forEach((n) => {
+      const el = document.createElement("button");
+      el.type = "button";
+      el.className = "node";
+      el.id = `n-${n.id}`;
+      el.dataset.id = n.id;
+      el.dataset.kind = n.kind;
+      const items = n.items ? `<p class="count">${n.items.length} ${plural(n.items.length, "пункт", "пункта", "пунктов")} внутри</p>` : "";
+      const tag = ["overlay", "chrome", "state"].includes(n.kind) ? `<span class="tag">${KIND_TITLE[n.kind]}</span>` : "";
+      el.innerHTML = `<h3>${n.title}</h3><p class="meta">${n.meta}</p>${items || tag}`;
+      col.appendChild(el);
+    });
+    host.appendChild(col);
+  });
+}
+
+function plural(n, one, few, many) {
+  const m10 = n % 10, m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return one;
+  if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return few;
+  return many;
+}
+
+/* ── Провода ────────────────────────────────────────────────────────────── */
+
+/**
+ * Кривая между двумя карточками. Три случая, и все три встречаются:
+ * переход вперёд (соседняя колонка справа), возврат назад и переход внутри
+ * одной колонки. Общей формулой они не описываются: у возврата линия обязана
+ * выходить из левого края, иначе она проходит сквозь собственную карточку.
+ */
+function wire(a, b) {
+  const gap = 46;
+  if (b.left > a.left + a.w - 4) {
+    const x1 = a.left + a.w, y1 = a.top + a.h / 2, x2 = b.left, y2 = b.top + b.h / 2;
+    const d = Math.max(gap, (x2 - x1) / 2);
+    return `M${x1},${y1} C${x1 + d},${y1} ${x2 - d},${y2} ${x2},${y2}`;
+  }
+  if (b.left + b.w < a.left + 4) {
+    const x1 = a.left, y1 = a.top + a.h / 2, x2 = b.left + b.w, y2 = b.top + b.h / 2;
+    const d = Math.max(gap, (x1 - x2) / 2);
+    return `M${x1},${y1} C${x1 - d},${y1} ${x2 + d},${y2} ${x2},${y2}`;
+  }
+  // Одна колонка: огибаем справа, чтобы линия не легла на карточки между ними.
+  // Чем дальше карточки друг от друга, тем сильнее выносим дугу — иначе на
+  // длинном перегоне она прижимается к колонке и читается как её граница.
+  // Верхний предел — ширина жёлоба между колонками, за него заходить нельзя.
+  const x = a.left + a.w, y1 = a.top + a.h / 2, y2 = b.top + b.h / 2;
+  const out = Math.min(70, Math.max(gap, Math.abs(y2 - y1) * 0.18));
+  return `M${x},${y1} C${x + out},${y1} ${x + out},${y2} ${x},${y2}`;
+}
+
+function box(id) {
+  const el = document.getElementById(`n-${id}`);
+  if (!el) return null;
+  return { left: el.offsetLeft, top: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight };
+}
+
+const paths = new Map();
+
+function draw() {
+  for (const board of ["site", "app"]) {
+    const canvas = document.querySelector(`#board-${board} .canvas`);
+    const svg = canvas.querySelector(".wires");
+    svg.setAttribute("width", canvas.scrollWidth);
+    svg.setAttribute("height", canvas.scrollHeight);
+    svg.innerHTML = "";
+    EDGES.filter(([from]) => byId.get(from)?.board === board).forEach((edge) => {
+      const [from, to, label, kind] = edge;
+      if (byId.get(to)?.board !== board) return;
+      const a = box(from), b = box(to);
+      if (!a || !b) return;
+      const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      p.setAttribute("d", wire(a, b));
+      p.setAttribute("class", kind);
+      p.dataset.from = from;
+      p.dataset.to = to;
+      const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
+      title.textContent = `${byId.get(from).title} → ${byId.get(to).title}: ${label}`;
+      p.appendChild(title);
+      svg.appendChild(p);
+      paths.set(`${from}>${to}`, p);
+    });
+  }
+}
+
+draw();
+// Шрифт приезжает после первой отрисовки и меняет высоту карточек — без этого
+// линии остались бы висеть там, где карточки стояли до его загрузки.
+if (document.fonts) document.fonts.ready.then(draw);
+addEventListener("resize", draw);
+
+/* ── Подсветка и разбор ─────────────────────────────────────────────────── */
+
+const panel = document.getElementById("panel");
+let pinned = null;
+
+function highlight(id) {
+  document.querySelectorAll(".canvas").forEach((c) => c.classList.toggle("focused", !!id));
+  document.querySelectorAll(".node").forEach((n) => n.classList.remove("on"));
+  document.querySelectorAll(".wires path").forEach((p) => p.classList.remove("on"));
+  if (!id) return;
+  document.getElementById(`n-${id}`)?.classList.add("on");
+  EDGES.forEach(([from, to]) => {
+    if (from !== id && to !== id) return;
+    paths.get(`${from}>${to}`)?.classList.add("on");
+    document.getElementById(`n-${from}`)?.classList.add("on");
+    document.getElementById(`n-${to}`)?.classList.add("on");
+  });
+}
+
+/**
+ * Панель разбора висит над правым краем страницы и может накрыть как раз ту
+ * карточку, которую выбрали. Ужимать под неё доску нельзя — колонки тогда
+ * обрезаются прямо на глазах, — поэтому двигаем не вёрстку, а прокрутку
+ * доски: карточка выезжает левее панели, всё остальное стоит на месте.
+ */
+function reveal(id) {
+  const el = document.getElementById(`n-${id}`);
+  const scroller = el?.closest(".scroller");
+  if (!scroller) return;
+  const view = scroller.getBoundingClientRect();
+  const box = el.getBoundingClientRect();
+  const p = panel.getBoundingClientRect();
+  // На узком экране панель растянута во всю ширину — прятаться от неё вбок
+  // некуда, и левым краем считаем край самой доски.
+  const isSide = !panel.hidden && p.left > view.left + 200;
+  const edge = isSide ? Math.min(view.right, p.left - 16) : view.right;
+  if (box.right > edge) scroller.scrollLeft += box.right - edge + 12;
+  else if (box.left < view.left) scroller.scrollLeft -= view.left - box.left + 12;
+}
+
+function list(title, rows) {
+  if (!rows.length) return "";
+  return `<h4>${title}</h4><ul>${rows.join("")}</ul>`;
+}
+
+function select(id) {
+  const n = byId.get(id);
+  pinned = id;
+  document.querySelectorAll(".node").forEach((el) => el.classList.toggle("sel", el.dataset.id === id));
+  document.getElementById("p-title").textContent = n.title;
+  document.getElementById("p-meta").textContent = `${n.meta} · ${KIND_TITLE[n.kind]}`;
+  document.getElementById("p-desc").textContent = n.desc;
+  document.getElementById("p-items").innerHTML = list("Что внутри", (n.items || []).map((i) => `<li>${i}</li>`));
+
+  const link = (other, label) =>
+    `<li class="edge" data-go="${other}"><b>${byId.get(other).title}</b> — <em>${label}</em></li>`;
+  document.getElementById("p-in").innerHTML = list(
+    "Сюда ведут",
+    EDGES.filter(([, to]) => to === id).map(([from, , label]) => link(from, label)),
+  );
+  document.getElementById("p-out").innerHTML = list(
+    "Отсюда ведут",
+    EDGES.filter(([from]) => from === id).map(([, to, label]) => link(to, label)),
+  );
+
+  panel.hidden = false;
+  panel.scrollTop = 0;
+  document.body.classList.add("with-panel");
+  highlight(id);
+  reveal(id);
+}
+
+document.querySelectorAll(".node").forEach((el) => {
+  el.addEventListener("click", () => select(el.dataset.id));
+  el.addEventListener("mouseenter", () => { if (!pinned) highlight(el.dataset.id); });
+  el.addEventListener("mouseleave", () => { if (!pinned) highlight(null); });
+});
+
+panel.addEventListener("click", (e) => {
+  const row = e.target.closest("[data-go]");
+  if (!row) return;
+  document.getElementById(`n-${row.dataset.go}`)
+    ?.scrollIntoView({ block: "center", inline: "nearest" });
+  select(row.dataset.go); // сам довернёт доску вбок, если карточка под панелью
+});
+
+function clearSelection() {
+  pinned = null;
+  panel.hidden = true;
+  document.body.classList.remove("with-panel");
+  document.querySelectorAll(".node").forEach((el) => el.classList.remove("sel"));
+  highlight(null);
+}
+
+document.getElementById("panel-close").addEventListener("click", clearSelection);
+addEventListener("keydown", (e) => { if (e.key === "Escape") clearSelection(); });
+
+/* ── Сквозные связи прячутся ────────────────────────────────────────────── */
+
+const toggle = document.getElementById("chrome-toggle");
+toggle.addEventListener("change", () => {
+  const show = toggle.checked;
+  document.querySelectorAll('.node[data-kind="chrome"]').forEach((el) => {
+    el.style.display = show ? "" : "none";
+  });
+  document.querySelectorAll(".wires path.chrome").forEach((p) => {
+    p.style.display = show ? "" : "none";
+  });
+  // Спрятанная карточка меняет высоту колонки — остальные линии переезжают.
+  draw();
+  if (!show) document.querySelectorAll(".wires path.chrome").forEach((p) => (p.style.display = "none"));
+  if (pinned) highlight(pinned);
+});
+
+/* ── Счётчики ───────────────────────────────────────────────────────────── */
+
+const screens = NODES.filter((n) => ["page", "screen", "seller"].includes(n.kind)).length;
+const overlays = NODES.filter((n) => n.kind === "overlay").length;
+const states = NODES.filter((n) => n.kind === "state").length;
+document.getElementById("stats").innerHTML = [
+  [screens, "экранов"],
+  [overlays, "окон поверх экрана"],
+  [states, "тупиков и пустых состояний"],
+  [EDGES.length, "переходов"],
+  [NODES.reduce((s, n) => s + (n.items?.length || 0), 0), "разделов внутри экранов"],
+].map(([n, label]) => `<div class="stat"><b>${n}</b><span>${label}</span></div>`).join("");
+</script>
+</body>
+</html>

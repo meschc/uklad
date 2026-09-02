@@ -34,15 +34,16 @@ export function MapPicker({
     const has = lat != null && lng != null;
     const start: [number, number] = [lat ?? 55.7558, lng ?? 37.6173];
     const map = L.map(elRef.current).setView(start, has ? 14 : 4);
-    // Схематичная подложка (Carto Positron): меньше визуального шума, чем
-    // стандартные тайлы OSM — карта здесь только для выбора точки.
-    L.tileLayer(
-      "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-      {
-        maxZoom: 19,
-        attribution: "© OpenStreetMap © CARTO",
-      },
-    ).addTo(map);
+    // Подложка — обычный OSM. Carto Positron, который стоял здесь раньше, с
+    // некоторых пор печатает поверх плиток «API KEY REQUIRED», а ключа у
+    // прототипа нет. Пестроту снимаем фильтром в index.css — карта здесь
+    // только для выбора точки, и спорить с диалогом ей незачем.
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      noWrap: true,
+      attribution:
+        '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    }).addTo(map);
 
     const icon = L.divIcon({
       html: PIN_HTML,
@@ -108,7 +109,7 @@ export function MapPicker({
   return (
     <div
       ref={elRef}
-      className="h-56 w-full overflow-hidden rounded-md border border-border"
+      className="pick-map h-56 w-full overflow-hidden rounded-md border border-border"
     />
   );
 }

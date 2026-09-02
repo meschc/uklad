@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { Suspense, lazy, useRef, useState } from "react";
 import {
   AlertTriangle,
   Loader2,
@@ -14,7 +14,14 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { MapPicker } from "./MapPicker";
+
+/**
+ * Карта — отдельным куском: её открывают по кнопке и далеко не всегда, а
+ * Leaflet со стилями тяжелее всего остального в этом диалоге вместе взятого.
+ */
+const MapPicker = lazy(() =>
+  import("./MapPicker").then((m) => ({ default: m.MapPicker })),
+);
 
 /**
  * Создание / редактирование склада (ТЗ, разд. 3.4): название, тип, адрес.
@@ -294,7 +301,15 @@ export function WarehouseDialog({
 
           {/* Карта */}
           <div className="flex flex-col gap-1.5">
-            <MapPicker lat={lat} lng={lng} onPick={onMapPick} />
+            <Suspense
+              fallback={
+                <div className="grid h-56 w-full place-items-center rounded-md border border-border bg-muted/30">
+                  <Loader2 className="size-5 animate-spin text-muted-foreground" />
+                </div>
+              }
+            >
+              <MapPicker lat={lat} lng={lng} onPick={onMapPick} />
+            </Suspense>
             <div className="flex items-center justify-between">
               <span className="text-[11px] text-muted-foreground">
                 {t("wh.mapHint")}

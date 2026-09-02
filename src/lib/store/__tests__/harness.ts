@@ -1,6 +1,7 @@
 import { create, type StateCreator } from "zustand";
 import { createRequestsSlice } from "../requests.slice";
-import type { EditorState, RequestsSlice } from "../state";
+import { createChatSlice } from "../chat.slice";
+import type { ChatSlice, EditorState, RequestsSlice } from "../state";
 
 /**
  * Стенд для среза заявок.
@@ -25,5 +26,23 @@ const requestsSlice = createRequestsSlice as unknown as StateCreator<
 export function makeRequestsStore(initial: Partial<EditorState> = {}) {
   return create<EditorState>()(
     (...a) => ({ ...requestsSlice(...a), ...initial }) as EditorState,
+  );
+}
+
+const chatSlice = createChatSlice as unknown as StateCreator<
+  EditorState,
+  [],
+  [],
+  ChatSlice
+>;
+
+/**
+ * Стенд для чата. Срез читает роль из `session` и партнёров из `warehouse`,
+ * поэтому тест обязан задать оба — иначе проверялась бы не логика переписки, а
+ * значения по умолчанию соседних срезов.
+ */
+export function makeChatStore(initial: Partial<EditorState> = {}) {
+  return create<EditorState>()(
+    (...a) => ({ ...chatSlice(...a), ...initial }) as EditorState,
   );
 }

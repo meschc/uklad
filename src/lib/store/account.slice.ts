@@ -1,4 +1,5 @@
 import type { Warehouse } from "../types";
+import { systemTheme } from "../theme";
 import type { AccountSlice, SliceCreator } from "./state";
 import {
   blankWarehouse,
@@ -22,7 +23,10 @@ export const createAccountSlice: SliceCreator<AccountSlice> = (set, get) => ({
   profile: {
     name: "Кирилл",
     email: "kirill@uklad.ru",
-    theme: "light",
+    // Первый запуск открывается в теме устройства, дальше решает переключатель
+    // в профиле — выбор человека persist держит и системой больше не
+    // перебивает (почему именно так — в `lib/theme.ts`).
+    theme: systemTheme(),
     language: "ru",
     showShelves: true,
   },

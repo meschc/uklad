@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { addressKey, formatAddress, parseAddress } from "@/lib/address";
+import { staffOptionLabel } from "@/lib/staff";
 import { buildOccupancy, occupantsAt } from "@/lib/placement";
 import {
   honestSignToEan13,
@@ -804,7 +805,7 @@ function StaffPicker({
         <option value="">{t("recv.staffNone")}</option>
         {staff.map((m) => (
           <option key={m.id} value={m.id}>
-            {m.name} — {m.role}
+            {staffOptionLabel(m)}
           </option>
         ))}
       </select>

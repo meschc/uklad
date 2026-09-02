@@ -124,7 +124,7 @@ export function LabelDesigner({
             >
               <span className="block font-medium">{tpl.name}</span>
               <span className="block text-[10px] tabular-nums opacity-70">
-                {tpl.widthMm}×{tpl.heightMm} мм
+                {tpl.widthMm}×{tpl.heightMm} {t("labels.mm")}
               </span>
             </button>
           ))}

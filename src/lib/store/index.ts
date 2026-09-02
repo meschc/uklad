@@ -31,6 +31,7 @@ import { createHistorySlice, installHistory } from "./history.slice";
 import { createFulfillmentSlice } from "./fulfillment.slice";
 import { createRequestsSlice } from "./requests.slice";
 import { createSessionSlice, makeSession } from "./session.slice";
+import { createChatSlice } from "./chat.slice";
 import { createStaffSlice } from "./staff.slice";
 import { sanitizeDomains } from "../data/sanitize";
 
@@ -41,6 +42,11 @@ import { sanitizeDomains } from "../data/sanitize";
 
 export { fieldValueKey, resolveFloor, FLOOR_MAX } from "./helpers";
 export { selectRole } from "./session.slice";
+export {
+  countUnread,
+  selectSellerPartnerId,
+  visibleChatPartners,
+} from "./chat.slice";
 export type { GoodsConflict, EditorState } from "./state";
 
 /** Ключ автосохранения в localStorage (ТЗ: изменения сохраняются сами). */
@@ -80,6 +86,7 @@ export const useEditor = create<EditorState>()(
       ...createFulfillmentSlice(...a),
       ...createRequestsSlice(...a),
       ...createSessionSlice(...a),
+      ...createChatSlice(...a),
       ...createStaffSlice(...a),
     }),
     {
@@ -245,6 +252,10 @@ export const useEditor = create<EditorState>()(
         requests: s.requests,
         shipments: s.shipments,
         session: s.session,
+        // Переписка сохраняется, открытый на экране тред — нет: какой чат был
+        // раскрыт вчера, к делу не относится, а вот сами сообщения потерять
+        // нельзя (п.3).
+        chats: s.chats,
         integrations: s.integrations,
         labelTemplates: s.labelTemplates,
       }),

@@ -6,6 +6,7 @@ import type {
   Box,
   CategoryField,
   CellAddress,
+  ChatMessage,
   Discrepancy,
   ExpectedShipment,
   Shipment,
@@ -542,6 +543,37 @@ export interface SessionSlice {
   setRole: (role: UserRole) => void;
 }
 
+// --- Переписка склада с продавцами -------------------------------------------
+
+export interface ChatSlice {
+  /**
+   * Переписки: id партнёра-продавца → лента сообщений (п.3). Словарь, а не
+   * список тредов с собственными id: переписка со складом у партнёра ровно
+   * одна, и второй ключ у неё был бы поводом однажды завести вторую.
+   */
+  chats: Record<string, ChatMessage[]>;
+  /** Открытая переписка. Держим в сторе, чтобы она пережила уход на другой экран. */
+  activeChatId: string | null;
+  /**
+   * Разовая демо-переписка. Вызывается экраном чата, а не сидом стора:
+   * партнёры у сохранённого склада свои, и заготовленные при сборке ленты
+   * ссылались бы на чужие id — пустой чат с непрочитанными сообщениями.
+   */
+  seedChatsOnce: () => void;
+  openChat: (partnerId: string) => void;
+  /** Отправить сообщение от лица текущей роли. Пустые строки игнорируются. */
+  sendChatMessage: (partnerId: string, text: string) => void;
+  /**
+   * Ответ собеседника в демо. Бэкенда нет и второго человека за экраном тоже:
+   * без этого чат в прототипе не покажет ни одного входящего сообщения, а
+   * значит, и уведомления о нём. Вызывается по таймеру после отправки —
+   * см. `useChatDemoReply`, там же оговорено, что это только для демо.
+   */
+  receiveDemoReply: (partnerId: string) => void;
+  /** Отметить входящие прочитанными — это и снимает счётчик в рельсе. */
+  markChatRead: (partnerId: string) => void;
+}
+
 // --- Персонал склада ----------------------------------------------------------
 
 export interface LabelsSlice {
@@ -586,6 +618,7 @@ export interface StaffSlice {
 
 export type EditorState = AccountSlice &
   SessionSlice &
+  ChatSlice &
   IntegrationsSlice &
   LabelsSlice &
   FulfillmentSlice &

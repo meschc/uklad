@@ -1,0 +1,114 @@
+<!doctype html>
+<!-- Светлая стоит классом в разметке как запасной вариант: она доезжает даже
+     туда, где скрипты не выполнились. Настоящую тему ставит короткий скрипт в
+     самом верху шапки — см. ниже.
+
+     Внимание: имена тегов в комментариях этого файла пишем словами, а не
+     разметкой. Vite ищет место для своей вставки простым поиском по тексту, и
+     упоминание тега в комментарии он принимает за сам тег — преамбулу
+     react-refresh уносит внутрь комментария, а страница молча остаётся
+     пустой. -->
+<html lang="ru" class="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+
+    <!-- Тема до первой отрисовки. React ставит её же в App.tsx, но эффект
+         выполняется уже после первого кадра: человек с тёмной темой увидел бы
+         вспышку белого экрана на каждой перезагрузке. Скрипт синхронный
+         намеренно — отложенный не успеет.
+
+         Порядок источников важен: сначала сохранённый выбор, и только если его
+         нет — настройка устройства. Наоборот нельзя: тот, кто выключил тёмную
+         вручную, получал бы её обратно при каждом открытии.
+
+         Ключ и путь до поля продублированы строкой: inline-скрипт выполняется
+         до модулей и импортировать PERSIST_KEY из src/lib/store не может. При
+         переименовании ключа или переезде profile.theme поправить и здесь —
+         ошибка тихая, страница просто моргнёт не той темой. -->
+
+    <!-- Цвет подложки браузера заполняет тот же скрипт. Через `media`, как на
+         витрине, здесь нельзя: тему в приложении выбирает человек, и у того,
+         кто включил тёмную на светлой системе, шапка Safari осталась бы
+         белой полосой над тёмным экраном. -->
+    <meta name="theme-color" id="theme-color" content="#FFFFFF" />
+    <script>
+      (function () {
+        var theme;
+        try {
+          var saved = localStorage.getItem("uklad-store-v1");
+          if (saved) theme = JSON.parse(saved).state.profile.theme;
+        } catch (e) {
+          // Приватный режим, испорченный JSON, другая форма состояния — тема
+          // не тот повод, чтобы ронять запуск приложения.
+        }
+        if (theme !== "dark" && theme !== "light") {
+          theme =
+            window.matchMedia &&
+            window.matchMedia("(prefers-color-scheme: dark)").matches
+              ? "dark"
+              : "light";
+        }
+        var root = document.documentElement;
+        var dark = theme === "dark";
+        root.classList.toggle("dark", dark);
+        root.classList.toggle("light", !dark);
+
+        // Ровно `--background` из src/index.css, переведённый в hex: подложка
+        // браузера должна совпадать с фоном страницы, иначе на телефоне над
+        // экраном висит полоса чужого цвета.
+        var meta = document.getElementById("theme-color");
+        if (meta) meta.content = dark ? "#14151A" : "#FFFFFF";
+      })();
+    </script>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <title>Уклад — редактор плана склада</title>
+    <meta
+      name="description"
+      content="Рабочее место склада: план этажа, адресное хранение, приёмка, сборка, отгрузка и печать ярлыков."
+    />
+    <!-- Демо, а не витрина: в поиске ему делать нечего. -->
+    <meta name="robots" content="noindex, nofollow" />
+
+    <!-- Тот же шрифт, что и на витрине: переход с сайта в приложение не должен
+         читаться как переход в другой продукт. Если Google Fonts недоступен,
+         подхватится системный гротеск — приложение работает без сети. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400..900&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <!-- Рабочее место без скриптов не работает вовсе, и сказать об этом нужно
+         прямо: кладовщик, открывший смену на чужом или урезанном браузере,
+         иначе видит белый экран и идёт искать администратора. -->
+    <noscript>
+      <div
+        style="
+          max-width: 420px;
+          margin: 120px auto;
+          padding: 0 24px;
+          font-family: 'Golos Text', -apple-system, BlinkMacSystemFont, sans-serif;
+          text-align: center;
+        "
+      >
+        <h1 style="font-size: 22px; font-weight: 600">Здесь нужен JavaScript</h1>
+        <p style="font-size: 14px; line-height: 1.6; color: #6b7280">
+          Рабочее место склада целиком работает скриптами. Включите JavaScript
+          в браузере или откройте страницу в другом.
+        </p>
+      </div>
+    </noscript>
+
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

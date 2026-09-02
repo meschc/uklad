@@ -15,6 +15,7 @@ import { ImportDialog } from "./ImportDialog";
 import { ProductDialog } from "./ProductDialog";
 import { BarcodeModal } from "./BarcodeModal";
 import { BulkBar, SellerBar, PlaceFailedAlert } from "./BulkBar";
+import { PickListDialog } from "./PickListDialog";
 import { RequestDialog } from "@/components/fulfillment/RequestDialog";
 
 /** URL только с безопасной схемой (http/https), иначе ссылку не рисуем. */
@@ -118,6 +119,8 @@ export function TableScreen() {
   const [placeFailed, setPlaceFailed] = useState<string[]>([]);
   /** Заявка на отгрузку из отмеченных строк — набор продавца (п.3, п.9). */
   const [requestIds, setRequestIds] = useState<string[] | null>(null);
+  /** Лист сборки по отмеченным строкам — складская печать (п.5). */
+  const [pickListIds, setPickListIds] = useState<string[] | null>(null);
   /** Последняя отмеченная строка — от неё Shift тянет диапазон. */
   const lastPicked = useRef<string | null>(null);
 
@@ -545,6 +548,7 @@ export function TableScreen() {
             ids={[...picked]}
             onDone={() => setPicked(new Set())}
             onPlaceFailed={setPlaceFailed}
+            onPickList={() => setPickListIds([...picked])}
           />
         ))}
 
@@ -572,6 +576,11 @@ export function TableScreen() {
           product={productDialog.product}
           onClose={() => setProductDialog(null)}
         />
+      )}
+      {/* Отметку не снимаем: лист напечатали — строки остались отмеченными,
+          с ними обычно тут же делают что-то ещё. */}
+      {pickListIds && (
+        <PickListDialog ids={pickListIds} onClose={() => setPickListIds(null)} />
       )}
       {requestIds && (
         <RequestDialog

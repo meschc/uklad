@@ -13,6 +13,12 @@ coverage
 tsconfig.tsbuildinfo
 .claude
 
+# Артефакты сквозных тестов: трассы, скриншоты, отчёт
+test-results
+playwright-report
+blob-report
+.playwright
+
 # Референсы дизайна — картинки для работы, не часть прототипа
 refs
 

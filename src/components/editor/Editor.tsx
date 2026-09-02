@@ -14,7 +14,6 @@ import { ZoomControls } from "./ZoomControls";
 import { RowProposalPanel } from "./RowProposalPanel";
 import { Inspector } from "./Inspector";
 import { GoodsConflictDialog } from "./GoodsConflictDialog";
-import { Toast } from "./Toast";
 import { PrintPlan } from "./PrintPlan";
 
 export function Editor() {
@@ -45,7 +44,7 @@ export function Editor() {
       </div>
       {/* Алерт «на полке товар» — над любым экраном (ТЗ, разд. 4) */}
       <GoodsConflictDialog />
-      <Toast />
+      {/* Тост переехал в App: он нужен на всех экранах, а не только здесь. */}
       {/* Печатная версия плана — видна только принтеру (п.9). */}
       <PrintPlan />
     </div>

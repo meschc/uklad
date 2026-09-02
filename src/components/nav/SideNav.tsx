@@ -6,6 +6,7 @@ import {
   ClipboardCheck,
   ClipboardList,
   FileText,
+  MessagesSquare,
   Moon,
   PackagePlus,
   Plug,
@@ -19,7 +20,7 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
-import { selectRole, useEditor } from "@/lib/store";
+import { countUnread, selectRole, useEditor, visibleChatPartners } from "@/lib/store";
 import type { AppView, UserRole } from "@/lib/types";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -32,7 +33,7 @@ import { cn } from "@/lib/utils";
  * Экранов стало столько, что плоский список перестал читаться, поэтому рельс
  * двухуровневый: близкие по смыслу экраны собраны в группу, а группа
  * раскрывается подменю вбок. Рельс остаётся узким (ширина — деньги редактора),
- * но в нём теперь шесть пунктов вместо двенадцати.
+ * но в нём теперь семь пунктов вместо тринадцати.
  *
  * Рельс общий для всех экранов кабинета, включая редактор: его собственные
  * панели плавают внутри своей области и с рельсом не спорят.
@@ -69,6 +70,10 @@ const WAREHOUSE_NAV: NavEntry[] = [
       { view: "picking", key: "nav.side.picking", icon: ScanLine },
     ],
   },
+  // Переписка с продавцами — сразу за конвейером и отдельным пунктом (п.3):
+  // в неё заходят по десять раз на день, и прятать её в группу значило бы
+  // добавить клик к самому частому действию после приёмки.
+  { view: "chat", key: "nav.side.chat", icon: MessagesSquare },
   {
     // Всё, что уходит на бумагу. Наклейку и накладную печатают из одного
     // побуждения «сейчас пойду к принтеру», поэтому они рядом.
@@ -100,12 +105,13 @@ const WAREHOUSE_NAV: NavEntry[] = [
 ];
 
 /**
- * У продавца свой короткий набор — он остаётся плоским: четыре пункта
+ * У продавца свой короткий набор — он остаётся плоским: пять пунктов
  * группировать не в чем. Выход в кабинет (а с ним к списку складов и
  * переключателю роли) у обеих ролей один — логотип наверху рельса.
  */
 const SELLER_NAV: NavEntry[] = [
   { view: "seller", key: "nav.side.seller", icon: Store },
+  { view: "chat", key: "nav.side.chat", icon: MessagesSquare },
   // План и номенклатуру продавец видит целиком, но только читает (п.26).
   { view: "editor", key: "nav.side.plan", icon: Boxes },
   { view: "spec", key: "nav.side.spec", icon: ClipboardCheck },
@@ -132,6 +138,11 @@ export function SideNav() {
   const theme = useEditor((s) => s.profile.theme);
   const updateProfile = useEditor((s) => s.updateProfile);
   const requests = useEditor((s) => s.requests);
+  // Счётчик чата считаем по тем же перепискам, что человек в чате и увидит:
+  // продавцу видна одна, складу — все (см. visibleChatPartners).
+  const unreadChats = useEditor((s) =>
+    countUnread(s.chats, s.session.user.role, visibleChatPartners(s)),
+  );
   const t = useT();
   const dark = theme === "dark";
 
@@ -160,7 +171,11 @@ export function SideNav() {
   const openRequests = requests.filter(
     (r) => r.status === "new" || r.status === "in_progress",
   ).length;
-  const badgeFor = (view: AppView) => (view === "tasks" ? openRequests : 0);
+  const badgeFor = (view: AppView) => {
+    if (view === "tasks") return openRequests;
+    if (view === "chat") return unreadChats;
+    return 0;
+  };
 
   const open = (view: AppView) => {
     goToView(view);

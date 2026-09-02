@@ -1,5 +1,5 @@
 {
-  "$description": "Токены «Уклада». Источник истины — src/index.css и tailwind.config.js; файл сгенерирован скриптом npm run tokens.",
+  "$description": "Токены «Уклада». Источник истины — src/index.css и tailwind.config.js; блок color пересобирает npm run tokens, остальные блоки ведутся руками. Витрина держит свою тёмную палитру и свою шкалу скруглений в src/site/site.css — здесь она представлена блоком radiusSite; блок color.dark описывает приложение.",
   "color": {
     "light": {
       "background": {
@@ -327,13 +327,14 @@
     }
   },
   "radius": {
+    "$description": "Шкала приложения (tailwind.config.js). Шаг 2px равен типовому отступу вложения p-0.5: внутренний радиус = внешний − отступ.",
+    "DEFAULT": {
+      "$type": "borderRadius",
+      "$value": "4px"
+    },
     "sm": {
       "$type": "borderRadius",
       "$value": "6px"
-    },
-    "DEFAULT": {
-      "$type": "borderRadius",
-      "$value": "8px"
     },
     "md": {
       "$type": "borderRadius",
@@ -354,6 +355,39 @@
     "full": {
       "$type": "borderRadius",
       "$value": "9999px"
+    }
+  },
+  "radiusSite": {
+    "$description": "Шкала витрины (src/site/site.css). Живёт только в бандле сайта. Цепочка: плита 32 → p-3 → окно 20 → p-2 → вставка 12 → p-1 → плашка 8.",
+    "slab": {
+      "$type": "borderRadius",
+      "$value": "32px",
+      "$description": "Плита-сцена: герой, блок во всю ширину. 24px на ≤640."
+    },
+    "window": {
+      "$type": "borderRadius",
+      "$value": "20px",
+      "$description": "Окно внутри плиты, карточка склада, панель. 16px на ≤640."
+    },
+    "inset": {
+      "$type": "borderRadius",
+      "$value": "12px",
+      "$description": "Вставка внутри окна: врезка, таблица, знак склада"
+    },
+    "tile": {
+      "$type": "borderRadius",
+      "$value": "8px",
+      "$description": "Плашка поверх окна"
+    },
+    "chip": {
+      "$type": "borderRadius",
+      "$value": "6px",
+      "$description": "Лист цепочки: чекбокс, знак площадки, инлайн-код"
+    },
+    "full": {
+      "$type": "borderRadius",
+      "$value": "9999px",
+      "$description": "Всё, что высотой в одну строку и на что можно нажать"
     }
   },
   "size": {

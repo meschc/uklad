@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Уклад — веб-сервис визуального расставления товара на складе (прототип 2D-редактора мезонина)",
+  "description": "Уклад — маркетплейс фулфилмент-складов и WMS: витрина складов и демо учётной системы с 2D-планом мезонина",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
@@ -11,6 +11,8 @@
     "lint": "tsc -b --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
     "coverage": "vitest run --coverage",
     "tokens": "node scripts/design-tokens.mjs"
   },
@@ -26,6 +28,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "leaflet": "^1.9.4",
+    "lenis": "^1.3.26",
     "lucide-react": "^0.469.0",
     "qrcode-generator": "^2.0.4",
     "react": "^18.3.1",
@@ -36,6 +39,7 @@
     "zustand": "^4.5.6"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@types/leaflet": "^1.9.21",
     "@types/node": "^22.10.5",
     "@types/react": "^18.3.18",

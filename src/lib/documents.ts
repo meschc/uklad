@@ -130,6 +130,52 @@ export function buildPickDoc(
 }
 
 /**
+ * Лист сборки по отмеченным строкам таблицы номенклатуры.
+ *
+ * Второй вход в тот же документ, и он не дублирование: заявка появляется не
+ * всегда. Инвентаризация, перекладка, отбор витрины, «собери вот это к обеду» —
+ * кладовщик отмечает строки в таблице и идёт по листу, а заявки на это нет и не
+ * будет. Требовать сначала завести заявку значило бы заводить её ради печати.
+ *
+ * Количество — то, что числится на складе сейчас: заказанного количества здесь
+ * взять неоткуда, а печатать пустую графу бессмысленно — сборщику нужно знать,
+ * сколько он должен найти. Позиция без остатка из листа не выпадает: ноль в
+ * графе и есть тот факт, ради которого лист несут на склад.
+ */
+export function buildPickDocFromProducts(
+  productIds: string[],
+  products: Product[],
+  warehouse: Warehouse,
+  placements: Record<string, CellAddress>,
+  boxes: Box[],
+  now = Date.now(),
+): DocModel {
+  const stock = stockByProduct(placements, boxes);
+  // Номер считаем от состава, а не от порядка отметки: тот же набор товаров
+  // должен перепечатываться тем же номером, в каком бы порядке его ни отметили.
+  const sourceId = [...productIds].sort().join(",");
+  const lines: DocLine[] = productIds.map((id, i) => ({
+    no: i + 1,
+    sku: skuOf(products, id),
+    name: nameOf(products, id),
+    qty: stock.get(id)?.qty ?? 0,
+    address: stock
+      .get(id)
+      ?.locations.map((l) => formatAddress(warehouse, l.addr))
+      .filter(Boolean)
+      .join(", "),
+  }));
+
+  return {
+    kind: "pick",
+    number: docNumber("pick", sourceId, now),
+    date: now,
+    lines,
+    totalQty: lines.reduce((s, l) => s + l.qty, 0),
+  };
+}
+
+/**
  * Накладная на отгрузку по рейсу: что уехало одной машиной. В графе количества
  * — собранное, а не заказанное: подписывают то, что физически погрузили.
  */

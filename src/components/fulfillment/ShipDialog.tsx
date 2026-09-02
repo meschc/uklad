@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useEditor } from "@/lib/store";
 import { useT } from "@/lib/i18n";
+import { staffOptionLabel } from "@/lib/staff";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Modal } from "./Modal";
@@ -84,7 +85,7 @@ export function ShipDialog({
               <option value="">—</option>
               {staff.map((m) => (
                 <option key={m.id} value={m.id}>
-                  {m.name}
+                  {staffOptionLabel(m)}
                 </option>
               ))}
             </select>

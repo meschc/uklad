@@ -1,0 +1,106 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0B1220"/>
+      <stop offset="1" stop-color="#13233F"/>
+    </linearGradient>
+    <linearGradient id="mark" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5B95FC"/>
+      <stop offset="1" stop-color="#1D4ED8"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#3B82F6" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#3B82F6" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse">
+      <path d="M48 0H0V48" fill="none" stroke="#ffffff" stroke-opacity="0.05" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="url(#grid)"/>
+  <circle cx="1040" cy="90" r="330" fill="url(#glow)"/>
+
+  <!-- Знак и название -->
+  <g transform="translate(72 60)">
+    <rect width="52" height="52" rx="14" fill="url(#mark)"/>
+    <g fill="#ffffff">
+      <rect x="11" y="13" width="30" height="5" rx="2.5" opacity="0.5"/>
+      <rect x="11" y="26.8" width="30" height="5" rx="2.5" opacity="0.92"/>
+      <rect x="11" y="40.6" width="30" height="5" rx="2.5" opacity="0.5"/>
+    </g>
+    <rect x="24.4" y="17" width="10.6" height="9.8" rx="2" fill="#FBBF24"/>
+    <text x="70" y="37" fill="#ffffff" font-size="30" font-weight="700" letter-spacing="-0.5">Уклад</text>
+  </g>
+
+  <!-- Лозунг. Три коротких строки — чтобы правая половина осталась под план. -->
+  <g font-size="72" font-weight="700" letter-spacing="-2.2">
+    <text x="72" y="256" fill="#ffffff">Фулфилмент,</text>
+    <text x="72" y="340" fill="#7EA9FD">который видно</text>
+    <text x="72" y="424" fill="#7EA9FD">насквозь</text>
+  </g>
+
+  <g fill="#94A3B8" font-size="26">
+    <text x="72" y="500">Маркетплейс фулфилмент-складов и WMS,</text>
+    <text x="72" y="536">где селлер видит свой товар на плане склада.</text>
+  </g>
+
+  <text x="72" y="586" fill="#64748B" font-size="20" font-weight="500">FBO · FBS · DBS — прототип, данные витрины сгенерированы</text>
+
+  <!-- Мини-план: тот же приём, что и на первом экране сайта. -->
+  <g transform="translate(700 150)">
+    <rect width="430" height="330" rx="22" fill="#ffffff" fill-opacity="0.05" stroke="#ffffff" stroke-opacity="0.12"/>
+
+    <g transform="translate(28 34)">
+      <rect width="170" height="110" rx="10" fill="#ffffff" fill-opacity="0.07"/>
+      <g fill="#ffffff" fill-opacity="0.26">
+        <rect x="10" y="10" width="30" height="24" rx="5"/>
+        <rect x="90" y="10" width="30" height="24" rx="5"/>
+        <rect x="130" y="10" width="30" height="24" rx="5"/>
+        <rect x="10" y="43" width="30" height="24" rx="5"/>
+        <rect x="130" y="43" width="30" height="24" rx="5"/>
+        <rect x="50" y="76" width="30" height="24" rx="5"/>
+        <rect x="90" y="76" width="30" height="24" rx="5"/>
+      </g>
+      <rect x="50" y="43" width="30" height="24" rx="5" fill="#FBBF24"/>
+      <circle cx="65" cy="55" r="28" fill="none" stroke="#FBBF24" stroke-opacity="0.5" stroke-width="2"/>
+    </g>
+
+    <g transform="translate(232 34)">
+      <rect width="170" height="110" rx="10" fill="#ffffff" fill-opacity="0.07"/>
+      <g fill="#ffffff" fill-opacity="0.26">
+        <rect x="10" y="10" width="30" height="24" rx="5"/>
+        <rect x="50" y="10" width="30" height="24" rx="5"/>
+        <rect x="130" y="10" width="30" height="24" rx="5"/>
+        <rect x="10" y="43" width="30" height="24" rx="5"/>
+        <rect x="90" y="43" width="30" height="24" rx="5"/>
+        <rect x="130" y="43" width="30" height="24" rx="5"/>
+        <rect x="50" y="76" width="30" height="24" rx="5"/>
+      </g>
+    </g>
+
+    <g transform="translate(28 178)">
+      <rect width="374" height="110" rx="10" fill="#ffffff" fill-opacity="0.07"/>
+      <g fill="#ffffff" fill-opacity="0.22">
+        <rect x="10" y="14" width="30" height="24" rx="5"/>
+        <rect x="50" y="14" width="30" height="24" rx="5"/>
+        <rect x="130" y="14" width="30" height="24" rx="5"/>
+        <rect x="170" y="14" width="30" height="24" rx="5"/>
+        <rect x="250" y="14" width="30" height="24" rx="5"/>
+        <rect x="330" y="14" width="30" height="24" rx="5"/>
+        <rect x="10" y="47" width="30" height="24" rx="5"/>
+        <rect x="90" y="47" width="30" height="24" rx="5"/>
+        <rect x="170" y="47" width="30" height="24" rx="5"/>
+        <rect x="210" y="47" width="30" height="24" rx="5"/>
+        <rect x="290" y="47" width="30" height="24" rx="5"/>
+        <rect x="330" y="47" width="30" height="24" rx="5"/>
+        <rect x="50" y="80" width="30" height="24" rx="5"/>
+        <rect x="250" y="80" width="30" height="24" rx="5"/>
+      </g>
+    </g>
+
+    <g transform="translate(28 314)" fill="#94A3B8" font-size="15">
+      <text>УК-1042 · B-01-02-03 · принят сегодня</text>
+    </g>
+  </g>
+</svg>

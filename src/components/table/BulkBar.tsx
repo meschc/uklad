@@ -1,6 +1,7 @@
 import { useState } from "react";
 import {
   AlertTriangle,
+  ClipboardList,
   MapPin,
   MapPinOff,
   Tag,
@@ -29,10 +30,13 @@ export function BulkBar({
   ids,
   onDone,
   onPlaceFailed,
+  onPickList,
 }: {
   ids: string[];
   onDone: () => void;
   onPlaceFailed: (failed: string[]) => void;
+  /** Открыть лист сборки по отмеченным строкам. */
+  onPickList: () => void;
 }) {
   const t = useT();
   const placements = useEditor((s) => s.placements);
@@ -121,6 +125,13 @@ export function BulkBar({
           </div>
         ) : (
           <>
+            {/* Лист сборки идёт первым и не меняет данные: остальные кнопки
+                панели что-то делают с товаром, эта — только печатает (п.5). */}
+            <BulkBtn
+              icon={<ClipboardList className="size-3.5" />}
+              label={t("table.bulk.pickList")}
+              onClick={onPickList}
+            />
             <BulkBtn
               icon={<MapPinOff className="size-3.5" />}
               label={t("table.bulk.unplace")}

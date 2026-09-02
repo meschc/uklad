@@ -1,12 +1,122 @@
 <!doctype html>
-<html lang="ru" class="light">
+<!-- Тёмная стоит классом прямо в разметке — это тема по умолчанию, и она
+     доезжает даже туда, где скрипты не выполнились. Светлую включает короткий
+     синхронный скрипт в шапке документа (см. ниже): он успевает до первой
+     отрисовки, поэтому белого моргания на тёмной странице не будет.
+     Приложение в app/index.html держит свою тему само и этот класс не
+     наследует: там тему выбирает пользователь в настройках, а не система.
+
+     Внимание: имена тегов в комментариях этого файла пишем словами, а не
+     разметкой. Vite ищет место для своей вставки простым поиском по тексту, и
+     упоминание тега в комментарии он принимает за сам тег — преамбулу
+     react-refresh уносит внутрь комментария, а страница молча остаётся
+     пустой. -->
+<html lang="ru" class="dark">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Уклад — редактор плана склада</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- Тема по настройке устройства. Скрипт стоит в самом верху шапки и
+         работает синхронно намеренно: любой отложенный вариант (defer, модуль,
+         эффект в React) выполняется уже после первой отрисовки, и человек со
+         светлой системой увидит вспышку тёмной страницы — ту же ошибку, только
+         зеркальную. Три строки блокирующего кода здесь дешевле.
+
+         Условие проверяет светлую, а не тёмную: старые браузеры и режим «без
+         предпочтения» не совпадут ни с чем, и останется класс из разметки,
+         то есть тёмная — тема по умолчанию.
+
+         Смену настройки на ходу ловит уже SiteApp: там есть React, и делать
+         подписку в inline-скрипте незачем. -->
+    <script>
+      if (window.matchMedia("(prefers-color-scheme: light)").matches) {
+        document.documentElement.classList.replace("dark", "light");
+      }
+    </script>
+    <!-- SVG для браузеров, .ico — чтобы не ловить 404 от тех, кто по привычке
+         дёргает /favicon.ico, PNG — для иконки на домашнем экране. -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <title>Уклад — маркетплейс фулфилмент-складов</title>
+    <meta
+      name="description"
+      content="Найдите фулфилмент-склад под свой товар и посмотрите, где именно он будет лежать. Каталог складов с ценами, услугами и планом помещения — для селлеров Wildberries, Ozon, Яндекс Маркета."
+    />
+    <!-- Цвет подложки браузера равен фону страницы, а не фирменному цвету: на
+         мобильном шапка Safari сливается с сайтом вместо цветной полосы над
+         страницей. Тему здесь выбирает сам браузер по `media` — скрипт для
+         этого не нужен, а метатег, выставленный из JS, Safari подхватывает уже
+         после отрисовки шапки. -->
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#FCFDFF" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0B0D11" />
+    <!-- Запасной вариант для браузеров, которые `media` у theme-color не
+         понимают: у них и тема останется тёмной — она же в разметке. -->
+    <meta name="theme-color" content="#0B0D11" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Уклад" />
+    <meta property="og:title" content="Уклад — маркетплейс фулфилмент-складов" />
+    <meta
+      property="og:description"
+      content="Склад видно насквозь: план помещения, свободные места и цена за паллету — до того, как вы отправите первую коробку."
+    />
+    <!-- PNG, а не og.svg: почти ни один сборщик превью SVG не растеризует.
+         Картинка собрана из public/og.svg, он же остаётся исходником. -->
+    <meta property="og:image" content="/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Уклад — фулфилмент, который видно насквозь" />
+    <meta property="og:locale" content="ru_RU" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="/og.png" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Golos Text — один шрифт и на текст, и на заголовки. Он рисовался
+         сразу под кириллицу, а не дорисовывался к латинице, поэтому «д», «з» и
+         «ф» в нём не выпадают из ритма строки. Переменное начертание 400..900
+         отдаёт весь диапазон одним файлом: отдельный шрифт для заголовков
+         больше не нужен, и второй запрос за ним — тоже. -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400..900&display=swap"
+      rel="stylesheet"
+    />
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+
+    <!-- Витрина рисуется скриптами целиком, и с отключённым JS от неё остаётся
+         пустой лист. Пустой лист человек читает как «сайт не работает» и
+         уходит, хотя дело в его собственной настройке или в блокировщике.
+         Реквизиты и телефон здесь же: даже без скриптов с нами можно
+         связаться, а по закону эти данные должны быть доступны. -->
+    <noscript>
+      <div
+        style="
+          max-width: 460px;
+          margin: 120px auto;
+          padding: 0 24px;
+          font-family: 'Golos Text', -apple-system, BlinkMacSystemFont, sans-serif;
+          color: hsl(220 16% 93%);
+          text-align: center;
+        "
+      >
+        <h1 style="font-size: 26px; font-weight: 500; letter-spacing: -0.02em">
+          Здесь нужен JavaScript
+        </h1>
+        <p style="font-size: 14px; line-height: 1.6; color: hsl(220 10% 62%)">
+          Витрина складов, фильтры и карта работают скриптами. Включите
+          JavaScript или отключите блокировщик для этого сайта — и страница
+          откроется.
+        </p>
+        <p style="font-size: 14px; line-height: 1.6; color: hsl(220 10% 62%)">
+          Если проще написать: <a href="mailto:hello@uklad.example" style="color: hsl(226 100% 55%)">hello@uklad.example</a>
+        </p>
+      </div>
+    </noscript>
+
+    <script type="module" src="/src/site/main.tsx"></script>
   </body>
 </html>

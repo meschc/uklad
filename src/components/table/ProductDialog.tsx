@@ -348,9 +348,21 @@ export function ProductDialog({
               {t("product.dims")}
             </span>
             <div className="grid grid-cols-3 gap-2">
-              <NumInput value={form.widthCm} onChange={(v) => set({ widthCm: v })} suffix="Ш" />
-              <NumInput value={form.heightCm} onChange={(v) => set({ heightCm: v })} suffix="В" />
-              <NumInput value={form.depthCm} onChange={(v) => set({ depthCm: v })} suffix="Г" />
+              <NumInput
+                value={form.widthCm}
+                onChange={(v) => set({ widthCm: v })}
+                suffix={t("product.dimW")}
+              />
+              <NumInput
+                value={form.heightCm}
+                onChange={(v) => set({ heightCm: v })}
+                suffix={t("product.dimH")}
+              />
+              <NumInput
+                value={form.depthCm}
+                onChange={(v) => set({ depthCm: v })}
+                suffix={t("product.dimD")}
+              />
             </div>
           </div>
 

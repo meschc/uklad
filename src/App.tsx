@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { selectRole, useEditor } from "@/lib/store";
+import { applyTheme } from "@/lib/theme";
 import { Editor } from "@/components/editor/Editor";
 import { Dashboard } from "@/components/account/Dashboard";
 import { Profile } from "@/components/account/Profile";
@@ -19,6 +20,9 @@ import { LabelsScreen } from "@/components/fulfillment/LabelsScreen";
 import { DocumentsScreen } from "@/components/fulfillment/DocumentsScreen";
 import { LookupScreen } from "@/components/fulfillment/LookupScreen";
 import { IntegrationsScreen } from "@/components/fulfillment/IntegrationsScreen";
+import { ChatScreen } from "@/components/chat/ChatScreen";
+import { ChatWatcher } from "@/components/chat/ChatWatcher";
+import { Toast } from "@/components/editor/Toast";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 // Отдельное окно тепловой карты (`window.open` из TopBar): признак — в URL,
@@ -31,11 +35,11 @@ export default function App() {
   const theme = useEditor((s) => s.profile.theme);
   const language = useEditor((s) => s.profile.language);
 
-  // Тема и язык — глобально на <html> (ТЗ, разд. 3.3).
+  // Тема и язык — глобально на <html> (ТЗ, разд. 3.3). Первый прогон повторяет
+  // то, что уже сделал скрипт в app/index.html, — это нормально: он ставит тему
+  // до отрисовки, а этот эффект держит её дальше, когда человек переключает.
   useEffect(() => {
-    const root = document.documentElement;
-    root.classList.toggle("dark", theme === "dark");
-    root.classList.toggle("light", theme === "light");
+    applyTheme(theme);
   }, [theme]);
   useEffect(() => {
     document.documentElement.lang = language;
@@ -79,12 +83,24 @@ export default function App() {
     </ErrorBoundary>
   );
 
+  // Тост и наблюдатель за чатом — на уровне приложения, а не экрана. Тост
+  // раньше жил внутри редактора и потому был не виден на остальных экранах: о
+  // событии, случившемся на приёмке, приложение молчало. А уведомление о новом
+  // сообщении вообще имеет смысл только тогда, когда человек не в чате (п.3).
+  const chrome = (
+    <>
+      <ChatWatcher />
+      <Toast />
+    </>
+  );
+
   if (!showNav) {
     return (
       <TooltipProvider>
         <div key={view} className="h-full animate-fade-in">
           {screen}
         </div>
+        {chrome}
       </TooltipProvider>
     );
   }
@@ -97,6 +113,7 @@ export default function App() {
           {screen}
         </div>
       </div>
+      {chrome}
     </TooltipProvider>
   );
 }
@@ -132,6 +149,8 @@ function renderView(view: string) {
       return <WarehouseSpecScreen />;
     case "seller":
       return <SellerScreen />;
+    case "chat":
+      return <ChatScreen />;
     case "login":
       return <LoginScreen />;
     default:

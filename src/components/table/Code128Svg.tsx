@@ -1,4 +1,5 @@
 import { code128Modules } from "@/lib/barcode";
+import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 /**
@@ -23,6 +24,7 @@ export function Code128Svg({
   fit?: boolean;
   className?: string;
 }) {
+  const t = useT();
   const modules = code128Modules(code);
 
   if (!modules) {
@@ -30,7 +32,7 @@ export function Code128Svg({
       <div className={cn("bg-white px-2 py-3 text-center", className)}>
         <div className="font-mono text-xs text-black">{code}</div>
         <div className="pt-1 text-[10px] text-neutral-500">
-          Код не кодируется в Code128
+          {t("barcode.notEncodable")}
         </div>
       </div>
     );

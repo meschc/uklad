@@ -93,7 +93,7 @@ function BrandMark({ brand }: { brand: BrandMarkSpec }) {
     return (
       <span
         aria-hidden
-        className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white ring-1 ring-black/10 dark:ring-white/15"
+        className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white ring-1 ring-black/10 dark:ring-white/15"
       >
         <img
           // BASE_URL, а не «/brands/…»: при сборке в подкаталог (GitHub Pages)
@@ -113,7 +113,7 @@ function BrandMark({ brand }: { brand: BrandMarkSpec }) {
       aria-hidden
       // Тонкая обводка: у тёмных марок (Lamoda) плитка иначе сливается с
       // карточкой в тёмной теме и читается как дырка в вёрстке.
-      className="flex size-9 shrink-0 items-center justify-center rounded-lg text-[11px] font-bold tracking-tight ring-1 ring-black/10 dark:ring-white/15"
+      className="flex size-9 shrink-0 items-center justify-center rounded-full text-[11px] font-bold tracking-tight ring-1 ring-black/10 dark:ring-white/15"
       style={{ backgroundColor: brand.bg, color: brand.fg ?? "#ffffff" }}
     >
       {brand.short}
