@@ -1,0 +1,49 @@
+# Проприетарная лицензия · «Уклад»
+
+Copyright © 2026 «Уклад». Все права защищены.
+
+Лицензия определяет права на код, а не его видимость: закрытый репозиторий без
+лицензии — это код без режима вообще, и у того, кому дали доступ, нет ответа на
+вопрос, что ему можно. Здесь этот ответ записан.
+
+## Что разрешено тому, кому выдан доступ
+
+- читать код, собирать и запускать его локально;
+- вносить изменения и предлагать их правообладателю — как это делается,
+  описано в [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Что запрещено без письменного разрешения правообладателя
+
+- копировать, публиковать и распространять код целиком или частями — в том
+  числе выкладывать в открытые репозитории и вставлять куски в чужие проекты;
+- использовать код в любом продукте, кроме самого сервиса «Уклад»;
+- передавать доступ к репозиторию третьим лицам.
+
+## Что под эту лицензию не подпадает
+
+- **Сторонние библиотеки** — остаются под своими лицензиями; список зависимостей
+  в `package.json`, тексты лицензий приезжают вместе с пакетами.
+- **Шрифт Golos Text** — SIL Open Font License 1.1, текст в
+  [`public/fonts/OFL.txt`](public/fonts/OFL.txt), происхождение — в
+  [`public/fonts/CREDITS.md`](public/fonts/CREDITS.md).
+- **Шесть фотографий складов** — Creative Commons с указанием автора, и после
+  кадрирования они остаются под своими лицензиями. Авторы, оригиналы и условия
+  перечислены в
+  [`public/photos/warehouses/CREDITS.md`](public/photos/warehouses/CREDITS.md).
+
+## Реквизиты правообладателя
+
+Пока в `src/site/data/org.ts` флаг `filled` равен `false`, реквизиты на сайте
+демонстрационные и намеренно невалидные — их нельзя подставить сюда. Настоящие
+данные из ЕГРИП вписываются одновременно в оба места: в `ORG` и в строку
+copyright выше.
+
+---
+
+**Proprietary. Copyright © 2026 Uklad. All rights reserved.**
+
+This source code is private. No permission is granted to copy, publish,
+distribute, or otherwise use it, in whole or in part, except with the
+rightsholder's written permission. Third-party dependencies, the Golos Text
+typeface (SIL OFL 1.1) and the six Creative Commons warehouse photographs remain
+under their own licenses, as listed above.

@@ -1,0 +1,16 @@
+# Отступы и переводы строк для редактора — до того, как запустится Prettier.
+# Нужен, чтобы файл, открытый в чужой IDE с другими настройками, не приезжал
+# обратно с диффом на весь документ.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 2
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.md]
+# В Markdown два пробела в конце строки — это перенос, срезать их нельзя.
+trim_trailing_whitespace = false

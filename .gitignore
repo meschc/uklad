@@ -8,6 +8,12 @@ logs
 *.log
 npm-debug.log*
 
+# Настоящие переменные окружения. Образец (`.env.example`) — наоборот, в
+# репозитории: по нему видно, что нужно заполнить, и он заполнен заглушками.
+.env
+.env.*
+!.env.example
+
 # Сборочный мусор
 coverage
 tsconfig.tsbuildinfo
@@ -23,16 +29,7 @@ blob-report
 refs
 
 # Черновики сессий планирования: аудиты, планы, разбор конкурента.
-# Внутренняя кухня, в репозитории ей делать нечего.
-crispy-swinging-music.md
-next-stage-brief-and-prompt.md
-uklad-audit-v3.md
-uklad-fulfillment-todo.md
-uklad-idea-challenge.md
-uklad-plan-v2.md
-uklad-portfolio-readiness.md
-uklad-professional-test.md
-uklad-publication-plan.md
-uklad-todo-for-claude-code.md
-uklad-ux-review.md
-warehouse-service-core-spec.md
+# Внутренняя кухня, в репозитории ей делать нечего. Правило — на папку, а не
+# на имена: список файлов приходилось дописывать после каждой сессии, и
+# очередной черновик успевал попасть в коммит раньше, чем в этот файл.
+docs/drafts/

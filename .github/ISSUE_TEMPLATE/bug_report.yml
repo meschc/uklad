@@ -1,0 +1,61 @@
+name: Поломка
+description: Что-то работает не так, как задумано
+labels: ["баг"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Данные проекта живут в `localStorage` браузера. Если поломка связана с
+        содержимым склада — приложите не сам склад, а описание: сколько этажей,
+        какие модули, что делали перед сбоем.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: Что произошло
+      description: Что вы увидели и чего ждали вместо этого.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Как повторить
+      description: Шаги по экранам — от того места, где всё ещё в порядке.
+      placeholder: |
+        1. Открыть `/app/`, роль «Кладовщик»
+        2. Приёмка → выбрать поставку → «Без паллеты»
+        3. …
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Где
+      options:
+        - Витрина и лендинг (`/`)
+        - План склада — редактор
+        - Номенклатура и таблица товаров
+        - Фулфилмент: приёмка, задания, сборка
+        - Печать: наклейки, документы
+        - Кабинет, склады, персонал
+        - Правовые страницы
+        - Другое
+    validations:
+      required: true
+
+  - type: input
+    id: env
+    attributes:
+      label: Браузер и система
+      placeholder: Safari 19, macOS 26
+    validations:
+      required: true
+
+  - type: textarea
+    id: console
+    attributes:
+      label: Консоль
+      description: Ошибки из консоли браузера, если они есть.
+      render: text

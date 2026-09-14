@@ -1,0 +1,37 @@
+name: Предложение
+description: Чего не хватает складу, селлеру или разработчику
+labels: ["предложение"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Какую задачу это решает
+      description: |
+        Не «добавить кнопку», а что человек сейчас не может сделать и как
+        обходится. Решение придумается быстрее задачи.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: who
+    attributes:
+      label: Кому это нужно
+      options:
+        - Складу (кладовщик, смена на рампе)
+        - Селлеру (продавец, заявки и остатки)
+        - Владельцу склада (витрина, заявки, тарифы)
+        - Разработчику (оснастка, тесты, документация)
+    validations:
+      required: true
+
+  - type: textarea
+    id: idea
+    attributes:
+      label: Как это могло бы выглядеть
+      description: Экран, поле, шаг мастера. Необязательно.
+
+  - type: textarea
+    id: workaround
+    attributes:
+      label: Чем обходитесь сейчас
+      description: Если задачу закрывают вручную или в другом инструменте — как.

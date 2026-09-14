@@ -1,0 +1,90 @@
+# Проверки на каждое изменение: то же, что гоняется руками перед коммитом, но
+# на чистой машине и с зафиксированными зависимостями.
+#
+# Смысл именно в чистой машине. Локально проект собирается на том, что уже
+# лежит в `node_modules`, и пропущенная зависимость или файл, забытый в
+# `git add`, обнаруживаются только у следующего человека, который склонирует
+# репозиторий. Здесь это выясняется сразу.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Пока идёт проверка, а сверху прилетел новый коммит, — старый прогон уже
+# никому не нужен. Отменяем его, чтобы не жечь минуты приватного репозитория.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Формат, линтер, типы, тесты, сборка
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Версия берётся из `.nvmrc` — одна запись на проект, а не вторая
+          # копия числа, которую забудут поднять.
+          node-version-file: .nvmrc
+          cache: npm
+
+      # `ci`, а не `install`: ставит ровно то, что записано в `package-lock`,
+      # и падает, если файл разошёлся с `package.json`.
+      - run: npm ci
+
+      # Порядок от дешёвого к дорогому: чем раньше падение, тем короче ожидание.
+      - name: Формат
+        run: npm run format:check
+
+      - name: Линтер
+        run: npm run lint
+
+      - name: Типы
+        run: npm run typecheck
+
+      - name: Тесты
+        run: npm test
+
+      # Сборка последней, и она же — проверка предрендера: `scripts/prerender.mjs`
+      # прогоняет витрину через Node и падает на всём, что живёт только в
+      # браузере.
+      - name: Сборка
+        run: npm run build
+
+  e2e:
+    name: Сквозные тесты
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      # Только Chromium: все три проекта в `playwright.config.ts` — на нём,
+      # включая телефонные. Полный набор движков тянул бы ещё и WebKit с
+      # Firefox, которых тесты не открывают.
+      - name: Браузер для Playwright
+        run: npx playwright install --with-deps chromium
+
+      # Сборку и статический сервер поднимает сам Playwright (`webServer` в
+      # конфиге) — отдельного шага здесь не нужно.
+      - name: Прогон
+        run: npm run test:e2e
+
+      # Отчёт нужен ровно тогда, когда что-то упало: по зелёному прогону его
+      # никто не открывает, а место он занимает.
+      - name: Отчёт о падении
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
