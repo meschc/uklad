@@ -1,16 +1,31 @@
 import { CountUp } from "../CountUp";
 import { Reveal } from "../Reveal";
-import { WAREHOUSES } from "../../data/warehouses";
+import { warehousesRepository } from "../../data/warehousesRepository";
+import { c, useT } from "../../lib/copy";
 
-const cities = new Set(WAREHOUSES.map((w) => w.city)).size;
-const freeCells = WAREHOUSES.reduce((sum, w) => sum + w.cellsFree, 0);
-const cheapest = Math.min(...WAREHOUSES.map((w) => w.price.storage));
+const stats = warehousesRepository.stats();
 
 const STATS = [
-  { value: WAREHOUSES.length, suffix: "", label: "складов на витрине" },
-  { value: cities, suffix: "", label: "городов и подмосковных хабов" },
-  { value: freeCells, suffix: "", label: "свободных мест хранения" },
-  { value: cheapest, prefix: "от ", suffix: " ₽", label: "за место хранения в сутки" },
+  {
+    id: "warehouses",
+    value: stats.total,
+    suffix: "",
+    label: c("складов на витрине", "warehouses listed"),
+  },
+  { id: "cities", value: stats.cities, suffix: "", label: c("городов и хабов", "cities and hubs") },
+  {
+    id: "cells",
+    value: stats.freeCells,
+    suffix: "",
+    label: c("свободных мест хранения", "free storage slots"),
+  },
+  {
+    id: "price",
+    value: stats.cheapest,
+    prefix: c("от ", "from "),
+    suffix: " ₽",
+    label: c("за место хранения в сутки", "per storage slot a day"),
+  },
 ];
 
 /**
@@ -29,6 +44,8 @@ const STATS = [
  * про витрину целиком, а не про то, кто в ней подключён.
  */
 export function Numbers() {
+  const t = useT();
+
   return (
     <section className="border-y border-foreground/[0.07]">
       <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-16">
@@ -38,16 +55,14 @@ export function Numbers() {
             вертикаль пришлась бы посреди строки, поэтому только с lg. */}
         <div className="grid grid-cols-2 gap-x-6 gap-y-10 lg:grid-cols-4 lg:gap-x-0 lg:divide-x lg:divide-foreground/[0.07]">
           {STATS.map((s, i) => (
-            <Reveal key={s.label} delay={i * 80} className="text-center lg:px-6">
+            <Reveal key={s.id} delay={i * 80} className="text-center lg:px-6">
               <CountUp
                 to={s.value}
-                prefix={s.prefix}
+                prefix={s.prefix && t(s.prefix)}
                 suffix={s.suffix}
                 className="block font-display text-[34px] font-medium tabular-nums tracking-[-0.02em] text-primary sm:text-[46px]"
               />
-              <p className="mt-1.5 text-[13px] leading-snug text-muted-foreground">
-                {s.label}
-              </p>
+              <p className="mt-1.5 text-[13px] leading-snug text-muted-foreground">{t(s.label)}</p>
             </Reveal>
           ))}
         </div>

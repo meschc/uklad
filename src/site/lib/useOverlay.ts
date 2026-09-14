@@ -14,7 +14,15 @@ import { setSmoothScrollPaused } from "./useSmoothScroll";
  */
 export function useOverlay(active: boolean, onClose: () => void): void {
   const closeRef = useRef(onClose);
-  closeRef.current = onClose;
+
+  // Обновление ref вынесено в эффект без списка зависимостей: он выполняется
+  // после каждого рендера, но уже после отрисовки. Писать в ref прямо в теле
+  // компонента нельзя — при повторном запуске рендера (строгий режим,
+  // прерванный рендер) React может выбросить результат, а запись в ref
+  // останется, и hook увидит колбэк от отменённого рендера.
+  useEffect(() => {
+    closeRef.current = onClose;
+  });
 
   useEffect(() => {
     if (!active) return;

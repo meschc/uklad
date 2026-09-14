@@ -39,10 +39,15 @@
     <link rel="icon" href="/favicon.ico" sizes="32x32" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
-    <title>Уклад — маркетплейс фулфилмент-складов</title>
+    <!-- Заголовок и описание здесь — копия строк для главной из
+         `src/site/lib/pageMeta.ts`. На собранных страницах их перезаписывает
+         предрендер, каждой свои; этот файл остаётся шаблоном и виден в двух
+         случаях: в режиме разработки и если сборщик превью успел прочитать
+         страницу до предрендера. Правя одно место, правьте и второе. -->
+    <title>Уклад — маркетплейс складов и WMS для фулфилмента</title>
     <meta
       name="description"
-      content="Найдите фулфилмент-склад под свой товар и посмотрите, где именно он будет лежать. Каталог складов с ценами, услугами и планом помещения — для селлеров Wildberries, Ozon, Яндекс Маркета."
+      content="WMS для фулфилмент-склада и витрина, где его находят селлеры. Приёмка, размещение по ячейкам, сборка и отгрузка — в одной системе."
     />
     <!-- Цвет подложки браузера равен фону страницы, а не фирменному цвету: на
          мобильном шапка Safari сливается с сайтом вместо цветной полосы над
@@ -57,32 +62,44 @@
 
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Уклад" />
-    <meta property="og:title" content="Уклад — маркетплейс фулфилмент-складов" />
+    <meta property="og:title" content="Уклад — маркетплейс складов и WMS для фулфилмента" />
     <meta
       property="og:description"
-      content="Склад видно насквозь: план помещения, свободные места и цена за паллету — до того, как вы отправите первую коробку."
+      content="WMS для фулфилмент-склада и витрина, где его находят селлеры. Приёмка, размещение по ячейкам, сборка и отгрузка — в одной системе."
     />
+    <!-- Адрес страницы. Относительным он тут быть не может: превью собирает
+         чужой сервер, у которого своего домена под рукой нет. Точный адрес
+         страницы подставляет предрендер, здесь — заглушка на главную. -->
+    <meta property="og:url" content="https://u-klad.ru/" />
     <!-- PNG, а не og.svg: почти ни один сборщик превью SVG не растеризует.
          Картинка собрана из public/og.svg, он же остаётся исходником. -->
-    <meta property="og:image" content="/og.png" />
+    <meta property="og:image" content="https://u-klad.ru/og.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:image:alt" content="Уклад — фулфилмент, который видно насквозь" />
     <meta property="og:locale" content="ru_RU" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:image" content="/og.png" />
+    <meta name="twitter:image" content="https://u-klad.ru/og.png" />
 
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <!-- Golos Text — один шрифт и на текст, и на заголовки. Он рисовался
          сразу под кириллицу, а не дорисовывался к латинице, поэтому «д», «з» и
          «ф» в нём не выпадают из ритма строки. Переменное начертание 400..900
          отдаёт весь диапазон одним файлом: отдельный шрифт для заголовков
-         больше не нужен, и второй запрос за ним — тоже. -->
+         больше не нужен, и второй запрос за ним — тоже.
+
+         Лежит у нас, а не на Google Fonts: почему именно так — подробно в
+         `src/index.css`, там же объявления. Предзагружаем кириллицу: страница
+         русская, и это первое, чем набран первый экран. Латиницу браузер
+         возьмёт сам — она нужна цифрам и латинским названиям, но не первой
+         строке заголовка. -->
     <link
-      href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400..900&display=swap"
-      rel="stylesheet"
+      rel="preload"
+      href="/fonts/golos-text-cyrillic.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
     />
+
   </head>
   <body>
     <div id="root"></div>
@@ -112,7 +129,7 @@
           откроется.
         </p>
         <p style="font-size: 14px; line-height: 1.6; color: hsl(220 10% 62%)">
-          Если проще написать: <a href="mailto:hello@uklad.example" style="color: hsl(226 100% 55%)">hello@uklad.example</a>
+          Если проще написать: <a href="mailto:hello@u-klad.ru" style="color: hsl(226 100% 55%)">hello@u-klad.ru</a>
         </p>
       </div>
     </noscript>

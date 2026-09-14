@@ -1,7 +1,12 @@
 import { useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { c, useT } from "../../lib/copy";
 import type { Warehouse } from "../../data/warehouses";
+
+const T = {
+  price: c("{n} ₽/место в сутки", "{n} ₽ per slot a day"),
+};
 
 const RU_CENTER: [number, number] = [55.75, 44];
 
@@ -24,6 +29,7 @@ export function MarketMap({
   onHover: (id?: string) => void;
   onOpen: (id: string) => void;
 }) {
+  const t = useT();
   const elRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const layerRef = useRef<L.LayerGroup | null>(null);
@@ -31,11 +37,20 @@ export function MarketMap({
 
   // Колбэки живут в ref: пересоздавать метки из-за новой стрелочной функции в
   // родителе — верный способ уронить карту в мигание при каждом наведении.
+  // Запись — в эффекте без зависимостей: он идёт после каждого рендера, но уже
+  // после отрисовки. Прямая запись в теле компонента переживает даже рендер,
+  // результат которого React выбросил, — и метки увидели бы колбэк из него.
   const cbRef = useRef({ onHover, onOpen });
-  cbRef.current = { onHover, onOpen };
+  useEffect(() => {
+    cbRef.current = { onHover, onOpen };
+  });
 
   useEffect(() => {
     if (!elRef.current || mapRef.current) return;
+    // Таблицу меток забираем в локальную переменную: к моменту уборки читать
+    // `ref.current` уже нельзя — там может лежать что угодно, а закрыть надо
+    // ровно ту таблицу, с которой этот эффект работал.
+    const marks = marksRef.current;
     // zoomSnap дробный: склады растянуты от Калининграда до Владивостока, и с
     // целым шагом fitBounds всегда округляет вниз — вместо страны в кадр
     // попадает половина глобуса.
@@ -55,8 +70,7 @@ export function MarketMap({
       // Без noWrap на мелком зуме мир повторяется по горизонтали, и рядом с
       // Владивостоком оказывается вторая Москва.
       noWrap: true,
-      attribution:
-        '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     }).addTo(map);
 
     layerRef.current = L.layerGroup().addTo(map);
@@ -68,7 +82,7 @@ export function MarketMap({
       map.remove();
       mapRef.current = null;
       layerRef.current = null;
-      marksRef.current.clear();
+      marks.clear();
     };
   }, []);
 
@@ -96,10 +110,10 @@ export function MarketMap({
         iconSize: [16, 16],
         iconAnchor: [8, 8],
       });
-      const marker = L.marker([w.lat, w.lng], { icon, title: w.name })
+      const marker = L.marker([w.lat, w.lng], { icon, title: t(w.name) })
         .addTo(layer)
         .bindTooltip(
-          `<b>${w.name}</b><br>${w.city} · ${w.price.storage} ₽/место в сутки`,
+          `<b>${t(w.name)}</b><br>${t(w.cityTitle)} · ${t(T.price, { n: w.price.storage })}`,
           { direction: "top", offset: [0, -8] },
         );
 
@@ -119,7 +133,9 @@ export function MarketMap({
       padding: [36, 36],
       maxZoom: 11,
     });
-  }, [signature, list]);
+    // `t` в зависимостях: он меняется только вместе с языком, а подписи меток
+    // вшиты в HTML тултипа — обновить их иначе, чем пересборкой слоя, некому.
+  }, [signature, list, t]);
 
   // Подсветка активной метки — только класс, без перестройки слоя.
   useEffect(() => {

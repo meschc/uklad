@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
-import { warehouseTint } from "./WarehouseAvatar";
+import { warehouseTint } from "../../lib/warehouseTint";
+import { useT } from "../../lib/copy";
 import type { Warehouse } from "../../data/warehouses";
 
 /**
@@ -25,6 +26,7 @@ export function WarehouseCover({
   warehouse: Warehouse;
   className?: string;
 }) {
+  const t = useT();
   const shape = cn("aspect-[5/2] w-full shrink-0 overflow-hidden", className);
 
   if (!w.photo) {
@@ -34,7 +36,7 @@ export function WarehouseCover({
         className={cn(shape, "relative grid place-items-center")}
         style={warehouseTint(w.hue)}
       >
-        <span className="font-display text-5xl font-medium">{w.name.slice(0, 1)}</span>
+        <span className="font-display text-5xl font-medium">{t(w.name).slice(0, 1)}</span>
         {/* Ровная заливка рядом с фотографиями читается как дырка в вёрстке.
             Слабая диагональ из угла в угол даёт плите тот же один источник
             света, что и снимкам, — этого хватает, чтобы она встала в ряд. */}

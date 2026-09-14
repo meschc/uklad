@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import {
   EMPTY_VOLUME,
   estimateMonth,
+  estimateRange,
   fitsVolume,
   isVolumeSet,
   normalizeVolume,
@@ -86,5 +87,50 @@ describe("Расчёт под объём селлера", () => {
 
     expect(fitsVolume(small, volume({ places: 121 }))).toBe(false);
     expect(fitsVolume(small, volume({ places: 120 }))).toBe(true);
+  });
+});
+
+/**
+ * Вилка по списку — ответ, который панель объёма показывает у себя же.
+ *
+ * Без него панель читается как ещё одно условие отбора: человек вписывает
+ * числа, счётчик найденного стоит на месте, и панель считается сломанной.
+ * Значит, вилка обязана меняться от ввода и не обещать того, чего не будет.
+ */
+describe("Вилка месяца по выдаче", () => {
+  const cheap: Warehouse = { ...W, id: "cheap", price: { ...W.price, storage: 10 } };
+  const dear: Warehouse = { ...W, id: "dear", price: { ...W.price, storage: 30 } };
+
+  test("незаданный объём вилки не даёт", () => {
+    // Иначе в панели встало бы «от 0 до 0 ₽» — то есть «бесплатно» вместо
+    // «неизвестно», ровно та же ошибка, что и в карточке.
+    expect(estimateRange([cheap, dear], EMPTY_VOLUME)).toBeNull();
+  });
+
+  test("края вилки — самый дешёвый и самый дорогой склад списка", () => {
+    const r = estimateRange([dear, cheap], volume({ places: 100 }));
+
+    expect(r).toEqual({
+      count: 2,
+      min: estimateMonth(cheap, volume({ places: 100 })).total,
+      max: estimateMonth(dear, volume({ places: 100 })).total,
+    });
+  });
+
+  test("склады, которым объём не по размеру, в вилку не идут", () => {
+    // В карточке у такого склада вместо суммы стоит отказ. Подмешивать его
+    // цену в «от и до» значит обещать то, чего не будет.
+    const small: Warehouse = { ...dear, cellsFree: 10 };
+    const r = estimateRange([cheap, small], volume({ places: 100 }));
+
+    expect(r?.count).toBe(1);
+    expect(r?.min).toBe(r?.max);
+  });
+
+  test("объёма не берёт никто — вилки нет вовсе", () => {
+    const small: Warehouse = { ...W, cellsFree: 10 };
+
+    expect(estimateRange([small], volume({ places: 100 }))).toBeNull();
+    expect(estimateRange([], volume({ places: 100 }))).toBeNull();
   });
 });

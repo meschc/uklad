@@ -1,7 +1,7 @@
 import { ArrowRight } from "lucide-react";
-import { WAREHOUSES } from "../../data/warehouses";
-import { plural } from "../../lib/plural";
-import { go, goMarket } from "../../lib/route";
+import { warehousesRepository } from "../../data/warehousesRepository";
+import { href } from "../../lib/route";
+import { c, useT, type TFunc } from "../../lib/copy";
 
 /**
  * Первый экран.
@@ -20,62 +20,110 @@ import { go, goMarket } from "../../lib/route";
  * показать первым, но это витрина поверх учёта, а не сам учёт: главное здесь —
  * что состояние товара видно без звонка на склад.
  */
+const T = {
+  badge: c("Селлеру — взгляд с вашей стороны", "For sellers — the view from your side"),
+  titleTop: c("Фулфилмент,", "Fulfilment"),
+  titleAccent: c("который видно насквозь", "you can see through"),
+  lead: c(
+    "Выбрали склад — он подтвердил приём и прислал условия. Подписали электронно, назвали дату — дальше склад принимает, хранит и отгружает. Без созвонов и личных договорённостей.",
+    "You pick a warehouse — it confirms intake and sends the terms. Sign electronically, name the date, and the warehouse receives, stores and ships. No calls, no side deals.",
+  ),
+  cta: c("Подобрать склад", "Find a warehouse"),
+  how: c("Как это работает", "How it works"),
+  in: c("в", "in"),
+  free: c("заявка ничего не стоит", "a request costs nothing"),
+  panelTitle: c("Ваш товар прямо сейчас", "Your goods right now"),
+  panelSource: c("из WMS склада", "from the warehouse WMS"),
+  panelNote: c(
+    "Те же данные, что у кладовщика. Вопрос по строке уходит в чат с её номером.",
+    "The same data the storekeeper sees. A question about a line goes to chat with its number.",
+  ),
+};
+
+/** Три состояния товара — то, ради чего селлер и открывает витрину. */
+const ROWS = (t: TFunc) =>
+  [
+    {
+      step: "01",
+      title: c("Поставка ПС-118", "Delivery PS-118"),
+      note: c(
+        "принята 14 мая · расхождение 4 шт с фото",
+        "received 14 May · 4 pcs short, with photo",
+      ),
+      state: c("Принята", "Received"),
+      tone: "text-emerald-700 dark:text-emerald-300",
+    },
+    {
+      step: "02",
+      title: c("На хранении", "In storage"),
+      note: c("128 мест · ряд B, стеллажи 4–6", "128 slots · row B, racks 4–6"),
+      state: c("42 300 ₽ / мес", "42 300 ₽ / mo"),
+      tone: "text-foreground",
+    },
+    {
+      step: "03",
+      title: c("Заявка на отгрузку З-4472", "Shipment request Z-4472"),
+      note: c("48 позиций · вывоз сегодня, 16:00", "48 lines · pickup today, 16:00"),
+      state: c("Собирается", "Picking"),
+      tone: "text-primary",
+    },
+  ].map((r) => ({ ...r, title: t(r.title), note: t(r.note), state: t(r.state) }));
+
 export function Hero() {
-  const cities = new Set(WAREHOUSES.map((w) => w.city)).size;
+  const t = useT();
+  const { total, cities } = warehousesRepository.stats();
 
   return (
     <section className="mx-auto max-w-6xl px-4 pt-28 sm:px-6 sm:pt-36">
       <div className="grid items-center gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.85fr)] lg:gap-16">
         <div>
-          <button
-            onClick={() => go("/sellers")}
+          <a
+            href={href("/sellers")}
             className="group inline-flex items-center gap-2 rounded-full border border-foreground/[0.12] py-1.5 pl-2.5 pr-3 text-[12px] font-medium text-muted-foreground transition-colors hover:border-foreground/25 hover:text-foreground"
           >
             <span className="size-1.5 rounded-full bg-primary" />
-            Селлеру — как это выглядит с вашей стороны
+            {t(T.badge)}
             <ArrowRight className="size-3 transition-transform group-hover:translate-x-0.5" />
-          </button>
+          </a>
 
           <h1 className="mt-7 font-display text-[38px] font-medium leading-[1.05] tracking-[-0.025em] sm:text-[56px] lg:text-[52px] xl:text-[60px]">
-            Фулфилмент,
+            {t(T.titleTop)}
             <br />
-            <span className="text-brand-strong">который видно насквозь</span>
+            <span className="text-brand-strong">{t(T.titleAccent)}</span>
           </h1>
 
           <p className="mt-6 max-w-xl text-[15px] leading-relaxed text-muted-foreground sm:text-base">
-            Выбрали склад — он подтвердил приём и прислал условия. Подписали
-            электронно, назвали дату поставки — дальше склад принимает, хранит
-            и отгружает. Созвоны и личные договорённости не нужны.
+            {t(T.lead)}
           </p>
 
           <div className="mt-9 flex flex-wrap items-center gap-3">
             {/* Пилюля в пилюле: высота 52, поле справа 6 → кружок 40. Единственное
                 место на странице, где вложение показано формой, — и та же
                 кнопка повторяется в финале. */}
-            <button
-              onClick={() => goMarket()}
+            <a
+              href={href("/market")}
               className="group inline-flex h-[52px] w-full items-center justify-between gap-4 rounded-full bg-foreground pl-6 pr-1.5 text-sm font-medium text-background transition-transform hover:-translate-y-px active:translate-y-0 sm:w-auto sm:justify-start"
             >
-              Подобрать склад
+              {t(T.cta)}
               <span className="flex size-10 items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors group-hover:bg-primary/85">
                 <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
               </span>
-            </button>
+            </a>
 
             <a
               href="#how"
               className="inline-flex h-[52px] w-full items-center justify-center rounded-full border border-foreground/[0.14] px-7 text-sm font-medium transition-colors hover:border-foreground/30 hover:bg-foreground/[0.04] sm:w-auto"
             >
-              Как это работает
+              {t(T.how)}
             </a>
           </div>
 
           <p className="mt-9 text-[13px] leading-relaxed text-muted-foreground">
-            <Num>{WAREHOUSES.length}</Num>{" "}
-            {plural(WAREHOUSES.length, "склад", "склада", "складов")} в{" "}
+            <Num>{total}</Num>{" "}
+            {t.plural(total, ["склад", "склада", "складов"], ["warehouse", "warehouses"])} {t(T.in)}{" "}
             <Num>{cities}</Num>{" "}
-            {plural(cities, "городе", "городах", "городах")} · FBO, FBS, DBS ·
-            заявка на склад ничего не стоит
+            {t.plural(cities, ["городе", "городах", "городах"], ["city", "cities"])} · FBO, FBS, DBS
+            · {t(T.free)}
           </p>
         </div>
 
@@ -83,38 +131,19 @@ export function Hero() {
             одна, заливки нет — строки разделены линейками, как в накладной. */}
         <div className="r-window border border-foreground/[0.09]">
           <div className="flex items-center justify-between gap-3 border-b border-foreground/[0.09] px-4 py-3">
-            <span className="text-[13px] font-medium">Ваш товар прямо сейчас</span>
+            <span className="text-[13px] font-medium">{t(T.panelTitle)}</span>
             <span className="flex items-center gap-1.5 font-mono text-[10px] text-muted-foreground">
               <span className="size-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400" />
-              из WMS склада
+              {t(T.panelSource)}
             </span>
           </div>
 
-          <StateRow
-            step="01"
-            title="Поставка ПС-118"
-            note="принята 14 мая · расхождение 4 шт, фото в акте"
-            state="Принята"
-            tone="text-emerald-700 dark:text-emerald-300"
-          />
-          <StateRow
-            step="02"
-            title="На хранении"
-            note="128 мест · ряд B, стеллажи 4–6"
-            state="42 300 ₽ / мес"
-            tone="text-foreground"
-          />
-          <StateRow
-            step="03"
-            title="Заявка на отгрузку З-4472"
-            note="48 позиций · вывоз сегодня, 16:00"
-            state="Собирается"
-            tone="text-primary"
-          />
+          {ROWS(t).map((row) => (
+            <StateRow key={row.step} {...row} />
+          ))}
 
           <p className="px-4 py-3 text-[11px] leading-relaxed text-muted-foreground">
-            Те же данные, что у кладовщика. Вопрос по строке уходит в чат
-            вместе с её номером.
+            {t(T.panelNote)}
           </p>
         </div>
       </div>
@@ -124,9 +153,7 @@ export function Hero() {
 
 /** Число внутри строки фактов: моноширинное и на тон светлее подписи. */
 function Num({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="font-mono tabular-nums text-foreground">{children}</span>
-  );
+  return <span className="font-mono tabular-nums text-foreground">{children}</span>;
 }
 
 function StateRow({

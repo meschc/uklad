@@ -24,20 +24,23 @@ export function CountUp({
   className?: string;
 }) {
   const ref = useRef<HTMLSpanElement>(null);
-  const [value, setValue] = useState(0);
+  // Среду проверяем при первом рендере, а не в эффекте. Там, где анимации не
+  // будет — нет наблюдателя, страница собирается в статику, человек попросил
+  // меньше движения, — число должно быть готовым сразу. Эффект успел бы
+  // показать ноль и только потом исправиться на настоящее значение.
+  const [instant] = useState(
+    () =>
+      typeof IntersectionObserver === "undefined" ||
+      (typeof window !== "undefined" &&
+        typeof window.matchMedia === "function" &&
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches),
+  );
+  const [counted, setCounted] = useState(0);
+  const value = instant ? to : counted;
 
   useEffect(() => {
     const el = ref.current;
-    if (!el) return;
-
-    const reduced =
-      typeof window.matchMedia === "function" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-    if (reduced || typeof IntersectionObserver === "undefined") {
-      setValue(to);
-      return;
-    }
+    if (!el || instant) return;
 
     let frame = 0;
     let start = 0;
@@ -46,7 +49,7 @@ export function CountUp({
       if (!start) start = now;
       const p = Math.min(1, (now - start) / DURATION_MS);
       const eased = 1 - Math.pow(1 - p, 3);
-      setValue(Math.round(to * eased));
+      setCounted(Math.round(to * eased));
       if (p < 1) frame = requestAnimationFrame(step);
     };
 
@@ -64,7 +67,7 @@ export function CountUp({
       io.disconnect();
       if (frame) cancelAnimationFrame(frame);
     };
-  }, [to]);
+  }, [to, instant]);
 
   return (
     <span ref={ref} className={className} aria-label={`${prefix}${to}${suffix}`}>

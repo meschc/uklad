@@ -13,26 +13,42 @@ import { ORG } from "../org";
  * Когда реквизиты подставят настоящие и поднимут флаг, тест переворачивается и
  * требует обратного — сходящихся контрольных разрядов. Так одна и та же
  * проверка ловит и «забыли заменить», и «заменили с опечаткой».
+ *
+ * Домен под этот переворот не попадает и проверяется всегда одинаково. Он
+ * настоящий с самого начала, потому что от него считаются канонические адреса,
+ * `hreflang` и карта сайта: заглушка там — не «ещё не решили», а ошибка в
+ * поисковой выдаче, которую никто не заметит до первой индексации.
  */
 
-/** Контрольный разряд десятизначного ИНН (приказ ФНС, веса фиксированы). */
-const INN_WEIGHTS = [2, 4, 10, 3, 5, 9, 4, 6, 8];
+/**
+ * Контрольные разряды двенадцатизначного ИНН (приказ ФНС, веса фиксированы).
+ * У предпринимателя их два, у юрлица — один: это и есть главная арифметическая
+ * разница между десятизначным и двенадцатизначным номером.
+ */
+const INN_WEIGHTS_11 = [7, 2, 4, 10, 3, 5, 9, 4, 6, 8];
+const INN_WEIGHTS_12 = [3, 7, 2, 4, 10, 3, 5, 9, 4, 6, 8];
 
-function innCheckDigit(inn: string): number {
-  const sum = INN_WEIGHTS.reduce((acc, w, i) => acc + w * Number(inn[i]), 0);
+function innCheckDigit(inn: string, weights: number[]): number {
+  const sum = weights.reduce((acc, w, i) => acc + w * Number(inn[i]), 0);
   return (sum % 11) % 10;
 }
 
-/** Контрольный разряд ОГРН: младшая цифра остатка от деления первых 12 на 11. */
-function ogrnCheckDigit(ogrn: string): number {
-  return Number((BigInt(ogrn.slice(0, 12)) % 11n) % 10n);
+/**
+ * Контрольный разряд ОГРНИП: младшая цифра остатка от деления первых 14 цифр
+ * на 13. У ОГРН юрлица делитель другой — 11, и разрядов на два меньше.
+ */
+function ogrnipCheckDigit(ogrnip: string): number {
+  return Number((BigInt(ogrnip.slice(0, 14)) % 13n) % 10n);
 }
 
 describe("Реквизиты владельца сайта", () => {
-  test("ИНН состоит из десяти цифр, ОГРН — из тринадцати, КПП — из девяти", () => {
-    expect(ORG.inn).toMatch(/^\d{10}$/);
-    expect(ORG.ogrn).toMatch(/^\d{13}$/);
-    expect(ORG.kpp).toMatch(/^\d{9}$/);
+  test("ИНН состоит из двенадцати цифр, ОГРНИП — из пятнадцати", () => {
+    // Владелец — индивидуальный предприниматель: ИНН у него длиннее, чем у
+    // юрлица, вместо ОГРН выдаётся ОГРНИП, а КПП не существует вовсе — поэтому
+    // поля `kpp` в реквизитах нет, и печатать его на страницах нечем.
+    expect(ORG.inn).toMatch(/^\d{12}$/);
+    expect(ORG.ogrnip).toMatch(/^\d{15}$/);
+    expect(ORG).not.toHaveProperty("kpp");
   });
 
   test("контактные адреса заполнены и различаются", () => {
@@ -42,24 +58,40 @@ describe("Реквизиты владельца сайта", () => {
     expect(ORG.privacyEmail).not.toBe(ORG.email);
   });
 
+  test("домен настоящий, и оба ящика заведены на нём", () => {
+    // Зоны из RFC 2606 (.example, .test, .invalid, .localhost) зарегистрировать
+    // нельзя — попадание в любую из них означает, что заглушку забыли заменить.
+    expect(ORG.site).not.toMatch(/\.(example|test|invalid|localhost)$/);
+    expect(ORG.site).toMatch(/^[a-z0-9-]+(\.[a-z0-9-]+)+$/);
+
+    // Почта на чужом домене развалит и правовые страницы, и запасной `mailto:`
+    // в формах: письмо уйдёт не туда, а отправитель об этом не узнает.
+    expect(ORG.email.endsWith(`@${ORG.site}`)).toBe(true);
+    expect(ORG.privacyEmail.endsWith(`@${ORG.site}`)).toBe(true);
+  });
+
   describe.runIf(!ORG.filled)("пока они учебные", () => {
-    test("код региона в ИНН и КПП не существует", () => {
-      // Первые две цифры ИНН и КПП — код субъекта РФ. Кода 00 нет.
+    test("код региона в ИНН и ОГРНИП не существует", () => {
+      // Первые две цифры ИНН — код субъекта РФ. В ОГРНИП регион стоит на
+      // четвёртой и пятой позиции: первая цифра — признак, за ней год. Кода 00
+      // нет ни там, ни там.
       expect(ORG.inn.slice(0, 2)).toBe("00");
-      expect(ORG.kpp.slice(0, 2)).toBe("00");
+      expect(ORG.ogrnip.slice(3, 5)).toBe("00");
     });
 
-    test("контрольный разряд ИНН не сходится", () => {
-      expect(Number(ORG.inn[9])).not.toBe(innCheckDigit(ORG.inn));
+    test("оба контрольных разряда ИНН не сходятся", () => {
+      expect(Number(ORG.inn[10])).not.toBe(innCheckDigit(ORG.inn, INN_WEIGHTS_11));
+      expect(Number(ORG.inn[11])).not.toBe(innCheckDigit(ORG.inn, INN_WEIGHTS_12));
     });
 
-    test("признак отнесения в ОГРН юридическому лицу не выдают", () => {
-      // Первая цифра ОГРН: 1, 2 или 5 у юрлица. Ноль не выдают никогда.
-      expect(ORG.ogrn[0]).toBe("0");
+    test("признак отнесения в ОГРНИП предпринимателю не выдают", () => {
+      // Первая цифра ОГРНИП: 3 у российского предпринимателя, 4 у иностранного.
+      // Ноль не выдают никогда.
+      expect(ORG.ogrnip[0]).toBe("0");
     });
 
-    test("контрольный разряд ОГРН не сходится", () => {
-      expect(Number(ORG.ogrn[12])).not.toBe(ogrnCheckDigit(ORG.ogrn));
+    test("контрольный разряд ОГРНИП не сходится", () => {
+      expect(Number(ORG.ogrnip[14])).not.toBe(ogrnipCheckDigit(ORG.ogrnip));
     });
 
     test("почтовый индекс начинается с недопустимой цифры", () => {
@@ -75,31 +107,20 @@ describe("Реквизиты владельца сайта", () => {
       expect(code).toBeDefined();
       expect(["3", "4", "8", "9"]).not.toContain(code![0]);
     });
-
-    test("домен лежит в зоне, которую нельзя зарегистрировать", () => {
-      // .example зарезервирована RFC 2606 за примерами документации.
-      expect(ORG.site).toMatch(/\.example$/);
-      expect(ORG.email).toMatch(/\.example$/);
-    });
   });
 
   describe.runIf(ORG.filled)("когда подставлены настоящие", () => {
-    test("контрольный разряд ИНН сходится", () => {
-      expect(Number(ORG.inn[9])).toBe(innCheckDigit(ORG.inn));
+    test("оба контрольных разряда ИНН сходятся", () => {
+      expect(Number(ORG.inn[10])).toBe(innCheckDigit(ORG.inn, INN_WEIGHTS_11));
+      expect(Number(ORG.inn[11])).toBe(innCheckDigit(ORG.inn, INN_WEIGHTS_12));
     });
 
-    test("контрольный разряд ОГРН сходится", () => {
-      expect(Number(ORG.ogrn[12])).toBe(ogrnCheckDigit(ORG.ogrn));
+    test("контрольный разряд ОГРНИП сходится", () => {
+      expect(Number(ORG.ogrnip[14])).toBe(ogrnipCheckDigit(ORG.ogrnip));
     });
 
-    test("признак отнесения в ОГРН — юридическое лицо", () => {
-      expect(["1", "2", "5"]).toContain(ORG.ogrn[0]);
-    });
-
-    test("от заглушечного домена не осталось следов", () => {
-      expect(ORG.site).not.toMatch(/\.example$/);
-      expect(ORG.email).not.toMatch(/\.example$/);
-      expect(ORG.privacyEmail).not.toMatch(/\.example$/);
+    test("признак отнесения в ОГРНИП — индивидуальный предприниматель", () => {
+      expect(["3", "4"]).toContain(ORG.ogrnip[0]);
     });
   });
 });

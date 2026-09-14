@@ -1,28 +1,58 @@
 import { ArrowUpRight, Check } from "lucide-react";
 import { Reveal } from "../Reveal";
-import { WAREHOUSES } from "../../data/warehouses";
-import { plural } from "../../lib/plural";
+import { warehousesRepository } from "../../data/warehousesRepository";
+import { c, useT } from "../../lib/copy";
+import { eyebrow } from "../../lib/eyebrow";
+import { href } from "../../lib/route";
 
 const GAINS = [
   {
-    title: "Адресное хранение и подбор",
-    body: "Размещение по правилам, подбор — маршрутом по проходам. Не «Серёга знает, где лежит», а лист сборки.",
+    title: c("Адресное хранение и подбор", "Bin storage and picking"),
+    body: c(
+      "Размещение по правилам, подбор — маршрутом по проходам. Не «Серёга знает, где лежит», а лист сборки.",
+      "Put-away by rules, picking by a route through the aisles. Not “Bob knows where it is”, but a pick list.",
+    ),
   },
   {
-    title: "Приёмка, маркировка, отгрузка",
-    body: "Приёмка по строкам с расхождениями, печать этикеток и Честного знака, сборка заявок на площадки и единичных заказов.",
+    title: c("Приёмка, маркировка, отгрузка", "Intake, labelling, shipping"),
+    body: c(
+      "Приёмка по строкам с расхождениями, печать этикеток и Честного знака, сборка заявок на площадки и единичных заказов.",
+      "Line-by-line intake with discrepancies, printing labels and Chestny Znak codes, picking both marketplace batches and single orders.",
+    ),
   },
   {
-    title: "Электронный документооборот",
-    body: "Договор, прайс, акты приёмки и расхождений уходят клиенту на подпись через Диадок или СБИС. Подписанный экземпляр возвращается в ту же поставку.",
+    title: c("Электронный документооборот", "Electronic documents"),
+    body: c(
+      "Договор, прайс и акты уходят клиенту на подпись через Диадок или СБИС. Подписанный экземпляр возвращается в ту же поставку.",
+      "The contract, the price list and the statements go to the client for signing via Diadoc or SBIS. The signed copy comes back to the same delivery.",
+    ),
   },
   {
-    title: "Кабинет клиента и чат включены",
-    body: "Селлер сам смотрит остатки, статусы и место хранения, а вопрос задаёт в чате у нужной позиции. Минус половина входящих в вотсапе.",
+    title: c("Кабинет клиента и чат включены", "Client account and chat included"),
+    body: c(
+      "Селлер сам смотрит остатки, статусы и место хранения, а вопрос задаёт в чате у нужной позиции. Минус половина входящих.",
+      "The seller checks stock, statuses and bin locations themselves, and asks questions in a chat pinned to the item. Half the inbound messages disappear.",
+    ),
   },
 ];
 
-const withUklad = WAREHOUSES.filter((w) => w.uklad).length;
+const T = {
+  eyebrow: c("Складам и фулфилменту", "For warehouses and fulfilment"),
+  titleTop: c("Продвинутая система", "An advanced system"),
+  titleBottom: c("работы со складом", "for running a warehouse"),
+  lead: c(
+    "Сначала система для склада: адреса, приёмка, подбор, отгрузка, документы. Витрина идёт в комплекте и приводит клиентов тому, кто ведёт остатки честно.",
+    "First a system for the warehouse: bins, intake, picking, shipping, documents. The marketplace comes with it and brings clients to whoever keeps honest stock.",
+  ),
+  connect: c("Подключить склад", "Add your warehouse"),
+  howToList: c("Как попасть в витрину", "How to get listed"),
+  connected: c(
+    "{n} {word} из витрины уже подключены — их карточки помечены значком «Уклад».",
+    "{n} {word} in the listing already run on it — their cards carry the “Uklad” badge.",
+  ),
+};
+
+const withUklad = warehousesRepository.stats().withUklad;
 
 /**
  * Вторая аудитория. Селлер и склад читают одну страницу, поэтому блок для
@@ -30,23 +60,21 @@ const withUklad = WAREHOUSES.filter((w) => w.uklad).length;
  * оператор не искал «а мне-то что» в подвале.
  */
 export function Operators() {
+  const t = useT();
+
   return (
     <section id="operators" className="mx-auto max-w-6xl px-4 py-24 sm:px-6 sm:py-28">
       <div className="grid items-start gap-12 lg:grid-cols-2 lg:gap-16">
         <div>
           <Reveal>
-            <p className="mb-3 text-[11px] font-medium uppercase tracking-[0.14em] text-primary">
-              Складам и фулфилменту
-            </p>
+            <p className={eyebrow("mb-3")}>{t(T.eyebrow)}</p>
             <h2 className="font-display text-[30px] font-medium leading-[1.05] tracking-[-0.02em] sm:text-[42px]">
-              Продвинутая система
+              {t(T.titleTop)}
               <br />
-              работы со складом
+              {t(T.titleBottom)}
             </h2>
             <p className="mt-4 text-base leading-relaxed text-muted-foreground sm:text-[17px]">
-              Сначала система для склада: адреса, приёмка, подбор, отгрузка,
-              документы. Витрина идёт в комплекте — и приводит клиентов тому,
-              кто ведёт остатки честно.
+              {t(T.lead)}
             </p>
           </Reveal>
 
@@ -56,24 +84,33 @@ export function Operators() {
               систему вместе с потоком клиентов, а такое не выбирают кнопкой. */}
           <Reveal delay={120} className="mt-8 flex flex-wrap gap-3">
             <a
-              href="#/contacts"
+              href={href("/contacts")}
               className="group inline-flex h-11 items-center gap-2 rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
             >
-              Подключить склад
+              {t(T.connect)}
               <ArrowUpRight className="size-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
             </a>
+            {/* Раньше вторая кнопка вела в FAQ — то есть отвечала на вопрос
+                «как попасть в витрину» тремя строками в чужом разделе. Теперь
+                у склада есть своя страница с разбором по шагам. */}
             <a
-              href="#faq"
+              href={href("/warehouses")}
               className="inline-flex h-11 items-center rounded-full border border-foreground/[0.14] px-5 text-sm font-medium transition-colors hover:border-foreground/30 hover:bg-foreground/[0.04]"
             >
-              Как попасть в витрину
+              {t(T.howToList)}
             </a>
           </Reveal>
 
           <Reveal delay={200}>
             <p className="mt-6 text-xs text-muted-foreground">
-              {withUklad} {plural(withUklad, "склад", "склада", "складов")} из
-              витрины уже подключены — их карточки помечены значком «Уклад».
+              {t(T.connected, {
+                n: withUklad,
+                word: t.plural(
+                  withUklad,
+                  ["склад", "склада", "складов"],
+                  ["warehouse", "warehouses"],
+                ),
+              })}
             </p>
           </Reveal>
         </div>
@@ -85,18 +122,15 @@ export function Operators() {
             случай обвели» страница набирает тяжесть. */}
         <ul className="divide-y divide-foreground/[0.07] border-y border-foreground/[0.07]">
           {GAINS.map((g, i) => (
-            <Reveal key={g.title} as="li" delay={i * 80}>
+            <Reveal key={g.title.ru} as="li" delay={i * 80}>
               <div className="flex gap-4 py-6">
-                <Check
-                  className="mt-1 size-4 shrink-0 text-primary"
-                  strokeWidth={2.5}
-                />
+                <Check className="mt-1 size-4 shrink-0 text-primary" strokeWidth={2.5} />
                 <div>
                   <h3 className="font-display text-[15px] font-medium tracking-tight">
-                    {g.title}
+                    {t(g.title)}
                   </h3>
                   <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-                    {g.body}
+                    {t(g.body)}
                   </p>
                 </div>
               </div>

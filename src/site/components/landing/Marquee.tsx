@@ -1,5 +1,7 @@
 import { MARKETPLACES } from "../../data/marketplaces";
 import { BrandMark } from "../BrandMark";
+import { c, useT } from "../../lib/copy";
+import { eyebrow } from "../../lib/eyebrow";
 
 /**
  * Лента площадок. Отвечает на первый вопрос селлера — «а с моим маркетплейсом
@@ -14,14 +16,15 @@ import { BrandMark } from "../BrandMark";
  * рамкой прямо в эту строку и читалась как её продолжение, а не как отдельная
  * полоса.
  */
+const T = { label: c("Отгрузка на площадки", "Shipping to marketplaces") };
+
 export function Marquee() {
+  const t = useT();
   const row = [...MARKETPLACES, ...MARKETPLACES];
 
   return (
     <section className="mt-24 border-y border-border bg-muted/30 py-10 sm:mt-32 sm:py-12">
-      <p className="mb-7 text-center text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-        Отгрузка на площадки
-      </p>
+      <p className={eyebrow("mb-7 text-center text-muted-foreground")}>{t(T.label)}</p>
       <div className="relative overflow-hidden [mask-image:linear-gradient(90deg,transparent,#000_12%,#000_88%,transparent)]">
         <div className="flex w-max animate-marquee items-center gap-12 pr-12">
           {row.map((m, i) => (
@@ -31,7 +34,7 @@ export function Marquee() {
             >
               <BrandMark brand={m} className="size-9" />
               <span className="whitespace-nowrap text-sm font-medium text-muted-foreground">
-                {m.title}
+                {t(m.title)}
               </span>
             </span>
           ))}

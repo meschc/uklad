@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { WAREHOUSES, type Warehouse } from "../../data/warehouses";
 import { EMPTY_VOLUME, type SellerVolume } from "../estimate";
+import { NO_REPUTATION, type Reputation } from "../reputation";
 import {
   COMPARE_LIMIT,
   bestIndexes,
@@ -22,6 +23,13 @@ import {
 const base: Warehouse = { ...WAREHOUSES[0], minPlaces: 0, cellsFree: 10_000 };
 
 const w = (id: string, patch: Partial<Warehouse>): Warehouse => ({ ...base, id, ...patch });
+
+/** Репутация с готовой оценкой — когда в тесте важна только она. */
+const rated = (rating: number, reviews = 12): Reputation => ({
+  ...NO_REPUTATION,
+  rating,
+  reviews,
+});
 
 const VOLUME: SellerVolume = { places: 100, boxes: 0, orders: 0, marking: 0 };
 
@@ -77,8 +85,18 @@ describe("строки сравнения", () => {
   });
 
   test("при равенстве лучших несколько — победителя не выдумываем", () => {
-    const list = [w("a", { rating: 4.8 }), w("b", { rating: 4.8 })];
+    const list = [w("a", { reputation: rated(4.8) }), w("b", { reputation: rated(4.8) })];
     expect(bestIndexes(rowByKey(compareRows(list, EMPTY_VOLUME), "rating"))).toEqual([0, 1]);
+  });
+
+  test("склад без отзывов в строке оценки — пусто, а не ноль", () => {
+    // Ноль в этой клетке проиграл бы любой оценке, хотя оценки просто нет:
+    // отсутствие отзывов — не плохая репутация, а её отсутствие.
+    const list = [w("a", { reputation: NO_REPUTATION }), w("b", { reputation: rated(4.1) })];
+    const row = rowByKey(compareRows(list, EMPTY_VOLUME), "rating");
+
+    expect(row.values[0]).toBeNull();
+    expect(bestIndexes(row)).toEqual([1]);
   });
 
   test("склад, который объём не возьмёт, цены месяца не показывает", () => {

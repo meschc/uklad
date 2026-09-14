@@ -13,8 +13,31 @@ import {
   toggle,
   type MarketFilters,
 } from "../../lib/filters";
+import { c, useT } from "../../lib/copy";
 
 const SERVICES_SHOWN = 8;
+
+const T = {
+  search: c("Название, город или улица", "Name, city or street"),
+  city: c("Город", "City"),
+  allCities: c("Все города", "All cities"),
+  scheme: c("Схема работы", "Fulfilment model"),
+  ships: c("Отгружает на площадки", "Ships to marketplaces"),
+  andNote: c(
+    "Условия складываются: склад должен уметь во все отмеченные площадки сразу.",
+    "Filters add up: a warehouse must handle every marketplace you tick.",
+  ),
+  price: c("Хранение, ₽ за место в сутки", "Storage, ₽ per slot a day"),
+  from: c("от {n} ₽", "from {n} ₽"),
+  to: c("до {n} ₽", "up to {n} ₽"),
+  services: c("Услуги", "Services"),
+  collapse: c("Свернуть", "Collapse"),
+  more: c("Ещё {n}", "{n} more"),
+  marks: c("Отметки", "Badges"),
+  verified: c("Проверенные Укладом", "Verified by Uklad"),
+  withAccount: c("С кабинетом Уклада", "With an Uklad account"),
+  reset: c("Сбросить", "Reset"),
+};
 
 /**
  * Панель условий. Все переключатели работают на «и» — и об этом честно
@@ -28,6 +51,7 @@ export function Filters({
   value: MarketFilters;
   onChange: (next: MarketFilters) => void;
 }) {
+  const t = useT();
   const [allServices, setAllServices] = useState(false);
   const set = (patch: Partial<MarketFilters>) => onChange({ ...value, ...patch });
   const active = activeCount(value);
@@ -40,33 +64,33 @@ export function Filters({
         <input
           value={value.q}
           onChange={(e) => set({ q: e.target.value })}
-          placeholder="Название, город или улица"
+          placeholder={t(T.search)}
           className="h-10 w-full rounded-full border border-border bg-background pl-10 pr-4 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
         />
       </div>
 
-      <Group title="Город">
+      <Group title={t(T.city)}>
         <select
           value={value.city}
           onChange={(e) => set({ city: e.target.value })}
           className="h-10 w-full rounded-full border border-border bg-background px-3.5 text-sm outline-none transition-colors focus:border-primary"
         >
-          <option value="">Все города</option>
-          {CITIES.map((c) => (
-            <option key={c.name} value={c.name}>
-              {c.name}
+          <option value="">{t(T.allCities)}</option>
+          {CITIES.map((city) => (
+            <option key={city.name} value={city.name}>
+              {t(city.title)}
             </option>
           ))}
         </select>
       </Group>
 
-      <Group title="Схема работы">
+      <Group title={t(T.scheme)}>
         <div className="flex flex-wrap gap-1.5">
           {SCHEMES.map((s) => (
             <Chip
               key={s.id}
               on={value.schemes.includes(s.id)}
-              title={s.hint}
+              title={t(s.hint)}
               onClick={() => set({ schemes: toggle(value.schemes, s.id) })}
             >
               {s.title}
@@ -75,7 +99,7 @@ export function Filters({
         </div>
       </Group>
 
-      <Group title="Отгружает на площадки">
+      <Group title={t(T.ships)}>
         <div className="flex flex-wrap gap-1.5">
           {MARKETPLACES.map((m) => (
             <Chip
@@ -84,17 +108,14 @@ export function Filters({
               onClick={() => set({ marketplaces: toggle(value.marketplaces, m.id) })}
             >
               <BrandMark brand={m} className="-ml-1 size-4" />
-              {m.title}
+              {t(m.title)}
             </Chip>
           ))}
         </div>
-        <p className="mt-2 text-[11px] leading-snug text-muted-foreground">
-          Выбранные условия складываются: склад должен уметь во все отмеченные
-          площадки сразу.
-        </p>
+        <p className="mt-2 text-[11px] leading-snug text-muted-foreground">{t(T.andNote)}</p>
       </Group>
 
-      <Group title="Хранение, ₽ за место в сутки">
+      <Group title={t(T.price)}>
         <input
           type="range"
           min={PRICE_MIN}
@@ -104,14 +125,14 @@ export function Filters({
           className="range-input w-full"
         />
         <div className="mt-1 flex justify-between text-[11px] tabular-nums text-muted-foreground">
-          <span>от {PRICE_MIN} ₽</span>
+          <span>{t(T.from, { n: PRICE_MIN })}</span>
           <span className={cn(value.maxStorage < PRICE_MAX && "font-semibold text-primary")}>
-            до {value.maxStorage} ₽
+            {t(T.to, { n: value.maxStorage })}
           </span>
         </div>
       </Group>
 
-      <Group title="Услуги">
+      <Group title={t(T.services)}>
         <div className="flex flex-wrap gap-1.5">
           {services.map((s) => (
             <Chip
@@ -119,7 +140,7 @@ export function Filters({
               on={value.services.includes(s.id)}
               onClick={() => set({ services: toggle(value.services, s.id) })}
             >
-              {s.title}
+              {t(s.title)}
             </Chip>
           ))}
         </div>
@@ -128,23 +149,23 @@ export function Filters({
             onClick={() => setAllServices((v) => !v)}
             className="mt-2 text-xs font-medium text-primary hover:underline"
           >
-            {allServices ? "Свернуть" : `Ещё ${SERVICES.length - SERVICES_SHOWN}`}
+            {allServices ? t(T.collapse) : t(T.more, { n: SERVICES.length - SERVICES_SHOWN })}
           </button>
         )}
       </Group>
 
-      <Group title="Отметки">
+      <Group title={t(T.marks)}>
         <div className="flex flex-col gap-1.5">
           <Switch
             on={value.verifiedOnly}
             onClick={() => set({ verifiedOnly: !value.verifiedOnly })}
           >
             <BadgeCheck className="size-4 text-primary" />
-            Проверенные Укладом
+            {t(T.verified)}
           </Switch>
           <Switch on={value.ukladOnly} onClick={() => set({ ukladOnly: !value.ukladOnly })}>
             <LogoMark className="size-4" />
-            С кабинетом Уклада
+            {t(T.withAccount)}
           </Switch>
         </div>
       </Group>
@@ -155,7 +176,8 @@ export function Filters({
         className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-border text-sm font-medium transition-colors enabled:hover:bg-muted disabled:opacity-40"
       >
         <RotateCcw className="size-3.5" />
-        Сбросить{active > 0 && ` (${active})`}
+        {t(T.reset)}
+        {active > 0 && ` (${active})`}
       </button>
     </div>
   );

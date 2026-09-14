@@ -1,5 +1,6 @@
 import type { Warehouse } from "../data/warehouses";
 import { monthlyPerPlace } from "../data/warehouses";
+import { c, type Copy } from "./copy";
 import { estimateMonth, fitsVolume, isVolumeSet, type SellerVolume } from "./estimate";
 
 /**
@@ -46,9 +47,7 @@ export function toggleCompare(selected: string[], id: string): string[] {
 /** Отмеченные склады в порядке отметки; неизвестные идентификаторы отбрасываются. */
 export function comparedWarehouses(list: Warehouse[], selected: string[]): Warehouse[] {
   const byId = new Map(list.map((w) => [w.id, w]));
-  return selected
-    .map((id) => byId.get(id))
-    .filter((w): w is Warehouse => w !== undefined);
+  return selected.map((id) => byId.get(id)).filter((w): w is Warehouse => w !== undefined);
 }
 
 /** Куда смотреть в строке: меньше — лучше, или больше — лучше. */
@@ -56,9 +55,15 @@ export type Direction = "less" | "more";
 
 export interface CompareRow {
   key: string;
-  label: string;
+  /**
+   * Подпись строки — парой языков, как весь текст витрины. Строка сравнения
+   * попадает человеку на глаза дословно, а значит переводится наравне с
+   * вёрсткой; хранить здесь готовую русскую фразу значило бы, что английская
+   * витрина показывает таблицу по-русски.
+   */
+  label: Copy;
   /** Единица измерения для подписи; у рейтинга её нет. */
-  unit?: string;
+  unit?: Copy;
   /** Значения по складам в том же порядке. `null` — сравнивать нечего. */
   values: (number | null)[];
   direction: Direction;
@@ -80,8 +85,8 @@ export function compareRows(list: Warehouse[], volume: SellerVolume): CompareRow
   if (isVolumeSet(volume)) {
     rows.push({
       key: "month",
-      label: "Месяц под ваш объём",
-      unit: "₽",
+      label: c("Месяц под ваш объём", "A month at your volume"),
+      unit: c("₽", "₽"),
       direction: "less",
       // Склад, который такой объём не возьмёт, цены не показывает: сумма,
       // которой не будет, — худший советчик из возможных.
@@ -92,66 +97,79 @@ export function compareRows(list: Warehouse[], volume: SellerVolume): CompareRow
   rows.push(
     {
       key: "storage",
-      label: "Хранение",
-      unit: "₽ / место в сутки",
+      label: c("Хранение", "Storage"),
+      unit: c("₽ / место в сутки", "₽ / slot a day"),
       direction: "less",
       values: list.map((w) => w.price.storage),
     },
     {
       key: "storage-month",
-      label: "Одно место в месяц",
-      unit: "₽",
+      label: c("Одно место в месяц", "One slot a month"),
+      unit: c("₽", "₽"),
       direction: "less",
       values: list.map((w) => monthlyPerPlace(w)),
     },
     {
       key: "receiving",
-      label: "Приёмка",
-      unit: "₽ / короб",
+      label: c("Приёмка", "Intake"),
+      unit: c("₽ / короб", "₽ / box"),
       direction: "less",
       values: list.map((w) => w.price.receiving),
     },
     {
       key: "picking",
-      label: "Сборка",
-      unit: "₽ / заказ",
+      label: c("Сборка", "Picking"),
+      unit: c("₽ / заказ", "₽ / order"),
       direction: "less",
       values: list.map((w) => w.price.picking),
     },
     {
       key: "marking",
-      label: "Маркировка",
-      unit: "₽ / единица",
+      label: c("Маркировка", "Labelling"),
+      unit: c("₽ / единица", "₽ / item"),
       direction: "less",
       values: list.map((w) => w.price.marking),
     },
     {
       key: "min",
-      label: "Минимальный объём",
-      unit: "мест",
+      label: c("Минимальный объём", "Minimum volume"),
+      unit: c("мест", "slots"),
       direction: "less",
       values: list.map((w) => w.minPlaces),
     },
     {
       key: "free",
-      label: "Свободно",
-      unit: "мест",
+      label: c("Свободно", "Free"),
+      unit: c("мест", "slots"),
       direction: "more",
       values: list.map((w) => w.cellsFree),
     },
     {
       key: "response",
-      label: "Средний ответ",
-      unit: "ч",
+      label: c("Средний ответ", "Average reply"),
+      unit: c("ч", "h"),
       direction: "less",
       values: list.map((w) => w.responseHours),
     },
     {
       key: "rating",
-      label: "Рейтинг",
+      label: c("Оценка по отзывам", "Rating from reviews"),
       direction: "more",
       digits: 1,
-      values: list.map((w) => w.rating),
+      // `null` у склада, о котором отзывов нет, — и это не то же самое, что
+      // низкая оценка. Строка сравнения покажет прочерк, а победителем в ней
+      // станет тот, у кого оценка есть: сравнивать можно только сравнимое.
+      values: list.map((w) => w.reputation.rating),
+    },
+    {
+      key: "reviews",
+      label: c("Отзывов", "Reviews"),
+      unit: c("шт.", "pcs"),
+      direction: "more",
+      // Число отзывов идёт отдельной строкой, а не подписью к оценке: 5,0 по
+      // одному отзыву и 4,7 по двадцати — разные утверждения, и выбирающему
+      // между двумя складами это важнее самой десятой балла.
+      values: list.map((w) => w.reputation.reviews),
     },
   );
 

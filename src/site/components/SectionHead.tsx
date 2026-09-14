@@ -1,4 +1,6 @@
 import { cn } from "@/lib/utils";
+// Под псевдонимом: здесь `eyebrow` — уже имя свойства с текстом надзаголовка.
+import { eyebrow as eyebrowClass } from "../lib/eyebrow";
 import { Reveal } from "./Reveal";
 
 /**
@@ -18,17 +20,8 @@ export function SectionHead({
   align?: "center" | "left";
 }) {
   return (
-    <Reveal
-      className={cn(
-        "max-w-2xl",
-        align === "center" ? "mx-auto text-center" : "text-left",
-      )}
-    >
-      {eyebrow && (
-        <p className="mb-3 text-[11px] font-medium uppercase tracking-[0.14em] text-primary">
-          {eyebrow}
-        </p>
-      )}
+    <Reveal className={cn("max-w-2xl", align === "center" ? "mx-auto text-center" : "text-left")}>
+      {eyebrow && <p className={eyebrowClass("mb-3")}>{eyebrow}</p>}
       {/*
        * Вес 500, а не 800. Крупный заголовок сверхжирным начертанием — приём
        * из середины десятых, и именно он давал странице «налёт»: буква толщиной

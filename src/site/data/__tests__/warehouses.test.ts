@@ -68,9 +68,9 @@ describe("Склады витрины", () => {
   });
 
   test("свободных мест не больше, чем всего", () => {
-    const broken = WAREHOUSES.filter(
-      (w) => w.cellsFree > w.cellsTotal || w.cellsFree < 0,
-    ).map((w) => w.name);
+    const broken = WAREHOUSES.filter((w) => w.cellsFree > w.cellsTotal || w.cellsFree < 0).map(
+      (w) => w.name,
+    );
     expect(broken).toEqual([]);
   });
 });

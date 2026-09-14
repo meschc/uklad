@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { useT } from "../lib/copy";
 import type { MarketplaceRef } from "../data/marketplaces";
 
 /**
@@ -30,19 +31,14 @@ import type { MarketplaceRef } from "../data/marketplaces";
  * «склад с этой площадкой не работает», хотя не загрузился всего лишь файл.
  * Плитка при этом остаётся на месте — меняется только её содержимое.
  */
-export function BrandMark({
-  brand,
-  className,
-}: {
-  brand: MarketplaceRef;
-  className?: string;
-}) {
+export function BrandMark({ brand, className }: { brand: MarketplaceRef; className?: string }) {
+  const t = useT();
   const [failed, setFailed] = useState(false);
   const showLogo = Boolean(brand.logo) && !failed;
 
   return (
     <span
-      title={brand.title}
+      title={t(brand.title)}
       className={cn(
         "flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-full",
         className,

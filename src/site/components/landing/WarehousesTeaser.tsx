@@ -2,19 +2,32 @@ import { ArrowRight } from "lucide-react";
 import { Reveal } from "../Reveal";
 import { SectionHead } from "../SectionHead";
 import { WarehouseCard } from "../market/WarehouseCard";
-import { WAREHOUSES } from "../../data/warehouses";
-import { plural } from "../../lib/plural";
-import { goMarket } from "../../lib/route";
+import { warehousesRepository } from "../../data/warehousesRepository";
+import { c, useT } from "../../lib/copy";
+import { href } from "../../lib/route";
+
+const T = {
+  eyebrow: c("Витрина", "Marketplace"),
+  title: c("Склады сравниваются по одной мерке", "Warehouses compared on one scale"),
+  // Не «честная занятость и прозрачные условия»: это оценка, которую читатель
+  // не может проверить, а проверить он может ровно то, что написано в карточке.
+  lead: c(
+    "{n} {word} на витрине. У каждого — ставки, схемы работы и свободные места.",
+    "{n} {word} listed. Each one shows rates, fulfilment schemes and free space.",
+  ),
+  cta: c("Открыть маркетплейс", "Open the marketplace"),
+  note: c(
+    "Фильтры по городу, схеме, площадкам, услугам и цене — без регистрации.",
+    "Filters by city, scheme, marketplace, service and price — no sign-up.",
+  ),
+};
 
 /**
  * Три настоящие карточки из витрины, а не нарисованные скриншоты. Витрина —
  * главное, что здесь можно потрогать, и показывать вместо неё макет значило бы
  * прятать продукт за картинкой продукта.
  */
-const SHOWCASE = [...WAREHOUSES]
-  .filter((w) => w.uklad && w.verified)
-  .sort((a, b) => b.rating - a.rating)
-  .slice(0, 3);
+const SHOWCASE = warehousesRepository.featured(3);
 
 /**
  * Подложки у секции нет — только линейки сверху и снизу. Было: подкрашенная
@@ -23,16 +36,19 @@ const SHOWCASE = [...WAREHOUSES]
  * как карточка.
  */
 export function WarehousesTeaser() {
+  const t = useT();
+  const { total } = warehousesRepository.stats();
+
   return (
     <section id="warehouses" className="border-y border-border py-24 sm:py-28">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <SectionHead
-          eyebrow="Витрина"
-          title="Склады сравниваются по одной мерке"
-          // Не «честная занятость и прозрачные условия»: это оценка, которую
-          // читатель не может проверить, а проверить он может ровно то, что
-          // написано в карточке ниже.
-          lead={`${WAREHOUSES.length} ${plural(WAREHOUSES.length, "склад", "склада", "складов")} на витрине. У каждого — ставки, схемы работы и свободные места.`}
+          eyebrow={t(T.eyebrow)}
+          title={t(T.title)}
+          lead={t(T.lead, {
+            n: total,
+            word: t.plural(total, ["склад", "склада", "складов"], ["warehouse", "warehouses"]),
+          })}
         />
 
         <div className="mt-14 grid gap-4 lg:grid-cols-3">
@@ -45,17 +61,14 @@ export function WarehousesTeaser() {
 
         <Reveal delay={280}>
           <div className="mt-10 text-center">
-            <button
-              onClick={() => goMarket()}
+            <a
+              href={href("/market")}
               className="group inline-flex h-12 items-center gap-2 rounded-full bg-primary px-7 text-[15px] font-medium text-primary-foreground transition-colors hover:bg-primary/90"
             >
-              Открыть маркетплейс
+              {t(T.cta)}
               <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
-            </button>
-            <p className="mt-3 text-xs text-muted-foreground">
-              Фильтры по городу, схеме, площадкам, услугам и цене — без
-              регистрации.
-            </p>
+            </a>
+            <p className="mt-3 text-xs text-muted-foreground">{t(T.note)}</p>
           </div>
         </Reveal>
       </div>

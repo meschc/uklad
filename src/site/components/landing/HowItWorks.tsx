@@ -3,34 +3,65 @@ import { cn } from "@/lib/utils";
 import { Reveal } from "../Reveal";
 import { SectionHead } from "../SectionHead";
 import { useScrollProgress } from "../../lib/useScrollProgress";
+import { c, useT } from "../../lib/copy";
 
 const STEPS = [
   {
     n: "01",
-    title: "Выбираете склад",
-    body: "Город, схема работы, площадки, услуги, потолок по цене — витрина сразу показывает, сколько складов подходит. Прайс у всех разложен по одним строкам, оплата у всех одна: по факту месяца, без депозита.",
+    title: c("Выбираете склад", "You pick a warehouse"),
+    body: c(
+      "Город, схема работы, площадки, услуги, потолок цены — витрина сразу показывает, сколько складов подходит. Прайс у всех по одним строкам, оплата по факту месяца, без депозита.",
+      "City, fulfilment scheme, marketplaces, services, a price ceiling — the listing shows at once how many warehouses fit. Every price list has the same lines, and everyone bills by the month, no deposit.",
+    ),
   },
   {
     n: "02",
-    title: "Склад подтверждает и вы подписываете",
-    body: "Склад отвечает, сможет ли принять товар, и присылает условия под ваш груз. Договор и приложение с прайсом подписываются электронно, прямо из кабинета.",
+    title: c("Склад подтверждает и вы подписываете", "The warehouse confirms, you sign"),
+    body: c(
+      "Склад отвечает, сможет ли принять товар, и присылает условия под ваш груз. Договор и прайс подписываются электронно, из кабинета.",
+      "The warehouse answers whether it can take the goods and sends terms for your cargo. The contract and the price list are signed electronically, from your account.",
+    ),
   },
   {
     n: "03",
-    title: "Отправляете товар, склад принимает",
-    body: "Вы называете дату, склад бронирует окно на приёмку. Считают по строкам: что приехало, что не сошлось с накладной, что ушло в брак. Отчёт приходит сам.",
+    title: c("Отправляете товар, склад принимает", "You ship, the warehouse receives"),
+    body: c(
+      "Вы называете дату, склад бронирует окно приёмки. Считают по строкам: что приехало, что не сошлось с накладной, что в брак. Отчёт приходит сам.",
+      "You name the date, the warehouse books an intake slot. Counting goes line by line: what arrived, what did not match the waybill, what went to defects. The report arrives on its own.",
+    ),
   },
   {
     n: "04",
-    title: "Создаёте заявку на отправку",
-    body: "Партия на маркетплейс или заказ одному покупателю — заявка одна и та же. Склад собирает, маркирует и отгружает, вы видите, на каком шаге сборка.",
+    title: c("Создаёте заявку на отправку", "You create a shipment request"),
+    body: c(
+      "Партия на маркетплейс или заказ одному покупателю — заявка одна. Склад собирает, маркирует и отгружает, вы видите шаг сборки.",
+      "A batch for a marketplace or a single customer order — the request is the same. The warehouse picks, labels and ships, and you see which step picking is on.",
+    ),
   },
   {
     n: "05",
-    title: "Следите за статусом",
-    body: "Остатки, занятое место, начисленная стоимость, статусы приёмки и отправки — из той же WMS, в которой работает кладовщик. Не выгрузка на вчера, а то, что сейчас.",
+    title: c("Следите за статусом", "You watch the status"),
+    body: c(
+      "Остатки, занятое место, начисленная стоимость, статусы приёмки и отправки — из той же WMS, где работает кладовщик. Не выгрузка на вчера, а сейчас.",
+      "Stock, space taken, charges accrued, intake and shipping statuses — from the same WMS the storekeeper works in. Not yesterday’s export, but now.",
+    ),
   },
 ];
+
+const T = {
+  eyebrow: c("Путь товара", "The path of the goods"),
+  title: c(
+    "От «нужен склад» до товара у покупателя",
+    "From “we need a warehouse” to goods at the buyer",
+  ),
+  // Подводка не пересказывает шаги: под ней они и написаны, пятью абзацами.
+  // Раньше стояло ровно то же самое, что в первом экране, — и человек читал
+  // одно предложение дважды за минуту.
+  lead: c(
+    "Пять шагов внутри системы — от фильтра на витрине до отчёта об отгрузке.",
+    "Five steps inside the system — from a filter on the listing to the shipping report.",
+  ),
+};
 
 /**
  * Путь товара. Линия слева заполняется по мере прокрутки — не ради эффекта:
@@ -43,6 +74,7 @@ const STEPS = [
  * вместо трёх.
  */
 export function HowItWorks() {
+  const t = useT();
   const [ref, progress] = useScrollProgress<HTMLDivElement>();
   const listRef = useRef<HTMLOListElement>(null);
   const rail = useRailSpan(listRef);
@@ -52,14 +84,7 @@ export function HowItWorks() {
       <div className="grid-bg pointer-events-none absolute inset-0 opacity-50 [mask-image:radial-gradient(110%_70%_at_50%_0%,#000,transparent_78%)]" />
 
       <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
-        <SectionHead
-          eyebrow="Путь товара"
-          title="От «нужен склад» до товара у покупателя"
-          // Подводка не пересказывает шаги: под ней они и написаны, пятью
-          // абзацами. Раньше стояло ровно то же самое, что в первом экране,
-          // — и человек читал одно предложение дважды за минуту.
-          lead="Пять шагов внутри системы — от фильтра на витрине до отчёта об отгрузке."
-        />
+        <SectionHead eyebrow={t(T.eyebrow)} title={t(T.title)} lead={t(T.lead)} />
 
         {/* Колонка уже секции и по центру: заголовок центрован, и если рельс
             прижать к левому краю страницы, правая половина остаётся пустой. */}
@@ -106,10 +131,10 @@ export function HowItWorks() {
                       active ? "text-foreground" : "text-muted-foreground",
                     )}
                   >
-                    {s.title}
+                    {t(s.title)}
                   </h3>
                   <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-[15px]">
-                    {s.body}
+                    {t(s.body)}
                   </p>
                 </Reveal>
               );

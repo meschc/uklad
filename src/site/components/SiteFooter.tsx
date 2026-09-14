@@ -1,49 +1,94 @@
-import { WAREHOUSES } from "../data/warehouses";
+import { warehousesRepository } from "../data/warehousesRepository";
 import { CITIES } from "../data/cities";
 import { LEGAL_DOCS } from "../data/legal";
 import { ORG } from "../data/org";
+import { BRAND } from "../data/brand";
 import { Logo } from "./Logo";
-import { go, goAnchor, goMarket } from "../lib/route";
-import { plural } from "../lib/plural";
+import { anchorHref, href } from "../lib/route";
+import { withBase } from "../lib/basePath";
 import { openCookieSettings } from "../lib/cookieConsent";
+import { c, useT, type Copy } from "../lib/copy";
 
 interface Item {
-  label: string;
-  /** Внешний адрес или якорь лендинга. */
-  href?: string;
-  /** Переход внутри витрины. */
+  label: Copy;
+  /** Страница витрины: `/pricing`. */
+  to?: string;
+  /** Секция лендинга. */
+  anchor?: string;
+  /** Готовый адрес — для того, что лежит вне витрины. */
+  url?: string;
+  /** Действие вместо перехода. Единственное: настройки cookie. */
   action?: () => void;
+  /**
+   * Ссылка остаётся русской на английской версии. Без пометки браузер прочитает
+   * «Оферта» вслух по-английски, а поисковик посчитает страницу двуязычной.
+   */
+  ru?: boolean;
 }
 
-const COLUMNS: { title: string; items: Item[] }[] = [
+const COLUMNS: { title: Copy; items: Item[] }[] = [
   {
-    title: "Складу",
+    title: c("Складу", "For warehouses"),
     items: [
-      { label: "Уклад для складов", action: () => goAnchor("operators") },
-      { label: "Демо WMS", href: `${import.meta.env.BASE_URL}app/` },
-      { label: "Тарифы", action: () => go("/pricing") },
-      { label: "Контакты", action: () => go("/contacts") },
+      { label: c("Уклад для складов", "Uklad for warehouses"), to: "/warehouses" },
+      { label: c("Демо WMS", "WMS demo"), url: withBase("app/") },
+      { label: c("Тарифы", "Pricing"), to: "/pricing" },
+      { label: c("Контакты", "Contacts"), to: "/contacts" },
     ],
   },
   {
-    title: "Селлеру",
+    title: c("Селлеру", "For sellers"),
     items: [
-      { label: "Как это работает", action: () => go("/sellers") },
-      { label: "Подобрать склад", action: () => goMarket() },
-      { label: "Вопросы", action: () => goAnchor("faq") },
+      { label: c("Как это работает", "How it works"), to: "/sellers" },
+      { label: c("Подобрать склад", "Find a warehouse"), to: "/market" },
+      { label: c("Вопросы", "Questions"), anchor: "faq" },
     ],
   },
   {
-    title: "Правовая информация",
+    title: c("Правовая информация", "Legal"),
     items: [
+      // Названия документов не переводятся вместе с витриной: это русские
+      // правовые документы, и ссылка обязана называться так же, как то, что
+      // по ней откроется.
       ...LEGAL_DOCS.map((doc) => ({
-        label: doc.short,
-        action: () => go(`/legal/${doc.slug}`),
+        label: c(doc.short, doc.short),
+        to: `/legal/${doc.slug}`,
+        ru: true,
       })),
-      { label: "Настройки cookie", action: openCookieSettings },
+      { label: c("Настройки cookie", "Cookie settings"), action: openCookieSettings },
     ],
   },
 ];
+
+/**
+ * Адрес пункта подвала. Подвал — карта сайта для робота: именно отсюда он
+ * узнаёт про семь правовых документов и про демо, на которые больше ниоткуда
+ * не ссылаются. Поэтому всё, что ведёт на страницу, — ссылка.
+ */
+function itemHref(item: Item): string | undefined {
+  if (item.url) return item.url;
+  if (item.anchor) return anchorHref(item.anchor);
+  return item.to ? href(item.to) : undefined;
+}
+
+const T = {
+  lead: c(
+    "Маркетплейс фулфилмент-складов и WMS, на которой они работают. {n} {warehouses} в {c} {cities}.",
+    "A marketplace of fulfilment warehouses and the WMS they run on. {n} {warehouses} in {c} {cities}.",
+  ),
+  demo: c(
+    "Склады, цены и остатки на витрине — демонстрационные",
+    "Warehouses, prices and stock here are demo data",
+  ),
+  fake: c(
+    ", реквизиты в документах учебные",
+    ", and the details in the documents are placeholders",
+  ),
+  logos: c(
+    "Логотипы площадок принадлежат правообладателям.",
+    "Marketplace logos belong to their owners.",
+  ),
+};
 
 /**
  * Подвал.
@@ -63,42 +108,51 @@ const COLUMNS: { title: string; items: Item[] }[] = [
  * внимание с действием, ради которого страница написана.
  */
 export function SiteFooter() {
+  const t = useT();
+  const { total } = warehousesRepository.stats();
+
   return (
     <footer className="border-t border-border bg-muted/30">
       <div className="mx-auto grid max-w-6xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-[1.4fr_1fr_1fr_1.1fr]">
         <div>
           <Logo />
           <p className="mt-3 max-w-xs text-sm leading-relaxed text-muted-foreground">
-            Маркетплейс фулфилмент-складов и WMS, на которой они работают.
-            {" "}
-            {WAREHOUSES.length}{" "}
-            {plural(WAREHOUSES.length, "склад", "склада", "складов")} в{" "}
-            {CITIES.length}{" "}
-            {plural(CITIES.length, "городе", "городах", "городах")}.
+            {t(T.lead, {
+              n: total,
+              warehouses: t.plural(
+                total,
+                ["склад", "склада", "складов"],
+                ["warehouse", "warehouses"],
+              ),
+              c: CITIES.length,
+              cities: t.plural(CITIES.length, ["городе", "городах", "городах"], ["city", "cities"]),
+            })}
           </p>
         </div>
 
         {COLUMNS.map((col) => (
-          <nav key={col.title} className="flex flex-col gap-2.5">
+          <nav key={col.title.ru} className="flex flex-col gap-2.5">
             <h3 className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-              {col.title}
+              {t(col.title)}
             </h3>
             {col.items.map((item) =>
               item.action ? (
                 <button
-                  key={item.label}
+                  key={item.label.ru}
+                  lang={item.ru ? "ru" : undefined}
                   onClick={item.action}
                   className="text-left text-sm text-foreground/80 transition-colors hover:text-primary"
                 >
-                  {item.label}
+                  {t(item.label)}
                 </button>
               ) : (
                 <a
-                  key={item.label}
-                  href={item.href}
+                  key={item.label.ru}
+                  lang={item.ru ? "ru" : undefined}
+                  href={itemHref(item)}
                   className="text-sm text-foreground/80 transition-colors hover:text-primary"
                 >
-                  {item.label}
+                  {t(item.label)}
                 </a>
               ),
             )}
@@ -108,20 +162,24 @@ export function SiteFooter() {
 
       <div className="border-t border-border">
         <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
-          <p className="text-xs leading-relaxed text-muted-foreground">
-            {ORG.legalName} · ИНН {ORG.inn} · ОГРН {ORG.ogrn} · {ORG.address} ·{" "}
+          {/* Реквизиты не переводятся: имя предпринимателя, адрес и номера в
+              реестрах имеют силу ровно в том виде, в каком записаны в ЕГРИП —
+              см. `data/org.ts`. Отсюда и пометка языка. */}
+          <p lang="ru" className="text-xs leading-relaxed text-muted-foreground">
+            {ORG.legalName} · ИНН {ORG.inn} · ОГРНИП {ORG.ogrnip} · {ORG.address} ·{" "}
             <a href={`mailto:${ORG.email}`} className="hover:text-primary">
               {ORG.email}
             </a>
           </p>
           <div className="mt-2 flex flex-col gap-1.5 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-            <p>© {new Date().getFullYear()} Уклад</p>
+            <p>
+              © {new Date().getFullYear()} {t(BRAND)}
+            </p>
             {/* Про реквизиты — только пока они заглушки: флаг `ORG.filled`
                 поднимут вместе с настоящими, и оговорка снимется сама. */}
             <p>
-              Склады, цены и остатки на витрине — демонстрационные
-              {ORG.filled ? "" : ", реквизиты в документах учебные"}. Логотипы
-              площадок принадлежат их правообладателям.
+              {t(T.demo)}
+              {ORG.filled ? "" : t(T.fake)}. {t(T.logos)}
             </p>
           </div>
         </div>

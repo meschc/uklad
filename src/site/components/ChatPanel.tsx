@@ -1,6 +1,24 @@
 import { useState } from "react";
-import { Send } from "lucide-react";
+import { FlaskConical, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { c, useT } from "../lib/copy";
+
+const T = {
+  title: c("Спросить склад", "Ask the warehouse"),
+  subject: c("тема", "subject"),
+  sent: c("так это увидит склад", "this is what the warehouse sees"),
+  answers: c("обычно отвечает за {h} ч", "usually answers within {h} h"),
+  demo: c(
+    "Демонстрация. Отсюда сообщение не уходит: переписка со складом идёт в кабинете, после входа. Спросить прямо сейчас можно заявкой.",
+    "A demo. Nothing is sent from here: you talk to the warehouse inside the cabinet, after signing in. To ask right now, use the request form.",
+  ),
+  placeholder: c(
+    "Вопрос по позиции, статусу или условиям",
+    "A question about an item, a status or the terms",
+  ),
+  aria: c("Сообщение складу {to}, тема: {subject}", "Message to {to}, subject: {subject}"),
+  send: c("Отправить", "Send"),
+};
 
 export interface ChatPanelProps {
   /** Кому пишем — название склада. */
@@ -26,18 +44,23 @@ export interface ChatPanelProps {
  * «здравствуйте, а по какому товару вы спрашиваете». Тема подставляется сама,
  * потому что страница знает, о чём она.
  *
- * Ответ склада сюда не подставляется. Панель показывает ровно то, что
- * произошло: сообщение ушло, и известно, за сколько склад обычно отвечает.
- * Придуманная реплика «Здравствуйте! Уточним и вернёмся» выглядела бы
- * убедительнее и была бы враньём — на том конце живой кладовщик, а не бот.
+ * Ответ склада сюда не подставляется. Придуманная реплика «Здравствуйте!
+ * Уточним и вернёмся» выглядела бы убедительнее и была бы враньём — на том
+ * конце живой кладовщик, а не бот.
+ *
+ * И сообщение отсюда никуда не уходит — об этом сказано в самой панели, до
+ * поля ввода. Переписка со складом живёт в кабинете и требует входа: канала
+ * «написать складу с сайта анонимно» нет и не планируется, потому что складу
+ * нечего ответить тому, о ком он ничего не знает. Кому написать прямо сейчас —
+ * заявка (`lib/leads.ts`), у неё есть и поля, и согласие, и приёмник.
+ *
+ * Тема (`subject`) — это и есть контекст с витрины: страница знает, о чём она,
+ * и подставляет его сама. Когда чат заработает по-настоящему, тема становится
+ * первой строкой переписки — менять здесь придётся отправку, а не то, что
+ * панель знает о разговоре.
  */
-export function ChatPanel({
-  to,
-  subject,
-  responseHours,
-  presets = [],
-  className,
-}: ChatPanelProps) {
+export function ChatPanel({ to, subject, responseHours, presets = [], className }: ChatPanelProps) {
+  const t = useT();
   const [text, setText] = useState("");
   const [sent, setSent] = useState<string[]>([]);
 
@@ -51,11 +74,21 @@ export function ChatPanel({
   return (
     <div className={cn("r-window border border-border bg-card", className)}>
       <div className="border-b border-border px-4 py-3">
-        <p className="text-sm font-medium">Спросить склад</p>
+        <p className="text-sm font-medium">{t(T.title)}</p>
         <p className="mt-0.5 text-[11px] text-muted-foreground">
-          {to} · тема: {subject}
+          {to} · {t(T.subject)}: {subject}
         </p>
       </div>
+
+      {/* Пометка стоит до поля ввода, а не под ним: сказать «это макет» после
+          того, как человек написал вопрос и нажал «отправить», — то же самое,
+          что не сказать вовсе. На карточке склада панель стоит прямо под
+          настоящей формой заявки, и без этой строки две одинаковые с виду
+          формы означали бы разное, ничем это не показывая. */}
+      <p className="flex items-start gap-2 border-b border-border bg-muted/40 px-4 py-2.5 text-[11px] leading-relaxed text-muted-foreground">
+        <FlaskConical className="mt-px size-3.5 shrink-0" />
+        <span>{t(T.demo)}</span>
+      </p>
 
       <div className="space-y-2 p-4">
         {sent.map((message, i) => (
@@ -64,8 +97,8 @@ export function ChatPanel({
               {message}
             </p>
             <span className="text-[10px] text-muted-foreground">
-              отправлено
-              {responseHours ? ` · склад обычно отвечает за ${responseHours} ч` : ""}
+              {t(T.sent)}
+              {responseHours ? ` · ${t(T.answers, { h: responseHours })}` : ""}
             </span>
           </div>
         ))}
@@ -98,15 +131,15 @@ export function ChatPanel({
               }
             }}
             rows={2}
-            placeholder="Вопрос по позиции, статусу или условиям"
-            aria-label={`Сообщение складу ${to}, тема: ${subject}`}
+            placeholder={t(T.placeholder)}
+            aria-label={t(T.aria, { to, subject })}
             className="r-inset min-h-[52px] flex-1 resize-none border border-input bg-background px-3 py-2 text-[13px] outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
           />
           <button
             type="button"
             onClick={send}
             disabled={!text.trim()}
-            aria-label="Отправить"
+            aria-label={t(T.send)}
             className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors enabled:hover:bg-primary/90 disabled:opacity-40"
           >
             <Send className="size-4" />

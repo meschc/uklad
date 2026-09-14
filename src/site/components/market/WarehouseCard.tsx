@@ -1,14 +1,47 @@
-import { BadgeCheck, Check, MapPin, Scale, Star } from "lucide-react";
+import { AlertTriangle, BadgeCheck, Check, Clock, MapPin, Scale, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BrandMark } from "../BrandMark";
 import { WarehouseCover } from "./WarehouseCover";
 import { MARKETPLACE_BY_ID } from "../../data/marketplaces";
 import { money, type Warehouse } from "../../data/warehouses";
 import { COMPARE_LIMIT } from "../../lib/compare";
+import { PAGE_NOW, shortDate } from "../../lib/date";
 import { estimateMonth, fitsVolume, isVolumeSet, type SellerVolume } from "../../lib/estimate";
+import { freshness } from "../../lib/freshness";
 import { warehouseHref } from "../../lib/route";
+import { c, useT } from "../../lib/copy";
 
 const MAX_BRANDS = 5;
+
+const T = {
+  verified: c(
+    "Проверен Укладом: регистрация компании и право на помещение",
+    "Verified by Uklad: company registration and right to the premises",
+  ),
+  reviews: c("{n} {word}", "{n} {word}"),
+  noReviews: c("Отзывов пока нет", "No reviews yet"),
+  complaint: c("Открытая жалоба", "Open complaint"),
+  complaints: c("Открытых жалоб: {n}", "Open complaints: {n}"),
+  storage: c("Хранение", "Storage"),
+  storageUnit: c("₽ / место в сутки", "₽ / slot a day"),
+  receiving: c("Приёмка", "Intake"),
+  receivingUnit: c("₽ / короб", "₽ / box"),
+  picking: c("Сборка", "Picking"),
+  pickingUnit: c("₽ / заказ", "₽ / order"),
+  free: c("свободно {n}", "{n} free"),
+  stale: c("Цены не подтверждались с {date}", "Rates unconfirmed since {date}"),
+  uncompare: c("Убрать из сравнения: {name}", "Remove from comparison: {name}"),
+  compare: c("Сравнить: {name}", "Compare: {name}"),
+  compareLimit: c(
+    "Сравнить можно {n} склада разом",
+    "Up to {n} warehouses can be compared at once",
+  ),
+  inCompare: c("В сравнении", "Comparing"),
+  compareShort: c("Сравнить", "Compare"),
+  tooBig: c("Не возьмёт весь объём: свободно {n} мест", "Cannot take it all: {n} slots free"),
+  tooSmall: c("Берёт от {n} мест хранения", "Takes from {n} storage slots"),
+  perMonth: c("в месяц под ваш объём", "a month for your volume"),
+};
 
 /**
  * Карточка склада в списке.
@@ -53,6 +86,8 @@ export function WarehouseCard({
   /** Без обработчика отметки кнопки сравнения на карточке нет вовсе. */
   onCompare?: (id: string) => void;
 }) {
+  const t = useT();
+
   return (
     // Обёртка нужна ровно затем, чтобы кнопка сравнения не оказалась внутри
     // ссылки: кнопка внутри `a` — недопустимая разметка, и браузеры расходятся
@@ -61,7 +96,7 @@ export function WarehouseCard({
     <div className="relative h-full min-w-0">
       {onCompare && (
         <CompareToggle
-          name={w.name}
+          name={t(w.name)}
           on={compared}
           disabled={!compared && compareFull}
           onToggle={() => onCompare(w.id)}
@@ -75,9 +110,7 @@ export function WarehouseCard({
           // и колонка раздувалась под неразрывное название с адресом, вылезая
           // за экран телефона вместо того, чтобы обрезать текст многоточием.
           "r-window group flex h-full min-w-0 flex-col overflow-hidden border bg-card transition-colors",
-          highlighted || compared
-            ? "border-primary"
-            : "border-border hover:border-primary/40",
+          highlighted || compared ? "border-primary" : "border-border hover:border-primary/40",
         )}
       >
         <CardBody warehouse={w} volume={volume} />
@@ -88,6 +121,13 @@ export function WarehouseCard({
 
 /** Содержимое карточки. Отдельно от ссылки — чтобы ссылка читалась целиком. */
 function CardBody({ warehouse: w, volume }: { warehouse: Warehouse; volume?: SellerVolume }) {
+  const t = useT();
+  // Строка про несвежие данные — единственное состояние свежести, которое видно
+  // в списке. Подписать все три значило бы поставить на каждую карточку по
+  // строчке, которая ни на что не влияет: «подтверждено в июле» читателю
+  // ничего не говорит, пока он не наткнётся на «не подтверждалось с марта».
+  const stale = freshness(w.confirmedAt, PAGE_NOW, w.uklad) === "stale";
+
   return (
     <>
       <WarehouseCover warehouse={w} />
@@ -102,46 +142,57 @@ function CardBody({ warehouse: w, volume }: { warehouse: Warehouse; volume?: Sel
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
               <h3 className="truncate font-display text-base font-medium tracking-tight">
-                {w.name}
+                {t(w.name)}
               </h3>
               {w.verified && (
-                <BadgeCheck
-                  className="size-4 shrink-0 text-primary"
-                  // Не «документы проверены» вообще: галочку ставит Уклад и
-                  // только по своей проверке — кто проверял, должно быть слышно
-                  // и тому, кто читает страницу голосом.
-                  aria-label="Проверен Укладом"
-                />
+                // Не «документы проверены» вообще: галочку ставит Уклад и
+                // только по своей проверке — кто проверял и что именно, должно
+                // быть слышно и тому, кто читает страницу голосом. `title`
+                // висит на обёртке (иконка Lucide его не принимает) и делает
+                // то же самое для мыши: значок без подписи каждый достраивает
+                // сам, и достраивает обычно в сторону «ручаемся за качество».
+                <span className="flex shrink-0" title={t(T.verified)}>
+                  <BadgeCheck className="size-4 text-primary" aria-label={t(T.verified)} />
+                </span>
               )}
             </div>
             <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
               <MapPin className="size-3 shrink-0" />
               <span className="truncate">
-                {w.city}, {w.address}
+                {t(w.cityTitle)}, {t(w.address)}
               </span>
             </p>
           </div>
-          <div className="shrink-0 text-right">
-            <span className="flex items-center gap-1 text-sm font-semibold">
-              <Star className="size-3.5 fill-amber-400 text-amber-400" />
-              {w.rating.toFixed(1)}
-            </span>
-            <span className="text-[11px] text-muted-foreground">{w.reviews} отзывов</span>
-          </div>
+          <ReputationMark warehouse={w} />
         </header>
 
         {/* Три цены, а не четыре: маркировка нужна не всем и живёт на странице
             склада вместе с остальным прайсом. Здесь — то, что платят все. */}
         <dl className="r-inset mt-5 grid grid-cols-3 gap-px overflow-hidden bg-border">
-          <PriceCell label="Хранение" value={w.price.storage} unit="₽ / место в сутки" accent />
-          <PriceCell label="Приёмка" value={w.price.receiving} unit="₽ / короб" />
-          <PriceCell label="Сборка" value={w.price.picking} unit="₽ / заказ" />
+          <PriceCell label={t(T.storage)} value={w.price.storage} unit={t(T.storageUnit)} accent />
+          <PriceCell label={t(T.receiving)} value={w.price.receiving} unit={t(T.receivingUnit)} />
+          <PriceCell label={t(T.picking)} value={w.price.picking} unit={t(T.pickingUnit)} />
         </dl>
+
+        {stale && (
+          <p className="mt-2.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            <Clock className="size-3 shrink-0" />
+            <span className="truncate">
+              {t(T.stale, { date: shortDate(t.lang, w.confirmedAt) })}
+            </span>
+          </p>
+        )}
 
         {volume && isVolumeSet(volume) && <EstimateRow warehouse={w} volume={volume} />}
 
-        <footer className="mt-auto flex items-center gap-3 pt-5">
-          <span className="flex min-w-0 flex-wrap items-center gap-1.5">
+        {/* Переносится подвал целиком, а не знаки площадок внутри него. Раньше
+            было наоборот: внутренний ряд заворачивался на вторую строку, а
+            «свободно» оставалось на первой — и упиралось в последний значок,
+            потому что между ними оставался единственный зазор в 12 пикселей.
+            Теперь ряд знаков неразрывный: когда строки на всё не хватает, вниз
+            уезжает счётчик мест, а не половина логотипов. */}
+        <footer className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-2 pt-5">
+          <span className="flex shrink-0 items-center gap-1.5">
             {w.schemes.map((s) => (
               <span
                 key={s}
@@ -161,11 +212,57 @@ function CardBody({ warehouse: w, volume }: { warehouse: Warehouse; volume?: Sel
             )}
           </span>
           <span className="ml-auto shrink-0 whitespace-nowrap text-[11px] tabular-nums text-muted-foreground">
-            свободно {money(w.cellsFree)}
+            {t(T.free, { n: money(w.cellsFree) })}
           </span>
         </footer>
       </div>
     </>
+  );
+}
+
+/**
+ * Правый угол шапки: оценка, отзывы и открытая жалоба.
+ *
+ * Звезда рисуется только тогда, когда за ней стоят отзывы. Пустая звезда с
+ * нулём — самая частая ложь в каталогах: склад, о котором ещё никто не писал,
+ * выглядит в ней хуже склада с тремя тройками, хотя про него попросту ничего
+ * не известно. Поэтому у новичка здесь не оценка, а фраза «отзывов пока нет» —
+ * и это честное состояние рынка, который только начинается.
+ *
+ * Открытая жалоба висит на карточке, пока склад не ответил публично, — в этом
+ * весь смысл: отвечать невыгодно молчать, а не жаловаться. Число жалоб
+ * показывается со второй: «жалоб: 3» на фоне одной строки читается как счёт,
+ * а одна жалоба — как случай.
+ */
+function ReputationMark({ warehouse: w }: { warehouse: Warehouse }) {
+  const t = useT();
+  const { rating, reviews, openComplaints } = w.reputation;
+
+  return (
+    <div className="shrink-0 text-right">
+      {rating === null ? (
+        <span className="text-[11px] text-muted-foreground">{t(T.noReviews)}</span>
+      ) : (
+        <>
+          <span className="flex items-center justify-end gap-1 text-sm font-semibold">
+            <Star className="size-3.5 fill-amber-400 text-amber-400" />
+            {rating.toFixed(1)}
+          </span>
+          <span className="text-[11px] text-muted-foreground">
+            {t(T.reviews, {
+              n: reviews,
+              word: t.plural(reviews, ["отзыв", "отзыва", "отзывов"], ["review", "reviews"]),
+            })}
+          </span>
+        </>
+      )}
+      {openComplaints > 0 && (
+        <span className="mt-1 flex items-center justify-end gap-1 text-[11px] text-amber-600 dark:text-amber-500">
+          <AlertTriangle className="size-3 shrink-0" />
+          {openComplaints > 1 ? t(T.complaints, { n: openComplaints }) : t(T.complaint)}
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -190,14 +287,16 @@ function CompareToggle({
   disabled: boolean;
   onToggle: () => void;
 }) {
+  const t = useT();
+
   return (
     <button
       type="button"
       onClick={onToggle}
       disabled={disabled}
       aria-pressed={on}
-      aria-label={on ? `Убрать из сравнения: ${name}` : `Сравнить: ${name}`}
-      title={disabled ? `Сравнить можно ${COMPARE_LIMIT} склада разом` : undefined}
+      aria-label={t(on ? T.uncompare : T.compare, { name })}
+      title={disabled ? t(T.compareLimit, { n: COMPARE_LIMIT }) : undefined}
       className={cn(
         "absolute right-3 top-3 z-10 inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-[11px] font-medium backdrop-blur transition-colors",
         on
@@ -206,7 +305,7 @@ function CompareToggle({
       )}
     >
       {on ? <Check className="size-3" strokeWidth={3} /> : <Scale className="size-3" />}
-      {on ? "В сравнении" : "Сравнить"}
+      {t(on ? T.inCompare : T.compareShort)}
     </button>
   );
 }
@@ -220,13 +319,13 @@ function CompareToggle({
  * после заявки.
  */
 function EstimateRow({ warehouse: w, volume }: { warehouse: Warehouse; volume: SellerVolume }) {
+  const t = useT();
+
   if (!fitsVolume(w, volume)) {
     const tooBig = volume.places > w.cellsFree;
     return (
       <p className="mt-3 text-[12px] leading-relaxed text-muted-foreground">
-        {tooBig
-          ? `Не возьмёт весь объём: свободно ${money(w.cellsFree)} мест`
-          : `Берёт от ${money(w.minPlaces)} мест хранения`}
+        {tooBig ? t(T.tooBig, { n: money(w.cellsFree) }) : t(T.tooSmall, { n: money(w.minPlaces) })}
       </p>
     );
   }
@@ -236,7 +335,7 @@ function EstimateRow({ warehouse: w, volume }: { warehouse: Warehouse; volume: S
       <span className="font-display text-lg font-medium tabular-nums tracking-tight">
         ≈ {money(estimateMonth(w, volume).total)} ₽
       </span>
-      <span className="text-[11px] text-muted-foreground">в месяц под ваш объём</span>
+      <span className="text-[11px] text-muted-foreground">{t(T.perMonth)}</span>
     </p>
   );
 }

@@ -1,4 +1,6 @@
 import { cn } from "@/lib/utils";
+import { useT } from "../lib/copy";
+import { BRAND } from "../data/brand";
 
 /**
  * Знак «Уклада»: стеллаж в три полки и коробка, которая лежит на средней.
@@ -14,12 +16,7 @@ import { cn } from "@/lib/utils";
  */
 export function LogoMark({ className }: { className?: string }) {
   return (
-    <svg
-      viewBox="0 0 32 32"
-      className={cn("size-8", className)}
-      aria-hidden
-      focusable="false"
-    >
+    <svg viewBox="0 0 32 32" className={cn("size-8", className)} aria-hidden focusable="false">
       <defs>
         {/* Градиент знака взят из тех же двух токенов, что и весь акцент
             страницы: светлый край — `--brand`, глубокий — `--primary`. Раньше
@@ -49,6 +46,8 @@ export function LogoMark({ className }: { className?: string }) {
  * остальной страницей.
  */
 export function Logo({ className }: { className?: string }) {
+  const t = useT();
+
   return (
     <span className={cn("inline-flex items-center gap-2", className)}>
       <LogoMark />
@@ -58,7 +57,7 @@ export function Logo({ className }: { className?: string }) {
           перестаёт быть логотипом. 600 — минимум, на котором слово всё ещё
           держится как знак. */}
       <span className="font-display text-[19px] font-semibold leading-none tracking-tight text-foreground">
-        Уклад
+        {t(BRAND)}
       </span>
     </span>
   );

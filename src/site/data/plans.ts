@@ -22,21 +22,32 @@
  * на заявках, у витрины нет причины подкручивать выдачу.
  */
 
+import { c, type Copy } from "../lib/copy";
+
 /** Единица, за которую берётся цена дополнения. */
 export type ExtraUnit = "warehouse" | "month";
 
 export interface SellerExtra {
   id: string;
-  title: string;
-  /** Цена в рублях. */
+  title: Copy;
+  /** Цена в рублях. Валюта одна: витрина работает по РФ. */
   price: number;
   unit: ExtraUnit;
   /** На какой срок открывается разовый доступ. Для помесячных — не нужен. */
-  access?: string;
+  access?: Copy;
   /** Что именно открывается — фактом, а не обещанием. */
-  what: string;
+  what: Copy;
   /** Зачем это селлеру: какой вопрос закрывает. */
-  why: string;
+  why: Copy;
+  /**
+   * Что человек увидит на экране сразу после оплаты.
+   *
+   * Отдельное поле, а не приписка к `what`: `what` описывает функцию, а перед
+   * оплатой спрашивают другое — «я нажму кнопку и что, собственно, увижу».
+   * Пока на этот вопрос отвечает воображение, оно отвечает либо слишком щедро,
+   * либо «наверное, ничего», и оба ответа плохи.
+   */
+  firstScreen: Copy;
   /** Главное дополнение — то, ради которого страницу и открывают. */
   featured?: boolean;
 }
@@ -48,12 +59,27 @@ export interface SellerExtra {
  * читаются как «сервис платный», хотя платного в нём — пять пунктов из
  * двадцати.
  */
-export const SELLER_FREE: string[] = [
-  "Каталог складов целиком: фильтры по городу, площадкам, услугам и режиму хранения",
-  "Карта со всеми складами и подбором по расстоянию",
-  "Карточка склада: цены, услуги, схемы работы (FBO, FBS, DBS), температура, рейтинг",
-  "Заявки складам — сколько угодно, без комиссии и без платы за отклик",
-  "Кабинет: остатки, статусы приёмки и отгрузки, чат со складом",
+export const SELLER_FREE: Copy[] = [
+  c(
+    "Каталог целиком: фильтры по городу, площадкам, услугам и режиму хранения",
+    "The whole catalogue: filters by city, marketplace, service and storage mode",
+  ),
+  c(
+    "Карта со всеми складами и подбором по расстоянию",
+    "A map of every warehouse, with search by distance",
+  ),
+  c(
+    "Карточка склада: цены, услуги, схемы (FBO, FBS, DBS), температура, рейтинг",
+    "Warehouse card: prices, services, models (FBO, FBS, DBS), temperature, rating",
+  ),
+  c(
+    "Заявки складам — без комиссии и платы за отклик",
+    "Requests to warehouses — no commission, no pay-per-reply",
+  ),
+  c(
+    "Кабинет: остатки, статусы приёмки и отгрузки, чат со складом",
+    "An account: stock, intake and shipping statuses, chat with the warehouse",
+  ),
 ];
 
 /**
@@ -66,63 +92,119 @@ export const SELLER_FREE: string[] = [
 export const SELLER_EXTRAS: SellerExtra[] = [
   {
     id: "plan",
-    title: "План склада",
+    title: c("План склада", "Floor plan"),
     price: 490,
     unit: "warehouse",
-    access: "доступ 30 дней",
+    access: c("доступ 30 дней", "30 days of access"),
     featured: true,
-    what: "План этажа так, как его видит сам склад: стеллажи, проходы, ярусы, занятые и свободные ячейки.",
-    why: "Понять, куда встанет ваш товар и сколько на складе места на самом деле, — до того, как отправлять первую коробку.",
+    what: c(
+      "План этажа глазами склада: стеллажи, проходы, ярусы, занятые и свободные ячейки.",
+      "The floor as the warehouse sees it: racks, aisles, tiers, cells taken and free.",
+    ),
+    why: c(
+      "Понять, куда встанет товар и сколько там места на самом деле, — до первой коробки.",
+      "See where your goods will stand and how much room there really is — before the first box.",
+    ),
+    firstScreen: c(
+      "Сразу после оплаты открывается план этажа этого склада: стеллажи и ярусы, свободные ячейки подсвечены. Оттуда же уходит заявка складу.",
+      "Right after payment you land on that warehouse's floor plan: racks and tiers, with free cells highlighted. A request to the warehouse goes from the same screen.",
+    ),
   },
   {
     id: "stock",
-    title: "Свои остатки по ячейкам",
+    title: c("Свои остатки по ячейкам", "Your stock by cell"),
     price: 890,
     unit: "month",
-    what: "Ваши позиции на плане: в какой ячейке что лежит, что приняли, что собрали, что уехало.",
-    why: "Заменяет переписку «посмотрите, пожалуйста, остатки». Работает, когда товар уже на складе.",
+    what: c(
+      "Ваши позиции на плане: где что лежит, что приняли, что собрали, что уехало.",
+      "Your items on the plan: what sits where, what came in, was picked and shipped.",
+    ),
+    why: c(
+      "Заменяет переписку «посмотрите остатки». Работает, когда товар уже на складе.",
+      "Replaces the “could you check my stock” messages. Works once the goods are in.",
+    ),
+    firstScreen: c(
+      "Сразу после оплаты — тот же план, но с вашими позициями в ячейках и историей движений по каждой. Пока товар на склад не приехал, план откроется пустым.",
+      "Right after payment — the same plan, but with your items in the cells and a movement history for each. Until your goods arrive, the plan opens empty.",
+    ),
   },
   {
     id: "calc",
-    title: "Расчёт хранения",
+    title: c("Расчёт хранения", "Storage estimate"),
     price: 290,
     unit: "warehouse",
-    access: "доступ 30 дней",
-    what: "Стоимость месяца по вашим габаритам, объёму и оборачиваемости — по тарифной сетке конкретного склада.",
-    why: "«От 35 ₽ за место» — не цена. Цена получается, когда в неё подставили ваш товар: габарит, упаковку и оборачиваемость.",
+    access: c("доступ 30 дней", "30 days of access"),
+    what: c(
+      "Месяц по вашим габаритам, объёму и оборачиваемости — по сетке конкретного склада.",
+      "A month priced on your dimensions, volume and turnover — on that warehouse's own rates.",
+    ),
+    why: c(
+      "«От 35 ₽ за место» — не цена. Цена выходит, когда подставили ваш габарит и упаковку.",
+      "“From 35 ₽ a slot” is not a price. A price appears once your goods go into it.",
+    ),
+    firstScreen: c(
+      "Сразу после оплаты — форма с уже подставленной сеткой этого склада: вводите габарит, объём и оборачиваемость и получаете месяц в рублях, разложенный по строкам прайса.",
+      "Right after payment — a form already loaded with that warehouse's rate card: enter dimensions, volume and turnover and get a month in roubles, broken down line by line.",
+    ),
   },
   {
     id: "compare",
-    title: "Сравнение складов",
+    title: c("Сравнение складов", "Side-by-side comparison"),
     price: 590,
     unit: "month",
-    what: "До десяти складов в одной таблице: цены, услуги, свободные места, сроки приёмки. Выгрузка в XLSX.",
-    why: "Чтобы выбор был на одном экране, а не в пяти вкладках и заметке в телефоне.",
+    what: c(
+      "До десяти складов в одной таблице: цены, услуги, свободные места, сроки приёмки. Выгрузка в XLSX.",
+      "Up to ten warehouses in one table: prices, services, free slots, intake times. XLSX export.",
+    ),
+    why: c(
+      "Чтобы выбор был на одном экране, а не в пяти вкладках и заметке в телефоне.",
+      "So the choice fits one screen instead of five tabs and a note on your phone.",
+    ),
+    firstScreen: c(
+      "Сразу после оплаты — таблица со складами, которые вы отметили в каталоге; остальные добавляются в неё прямо из выдачи. Кнопка выгрузки в XLSX — над таблицей.",
+      "Right after payment — a table of the warehouses you marked in the catalogue; the rest are added straight from the results. The XLSX export button sits above the table.",
+    ),
   },
   {
     id: "check",
-    title: "Проверка оператора",
+    title: c("Проверка оператора", "Operator check"),
     price: 390,
     unit: "warehouse",
-    access: "доступ 30 дней",
-    what: "Реквизиты из ЕГРЮЛ, срок работы, статус в реестрах, история заявок и отказов на витрине.",
-    why: "Товар уезжает к юрлицу, которое вы видели только карточкой. Это способ посмотреть на него до отгрузки.",
+    access: c("доступ 30 дней", "30 days of access"),
+    what: c(
+      "Реквизиты из госреестров, срок работы, история заявок и отказов на витрине.",
+      "State-register details, years in business, request and refusal history here.",
+    ),
+    why: c(
+      "Товар уезжает к компании, которую вы видели только карточкой. Это способ посмотреть заранее.",
+      "Your goods go to a company you have only seen as a card. This is a look at it first.",
+    ),
+    firstScreen: c(
+      "Сразу после оплаты — отчёт по компании склада на дату проверки: реквизиты из госреестров, срок работы, сколько заявок на Укладе принято и сколько отклонено. Отчёт сохраняется в PDF.",
+      "Right after payment — a report on the warehouse's company as of the check date: state-register details, years in business, how many requests on Uklad were accepted and how many declined. The report saves to PDF.",
+    ),
   },
 ];
 
 export interface Plan {
   id: string;
-  title: string;
+  title: Copy;
   /** Кому тариф адресован — одной строкой. */
-  who: string;
+  who: Copy;
   /** Рублей в месяц при помесячной оплате. */
   monthly: number;
   /** Что входит. Первый пункт — главное ограничение тарифа. */
-  features: string[];
+  features: Copy[];
+  /**
+   * С чего начинается работа в тарифе — тем же честным фактом, что и у
+   * дополнений. Учётную систему покупают не за список галочек, а за то, что
+   * смена в понедельник выйдет и будет в чём работать.
+   */
+  firstScreen: Copy;
   /** Выделенный тариф в сетке. */
   featured?: boolean;
   /** Подпись на кнопке. */
-  cta: string;
+  cta: Copy;
 }
 
 /** Скидка при оплате за год — 20 %, два месяца в подарок. */
@@ -136,33 +218,71 @@ export const YEARLY_DISCOUNT = 0.2;
 export const PLANS: Plan[] = [
   {
     id: "warehouse",
-    title: "Склад",
-    who: "Одному складу с собственным товаром или парой клиентов",
+    title: c("Склад", "Warehouse"),
+    who: c(
+      "Одному складу с собственным товаром или парой клиентов",
+      "One warehouse with its own goods or a couple of clients",
+    ),
     monthly: 7900,
     featured: true,
-    cta: "Начать 14 дней бесплатно",
+    cta: c("Начать 14 дней бесплатно", "Start 14 days free"),
+    firstScreen: c(
+      "И на пробных двух неделях, и после оплаты первый экран один: мастер склада — назвать склад, разметить стеллажи (можно взять готовую схему) и залить остатки из XLSX. Принимать поставки можно в тот же день; карточка на витрине появляется после проверки данных.",
+      "The first screen is the same on the two-week trial and after payment: the warehouse wizard — name the warehouse, lay out the racks (a ready-made layout will do) and import stock from XLSX. You can take deliveries the same day; the catalogue card appears once the data is verified.",
+    ),
     features: [
-      "1 склад, до 5 000 позиций номенклатуры",
-      "До 5 пользователей с разными ролями",
-      "Печать этикеток и штрихкодов, работа со сканером",
-      "Инвентаризация и журнал движений с историей правок",
-      "Импорт остатков и поставок из XLSX",
-      "Карточка склада на витрине с отметкой «учёт в Укладе»",
+      c("1 склад, до 5 000 позиций номенклатуры", "1 warehouse, up to 5,000 SKUs"),
+      c("До 5 пользователей с разными ролями", "Up to 5 users with separate roles"),
+      c(
+        "Печать этикеток и штрихкодов, работа со сканером",
+        "Label and barcode printing, scanner support",
+      ),
+      c(
+        "Инвентаризация и журнал движений с историей правок",
+        "Stocktakes and a movement log with an edit history",
+      ),
+      c("Импорт остатков и поставок из XLSX", "Stock and delivery import from XLSX"),
+      c(
+        "Карточка склада на витрине с отметкой «учёт в Укладе»",
+        "A catalogue card marked “runs on Uklad”",
+      ),
     ],
   },
   {
     id: "operator",
-    title: "Оператор",
-    who: "Фулфилмент-оператору, который ведёт склад для десятков селлеров",
+    title: c("Оператор", "Operator"),
+    who: c(
+      "Фулфилмент-оператору, который ведёт склад для десятков селлеров",
+      "A fulfilment operator running a warehouse for dozens of sellers",
+    ),
     monthly: 19900,
-    cta: "Обсудить внедрение",
+    cta: c("Обсудить внедрение", "Discuss a rollout"),
+    firstScreen: c(
+      "Тариф включается не кнопкой, а после разговора и договора: к первому входу склады, клиенты и роли уже заведены, а остатки перенесены из вашей выгрузки. Первый экран — рабочий день смены, а не пустая система, которую ещё предстоит наполнить.",
+      "This plan is not switched on by a button but after a conversation and a contract: by your first login the warehouses, clients and roles are already set up and stock has been migrated from your export. The first screen is a working shift, not an empty system waiting to be filled.",
+    ),
     features: [
-      "Неограниченная номенклатура, несколько складов",
-      "До 20 пользователей, права настраиваются по операциям",
-      "Учёт по клиентам: остатки, отгрузки и биллинг раздельно",
-      "Тарификация услуг клиентам и выгрузка актов",
-      "API и вебхуки для интеграции с личным кабинетом клиента",
-      "Приоритетная поддержка, первая реакция за 4 рабочих часа",
+      c("Неограниченная номенклатура, несколько складов", "Unlimited SKUs, several warehouses"),
+      c(
+        "До 20 пользователей, права настраиваются по операциям",
+        "Up to 20 users, permissions set per operation",
+      ),
+      c(
+        "Учёт по клиентам: остатки, отгрузки и биллинг раздельно",
+        "Per-client accounting: stock, shipments and billing kept apart",
+      ),
+      c(
+        "Тарификация услуг клиентам и выгрузка актов",
+        "Client service billing and statement export",
+      ),
+      c(
+        "API и вебхуки для интеграции с личным кабинетом клиента",
+        "API and webhooks to plug into a client's own account",
+      ),
+      c(
+        "Приоритетная поддержка, первая реакция за 4 рабочих часа",
+        "Priority support, first reply within 4 business hours",
+      ),
     ],
   },
 ];
@@ -172,8 +292,18 @@ export function yearlyPrice(plan: Plan): number {
   return Math.round((plan.monthly * 12 * (1 - YEARLY_DISCOUNT)) / 100) * 100;
 }
 
-/** Подпись под ценой дополнения: «за склад, доступ 30 дней» или «в месяц». */
-export function extraUnitLabel(extra: SellerExtra): string {
-  if (extra.unit === "month") return "в месяц";
-  return extra.access ? `за склад · ${extra.access}` : "за склад";
+/**
+ * Подпись под ценой дополнения: «за склад · доступ 30 дней» или «в месяц».
+ *
+ * Возвращает пару языков, а не готовую строку: подпись собирается из двух
+ * кусков, и склеивать их придётся в любом случае — лучше здесь, рядом с
+ * данными, чем в вёрстке, где эта сборка повторится на каждой карточке.
+ */
+export function extraUnitLabel(extra: SellerExtra): Copy {
+  if (extra.unit === "month") return c("в месяц", "a month");
+  if (!extra.access) return c("за склад", "per warehouse");
+  return {
+    ru: `за склад · ${extra.access.ru}`,
+    en: `per warehouse · ${extra.access.en}`,
+  };
 }

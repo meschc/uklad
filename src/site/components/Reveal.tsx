@@ -25,23 +25,23 @@ export function Reveal({
   as?: "div" | "section" | "li" | "article";
 }) {
   const ref = useRef<HTMLElement>(null);
-  const [shown, setShown] = useState(false);
+  // Наблюдателя может не быть: старый браузер, тестовая среда, сборка страниц
+  // в статику. Проверяем это при первом рендере, а не в эффекте, — иначе
+  // собранная страница уезжает в файл с невидимым блоком, и тот, кто скриптов
+  // не выполняет, видит пустоту. Анимация появления не должна решать, увидит
+  // ли человек текст вообще.
+  const [noObserver] = useState(() => typeof IntersectionObserver === "undefined");
+  const [seen, setSeen] = useState(false);
+  const shown = noObserver || seen;
 
   useEffect(() => {
     const el = ref.current;
-    if (!el) return;
-
-    // Наблюдателя может не быть в старом окружении (и в тестовой среде) —
-    // тогда просто показываем блок, а не оставляем страницу пустой.
-    if (typeof IntersectionObserver === "undefined") {
-      setShown(true);
-      return;
-    }
+    if (!el || noObserver) return;
 
     const io = new IntersectionObserver(
       ([entry]) => {
         if (!entry.isIntersecting) return;
-        setShown(true);
+        setSeen(true);
         io.disconnect();
       },
       // Нижняя граница поднята: блок проявляется, когда вошёл в кадр по-
@@ -50,7 +50,7 @@ export function Reveal({
     );
     io.observe(el);
     return () => io.disconnect();
-  }, []);
+  }, [noObserver]);
 
   return (
     <Tag

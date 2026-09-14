@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
-import { go, goMarket } from "../lib/route";
+import { href } from "../lib/route";
+import { c, useT } from "../lib/copy";
 
 /**
  * «Ничего не нашлось» — одним экраном на все случаи витрины.
  *
- * Случаев три, и все они про разное: неизвестный раздел (`#/sklad`), склад,
+ * Случаев три, и все они про разное: неизвестный раздел (`/sklad/`), склад,
  * снятый с витрины, и правовой документ по устаревшей ссылке. Разница между
  * ними — только в тексте: человеку важно знать, ошибся он адресом или объект
  * действительно исчез. Оформление же должно быть одним, иначе сайт на трёх
@@ -18,11 +19,18 @@ interface Props {
   caption?: string;
   title: string;
   children: ReactNode;
-  action?: { label: string; onClick: () => void };
+  /** Куда ведёт первая кнопка, если каталог складов — не туда. */
+  action?: { label: string; to: string };
 }
 
+const T = {
+  browse: c("Смотреть склады", "Browse warehouses"),
+  home: c("На главную", "Home"),
+};
+
 export function NotFoundScreen({ caption, title, children, action }: Props) {
-  const primary = action ?? { label: "Смотреть склады", onClick: goMarket };
+  const t = useT();
+  const primary = action ?? { label: t(T.browse), to: "/market" };
 
   return (
     <div className="mx-auto max-w-2xl px-4 pb-24 pt-32 text-center sm:px-6">
@@ -36,18 +44,18 @@ export function NotFoundScreen({ caption, title, children, action }: Props) {
         {children}
       </p>
       <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-        <button
-          onClick={primary.onClick}
+        <a
+          href={href(primary.to)}
           className="inline-flex h-11 items-center rounded-full border border-border px-6 text-sm font-medium transition-colors hover:bg-muted"
         >
           {primary.label}
-        </button>
-        <button
-          onClick={() => go("/")}
+        </a>
+        <a
+          href={href("/")}
           className="inline-flex h-11 items-center px-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
-          На главную
-        </button>
+          {t(T.home)}
+        </a>
       </div>
     </div>
   );

@@ -1,5 +1,10 @@
 import { CITIES, STREETS, type City } from "./cities";
+import { buildLedger, groupByWarehouse, type Ledger } from "./deals";
 import { MARKETPLACES, SERVICES, type SchemeId, type ServiceId } from "./marketplaces";
+import { c, type Copy } from "../lib/copy";
+import { DAY_MS } from "../lib/date";
+import { buildReputation, NO_REPUTATION, type Reputation } from "../lib/reputation";
+import { int, pick, rng } from "../lib/rng";
 
 /**
  * Витрина складов. Данные сгенерированы, а не собраны: это демоверсия, живого
@@ -25,11 +30,14 @@ export interface WarehousePrice {
 
 export interface Warehouse {
   id: string;
-  name: string;
-  legal: string;
+  name: Copy;
+  legal: Copy;
+  /** Ключ города — русское название из `cities.ts`. По нему идёт фильтр. */
   city: string;
-  region: string;
-  address: string;
+  /** Как город подписан на странице. */
+  cityTitle: Copy;
+  region: Copy;
+  address: Copy;
   lat: number;
   lng: number;
   /** Год начала работы. */
@@ -41,10 +49,25 @@ export interface Warehouse {
   marketplaces: string[];
   services: ServiceId[];
   price: WarehousePrice;
+  /**
+   * Когда склад в последний раз подтверждал тарифы и свободные места.
+   *
+   * У складов на Укладе это делает сама система (`uklad`), у остальных —
+   * человек со стороны склада. Поле обязательное: профиль без даты
+   * подтверждения ничем не отличается от брошенного, а брошенный профиль
+   * подрывает доверие быстрее, чем его отсутствие (см. `lib/freshness`).
+   */
+  confirmedAt: number;
   /** Минимальный объём в местах хранения; 0 — берут любой. */
   minPlaces: number;
-  rating: number;
-  reviews: number;
+  /**
+   * Оценка, отзывы и жалобы — сведённые, а не сгенерированные: считаются из
+   * сделок (`data/deals.ts`, `lib/reputation.ts`). В самой записи склада их
+   * нет и в базе не будет: там это представление поверх таблицы отзывов.
+   * Здесь оно приклеивается один раз при сборке набора — чтобы карточке,
+   * фильтру и сравнению не приходилось ходить за ним по отдельности.
+   */
+  reputation: Reputation;
   /** Среднее время ответа на заявку, часов. */
   responseHours: number;
   /**
@@ -63,20 +86,24 @@ export interface Warehouse {
    * карточка рисует плиту в оттенке `hue` (см. `WarehouseCover`).
    */
   photo?: string;
-  pitch: string;
+  pitch: Copy;
 }
 
-/** Быстрый детерминированный ГПСЧ (mulberry32). */
-function rng(seed: number): () => number {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
+/**
+ * Запись склада до того, как к ней приклеили репутацию.
+ *
+ * Ровно то, чем склад будет в базе: строка со своими полями и без сведённых
+ * чисел по чужим таблицам. Генератору здесь больше и не нужно — отзывы про
+ * склад пишут после того, как склад появился.
+ */
+export type WarehouseRecord = Omit<Warehouse, "reputation">;
+
+/**
+ * Склад, каким его выдаёт генератор: без фотографии и без даты подтверждения
+ * данных. И то и другое раздаётся отдельными проходами по готовому набору —
+ * см. `assignPhotos` и `assignConfirmed`.
+ */
+type RawRecord = Omit<WarehouseRecord, "confirmedAt">;
 
 /** Доля складов, которые Уклад проверил, но к себе на WMS ещё не подключил. */
 const CHECKED_SHARE = 0.34;
@@ -99,63 +126,96 @@ function checks(r: () => number): Pick<Warehouse, "verified" | "uklad"> {
   return { verified: checkedOnly || uklad, uklad };
 }
 
-const NAME_HEAD = [
-  "Куб",
-  "Депо",
-  "Пакгауз",
-  "Ярус",
-  "Паллета",
-  "Оборот",
-  "Короб",
-  "Стеллаж",
-  "Меркурий",
-  "Полка",
-  "Ритм",
-  "Точка",
-  "Вектор",
-  "Кластер",
-  "Причал",
-  "Ангар",
-  "Терминал",
-  "Артель",
-  "Слобода",
-  "Ковчег",
-  "Транзит",
-  "Опора",
-  "Рубеж",
-  "Сортер",
-  "Габарит",
-  "Ладья",
-  "Пирс",
-  "Верста",
+/**
+ * Названия складов на английской витрине транслитерируются: «Ярус Логистик»
+ * остаётся «Yarus Logistics», а не превращается в «Tier Logistics». Компания
+ * называется так, как называется, — переведённое название невозможно найти ни
+ * в реестре, ни в переписке с самим складом.
+ */
+const NAME_HEAD: Copy[] = [
+  c("Куб", "Kub"),
+  c("Депо", "Depo"),
+  c("Пакгауз", "Pakgauz"),
+  c("Ярус", "Yarus"),
+  c("Паллета", "Palleta"),
+  c("Оборот", "Oborot"),
+  c("Короб", "Korob"),
+  c("Стеллаж", "Stellazh"),
+  c("Меркурий", "Merkury"),
+  c("Полка", "Polka"),
+  c("Ритм", "Ritm"),
+  c("Точка", "Tochka"),
+  c("Вектор", "Vektor"),
+  c("Кластер", "Klaster"),
+  c("Причал", "Prichal"),
+  c("Ангар", "Angar"),
+  c("Терминал", "Terminal"),
+  c("Артель", "Artel"),
+  c("Слобода", "Sloboda"),
+  c("Ковчег", "Kovcheg"),
+  c("Транзит", "Tranzit"),
+  c("Опора", "Opora"),
+  c("Рубеж", "Rubezh"),
+  c("Сортер", "Sorter"),
+  c("Габарит", "Gabarit"),
+  c("Ладья", "Ladya"),
+  c("Пирс", "Pirs"),
+  c("Верста", "Versta"),
 ];
 
-const NAME_TAIL = [
-  "Логистик",
-  "Фулфилмент",
-  "Склад",
-  "Групп",
-  "Сервис",
-  "ФФ",
-  "Про",
-  "24",
-  "Юг",
-  "Восток",
-  "Центр",
-  "Плюс",
+const NAME_TAIL: Copy[] = [
+  c("Логистик", "Logistics"),
+  c("Фулфилмент", "Fulfilment"),
+  c("Склад", "Sklad"),
+  c("Групп", "Group"),
+  c("Сервис", "Service"),
+  c("ФФ", "FF"),
+  c("Про", "Pro"),
+  c("24", "24"),
+  c("Юг", "South"),
+  c("Восток", "East"),
+  c("Центр", "Centre"),
+  c("Плюс", "Plus"),
 ];
 
-const PITCHES = [
-  "Берём мелкую партию и не просим минимальный объём на год вперёд",
-  "Приёмка в день привоза, отгрузка на следующий",
-  "Свой парк газелей до сортировочных центров",
-  "Отдельная зона под одежду: отпаривание, бирки, упаковка",
-  "Работаем с хрупким: пузырьковая плёнка и жёсткая обрешётка",
-  "Кросс-док прямо с рампы — товар не ложится на полку",
-  "Фотостудия на территории: карточки снимаем на месте",
-  "Ведём Честный знак и сдаём отчётность за селлера",
-  "Принимаем возвраты и разбираем их по годным и браку",
-  "Ночная смена: заказы, принятые до 22:00, уезжают утром",
+const PITCHES: Copy[] = [
+  c(
+    "Берём мелкую партию и не просим минимальный объём на год вперёд",
+    "We take small batches and ask for no year-long minimum",
+  ),
+  c(
+    "Приёмка в день привоза, отгрузка на следующий",
+    "Intake the day goods arrive, shipping the next",
+  ),
+  c("Свой парк газелей до сортировочных центров", "Our own vans running to the sorting centres"),
+  c(
+    "Отдельная зона под одежду: отпаривание, бирки, упаковка",
+    "A separate zone for clothing: steaming, tags, packing",
+  ),
+  c(
+    "Работаем с хрупким: пузырьковая плёнка и жёсткая обрешётка",
+    "We handle fragile goods: bubble wrap and rigid crating",
+  ),
+  c(
+    "Кросс-док прямо с рампы — товар не ложится на полку",
+    "Cross-docking straight off the ramp — goods never reach a shelf",
+  ),
+  c(
+    "Фотостудия на территории: карточки снимаем на месте",
+    "A photo studio on site: listing shots are taken here",
+  ),
+  c(
+    "Ведём Честный знак и сдаём отчётность за селлера",
+    "We run Chestny Znak and file the reports for the seller",
+  ),
+  c(
+    "Принимаем возвраты и разбираем их по годным и браку",
+    "We take returns and sort them into resalable and defective",
+  ),
+  c(
+    "Ночная смена: заказы, принятые до 22:00, уезжают утром",
+    "Night shift: orders placed before 22:00 leave in the morning",
+  ),
 ];
 
 /** Разброс складов вокруг центра города: промзона, а не главная площадь. */
@@ -172,8 +232,14 @@ function scatter(city: City, r: () => number): { lat: number; lng: number; km: n
   };
 }
 
-function pick<T>(list: readonly T[], r: () => number): T {
-  return list[Math.floor(r() * list.length)];
+/**
+ * Склейка двух двуязычных кусков. Важно, что бросок ГПСЧ на выбор куска
+ * по-прежнему ровно один: русская и английская строки лежат в одной записи
+ * таблицы, а не выбираются по отдельности. Иначе набор пересобрался бы
+ * с другими именами и ценами — а ссылки на склады уже разосланы.
+ */
+function join(a: Copy, b: Copy, sep = " "): Copy {
+  return c(`${a.ru}${sep}${b.ru}`, `${a.en}${sep}${b.en}`);
 }
 
 /** Подмножество случайной длины `min…max`, без повторов и без пустоты. */
@@ -187,25 +253,24 @@ function subset<T>(list: readonly T[], min: number, max: number, r: () => number
   return out;
 }
 
-const int = (r: () => number, min: number, max: number) =>
-  min + Math.floor(r() * (max - min + 1));
-
-function buildWarehouses(): Warehouse[] {
+function buildWarehouses(): RawRecord[] {
   const r = rng(20260826);
-  const out: Warehouse[] = [];
+  const out: RawRecord[] = [];
   const used = new Set<string>();
 
   for (const city of CITIES) {
     for (let i = 0; i < city.weight; i++) {
       // Имя не должно повторяться на всю витрину: два «Куб Логистик» в списке
       // читаются как ошибка загрузки, а не как два разных оператора.
-      let name = "";
+      // Ключ уникальности — русское имя: пары «русское-английское» жёстко
+      // связаны, и если не совпали русские, не совпадут и английские.
+      let name: Copy = c("", "");
       for (let tries = 0; tries < 12; tries++) {
         const head = pick(NAME_HEAD, r);
-        name = r() < 0.35 ? head : `${head} ${pick(NAME_TAIL, r)}`;
-        if (!used.has(name)) break;
+        name = r() < 0.35 ? head : join(head, pick(NAME_TAIL, r));
+        if (!used.has(name.ru)) break;
       }
-      used.add(name);
+      used.add(name.ru);
 
       const spot = scatter(city, r);
       const areaM2 = int(r, 6, 180) * 100;
@@ -236,15 +301,29 @@ function buildWarehouses(): Warehouse[] {
         r,
       ) as ServiceId[];
 
-      const rating = Math.round((3.9 + r() * 1.1) * 10) / 10;
+      // Юрлицо: чаще ООО от первого слова названия, иначе ИП с фамилией от
+      // того же корня. Бросков ГПСЧ столько же, сколько было в тернарнике.
+      const founder = r() < 0.7 ? null : pick(NAME_HEAD, r);
+      const legal = founder
+        ? c(`ИП ${founder.ru}ов`, `${founder.en}ov, sole trader`)
+        : c(`ООО «${name.ru.split(" ")[0]}»`, `${name.en.split(" ")[0]} LLC`);
+
+      const street = pick(STREETS, r);
+      const house = int(r, 1, 96);
+      // Строение есть не у каждого адреса — на промзоне это обычное дело.
+      const building = r() < 0.4 ? int(r, 1, 12) : 0;
 
       out.push({
         id: `w-${out.length + 1}`,
         name,
-        legal: r() < 0.7 ? `ООО «${name.split(" ")[0]}»` : `ИП ${pick(NAME_HEAD, r)}ов`,
+        legal,
         city: city.name,
+        cityTitle: city.title,
         region: city.region,
-        address: `${pick(STREETS, r)}, ${int(r, 1, 96)}${r() < 0.4 ? ` стр. ${int(r, 1, 12)}` : ""}`,
+        address: c(
+          `${street.ru}, ${house}${building ? ` стр. ${building}` : ""}`,
+          `${street.en}, ${house}${building ? `, bld. ${building}` : ""}`,
+        ),
         lat: spot.lat,
         lng: spot.lng,
         since: int(r, 2013, 2024),
@@ -266,10 +345,6 @@ function buildWarehouses(): Warehouse[] {
         // читается как отписка. Бросок ГПСЧ ровно один, как и был, — иначе
         // сдвинулись бы все склады следом, а ссылки на них уже разосланы.
         minPlaces: r() < 0.45 ? 0 : int(r, 2, 20) * 10,
-        rating,
-        // У молодых складов отзывов физически меньше — иначе рейтинг выглядит
-        // одинаково «нагулянным» и у ветерана, и у прошлогоднего новичка.
-        reviews: int(r, 6, 60) + Math.round((2025 - int(r, 2013, 2024)) * int(r, 4, 34)),
         responseHours: int(r, 1, 20),
         ...checks(r),
         hue: int(r, 0, 359),
@@ -308,18 +383,87 @@ const PHOTOS = [
  * цикле сдвинул бы всю последовательность, и витрина пересобралась бы с
  * другими именами, адресами и ценами — а ссылки на склады уже разосланы.
  */
-function assignPhotos(list: Warehouse[]): Warehouse[] {
+function assignPhotos(list: RawRecord[]): RawRecord[] {
   let taken = 0;
-  return list.map((w) =>
-    w.uklad ? { ...w, photo: PHOTOS[taken++ % PHOTOS.length] } : w,
-  );
+  return list.map((w) => (w.uklad ? { ...w, photo: PHOTOS[taken++ % PHOTOS.length] } : w));
 }
 
-export const WAREHOUSES: Warehouse[] = assignPhotos(buildWarehouses());
+/** Сколько дней назад подтверждал данные склад на Укладе: цифры живые. */
+const LIVE_DAYS = 1;
+/** Разброс дней для остальных: от вчера до примерно восьми месяцев. */
+const CONFIRMED_DAYS_MAX = 240;
+
+/**
+ * Дата последнего подтверждения тарифов и свободных мест.
+ *
+ * Отдельным проходом и со своим зерном — по той же причине, что и фотографии:
+ * бросок внутри цикла сборки сдвинул бы всю последовательность и пересобрал бы
+ * витрину с другими именами и ценами.
+ *
+ * Складам на Укладе ставится вчерашний день, и это не поблажка своим: их
+ * остатки витрина берёт из той же системы, где они меняются каждой приёмкой.
+ * Остальные подтверждают руками, и часть из них — давно; такие склады витрина
+ * и должна показывать как есть, а не подмешивать им свежую дату (см.
+ * `lib/freshness`).
+ */
+function assignConfirmed(list: RawRecord[], now: number): WarehouseRecord[] {
+  const r = rng(20260912);
+  return list.map((w) => ({
+    ...w,
+    confirmedAt: now - int(r, w.uklad ? 0 : 1, w.uklad ? LIVE_DAYS : CONFIRMED_DAYS_MAX) * DAY_MS,
+  }));
+}
+
+/**
+ * Момент сборки набора.
+ *
+ * От него зависит возраст отзывов и срок, в который склад должен был ответить
+ * на жалобу. Берётся один раз: сравнивать записи, посчитанные по разным
+ * «сейчас», значит получать набор, который меняется сам по себе посреди
+ * страницы. При сборке это время сборки, в браузере — время загрузки; и там,
+ * и там — одно на всю витрину.
+ */
+const NOW = Date.now();
+
+/** Набор складов до репутации — собирается ровно один раз. */
+const RECORDS: WarehouseRecord[] = assignConfirmed(assignPhotos(buildWarehouses()), NOW);
+
+/** Сделки, отзывы и жалобы всей витрины. Собираются по готовому набору складов. */
+const LEDGER: Ledger = buildLedger(
+  RECORDS.map((w) => w.id),
+  NOW,
+);
+
+export const REVIEWS = LEDGER.reviews;
+export const COMPLAINTS = LEDGER.complaints;
+export const DEALS = LEDGER.deals;
+
+/**
+ * Приклеить к складам их репутацию.
+ *
+ * Тем же пост-проходом, что и фотографии, и по той же причине: внутри цикла
+ * сборки этого сделать нельзя — отзывы пишут про уже существующий склад, и
+ * генератору сделок нужны его идентификаторы. Склад, с которым через Уклад
+ * никто ещё не работал, получает пустую репутацию, а не ноль отзывов и
+ * рейтинг «0»: это разные утверждения.
+ */
+function withReputation(list: WarehouseRecord[]): Warehouse[] {
+  const reviews = groupByWarehouse(LEDGER.reviews);
+  const complaints = groupByWarehouse(LEDGER.complaints);
+  return list.map((w) => {
+    const own = reviews.get(w.id);
+    const claims = complaints.get(w.id);
+    return {
+      ...w,
+      reputation: own || claims ? buildReputation(own ?? [], claims ?? [], NOW) : NO_REPUTATION,
+    };
+  });
+}
+
+export const WAREHOUSES: Warehouse[] = withReputation(RECORDS);
 
 /** Занятость склада в долях единицы — для полосы в карточке. */
-export const occupancy = (w: Warehouse): number =>
-  1 - w.cellsFree / Math.max(1, w.cellsTotal);
+export const occupancy = (w: Warehouse): number => 1 - w.cellsFree / Math.max(1, w.cellsTotal);
 
 /** «12 500» — цифры в цене должны читаться без счёта разрядов глазами. */
 export const money = (n: number): string => n.toLocaleString("ru-RU");

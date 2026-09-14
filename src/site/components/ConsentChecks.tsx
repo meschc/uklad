@@ -1,7 +1,21 @@
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { go } from "../lib/route";
-import { scrollPageTop } from "../lib/useSmoothScroll";
+import { href } from "../lib/route";
+import { c, useT } from "../lib/copy";
+
+const T = {
+  give: c("Даю", "I give"),
+  consentLink: c(
+    "согласие на обработку персональных данных",
+    "consent to the processing of personal data",
+  ),
+  and: c("и подтверждаю, что ознакомлен с", "and confirm I have read the"),
+  privacyLink: c("политикой обработки", "privacy policy"),
+  ads: c(
+    "Хочу получать письма о новых складах и возможностях сервиса. Необязательно.",
+    "I’d like emails about new warehouses and features. Optional.",
+  ),
+};
 
 export interface ConsentState {
   /** Согласие на обработку персональных данных — без него форма не отправится. */
@@ -32,21 +46,17 @@ export function ConsentChecks({
   onChange: (next: ConsentState) => void;
   className?: string;
 }) {
+  const t = useT();
+
   return (
     <div className={cn("flex flex-col gap-3", className)}>
-      <Row
-        checked={value.data}
-        onToggle={() => onChange({ ...value, data: !value.data })}
-      >
-        Даю{" "}
-        <Link to="/legal/consent">согласие на обработку персональных данных</Link> и
-        подтверждаю, что ознакомлен с{" "}
-        <Link to="/legal/privacy">политикой обработки</Link>.
+      <Row checked={value.data} onToggle={() => onChange({ ...value, data: !value.data })}>
+        {t(T.give)} <Link to="/legal/consent">{t(T.consentLink)}</Link> {t(T.and)}{" "}
+        <Link to="/legal/privacy">{t(T.privacyLink)}</Link>.
       </Row>
 
       <Row checked={value.ads} onToggle={() => onChange({ ...value, ads: !value.ads })}>
-        Хочу получать письма о новых складах и возможностях сервиса. Необязательно —
-        на рассмотрение обращения не влияет.
+        {t(T.ads)}
       </Row>
     </div>
   );
@@ -91,22 +101,26 @@ function Row({
 }
 
 /**
- * Ссылка на документ внутри подписи к галочке. Кнопка, а не `a href`: клик по
- * ссылке внутри `label` переключил бы галочку заодно с переходом.
+ * Ссылка на документ внутри подписи к галочке.
+ *
+ * Открывается в новой вкладке, и это тот редкий случай, когда `_blank` уместен:
+ * галочки стоят в заполненной наполовину заявке, и уход на оферту в этой же
+ * вкладке стёр бы всё, что человек успел напечатать. Ровно затем он на оферту и
+ * идёт — чтобы вернуться и отправить.
+ *
+ * Клик по ссылке внутри `label` галочку не переключает: по стандарту метка не
+ * передаёт нажатие полю, если нажали по интерактивному содержимому внутри неё,
+ * а ссылка с адресом — как раз оно.
  */
 function Link({ to, children }: { to: string; children: React.ReactNode }) {
   return (
-    <button
-      type="button"
-      onClick={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        go(to);
-        scrollPageTop();
-      }}
+    <a
+      href={href(to)}
+      target="_blank"
+      rel="noreferrer"
       className="font-medium text-primary underline underline-offset-2 hover:text-primary/80"
     >
       {children}
-    </button>
+    </a>
   );
 }

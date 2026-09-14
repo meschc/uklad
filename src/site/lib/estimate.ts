@@ -105,3 +105,41 @@ export function fitsVolume(w: Warehouse, volume: SellerVolume): boolean {
   if (places > w.cellsFree) return false;
   return places >= w.minPlaces;
 }
+
+/** Разброс месяца по списку: от самого дешёвого склада до самого дорогого. */
+export interface EstimateRange {
+  /** Складов, которые такой объём возьмут. */
+  count: number;
+  min: number;
+  max: number;
+}
+
+/**
+ * Во что обходится месяц по нынешней выдаче — вилкой.
+ *
+ * Нужно не ради самой вилки, а чтобы ответ был виден там же, где вводят
+ * вопрос. Панель объёма стоит на витрине рядом с отбором и читается как ещё
+ * одно условие: человек вписывает числа, счётчик найденного не двигается, и он
+ * решает, что панель не работает. Подписи тут не хватило — а вилка прямо в
+ * панели показывает, что она считает, а не отбирает.
+ *
+ * Склады, которые такой объём не возьмут, в вилку не попадают: у них в
+ * карточке вместо суммы стоит отказ, и подмешивать их цену в «от и до» значит
+ * обещать то, чего не будет. Не попал ни один — вилки нет вовсе.
+ */
+export function estimateRange(list: Warehouse[], volume: SellerVolume): EstimateRange | null {
+  if (!isVolumeSet(volume)) return null;
+
+  let count = 0;
+  let min = 0;
+  let max = 0;
+  for (const w of list) {
+    if (!fitsVolume(w, volume)) continue;
+    const { total } = estimateMonth(w, volume);
+    if (count === 0 || total < min) min = total;
+    if (count === 0 || total > max) max = total;
+    count += 1;
+  }
+
+  return count === 0 ? null : { count, min, max };
+}

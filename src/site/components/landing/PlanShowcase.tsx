@@ -1,4 +1,13 @@
 import { cn } from "@/lib/utils";
+import { c, useT } from "../../lib/copy";
+
+const T = {
+  alt: c(
+    "План склада: занятые и свободные ячейки, выноска на конкретное место товара",
+    "Warehouse floor plan: occupied and free slots, with a callout to one item’s exact place",
+  ),
+  intake: c("Приёмка", "Intake"),
+};
 
 /**
  * Главная картинка витрины — план склада, на котором видно занятость.
@@ -76,23 +85,14 @@ function cellRect(sectionIndex: number, cellIndex: number) {
 }
 
 export function PlanShowcase({ className }: { className?: string }) {
+  const t = useT();
   const target = cellRect(TARGET.section, TARGET.cell);
 
   return (
-    <svg
-      viewBox="0 0 520 300"
-      className={cn("w-full", className)}
-      role="img"
-      aria-label="План склада: занятые и свободные ячейки, выноска на конкретное место товара"
-    >
+    <svg viewBox="0 0 520 300" className={cn("w-full", className)} role="img" aria-label={t(T.alt)}>
       <defs>
         <pattern id="plan-grid" width="24" height="24" patternUnits="userSpaceOnUse">
-          <path
-            d="M24 0H0V24"
-            fill="none"
-            stroke="hsl(var(--grid-minor))"
-            strokeWidth="1"
-          />
+          <path d="M24 0H0V24" fill="none" stroke="hsl(var(--grid-minor))" strokeWidth="1" />
         </pattern>
         <linearGradient id="plan-fade" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="hsl(var(--canvas-bg))" />
@@ -210,7 +210,7 @@ export function PlanShowcase({ className }: { className?: string }) {
       {/* Зона приёмки и коробка, которая едет оттуда на полку. */}
       <rect x="30" y="248" width="96" height="26" rx="8" fill="hsl(var(--m-stairs))" opacity=".6" />
       <text x="43" y="265" fontSize="10" fontWeight="600" fill="hsl(var(--m-stairs-fg))">
-        Приёмка
+        {t(T.intake)}
       </text>
       {/* Коробка того же цвета, что и целевая ячейка: это один и тот же груз,
           просто в двух моментах времени. */}

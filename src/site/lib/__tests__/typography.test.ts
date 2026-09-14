@@ -1,3 +1,8 @@
+/* eslint-disable no-irregular-whitespace --
+ * Тест на неразрывные пробелы — единственное место, где сам символ обязан
+ * стоять в исходнике: иначе проверять нечего. См. ту же оговорку в
+ * `src/site/lib/typography.ts`.
+ */
 import { describe, expect, test } from "vitest";
 import { glueShortWords } from "../typography";
 import { LEGAL_DOCS } from "../../data/legal";

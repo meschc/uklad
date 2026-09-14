@@ -1,4 +1,6 @@
 import { cn } from "@/lib/utils";
+import { useT } from "../../lib/copy";
+import { warehouseTint } from "../../lib/warehouseTint";
 import type { Warehouse } from "../../data/warehouses";
 
 /**
@@ -22,6 +24,8 @@ export function WarehouseAvatar({
   warehouse: Warehouse;
   className?: string;
 }) {
+  const t = useT();
+
   return (
     <span
       aria-hidden="true"
@@ -31,20 +35,7 @@ export function WarehouseAvatar({
       )}
       style={warehouseTint(warehouse.hue)}
     >
-      {warehouse.name.slice(0, 1)}
+      {t(warehouse.name).slice(0, 1)}
     </span>
   );
-}
-
-/**
- * Пара цветов склада: тёмный фон в его оттенке и буква тем же тоном, поднятым
- * по светлоте. Живёт рядом со знаком, потому что задаёт его вид, но нужна и
- * обложке карточки (`WarehouseCover`) — знак и обложка одного склада обязаны
- * быть одного цвета, иначе это два разных склада на одном экране.
- */
-export function warehouseTint(hue: number): { backgroundColor: string; color: string } {
-  return {
-    backgroundColor: `hsl(${hue} 24% 20%)`,
-    color: `hsl(${hue} 46% 76%)`,
-  };
 }
