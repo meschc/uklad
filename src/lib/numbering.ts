@@ -49,7 +49,10 @@ export function detectRows(floor: Floor): PlacedModule[][] {
   const isVert = (m: PlacedModule) => m.h >= m.w;
   const rows: PlacedModule[][] = [
     ...rowsOfOrientation(sections.filter(isVert), true),
-    ...rowsOfOrientation(sections.filter((m) => !isVert(m)), false),
+    ...rowsOfOrientation(
+      sections.filter((m) => !isVert(m)),
+      false,
+    ),
   ];
 
   // Порядок рядов на плане: слева направо, при равенстве — сверху вниз.
@@ -67,10 +70,7 @@ export function detectRows(floor: Floor): PlacedModule[][] {
  * Ряды среди секций одной ориентации. Линия = секции с одинаковой поперечной
  * координатой и глубиной; линии сливаются в ряд через проход.
  */
-function rowsOfOrientation(
-  sections: PlacedModule[],
-  vertical: boolean,
-): PlacedModule[][] {
+function rowsOfOrientation(sections: PlacedModule[], vertical: boolean): PlacedModule[][] {
   if (!sections.length) return [];
   // Поперечная ось — та, по которой стоят линии: X у вертикальных стеллажей.
   const crossStart = (m: PlacedModule) => (vertical ? m.x : m.y);
@@ -85,9 +85,7 @@ function rowsOfOrientation(
     lines.get(k)!.push(m);
   }
 
-  const ordered = [...lines.values()].sort(
-    (a, b) => crossStart(a[0]) - crossStart(b[0]),
-  );
+  const ordered = [...lines.values()].sort((a, b) => crossStart(a[0]) - crossStart(b[0]));
 
   const rows: PlacedModule[][] = [];
   let current: PlacedModule[][] = [];
@@ -148,11 +146,13 @@ function sidesOf(aisle: Rect, sections: PlacedModule[]) {
   for (const s of sections) {
     if (vertical) {
       if (!overlaps(s.y, s.y + s.h, aisle.y, aisle.y + aisle.h)) continue;
-      if (s.x + s.w === aisle.x) near.push(s); // слева от прохода
+      if (s.x + s.w === aisle.x)
+        near.push(s); // слева от прохода
       else if (s.x === aisle.x + aisle.w) far.push(s); // справа
     } else {
       if (!overlaps(s.x, s.x + s.w, aisle.x, aisle.x + aisle.w)) continue;
-      if (s.y + s.h === aisle.y) near.push(s); // сверху
+      if (s.y + s.h === aisle.y)
+        near.push(s); // сверху
       else if (s.y === aisle.y + aisle.h) far.push(s); // снизу
     }
   }
@@ -184,9 +184,7 @@ export function rowNumbers(floor: Floor): Map<string, number> {
   const taken = new Set<number>();
 
   // Сначала резервируем все закреплённые номера.
-  const pinnedOf = groups.map(
-    (g) => g.find((m) => m.row != null)?.row ?? null,
-  );
+  const pinnedOf = groups.map((g) => g.find((m) => m.row != null)?.row ?? null);
   for (const p of pinnedOf) if (p != null) taken.add(p);
 
   let prev = 0;
@@ -207,9 +205,7 @@ export function rowNumbers(floor: Floor): Map<string, number> {
   // Конструкции (лестницы/лифты) входят в ряд своей линии (п.13): берут номер
   // ряда секций, стоящих в том же поперечном «столбце». Нумерацию секций это не
   // трогает — rowSides/rowSectionNumbers работают только по секциям.
-  const structural = floor.modules.filter(
-    (m) => m.type === "stairs" || m.type === "elevator",
-  );
+  const structural = floor.modules.filter((m) => m.type === "stairs" || m.type === "elevator");
   if (structural.length) {
     const secs = floor.modules.filter(isSection);
     const tall = secs.filter((m) => m.h >= m.w).length;
@@ -241,9 +237,7 @@ export function rowSides(
   floor: Floor,
   row: number,
 ): { sides: PlacedModule[][]; vertical: boolean } {
-  const sections = floor.modules.filter(
-    (m) => isSection(m) && rowNumbers(floor).get(m.id) === row,
-  );
+  const sections = floor.modules.filter((m) => isSection(m) && rowNumbers(floor).get(m.id) === row);
   if (!sections.length) return { sides: [], vertical: true };
 
   const tall = sections.filter((m) => m.h >= m.w).length;
@@ -287,8 +281,7 @@ export function rowSectionNumbers(
   const cross = (m: PlacedModule) => (vertical ? m.x : m.y);
 
   const auto = sides.length === 2 ? "two" : "one";
-  const sided =
-    config?.sided && config.sided !== "auto" ? config.sided : auto;
+  const sided = config?.sided && config.sided !== "auto" ? config.sided : auto;
 
   if (sided === "one" || sides.length !== 2) {
     all
@@ -304,9 +297,7 @@ export function rowSectionNumbers(
   const oddArr = (config?.oddSide ?? "near") === "near" ? near : far;
   const evenArr = oddArr === near ? far : near;
 
-  const slots = Array.from(new Set([...near, ...far].map(along))).sort(
-    (a, b) => a - b,
-  );
+  const slots = Array.from(new Set([...near, ...far].map(along))).sort((a, b) => a - b);
   let n = 1;
   for (const slot of slots) {
     const o = oddArr.find((m) => along(m) === slot);
@@ -344,12 +335,8 @@ function passagesAlong(sections: PlacedModule[], vertical: boolean): Rect[] {
   // Поперечная ось (где ищем зазоры) и продольная (во всю длину прохода).
   const lo = (m: PlacedModule) => (vertical ? m.x : m.y);
   const hi = (m: PlacedModule) => (vertical ? m.x + m.w : m.y + m.h);
-  const alongLo = Math.min(
-    ...sections.map((m) => (vertical ? m.y : m.x)),
-  );
-  const alongHi = Math.max(
-    ...sections.map((m) => (vertical ? m.y + m.h : m.x + m.w)),
-  );
+  const alongLo = Math.min(...sections.map((m) => (vertical ? m.y : m.x)));
+  const alongHi = Math.max(...sections.map((m) => (vertical ? m.y + m.h : m.x + m.w)));
 
   // Объединяем занятые секциями интервалы поперечной оси; дырки между ними — это
   // проходы (секции есть с обеих сторон).
@@ -386,10 +373,7 @@ function passagesAlong(sections: PlacedModule[], vertical: boolean): Rect[] {
  * восстановить весь силуэт. Найденные группы возвращаются в порядке по плану
  * (слева направо, сверху вниз) — стор назначит им номера подряд.
  */
-export function findRowContinuation(
-  floor: Floor,
-  anchorRow: number,
-): RowCandidate[] {
+export function findRowContinuation(floor: Floor, anchorRow: number): RowCandidate[] {
   const sections = floor.modules.filter(isSection);
   const anchor = sections.filter((m) => m.row === anchorRow);
   if (!anchor.length) return [];
@@ -403,12 +387,9 @@ export function findRowContinuation(
     h: m.h,
   }));
   // Опорная ячейка образца — ближайшая к началу габарита.
-  const handle = rels.reduce((a, b) =>
-    b.rx < a.rx || (b.rx === a.rx && b.ry < a.ry) ? b : a,
-  );
+  const handle = rels.reduce((a, b) => (b.rx < a.rx || (b.rx === a.rx && b.ry < a.ry) ? b : a));
 
-  const key = (x: number, y: number, w: number, h: number) =>
-    `${x}:${y}:${w}:${h}`;
+  const key = (x: number, y: number, w: number, h: number) => `${x}:${y}:${w}:${h}`;
   const byFootprint = new Map<string, PlacedModule>();
   for (const m of sections) byFootprint.set(key(m.x, m.y, m.w, m.h), m);
 
@@ -418,9 +399,7 @@ export function findRowContinuation(
   const candidates: RowCandidate[] = [];
 
   // Свободные секции — в порядке по плану, чтобы опорная примерялась первой.
-  const probes = sections
-    .filter(free)
-    .sort((a, b) => a.x - b.x || a.y - b.y);
+  const probes = sections.filter(free).sort((a, b) => a.x - b.x || a.y - b.y);
 
   for (const s of probes) {
     if (s.w !== handle.w || s.h !== handle.h) continue;
@@ -476,9 +455,7 @@ export function autoNumberSections(floor: Floor): AutoNumberResult {
     }
   }
 
-  const done = new Set<string>(
-    sections.filter((s) => s.number != null).map((s) => s.id),
-  );
+  const done = new Set<string>(sections.filter((s) => s.number != null).map((s) => s.id));
 
   /** Ближайшая свободная пара (нечёт, чёт), начиная с текущего курсора. */
   let cursor = 1;
@@ -499,9 +476,7 @@ export function autoNumberSections(floor: Floor): AutoNumberResult {
 
     // Позиции вдоль прохода: объединяем координаты обеих сторон.
     const key = (m: PlacedModule) => (vertical ? m.y : m.x);
-    const slots = Array.from(
-      new Set([...near, ...far].map(key)),
-    ).sort((a, b) => a - b);
+    const slots = Array.from(new Set([...near, ...far].map(key))).sort((a, b) => a - b);
 
     for (const slot of slots) {
       const left = near.find((m) => key(m) === slot && !done.has(m.id));
@@ -520,9 +495,7 @@ export function autoNumberSections(floor: Floor): AutoNumberResult {
   }
 
   // Секции без прохода рядом — добираем подряд, сохраняя порядок по плану.
-  const orphans = sections
-    .filter((s) => !done.has(s.id))
-    .sort((a, b) => a.y - b.y || a.x - b.x);
+  const orphans = sections.filter((s) => !done.has(s.id)).sort((a, b) => a.y - b.y || a.x - b.x);
   for (const s of orphans) {
     while (taken.has(cursor)) cursor++;
     taken.add(cursor);

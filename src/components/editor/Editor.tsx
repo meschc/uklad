@@ -1,8 +1,8 @@
-import { useEffect } from "react";
+import { Suspense, lazy, useEffect } from "react";
+import { Loader2 } from "lucide-react";
 import { useShortcuts } from "@/lib/useShortcuts";
 import { selectRole, useEditor } from "@/lib/store";
 import { TableScreen } from "@/components/table/TableScreen";
-import { View3D } from "@/components/three/View3D";
 import { SHOW_3D } from "./constants";
 import { TopBar } from "./TopBar";
 import { ToolRail } from "./ToolRail";
@@ -15,6 +15,16 @@ import { RowProposalPanel } from "./RowProposalPanel";
 import { Inspector } from "./Inspector";
 import { GoodsConflictDialog } from "./GoodsConflictDialog";
 import { PrintPlan } from "./PrintPlan";
+
+/**
+ * Трёхмерный вид — отдельным файлом сборки.
+ *
+ * Он тянет `three` (около 340 КБ), а режим за флагом `SHOW_3D` и сейчас
+ * выключен. При обычном импорте движок всё равно уезжал бы в общий файл: его
+ * качал бы кладовщик, открывающий приёмку, ради экрана, которого в интерфейсе
+ * нет. Динамический импорт означает «скачать, когда действительно понадобится».
+ */
+const View3D = lazy(() => import("@/components/three/View3D").then((m) => ({ default: m.View3D })));
 
 export function Editor() {
   useShortcuts();
@@ -37,7 +47,15 @@ export function Editor() {
         {mode === "table" ? (
           <TableScreen />
         ) : mode === "3d" && SHOW_3D ? (
-          <View3D />
+          <Suspense
+            fallback={
+              <div className="grid min-h-0 flex-1 place-items-center bg-[hsl(var(--canvas-bg))]">
+                <Loader2 className="size-5 animate-spin text-muted-foreground" />
+              </div>
+            }
+          >
+            <View3D />
+          </Suspense>
         ) : (
           <PlanScreen readOnly={readOnly} />
         )}

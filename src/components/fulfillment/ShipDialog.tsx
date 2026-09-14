@@ -14,13 +14,7 @@ import { Modal } from "./Modal";
  * машины и ответственный необязательны: в жизни машина бывает без номера в
  * заявке, а блокировать отгрузку из-за пустого поля — вредить работе.
  */
-export function ShipDialog({
-  requestIds,
-  onClose,
-}: {
-  requestIds: string[];
-  onClose: () => void;
-}) {
+export function ShipDialog({ requestIds, onClose }: { requestIds: string[]; onClose: () => void }) {
   const shipRequests = useEditor((s) => s.shipRequests);
   const staff = useEditor((s) => s.warehouse.staff ?? []);
   const t = useT();
@@ -59,6 +53,7 @@ export function ShipDialog({
             </span>
           </Label>
           <Input
+            // eslint-disable-next-line jsx-a11y/no-autofocus -- диалог открыт по действию пользователя: фокус обязан уйти в первое поле
             autoFocus
             value={vehicle}
             onChange={(e) => setVehicle(e.target.value)}
@@ -91,7 +86,6 @@ export function ShipDialog({
             </select>
           </label>
         )}
-
       </div>
     </Modal>
   );

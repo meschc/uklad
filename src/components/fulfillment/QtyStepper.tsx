@@ -37,6 +37,7 @@ export function QtyStepper({
       <input
         type="text"
         inputMode="numeric"
+        // eslint-disable-next-line jsx-a11y/no-autofocus -- решает вызывающий экран: на приёмке карточка открывается по скану, и курсор сразу должен стоять в количестве
         autoFocus={autoFocus}
         value={String(value)}
         onChange={(e) => onChange(clampQty(parseInt(e.target.value, 10)))}

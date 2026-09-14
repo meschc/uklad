@@ -1,4 +1,4 @@
-import { uid } from "../utils";
+import { nowMs, uid } from "../utils";
 import type { Partner, StaffMember, Warehouse } from "../types";
 import type { SliceCreator, StaffSlice } from "./state";
 
@@ -9,38 +9,49 @@ import type { SliceCreator, StaffSlice } from "./state";
  */
 
 /** Применить правку к активному складу (он всегда ровно один). */
-function patchActive(
-  warehouse: Warehouse,
-  fn: (staff: StaffMember[]) => StaffMember[],
-): Warehouse {
+function patchActive(warehouse: Warehouse, fn: (staff: StaffMember[]) => StaffMember[]): Warehouse {
   return { ...warehouse, staff: fn(warehouse.staff ?? []) };
 }
 
 /** Правка списка партнёров активного склада. */
-function patchPartners(
-  warehouse: Warehouse,
-  fn: (partners: Partner[]) => Partner[],
-): Warehouse {
+function patchPartners(warehouse: Warehouse, fn: (partners: Partner[]) => Partner[]): Warehouse {
   return { ...warehouse, partners: fn(warehouse.partners ?? []) };
+}
+
+/**
+ * Готовая запись сотрудника из введённого. Одна на добавление и на импорт:
+ * разъехавшись, они дают две разные записи об одном и том же человеке — так
+ * фото и терялось, приезжая из CSV в форму и пропадая на пути в список.
+ */
+function makeMember(member: Omit<StaffMember, "id">): StaffMember {
+  return {
+    id: uid("staff"),
+    name: member.name.trim() || "Без имени",
+    role: member.role.trim(),
+    phone: member.phone?.trim() || undefined,
+    email: member.email?.trim() || undefined,
+    photoUrl: member.photoUrl?.trim() || undefined,
+  };
 }
 
 export const createStaffSlice: SliceCreator<StaffSlice> = (set) => ({
   addStaffMember: (member) => {
-    const id = uid("staff");
+    const created = makeMember(member);
     set((s) => ({
-      warehouse: patchActive(s.warehouse, (staff) => [
-        ...staff,
-        {
-          id,
-          name: member.name.trim() || "Без имени",
-          role: member.role.trim(),
-          phone: member.phone?.trim() || undefined,
-          email: member.email?.trim() || undefined,
-        },
-      ]),
+      warehouse: patchActive(s.warehouse, (staff) => [...staff, created]),
     }));
-    return id;
+    return created.id;
   },
+
+  /**
+   * Загрузка списка из файла — одним `set`, а не циклом по `addStaffMember`:
+   * иначе история разложит импорт по одному человеку, а сервер получит столько
+   * запросов, сколько строк в файле.
+   */
+  importStaff: (members) =>
+    set((s) => ({
+      warehouse: patchActive(s.warehouse, (staff) => [...staff, ...members.map(makeMember)]),
+    })),
 
   updateStaffMember: (id, patch) =>
     set((s) => ({
@@ -59,9 +70,7 @@ export const createStaffSlice: SliceCreator<StaffSlice> = (set) => ({
 
   removeStaffMember: (id) =>
     set((s) => ({
-      warehouse: patchActive(s.warehouse, (staff) =>
-        staff.filter((m) => m.id !== id),
-      ),
+      warehouse: patchActive(s.warehouse, (staff) => staff.filter((m) => m.id !== id)),
     })),
 
   updateManager: (patch) =>
@@ -110,9 +119,7 @@ export const createStaffSlice: SliceCreator<StaffSlice> = (set) => ({
 
   removePartner: (id) =>
     set((s) => ({
-      warehouse: patchPartners(s.warehouse, (list) =>
-        list.filter((p) => p.id !== id),
-      ),
+      warehouse: patchPartners(s.warehouse, (list) => list.filter((p) => p.id !== id)),
     })),
 
   updateWarehouseContacts: (id, patch) =>
@@ -125,9 +132,7 @@ export const createStaffSlice: SliceCreator<StaffSlice> = (set) => ({
       });
       if (s.warehouse.id === id) return { warehouse: apply(s.warehouse) };
       return {
-        otherWarehouses: s.otherWarehouses.map((w) =>
-          w.id === id ? apply(w) : w,
-        ),
+        otherWarehouses: s.otherWarehouses.map((w) => (w.id === id ? apply(w) : w)),
       };
     }),
 
@@ -139,13 +144,11 @@ export const createStaffSlice: SliceCreator<StaffSlice> = (set) => ({
     set((s) => {
       const apply = (w: Warehouse): Warehouse => ({
         ...w,
-        spec: { ...(w.spec ?? {}), ...patch, updatedAt: Date.now() },
+        spec: { ...(w.spec ?? {}), ...patch, updatedAt: nowMs() },
       });
       if (s.warehouse.id === id) return { warehouse: apply(s.warehouse) };
       return {
-        otherWarehouses: s.otherWarehouses.map((w) =>
-          w.id === id ? apply(w) : w,
-        ),
+        otherWarehouses: s.otherWarehouses.map((w) => (w.id === id ? apply(w) : w)),
       };
     }),
 });

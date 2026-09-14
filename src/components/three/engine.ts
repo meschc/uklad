@@ -30,7 +30,7 @@ const ZOOM_MAX = 12;
  * скрываем»). Значение демонстрационное: подобрано так, чтобы отсечение было
  * видно на тиражированном складе, а не осталось теорией.
  */
-export const MAX_VISIBLE_CELLS = 12000;
+const MAX_VISIBLE_CELLS = 12000;
 
 // Стиль «цифрового двойника» (рефы): белые стеллажи, светлая сцена; единый
 // синий непрозрачный блок ячейки — как контейнеры на порт-рефе.
@@ -182,11 +182,7 @@ export class Engine {
   /** Направление на камеру при текущем повороте (наклон неизменный). */
   private isoDir() {
     const c = Math.cos(ISO_ELEV);
-    return new THREE.Vector3(
-      Math.sin(this.yaw) * c,
-      Math.sin(ISO_ELEV),
-      Math.cos(this.yaw) * c,
-    );
+    return new THREE.Vector3(Math.sin(this.yaw) * c, Math.sin(ISO_ELEV), Math.cos(this.yaw) * c);
   }
 
   /** Поворот сцены вокруг вертикальной оси: dx в пикселях перетаскивания. */
@@ -196,9 +192,7 @@ export class Engine {
   }
 
   private applyCamera() {
-    this.camera.position
-      .copy(this.target)
-      .addScaledVector(this.isoDir(), CAM_DIST);
+    this.camera.position.copy(this.target).addScaledVector(this.isoDir(), CAM_DIST);
     this.camera.lookAt(this.target);
     this.camera.updateProjectionMatrix();
     this.camera.updateMatrixWorld();
@@ -239,14 +233,8 @@ export class Engine {
   }
 
   panBy(dx: number, dy: number) {
-    const right = new THREE.Vector3().setFromMatrixColumn(
-      this.camera.matrixWorld,
-      0,
-    );
-    const up = new THREE.Vector3().setFromMatrixColumn(
-      this.camera.matrixWorld,
-      1,
-    );
+    const right = new THREE.Vector3().setFromMatrixColumn(this.camera.matrixWorld, 0);
+    const up = new THREE.Vector3().setFromMatrixColumn(this.camera.matrixWorld, 1);
     const perPx = FRUSTUM / this.camera.zoom / this.height;
     this.target.addScaledVector(right, -dx * perPx);
     this.target.addScaledVector(up, dy * perPx);
@@ -293,12 +281,7 @@ export class Engine {
     this.clearMeshes();
     this.data = data;
 
-    const add = (
-      boxes: Box[],
-      mat: THREE.Material,
-      colored: boolean,
-      capacity = boxes.length,
-    ) => {
+    const add = (boxes: Box[], mat: THREE.Material, colored: boolean, capacity = boxes.length) => {
       if (!boxes.length) return null;
       const mesh = new THREE.InstancedMesh(this.boxGeo, mat, capacity);
       mesh.frustumCulled = false;
@@ -321,9 +304,7 @@ export class Engine {
     const structure = add(data.structure, this.structMat, true);
     if (structure) {
       fillMatrices(structure, data.structure);
-      data.structure.forEach((b, i) =>
-        structure.setColorAt(i, new THREE.Color(b.color)),
-      );
+      data.structure.forEach((b, i) => structure.setColorAt(i, new THREE.Color(b.color)));
       if (structure.instanceColor) structure.instanceColor.needsUpdate = true;
     }
 
@@ -424,9 +405,7 @@ export class Engine {
   }
 
   setSelected(productId: string | null) {
-    const box = productId
-      ? this.data?.cells.find((p) => p.productId === productId)
-      : undefined;
+    const box = productId ? this.data?.cells.find((p) => p.productId === productId) : undefined;
     if (!box) {
       this.selectionBox.visible = false;
     } else {

@@ -73,9 +73,7 @@ export const createModulesSlice: SliceCreator<ModulesSlice> = (set, get) => ({
    * ставилась и откатывалась (Cmd+Z) как единое действие.
    */
   addModules: (specs) => {
-    const mods = specs.map((sp) =>
-      makeModule(sp.type, sp.x, sp.y, { w: sp.w, h: sp.h }),
-    );
+    const mods = specs.map((sp) => makeModule(sp.type, sp.x, sp.y, { w: sp.w, h: sp.h }));
     if (!mods.length) return [];
     set((s) => mutateActiveFloor(s, (f) => f.modules.push(...mods)));
     set({ activeShelf: null });
@@ -150,9 +148,7 @@ export const createModulesSlice: SliceCreator<ModulesSlice> = (set, get) => ({
     if (lost.length) {
       const sections = s
         .activeFloor()
-        .modules.filter(
-          (m) => s.selection.includes(m.id) && m.type === "section",
-        ).length;
+        .modules.filter((m) => s.selection.includes(m.id) && m.type === "section").length;
       set({
         pendingConflict:
           sections === 1
@@ -179,9 +175,7 @@ export const createModulesSlice: SliceCreator<ModulesSlice> = (set, get) => ({
    */
   copySelection: () => {
     const s = get();
-    const sel = s
-      .activeFloor()
-      .modules.filter((m) => s.selection.includes(m.id));
+    const sel = s.activeFloor().modules.filter((m) => s.selection.includes(m.id));
     if (!sel.length) return;
     pasteRun = 0;
     set({
@@ -236,9 +230,7 @@ export const createModulesSlice: SliceCreator<ModulesSlice> = (set, get) => ({
   /** Дублировать выделенное на месте (сдвиг на клетку). Буфер не трогаем. */
   duplicateSelection: () => {
     const s = get();
-    const sel = s
-      .activeFloor()
-      .modules.filter((m) => s.selection.includes(m.id));
+    const sel = s.activeFloor().modules.filter((m) => s.selection.includes(m.id));
     if (!sel.length) return;
     const clones = cloneModules(sel, 1, 1);
     set((st) => mutateActiveFloor(st, (f) => f.modules.push(...clones)));
@@ -251,9 +243,7 @@ export const createModulesSlice: SliceCreator<ModulesSlice> = (set, get) => ({
    */
   cloneSelectionInPlace: () => {
     const s = get();
-    const sel = s
-      .activeFloor()
-      .modules.filter((m) => s.selection.includes(m.id));
+    const sel = s.activeFloor().modules.filter((m) => s.selection.includes(m.id));
     if (!sel.length) return [];
     const clones = cloneModules(sel, 0, 0);
     set((st) => mutateActiveFloor(st, (f) => f.modules.push(...clones)));

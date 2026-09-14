@@ -145,16 +145,18 @@ describe("markChatRead", () => {
 });
 
 describe("openChat", () => {
-  it("открывает переписку и сразу помечает её прочитанной", () => {
-    // Arrange
+  it("запоминает открытую переписку, не трогая сами сообщения", () => {
+    // Arrange: прочитанность метит лента через `chatRepository.markRead` —
+    // здесь только состояние интерфейса, и непрочитанное обязано остаться.
     const store = makeChatStore(base("warehouse", { p1: [msg("seller")] }));
+    const before = store.getState().chats;
 
     // Act
     store.getState().openChat("p1");
 
     // Assert
     expect(store.getState().activeChatId).toBe("p1");
-    expect(countUnread(store.getState().chats, "warehouse", PARTNERS)).toBe(0);
+    expect(store.getState().chats).toBe(before);
   });
 });
 

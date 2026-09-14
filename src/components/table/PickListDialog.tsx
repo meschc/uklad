@@ -19,13 +19,7 @@ import { Modal } from "@/components/fulfillment/Modal";
 /** Масштаб предпросмотра: A4 шириной 210 мм в колонку диалога не влезает. */
 const PREVIEW_SCALE = 0.52;
 
-export function PickListDialog({
-  ids,
-  onClose,
-}: {
-  ids: string[];
-  onClose: () => void;
-}) {
+export function PickListDialog({ ids, onClose }: { ids: string[]; onClose: () => void }) {
   const t = useT();
   const warehouse = useEditor((s) => s.warehouse);
   const products = useEditor((s) => s.products);
@@ -45,11 +39,7 @@ export function PickListDialog({
       <Modal
         title={t("table.bulk.pickListTitle", {
           n: ids.length,
-          unit: t.plural(
-            ids.length,
-            ["позиция", "позиции", "позиций"],
-            ["item", "items"],
-          ),
+          unit: t.plural(ids.length, ["позиция", "позиции", "позиций"], ["item", "items"]),
         })}
         onClose={onClose}
         onSubmit={() => window.print()}

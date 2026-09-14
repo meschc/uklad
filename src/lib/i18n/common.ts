@@ -1,0 +1,375 @@
+/**
+ * Общие строки: навигация, личный кабинет, профиль, вход, управление складами,
+ * категории товара, справка и экран падения.
+ *
+ * Правило для всех файлов словаря: у `ru` намеренно нет аннотации типа — именно
+ * из его ключей собирается `MsgKey`, а `Record<string, string>` стёр бы их
+ * имена. У `en` аннотация есть: она требует ровно тот же состав ключей, и
+ * забытый перевод становится ошибкой сборки, а не русской фразой на английском
+ * экране. Части складываются в `./index.ts`.
+ */
+
+export const ru = {
+  // Навигация / верхний уровень
+  "nav.mode.2d": "2D-план",
+  "nav.mode.table": "Таблица",
+  "nav.mode.3d": "3D",
+  "nav.backToDashboard": "В личный кабинет",
+  "nav.theme": "Переключить тему",
+
+  // Личный кабинет (§3.2)
+  "dash.title": "Личный кабинет",
+  "dash.greeting": "Здравствуйте, {name}",
+  "dash.account.company": "Компания",
+  "dash.account.personal": "Личный аккаунт",
+  "dash.openProfile": "Настройки профиля",
+  "dash.stats.title": "Заполненность складов",
+  "dash.stats.warehouses": "Складов",
+  "dash.stats.floors": "Этажей",
+  "dash.stats.cells": "Ячеек",
+  "dash.stats.occupied": "Занято ячеек",
+  "dash.stats.fill": "Средняя заполненность",
+  "dash.warehouses.title": "Склады",
+  "dash.warehouses.subtitle": "Выберите склад для работы",
+  "dash.card.open": "Открыть",
+  "dash.card.active": "Активный",
+  "dash.card.fill": "заполнен на {p}%",
+  "dash.kind.mezzanine": "Мезонин",
+  "dash.kind.port": "Порт",
+
+  // Настройки профиля (§3.3)
+  "profile.editField": "Изменить это поле",
+  "profile.emailNeedsConfirm": "Новый адрес заработает после подтверждения кодом.",
+  "profile.inn": "ИНН",
+  "profile.innErr": "ИНН не проходит проверку контрольной суммы",
+  "profile.innHint": "По ИНН реквизиты компании заполнятся сами.",
+  "profile.innFetched":
+    "Реквизиты получены из ФНС — пока заготовкой: справочник подключается вместе с backend.",
+  "profile.companyDetails": "Реквизиты",
+  "profile.kpp": "КПП",
+  "profile.ogrn": "ОГРН",
+  "profile.legalAddress": "Юридический адрес",
+  "profile.emailConfirmTitle": "Подтвердите новый адрес: {email}",
+  "profile.emailConfirmBody":
+    "До подтверждения работает старая почта. Введите код из {n} цифр — писем прототип не отправляет, подойдёт любой код.",
+  "profile.emailConfirmApply": "Подтвердить",
+  "profile.title": "Настройки профиля",
+  "profile.subtitle": "Имя, тема оформления и язык интерфейса",
+  "profile.name": "Имя",
+  "profile.namePlaceholder": "Ваше имя",
+  "profile.nameEmpty": "Имя не может быть пустым",
+  "profile.email": "Email",
+  "profile.emailPlaceholder": "you@example.com",
+  "profile.company": "Компания",
+  "profile.companyPlaceholder": "Название компании",
+  "profile.theme": "Тема оформления",
+  "profile.theme.light": "Светлая",
+  "profile.theme.dark": "Тёмная",
+  "profile.language": "Язык системы",
+  "profile.lang.ru": "Русский",
+  "profile.lang.en": "English",
+  "profile.done": "Готово",
+  "profile.onboarding": "Обучение",
+  "profile.onboardingReplay": "Пройти заново",
+  "profile.onboardingDone": "Показываю в редакторе",
+  "profile.logout": "Выйти",
+
+  // Экран входа / регистрации (§3.2 — условный, авторизации в прототипе нет)
+  "login.roleTitle": "Кто вы",
+  "login.roleWarehouse": "Склад: план, приёмка, сборка, персонал.",
+  "login.roleSeller": "Продавец: остатки, заявки на отгрузку, без правки склада.",
+  "login.err.email": "Проверьте адрес: нужен вид name@example.com",
+  "login.err.password": "Пароль от {n} символов",
+  "login.forgot": "Забыли пароль?",
+  "login.backToSignIn": "Вернуться ко входу",
+  "login.submit.reset": "Прислать ссылку для сброса",
+  "login.resetSent": "Если аккаунт с адресом {email} существует, ссылка для сброса уже отправлена.",
+  "login.demo": "Посмотреть демо",
+  "login.demoHint": "Демо открывает заполненный склад: план, товары и заявки уже на месте.",
+  "login.tagline": "Визуальная раскладка склада",
+  "login.tab.signIn": "Вход",
+  "login.tab.signUp": "Регистрация",
+  "login.email": "Email",
+  "login.password": "Пароль",
+  "login.passwordPlaceholder": "••••••••",
+  "login.submit.signIn": "Войти",
+  "login.submit.signUp": "Создать аккаунт",
+  "login.switchToSignUp": "Нет аккаунта? Зарегистрируйтесь",
+  "login.switchToSignIn": "Уже есть аккаунт? Войдите",
+
+  // Управление складами (§3.4) + общие действия
+  "common.create": "Создать",
+  "common.save": "Сохранить",
+  "common.cancel": "Отмена",
+  "common.delete": "Удалить",
+  "common.edit": "Редактировать",
+  "common.ok": "Понятно",
+  "common.yes": "Да",
+  "common.no": "Нет",
+  "common.optional": "необязательно",
+  "common.loading": "Загрузка",
+  "edit.undo": "Отменить",
+  "edit.redo": "Повторить",
+  "editor.rotate": "Повернуть на 90°",
+  "dash.newWarehouse": "Новый склад",
+  "dash.aboutWarehouse": "О складе и сотрудниках",
+  "dash.editWarehouse": "Редактировать склад",
+  "dash.deleteWarehouse": "Удалить склад",
+  "wh.create.title": "Новый склад",
+  "wh.edit.title": "Редактирование склада",
+  "wh.name": "Название",
+  "wh.namePlaceholder": "Например, Мезонин · Склад №3",
+  "wh.kind": "Тип склада",
+  "wh.address": "Адрес",
+  "wh.addressPlaceholder": "Город, улица, дом",
+  "wh.noAddress": "Адрес не указан",
+  "wh.findOnMap": "Найти по адресу",
+  "wh.geocoding": "Ищем…",
+  "wh.geocodeFail": "Адрес не найден — укажите точку на карте",
+  "wh.coords": "Координаты",
+  "wh.lat": "Широта",
+  "wh.lng": "Долгота",
+  "wh.mapHint": "Кликните по карте или перетащите метку",
+  "wh.clearPoint": "Убрать точку",
+  "wh.showMap": "Указать точку на карте",
+  "wh.hideMap": "Скрыть карту",
+  "wh.delete.confirm": "Удалить склад «{name}»?",
+  "wh.delete.note": "Товары останутся в номенклатуре, но потеряют свои места на этом складе.",
+
+  // Общее
+  "floor.n": "Этаж {n}",
+  "floor.word": "Этаж",
+  "unit.cm": "см",
+  "unit.kg": "кг",
+
+  // Категории товара
+  "cat.Одежда": "Одежда",
+  "cat.Электроника": "Электроника",
+  "cat.Бытовая техника": "Бытовая техника",
+  "cat.Продукты": "Продукты",
+  "cat.Инструменты": "Инструменты",
+  "cat.Мебель": "Мебель",
+
+  // Типы доп.полей
+  "ftype.text": "Текст",
+  "ftype.number": "Число",
+  "ftype.select": "Список",
+
+  // --- Боковая навигация и роли (фулфилмент-контур) --------------------------
+  "nav.side.title": "Разделы",
+  "nav.side.dashboard": "Главная",
+  "nav.side.toDashboard": "На главную",
+  "nav.side.plan": "План склада",
+  "nav.side.labels": "Наклейки",
+  "nav.side.documents": "Документы",
+  // Группы рельса (п.10): экранов стало много, близкие собраны в подменю.
+  "nav.group.flow": "Работа",
+  "nav.group.print": "Печать",
+  "nav.group.setup": "Склад",
+  "nav.side.lookup": "Что это?",
+  "nav.side.integrations": "Интеграции",
+
+  // --- Справка о новых возможностях ------------------------------------------
+  "faq.crossDock.q": "Чем кроссдокинг отличается от обычной приёмки?",
+  "faq.crossDock.a":
+    "У кроссдок-поставки нет шага «место»: товар с рампы сразу закрывает заявки, которые его ждали, и на полку не встаёт. В занятость склада он не попадает — он там физически не хранится. Обратная история — бронь под будущую поставку: продавец может продать то, что ещё едет, если в ожидаемой поставке есть свободное количество.",
+  "faq.pickPriority.q": "Как сделать, чтобы ходовой товар клали ближе?",
+  "faq.pickPriority.a":
+    "У каждой полки в инспекторе есть приоритет отбора: чем меньше число, тем раньше эту полку предложит автоподбор места. Отдельные полки можно закрыть галочкой «не отбирать отсюда» — товар с них никуда не денется, но новые размещения туда не поедут.",
+
+  // --- Падение экрана (граница ошибки) ---------------------------------------
+  "crash.title": "Этот экран сломался",
+  "crash.body": "Остальные экраны работают, данные целы — они лежат отдельно от интерфейса.",
+  "crash.retry": "Попробовать снова",
+  "crash.toDashboard": "В личный кабинет",
+
+  // --- Слой данных: ожидание и отказ ------------------------------------------
+  "data.busy": "Выполняется…",
+  "data.failed": "Не получилось. Проверьте связь и попробуйте ещё раз.",
+  "data.retry": "Повторить",
+
+  "req.reservedBadge": "бронь под поставку",
+};
+
+export const en: Record<keyof typeof ru, string> = {
+  // Navigation / top level
+  "nav.mode.2d": "2D plan",
+  "nav.mode.table": "Table",
+  "nav.mode.3d": "3D",
+  "nav.backToDashboard": "Back to dashboard",
+  "nav.theme": "Toggle theme",
+
+  // Dashboard (§3.2)
+  "dash.title": "Dashboard",
+  "dash.greeting": "Hello, {name}",
+  "dash.account.company": "Company",
+  "dash.account.personal": "Personal account",
+  "dash.openProfile": "Profile settings",
+  "dash.stats.title": "Warehouse occupancy",
+  "dash.stats.warehouses": "Warehouses",
+  "dash.stats.floors": "Floors",
+  "dash.stats.cells": "Cells",
+  "dash.stats.occupied": "Occupied cells",
+  "dash.stats.fill": "Average fill",
+  "dash.warehouses.title": "Warehouses",
+  "dash.warehouses.subtitle": "Pick a warehouse to work on",
+  "dash.card.open": "Open",
+  "dash.card.active": "Active",
+  "dash.card.fill": "{p}% filled",
+  "dash.kind.mezzanine": "Mezzanine",
+  "dash.kind.port": "Port",
+
+  // Profile settings (§3.3)
+  "profile.editField": "Edit this field",
+  "profile.emailNeedsConfirm": "The new address starts working after you confirm the code.",
+  "profile.inn": "Tax id",
+  "profile.innErr": "The tax id fails its checksum",
+  "profile.innHint": "Company details fill in automatically from the tax id.",
+  "profile.innFetched":
+    "Details received from the tax registry — a placeholder for now: the real registry connects with the backend.",
+  "profile.companyDetails": "Registration details",
+  "profile.kpp": "KPP",
+  "profile.ogrn": "Registration number",
+  "profile.legalAddress": "Legal address",
+  "profile.emailConfirmTitle": "Confirm the new address: {email}",
+  "profile.emailConfirmBody":
+    "The old address keeps working until you confirm. Enter the {n}-digit code — the prototype sends no mail, any code works.",
+  "profile.emailConfirmApply": "Confirm",
+  "profile.title": "Profile settings",
+  "profile.subtitle": "Name, theme and interface language",
+  "profile.name": "Name",
+  "profile.namePlaceholder": "Your name",
+  "profile.nameEmpty": "Name can’t be empty",
+  "profile.email": "Email",
+  "profile.emailPlaceholder": "you@example.com",
+  "profile.company": "Company",
+  "profile.companyPlaceholder": "Company name",
+  "profile.theme": "Theme",
+  "profile.theme.light": "Light",
+  "profile.theme.dark": "Dark",
+  "profile.language": "Language",
+  "profile.lang.ru": "Русский",
+  "profile.lang.en": "English",
+  "profile.done": "Done",
+  "profile.onboarding": "Tutorial",
+  "profile.onboardingReplay": "Start over",
+  "profile.onboardingDone": "Showing in the editor",
+  "profile.logout": "Log out",
+
+  // Login / sign-up screen (§3.2 — nominal, no auth in the prototype)
+  "login.roleTitle": "Who are you",
+  "login.roleWarehouse": "Warehouse: plan, receiving, picking, staff.",
+  "login.roleSeller": "Seller: stock and shipment requests, no plan editing.",
+  "login.err.email": "Check the address: it should look like name@example.com",
+  "login.err.password": "Password needs at least {n} characters",
+  "login.forgot": "Forgot your password?",
+  "login.backToSignIn": "Back to sign in",
+  "login.submit.reset": "Send a reset link",
+  "login.resetSent": "If an account for {email} exists, the reset link is on its way.",
+  "login.demo": "Open the demo",
+  "login.demoHint":
+    "The demo opens a filled warehouse: plan, goods and requests are already there.",
+  "login.tagline": "Visual warehouse layout",
+  "login.tab.signIn": "Sign in",
+  "login.tab.signUp": "Sign up",
+  "login.email": "Email",
+  "login.password": "Password",
+  "login.passwordPlaceholder": "••••••••",
+  "login.submit.signIn": "Sign in",
+  "login.submit.signUp": "Create account",
+  "login.switchToSignUp": "No account? Sign up",
+  "login.switchToSignIn": "Already have an account? Sign in",
+
+  // Warehouse management (§3.4) + common actions
+  "common.create": "Create",
+  "common.save": "Save",
+  "common.cancel": "Cancel",
+  "common.delete": "Delete",
+  "common.edit": "Edit",
+  "common.ok": "Got it",
+  "common.yes": "Yes",
+  "common.no": "No",
+  "common.optional": "optional",
+  "common.loading": "Loading",
+  "edit.undo": "Undo",
+  "edit.redo": "Redo",
+  "editor.rotate": "Rotate 90°",
+  "dash.newWarehouse": "New warehouse",
+  "dash.aboutWarehouse": "About the warehouse and staff",
+  "dash.editWarehouse": "Edit warehouse",
+  "dash.deleteWarehouse": "Delete warehouse",
+  "wh.create.title": "New warehouse",
+  "wh.edit.title": "Edit warehouse",
+  "wh.name": "Name",
+  "wh.namePlaceholder": "e.g. Mezzanine · Warehouse #3",
+  "wh.kind": "Warehouse type",
+  "wh.address": "Address",
+  "wh.addressPlaceholder": "City, street, building",
+  "wh.noAddress": "No address",
+  "wh.findOnMap": "Find by address",
+  "wh.geocoding": "Searching…",
+  "wh.geocodeFail": "Address not found — set a point on the map",
+  "wh.coords": "Coordinates",
+  "wh.lat": "Latitude",
+  "wh.lng": "Longitude",
+  "wh.mapHint": "Click the map or drag the marker",
+  "wh.clearPoint": "Clear point",
+  "wh.showMap": "Set a point on the map",
+  "wh.hideMap": "Hide map",
+  "wh.delete.confirm": "Delete warehouse “{name}”?",
+  "wh.delete.note": "Products stay in the catalog but lose their spots in this warehouse.",
+
+  // Common
+  "floor.n": "Floor {n}",
+  "floor.word": "Floor",
+  "unit.cm": "cm",
+  "unit.kg": "kg",
+
+  // Product categories
+  "cat.Одежда": "Clothing",
+  "cat.Электроника": "Electronics",
+  "cat.Бытовая техника": "Appliances",
+  "cat.Продукты": "Groceries",
+  "cat.Инструменты": "Tools",
+  "cat.Мебель": "Furniture",
+
+  // Custom field types
+  "ftype.text": "Text",
+  "ftype.number": "Number",
+  "ftype.select": "List",
+
+  // --- Side navigation and roles --------------------------------------------
+  "nav.side.title": "Sections",
+  "nav.side.dashboard": "Home",
+  "nav.side.toDashboard": "To home",
+  "nav.side.plan": "Warehouse plan",
+  "nav.side.labels": "Labels",
+  "nav.side.documents": "Documents",
+  "nav.group.flow": "Operations",
+  "nav.group.print": "Printing",
+  "nav.group.setup": "Warehouse",
+  "nav.side.lookup": "What is it?",
+  "nav.side.integrations": "Integrations",
+
+  // --- Help on the new features -------------------------------------------------
+  "faq.crossDock.q": "How is cross-docking different from normal receiving?",
+  "faq.crossDock.a":
+    "A cross-dock shipment has no «location» step: goods close the waiting requests straight from the ramp and never reach a shelf. They do not count as occupancy — they are not stored there. The mirror case is reserving against a future shipment: a seller can sell what is still on the road if the expected shipment has free quantity.",
+  "faq.pickPriority.q": "How do I keep fast movers close to the aisle?",
+  "faq.pickPriority.a":
+    "Every shelf has a pick priority in the inspector: the lower the number, the earlier auto-placement suggests that shelf. Individual shelves can be closed with «do not pick from here» — whatever lies there stays, but new placements will not go in.",
+
+  // --- Screen crash boundary ---------------------------------------------------
+  "crash.title": "This screen crashed",
+  "crash.body":
+    "Other screens keep working and your data is safe — it is stored separately from the interface.",
+  "crash.retry": "Try again",
+  "crash.toDashboard": "Back to the dashboard",
+
+  // --- Data layer: pending and failure -----------------------------------------
+  "data.busy": "Working…",
+  "data.failed": "That didn't go through. Check your connection and try again.",
+  "data.retry": "Retry",
+
+  "req.reservedBadge": "reserved for a shipment",
+};

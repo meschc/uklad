@@ -1,4 +1,4 @@
-import { uid } from "../utils";
+import { nowMs, uid } from "../utils";
 import type { LabelTemplate } from "../types";
 import type { LabelsSlice, SliceCreator } from "./state";
 
@@ -13,8 +13,8 @@ import type { LabelsSlice, SliceCreator } from "./state";
  * обычный короб, короб с маркировкой и широкая транспортная лента, где код
  * удобнее слева от текста.
  */
-export function seedLabelTemplates(): LabelTemplate[] {
-  const now = Date.now();
+function seedLabelTemplates(): LabelTemplate[] {
+  const now = nowMs();
   return [
     {
       id: uid("lbl"),
@@ -61,7 +61,7 @@ export const createLabelsSlice: SliceCreator<LabelsSlice> = (set) => ({
       const next: LabelTemplate = {
         ...tpl,
         id,
-        createdAt: s.labelTemplates.find((t) => t.id === id)?.createdAt ?? Date.now(),
+        createdAt: s.labelTemplates.find((t) => t.id === id)?.createdAt ?? nowMs(),
       };
       const exists = s.labelTemplates.some((t) => t.id === id);
       return {

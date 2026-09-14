@@ -4,6 +4,7 @@ import { useScannerInput } from "@/lib/useScannerInput";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { eyebrow } from "@/components/ui/eyebrow";
 
 /**
  * Поле скана. Физический HID-сканер «печатает» код прямо в сфокусированное
@@ -66,10 +67,7 @@ export function ScanField({
 
   return (
     <div className="flex flex-col gap-1.5">
-      <label
-        htmlFor="scan-input"
-        className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
-      >
+      <label htmlFor="scan-input" className={eyebrow()}>
         {label}
       </label>
       <div className="flex gap-2">

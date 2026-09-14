@@ -1,35 +1,30 @@
 import { useState, type ReactNode } from "react";
 import { ChevronRight } from "lucide-react";
+import { readLocal, writeLocal } from "@/lib/safeStorage";
 import { cn } from "@/lib/utils";
+import { eyebrow } from "@/components/ui/eyebrow";
+import { card } from "@/components/ui/card";
 
 /**
  * Сворачивание секций левой панели с запоминанием в localStorage: пользователь
  * скрывает ненужные группы (этажи, объекты, шаблоны), освобождая высоту под
  * нужные. Открытые секции с `grow` делят свободное место — так их высота
  * получается разной и управляемой.
+ *
+ * Хук наружу не выпущен: сворачивание — часть самой секции, и отдельно от неё
+ * никому не понадобилось. Понадобится — тогда и переедет в свой файл.
  */
-export function useCollapsed(
-  key: string,
-  defaultCollapsed = false,
-): [boolean, () => void] {
+function useCollapsed(key: string, defaultCollapsed = false): [boolean, () => void] {
   const storeKey = `uklad-panel-${key}`;
   const [collapsed, setCollapsed] = useState<boolean>(() => {
-    try {
-      const saved = localStorage.getItem(storeKey);
-      // Пользовательский выбор важнее умолчания; без записи берём умолчание.
-      return saved == null ? defaultCollapsed : saved === "1";
-    } catch {
-      return defaultCollapsed;
-    }
+    const saved = readLocal(storeKey);
+    // Пользовательский выбор важнее умолчания; без записи берём умолчание.
+    return saved == null ? defaultCollapsed : saved === "1";
   });
   const toggle = () =>
     setCollapsed((c) => {
       const next = !c;
-      try {
-        localStorage.setItem(storeKey, next ? "1" : "0");
-      } catch {
-        /* приватный режим — просто не запоминаем */
-      }
+      writeLocal(storeKey, next ? "1" : "0");
       return next;
     });
   return [collapsed, toggle];
@@ -66,7 +61,7 @@ export function PanelSection({
   return (
     <div
       className={cn(
-        "flex shrink-0 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm",
+        card({ pad: "none", className: "flex shrink-0 flex-col overflow-hidden shadow-sm" }),
         open && grow && "min-h-0 flex-1",
       )}
     >
@@ -77,13 +72,10 @@ export function PanelSection({
           className="flex min-w-0 flex-1 items-center gap-1.5 text-muted-foreground transition-colors hover:text-foreground"
         >
           <ChevronRight
-            className={cn(
-              "size-3 shrink-0 transition-transform",
-              open && "rotate-90",
-            )}
+            className={cn("size-3 shrink-0 transition-transform", open && "rotate-90")}
           />
           {icon}
-          <span className="truncate text-[11px] font-semibold uppercase tracking-wide">
+          <span className={eyebrow({ tone: "current", className: "truncate" })}>
             {title}
             {count != null && ` · ${count}`}
           </span>
@@ -91,12 +83,7 @@ export function PanelSection({
         {right}
       </div>
       {open && (
-        <div
-          className={cn(
-            "no-scrollbar min-h-0 flex-1 overflow-y-auto",
-            bodyClassName,
-          )}
-        >
+        <div className={cn("no-scrollbar min-h-0 flex-1 overflow-y-auto", bodyClassName)}>
           {children}
         </div>
       )}

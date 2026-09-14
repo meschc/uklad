@@ -1,4 +1,7 @@
 import type { StateCreator } from "zustand";
+// Только тип: `import type` стирается при сборке, поэтому кольца
+// «словарь → хранилище → словарь» не возникает.
+import type { MsgKey } from "../i18n";
 import type {
   Account,
   AddressingConfig,
@@ -16,6 +19,7 @@ import type {
   LabelTemplate,
   Pallet,
   ReceivingEvent,
+  ReceivingProgress,
   RequestStatus,
   Session,
   ShipmentSource,
@@ -50,12 +54,7 @@ import type { HistorySnapshot } from "./history.slice";
  */
 
 /** Тип создателя среза: общее состояние + persist-мутатор. */
-export type SliceCreator<T> = StateCreator<
-  EditorState,
-  [["zustand/persist", unknown]],
-  [],
-  T
->;
+export type SliceCreator<T> = StateCreator<EditorState, [["zustand/persist", unknown]], [], T>;
 
 /**
  * Конфликт «на полке товар». Возникает, когда правка плана уничтожает ячейки,
@@ -67,7 +66,7 @@ export type SliceCreator<T> = StateCreator<
  */
 export interface GoodsConflict {
   /** Ключ i18n заголовка алерта (что за операция) + подстановки. */
-  titleKey: string;
+  titleKey: MsgKey;
   titleVars?: Record<string, string | number>;
   /** Товары, которые потеряют своё место. */
   productIds: string[];
@@ -115,10 +114,7 @@ export interface AccountSlice {
   updateWarehouse: (
     id: string,
     patch: Partial<
-      Pick<
-        Warehouse,
-        "name" | "kind" | "address" | "lat" | "lng" | "storageRatePerCell"
-      >
+      Pick<Warehouse, "name" | "kind" | "address" | "lat" | "lng" | "storageRatePerCell">
     >,
   ) => void;
   /** Удалить склад. Нельзя удалить последний; размещения на нём — очищаются. */
@@ -177,7 +173,7 @@ export interface CatalogSlice {
     options?: string[],
   ) => {
     ok: boolean;
-    errorKey?: string;
+    errorKey?: MsgKey;
     errorVars?: Record<string, string | number>;
   };
   /** Удалить поле вместе со всеми значениями. */
@@ -187,8 +183,7 @@ export interface CatalogSlice {
   /** Добавить товар вручную. Возвращает id нового товара. */
   addProduct: (p: Omit<Product, "id">) => string;
   updateProduct: (id: string, patch: Partial<Omit<Product, "id">>) => void;
-  /** Удалить товар: снимаем его размещение и значения доп.полей. */
-  deleteProduct: (id: string) => void;
+  /** Удалить товары: снимаем заодно их размещения и значения доп.полей. */
   deleteProducts: (ids: string[]) => void;
   setProductsCategory: (ids: string[], category: ProductCategory) => void;
   setProductsPartner: (ids: string[], partnerId: string | undefined) => void;
@@ -240,21 +235,13 @@ export interface ModulesSlice {
   toggleSelect: (id: string, additive: boolean) => void;
   clearSelection: () => void;
 
-  addModule: (
-    type: ModuleType,
-    x: number,
-    y: number,
-    size?: { w: number; h: number },
-  ) => string;
+  addModule: (type: ModuleType, x: number, y: number, size?: { w: number; h: number }) => string;
   /** Несколько модулей одним шагом истории (штамп шаблона раскладки, #38). */
   addModules: (
     specs: { type: ModuleType; x: number; y: number; w: number; h: number }[],
   ) => string[];
   updateModule: (id: string, patch: Partial<PlacedModule>) => void;
-  setModuleRect: (
-    id: string,
-    rect: { x: number; y: number; w: number; h: number },
-  ) => void;
+  setModuleRect: (id: string, rect: { x: number; y: number; w: number; h: number }) => void;
   moveSelection: (dx: number, dy: number) => void;
   rotateModule: (id: string) => void;
   rotateSelection: () => void;
@@ -293,11 +280,7 @@ export interface ShelvesSlice {
   setActiveShelf: (moduleId: string, index: number) => void;
   clearActiveShelf: () => void;
   /** Задать/снять собственный номер полки внутри секции. */
-  setShelfNumber: (
-    moduleId: string,
-    index: number,
-    number: number | undefined,
-  ) => void;
+  setShelfNumber: (moduleId: string, index: number, number: number | undefined) => void;
   /**
    * Приоритет отбора и доступность полки (п.10.2). `undefined` в приоритете —
    * вернуть обычное значение; `pickable: false` — исключить из автоподбора,
@@ -375,7 +358,7 @@ export interface ViewSlice {
   /** Транзиентное уведомление: локализуется в UI по ключу + переменным. */
   toast: {
     id: number;
-    key: string;
+    key: MsgKey;
     vars?: Record<string, string | number>;
   } | null;
 
@@ -383,7 +366,7 @@ export interface ViewSlice {
   setZoom: (zoom: number) => void;
   setView: (zoom: number, pan: { x: number; y: number }) => void;
   setPan: (pan: { x: number; y: number }) => void;
-  showToast: (key: string, vars?: Record<string, string | number>) => void;
+  showToast: (key: MsgKey, vars?: Record<string, string | number>) => void;
 }
 
 // --- Разовые подсказки онбординга --------------------------------------------
@@ -394,16 +377,25 @@ export interface PrintSlice {
   setPrintPreview: (open: boolean) => void;
 }
 
+/**
+ * Какая именно подсказка. Совпадает с хвостом ключа словаря: `lod` — это
+ * `onb.lod`. Перечислением, а не `string`, ради двух вещей сразу: опечатка в
+ * `showHint("lodd")` становится ошибкой сборки, а в самой подсказке из
+ * идентификатора собирается настоящий ключ `MsgKey`, а не «`onb.` плюс что
+ * угодно» — то есть забытый перевод тоже поймает компилятор.
+ */
+export type HintId = "welcome" | "lod" | "dup" | "marquee" | "ctx" | "stamp" | "multi";
+
 export interface OnboardingSlice {
   /**
    * Какие подсказки уже показывали (сохраняется), и какая висит сейчас
    * (транзиентная). Механика редактора хорошая, но неочевидная — подсказываем
    * в момент первого столкновения, а не туром в начале.
    */
-  seenHints: string[];
-  activeHint: string | null;
+  seenHints: HintId[];
+  activeHint: HintId | null;
   /** Показать подсказку, если её ещё не видели и сейчас ничего не висит. */
-  showHint: (key: string) => void;
+  showHint: (key: HintId) => void;
   /** Закрыть подсказку и запомнить, что её уже видели. */
   dismissHint: () => void;
   resetHints: () => void;
@@ -441,6 +433,8 @@ export interface FulfillmentSlice {
   /** Счётчики ярлыков: номер печатается на коробке/паллете и не переиспользуется. */
   boxSeq: number;
   palletSeq: number;
+  /** Ход незакрытой приёмки: мастер переживает уход на другой экран (п.4.7). */
+  receiving: ReceivingProgress;
 
   /** Создать ожидаемую поставку. Возвращает id. */
   createExpectedShipment: (
@@ -470,6 +464,17 @@ export interface FulfillmentSlice {
   attachBoxToPallet: (boxId: string, palletId: string) => void;
   /** Снять единицы товара с коробки (сборка). Возвращает, сколько сняли. */
   removeFromBox: (boxId: string, productId: string, qty: number) => number;
+
+  /** Правка хода мастера: экран меняет одно-два поля за переход. */
+  setReceiving: (patch: Partial<ReceivingProgress>) => void;
+  /**
+   * Плюс к счётчику принятого за заход. Отдельным действием, а не патчем:
+   * приёмка асинхронная, и патч со сложением брал бы прошлое значение из
+   * замыкания — два подтверждения подряд записались бы как одно.
+   */
+  addReceived: (qty: number) => void;
+  /** Сверить сохранённый ход с текущими данными склада — см. `lib/receiving`. */
+  resumeReceiving: () => void;
 }
 
 // --- Заявки продавца и роль пользователя -------------------------------------
@@ -481,10 +486,7 @@ export interface RequestsSlice {
 
   /** Одна заявка. Возвращает id. */
   createRequest: (
-    input: Omit<
-      FulfillmentRequest,
-      "id" | "status" | "createdAt" | "updatedAt"
-    >,
+    input: Omit<FulfillmentRequest, "id" | "status" | "createdAt" | "updatedAt">,
   ) => string;
   /** Пакет заявок из импорта: общая дата машины на весь пакет. */
   createRequests: (
@@ -507,11 +509,7 @@ export interface RequestsSlice {
    * Кроссдокинг: принятый товар раздаётся ждущим заявкам, минуя полку.
    * Возвращает, сколько единиц ушло в заявки (остальное — на склад как обычно).
    */
-  applyCrossDock: (
-    productId: string,
-    qty: number,
-    shipmentId?: string,
-  ) => number;
+  applyCrossDock: (productId: string, qty: number, shipmentId?: string) => number;
   updateRequestStatus: (id: string, status: RequestStatus) => void;
   /** Взять заявку в работу (экран «Сборка»): статус + отметка времени. */
   startPicking: (id: string) => void;
@@ -583,9 +581,7 @@ export interface LabelsSlice {
    * Сохранить шаблон: с `id` — перезаписать существующий, без него — создать
    * новый. Возвращает id, чтобы экран сразу выбрал сохранённый шаблон.
    */
-  saveLabelTemplate: (
-    tpl: Omit<LabelTemplate, "id" | "createdAt"> & { id?: string },
-  ) => string;
+  saveLabelTemplate: (tpl: Omit<LabelTemplate, "id" | "createdAt"> & { id?: string }) => string;
   removeLabelTemplate: (id: string) => void;
 }
 
@@ -598,6 +594,8 @@ export interface IntegrationsSlice {
 export interface StaffSlice {
   /** Добавить сотрудника активного склада. Возвращает id. */
   addStaffMember: (member: Omit<StaffMember, "id">) => string;
+  /** Загрузка списка из файла — одной операцией, а не по одному человеку. */
+  importStaff: (members: Omit<StaffMember, "id">[]) => void;
   updateStaffMember: (id: string, patch: Partial<Omit<StaffMember, "id">>) => void;
   removeStaffMember: (id: string) => void;
   /** Контакты склада: телефон, email, ответственное лицо. */

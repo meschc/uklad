@@ -46,9 +46,7 @@ export function shelfNumber(
   const shelves = mod.shelves ?? [];
   const own = shelves[shelfIndex]?.number;
   if (own != null) return own;
-  return cfg.shelfOrder === "bottomUp"
-    ? shelves.length - shelfIndex
-    : shelfIndex + 1;
+  return cfg.shelfOrder === "bottomUp" ? shelves.length - shelfIndex : shelfIndex + 1;
 }
 
 /**
@@ -115,7 +113,10 @@ export function parseAddress(
   input: string,
   cfg: AddressingConfig = current,
 ): CellAddress | null {
-  const parts = input.trim().split(/[\s.\-/]+/).filter(Boolean);
+  const parts = input
+    .trim()
+    .split(/[\s.\-/]+/)
+    .filter(Boolean);
   const hasFloor = cfg.useFloor !== false;
   const expected = (hasFloor ? 1 : 0) + (cfg.useRows ? 1 : 0) + 3;
   if (parts.length !== expected) return null;
@@ -129,8 +130,7 @@ export function parseAddress(
   const [s, sh, c] = nums.slice(idx);
 
   // Этаж ищем по его номеру в адресе (собственному или позиционному).
-  const floor =
-    warehouse.floors.find((x, i) => floorNumber(x, i) === f) ?? null;
+  const floor = warehouse.floors.find((x, i) => floorNumber(x, i) === f) ?? null;
   if (!floor) return null;
 
   // Ищем секцию по ЭФФЕКТИВНОМУ номеру, чтобы разбор был обратен formatAddress.
@@ -142,9 +142,7 @@ export function parseAddress(
 
   // Номер полки → индекс в массиве (учитываем направление и ручные номера).
   const shelves = mod.shelves ?? [];
-  const shelfIndex = shelves.findIndex(
-    (_, i) => shelfNumber(mod, i, cfg) === sh,
-  );
+  const shelfIndex = shelves.findIndex((_, i) => shelfNumber(mod, i, cfg) === sh);
   if (shelfIndex < 0) return null;
   if (c > shelves[shelfIndex].cells) return null;
 
@@ -178,10 +176,7 @@ export interface CellDims {
  * ячейка выходила 33 см шириной при 3 м глубины — товары не проходили по
  * ширине никуда, хотя реально помещались (п.8, корень жалобы п.19).
  */
-export function cellDimsCm(
-  mod: PlacedModule,
-  shelfIndex: number,
-): CellDims | null {
+export function cellDimsCm(mod: PlacedModule, shelfIndex: number): CellDims | null {
   const shelves = mod.shelves ?? [];
   const shelf = shelves[shelfIndex];
   if (!shelf) return null;

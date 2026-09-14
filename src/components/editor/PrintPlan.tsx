@@ -3,9 +3,11 @@ import { Printer, X } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { sectionNumber } from "@/lib/address";
 import { rowNumbers } from "@/lib/numbering";
+import { planBounds } from "@/lib/planGeometry";
 import { MODULE_SPECS, type Floor, type PlacedModule } from "@/lib/types";
 import { useT, type TFunc } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { DialogHeader, DialogShell } from "@/components/ui/dialog-shell";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -34,6 +36,9 @@ const PAGE_MARGIN = 10;
 const HEADER_MM = 14;
 const LEGEND_MM = 8;
 
+/** Клетка запаса по краю листа: план не должен упираться в поля печати. */
+const SHEET_PAD_CELLS = 1;
+
 export function PrintPlan() {
   const previewOpen = useEditor((s) => s.printPreviewOpen);
   const setPreview = useEditor((s) => s.setPrintPreview);
@@ -56,68 +61,52 @@ export function PrintPlan() {
         <PlanSheet t={t} />
       </div>
 
-      {previewOpen && (
-        <PrintPreview onClose={() => setPreview(false)} page={page} t={t} />
-      )}
+      {previewOpen && <PrintPreview onClose={() => setPreview(false)} page={page} t={t} />}
     </>
   );
 }
 
-function PrintPreview({
-  onClose,
-  page,
-  t,
-}: {
-  onClose: () => void;
-  page: PageFit;
-  t: TFunc;
-}) {
+function PrintPreview({ onClose, page, t }: { onClose: () => void; page: PageFit; t: TFunc }) {
   // Предпросмотр показывает лист целиком в тех же пропорциях, что уйдёт в
   // принтер: иначе «умещается на страницу» приходилось бы проверять печатью.
   const contentH = (page.orientation === "landscape" ? A4.short : A4.long) - PAGE_MARGIN * 2;
   const contentW = (page.orientation === "landscape" ? A4.long : A4.short) - PAGE_MARGIN * 2;
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 print:hidden">
-      <div
-        className="absolute inset-0 animate-fade-in bg-black/40 backdrop-blur-[1px]"
-        onClick={onClose}
-      />
-      <div className="relative flex max-h-[90vh] w-full max-w-3xl animate-scale-in flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl">
-        <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-3">
-          <div>
-            <p className="text-sm font-semibold">{t("print.previewTitle")}</p>
-            <p className="text-[11px] text-muted-foreground">{t("print.hint")}</p>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <Button size="sm" onClick={() => window.print()}>
-              <Printer className="size-3.5" />
-              {t("print.doPrint")}
-            </Button>
-            <Button variant="ghost" size="icon-sm" onClick={onClose}>
-              <X className="size-4" />
-            </Button>
-          </div>
+    <DialogShell size="3xl" scroll onClose={onClose} className="print:hidden">
+      <DialogHeader>
+        <div>
+          <p className="text-sm font-semibold">{t("print.previewTitle")}</p>
+          <p className="text-[11px] text-muted-foreground">{t("print.hint")}</p>
         </div>
-        {/* Белый лист внутри тёмной темы тоже белый: печатают на бумаге. */}
-        {/* Лист виден целиком: он вписывается в высоту окна, а не прокручивается
+        <div className="flex items-center gap-1.5">
+          <Button size="sm" onClick={() => window.print()}>
+            <Printer className="size-3.5" />
+            {t("print.doPrint")}
+          </Button>
+          <Button variant="ghost" size="icon-sm" onClick={onClose}>
+            <X className="size-4" />
+          </Button>
+        </div>
+      </DialogHeader>
+      {/* Белый лист внутри тёмной темы тоже белый: печатают на бумаге. */}
+      {/* Лист виден целиком: он вписывается в высоту окна, а не прокручивается
             — иначе «влезает ли план на страницу» приходится проверять глазами
             по кусочкам. */}
-        <div className="flex min-h-0 flex-1 justify-center overflow-hidden bg-muted/40 p-4">
-          {/* Коробка листа держит пропорции A4 и не даёт содержимому её
+      <div className="flex min-h-0 flex-1 justify-center overflow-hidden bg-muted/40 p-4">
+        {/* Коробка листа держит пропорции A4 и не даёт содержимому её
               растянуть: если рисунок не влезает — он ужимается, а не уезжает
               на вторую страницу. */}
-          <div
-            className="flex h-full max-w-full flex-col overflow-hidden bg-white text-black shadow-sm"
-            style={{
-              aspectRatio: `${contentW} / ${contentH}`,
-              padding: `${(PAGE_MARGIN / contentW) * 100}%`,
-            }}
-          >
-            <PlanSheet t={t} fill />
-          </div>
+        <div
+          className="flex h-full max-w-full flex-col overflow-hidden bg-white text-black shadow-sm"
+          style={{
+            aspectRatio: `${contentW} / ${contentH}`,
+            padding: `${(PAGE_MARGIN / contentW) * 100}%`,
+          }}
+        >
+          <PlanSheet t={t} fill />
         </div>
       </div>
-    </div>,
+    </DialogShell>,
     document.body,
   );
 }
@@ -133,13 +122,9 @@ interface PageFit {
 }
 
 function pageFor(floor: Floor): PageFit {
-  const mods = floor.modules;
-  if (!mods.length) return { orientation: "portrait", planHeightMm: 240 };
-  const minX = Math.min(...mods.map((m) => m.x));
-  const minY = Math.min(...mods.map((m) => m.y));
-  const maxX = Math.max(...mods.map((m) => m.x + m.w));
-  const maxY = Math.max(...mods.map((m) => m.y + m.h));
-  const landscape = maxX - minX > maxY - minY;
+  const box = planBounds(floor.modules);
+  if (!box) return { orientation: "portrait", planHeightMm: 240 };
+  const landscape = box.w > box.h;
   const pageHeight = landscape ? A4.short : A4.long;
   return {
     orientation: landscape ? "landscape" : "portrait",
@@ -154,13 +139,9 @@ function PlanSheet({ t, fill }: { t: TFunc; fill?: boolean }) {
   const selection = useEditor((s) => s.selection);
 
   const mods = floor.modules;
-  if (!mods.length) return null;
+  const box = planBounds(mods, SHEET_PAD_CELLS);
+  if (!box) return null;
 
-  const minX = Math.min(...mods.map((m) => m.x));
-  const minY = Math.min(...mods.map((m) => m.y));
-  const maxX = Math.max(...mods.map((m) => m.x + m.w));
-  const maxY = Math.max(...mods.map((m) => m.y + m.h));
-  const pad = 1;
   const rows = rowNumbers(floor);
   const floorIndex = warehouse.floors.findIndex((f) => f.id === floor.id);
   const floorNum = warehouse.floors[floorIndex]?.number ?? floorIndex + 1;
@@ -176,9 +157,7 @@ function PlanSheet({ t, fill }: { t: TFunc; fill?: boolean }) {
       </header>
 
       <svg
-        viewBox={`${minX - pad} ${minY - pad} ${maxX - minX + pad * 2} ${
-          maxY - minY + pad * 2
-        }`}
+        viewBox={`${box.x} ${box.y} ${box.w} ${box.h}`}
         preserveAspectRatio="xMidYMid meet"
         className={cn("print-plan w-full", fill ? "min-h-0 flex-1" : "h-auto")}
       >
@@ -195,9 +174,7 @@ function PlanSheet({ t, fill }: { t: TFunc; fill?: boolean }) {
       </svg>
 
       <p className="mt-2 text-[10px]">
-        {selectedCount > 0
-          ? t("print.legendSelected", { n: selectedCount })
-          : t("print.legend")}
+        {selectedCount > 0 ? t("print.legendSelected", { n: selectedCount }) : t("print.legend")}
       </p>
     </div>
   );
@@ -262,17 +239,11 @@ function ModuleShape({
         fontSize={fontSize}
         fontWeight={selected ? 700 : 400}
         // Вертикальную конструкцию подписываем вдоль неё — иначе слово вылезает.
-        transform={
-          vertical
-            ? `rotate(-90 ${m.x + m.w / 2} ${m.y + m.h / 2})`
-            : undefined
-        }
+        transform={vertical ? `rotate(-90 ${m.x + m.w / 2} ${m.y + m.h / 2})` : undefined}
       >
         {text}
       </text>
-      {!isSection && (
-        <title>{t(`module.${m.type}.title`)}</title>
-      )}
+      {!isSection && <title>{t(`module.${m.type}.title`)}</title>}
     </g>
   );
 }

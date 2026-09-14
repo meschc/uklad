@@ -5,7 +5,14 @@ import { describe, expect, test, vi } from "vitest";
 // подменяем заглушкой: до него здесь ни одна проверка не доходит.
 vi.mock("../store", () => ({ useEditor: () => "ru" }));
 
-import { messages, plural, translate } from "../i18n";
+import { dictionaryParts, messages, plural, translate, type MsgKey } from "../i18n";
+
+// `Object.keys` отдаёт `string[]` — то, что это ключи словаря, по дороге
+// теряется. Возвращаем это знание один раз здесь: дальше проверки ходят
+// такими ключами в оба словаря сразу, и без типа каждое обращение было бы
+// `any` — то есть непроверенным.
+const ruKeys = Object.keys(messages.ru) as MsgKey[];
+const enKeys = Object.keys(messages.en) as MsgKey[];
 
 /**
  * Двуязычие системы.
@@ -18,9 +25,6 @@ import { messages, plural, translate } from "../i18n";
  * посреди своего интерфейса. Тест — единственное место, где это заметно.
  */
 describe("Словари", () => {
-  const ruKeys = Object.keys(messages.ru);
-  const enKeys = Object.keys(messages.en);
-
   test("в словарях одни и те же ключи", () => {
     const missingEn = ruKeys.filter((k) => !(k in messages.en));
     const extraEn = enKeys.filter((k) => !(k in messages.ru));
@@ -48,6 +52,18 @@ describe("Словари", () => {
       (k) => vars(messages.ru[k]).join() !== vars(messages.en[k] ?? "").join(),
     );
     expect(broken).toEqual([]);
+  });
+
+  test("ни один ключ не потерялся при склейке частей", () => {
+    // Словарь собран спредом из файлов по доменам, а спред, в отличие от одного
+    // объектного литерала, повторный ключ не подсвечивает: второй молча
+    // перекроет первый, и строка покажет чужой перевод — при этом обе проверки
+    // выше останутся зелёными, ключи-то на месте. Ловится только счётом.
+    const count = (part: Record<string, string>) => Object.keys(part).length;
+    const sumRu = dictionaryParts.reduce((n, part) => n + count(part.ru), 0);
+    const sumEn = dictionaryParts.reduce((n, part) => n + count(part.en), 0);
+    expect(sumRu).toBe(ruKeys.length);
+    expect(sumEn).toBe(enKeys.length);
   });
 
   test("пустых строк в словарях нет", () => {
@@ -81,11 +97,15 @@ describe("Согласование числа", () => {
 describe("Подстановка", () => {
   test("незнакомый ключ возвращается как есть", () => {
     // Так его видно в интерфейсе и можно найти поиском по словарю.
-    expect(translate("en", "нет.такого.ключа")).toBe("нет.такого.ключа");
+    //
+    // Приведение здесь — сама суть проверки: ключей вне словаря по типам не
+    // существует, и подсунуть такой можно только силой. Проверяем то, что
+    // случится, если типы всё-таки обойдут — например, ключ придёт из данных.
+    expect(translate("en", "нет.такого.ключа" as MsgKey)).toBe("нет.такого.ключа");
   });
 
   test("переменная подставляется в обоих языках", () => {
-    const key = Object.keys(messages.ru).find((k) => messages.ru[k].includes("{n}"));
+    const key = ruKeys.find((k) => messages.ru[k].includes("{n}"));
     expect(key).toBeDefined();
     expect(translate("ru", key!, { n: 7 })).toContain("7");
     expect(translate("en", key!, { n: 7 })).toContain("7");

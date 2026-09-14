@@ -97,9 +97,7 @@ export function makeRequest(over: Partial<FulfillmentRequest> = {}): Fulfillment
   };
 }
 
-export function makeShipmentLine(
-  over: Partial<ExpectedShipmentLine> = {},
-): ExpectedShipmentLine {
+export function makeShipmentLine(over: Partial<ExpectedShipmentLine> = {}): ExpectedShipmentLine {
   return {
     id: nextId("line"),
     productId: "prod-x",

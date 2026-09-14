@@ -24,17 +24,10 @@ const requestsSlice = createRequestsSlice as unknown as StateCreator<
 >;
 
 export function makeRequestsStore(initial: Partial<EditorState> = {}) {
-  return create<EditorState>()(
-    (...a) => ({ ...requestsSlice(...a), ...initial }) as EditorState,
-  );
+  return create<EditorState>()((...a) => ({ ...requestsSlice(...a), ...initial }) as EditorState);
 }
 
-const chatSlice = createChatSlice as unknown as StateCreator<
-  EditorState,
-  [],
-  [],
-  ChatSlice
->;
+const chatSlice = createChatSlice as unknown as StateCreator<EditorState, [], [], ChatSlice>;
 
 /**
  * Стенд для чата. Срез читает роль из `session` и партнёров из `warehouse`,
@@ -42,7 +35,5 @@ const chatSlice = createChatSlice as unknown as StateCreator<
  * значения по умолчанию соседних срезов.
  */
 export function makeChatStore(initial: Partial<EditorState> = {}) {
-  return create<EditorState>()(
-    (...a) => ({ ...chatSlice(...a), ...initial }) as EditorState,
-  );
+  return create<EditorState>()((...a) => ({ ...chatSlice(...a), ...initial }) as EditorState);
 }

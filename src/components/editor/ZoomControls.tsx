@@ -4,11 +4,7 @@ import { useT } from "@/lib/i18n";
 import { combo, shiftCombo } from "@/lib/platform";
 import { cn } from "@/lib/utils";
 import { ZOOM_STEP } from "./constants";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 function fire(name: string, detail?: unknown) {
   window.dispatchEvent(new CustomEvent(name, { detail }));
@@ -31,11 +27,7 @@ export function ZoomControls() {
       {/* Отмена/повтор — здесь, а не в топбаре: действие и его откат рядом (п.5) */}
       {!readOnly && (
         <>
-          <IconBtn
-            label={`${t("edit.undo")} · ${combo("Z")}`}
-            disabled={!canUndo}
-            onClick={undo}
-          >
+          <IconBtn label={`${t("edit.undo")} · ${combo("Z")}`} disabled={!canUndo} onClick={undo}>
             <Undo2 className="size-4" />
           </IconBtn>
           <IconBtn

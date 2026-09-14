@@ -6,6 +6,7 @@ import { rowNumbers } from "@/lib/numbering";
 import { sectionNumber } from "@/lib/address";
 import { type TFunc } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { eyebrow } from "@/components/ui/eyebrow";
 import { ModuleGlyph } from "./ModuleGlyph";
 
 /**
@@ -31,8 +32,7 @@ export function LayersTree({ floor, t }: { floor: Floor; t: TFunc }) {
     // Ряд включает и лестницы своей линии (п.13). Конструкции вне рядов —
     // в отдельную группу «Конструкции».
     const members = floor.modules.filter(
-      (m) =>
-        m.type === "section" || m.type === "stairs" || m.type === "elevator",
+      (m) => m.type === "section" || m.type === "stairs" || m.type === "elevator",
     );
     const byRow = new Map<number, PlacedModule[]>();
     const structural: PlacedModule[] = [];
@@ -82,11 +82,7 @@ export function LayersTree({ floor, t }: { floor: Floor; t: TFunc }) {
     });
 
   if (rows.length === 0 && structural.length === 0) {
-    return (
-      <p className="px-1 py-4 text-xs text-muted-foreground">
-        {t("struct.empty")}
-      </p>
-    );
+    return <p className="px-1 py-4 text-xs text-muted-foreground">{t("struct.empty")}</p>;
   }
 
   const leaf = (m: PlacedModule, label: React.ReactNode) => {
@@ -134,10 +130,7 @@ export function LayersTree({ floor, t }: { floor: Floor; t: TFunc }) {
                 className="flex shrink-0 items-center rounded-md p-1 text-muted-foreground transition-colors hover:text-foreground"
               >
                 <ChevronRight
-                  className={cn(
-                    "size-3.5 transition-transform",
-                    isOpen(row) && "rotate-90",
-                  )}
+                  className={cn("size-3.5 transition-transform", isOpen(row) && "rotate-90")}
                 />
               </button>
               <button
@@ -153,8 +146,7 @@ export function LayersTree({ floor, t }: { floor: Floor; t: TFunc }) {
                     );
                     return;
                   }
-                  if (rowSel === mods.length && selection.length === mods.length)
-                    clearSelection();
+                  if (rowSel === mods.length && selection.length === mods.length) clearSelection();
                   else select(ids);
                 }}
                 title={t("layers.selectRow")}
@@ -198,7 +190,7 @@ export function LayersTree({ floor, t }: { floor: Floor; t: TFunc }) {
 
       {structural.length > 0 && (
         <div className="mt-1 flex flex-col gap-0.5">
-          <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+          <div className={eyebrow({ size: "xs", className: "px-2 py-1 opacity-70" })}>
             {t("layers.structures")}
           </div>
           {structural.map((m) => leaf(m, t(`module.${m.type}.title`)))}

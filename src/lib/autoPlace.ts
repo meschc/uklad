@@ -75,9 +75,7 @@ function zonesOf(
   cats.forEach((cat, i) => {
     const share = (demand.get(cat) ?? 0) / total;
     const last = i === cats.length - 1;
-    const size = last
-      ? sections.length - cursor
-      : Math.max(1, Math.round(sections.length * share));
+    const size = last ? sections.length - cursor : Math.max(1, Math.round(sections.length * share));
     zones.set(cat, sections.slice(cursor, cursor + size));
     cursor = Math.min(sections.length, cursor + size);
   });
@@ -85,11 +83,7 @@ function zonesOf(
 }
 
 /** Лучшая свободная ячейка для товара: сначала нужный ярус, потом «в размер». */
-function pickCell(
-  sections: Section[],
-  taken: Set<string>,
-  product: Product,
-): CellCandidate | null {
+function pickCell(sections: Section[], taken: Set<string>, product: Product): CellCandidate | null {
   const target = targetLevel(product.weightKg);
   let best: CellCandidate | null = null;
   let bestScore = Infinity;
@@ -135,9 +129,7 @@ export function autoPlace(
   const zones = zonesOf(sections, demand);
 
   // Тяжёлые размещаем первыми: нижних ярусов меньше, и они должны достаться им.
-  const queue = [...pending].sort(
-    (a, b) => (b.weightKg ?? 0) - (a.weightKg ?? 0),
-  );
+  const queue = [...pending].sort((a, b) => (b.weightKg ?? 0) - (a.weightKg ?? 0));
 
   const out: Record<string, CellAddress> = {};
   for (const p of queue) {

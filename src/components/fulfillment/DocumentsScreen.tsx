@@ -13,6 +13,7 @@ import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/segmented";
+import { card } from "@/components/ui/card";
 import { DocumentSheet } from "./DocumentSheet";
 import { ScreenShell, EmptyState } from "./ScreenShell";
 
@@ -74,9 +75,8 @@ export function DocumentsScreen() {
       }));
   }, [kind, requests, shipments, expected, t]);
 
-  const activeId = sourceId && sources.some((s) => s.id === sourceId)
-    ? sourceId
-    : (sources[0]?.id ?? null);
+  const activeId =
+    sourceId && sources.some((s) => s.id === sourceId) ? sourceId : (sources[0]?.id ?? null);
 
   const doc: DocModel | null = useMemo(() => {
     if (!activeId) return null;
@@ -85,23 +85,14 @@ export function DocumentsScreen() {
         requests.filter((r) => r.status === "new" || r.status === "in_progress"),
       ).find((g) => (g.target ?? "—") === activeId);
       if (!group) return null;
-      return buildPickDoc(
-        group.items,
-        products,
-        warehouse,
-        placements,
-        boxes,
-        activeId,
-      );
+      return buildPickDoc(group.items, products, warehouse, placements, boxes, activeId);
     }
     if (kind === "shipment") {
       const ship = shipments.find((s) => s.id === activeId);
       return ship ? buildShipmentDoc(ship, requests, products) : null;
     }
     const exp = expected.find((s) => s.id === activeId);
-    return exp
-      ? buildReceivingDoc(exp, events, products, warehouse, boxes)
-      : null;
+    return exp ? buildReceivingDoc(exp, events, products, warehouse, boxes) : null;
   }, [
     kind,
     activeId,
@@ -119,7 +110,7 @@ export function DocumentsScreen() {
     <ScreenShell title={t("doc.title")} subtitle={t("doc.subtitle")} wide>
       <style>{`@page { size: A4 portrait; margin: 0; }`}</style>
 
-      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card p-4">
+      <div className={card({ className: "flex flex-wrap items-center gap-3" })}>
         <Segmented
           size="md"
           value={kind}
@@ -164,22 +155,23 @@ export function DocumentsScreen() {
         />
       ) : (
         <div className="grid gap-4 lg:grid-cols-[minmax(0,16rem)_minmax(0,1fr)]">
-          <ul className="flex max-h-[32rem] flex-col gap-1 overflow-y-auto rounded-xl border border-border bg-card p-2 scrollbar-thin">
+          <ul
+            className={card({
+              pad: "xs",
+              className: "flex max-h-[32rem] flex-col gap-1 overflow-y-auto scrollbar-thin",
+            })}
+          >
             {sources.map((s) => (
               <li key={s.id}>
                 <button
                   onClick={() => setSourceId(s.id)}
                   className={cn(
                     "flex w-full flex-col gap-0.5 rounded-md px-2.5 py-2 text-left transition-colors",
-                    s.id === activeId
-                      ? "bg-primary/10 text-primary"
-                      : "hover:bg-accent",
+                    s.id === activeId ? "bg-primary/10 text-primary" : "hover:bg-accent",
                   )}
                 >
                   <span className="truncate text-xs font-medium">{s.title}</span>
-                  <span className="text-[10px] text-muted-foreground">
-                    {s.hint}
-                  </span>
+                  <span className="text-[10px] text-muted-foreground">{s.hint}</span>
                 </button>
               </li>
             ))}
@@ -199,11 +191,7 @@ export function DocumentsScreen() {
                     transformOrigin: "top left",
                   }}
                 >
-                  <DocumentSheet
-                    doc={doc}
-                    warehouse={warehouse}
-                    className="shadow-lg"
-                  />
+                  <DocumentSheet doc={doc} warehouse={warehouse} className="shadow-lg" />
                 </div>
               </div>
             ) : (

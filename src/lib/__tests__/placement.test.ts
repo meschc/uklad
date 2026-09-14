@@ -9,14 +9,7 @@ import {
   tightestFittingCell,
 } from "../placement";
 import type { CellAddress } from "../types";
-import {
-  makeBox,
-  makeFloor,
-  makeProduct,
-  makeSection,
-  makeShelf,
-  makeWarehouse,
-} from "./fixtures";
+import { makeBox, makeFloor, makeProduct, makeSection, makeShelf, makeWarehouse } from "./fixtures";
 
 /**
  * Занятость и подбор места — два расчёта, которые ошибаются молча: неверный
@@ -160,7 +153,11 @@ describe("suggestCell", () => {
     const occupancy = buildOccupancy({ "prod-1": cellOf(small.id, floor.id) });
 
     // Act
-    const cell = suggestCell(wh, occupancy, makeProduct({ widthCm: 20, heightCm: 20, depthCm: 20 }));
+    const cell = suggestCell(
+      wh,
+      occupancy,
+      makeProduct({ widthCm: 20, heightCm: 20, depthCm: 20 }),
+    );
 
     // Assert
     expect(cell?.addr.moduleId).toBe(big.id);
@@ -175,12 +172,9 @@ describe("suggestCell", () => {
     const wh = makeWarehouse([floor]);
 
     // Act
-    const cell = suggestCell(
-      wh,
-      {},
-      makeProduct({ widthCm: 20, heightCm: 20, depthCm: 20 }),
-      { exclude: addressKey(cellOf(small.id, floor.id)) },
-    );
+    const cell = suggestCell(wh, {}, makeProduct({ widthCm: 20, heightCm: 20, depthCm: 20 }), {
+      exclude: addressKey(cellOf(small.id, floor.id)),
+    });
 
     // Assert
     expect(cell?.addr.moduleId).toBe(big.id);
@@ -221,12 +215,9 @@ describe("suggestCell", () => {
     const wh = makeWarehouse([first, second]);
 
     // Act
-    const cell = suggestCell(
-      wh,
-      {},
-      makeProduct({ widthCm: 80, heightCm: 80, depthCm: 40 }),
-      { preferFloorId: first.id },
-    );
+    const cell = suggestCell(wh, {}, makeProduct({ widthCm: 80, heightCm: 80, depthCm: 40 }), {
+      preferFloorId: first.id,
+    });
 
     // Assert
     expect(cell?.addr.floorId).toBe(second.id);
@@ -241,12 +232,9 @@ describe("suggestCell", () => {
     const wh = makeWarehouse([first, second]);
 
     // Act
-    const cell = suggestCell(
-      wh,
-      {},
-      makeProduct({ widthCm: 20, heightCm: 20, depthCm: 20 }),
-      { preferFloorId: first.id },
-    );
+    const cell = suggestCell(wh, {}, makeProduct({ widthCm: 20, heightCm: 20, depthCm: 20 }), {
+      preferFloorId: first.id,
+    });
 
     // Assert
     expect(cell?.addr.moduleId).toBe(onFirst.id);

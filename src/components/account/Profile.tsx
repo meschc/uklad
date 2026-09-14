@@ -15,6 +15,7 @@ import {
   User,
 } from "lucide-react";
 import { PERSIST_KEY, useEditor } from "@/lib/store";
+import { removeLocal } from "@/lib/safeStorage";
 import { isValidInn, lookupCompany } from "@/lib/company";
 import type { Lang, Theme } from "@/lib/types";
 import { useT } from "@/lib/i18n";
@@ -22,6 +23,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/segmented";
 import { Input } from "@/components/ui/input";
+import { card } from "@/components/ui/card";
 import { Row, ReadValue, RowEditor } from "./ProfileRow";
 
 /**
@@ -67,7 +69,7 @@ export function Profile() {
    * приложения, — и второй его копии в интерфейсе быть не должно.
    */
   const resetDemoData = () => {
-    localStorage.removeItem(PERSIST_KEY);
+    removeLocal(PERSIST_KEY);
     window.location.reload();
   };
   const [draft, setDraft] = useState(() => draftOf());
@@ -89,8 +91,7 @@ export function Profile() {
     };
   }
 
-  const set = (patch: Partial<ReturnType<typeof draftOf>>) =>
-    setDraft((d) => ({ ...d, ...patch }));
+  const set = (patch: Partial<ReturnType<typeof draftOf>>) => setDraft((d) => ({ ...d, ...patch }));
 
   /** Открыть на правку одну строку — с чистой копией текущих значений. */
   const open = (field: FieldId) => {
@@ -100,10 +101,7 @@ export function Profile() {
   };
   const close = () => setEdit(null);
 
-  const innErr =
-    draft.inn.trim() !== "" && !isValidInn(draft.inn)
-      ? t("profile.innErr")
-      : null;
+  const innErr = draft.inn.trim() !== "" && !isValidInn(draft.inn) ? t("profile.innErr") : null;
 
   const saveName = () => {
     if (!draft.name.trim()) return;
@@ -159,8 +157,7 @@ export function Profile() {
   };
 
   const confirmEmail = () => {
-    if (code.replace(/\D/g, "").length !== CONFIRM_CODE_LENGTH || !pendingEmail)
-      return;
+    if (code.replace(/\D/g, "").length !== CONFIRM_CODE_LENGTH || !pendingEmail) return;
     updateProfile({ email: pendingEmail });
     setPendingEmail(null);
     setCode("");
@@ -177,12 +174,8 @@ export function Profile() {
             <ChevronLeft className="size-4" />
           </Button>
           <div className="min-w-0 flex-1">
-            <h1 className="text-lg font-semibold tracking-tight">
-              {t("profile.title")}
-            </h1>
-            <p className="text-xs text-muted-foreground">
-              {t("profile.subtitle")}
-            </p>
+            <h1 className="text-lg font-semibold tracking-tight">{t("profile.title")}</h1>
+            <p className="text-xs text-muted-foreground">{t("profile.subtitle")}</p>
           </div>
         </div>
 
@@ -228,7 +221,12 @@ export function Profile() {
           </div>
         )}
 
-        <div className="flex flex-col divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+        <div
+          className={card({
+            pad: "none",
+            className: "flex flex-col divide-y divide-border overflow-hidden",
+          })}
+        >
           {/* Имя */}
           <Row icon={<User className="size-4" />} label={t("profile.name")}>
             {edit === "name" ? (
@@ -236,19 +234,15 @@ export function Profile() {
                 onSave={saveName}
                 onCancel={close}
                 canSave={!!draft.name.trim()}
-                hint={
-                  draft.name.trim() ? null : { text: t("profile.nameEmpty"), error: true }
-                }
+                hint={draft.name.trim() ? null : { text: t("profile.nameEmpty"), error: true }}
               >
                 <Input
+                  // eslint-disable-next-line jsx-a11y/no-autofocus -- строчный редактор открыт по клику «изменить»: фокус обязан уйти в поле
                   autoFocus
                   value={draft.name}
                   onChange={(e) => set({ name: e.target.value })}
                   placeholder={t("profile.namePlaceholder")}
-                  className={cn(
-                    "h-9 w-full",
-                    !draft.name.trim() && "border-destructive",
-                  )}
+                  className={cn("h-9 w-full", !draft.name.trim() && "border-destructive")}
                 />
               </RowEditor>
             ) : (
@@ -265,6 +259,7 @@ export function Profile() {
                 hint={{ text: t("profile.emailNeedsConfirm") }}
               >
                 <Input
+                  // eslint-disable-next-line jsx-a11y/no-autofocus -- строчный редактор открыт по клику «изменить»: фокус обязан уйти в поле
                   autoFocus
                   type="email"
                   value={draft.email}
@@ -287,50 +282,34 @@ export function Profile() {
                     onSave={saveInn}
                     onCancel={close}
                     canSave={!innErr}
-                    hint={
-                      innErr
-                        ? { text: innErr, error: true }
-                        : { text: t("profile.innHint") }
-                    }
+                    hint={innErr ? { text: innErr, error: true } : { text: t("profile.innHint") }}
                   >
                     <Input
+                      // eslint-disable-next-line jsx-a11y/no-autofocus -- строчный редактор открыт по клику «изменить»: фокус обязан уйти в поле
                       autoFocus
                       value={draft.inn}
                       inputMode="numeric"
                       maxLength={12}
-                      onChange={(e) =>
-                        set({ inn: e.target.value.replace(/\D/g, "") })
-                      }
+                      onChange={(e) => set({ inn: e.target.value.replace(/\D/g, "") })}
                       placeholder="7712345678"
-                      className={cn(
-                        "h-9 w-full font-mono",
-                        innErr && "border-destructive",
-                      )}
+                      className={cn("h-9 w-full font-mono", innErr && "border-destructive")}
                     />
                   </RowEditor>
                 ) : (
                   <div className="flex flex-col items-end gap-0.5">
-                    <ReadValue
-                      value={account.inn ?? ""}
-                      mono
-                      onEdit={() => open("inn")}
-                    />
+                    <ReadValue value={account.inn ?? ""} mono onEdit={() => open("inn")} />
                     {innNote && (
-                      <span className="text-[11px] text-muted-foreground">
-                        {innNote}
-                      </span>
+                      <span className="text-[11px] text-muted-foreground">{innNote}</span>
                     )}
                   </div>
                 )}
               </Row>
 
-              <Row
-                icon={<Building2 className="size-4" />}
-                label={t("profile.company")}
-              >
+              <Row icon={<Building2 className="size-4" />} label={t("profile.company")}>
                 {edit === "org" ? (
                   <RowEditor onSave={saveOrg} onCancel={close}>
                     <Input
+                      // eslint-disable-next-line jsx-a11y/no-autofocus -- строчный редактор открыт по клику «изменить»: фокус обязан уйти в поле
                       autoFocus
                       value={draft.org}
                       onChange={(e) => set({ org: e.target.value })}
@@ -343,14 +322,12 @@ export function Profile() {
                 )}
               </Row>
 
-              <Row
-                icon={<Building2 className="size-4" />}
-                label={t("profile.companyDetails")}
-              >
+              <Row icon={<Building2 className="size-4" />} label={t("profile.companyDetails")}>
                 {edit === "details" ? (
                   <RowEditor onSave={saveDetails} onCancel={close}>
                     <div className="flex w-full flex-col gap-1.5">
                       <Input
+                        // eslint-disable-next-line jsx-a11y/no-autofocus -- строчный редактор открыт по клику «изменить»: фокус обязан уйти в поле
                         autoFocus
                         value={draft.kpp}
                         onChange={(e) => set({ kpp: e.target.value })}
@@ -375,12 +352,8 @@ export function Profile() {
                   <ReadValue onEdit={() => open("details")}>
                     {hasDetails ? (
                       <div className="flex max-w-56 flex-col items-end text-right">
-                        {account.kpp && (
-                          <span className="font-mono text-xs">{account.kpp}</span>
-                        )}
-                        {account.ogrn && (
-                          <span className="font-mono text-xs">{account.ogrn}</span>
-                        )}
+                        {account.kpp && <span className="font-mono text-xs">{account.kpp}</span>}
+                        {account.ogrn && <span className="font-mono text-xs">{account.ogrn}</span>}
                         {account.legalAddress && (
                           <span className="truncate text-xs text-muted-foreground">
                             {account.legalAddress}
@@ -423,11 +396,13 @@ export function Profile() {
 
         {/* Обучение: сброс подсказок + переход в редактор, где сразу
             показывается приветственная подсказка. */}
-        <div className="flex flex-col divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
-          <Row
-            icon={<RotateCcw className="size-4" />}
-            label={t("profile.onboarding")}
-          >
+        <div
+          className={card({
+            pad: "none",
+            className: "flex flex-col divide-y divide-border overflow-hidden",
+          })}
+        >
+          <Row icon={<RotateCcw className="size-4" />} label={t("profile.onboarding")}>
             <Button
               size="sm"
               variant="outline"
@@ -446,20 +421,11 @@ export function Profile() {
               Но тогда обновлённую демо-историю невозможно увидеть, не почистив
               хранилище руками, поэтому здесь — явная кнопка. Она стирает ВСЁ,
               поэтому в два шага и с прямым предупреждением. */}
-          <Row
-            icon={<DatabaseBackup className="size-4" />}
-            label={t("profile.demoData")}
-          >
+          <Row icon={<DatabaseBackup className="size-4" />} label={t("profile.demoData")}>
             {confirmReset ? (
               <div className="flex flex-wrap items-center justify-end gap-2">
-                <span className="text-[11px] text-destructive">
-                  {t("profile.demoWarn")}
-                </span>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setConfirmReset(false)}
-                >
+                <span className="text-[11px] text-destructive">{t("profile.demoWarn")}</span>
+                <Button size="sm" variant="outline" onClick={() => setConfirmReset(false)}>
                   {t("common.cancel")}
                 </Button>
                 <Button size="sm" variant="destructive" onClick={resetDemoData}>
@@ -467,11 +433,7 @@ export function Profile() {
                 </Button>
               </div>
             ) : (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setConfirmReset(true)}
-              >
+              <Button size="sm" variant="outline" onClick={() => setConfirmReset(true)}>
                 {t("profile.demoReload")}
               </Button>
             )}

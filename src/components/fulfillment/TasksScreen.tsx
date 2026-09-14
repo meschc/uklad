@@ -11,14 +11,18 @@ import {
   X,
 } from "lucide-react";
 import { useEditor } from "@/lib/store";
+import { requestsRepository } from "@/lib/data";
+import { useCommand } from "@/lib/useCommand";
 import { formatAddress } from "@/lib/address";
 import { groupRequestsByTarget, stockByProduct } from "@/lib/fulfillment";
 import type { RequestStatus } from "@/lib/types";
 import { useT, type TFunc } from "@/lib/i18n";
-import { cn } from "@/lib/utils";
+import { cn, nowMs } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/segmented";
 import { ScreenShell, EmptyState } from "./ScreenShell";
+import { eyebrow } from "@/components/ui/eyebrow";
+import { card } from "@/components/ui/card";
 import { ShipDialog } from "./ShipDialog";
 import { RequestCalendar } from "./RequestCalendar";
 
@@ -34,13 +38,7 @@ import { RequestCalendar } from "./RequestCalendar";
  */
 
 // Порядок = путь заявки: ждёт → собирается → собрана → уехала → отменена.
-const STATUS_ORDER: RequestStatus[] = [
-  "new",
-  "in_progress",
-  "done",
-  "shipped",
-  "cancelled",
-];
+const STATUS_ORDER: RequestStatus[] = ["new", "in_progress", "done", "shipped", "cancelled"];
 
 export function TasksScreen() {
   const requests = useEditor((s) => s.requests);
@@ -48,9 +46,21 @@ export function TasksScreen() {
   const warehouse = useEditor((s) => s.warehouse);
   const placements = useEditor((s) => s.placements);
   const boxes = useEditor((s) => s.boxes);
-  const updateRequestStatus = useEditor((s) => s.updateRequestStatus);
+  const showToast = useEditor((s) => s.showToast);
   const goToView = useEditor((s) => s.goToView);
   const t = useT();
+
+  // Смена статуса идёт через репозиторий (п.3.2.1). Здесь нет формы, которую
+  // жалко потерять, и нет окна, куда встало бы сообщение, — поэтому отказ
+  // показываем тостом, а кнопки на время команды заняты: с сетью двойное
+  // «взять в работу» по одной заявке — обычное дело.
+  const status = useCommand((id: string, next: RequestStatus) =>
+    requestsRepository.setStatus(id, next),
+  );
+  const setStatus = async (id: string, next: RequestStatus) => {
+    const res = await status.run(id, next);
+    if (!res.ok) showToast(res.error);
+  };
 
   const [filter, setFilter] = useState<RequestStatus | "all">("all");
   // Заявки, которые грузим в машину прямо сейчас (открытый диалог отгрузки).
@@ -59,10 +69,7 @@ export function TasksScreen() {
   const [view, setView] = useState<"list" | "calendar">("list");
   const [day, setDay] = useState<number | null>(null);
 
-  const stock = useMemo(
-    () => stockByProduct(placements, boxes),
-    [placements, boxes],
-  );
+  const stock = useMemo(() => stockByProduct(placements, boxes), [placements, boxes]);
 
   const visible = requests
     .filter((r) => filter === "all" || r.status === filter)
@@ -122,12 +129,8 @@ export function TasksScreen() {
       />
 
       {view === "calendar" && (
-        <div className="rounded-xl border border-border bg-card p-4">
-          <RequestCalendar
-            requests={requests}
-            selectedDay={day}
-            onPickDay={setDay}
-          />
+        <div className={card()}>
+          <RequestCalendar requests={requests} selectedDay={day} onPickDay={setDay} />
         </div>
       )}
 
@@ -162,7 +165,7 @@ export function TasksScreen() {
             <section key={g.target ?? "—"} className="flex flex-col gap-2">
               <div className="flex flex-wrap items-center gap-2">
                 <MapPin className="size-3.5 text-muted-foreground" />
-                <h2 className="text-xs font-semibold uppercase tracking-wide">
+                <h2 className={eyebrow({ size: "base", tone: "current" })}>
                   {g.target ?? t("tasks.noTarget")}
                 </h2>
                 <span className="text-[11px] text-muted-foreground">
@@ -171,9 +174,7 @@ export function TasksScreen() {
                 {/* Даты отгрузки — подписью к назначению: их в группе может быть
                     несколько, и просроченную видно сразу. */}
                 {g.shipDates.length === 0 ? (
-                  <span className="text-[11px] text-muted-foreground">
-                    {t("tasks.noShipDate")}
-                  </span>
+                  <span className="text-[11px] text-muted-foreground">{t("tasks.noShipDate")}</span>
                 ) : (
                   g.shipDates.map((d) => (
                     <span
@@ -214,9 +215,7 @@ export function TasksScreen() {
                   <thead className="bg-muted/50 text-xs">
                     <tr className="text-left">
                       <th className="px-3 py-2 font-medium">{t("table.col.name")}</th>
-                      <th className="px-3 py-2 text-right font-medium">
-                        {t("tasks.col.qty")}
-                      </th>
+                      <th className="px-3 py-2 text-right font-medium">{t("tasks.col.qty")}</th>
                       <th className="px-3 py-2 font-medium">{t("tasks.col.where")}</th>
                       <th className="px-3 py-2 font-medium">{t("tasks.col.status")}</th>
                       <th className="w-32 px-3 py-2" />
@@ -255,9 +254,7 @@ export function TasksScreen() {
                           {/* Назначение вынесено в шапку группы — в строке
                               остаётся только адрес, если он назначен. */}
                           <td className="px-3 py-2 text-xs text-muted-foreground">
-                            {r.targetAddress
-                              ? formatAddress(warehouse, r.targetAddress)
-                              : "—"}
+                            {r.targetAddress ? formatAddress(warehouse, r.targetAddress) : "—"}
                           </td>
                           <td className="px-3 py-2">
                             <StatusBadge status={r.status} partial={r.partial} t={t} />
@@ -268,9 +265,8 @@ export function TasksScreen() {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() =>
-                                    updateRequestStatus(r.id, "in_progress")
-                                  }
+                                  disabled={status.pending}
+                                  onClick={() => setStatus(r.id, "in_progress")}
                                 >
                                   <Play className="size-3" />
                                   {t("tasks.take")}
@@ -280,9 +276,8 @@ export function TasksScreen() {
                                   variant="ghost"
                                   title={t("tasks.cancel")}
                                   aria-label={t("tasks.cancel")}
-                                  onClick={() =>
-                                    updateRequestStatus(r.id, "cancelled")
-                                  }
+                                  disabled={status.pending}
+                                  onClick={() => setStatus(r.id, "cancelled")}
                                 >
                                   <X className="size-3.5" />
                                 </Button>
@@ -308,9 +303,7 @@ export function TasksScreen() {
         </div>
       )}
 
-      {shipping && (
-        <ShipDialog requestIds={shipping} onClose={() => setShipping(null)} />
-      )}
+      {shipping && <ShipDialog requestIds={shipping} onClose={() => setShipping(null)} />}
     </ScreenShell>
   );
 }
@@ -334,10 +327,7 @@ export function StatusBadge({
   };
   return (
     <span
-      className={cn(
-        "inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold",
-        tone[status],
-      )}
+      className={cn("inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold", tone[status])}
     >
       {t(`req.status.${status}`)}
       {status === "done" && partial ? ` · ${t("req.partial")}` : ""}
@@ -378,7 +368,7 @@ function dayStart(ts: number): number {
 }
 
 function isOverdue(ts: number): boolean {
-  return ts < dayStart(Date.now());
+  return ts < dayStart(nowMs());
 }
 
 function sameDay(a: number, b: number): boolean {

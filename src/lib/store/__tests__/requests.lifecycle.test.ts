@@ -1,11 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { CellAddress } from "../../types";
-import {
-  makeBox,
-  makeRequest,
-  makeShipment,
-  makeShipmentLine,
-} from "../../__tests__/fixtures";
+import { makeBox, makeRequest, makeShipment, makeShipmentLine } from "../../__tests__/fixtures";
 import { makeRequestsStore } from "./harness";
 
 /**
@@ -134,10 +129,7 @@ describe("updateRequestStatus / startPicking", () => {
     store.getState().startPicking("отменена");
 
     // Assert
-    expect(store.getState().requests.map((r) => r.status)).toEqual([
-      "done",
-      "cancelled",
-    ]);
+    expect(store.getState().requests.map((r) => r.status)).toEqual(["done", "cancelled"]);
   });
 });
 

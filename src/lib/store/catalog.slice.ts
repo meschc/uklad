@@ -26,17 +26,13 @@ export const createCatalogSlice: SliceCreator<CatalogSlice> = (set, get) => ({
     if (!clean) return { ok: false, errorKey: "fields.err.empty" };
     // Уникальность имени в пределах категории (ТЗ, разд. 4).
     const dup = get().categoryFields.some(
-      (f) =>
-        f.category === category &&
-        f.name.trim().toLowerCase() === clean.toLowerCase(),
+      (f) => f.category === category && f.name.trim().toLowerCase() === clean.toLowerCase(),
     );
     if (dup) {
       return { ok: false, errorKey: "fields.err.dup", errorVars: { name: clean } };
     }
     const opts =
-      type === "select"
-        ? (options ?? []).map((o) => o.trim()).filter(Boolean)
-        : undefined;
+      type === "select" ? (options ?? []).map((o) => o.trim()).filter(Boolean) : undefined;
     if (type === "select" && (!opts || opts.length < 1)) {
       return { ok: false, errorKey: "fields.err.needOption" };
     }
@@ -82,21 +78,6 @@ export const createCatalogSlice: SliceCreator<CatalogSlice> = (set, get) => ({
       products: s.products.map((p) => (p.id === id ? { ...p, ...patch } : p)),
     })),
 
-  deleteProduct: (id) =>
-    set((s) => {
-      const placements = { ...s.placements };
-      delete placements[id];
-      const fieldValues = { ...s.fieldValues };
-      for (const k of Object.keys(fieldValues)) {
-        if (k.startsWith(`${id}:`)) delete fieldValues[k];
-      }
-      return {
-        products: s.products.filter((p) => p.id !== id),
-        placements,
-        fieldValues,
-      };
-    }),
-
   deleteProducts: (ids) =>
     set((s) => {
       const kill = new Set(ids);
@@ -120,9 +101,7 @@ export const createCatalogSlice: SliceCreator<CatalogSlice> = (set, get) => ({
     set((s) => {
       const hit = new Set(ids);
       return {
-        products: s.products.map((p) =>
-          hit.has(p.id) ? { ...p, category } : p,
-        ),
+        products: s.products.map((p) => (hit.has(p.id) ? { ...p, category } : p)),
       };
     }),
 
@@ -130,18 +109,14 @@ export const createCatalogSlice: SliceCreator<CatalogSlice> = (set, get) => ({
     set((s) => {
       const hit = new Set(ids);
       return {
-        products: s.products.map((p) =>
-          hit.has(p.id) ? { ...p, partnerId } : p,
-        ),
+        products: s.products.map((p) => (hit.has(p.id) ? { ...p, partnerId } : p)),
       };
     }),
 
   addCategory: (name) => {
     const clean = name.trim();
     if (!clean) return false;
-    const exists = get().categories.some(
-      (c) => c.toLowerCase() === clean.toLowerCase(),
-    );
+    const exists = get().categories.some((c) => c.toLowerCase() === clean.toLowerCase());
     if (exists) return false;
     set((s) => ({ categories: [...s.categories, clean] }));
     return true;
@@ -158,9 +133,7 @@ export const createCatalogSlice: SliceCreator<CatalogSlice> = (set, get) => ({
     // связи, а не подпись, и рассинхрон оставил бы поля висеть в пустоте.
     set((s) => ({
       categories: s.categories.map((c) => (c === from ? clean : c)),
-      products: s.products.map((p) =>
-        p.category === from ? { ...p, category: clean } : p,
-      ),
+      products: s.products.map((p) => (p.category === from ? { ...p, category: clean } : p)),
       categoryFields: s.categoryFields.map((f) =>
         f.category === from ? { ...f, category: clean } : f,
       ),
@@ -175,18 +148,13 @@ export const createCatalogSlice: SliceCreator<CatalogSlice> = (set, get) => ({
     const fallback = rest[0];
     set((s) => ({
       categories: rest,
-      products: s.products.map((p) =>
-        p.category === name ? { ...p, category: fallback } : p,
-      ),
+      products: s.products.map((p) => (p.category === name ? { ...p, category: fallback } : p)),
       categoryFields: s.categoryFields.filter((f) => f.category !== name),
     }));
   },
 
   importProducts: (items) =>
     set((s) => ({
-      products: [
-        ...s.products,
-        ...items.map((p) => ({ ...p, id: uid("prod") })),
-      ],
+      products: [...s.products, ...items.map((p) => ({ ...p, id: uid("prod") }))],
     })),
 });

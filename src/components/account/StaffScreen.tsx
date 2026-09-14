@@ -1,33 +1,31 @@
 import { useMemo, useRef, useState } from "react";
-import {
-  Activity,
-  AtSign,
-  Check,
-  Download,
-  Phone,
-  Plus,
-  Trash2,
-  Upload,
-  UserRound,
-  Users,
-} from "lucide-react";
+import { Activity, Check, Download, Plus, Upload, UserRound, Users } from "lucide-react";
 import { selectRole, useEditor } from "@/lib/store";
-import { formatPhone } from "@/lib/phone";
+import { staffRepository } from "@/lib/data";
+import { useCommand } from "@/lib/useCommand";
+import { formatPhone, telHref } from "@/lib/phone";
 import { staffWorkload } from "@/lib/fulfillment";
 import { csvToStaff, staffToCsv } from "@/lib/staffIO";
+import { BOM } from "@/lib/utils";
 import type { StaffMember } from "@/lib/types";
 import { useT, type TFunc } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScreenShell, EmptyState } from "@/components/fulfillment/ScreenShell";
+import { eyebrow } from "@/components/ui/eyebrow";
+import { card } from "@/components/ui/card";
 import { PartnersSection } from "./PartnersSection";
 import { PersonForm, type PersonDraft } from "./PersonForm";
+import { StaffRow } from "./StaffRow";
 
 /**
  * Склад и персонал (п.6, 24, 25): контакты склада, ответственное лицо отдельной
  * карточкой и список сотрудников с правкой на месте, фото, маской телефона и
  * импортом/экспортом CSV.
  */
+
+/** Кликабельный контакт: тот же вид, что у ссылок витрины. */
+const contactLink = "text-primary underline-offset-4 hover:underline";
 
 const EMPTY_DRAFT: PersonDraft = {
   name: "",
@@ -39,9 +37,7 @@ const EMPTY_DRAFT: PersonDraft = {
 
 export function StaffScreen() {
   const warehouse = useEditor((s) => s.warehouse);
-  const addStaffMember = useEditor((s) => s.addStaffMember);
-  const updateStaffMember = useEditor((s) => s.updateStaffMember);
-  const removeStaffMember = useEditor((s) => s.removeStaffMember);
+  const showToast = useEditor((s) => s.showToast);
   const updateWarehouseContacts = useEditor((s) => s.updateWarehouseContacts);
   const updateManager = useEditor((s) => s.updateManager);
   // Продавцу список персонала виден, но не редактируется (п.27).
@@ -66,8 +62,7 @@ export function StaffScreen() {
   // Кнопка активна только когда есть что сохранять: вечно активная «Сохранить»
   // читалась как «данные всё время меняются» (п.24).
   const dirty =
-    contacts.phone !== (warehouse.phone ?? "") ||
-    contacts.email !== (warehouse.email ?? "");
+    contacts.phone !== (warehouse.phone ?? "") || contacts.email !== (warehouse.email ?? "");
 
   const saveContacts = () => {
     updateWarehouseContacts(warehouse.id, contacts);
@@ -75,14 +70,32 @@ export function StaffScreen() {
     window.setTimeout(() => setSaved(false), 1600);
   };
 
-  const submitDraft = () => {
+  // Персонал правится через репозиторий (п.3.2.1). Заведение и загрузка из
+  // файла — команды экрана; правка и удаление строки принадлежат самой строке.
+  const create = useCommand((member: Omit<StaffMember, "id">) => staffRepository.create(member));
+  const load = useCommand((members: Omit<StaffMember, "id">[]) =>
+    staffRepository.importMany(members),
+  );
+
+  /**
+   * Черновик и отказ по нему живут и гаснут вместе. Иначе сбой связи переживёт
+   * закрытие формы, и на пустой, только что открытой карточке кнопка встретит
+   * человека надписью «Повторить» — повторить неизвестно что.
+   */
+  const setDraftTo = (next: PersonDraft | null) => {
+    create.reset();
+    setDraft(next);
+  };
+
+  const submitDraft = async () => {
     if (!draft?.name.trim()) return;
-    addStaffMember(draft);
-    setDraft(null);
+    const res = await create.run(draft);
+    if (res.ok) setDraft(null);
   };
 
   const exportStaff = () => {
-    const blob = new Blob([`﻿${staffToCsv(staff)}`], {
+    // BOM в начале — иначе Excel читает кириллицу как кракозябры (см. utils).
+    const blob = new Blob([`${BOM}${staffToCsv(staff)}`], {
       type: "text/csv;charset=utf-8",
     });
     const url = URL.createObjectURL(blob);
@@ -94,8 +107,16 @@ export function StaffScreen() {
   };
 
   const importStaff = async (file: File) => {
+    // Разбор — дело чистой функции, и пустой файл до репозитория не доходит:
+    // отправлять «загрузите ноль человек» бессмысленно даже локально.
     const parsed = csvToStaff(await file.text());
-    for (const member of parsed) addStaffMember(member);
+    if (!parsed.length) {
+      showToast("staff.importEmpty");
+      return;
+    }
+    const res = await load.run(parsed);
+    if (res.ok) showToast("staff.imported", { n: parsed.length });
+    else showToast(res.error);
   };
 
   if (readOnly) {
@@ -124,7 +145,7 @@ export function StaffScreen() {
           работы, сотруднику — чтобы видеть свой вклад. Считаем по фактам
           приёмки и отгрузки; сборка персонально не подписывается. */}
       {staff.length > 0 && (
-        <section className="flex flex-col gap-2 rounded-xl border border-border bg-card p-4">
+        <section className={card({ className: "flex flex-col gap-2" })}>
           <h2 className="flex items-center gap-1.5 text-sm font-semibold">
             <Activity className="size-3.5 text-muted-foreground" />
             {t("staff.workloadTitle")}
@@ -134,15 +155,9 @@ export function StaffScreen() {
               <thead className="bg-muted/50 text-xs">
                 <tr className="text-left">
                   <th className="px-3 py-2 font-medium">{t("staff.wlName")}</th>
-                  <th className="px-3 py-2 text-right font-medium">
-                    {t("staff.wlReceipts")}
-                  </th>
-                  <th className="px-3 py-2 text-right font-medium">
-                    {t("staff.wlUnits")}
-                  </th>
-                  <th className="px-3 py-2 text-right font-medium">
-                    {t("staff.wlTrips")}
-                  </th>
+                  <th className="px-3 py-2 text-right font-medium">{t("staff.wlReceipts")}</th>
+                  <th className="px-3 py-2 text-right font-medium">{t("staff.wlUnits")}</th>
+                  <th className="px-3 py-2 text-right font-medium">{t("staff.wlTrips")}</th>
                   <th className="px-3 py-2 font-medium">{t("staff.wlLast")}</th>
                 </tr>
               </thead>
@@ -152,19 +167,11 @@ export function StaffScreen() {
                   return (
                     <tr key={m.id} className="border-t border-border/60">
                       <td className="px-3 py-1.5">{m.name}</td>
-                      <td className="px-3 py-1.5 text-right tabular-nums">
-                        {w?.receipts ?? 0}
-                      </td>
-                      <td className="px-3 py-1.5 text-right tabular-nums">
-                        {w?.units ?? 0}
-                      </td>
-                      <td className="px-3 py-1.5 text-right tabular-nums">
-                        {w?.trips ?? 0}
-                      </td>
+                      <td className="px-3 py-1.5 text-right tabular-nums">{w?.receipts ?? 0}</td>
+                      <td className="px-3 py-1.5 text-right tabular-nums">{w?.units ?? 0}</td>
+                      <td className="px-3 py-1.5 text-right tabular-nums">{w?.trips ?? 0}</td>
                       <td className="px-3 py-1.5 text-xs text-muted-foreground">
-                        {w?.lastAt
-                          ? new Date(w.lastAt).toLocaleDateString()
-                          : t("staff.wlNever")}
+                        {w?.lastAt ? new Date(w.lastAt).toLocaleDateString() : t("staff.wlNever")}
                       </td>
                     </tr>
                   );
@@ -176,7 +183,7 @@ export function StaffScreen() {
       )}
 
       {/* Контакты склада — телефон и почта самого объекта, без людей */}
-      <section className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
+      <section className={card({ className: "flex flex-col gap-3" })}>
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-sm font-semibold">{t("staff.contacts")}</h2>
           <Button
@@ -193,9 +200,7 @@ export function StaffScreen() {
           <Labeled label={t("staff.phone")}>
             <Input
               value={contacts.phone}
-              onChange={(e) =>
-                setContacts((c) => ({ ...c, phone: formatPhone(e.target.value) }))
-              }
+              onChange={(e) => setContacts((c) => ({ ...c, phone: formatPhone(e.target.value) }))}
               placeholder="+7 495 000-00-00"
               inputMode="tel"
               className="h-9"
@@ -214,7 +219,7 @@ export function StaffScreen() {
       </section>
 
       {/* Ответственное лицо — тот же шаблон, что и у сотрудника (п.24) */}
-      <section className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
+      <section className={card({ className: "flex flex-col gap-3" })}>
         <h2 className="text-sm font-semibold">{t("staff.manager")}</h2>
         <PersonForm
           value={{
@@ -238,22 +243,20 @@ export function StaffScreen() {
             {t("staff.people")} · {staff.length}
           </h2>
           <div className="flex items-center gap-1.5">
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={staff.length === 0}
-              onClick={exportStaff}
-            >
+            <Button size="sm" variant="outline" disabled={staff.length === 0} onClick={exportStaff}>
               <Download className="size-3.5" />
               {t("staff.export")}
             </Button>
+            {/* Формы у загрузки нет, терять нечего — отказ тостом, а кнопка на
+                время команды занята: второй тот же файл завёл бы список дважды. */}
             <Button
               size="sm"
               variant="outline"
+              disabled={load.pending}
               onClick={() => fileRef.current?.click()}
             >
               <Upload className="size-3.5" />
-              {t("staff.import")}
+              {load.pending ? t("data.busy") : t("staff.import")}
             </Button>
             <input
               ref={fileRef}
@@ -267,7 +270,7 @@ export function StaffScreen() {
               }}
             />
             {!draft && (
-              <Button size="sm" onClick={() => setDraft({ ...EMPTY_DRAFT })}>
+              <Button size="sm" onClick={() => setDraftTo({ ...EMPTY_DRAFT })}>
                 <Plus className="size-3.5" />
                 {t("staff.add")}
               </Button>
@@ -279,13 +282,26 @@ export function StaffScreen() {
           <div className="flex flex-col gap-3 rounded-xl border border-primary/40 bg-primary/5 p-3.5">
             <PersonForm value={draft} onChange={(p) => setDraft({ ...draft, ...p })} t={t} />
             <div className="flex items-center gap-2">
-              <Button size="sm" disabled={!draft.name.trim()} onClick={submitDraft}>
-                {t("staff.save")}
+              {/* Форма есть — при отказе она остаётся открытой с набранным, а
+                  кнопка становится повтором (п.3.2.2). */}
+              <Button
+                size="sm"
+                disabled={!draft.name.trim() || create.pending}
+                onClick={submitDraft}
+              >
+                {create.pending ? t("data.busy") : create.error ? t("data.retry") : t("staff.save")}
               </Button>
-              <Button size="sm" variant="ghost" onClick={() => setDraft(null)}>
+              {/* Отмену не блокируем: если запрос повис, выход не должен быть
+                  заперт вместе с ним. */}
+              <Button size="sm" variant="ghost" onClick={() => setDraftTo(null)}>
                 {t("common.cancel")}
               </Button>
             </div>
+            {create.error && (
+              <p role="alert" className="text-xs text-destructive">
+                {t(create.error)}
+              </p>
+            )}
           </div>
         )}
 
@@ -313,11 +329,7 @@ export function StaffScreen() {
                     member={m}
                     editing={editing === m.id}
                     onEdit={() => setEditing(m.id)}
-                    onDone={(patch) => {
-                      updateStaffMember(m.id, patch);
-                      setEditing(null);
-                    }}
-                    onRemove={() => removeStaffMember(m.id)}
+                    onDone={() => setEditing(null)}
                     t={t}
                   />
                 ))}
@@ -341,24 +353,37 @@ function ReadOnlyContacts({
   const people = warehouse.staff ?? [];
   return (
     <>
-      <section className="flex flex-wrap gap-6 rounded-xl border border-border bg-card p-4 text-sm">
+      <section className={card({ className: "flex flex-wrap gap-6 text-sm" })}>
         <div>
-          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
-            {t("staff.phone")}
+          <p className={eyebrow({ weight: "normal" })}>{t("staff.phone")}</p>
+          {/* Продавец смотрит эту карточку, чтобы связаться с подрядчиком, —
+              значит с телефона по контакту нужно попадать в звонок и в письмо,
+              а не выделять номер вручную. */}
+          <p className="mt-0.5">
+            {warehouse.phone ? (
+              <a href={telHref(warehouse.phone)} className={contactLink}>
+                {warehouse.phone}
+              </a>
+            ) : (
+              "—"
+            )}
           </p>
-          <p className="mt-0.5">{warehouse.phone || "—"}</p>
         </div>
         <div>
-          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
-            {t("staff.email")}
+          <p className={eyebrow({ weight: "normal" })}>{t("staff.email")}</p>
+          <p className="mt-0.5">
+            {warehouse.email ? (
+              <a href={`mailto:${warehouse.email}`} className={contactLink}>
+                {warehouse.email}
+              </a>
+            ) : (
+              "—"
+            )}
           </p>
-          <p className="mt-0.5">{warehouse.email || "—"}</p>
         </div>
         {warehouse.manager?.name && (
           <div>
-            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
-              {t("staff.manager")}
-            </p>
+            <p className={eyebrow({ weight: "normal" })}>{t("staff.manager")}</p>
             <p className="mt-0.5">
               {warehouse.manager.name}
               {warehouse.manager.phone ? ` · ${warehouse.manager.phone}` : ""}
@@ -373,10 +398,7 @@ function ReadOnlyContacts({
         </h2>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {people.map((m) => (
-            <div
-              key={m.id}
-              className="flex items-center gap-3 rounded-xl border border-border bg-card p-3"
-            >
+            <div key={m.id} className={card({ pad: "sm", className: "flex items-center gap-3" })}>
               {m.photoUrl ? (
                 <img
                   src={m.photoUrl}
@@ -402,110 +424,10 @@ function ReadOnlyContacts({
   );
 }
 
-function StaffRow({
-  member: m,
-  editing,
-  onEdit,
-  onDone,
-  onRemove,
-  t,
-}: {
-  member: StaffMember;
-  editing: boolean;
-  onEdit: () => void;
-  onDone: (patch: Partial<Omit<StaffMember, "id">>) => void;
-  onRemove: () => void;
-  t: TFunc;
-}) {
-  const [form, setForm] = useState<PersonDraft>({
-    name: m.name,
-    role: m.role,
-    phone: m.phone ?? "",
-    email: m.email ?? "",
-    photoUrl: m.photoUrl ?? "",
-  });
-
-  if (editing) {
-    return (
-      <tr className="border-t border-border/60 bg-accent/40">
-        <td className="px-3 py-2" colSpan={3}>
-          <PersonForm
-            value={form}
-            onChange={(patch) => setForm({ ...form, ...patch })}
-            t={t}
-          />
-        </td>
-        <td className="px-3 py-2 align-top">
-          <Button size="icon-sm" variant="ghost" onClick={() => onDone(form)}>
-            <Check className="size-4" />
-          </Button>
-        </td>
-      </tr>
-    );
-  }
-
-  return (
-    <tr className="group border-t border-border/60">
-      <td className="px-3 py-2">
-        <button onClick={onEdit} className="flex items-center gap-2 text-left">
-          {m.photoUrl ? (
-            <img
-              src={m.photoUrl}
-              alt=""
-              className="size-7 rounded-full border border-border object-cover"
-            />
-          ) : (
-            <span className="flex size-7 items-center justify-center rounded-full bg-muted text-muted-foreground">
-              <UserRound className="size-3.5" />
-            </span>
-          )}
-          <span className="font-medium">{m.name}</span>
-        </button>
-      </td>
-      <td className="px-3 py-2 text-muted-foreground">{m.role || "—"}</td>
-      <td className="px-3 py-2">
-        <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-          {m.phone && (
-            <span className="inline-flex items-center gap-1">
-              <Phone className="size-3" />
-              {m.phone}
-            </span>
-          )}
-          {m.email && (
-            <span className="inline-flex items-center gap-1">
-              <AtSign className="size-3" />
-              {m.email}
-            </span>
-          )}
-          {!m.phone && !m.email && "—"}
-        </div>
-      </td>
-      <td className="px-3 py-2">
-        <button
-          onClick={onRemove}
-          title={t("staff.remove")}
-          aria-label={t("staff.remove")}
-          className="flex size-7 items-center justify-center rounded text-muted-foreground opacity-0 transition hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100"
-        >
-          <Trash2 className="size-3.5" />
-        </button>
-      </td>
-    </tr>
-  );
-}
-
-function Labeled({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
+function Labeled({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="flex flex-col gap-1">
-      <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-        {label}
-      </span>
+      <span className={eyebrow()}>{label}</span>
       {children}
     </label>
   );

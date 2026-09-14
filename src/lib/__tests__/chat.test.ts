@@ -64,10 +64,7 @@ describe("groupMessagesByDay", () => {
 describe("unreadIn", () => {
   it("не считает непрочитанными собственные сообщения", () => {
     // Arrange: склад написал два раза, продавец их ещё не открыл.
-    const messages = [
-      msg({ from: "warehouse" }),
-      msg({ from: "warehouse" }),
-    ];
+    const messages = [msg({ from: "warehouse" }), msg({ from: "warehouse" })];
 
     // Act & Assert: для склада это не «новое», а «своё».
     expect(unreadIn(messages, "warehouse")).toBe(0);

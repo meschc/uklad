@@ -1,40 +1,28 @@
-import { useMemo, useState } from "react";
-import {
-  ArrowLeft,
-  Box as BoxIcon,
-  Check,
-  CheckCircle2,
-  Layers,
-  MapPin,
-  Package,
-  Plus,
-  SkipForward,
-} from "lucide-react";
+import { useLayoutEffect, useMemo, useState } from "react";
+import { ArrowLeft } from "lucide-react";
 import { useEditor } from "@/lib/store";
+import { fulfillmentRepository, type Result } from "@/lib/data";
 import { addressKey, formatAddress, parseAddress } from "@/lib/address";
-import { staffOptionLabel } from "@/lib/staff";
 import { buildOccupancy, occupantsAt } from "@/lib/placement";
-import {
-  honestSignToEan13,
-  normalizeCode,
-  parseHonestSignMock,
-} from "@/lib/barcode";
-import type {
-  CellAddress,
-  Discrepancy,
-  ExpectedShipment,
-  Product,
-} from "@/lib/types";
-import { useT } from "@/lib/i18n";
-import { cn } from "@/lib/utils";
+import { findByCode, findProduct, honestSignToEan13, parseHonestSignMock } from "@/lib/barcode";
+import type { CellAddress, Discrepancy, ExpectedShipment, ReceivingProgress } from "@/lib/types";
+import { useT, type MsgKey } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
-import { QrSvg } from "@/components/table/QrSvg";
 import { ProductDialog } from "@/components/table/ProductDialog";
 import { ScreenShell } from "./ScreenShell";
-import { ScanField, type ScanStatus } from "./ScanField";
+import { type ScanStatus } from "./ScanField";
 import { ShipmentPicker } from "./ShipmentPicker";
-import { QtyStepper } from "./QtyStepper";
 import { DiscrepancyAlert } from "./DiscrepancyAlert";
+import { BoxStep } from "./receiving/BoxStep";
+import { PalletStep } from "./receiving/PalletStep";
+import { PlaceStep } from "./receiving/PlaceStep";
+import { ProductStep } from "./receiving/ProductStep";
+import { QtyStep } from "./receiving/QtyStep";
+import { ScanStatusLine } from "./receiving/ScanStatusLine";
+import { ShipmentBar } from "./receiving/ShipmentBar";
+import { StaffPicker } from "./receiving/StaffPicker";
+import { Stepper } from "./receiving/Stepper";
+import type { Draft } from "./receiving/types";
 
 /**
  * Экран «Приёмка» — последовательный мастер, а не форма с десятком полей.
@@ -43,24 +31,16 @@ import { DiscrepancyAlert } from "./DiscrepancyAlert";
  * сверкой → коробка → место → паллета (опционально) → снова скан товара.
  * Приёмка — это СВЕРКА партии: сканируется одна единица, чтобы опознать
  * артикул, количество вводится руками.
+ *
+ * Здесь живёт только ход мастера: состояние, переходы и команды. Как выглядит
+ * каждый шаг — в `receiving/`, по файлу на стадию: разрезано по физике работы
+ * на рампе, а не по длине файла.
+ *
+ * Сам ход мастера (шаг, поставка, открытые тара и паллета) лежит в сторе и
+ * переживает уход на другой экран и перезагрузку — приёмка идёт часами и
+ * прерывается постоянно (п.4.7). В экране остаётся только сиюминутное:
+ * опознанный сканом товар, подсветка поля, диалоги.
  */
-
-/**
- * Порядок шагов повторяет физику работы на рампе (п.18): сначала под рукой
- * появляется паллета, на неё открывают тару, в тару кладут товар — и только
- * закрытая тара едет на место. Паллета необязательна: мелкую поставку
- * принимают сразу в тару.
- */
-type Step = "shipment" | "pallet" | "box" | "product" | "qty" | "place";
-
-interface Draft {
-  product: Product;
-  /** Строка активной поставки, если товар из неё. */
-  lineId?: string;
-  qty: number;
-  discrepancy?: Discrepancy;
-}
-
 export function ReceivingScreen() {
   const t = useT();
   const products = useEditor((s) => s.products);
@@ -71,23 +51,24 @@ export function ReceivingScreen() {
   const shipments = useEditor((s) => s.expectedShipments);
   const staff = useEditor((s) => s.warehouse.staff ?? []);
 
-  const receiveProduct = useEditor((s) => s.receiveProduct);
-  const createBox = useEditor((s) => s.createBox);
-  const placeBox = useEditor((s) => s.placeBox);
-  const createPallet = useEditor((s) => s.createPallet);
-  const attachBoxToPallet = useEditor((s) => s.attachBoxToPallet);
-  const closeShipment = useEditor((s) => s.closeShipment);
-  const applyCrossDock = useEditor((s) => s.applyCrossDock);
-
-  const [step, setStepRaw] = useState<Step>("shipment");
-  const [shipmentId, setShipmentId] = useState<string | null>(null);
-  const [staffId, setStaffId] = useState<string>("");
-  const [draft, setDraft] = useState<Draft | null>(null);
   // Открытые тара и паллета держатся по id, а объекты берутся из стора: снимок
   // устаревал сразу после первой же записи товара, и плашка показывала «позиций
   // 0» у уже наполненной тары.
-  const [boxId, setBoxId] = useState<string | null>(null);
-  const [palletId, setPalletId] = useState<string | null>(null);
+  const { step, shipmentId, staffId, boxId, palletId, received } = useEditor((s) => s.receiving);
+  const setReceiving = useEditor((s) => s.setReceiving);
+  const addReceived = useEditor((s) => s.addReceived);
+  const resumeReceiving = useEditor((s) => s.resumeReceiving);
+
+  /**
+   * Возвращение в мастер. За время отлучки поставку мог сдать напарник, а тару
+   * — увезти на место: сверяем сохранённый ход с данными ДО первой отрисовки,
+   * иначе кладовщик успел бы увидеть шаг, под которым уже ничего нет.
+   */
+  useLayoutEffect(() => {
+    resumeReceiving();
+  }, [resumeReceiving]);
+
+  const [draft, setDraft] = useState<Draft | null>(null);
   const box = boxes.find((b) => b.id === boxId) ?? null;
   const pallet = pallets.find((p) => p.id === palletId) ?? null;
   const [scan, setScan] = useState<{ status: ScanStatus; msg?: string }>({
@@ -98,32 +79,52 @@ export function ReceivingScreen() {
     expected: number;
   } | null>(null);
   const [newProductCode, setNewProductCode] = useState<string | null>(null);
-  const [received, setReceived] = useState(0);
+  const [busy, setBusy] = useState(false);
 
   /**
-   * Смена шага гасит подсветку скана. Иначе красная рамка и текст ошибки от
-   * прошлого шага висели на новом пустом поле — интерфейс ругался на то, чего
-   * человек ещё не вводил.
+   * Переход мастера: правка хода плюс гашение подсветки скана. Иначе красная
+   * рамка и текст ошибки от прошлого шага висели на новом пустом поле —
+   * интерфейс ругался на то, чего человек ещё не вводил.
+   *
+   * Отсюда правило по всему экрану: сначала переход, потом сообщение. React
+   * склеивает обновления одного обработчика, и `ok()` перед `go()` победить не
+   * может — успех молча превращался в пустоту, и кладовщик видел строку
+   * состояния только когда ошибался.
    */
-  const setStep = (next: Step) => {
-    setStepRaw(next);
+  const go = (patch: Partial<ReceivingProgress>) => {
+    setReceiving(patch);
     setScan({ status: "idle" });
   };
 
-  const shipment: ExpectedShipment | undefined = shipments.find(
-    (s) => s.id === shipmentId,
-  );
+  const shipment: ExpectedShipment | undefined = shipments.find((s) => s.id === shipmentId);
   /** Кроссдок-поставка: шага «место» у неё нет вовсе (п.10.1). */
   const crossDock = !!shipment?.crossDock;
-  const occupancy = useMemo(
-    () => buildOccupancy(placements, boxes),
-    [placements, boxes],
-  );
+  const occupancy = useMemo(() => buildOccupancy(placements, boxes), [placements, boxes]);
 
-  const fail = (msgKey: string, vars?: Record<string, string | number>) =>
+  const fail = (msgKey: MsgKey, vars?: Record<string, string | number>) =>
     setScan({ status: "error", msg: t(msgKey, vars) });
-  const ok = (msgKey: string, vars?: Record<string, string | number>) =>
+  const ok = (msgKey: MsgKey, vars?: Record<string, string | number>) =>
     setScan({ status: "ok", msg: t(msgKey, vars) });
+
+  /**
+   * Команда приёмки через слой данных (п.3.2.1). Отдельного `useCommand` здесь
+   * нет намеренно: у экрана уже есть своя строка состояния — та, в которой он
+   * пишет «не тот штрихкод» и «место занято». Отказ репозитория — сообщение той
+   * же природы, и заводить ему второе место значило бы учить кладовщика
+   * смотреть в две точки вместо одной.
+   *
+   * `busy` держит только кнопки «новая тара» и «новая паллета»: два нажатия
+   * подряд по сети завели бы две пустые единицы. Поле скана при этом НЕ
+   * блокируется — сканер печатает как клавиатура, и выключенное на полсекунды
+   * поле молча съело бы половину штрихкода.
+   */
+  const run = async <T,>(op: () => Promise<Result<T>>): Promise<Result<T>> => {
+    setBusy(true);
+    const res = await op();
+    setBusy(false);
+    if (!res.ok) fail(res.error);
+    return res;
+  };
 
   /** Остаток по строке поставки для товара — «сколько ещё ждём». */
   const remainderFor = (productId: string) => {
@@ -138,10 +139,7 @@ export function ReceivingScreen() {
   // --- 5.2 скан товара -------------------------------------------------------
 
   const onScanProduct = (raw: string) => {
-    const code = normalizeCode(raw);
-    const product =
-      products.find((p) => normalizeCode(p.barcode) === code) ??
-      products.find((p) => normalizeCode(p.sku) === code);
+    const product = findProduct(products, raw);
 
     if (!product) {
       // Код не опознан ни в каталоге, ни в поставке — это неучтённый товар.
@@ -157,8 +155,8 @@ export function ReceivingScreen() {
       // Товар есть в каталоге, но его нет в этой поставке — принимаем как
       // внеплановый, вне сверки.
       setDraft({ product, qty: 1 });
+      go({ step: "qty" });
       ok("recv.scan.offPlan", { name: product.name });
-      setStep("qty");
       return;
     }
     setDraft({
@@ -166,8 +164,8 @@ export function ReceivingScreen() {
       lineId: line?.lineId,
       qty: line?.remainder && line.remainder > 0 ? line.remainder : 1,
     });
+    go({ step: "qty" });
     ok("recv.scan.found", { name: product.name });
-    setStep("qty");
   };
 
   // --- 5.3 количество со сверкой ---------------------------------------------
@@ -177,12 +175,12 @@ export function ReceivingScreen() {
     const line = remainderFor(draft.product.id);
     if (!line || line.remainder === 0) {
       // Сверять не с чем — свободная приёмка.
-      putInBox(draft);
+      void putInBox(draft);
       return;
     }
     if (draft.qty === line.remainder) {
       ok("recv.qty.match");
-      putInBox(draft);
+      void putInBox(draft);
       return;
     }
     setPendingDiscrepancy({
@@ -194,29 +192,26 @@ export function ReceivingScreen() {
   // --- паллета (необязательный первый шаг) -----------------------------------
 
   const onScanPallet = (raw: string) => {
-    const code = normalizeCode(raw);
-    const found = pallets.find((p) => normalizeCode(p.barcode) === code);
+    const found = findByCode(pallets, raw);
     if (!found) {
       fail("recv.pallet.unknown");
       return;
     }
-    setPalletId(found.id);
+    go({ palletId: found.id, step: "box" });
     ok("recv.pallet.opened", { code: found.barcode });
-    setStep("box");
   };
 
-  const onNewPallet = () => {
-    const created = createPallet();
-    setPalletId(created.id);
-    ok("recv.pallet.created", { code: created.barcode });
-    setStep("box");
+  const onNewPallet = async () => {
+    const res = await run(() => fulfillmentRepository.createPallet());
+    if (!res.ok) return;
+    go({ palletId: res.data.id, step: "box" });
+    ok("recv.pallet.created", { code: res.data.barcode });
   };
 
   // --- тара -------------------------------------------------------------------
 
   const onScanBox = (raw: string) => {
-    const code = normalizeCode(raw);
-    const found = boxes.find((b) => normalizeCode(b.barcode) === code);
+    const found = findByCode(boxes, raw);
     if (!found) {
       fail("recv.box.unknown");
       return;
@@ -227,60 +222,72 @@ export function ReceivingScreen() {
       fail("recv.box.placed", { addr: formatAddress(warehouse, found.address) ?? "" });
       return;
     }
-    setBoxId(found.id);
+    go({ boxId: found.id, step: "product" });
     ok("recv.box.opened", { code: found.barcode });
-    setStep("product");
   };
 
-  const onNewBox = () => {
-    const created = createBox();
-    setBoxId(created.id);
-    ok("recv.box.created", { code: created.barcode });
-    setStep("product");
+  const onNewBox = async () => {
+    const res = await run(() => fulfillmentRepository.createBox());
+    if (!res.ok) return;
+    go({ boxId: res.data.id, step: "product" });
+    ok("recv.box.created", { code: res.data.barcode });
   };
 
   /** Товар уезжает в открытую тару; тара пока стоит на рампе, без адреса. */
-  const putInBox = (d: Draft) => {
+  const putInBox = async (d: Draft) => {
     if (!box) return;
-    receiveProduct({
-      productId: d.product.id,
-      qty: d.qty,
-      boxId: box.id,
-      shipmentId: shipment?.id,
-      lineId: d.lineId,
-      staffId: staffId || undefined,
-      discrepancy: d.discrepancy,
-    });
-    setReceived((n) => n + d.qty);
+    const res = await run(() =>
+      fulfillmentRepository.receive({
+        productId: d.product.id,
+        qty: d.qty,
+        boxId: box.id,
+        shipmentId: shipment?.id,
+        lineId: d.lineId,
+        staffId: staffId || undefined,
+        discrepancy: d.discrepancy,
+      }),
+    );
+    if (!res.ok) return;
+    addReceived(d.qty);
 
     // Кроссдокинг (п.10.1): товар не поедет на полку — он тут же закрывает
     // заявки, которые его ждали. Что не разошлось по заявкам, останется в таре
     // и поедет на место обычным путём.
     if (crossDock) {
-      const used = applyCrossDock(d.product.id, d.qty, shipment?.id);
-      ok(used > 0 ? "recv.crossDock.sent" : "recv.crossDock.noRequests", {
-        name: d.product.name,
-        n: used,
-      });
+      const sent = await run(() =>
+        fulfillmentRepository.crossDock(d.product.id, d.qty, shipment?.id),
+      );
+      // Провал разбора по заявкам не отменяет приёмку: товар уже принят и лежит
+      // в таре. Дать «повторить» здесь было бы хуже отказа — приёмка записалась
+      // бы вторым фактом. Не разошедшееся просто поедет обычным путём, ровно
+      // как при отсутствии подходящих заявок.
       nextProduct();
+      if (sent.ok) {
+        ok(sent.data > 0 ? "recv.crossDock.sent" : "recv.crossDock.noRequests", {
+          name: d.product.name,
+          n: sent.data,
+        });
+      }
       return;
     }
 
-    ok("recv.box.added", { name: d.product.name, n: d.qty, code: box.barcode });
     nextProduct();
+    ok("recv.box.added", { name: d.product.name, n: d.qty, code: box.barcode });
   };
 
   /**
    * Кроссдок-тара уезжает в зону отгрузки без адреса: она физически не
    * хранится, и в занятость (`buildOccupancy`) попадать не должна.
    */
-  const closeCrossDockBox = () => {
+  const closeCrossDockBox = async () => {
     if (!box) return;
-    if (pallet) attachBoxToPallet(box.id, pallet.id);
-    ok("recv.crossDock.closed", { code: box.barcode });
-    setBoxId(null);
+    if (pallet) {
+      const res = await run(() => fulfillmentRepository.attachBox(box.id, pallet.id));
+      if (!res.ok) return;
+    }
     setDraft(null);
-    setStep("box");
+    go({ boxId: null, step: "box" });
+    ok("recv.crossDock.closed", { code: box.barcode });
   };
 
   // --- закрытие тары: место -----------------------------------------------
@@ -297,48 +304,70 @@ export function ReceivingScreen() {
     const others = occupantsAt(occupancy, addr).filter((id) => !inBox.has(id));
     // Та же коробка на том же месте — не конфликт, а продолжение укладки.
     // Сравниваем по ключу ячейки, а не по строке адреса: у строки бывает null.
-    const sameBox =
-      !!box?.address && addressKey(box.address) === addressKey(addr);
+    const sameBox = !!box?.address && addressKey(box.address) === addressKey(addr);
     if (others.length && !sameBox) {
       const who = products.find((p) => p.id === others[0]);
       fail("recv.place.busy", { name: who?.name ?? t("recv.place.someone") });
       return;
     }
-    commit(addr);
+    void commit(addr);
   };
 
-  /** Закрытая тара едет на место; если есть паллета — привязываем к ней. */
-  const commit = (addr: CellAddress) => {
+  /**
+   * Закрытая тара едет на место; если есть паллета — привязываем к ней.
+   *
+   * Привязка отдельной командой: если она не пройдёт, тара уже стоит на месте,
+   * и повторный скан того же адреса безопасен — «та же коробка на том же
+   * месте» экран считает продолжением укладки, а не конфликтом.
+   */
+  const commit = async (addr: CellAddress) => {
     if (!box) return;
-    placeBox(box.id, addr);
-    if (pallet) attachBoxToPallet(box.id, pallet.id);
-    ok("recv.place.done", { addr: formatAddress(warehouse, addr) ?? "" });
-    setBoxId(null);
+    const placed = await run(() => fulfillmentRepository.placeBox(box.id, addr));
+    if (!placed.ok) return;
+    if (pallet) {
+      const linked = await run(() => fulfillmentRepository.attachBox(box.id, pallet.id));
+      if (!linked.ok) return;
+    }
     setDraft(null);
-    setStep("box");
+    go({ boxId: null, step: "box" });
+    ok("recv.place.done", { addr: formatAddress(warehouse, addr) ?? "" });
+  };
+
+  /**
+   * Закрыть поставку. При отказе экран остаётся на ней: увести кладовщика на
+   * выбор поставки, не закрыв её на сервере, значило бы соврать — он ушёл бы
+   * уверенный, что приёмка сдана.
+   */
+  const onCloseShipment = async () => {
+    if (!shipment) return;
+    const res = await run(() => fulfillmentRepository.closeShipment(shipment.id));
+    if (!res.ok) return;
+    go({ shipmentId: null, step: "shipment" });
   };
 
   /** 5.7 — следующий товар той же поставки, без лишнего клика. */
   const nextProduct = () => {
     setDraft(null);
     setPendingDiscrepancy(null);
-    setScan({ status: "idle" });
-    setStep("product");
+    go({ step: "product" });
   };
 
   /** Паллета уехала — следующая партия начинается с чистого листа. */
   const closePallet = () => {
-    setPalletId(null);
-    setBoxId(null);
     setDraft(null);
+    go({ palletId: null, boxId: null, step: "pallet" });
     ok("recv.pallet.closed");
-    setStep("pallet");
+  };
+
+  /** Вернуться к выбору поставки из любого места мастера. */
+  const backToShipment = () => {
+    setDraft(null);
+    go({ step: "shipment" });
   };
 
   // --- рендер ----------------------------------------------------------------
 
-  const shipmentDone =
-    shipment && shipment.lines.every((l) => l.receivedQty >= l.expectedQty);
+  const shipmentDone = shipment && shipment.lines.every((l) => l.receivedQty >= l.expectedQty);
 
   return (
     <ScreenShell
@@ -346,15 +375,7 @@ export function ReceivingScreen() {
       subtitle={t("recv.subtitle")}
       actions={
         step !== "shipment" && (
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => {
-              setStep("shipment");
-              setDraft(null);
-              setScan({ status: "idle" });
-            }}
-          >
+          <Button size="sm" variant="ghost" onClick={backToShipment}>
             <ArrowLeft className="size-3.5" />
             {t("recv.changeShipment")}
           </Button>
@@ -362,137 +383,70 @@ export function ReceivingScreen() {
       }
     >
       {step !== "shipment" && (
-        <Stepper
-          step={step}
-          hasShipment={!!shipment}
-          crossDock={crossDock}
-          t={t}
-        />
+        <Stepper step={step} hasShipment={!!shipment} crossDock={crossDock} t={t} />
       )}
 
-      {/* Полоса состояния активной поставки */}
       {shipment && step !== "shipment" && (
         <ShipmentBar
           shipment={shipment}
           received={received}
-          onClose={() => {
-            closeShipment(shipment.id);
-            setShipmentId(null);
-            setStep("shipment");
-          }}
+          onClose={() => void onCloseShipment()}
           done={!!shipmentDone}
           t={t}
         />
       )}
 
-      {scan.msg && (
-        <div
-          className={cn(
-            "flex items-center gap-2 rounded-lg border px-3 py-2 text-xs",
-            scan.status === "ok"
-              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-              : "border-destructive/40 bg-destructive/10 text-destructive",
-          )}
-          role="status"
-        >
-          {scan.status === "ok" ? (
-            <Check className="size-3.5 shrink-0" />
-          ) : (
-            <Package className="size-3.5 shrink-0" />
-          )}
-          {scan.msg}
-        </div>
-      )}
+      <ScanStatusLine status={scan.status} msg={scan.msg} />
 
       {step === "shipment" && (
         <div className="flex flex-col gap-4">
-          <StaffPicker staff={staff} value={staffId} onChange={setStaffId} t={t} />
+          <StaffPicker
+            staff={staff}
+            value={staffId}
+            onChange={(id) => setReceiving({ staffId: id })}
+            t={t}
+          />
           <ShipmentPicker
-            onPick={(id) => {
-              setShipmentId(id);
-              setReceived(0);
-              setStep("pallet");
-            }}
-            onFreeform={() => {
-              setShipmentId(null);
-              setReceived(0);
-              setStep("pallet");
-            }}
+            onPick={(id) => go({ shipmentId: id, received: 0, step: "pallet" })}
+            onFreeform={() => go({ shipmentId: null, received: 0, step: "pallet" })}
           />
         </div>
       )}
 
       {step === "pallet" && (
-        <div className="flex flex-col gap-4">
-          <ScanField
-            label={t("recv.pallet.label")}
-            hint={t("recv.pallet.hint")}
-            status={scan.status}
-            onSubmit={onScanPallet}
-          />
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" onClick={onNewPallet}>
-              <Layers className="size-3.5" />
-              {t("recv.pallet.new")}
-            </Button>
-            {/* Паллета необязательна: мелкую поставку принимают сразу в тару. */}
-            <Button onClick={() => setStep("box")}>
-              <SkipForward className="size-3.5" />
-              {t("recv.pallet.skip")}
-            </Button>
-          </div>
-        </div>
+        <PalletStep
+          status={scan.status}
+          busy={busy}
+          onScan={onScanPallet}
+          onNew={() => void onNewPallet()}
+          onSkip={() => go({ step: "box" })}
+          t={t}
+        />
       )}
 
       {step === "box" && (
-        <div className="flex flex-col gap-4">
-          {pallet && <ActiveTag label={t("recv.pallet.active", { code: pallet.barcode })} />}
-          <ScanField
-            label={t("recv.box.label")}
-            hint={t("recv.box.hint")}
-            status={scan.status}
-            onSubmit={onScanBox}
-          />
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" onClick={onNewBox}>
-              <Plus className="size-3.5" />
-              {t("recv.box.new")}
-            </Button>
-            {pallet && (
-              <Button onClick={closePallet}>
-                <Layers className="size-3.5" />
-                {t("recv.pallet.close")}
-              </Button>
-            )}
-          </div>
-        </div>
+        <BoxStep
+          pallet={pallet}
+          status={scan.status}
+          busy={busy}
+          onScan={onScanBox}
+          onNew={() => void onNewBox()}
+          onClosePallet={closePallet}
+          t={t}
+        />
       )}
 
       {step === "product" && box && (
-        <div className="flex flex-col gap-4">
-          <ActiveTag label={t("recv.box.active", { code: box.barcode, n: box.lines.length })} />
-          <ScanField
-            label={t("recv.scan.label")}
-            hint={t("recv.scan.hint")}
-            status={scan.status}
-            // Пока открыта карточка неучтённого товара, скан не должен
-            // срабатывать за спиной у диалога.
-            disabled={!!newProductCode}
-            onSubmit={onScanProduct}
-          />
-          {/* Тара закрывается явно: только после этого у неё появляется адрес.
-              У кроссдок-поставки адреса не будет вовсе — тара едет в отгрузку. */}
-          <Button
-            variant="outline"
-            className="self-start"
-            disabled={box.lines.length === 0}
-            onClick={() => (crossDock ? closeCrossDockBox() : setStep("place"))}
-          >
-            <BoxIcon className="size-3.5" />
-            {crossDock ? t("recv.crossDock.close") : t("recv.box.close")}
-          </Button>
-          {shipment && <ShipmentLines shipment={shipment} t={t} />}
-        </div>
+        <ProductStep
+          box={box}
+          shipment={shipment}
+          crossDock={crossDock}
+          status={scan.status}
+          blocked={!!newProductCode}
+          onScan={onScanProduct}
+          onCloseBox={() => (crossDock ? void closeCrossDockBox() : go({ step: "place" }))}
+          t={t}
+        />
       )}
 
       {step === "qty" && draft && (
@@ -507,22 +461,7 @@ export function ReceivingScreen() {
       )}
 
       {step === "place" && box && (
-        <div className="flex flex-col gap-4">
-          {/* Ярлык печатается ДО продолжения: коробку нужно подписать сразу. */}
-          <div className="flex flex-col items-center gap-2 rounded-xl border border-border bg-card p-4">
-            <p className="text-xs font-medium text-muted-foreground">
-              {t("recv.box.label128")}
-            </p>
-            <QrSvg code={box.barcode} size={128} className="rounded-md p-3" />
-          </div>
-          <ScanField
-            label={t("recv.place.label")}
-            hint={t("recv.place.hint")}
-            status={scan.status}
-            minLength={3}
-            onSubmit={onScanPlace}
-          />
-        </div>
+        <PlaceStep box={box} status={scan.status} onScan={onScanPlace} t={t} />
       )}
 
       {pendingDiscrepancy && draft && (
@@ -534,7 +473,7 @@ export function ReceivingScreen() {
           onRecheck={() => setPendingDiscrepancy(null)}
           onRecord={() => {
             setPendingDiscrepancy(null);
-            putInBox({ ...draft, discrepancy: pendingDiscrepancy.kind });
+            void putInBox({ ...draft, discrepancy: pendingDiscrepancy.kind });
           }}
         />
       )}
@@ -548,267 +487,5 @@ export function ReceivingScreen() {
         />
       )}
     </ScreenShell>
-  );
-}
-
-// --- вспомогательные блоки ----------------------------------------------------
-
-const STEPS: { id: Step; key: string; icon: typeof Package }[] = [
-  { id: "pallet", key: "recv.step.pallet", icon: Layers },
-  { id: "box", key: "recv.step.box", icon: BoxIcon },
-  { id: "product", key: "recv.step.product", icon: Package },
-  { id: "qty", key: "recv.step.qty", icon: CheckCircle2 },
-  { id: "place", key: "recv.step.place", icon: MapPin },
-];
-
-/** Плашка «сейчас открыто»: паллета или тара, в которую идёт приёмка. */
-function ActiveTag({ label }: { label: string }) {
-  return (
-    <div className="flex items-center gap-2 self-start rounded-lg border border-primary/40 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary">
-      <Layers className="size-3.5" />
-      {label}
-    </div>
-  );
-}
-
-function Stepper({
-  step,
-  hasShipment,
-  crossDock,
-  t,
-}: {
-  step: Step;
-  hasShipment: boolean;
-  crossDock?: boolean;
-  t: (k: string) => string;
-}) {
-  // У кроссдока шага «место» нет: товар на полку не встаёт (п.10.1).
-  const steps = crossDock ? STEPS.filter((s) => s.id !== "place") : STEPS;
-  const idx = steps.findIndex((s) => s.id === step);
-  return (
-    <ol className="flex items-center gap-1 text-[11px]">
-      {steps.map((s, i) => {
-        // Без сверки шаг «количество» остаётся, но подписан иначе.
-        const active = i === idx;
-        const passed = i < idx;
-        return (
-          <li key={s.id} className="flex items-center gap-1">
-            <span
-              className={cn(
-                "flex items-center gap-1 rounded-md px-2 py-1 font-medium transition-colors",
-                active
-                  ? "bg-primary text-primary-foreground"
-                  : passed
-                    ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
-                    : "bg-muted text-muted-foreground",
-              )}
-            >
-              <s.icon className="size-3" />
-              {t(s.id === "qty" && !hasShipment ? "recv.step.qtyFree" : s.key)}
-            </span>
-            {i < steps.length - 1 && (
-              <span className="text-muted-foreground/40">·</span>
-            )}
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
-
-function ShipmentBar({
-  shipment,
-  received,
-  onClose,
-  done,
-  t,
-}: {
-  shipment: ExpectedShipment;
-  received: number;
-  onClose: () => void;
-  done: boolean;
-  t: (k: string, v?: Record<string, string | number>) => string;
-}) {
-  const expected = shipment.lines.reduce((s, l) => s + l.expectedQty, 0);
-  const got = shipment.lines.reduce((s, l) => s + l.receivedQty, 0);
-  return (
-    <div
-      className={cn(
-        "flex items-center justify-between gap-3 rounded-lg border px-3 py-2",
-        done ? "border-emerald-500/40 bg-emerald-500/10" : "border-border bg-card",
-      )}
-    >
-      <div className="min-w-0 text-xs">
-        <p className="truncate font-medium">
-          {shipment.title || t("recv.pick.untitled")}
-        </p>
-        <p className="text-muted-foreground">
-          {t("recv.bar.progress", { got, expected })}
-          {received > 0 && ` · ${t("recv.bar.session", { n: received })}`}
-        </p>
-      </div>
-      <Button size="sm" variant={done ? "default" : "outline"} onClick={onClose}>
-        {t(done ? "recv.bar.finish" : "recv.bar.finishEarly")}
-      </Button>
-    </div>
-  );
-}
-
-function ShipmentLines({
-  shipment,
-  t,
-}: {
-  shipment: ExpectedShipment;
-  t: (k: string, v?: Record<string, string | number>) => string;
-}) {
-  const products = useEditor((s) => s.products);
-  return (
-    <div className="overflow-hidden rounded-lg border border-border">
-      <table className="w-full border-collapse text-xs">
-        <thead className="bg-muted/50">
-          <tr className="text-left">
-            <th className="px-2.5 py-1.5 font-medium">{t("table.col.name")}</th>
-            <th className="px-2.5 py-1.5 text-right font-medium">
-              {t("recv.lines.expected")}
-            </th>
-            <th className="px-2.5 py-1.5 text-right font-medium">
-              {t("recv.lines.received")}
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {shipment.lines.map((l) => {
-            const p = products.find((x) => x.id === l.productId);
-            const full = l.receivedQty >= l.expectedQty;
-            return (
-              <tr key={l.id} className="border-t border-border/60">
-                <td className="px-2.5 py-1.5">
-                  {p?.name ?? "—"}{" "}
-                  <span className="font-mono text-[10px] text-muted-foreground">
-                    {p?.sku}
-                  </span>
-                </td>
-                <td className="px-2.5 py-1.5 text-right tabular-nums">
-                  {l.expectedQty}
-                </td>
-                <td
-                  className={cn(
-                    "px-2.5 py-1.5 text-right font-medium tabular-nums",
-                    full && "text-emerald-600 dark:text-emerald-400",
-                  )}
-                >
-                  {l.receivedQty}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function QtyStep({
-  draft,
-  remainder,
-  onQty,
-  onConfirm,
-  onBack,
-  t,
-}: {
-  draft: Draft;
-  remainder: number | null;
-  onQty: (v: number) => void;
-  onConfirm: () => void;
-  onBack: () => void;
-  t: (k: string, v?: Record<string, string | number>) => string;
-}) {
-  const match = remainder != null && draft.qty === remainder;
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="rounded-xl border border-border bg-card p-4">
-        <p className="text-sm font-semibold">{draft.product.name}</p>
-        <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
-          {draft.product.sku} · {draft.product.barcode}
-        </p>
-        {remainder != null ? (
-          <p className="mt-2 text-xs text-muted-foreground">
-            {t("recv.qty.expected", { n: remainder })}
-          </p>
-        ) : (
-          <p className="mt-2 text-xs text-muted-foreground">
-            {t("recv.qty.noPlan")}
-          </p>
-        )}
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-          {t("recv.qty.label")}
-        </span>
-        <div className="flex items-center gap-3">
-          <QtyStepper value={draft.qty} onChange={onQty} autoFocus />
-          {remainder != null && (
-            <span
-              className={cn(
-                "flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium",
-                match
-                  ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
-                  : "bg-amber-500/15 text-amber-700 dark:text-amber-400",
-              )}
-            >
-              {match ? <Check className="size-3.5" /> : null}
-              {match
-                ? t("recv.qty.matches")
-                : t("recv.qty.diff", { n: Math.abs(draft.qty - remainder) })}
-            </span>
-          )}
-        </div>
-      </div>
-
-      <div className="flex items-center gap-2">
-        <Button onClick={onConfirm} disabled={draft.qty < 1}>
-          {t("recv.qty.confirm")}
-        </Button>
-        <Button variant="ghost" onClick={onBack}>
-          {t("recv.qty.cancel")}
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function StaffPicker({
-  staff,
-  value,
-  onChange,
-  t,
-}: {
-  staff: { id: string; name: string; role: string }[];
-  value: string;
-  onChange: (v: string) => void;
-  t: (k: string) => string;
-}) {
-  if (!staff.length) return null;
-  return (
-    /* Поле по содержимому, а не во всю колонку: стрелка списка должна стоять
-       у имени, а не уезжать к правому краю экрана. */
-    <label className="flex flex-col items-start gap-1.5">
-      <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-        {t("recv.staff")}
-      </span>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="h-9 rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        <option value="">{t("recv.staffNone")}</option>
-        {staff.map((m) => (
-          <option key={m.id} value={m.id}>
-            {staffOptionLabel(m)}
-          </option>
-        ))}
-      </select>
-    </label>
   );
 }

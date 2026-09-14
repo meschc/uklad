@@ -11,13 +11,8 @@ import type { PlacedModule } from "./types";
  */
 
 /** Пересекаются ли прямоугольники модулей по клеткам. */
-export function rectsOverlap(a: PlacedModule, b: PlacedModule): boolean {
-  return (
-    a.x < b.x + b.w &&
-    a.x + a.w > b.x &&
-    a.y < b.y + b.h &&
-    a.y + a.h > b.y
-  );
+function rectsOverlap(a: PlacedModule, b: PlacedModule): boolean {
+  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 }
 
 /** Пара считается наложением, если это не два прохода (крест — штатный). */

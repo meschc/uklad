@@ -1,13 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  Maximize,
-  Minus,
-  MousePointerClick,
-  Plus,
-  Search,
-  X,
-} from "lucide-react";
+import { Maximize, Minus, MousePointerClick, Plus, Search, X } from "lucide-react";
 import { fieldValueKey, resolveFloor, useEditor } from "@/lib/store";
+import { catalogRepository } from "@/lib/data";
+import { useCommand } from "@/lib/useCommand";
 import { cellDimsCm, cm, formatAddress } from "@/lib/address";
 import { CATEGORY_COLOR, buildScene } from "@/lib/scene3d";
 import type { CategoryField, Floor } from "@/lib/types";
@@ -15,7 +10,28 @@ import { catLabel, useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { eyebrow } from "@/components/ui/eyebrow";
 import { Engine } from "./engine";
+
+/** Ответ «есть ли видеокарта» на вкладку один — переспрашивать нечего. */
+let webglAnswer: boolean | null = null;
+
+/**
+ * Доступен ли WebGL. Машина без него — не выдумка: удалённый рабочий стол,
+ * выключенное аппаратное ускорение, старый браузер. Пробный контекст дешевле
+ * падения: сам движок об отказе сообщает исключением из конструктора.
+ */
+function hasWebgl(): boolean {
+  if (webglAnswer === null) {
+    try {
+      const probe = document.createElement("canvas");
+      webglAnswer = !!(probe.getContext("webgl2") ?? probe.getContext("webgl"));
+    } catch {
+      webglAnswer = false;
+    }
+  }
+  return webglAnswer;
+}
 
 /**
  * Экран 3D-визуализации (ТЗ, разд. 3.7): фиксированная изометрия, зум колесом,
@@ -36,9 +52,7 @@ export function View3D() {
   const t = useT();
 
   // Если выбранный этаж удалили — возвращаемся к «все».
-  const filterValid =
-    floorFilter === "all" ||
-    warehouse.floors.some((f) => f.id === floorFilter);
+  const filterValid = floorFilter === "all" || warehouse.floors.some((f) => f.id === floorFilter);
   const effFilter = filterValid ? floorFilter : "all";
 
   // Сцену строим из отфильтрованного склада: один этаж рендерится у земли,
@@ -99,11 +113,7 @@ export function View3D() {
     if (!host) return;
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
-      engineRef.current?.zoomAt(
-        e.clientX,
-        e.clientY,
-        Math.pow(1.0015, -e.deltaY),
-      );
+      engineRef.current?.zoomAt(e.clientX, e.clientY, Math.pow(1.0015, -e.deltaY));
     };
     host.addEventListener("wheel", onWheel, { passive: false });
     return () => host.removeEventListener("wheel", onWheel);
@@ -117,14 +127,14 @@ export function View3D() {
     rotate: boolean;
   } | null>(null);
 
-  const pickedProduct = pickedId
-    ? products.find((p) => p.id === pickedId)
-    : undefined;
-  const pickedBox = pickedId
-    ? data.cells.find((p) => p.productId === pickedId)
-    : undefined;
+  const pickedProduct = pickedId ? products.find((p) => p.id === pickedId) : undefined;
+  const pickedBox = pickedId ? data.cells.find((p) => p.productId === pickedId) : undefined;
   // Товар мог уехать с полки, пока сайдбар открыт.
   const showSidebar = !!pickedProduct && !!pickedBox;
+
+  // Спрашиваем до создания движка, а не ловим его падение: конструктор
+  // рендерера бросает, и без этой развилки экран просто белел бы.
+  if (!hasWebgl()) return <NoWebgl />;
 
   return (
     <div className="relative flex min-h-0 flex-1">
@@ -172,22 +182,36 @@ export function View3D() {
 
         <SearchFrom3D />
 
-        <FloorSelect
-          floors={warehouse.floors}
-          value={effFilter}
-          onChange={setFloorFilter}
-        />
+        <FloorSelect floors={warehouse.floors} value={effFilter} onChange={setFloorFilter} />
 
         <Hint density={density} />
         <Controls engineRef={engineRef} />
       </div>
 
-      {showSidebar && (
-        <Sidebar
-          productId={pickedId!}
-          onClose={() => setPickedId(null)}
-        />
-      )}
+      {showSidebar && <Sidebar productId={pickedId!} onClose={() => setPickedId(null)} />}
+    </div>
+  );
+}
+
+/**
+ * Замена экрана, когда видеокарта недоступна. Не «ошибка», а развилка: три
+ * измерения — единственный режим, у которого есть аппаратное требование, и
+ * работать дальше человеку есть где, поэтому он уходит отсюда в план, а не в
+ * пустой экран.
+ */
+function NoWebgl() {
+  const setMode = useEditor((s) => s.setMode);
+  const t = useT();
+
+  return (
+    <div className="flex min-h-0 flex-1 items-center justify-center bg-gradient-to-b from-muted/40 to-background p-6">
+      <div className="max-w-sm text-center">
+        <p className="text-sm font-semibold">{t("view3d.noWebgl.title")}</p>
+        <p className="mt-1.5 text-xs text-muted-foreground">{t("view3d.noWebgl.body")}</p>
+        <Button size="sm" variant="outline" className="mt-4" onClick={() => setMode("2d")}>
+          {t("nav.mode.2d")}
+        </Button>
+      </div>
     </div>
   );
 }
@@ -245,9 +269,7 @@ function FloorSelect({
       onClick={() => onChange(v)}
       className={cn(
         "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
-        value === v
-          ? "bg-accent text-foreground"
-          : "text-muted-foreground hover:text-foreground",
+        value === v ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground",
       )}
     >
       {label}
@@ -283,11 +305,7 @@ function Hint({ density }: { density: { shown: number; total: number } }) {
   );
 }
 
-function Controls({
-  engineRef,
-}: {
-  engineRef: React.MutableRefObject<Engine | null>;
-}) {
+function Controls({ engineRef }: { engineRef: React.MutableRefObject<Engine | null> }) {
   const t = useT();
   return (
     <div className="absolute right-3 bottom-3 flex items-center gap-0.5 rounded-lg border border-border bg-card/90 p-0.5 backdrop-blur">
@@ -321,13 +339,7 @@ function Controls({
 }
 
 /** Карточка товара — сайдбар справа, в духе Figma (ТЗ, разд. 3.7). */
-function Sidebar({
-  productId,
-  onClose,
-}: {
-  productId: string;
-  onClose: () => void;
-}) {
+function Sidebar({ productId, onClose }: { productId: string; onClose: () => void }) {
   const warehouse = useEditor((s) => s.warehouse);
   const products = useEditor((s) => s.products);
   const placements = useEditor((s) => s.placements);
@@ -351,9 +363,7 @@ function Sidebar({
     <aside className="absolute inset-y-3 right-3 z-10 flex w-64 flex-col overflow-hidden rounded-xl border border-border bg-card/95 shadow-lg backdrop-blur">
       <div className="flex items-start justify-between gap-2 border-b border-border px-3 py-2.5">
         <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            {t("view3d.product")}
-          </p>
+          <p className={eyebrow()}>{t("view3d.product")}</p>
           <p className="truncate text-sm font-semibold">{product.name}</p>
         </div>
         <Button variant="ghost" size="icon-sm" onClick={onClose}>
@@ -384,31 +394,24 @@ function Sidebar({
         </Field>
         <Field label={t("view3d.category")}>
           <span className="inline-flex items-center gap-1.5 text-xs">
-            <span
-              className="size-2.5 rounded-sm"
-              style={{ background: color }}
-            />
+            <span className="size-2.5 rounded-sm" style={{ background: color }} />
             {catLabel(t, product.category)}
           </span>
         </Field>
         <Field label={t("view3d.dimsWHD")}>
           <span className="tabular-nums text-xs">
-            {cm(product.widthCm)} × {cm(product.heightCm)} ×{" "}
-            {cm(product.depthCm)} {t("unit.cm")}
+            {cm(product.widthCm)} × {cm(product.heightCm)} × {cm(product.depthCm)} {t("unit.cm")}
           </span>
         </Field>
         <Field label={t("view3d.weight")}>
           <span className="tabular-nums text-xs">
-            {product.weightKg != null
-              ? `${cm(product.weightKg)} ${t("unit.kg")}`
-              : "—"}
+            {product.weightKg != null ? `${cm(product.weightKg)} ${t("unit.kg")}` : "—"}
           </span>
         </Field>
         {dims && (
           <Field label={t("view3d.cell")}>
             <span className="tabular-nums text-xs text-muted-foreground">
-              {cm(dims.widthCm)} × {cm(dims.heightCm)} × {cm(dims.depthCm)}{" "}
-              {t("unit.cm")}
+              {cm(dims.widthCm)} × {cm(dims.heightCm)} × {cm(dims.depthCm)} {t("unit.cm")}
             </span>
           </Field>
         )}
@@ -416,23 +419,19 @@ function Sidebar({
         {/* Доп.поля категории (ТЗ, разд. 2.5, 3.8) — редактируемые */}
         {fields.length > 0 && (
           <div className="mt-3 border-t border-border pt-2">
-            <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-              {t("view3d.categoryFields")}
-            </p>
+            <p className={eyebrow({ className: "mb-1" })}>{t("view3d.categoryFields")}</p>
             {fields.map((f) => (
-              <CustomFieldInput key={f.id} productId={productId} field={f} />
+              // Ключ по товару И полю: у соседнего товара поле то же самое, и
+              // без товара в ключе React переиспользовал бы поле вместе с чужим
+              // черновиком.
+              <CustomFieldInput key={`${productId}:${f.id}`} productId={productId} field={f} />
             ))}
           </div>
         )}
       </div>
 
       <div className="border-t border-border p-3">
-        <Button
-          size="sm"
-          variant="outline"
-          className="w-full"
-          onClick={() => setMode("table")}
-        >
+        <Button size="sm" variant="outline" className="w-full" onClick={() => setMode("table")}>
           {t("view3d.openInTable")}
         </Button>
       </div>
@@ -440,46 +439,56 @@ function Sidebar({
   );
 }
 
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className={cn("flex items-baseline justify-between gap-2 py-1.5")}>
-      <span className="shrink-0 text-[11px] text-muted-foreground">
-        {label}
-      </span>
+      <span className="shrink-0 text-[11px] text-muted-foreground">{label}</span>
       <span className="min-w-0 text-right">{children}</span>
     </div>
   );
 }
 
-/** Ввод значения доп.поля товара (текст / число / список). */
-function CustomFieldInput({
-  productId,
-  field,
-}: {
-  productId: string;
-  field: CategoryField;
-}) {
-  const value = useEditor(
-    (s) => s.fieldValues[fieldValueKey(productId, field.id)] ?? "",
+/**
+ * Ввод значения доп.поля товара (текст / число / список).
+ *
+ * Набранное держим локально и отправляем по уходу из поля, а не на каждую
+ * букву: на сервере каждая буква станет запросом, и от слова «хрупкое» туда
+ * уедет восемь недописанных значений. Список сохраняем сразу по выбору — там
+ * правка одна, и ухода из поля можно не дождаться.
+ */
+function CustomFieldInput({ productId, field }: { productId: string; field: CategoryField }) {
+  const saved = useEditor((s) => s.fieldValues[fieldValueKey(productId, field.id)] ?? "");
+  const [draft, setDraft] = useState(saved);
+  const t = useT();
+
+  // Сохранение идёт через репозиторий (п.3.2.1). Подвала и кнопки у поля нет,
+  // поэтому отказ — красной строкой под ним, а набранное остаётся на месте:
+  // повтор здесь это просто уйти из поля ещё раз.
+  const save = useCommand((value: string) =>
+    catalogRepository.setFields(productId, { [field.id]: value }),
   );
-  const setFieldValue = useEditor((s) => s.setFieldValue);
-  const onChange = (v: string) => setFieldValue(productId, field.id, v);
-  const ctrl =
-    "h-7 w-full rounded-md border border-input bg-background px-2 text-xs";
+
+  const commit = (value: string) => {
+    if (value === saved) return;
+    save.run(value);
+  };
+
+  const ctrl = cn(
+    "h-7 w-full rounded-md border bg-background px-2 text-xs",
+    save.error ? "border-destructive" : "border-input",
+  );
 
   return (
     <label className="flex flex-col gap-1 py-1">
       <span className="text-[11px] text-muted-foreground">{field.name}</span>
       {field.type === "select" ? (
         <select
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
+          value={draft}
+          disabled={save.pending}
+          onChange={(e) => {
+            setDraft(e.target.value);
+            commit(e.target.value);
+          }}
           className={ctrl}
         >
           <option value="">—</option>
@@ -492,11 +501,22 @@ function CustomFieldInput({
       ) : (
         <input
           type={field.type === "number" ? "number" : "text"}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
+          value={draft}
+          disabled={save.pending}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={(e) => commit(e.target.value)}
+          // Enter — тот же «готово»: по нему поле теряет фокус и уходит в blur.
+          onKeyDown={(e) => {
+            if (e.key === "Enter") e.currentTarget.blur();
+          }}
           placeholder="—"
           className={ctrl}
         />
+      )}
+      {save.error && (
+        <span role="alert" className="text-[11px] text-destructive">
+          {t(save.error)}
+        </span>
       )}
     </label>
   );
@@ -504,14 +524,10 @@ function CustomFieldInput({
 
 /** Тема переключается классом на <html> — следим за ним. */
 function useIsDark() {
-  const [dark, setDark] = useState(() =>
-    document.documentElement.classList.contains("dark"),
-  );
+  const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
   useEffect(() => {
     const el = document.documentElement;
-    const obs = new MutationObserver(() =>
-      setDark(el.classList.contains("dark")),
-    );
+    const obs = new MutationObserver(() => setDark(el.classList.contains("dark")));
     obs.observe(el, { attributes: true, attributeFilter: ["class"] });
     return () => obs.disconnect();
   }, []);

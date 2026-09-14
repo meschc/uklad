@@ -1,29 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import {
-  ArrowLeft,
-  BarChart3,
-  Boxes,
-  ClipboardCheck,
-  ClipboardList,
-  FileText,
-  MessagesSquare,
-  Moon,
-  PackagePlus,
-  Plug,
-  Printer,
-  ScanLine,
-  ScanSearch,
-  Store,
-  Tags,
-  Truck,
-  Sun,
-  Users,
-  type LucideIcon,
-} from "lucide-react";
+import { ArrowLeft, Boxes, Moon, Sun, type LucideIcon } from "lucide-react";
 import { countUnread, selectRole, useEditor, visibleChatPartners } from "@/lib/store";
-import type { AppView, UserRole } from "@/lib/types";
+import { entriesFor, isGroup } from "./navItems";
+import type { AppView } from "@/lib/types";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { eyebrow } from "@/components/ui/eyebrow";
 
 /**
  * Боковой рельс навигации по экранам приложения. Именно боковой, а не пункты в
@@ -38,97 +20,6 @@ import { cn } from "@/lib/utils";
  * Рельс общий для всех экранов кабинета, включая редактор: его собственные
  * панели плавают внутри своей области и с рельсом не спорят.
  */
-
-interface NavLeaf {
-  view: AppView;
-  key: string;
-  icon: LucideIcon;
-}
-
-interface NavGroup {
-  /** Служебный id группы — только для состояния «какая раскрыта». */
-  id: string;
-  key: string;
-  icon: LucideIcon;
-  items: NavLeaf[];
-}
-
-type NavEntry = NavLeaf | NavGroup;
-
-const isGroup = (e: NavEntry): e is NavGroup => "items" in e;
-
-const WAREHOUSE_NAV: NavEntry[] = [
-  { view: "editor", key: "nav.side.plan", icon: Boxes },
-  {
-    // Ежедневный конвейер: товар приехал → его ждут → его собирают.
-    id: "flow",
-    key: "nav.group.flow",
-    icon: Truck,
-    items: [
-      { view: "receiving", key: "nav.side.receiving", icon: PackagePlus },
-      { view: "tasks", key: "nav.side.tasks", icon: ClipboardList },
-      { view: "picking", key: "nav.side.picking", icon: ScanLine },
-    ],
-  },
-  // Переписка с продавцами — сразу за конвейером и отдельным пунктом (п.3):
-  // в неё заходят по десять раз на день, и прятать её в группу значило бы
-  // добавить клик к самому частому действию после приёмки.
-  { view: "chat", key: "nav.side.chat", icon: MessagesSquare },
-  {
-    // Всё, что уходит на бумагу. Наклейку и накладную печатают из одного
-    // побуждения «сейчас пойду к принтеру», поэтому они рядом.
-    id: "print",
-    key: "nav.group.print",
-    icon: Printer,
-    items: [
-      { view: "labels", key: "nav.side.labels", icon: Tags },
-      { view: "documents", key: "nav.side.documents", icon: FileText },
-    ],
-  },
-  {
-    // Настройка самого склада: какой он, кто на нём работает, с чем связан.
-    id: "setup",
-    key: "nav.group.setup",
-    icon: ClipboardCheck,
-    items: [
-      { view: "spec", key: "nav.side.spec", icon: ClipboardCheck },
-      { view: "staff", key: "nav.side.staff", icon: Users },
-      { view: "integrations", key: "nav.side.integrations", icon: Plug },
-    ],
-  },
-  { view: "analytics", key: "nav.side.analytics", icon: BarChart3 },
-  // «Что это?» — отдельным пунктом в самом низу: это не шаг работы и не
-  // настройка, а справочник, к которому обращаются по случаю. Спрятанный в
-  // группу, он требовал бы двух кликов ровно тогда, когда человек стоит с
-  // непонятной коробкой в руках.
-  { view: "lookup", key: "nav.side.lookup", icon: ScanSearch },
-];
-
-/**
- * У продавца свой короткий набор — он остаётся плоским: пять пунктов
- * группировать не в чем. Выход в кабинет (а с ним к списку складов и
- * переключателю роли) у обеих ролей один — логотип наверху рельса.
- */
-const SELLER_NAV: NavEntry[] = [
-  { view: "seller", key: "nav.side.seller", icon: Store },
-  { view: "chat", key: "nav.side.chat", icon: MessagesSquare },
-  // План и номенклатуру продавец видит целиком, но только читает (п.26).
-  { view: "editor", key: "nav.side.plan", icon: Boxes },
-  { view: "spec", key: "nav.side.spec", icon: ClipboardCheck },
-  { view: "staff", key: "nav.side.staff", icon: Users },
-];
-
-function entriesFor(role: UserRole): NavEntry[] {
-  return role === "seller" ? SELLER_NAV : WAREHOUSE_NAV;
-}
-
-/**
- * Плоский список экранов, доступных роли. Им же `App.tsx` отсекает экраны,
- * недоступные текущей роли, — поэтому он должен разворачивать и группы.
- */
-export function navFor(role: UserRole): NavLeaf[] {
-  return entriesFor(role).flatMap((e) => (isGroup(e) ? e.items : [e]));
-}
 
 export function SideNav() {
   const appView = useEditor((s) => s.appView);
@@ -242,7 +133,7 @@ export function SideNav() {
             />
             {expanded && (
               <ul className="absolute left-full top-0 z-50 ml-1 flex w-52 animate-scale-in flex-col gap-0.5 rounded-xl border border-border bg-popover p-1.5 shadow-lg">
-                <li className="px-2 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <li className={eyebrow({ size: "xs", className: "px-2 pb-1 pt-0.5" })}>
                   {t(entry.key)}
                 </li>
                 {entry.items.map((item) => {
@@ -261,9 +152,7 @@ export function SideNav() {
                         )}
                       >
                         <item.icon className="size-4 shrink-0" />
-                        <span className="min-w-0 flex-1 truncate">
-                          {t(item.key)}
-                        </span>
+                        <span className="min-w-0 flex-1 truncate">{t(item.key)}</span>
                         {n > 0 && (
                           <span className="shrink-0 rounded-full bg-primary px-1.5 text-[10px] font-bold tabular-nums text-primary-foreground">
                             {n}

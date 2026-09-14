@@ -11,11 +11,13 @@ import {
 import { useEditor } from "@/lib/store";
 import { addressKey, formatAddress, parseAddress } from "@/lib/address";
 import { stockAt, stockByProduct } from "@/lib/fulfillment";
-import { normalizeCode, parseHonestSignMock } from "@/lib/barcode";
+import { findByCode, matchesProductCode, parseHonestSignMock } from "@/lib/barcode";
 import type { CellAddress, FulfillmentRequest } from "@/lib/types";
-import { useT, type TFunc } from "@/lib/i18n";
+import { useT, type MsgKey, type TFunc } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { eyebrow } from "@/components/ui/eyebrow";
+import { card } from "@/components/ui/card";
 import { ScreenShell, EmptyState } from "./ScreenShell";
 import { ScanField, type ScanStatus } from "./ScanField";
 
@@ -56,23 +58,16 @@ export function PickingScreen() {
   // видимой, а не тихо увеличивать счётчик (п.21).
   const [seenSerials, setSeenSerials] = useState<Set<string>>(new Set());
 
-  const stock = useMemo(
-    () => stockByProduct(placements, boxes),
-    [placements, boxes],
-  );
+  const stock = useMemo(() => stockByProduct(placements, boxes), [placements, boxes]);
 
-  const queue = requests.filter(
-    (r) => r.status === "new" || r.status === "in_progress",
-  );
+  const queue = requests.filter((r) => r.status === "new" || r.status === "in_progress");
   const active = requests.find((r) => r.id === activeId) ?? null;
-  const product = active
-    ? products.find((p) => p.id === active.productId)
-    : undefined;
+  const product = active ? products.find((p) => p.id === active.productId) : undefined;
   const picked = active?.pickedQty ?? 0;
 
-  const fail = (key: string, vars?: Record<string, string | number>) =>
+  const fail = (key: MsgKey, vars?: Record<string, string | number>) =>
     setScan({ status: "error", msg: t(key, vars) });
-  const ok = (key: string, vars?: Record<string, string | number>) =>
+  const ok = (key: MsgKey, vars?: Record<string, string | number>) =>
     setScan({ status: "ok", msg: t(key, vars) });
 
   const open = (r: FulfillmentRequest) => {
@@ -96,8 +91,7 @@ export function PickingScreen() {
 
   const onScanPlace = (raw: string) => {
     if (!active) return;
-    const code = normalizeCode(raw);
-    const box = boxes.find((b) => normalizeCode(b.barcode) === code);
+    const box = findByCode(boxes, raw);
     const parsed = box?.address ?? parseAddress(warehouse, raw);
     if (!parsed) {
       fail("pick.place.unknown");
@@ -121,11 +115,9 @@ export function PickingScreen() {
 
   const onScanItem = (raw: string) => {
     if (!active || !addr || !product) return;
-    const code = normalizeCode(raw);
     const mark = parseHonestSignMock(raw);
     const matches =
-      normalizeCode(product.barcode) === code ||
-      normalizeCode(product.sku) === code ||
+      matchesProductCode(product, raw) ||
       (mark ? mark.gtin.endsWith(product.barcode.slice(1)) : false);
     if (!matches) {
       fail("pick.item.wrong", { sku: product.sku });
@@ -214,12 +206,14 @@ export function PickingScreen() {
                   <button
                     key={r.id}
                     onClick={() => open(r)}
-                    className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-3.5 text-left transition-colors hover:border-primary/40 hover:bg-accent/40"
+                    className={card({
+                      pad: "md",
+                      className:
+                        "flex items-center justify-between gap-3 text-left transition-colors hover:border-primary/40 hover:bg-accent/40",
+                    })}
                   >
                     <div className="min-w-0">
-                      <p className="truncate font-mono text-sm font-bold">
-                        {p?.sku ?? "—"}
-                      </p>
+                      <p className="truncate font-mono text-sm font-bold">{p?.sku ?? "—"}</p>
                       <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
                         {p?.name} ·{" "}
                         {r.truckDate
@@ -286,11 +280,7 @@ export function PickingScreen() {
 
           {step === "items" && (
             <>
-              <ScanField
-                label={t("pick.item.label")}
-                status={scan.status}
-                onSubmit={onScanItem}
-              />
+              <ScanField label={t("pick.item.label")} status={scan.status} onSubmit={onScanItem} />
               {/* 8.4 — не тупик: если физически не хватает, есть явный выход. */}
               {confirmPartial ? (
                 <div className="hazard-stripes flex flex-col gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
@@ -312,11 +302,7 @@ export function PickingScreen() {
                       <CheckCircle2 className="size-3.5" />
                       {t("pick.partial.yes")}
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setConfirmPartial(false)}
-                    >
+                    <Button size="sm" variant="ghost" onClick={() => setConfirmPartial(false)}>
                       {t("common.cancel")}
                     </Button>
                   </div>
@@ -355,14 +341,12 @@ function RequestHeader({
 }) {
   const pct = total ? Math.round((picked / total) * 100) : 0;
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
+    <div className={card()}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           {/* Собирают по артикулу, а не по названию — он и главный (п.23). */}
           <p className="font-mono text-lg font-bold tracking-tight">{sku}</p>
-          <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
-            {name}
-          </p>
+          <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{name}</p>
           {addr && (
             <p className="mt-1 inline-flex items-center gap-1 text-[11px] text-primary">
               <MapPin className="size-3" />
@@ -373,9 +357,7 @@ function RequestHeader({
         <div className="shrink-0 text-right">
           <p className="text-2xl font-bold tabular-nums">
             {picked}
-            <span className="text-base font-medium text-muted-foreground">
-              /{total}
-            </span>
+            <span className="text-base font-medium text-muted-foreground">/{total}</span>
           </p>
           <p className="text-[11px] text-muted-foreground">{t("pick.counted")}</p>
         </div>
@@ -411,9 +393,7 @@ function SuggestedPlaces({
   }
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-        {t("pick.where")}
-      </span>
+      <span className={eyebrow()}>{t("pick.where")}</span>
       <div className="flex flex-wrap gap-1.5">
         {locations.map((l) => (
           <button
@@ -425,9 +405,7 @@ function SuggestedPlaces({
             <span className="font-mono">{formatAddress(warehouse, l.addr)}</span>
             <span className="tabular-nums text-muted-foreground">× {l.qty}</span>
             {l.boxBarcode && (
-              <span className="font-mono text-[10px] text-muted-foreground">
-                {l.boxBarcode}
-              </span>
+              <span className="font-mono text-[10px] text-muted-foreground">{l.boxBarcode}</span>
             )}
           </button>
         ))}

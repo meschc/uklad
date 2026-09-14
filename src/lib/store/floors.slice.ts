@@ -1,13 +1,7 @@
 import { clamp } from "../utils";
 import type { Floor } from "../types";
 import type { FloorsSlice, SliceCreator } from "./state";
-import {
-  FLOOR_MAX,
-  cloneFloor,
-  goodsAt,
-  renumberFloors,
-  resolveFloor,
-} from "./helpers";
+import { FLOOR_MAX, cloneFloor, goodsAt, renumberFloors, resolveFloor } from "./helpers";
 
 /**
  * Этажи и тиражирование (ТЗ, разд. 3.5). Связанный этаж («алиас») зеркалит
@@ -18,9 +12,7 @@ export const createFloorsSlice: SliceCreator<FloorsSlice> = (set, get) => ({
 
   activeFloor: () => {
     const { warehouse, activeFloorId } = get();
-    const base =
-      warehouse.floors.find((f) => f.id === activeFloorId) ??
-      warehouse.floors[0];
+    const base = warehouse.floors.find((f) => f.id === activeFloorId) ?? warehouse.floors[0];
     // Связанный этаж показывает раскладку источника (алиас первого этажа).
     return resolveFloor(warehouse, base);
   },
@@ -67,13 +59,10 @@ export const createFloorsSlice: SliceCreator<FloorsSlice> = (set, get) => ({
     const doIt = () =>
       set((st) => {
         if (st.warehouse.floors.length <= 1) return {};
-        const floors = renumberFloors(
-          st.warehouse.floors.filter((f) => f.id !== id),
-        );
+        const floors = renumberFloors(st.warehouse.floors.filter((f) => f.id !== id));
         return {
           warehouse: { ...st.warehouse, floors },
-          activeFloorId:
-            st.activeFloorId === id ? floors[0].id : st.activeFloorId,
+          activeFloorId: st.activeFloorId === id ? floors[0].id : st.activeFloorId,
           selection: [],
           activeShelf: null,
         };
@@ -111,9 +100,7 @@ export const createFloorsSlice: SliceCreator<FloorsSlice> = (set, get) => ({
       warehouse: {
         ...s.warehouse,
         floors: s.warehouse.floors.map((f) =>
-          f.id === id
-            ? { ...f, number: n != null && n >= 1 ? Math.round(n) : undefined }
-            : f,
+          f.id === id ? { ...f, number: n != null && n >= 1 ? Math.round(n) : undefined } : f,
         ),
       },
     })),
@@ -135,11 +122,8 @@ export const createFloorsSlice: SliceCreator<FloorsSlice> = (set, get) => ({
       const target = clamp(Math.round(totalCount), 1, FLOOR_MAX);
       const cur = s.warehouse.floors;
       if (target <= cur.length) return {};
-      const src =
-        cur.find((f) => f.id === s.activeFloorId) ?? cur[cur.length - 1];
-      const added = Array.from({ length: target - cur.length }, () =>
-        cloneFloor(src),
-      );
+      const src = cur.find((f) => f.id === s.activeFloorId) ?? cur[cur.length - 1];
+      const added = Array.from({ length: target - cur.length }, () => cloneFloor(src));
       return {
         warehouse: {
           ...s.warehouse,

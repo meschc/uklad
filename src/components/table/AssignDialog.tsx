@@ -1,12 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Check, Lightbulb, Trash2, X } from "lucide-react";
+import { useMemo, useState } from "react";
+import { AlertTriangle, Check, Lightbulb, Loader2, Trash2, X } from "lucide-react";
 import { useEditor } from "@/lib/store";
-import {
-  cellDimsCm,
-  cm,
-  formatAddress,
-  parseAddress,
-} from "@/lib/address";
+import { placementRepository } from "@/lib/data";
+import { useCommand } from "@/lib/useCommand";
+import { cellDimsCm, cm, formatAddress, parseAddress } from "@/lib/address";
 import {
   buildOccupancy,
   checkFit,
@@ -20,7 +17,9 @@ import {
 import type { CellAddress, PlacedModule, Product } from "@/lib/types";
 import { catLabel, useT, type TFunc } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { DialogFooter, DialogHeader, DialogShell } from "@/components/ui/dialog-shell";
 import { Button } from "@/components/ui/button";
+import { eyebrow } from "@/components/ui/eyebrow";
 
 /**
  * Назначение товара на ячейку (ТЗ, разд. 3.6 — только здесь, не в 3D).
@@ -29,9 +28,7 @@ import { Button } from "@/components/ui/button";
  */
 
 function sectionsOf(modules: PlacedModule[]): PlacedModule[] {
-  return modules.filter(
-    (m) => m.type === "section" && (m.shelves?.length ?? 0) > 0,
-  );
+  return modules.filter((m) => m.type === "section" && (m.shelves?.length ?? 0) > 0);
 }
 
 /** Слово «ячейка/ячейки/ячеек» / «cell/cells». */
@@ -63,10 +60,7 @@ function initialDraft(product: Product): CellAddress | null {
   const free = firstFreeCell(s.warehouse, occ, s.activeFloorId);
   if (free) return free.addr;
 
-  const ordered = [
-    s.activeFloor(),
-    ...s.warehouse.floors.filter((f) => f.id !== s.activeFloorId),
-  ];
+  const ordered = [s.activeFloor(), ...s.warehouse.floors.filter((f) => f.id !== s.activeFloorId)];
   for (const f of ordered) {
     const sec = sectionsOf(f.modules)[0];
     if (sec) {
@@ -76,39 +70,18 @@ function initialDraft(product: Product): CellAddress | null {
   return null;
 }
 
-export function AssignDialog({
-  product,
-  onClose,
-}: {
-  product: Product;
-  onClose: () => void;
-}) {
+export function AssignDialog({ product, onClose }: { product: Product; onClose: () => void }) {
   const warehouse = useEditor((s) => s.warehouse);
   const products = useEditor((s) => s.products);
   const placements = useEditor((s) => s.placements);
   const boxes = useEditor((s) => s.boxes);
-  const placeProduct = useEditor((s) => s.placeProduct);
-  const clearPlacement = useEditor((s) => s.clearPlacement);
   const setMode = useEditor((s) => s.setMode);
   const t = useT();
 
-  const [draft, setDraft] = useState<CellAddress | null>(() =>
-    initialDraft(product),
-  );
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  const [draft, setDraft] = useState<CellAddress | null>(() => initialDraft(product));
 
   // Коробки приёмки — такая же занятость, как прямое размещение (см. 2.1).
-  const occupancy = useMemo(
-    () => buildOccupancy(placements, boxes),
-    [placements, boxes],
-  );
+  const occupancy = useMemo(() => buildOccupancy(placements, boxes), [placements, boxes]);
 
   const floor = warehouse.floors.find((f) => f.id === draft?.floorId);
   const sections = floor ? sectionsOf(floor.modules) : [];
@@ -123,9 +96,14 @@ export function AssignDialog({
   // (blur) синхронизируемся с каноничным адресом из selects (сбрасывает мусор).
   const [manualText, setManualText] = useState(address ?? "");
   const [manualFocused, setManualFocused] = useState(false);
-  useEffect(() => {
+  // Адрес сменили мимо поля — кликом по плану или через selects. Подставляем
+  // прямо в рендере, а не эффектом: эффект успел бы показать кадр, где на плане
+  // уже новая ячейка, а в поле ещё старый адрес.
+  const [lastAddress, setLastAddress] = useState(address);
+  if (address !== lastAddress) {
+    setLastAddress(address);
     if (!manualFocused) setManualText(address ?? "");
-  }, [address, manualFocused]);
+  }
   const manualErr = manualText.trim() !== "" && !parseAddress(warehouse, manualText);
   const onManualChange = (v: string) => {
     setManualText(v);
@@ -137,9 +115,7 @@ export function AssignDialog({
   // содержимым — обе ситуации приходят из buildOccupancy одним объектом.
   const occupantIds = draft ? occupantsAt(occupancy, draft) : [];
   const foreignIds = occupantIds.filter((id) => id !== product.id);
-  const occupant = foreignIds.length
-    ? products.find((p) => p.id === foreignIds[0])
-    : undefined;
+  const occupant = foreignIds.length ? products.find((p) => p.id === foreignIds[0]) : undefined;
   /** Сколько ещё товаров в той же ячейке, кроме показанного. */
   const occupantMore = Math.max(0, foreignIds.length - 1);
 
@@ -165,10 +141,25 @@ export function AssignDialog({
   const canPlace = !!draft && !!dims;
   const clean = !!fit?.fits && !occupant;
 
-  const commit = () => {
+  /**
+   * Постановка и снятие идут через репозиторий (п.3.2.1). Окно при отказе НЕ
+   * закрывается: выбранная ячейка — та же набранная форма, и подбирать её
+   * заново из-за обрыва связи человек не должен.
+   */
+  const put = useCommand((addr: CellAddress) => placementRepository.place(product.id, addr));
+  const drop = useCommand(() => placementRepository.clear([product.id]));
+  const busy = put.pending || drop.pending;
+  const error = put.error ?? drop.error;
+
+  const commit = async () => {
     if (!draft || !dims) return;
-    placeProduct(product.id, draft);
-    onClose();
+    const res = await put.run(draft);
+    if (res.ok) onClose();
+  };
+
+  const unplace = async () => {
+    const res = await drop.run();
+    if (res.ok) onClose();
   };
 
   // ТЗ, разд. 4: назначение, когда плана ещё нет.
@@ -180,9 +171,7 @@ export function AssignDialog({
             <AlertTriangle className="size-5" />
           </div>
           <p className="text-sm font-medium">{t("assign.noPlan.title")}</p>
-          <p className="max-w-xs text-xs text-muted-foreground">
-            {t("assign.noPlan.body")}
-          </p>
+          <p className="max-w-xs text-xs text-muted-foreground">{t("assign.noPlan.body")}</p>
           <Button
             size="sm"
             className="mt-1"
@@ -207,7 +196,12 @@ export function AssignDialog({
             value={manualText}
             onChange={(e) => onManualChange(e.target.value)}
             onFocus={() => setManualFocused(true)}
-            onBlur={() => setManualFocused(false)}
+            onBlur={() => {
+              setManualFocused(false);
+              // Выход из поля — момент синхронизации: в нём остаётся ровно тот
+              // адрес, что выбран на плане, а недобранный мусор исчезает.
+              setManualText(address ?? "");
+            }}
             placeholder={t("assign.manualPlaceholder")}
             inputMode="numeric"
             className={cn(
@@ -216,10 +210,7 @@ export function AssignDialog({
             )}
           />
           <span
-            className={cn(
-              "text-[11px]",
-              manualErr ? "text-destructive" : "text-muted-foreground",
-            )}
+            className={cn("text-[11px]", manualErr ? "text-destructive" : "text-muted-foreground")}
           >
             {manualErr ? t("assign.manualErr") : t("assign.manualHint")}
           </span>
@@ -324,13 +315,9 @@ export function AssignDialog({
         {/* Ячейки полки — пропорциональная лента, как на плане */}
         <div>
           <div className="mb-1.5 flex items-baseline justify-between">
-            <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-              {t("assign.cell")}
-            </span>
+            <span className={eyebrow()}>{t("assign.cell")}</span>
             {shelf?.cells === 1 && (
-              <span className="text-[11px] text-muted-foreground">
-                {t("assign.oneCellNote")}
-              </span>
+              <span className="text-[11px] text-muted-foreground">{t("assign.oneCellNote")}</span>
             )}
           </div>
           <div className="flex gap-1">
@@ -341,9 +328,7 @@ export function AssignDialog({
               const busy = ids.some((id) => id !== product.id);
               const fits = !!fit?.fits;
               const selected = draft.cellIndex === i;
-              const who = ids.length
-                ? products.find((p) => p.id === ids[0])
-                : undefined;
+              const who = ids.length ? products.find((p) => p.id === ids[0]) : undefined;
               return (
                 <button
                   key={i}
@@ -370,9 +355,7 @@ export function AssignDialog({
                   )}
                 >
                   {i + 1}
-                  {ids.length > 0 && (
-                    <span className="size-1.5 rounded-full bg-current" />
-                  )}
+                  {ids.length > 0 && <span className="size-1.5 rounded-full bg-current" />}
                 </button>
               );
             })}
@@ -385,37 +368,26 @@ export function AssignDialog({
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">
                 {t("assign.rowCell")}{" "}
-                <span className="font-mono font-medium text-foreground">
-                  {address}
-                </span>
+                <span className="font-mono font-medium text-foreground">{address}</span>
               </span>
               <span className="tabular-nums text-muted-foreground">
-                {cm(dims.widthCm)} × {cm(dims.heightCm)} × {cm(dims.depthCm)}{" "}
-                {t("unit.cm")}
+                {cm(dims.widthCm)} × {cm(dims.heightCm)} × {cm(dims.depthCm)} {t("unit.cm")}
               </span>
             </div>
             <div className="mt-1 flex items-center justify-between">
-              <span className="text-muted-foreground">
-                {t("assign.rowProduct")}
-              </span>
+              <span className="text-muted-foreground">{t("assign.rowProduct")}</span>
               <span className="tabular-nums text-muted-foreground">
-                {cm(product.widthCm)} × {cm(product.heightCm)} ×{" "}
-                {cm(product.depthCm)} {t("unit.cm")}
+                {cm(product.widthCm)} × {cm(product.heightCm)} × {cm(product.depthCm)}{" "}
+                {t("unit.cm")}
               </span>
             </div>
             <div
               className={cn(
                 "mt-2 flex items-center gap-1.5 border-t border-border pt-2 font-medium",
-                fit.fits
-                  ? "text-emerald-600 dark:text-emerald-400"
-                  : "text-destructive",
+                fit.fits ? "text-emerald-600 dark:text-emerald-400" : "text-destructive",
               )}
             >
-              {fit.fits ? (
-                <Check className="size-3.5" />
-              ) : (
-                <AlertTriangle className="size-3.5" />
-              )}
+              {fit.fits ? <Check className="size-3.5" /> : <AlertTriangle className="size-3.5" />}
               {fit.fits ? t("assign.fitsYes") : t("assign.fitsNo")}
             </div>
           </div>
@@ -425,13 +397,10 @@ export function AssignDialog({
         {occupant && (
           <Alert tone="warn">
             <p>
-              <span className="font-semibold">{t("assign.occupied.title")}</span>{" "}
-              {occupant.name}{" "}
-              <span className="font-mono text-[11px] opacity-70">
-                {occupant.sku}
-              </span>
-              {occupantMore > 0 && ` ${t("assign.occupied.more", { n: occupantMore })}`}
-              . {t("assign.occupied.body", { name: occupant.name })}
+              <span className="font-semibold">{t("assign.occupied.title")}</span> {occupant.name}{" "}
+              <span className="font-mono text-[11px] opacity-70">{occupant.sku}</span>
+              {occupantMore > 0 && ` ${t("assign.occupied.more", { n: occupantMore })}`}.{" "}
+              {t("assign.occupied.body", { name: occupant.name })}
             </p>
             {suggestion && (
               <button
@@ -472,9 +441,7 @@ export function AssignDialog({
               <p className="mt-1.5 opacity-80">
                 {t("assign.blocked", {
                   addr: blocked.address,
-                  who: blockedBy
-                    ? t("assign.blockedWho", { name: blockedBy.name })
-                    : "",
+                  who: blockedBy ? t("assign.blockedWho", { name: blockedBy.name }) : "",
                 })}
               </p>
             ) : (
@@ -484,38 +451,64 @@ export function AssignDialog({
         )}
       </div>
 
+      {/* Отказ отдельной строкой над подвалом: слева в подвале уже стоит
+          «Снять с места», и сообщению там не хватило бы ширины. */}
+      {error && (
+        <p
+          role="alert"
+          className="shrink-0 border-t border-border bg-destructive/10 px-5 py-2 text-xs text-destructive"
+        >
+          {t(error)}
+        </p>
+      )}
+
       {/* Действия */}
-      <div className="flex items-center justify-between gap-2 border-t border-border bg-muted/30 px-5 py-3">
+      <DialogFooter spread>
         {placed ? (
           <Button
             variant="ghost"
             size="sm"
+            disabled={busy}
             className="text-muted-foreground hover:text-destructive"
-            onClick={() => {
-              clearPlacement(product.id);
-              onClose();
-            }}
+            onClick={unplace}
           >
-            <Trash2 className="size-3.5" />
-            {t("assign.removeFromPlace")}
+            {drop.pending ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : (
+              <Trash2 className="size-3.5" />
+            )}
+            {drop.pending
+              ? t("data.busy")
+              : drop.error
+                ? t("data.retry")
+                : t("assign.removeFromPlace")}
           </Button>
         ) : (
           <span />
         )}
         <div className="flex items-center gap-2">
+          {/* Отмену не блокируем: если запрос повис, выход из окна не должен
+              быть заперт вместе с ним. */}
           <Button variant="ghost" size="sm" onClick={onClose}>
             {t("common.cancel")}
           </Button>
           <Button
             size="sm"
-            disabled={!canPlace}
+            disabled={!canPlace || busy}
             variant={clean ? "default" : "destructive"}
             onClick={commit}
           >
-            {clean ? t("assign.place") : t("assign.placeForce")}
+            {put.pending && <Loader2 className="animate-spin" />}
+            {put.pending
+              ? t("data.busy")
+              : put.error
+                ? t("data.retry")
+                : clean
+                  ? t("assign.place")
+                  : t("assign.placeForce")}
           </Button>
         </div>
-      </div>
+      </DialogFooter>
     </Shell>
   );
 }
@@ -534,59 +527,36 @@ function Shell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div
-        className="absolute inset-0 animate-fade-in bg-black/40 backdrop-blur-[1px]"
-        onClick={onClose}
-      />
-      <div className="relative w-full max-w-xl animate-scale-in overflow-hidden rounded-xl border border-border bg-card shadow-2xl">
-        <div className="flex items-start justify-between gap-3 border-b border-border px-5 py-3">
-          <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-              {t("assign.header")}
-            </p>
-            <p className="truncate text-sm font-semibold">{product.name}</p>
-            <p className="font-mono text-[11px] text-muted-foreground">
-              {product.sku} · {catLabel(t, product.category)}
-            </p>
-          </div>
-          <Button variant="ghost" size="icon-sm" onClick={onClose}>
-            <X className="size-4" />
-          </Button>
+    <DialogShell size="xl" onClose={onClose}>
+      <DialogHeader align="start">
+        <div className="min-w-0">
+          <p className={eyebrow()}>{t("assign.header")}</p>
+          <p className="truncate text-sm font-semibold">{product.name}</p>
+          <p className="font-mono text-[11px] text-muted-foreground">
+            {product.sku} · {catLabel(t, product.category)}
+          </p>
         </div>
-        {children}
-      </div>
-    </div>
+        <Button variant="ghost" size="icon-sm" onClick={onClose}>
+          <X className="size-4" />
+        </Button>
+      </DialogHeader>
+      {children}
+    </DialogShell>
   );
 }
 
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="flex flex-col gap-1">
-      <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-        {label}
-      </span>
+      <span className={eyebrow()}>{label}</span>
       {children}
     </label>
   );
 }
 
-const selectCls =
-  "h-8 w-full rounded-md border border-input bg-background px-2 text-xs";
+const selectCls = "h-8 w-full rounded-md border border-input bg-background px-2 text-xs";
 
-function Alert({
-  tone,
-  children,
-}: {
-  tone: "warn" | "danger";
-  children: React.ReactNode;
-}) {
+function Alert({ tone, children }: { tone: "warn" | "danger"; children: React.ReactNode }) {
   return (
     <div
       className={cn(

@@ -1,12 +1,14 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Check, CheckCheck, SendHorizontal } from "lucide-react";
+import { Check, CheckCheck, Loader2, SendHorizontal } from "lucide-react";
 import type { ChatMessage, Partner, UserRole } from "@/lib/types";
 import { groupMessagesByDay } from "@/lib/chat";
-import { useEditor } from "@/lib/store";
+import { chatRepository } from "@/lib/data";
+import { useCommand } from "@/lib/useCommand";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { chatInitials, formatChatDay, formatChatTime } from "./chatFormat";
+import { ChatDemoNote } from "./ChatDemoNote";
 
 /** Высота поля ввода, растущего под текст: от одной строки до примерно шести. */
 const COMPOSER_MIN = 40;
@@ -15,10 +17,10 @@ const COMPOSER_MAX = 140;
 /**
  * Лента переписки с одним собеседником и поле ввода.
  *
- * Входящие помечаются прочитанными при открытии треда (это делает `openChat`),
- * а не по факту прокрутки до низа: в переписке на десяток реплик «докрутил ли
- * он» — гадание, а счётчик, который не гаснет после того, как человек открыл и
- * прочитал чат, раздражает сильнее, чем неточность.
+ * Входящие помечаются прочитанными при открытии треда, а не по факту прокрутки
+ * до низа: в переписке на десяток реплик «докрутил ли он» — гадание, а счётчик,
+ * который не гаснет после того, как человек открыл и прочитал чат, раздражает
+ * сильнее, чем неточность.
  */
 export function ChatThread({
   partner,
@@ -30,11 +32,12 @@ export function ChatThread({
   role: UserRole;
 }) {
   const t = useT();
-  const sendChatMessage = useEditor((s) => s.sendChatMessage);
-  const markChatRead = useEditor((s) => s.markChatRead);
   const [draft, setDraft] = useState("");
   const feedRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Отправка идёт через репозиторий (п.3.2.1): здесь появится запрос к серверу.
+  const send = useCommand((text: string) => chatRepository.send(partner.id, text));
 
   // Лента открывается на последнем сообщении и остаётся внизу при отправке:
   // читают чат всегда с конца. Layout-эффект, а не обычный, — иначе видно, как
@@ -45,18 +48,28 @@ export function ChatThread({
   }, [messages.length, partner.id]);
 
   // Пришедшее, пока тред открыт, гасим сразу — человек это уже видит.
+  //
+  // Единственная команда без «идёт» и «не вышло»: отметку о прочтении человек
+  // не запрашивал, повторять её нечем и незачем. Провал уже записан в консоль
+  // самим `attempt()`, а сообщение «не удалось отметить прочитанным» посреди
+  // чтения — шум, на который нельзя ответить ничем полезным.
   useEffect(() => {
-    markChatRead(partner.id);
-  }, [markChatRead, partner.id, messages.length]);
+    void chatRepository.markRead(partner.id);
+  }, [partner.id, messages.length]);
 
   const grow = (el: HTMLTextAreaElement) => {
     el.style.height = "auto";
     el.style.height = `${Math.min(Math.max(el.scrollHeight, COMPOSER_MIN), COMPOSER_MAX)}px`;
   };
 
-  const send = () => {
-    if (!draft.trim()) return;
-    sendChatMessage(partner.id, draft);
+  // При отказе поле НЕ очищается: набранное — единственная копия сообщения, и
+  // потерять её значит заставить человека печатать заново. Кнопка становится
+  // повтором, текст остаётся на месте.
+  const submit = async () => {
+    const text = draft.trim();
+    if (!text || send.pending) return;
+    const res = await send.run(text);
+    if (!res.ok) return;
     setDraft("");
     const el = inputRef.current;
     if (el) {
@@ -81,11 +94,11 @@ export function ChatThread({
         </div>
       </header>
 
+      <ChatDemoNote />
+
       <div ref={feedRef} className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
         {days.length === 0 ? (
-          <p className="py-10 text-center text-xs text-muted-foreground">
-            {t("chat.emptyThread")}
-          </p>
+          <p className="py-10 text-center text-xs text-muted-foreground">{t("chat.emptyThread")}</p>
         ) : (
           <div className="mx-auto flex max-w-2xl flex-col gap-4">
             {days.map((day) => (
@@ -120,20 +133,36 @@ export function ChatThread({
               // отправить нечем.
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
-                send();
+                void submit();
               }
             }}
             placeholder={t("chat.composerPlaceholder")}
             aria-label={t("chat.composerPlaceholder")}
             className="min-h-10 flex-1 resize-none rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
-          <Button size="sm" className="h-10" onClick={send} disabled={!draft.trim()}>
-            <SendHorizontal className="size-3.5" />
-            {t("chat.send")}
+          <Button
+            size="sm"
+            className="h-10"
+            onClick={() => void submit()}
+            disabled={!draft.trim() || send.pending}
+          >
+            {send.pending ? (
+              <Loader2 className="animate-spin" />
+            ) : (
+              <SendHorizontal className="size-3.5" />
+            )}
+            {send.error ? t("data.retry") : t("chat.send")}
           </Button>
         </div>
-        <p className="mx-auto mt-1.5 max-w-2xl text-[10px] text-muted-foreground">
-          {t("chat.sendHint")}
+        {/* Подсказка и отказ занимают одну строку: иначе поле ввода прыгало бы
+            вверх на каждой неудачной отправке. */}
+        <p
+          className={cn(
+            "mx-auto mt-1.5 max-w-2xl text-[10px]",
+            send.error ? "text-destructive" : "text-muted-foreground",
+          )}
+        >
+          {send.error ? t(send.error) : t("chat.sendHint")}
         </p>
       </footer>
     </section>

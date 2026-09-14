@@ -36,7 +36,14 @@ export interface HistorySnapshot {
 
 const HISTORY_LIMIT = 60;
 
-export function snapshot(s: EditorState): HistorySnapshot {
+/**
+ * Пауза, после которой всплеск правок считается законченным. Перетаскивание
+ * модуля даёт десятки изменений подряд — без склейки каждое стало бы отдельным
+ * шагом отмены, и Ctrl+Z пришлось бы жать столько же раз, сколько было кадров.
+ */
+const COALESCE_MS = 450;
+
+function snapshot(s: EditorState): HistorySnapshot {
   return {
     warehouse: s.warehouse,
     otherWarehouses: s.otherWarehouses,
@@ -71,10 +78,12 @@ type EditorStore = UseBoundStore<StoreApi<EditorState>>;
 let store: EditorStore | null = null;
 let timeTraveling = false;
 let pendingPrev: HistorySnapshot | null = null;
-let coalesceTimer: number | undefined;
+// Не `window.setTimeout`, как в компонентах: этот модуль выполняется сразу при
+// импорте стора — в том числе там, где окна нет вовсе (тесты на окружении node).
+let coalesceTimer: ReturnType<typeof setTimeout> | undefined;
 
 /** Дописать отложенный снимок в историю немедленно. */
-export function flushHistory() {
+function flushHistory() {
   if (!pendingPrev || !store) return;
   const entry = pendingPrev;
   pendingPrev = null;
@@ -98,7 +107,7 @@ export function installHistory(s: EditorStore) {
     // Держим САМОЕ раннее состояние всплеска — тогда отмена вернёт к началу жеста.
     if (!pendingPrev) pendingPrev = snapshot(prev);
     if (coalesceTimer) clearTimeout(coalesceTimer);
-    coalesceTimer = window.setTimeout(flushHistory, 450);
+    coalesceTimer = setTimeout(flushHistory, COALESCE_MS);
   });
 }
 

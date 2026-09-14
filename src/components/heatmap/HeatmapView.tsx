@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Boxes } from "lucide-react";
 import { useEditor } from "@/lib/store";
-import { rowNumbers } from "@/lib/numbering";
+import { planBounds, rowFrames } from "@/lib/planGeometry";
 import type { Box, CellAddress, Floor, PlacedModule } from "@/lib/types";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -15,6 +15,9 @@ import { CELL, MODULE_GAP, ZOOM_MAX, ZOOM_MIN } from "@/components/editor/consta
  */
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+
+/** Клетки запаса вокруг плана при вписывании — как в редакторе. */
+const FIT_PAD_CELLS = 2;
 
 /** Цвет шкалы «свободно → занято»: 120° (зелёный) → 0° (красный).
  *  Приглушённая насыщенность — карта обзорная, не должна «кричать». */
@@ -58,35 +61,24 @@ export function HeatmapView() {
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const viewportRef = useRef<HTMLDivElement>(null);
-  const dragRef = useRef<{ startX: number; startY: number; pan: { x: number; y: number } } | null>(null);
-
-  const floor = warehouse.floors[Math.min(floorIdx, warehouse.floors.length - 1)];
-  const occ = useMemo(
-    () => occupancyOf(floor, placements, boxes),
-    [floor, placements, boxes],
+  const dragRef = useRef<{ startX: number; startY: number; pan: { x: number; y: number } } | null>(
+    null,
   );
 
-  // Подписи рядов: габарит закреплённых рядов (как rowFrames в Canvas.tsx).
-  const rowLabels = useMemo(() => {
-    const rowMap = rowNumbers(floor);
-    const pinned = new Set<number>();
-    for (const m of floor.modules) if (m.row != null) pinned.add(m.row);
-    const boxes = new Map<number, { minX: number; minY: number; maxX: number }>();
-    for (const m of floor.modules) {
-      const r = rowMap.get(m.id);
-      if (r == null || !pinned.has(r)) continue;
-      const b = boxes.get(r);
-      if (!b) boxes.set(r, { minX: m.x, minY: m.y, maxX: m.x + m.w });
-      else {
-        b.minX = Math.min(b.minX, m.x);
-        b.minY = Math.min(b.minY, m.y);
-        b.maxX = Math.max(b.maxX, m.x + m.w);
-      }
-    }
-    return [...boxes.entries()]
-      .map(([row, b]) => ({ row, cx: (b.minX + b.maxX) / 2, top: b.minY }))
-      .sort((a, b) => a.row - b.row);
-  }, [floor]);
+  const floor = warehouse.floors[Math.min(floorIdx, warehouse.floors.length - 1)];
+  const occ = useMemo(() => occupancyOf(floor, placements, boxes), [floor, placements, boxes]);
+
+  // Подписи рядов ставим по тем же рамкам, что рисует редактор: подпись должна
+  // стоять над тем же прямоугольником, что человек видел на плане.
+  const rowLabels = useMemo(
+    () =>
+      rowFrames(floor).map((f) => ({
+        row: f.row,
+        cx: f.rect.x + f.rect.w / 2,
+        top: f.rect.y,
+      })),
+    [floor],
+  );
 
   // Правки в основном окне → persist пишет localStorage → здесь событие
   // `storage`: перечитываем состояние без перезагрузки страницы (п.9.5).
@@ -116,22 +108,17 @@ export function HeatmapView() {
         raf = requestAnimationFrame(fit);
         return;
       }
-      const minX = Math.min(...floor.modules.map((m) => m.x));
-      const minY = Math.min(...floor.modules.map((m) => m.y));
-      const maxX = Math.max(...floor.modules.map((m) => m.x + m.w));
-      const maxY = Math.max(...floor.modules.map((m) => m.y + m.h));
-      const pad = 2;
-      const cw = (maxX - minX + pad * 2) * CELL;
-      const ch = (maxY - minY + pad * 2) * CELL;
+      const b = planBounds(floor.modules, FIT_PAD_CELLS);
+      if (!b) return;
       const z = clamp(
-        Math.min(vp.clientWidth / cw, vp.clientHeight / ch),
+        Math.min(vp.clientWidth / (b.w * CELL), vp.clientHeight / (b.h * CELL)),
         ZOOM_MIN,
         ZOOM_MAX,
       );
       setZoom(z);
       setPan({
-        x: vp.clientWidth / 2 - ((minX + maxX) / 2) * CELL * z,
-        y: vp.clientHeight / 2 - ((minY + maxY) / 2) * CELL * z,
+        x: vp.clientWidth / 2 - (b.x + b.w / 2) * CELL * z,
+        y: vp.clientHeight / 2 - (b.y + b.h / 2) * CELL * z,
       });
     };
     raf = requestAnimationFrame(fit);
@@ -278,13 +265,7 @@ export function HeatmapView() {
   );
 }
 
-function HeatModule({
-  m,
-  occupied,
-}: {
-  m: PlacedModule;
-  occupied?: Set<string>;
-}) {
+function HeatModule({ m, occupied }: { m: PlacedModule; occupied?: Set<string> }) {
   const style: React.CSSProperties = {
     left: m.x * CELL + MODULE_GAP,
     top: m.y * CELL + MODULE_GAP,
@@ -295,10 +276,7 @@ function HeatModule({
   // Не-секции (проходы, лестницы, лифты) — нейтральные, метрики у них нет.
   if (m.type !== "section") {
     return (
-      <div
-        className="absolute rounded-[3px] border border-border/60 bg-muted/50"
-        style={style}
-      />
+      <div className="absolute rounded-[3px] border border-border/60 bg-muted/50" style={style} />
     );
   }
 

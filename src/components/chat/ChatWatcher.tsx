@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import type { ChatMessage } from "@/lib/types";
 import { countUnread, useEditor, visibleChatPartners } from "@/lib/store";
+import { useTabBadge } from "@/lib/tabBadge";
 import { useChatDemoReply } from "./useChatDemoReply";
 
 /**
@@ -14,6 +15,10 @@ import { useChatDemoReply } from "./useChatDemoReply";
  * важна: пока человек стоит в открытой переписке, входящее сразу помечается
  * прочитанным, счётчик не растёт — и тост не мешает читать то, о чём собирался
  * сообщить.
+ *
+ * Тост живёт секунды и виден только тому, кто смотрит на вкладку. Поэтому то же
+ * число уходит в корешок вкладки и на иконку (`lib/tabBadge`): ушедший в почту
+ * или к стеллажу увидит, что его ждут, не открывая кабинет.
  */
 export function ChatWatcher() {
   const showToast = useEditor((s) => s.showToast);
@@ -25,6 +30,7 @@ export function ChatWatcher() {
   const prevUnread = useRef(unread);
 
   useChatDemoReply();
+  useTabBadge(unread);
 
   // Демо-переписка раздаётся при входе в кабинет, а не при открытии чата: иначе
   // счётчик в рельсе появлялся бы только после того, как человек уже зашёл в
@@ -51,10 +57,7 @@ export function ChatWatcher() {
 }
 
 /** Переписка с самым свежим сообщением из видимых — про неё и уведомляем. */
-function newestThread(
-  chats: Record<string, ChatMessage[]>,
-  ids: string[],
-): string | null {
+function newestThread(chats: Record<string, ChatMessage[]>, ids: string[]): string | null {
   let best: string | null = null;
   let bestAt = -1;
   for (const id of ids) {

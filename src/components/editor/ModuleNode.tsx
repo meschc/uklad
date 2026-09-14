@@ -3,6 +3,7 @@ import { ArrowUp } from "lucide-react";
 import { type PlacedModule } from "@/lib/types";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { eyebrow } from "@/components/ui/eyebrow";
 import { CELL, LOD_CELL_PX, LOD_SHELF_PX, MODULE_GAP, MODULE_STYLES } from "./constants";
 import { ModuleGlyph } from "./ModuleGlyph";
 
@@ -34,13 +35,7 @@ interface ModuleNodeProps {
  * движения плюс стрелка подъёма — так модуль опознаётся с первого взгляда,
  * а не по одной иконке в центре.
  */
-function StairsBody({
-  module: m,
-  label,
-}: {
-  module: PlacedModule;
-  label?: string;
-}) {
+function StairsBody({ module: m, label }: { module: PlacedModule; label?: string }) {
   // Ориентация — по длинной стороне (для поворота стрелки). Полоски-ступени
   // убраны: заливки со стрелкой и подписью достаточно, без визуального шума.
   const along = m.h >= m.w ? "col" : "row";
@@ -56,7 +51,13 @@ function StairsBody({
         )}
       />
       {label && (
-        <span className="relative mt-0.5 rounded-sm bg-module-stairs px-1 text-[10px] font-semibold uppercase tracking-wide opacity-90">
+        <span
+          className={eyebrow({
+            size: "xs",
+            tone: "current",
+            className: "relative mt-0.5 rounded-sm bg-module-stairs px-1 opacity-90",
+          })}
+        >
           {label}
         </span>
       )}
@@ -90,7 +91,7 @@ export const ModuleNode = memo(function ModuleNode({
   const minSide = Math.min(m.w, m.h);
   const t = useT();
 
-  const shelves = m.type === "section" ? m.shelves ?? [] : [];
+  const shelves = m.type === "section" ? (m.shelves ?? []) : [];
   const shelfCount = shelves.length;
 
   // Размеры полки/ячейки на экране (в пикселях) — основа для порогов LOD.
@@ -147,10 +148,7 @@ export const ModuleNode = memo(function ModuleNode({
         </span>
       )}
       {m.type === "stairs" ? (
-        <StairsBody
-          module={m}
-          label={showLabel ? t("module.stairs.short") : undefined}
-        />
+        <StairsBody module={m} label={showLabel ? t("module.stairs.short") : undefined} />
       ) : showShelves ? (
         // Полки делят высоту пропорционально; ячейки делят ширину полки.
         <div className="absolute inset-0 flex flex-col">
@@ -186,7 +184,9 @@ export const ModuleNode = memo(function ModuleNode({
             className={cn(minSide >= 2 ? "size-5" : "size-3.5", "opacity-90")}
           />
           {showLabel && (
-            <span className="mt-1 text-[10px] font-semibold uppercase tracking-wide opacity-80">
+            <span
+              className={eyebrow({ size: "xs", tone: "current", className: "mt-1 opacity-80" })}
+            >
               {t(`module.${m.type}.short`)}
             </span>
           )}

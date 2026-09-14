@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import * as XLSX from "xlsx";
 import {
   CalendarClock,
   Check,
@@ -12,12 +11,16 @@ import {
   Upload,
 } from "lucide-react";
 import { useEditor } from "@/lib/store";
+import { requestsRepository } from "@/lib/data";
+import { useCommand } from "@/lib/useCommand";
+import { downloadSheet } from "@/lib/sheets";
 import { groupRequestsByTarget } from "@/lib/fulfillment";
 import { useT, type TFunc } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/segmented";
 import { Input } from "@/components/ui/input";
 import { TableScreen } from "@/components/table/TableScreen";
+import { eyebrow } from "@/components/ui/eyebrow";
 import { EmptyState } from "./ScreenShell";
 import { Modal, Field } from "./Modal";
 import { SupplyDialog } from "./SupplyDialog";
@@ -45,12 +48,8 @@ export function SellerScreen() {
     <div className="flex h-full min-h-0 flex-col bg-background">
       <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border bg-card px-5 py-3">
         <div className="min-w-0">
-          <h1 className="text-base font-semibold tracking-tight">
-            {t("seller.title")}
-          </h1>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {t("seller.subtitle")}
-          </p>
+          <h1 className="text-base font-semibold tracking-tight">{t("seller.title")}</h1>
+          <p className="mt-0.5 text-xs text-muted-foreground">{t("seller.subtitle")}</p>
         </div>
         <Segmented
           value={tab}
@@ -81,15 +80,12 @@ function RequestsTab({ t }: { t: TFunc }) {
   const requests = useEditor((s) => s.requests);
   const products = useEditor((s) => s.products);
   const shipments = useEditor((s) => s.shipments);
-  const shipmentOf = (id?: string) =>
-    id ? shipments.find((sh) => sh.id === id) : undefined;
+  const shipmentOf = (id?: string) => (id ? shipments.find((sh) => sh.id === id) : undefined);
   const groups = useMemo(() => groupRequestsByTarget(requests), [requests]);
   const [creating, setCreating] = useState(false);
   const [importing, setImporting] = useState(false);
   const [supplying, setSupplying] = useState(false);
-  const openSupplies = useEditor((s) =>
-    s.expectedShipments.filter((sh) => sh.status !== "closed"),
-  );
+  const openSupplies = useEditor((s) => s.expectedShipments.filter((sh) => sh.status !== "closed"));
 
   return (
     <div className="flex flex-col gap-3">
@@ -113,17 +109,12 @@ function RequestsTab({ t }: { t: TFunc }) {
       {/* Что уже едет на склад: продавец видит статус своих поставок. */}
       {openSupplies.length > 0 && (
         <div className="flex flex-col gap-1 rounded-lg border border-border bg-muted/30 p-2.5">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            {t("seller.suppliesTitle")}
-          </p>
+          <p className={eyebrow()}>{t("seller.suppliesTitle")}</p>
           {openSupplies.map((s) => {
             const total = s.lines.reduce((a, l) => a + l.expectedQty, 0);
             const got = s.lines.reduce((a, l) => a + l.receivedQty, 0);
             return (
-              <div
-                key={s.id}
-                className="flex items-center justify-between gap-2 text-xs"
-              >
+              <div key={s.id} className="flex items-center justify-between gap-2 text-xs">
                 <span className="truncate">{s.title ?? t("supply.noName")}</span>
                 <span className="shrink-0 tabular-nums text-muted-foreground">
                   {t(`supply.status.${s.status}`)} · {got}/{total}
@@ -147,16 +138,14 @@ function RequestsTab({ t }: { t: TFunc }) {
           <section key={g.target ?? "—"} className="flex flex-col gap-2">
             <div className="flex flex-wrap items-center gap-2">
               <MapPin className="size-3.5 text-muted-foreground" />
-              <h2 className="text-xs font-semibold uppercase tracking-wide">
+              <h2 className={eyebrow({ size: "base", tone: "current" })}>
                 {g.target ?? t("tasks.noTarget")}
               </h2>
               <span className="text-[11px] text-muted-foreground">
                 {t("tasks.groupCount", { n: g.items.length })}
               </span>
               {g.shipDates.length === 0 && (
-                <span className="text-[11px] text-muted-foreground">
-                  {t("tasks.noShipDate")}
-                </span>
+                <span className="text-[11px] text-muted-foreground">{t("tasks.noShipDate")}</span>
               )}
               {g.shipDates.map((d) => (
                 <span
@@ -173,12 +162,8 @@ function RequestsTab({ t }: { t: TFunc }) {
                 <thead className="bg-muted/50 text-xs">
                   <tr className="text-left">
                     <th className="px-3 py-2 font-medium">{t("table.col.name")}</th>
-                    <th className="px-3 py-2 text-right font-medium">
-                      {t("tasks.col.qty")}
-                    </th>
-                    <th className="px-3 py-2 font-medium">
-                      {t("seller.col.shipDate")}
-                    </th>
+                    <th className="px-3 py-2 text-right font-medium">{t("tasks.col.qty")}</th>
+                    <th className="px-3 py-2 font-medium">{t("seller.col.shipDate")}</th>
                     <th className="px-3 py-2 font-medium">{t("tasks.col.status")}</th>
                   </tr>
                 </thead>
@@ -198,9 +183,7 @@ function RequestsTab({ t }: { t: TFunc }) {
                           {r.qty}
                         </td>
                         <td className="px-3 py-2 text-xs text-muted-foreground">
-                          {r.truckDate
-                            ? new Date(r.truckDate).toLocaleDateString()
-                            : "—"}
+                          {r.truckDate ? new Date(r.truckDate).toLocaleDateString() : "—"}
                         </td>
                         <td className="px-3 py-2">
                           <StatusBadge status={r.status} partial={r.partial} t={t} />
@@ -209,9 +192,7 @@ function RequestsTab({ t }: { t: TFunc }) {
                           {r.status === "shipped" && (
                             <div className="mt-0.5 text-[10px] text-muted-foreground">
                               {t("seller.shippedAt", {
-                                d: new Date(
-                                  r.shippedAt ?? r.updatedAt,
-                                ).toLocaleDateString(),
+                                d: new Date(r.shippedAt ?? r.updatedAt).toLocaleDateString(),
                               })}
                               {shipmentOf(r.shipmentId)?.vehicle
                                 ? ` · ${shipmentOf(r.shipmentId)!.vehicle}`
@@ -231,9 +212,7 @@ function RequestsTab({ t }: { t: TFunc }) {
 
       {creating && <RequestDialog onClose={() => setCreating(false)} />}
       {supplying && <SupplyDialog onClose={() => setSupplying(false)} />}
-      {importing && (
-        <BulkRequestDialog onClose={() => setImporting(false)} t={t} />
-      )}
+      {importing && <BulkRequestDialog onClose={() => setImporting(false)} t={t} />}
     </div>
   );
 }
@@ -245,59 +224,72 @@ function RequestsTab({ t }: { t: TFunc }) {
  */
 function BulkRequestDialog({ onClose, t }: { onClose: () => void; t: TFunc }) {
   const products = useEditor((s) => s.products);
-  const createRequests = useEditor((s) => s.createRequests);
+  const showToast = useEditor((s) => s.showToast);
   const [text, setText] = useState("");
   const [truck, setTruck] = useState("");
 
   const parsed = useMemo(() => {
     const bySku = new Map(products.map((p) => [p.sku.toLowerCase(), p]));
     const byBarcode = new Map(products.map((p) => [p.barcode, p]));
-    return text
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .map((line, i) => {
-        const cells = line.split(/[\t;,]/).map((c) => c.trim());
-        const [code, qtyRaw, note] = cells;
-        const product = bySku.get((code ?? "").toLowerCase()) ?? byBarcode.get(code ?? "");
-        const qty = Math.round(parseFloat((qtyRaw ?? "").replace(",", ".")));
-        return {
-          index: i,
-          code: code ?? "",
-          qty: Number.isFinite(qty) ? qty : 0,
-          note,
-          product,
-          ok: !!product && Number.isFinite(qty) && qty > 0,
-        };
-      })
-      // Первая строка может быть заголовком — её просто не удастся сопоставить.
-      .filter((r) => r.code !== "");
+    return (
+      text
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((line, i) => {
+          const cells = line.split(/[\t;,]/).map((c) => c.trim());
+          const [code, qtyRaw, note] = cells;
+          const product = bySku.get((code ?? "").toLowerCase()) ?? byBarcode.get(code ?? "");
+          const qty = Math.round(parseFloat((qtyRaw ?? "").replace(",", ".")));
+          return {
+            index: i,
+            code: code ?? "",
+            qty: Number.isFinite(qty) ? qty : 0,
+            note,
+            product,
+            ok: !!product && Number.isFinite(qty) && qty > 0,
+          };
+        })
+        // Первая строка может быть заголовком — её просто не удастся сопоставить.
+        .filter((r) => r.code !== "")
+    );
   }, [text, products]);
 
   const valid = parsed.filter((r) => r.ok);
 
-  const downloadTemplate = () => {
-    const ws = XLSX.utils.aoa_to_sheet([
-      ["Артикул", "Количество", "Назначение"],
-      ["УК-1001", 10, "Маркетплейс, склад Коледино"],
-      ["УК-2001", 4, "Розница, ТЦ Метрополис"],
-    ]);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Заявки");
-    XLSX.writeFile(wb, "uklad-requests-template.xlsx");
+  const downloadTemplate = async () => {
+    try {
+      await downloadSheet(
+        [
+          ["Артикул", "Количество", "Назначение"],
+          ["УК-1001", 10, "Маркетплейс, склад Коледино"],
+          ["УК-2001", 4, "Розница, ТЦ Метрополис"],
+        ],
+        "Заявки",
+        "uklad-requests-template.xlsx",
+      );
+    } catch {
+      showToast("import.msg.templateFailed");
+    }
   };
 
-  const submit = () => {
-    if (!valid.length) return;
-    createRequests(
+  // Тот же шов, что и в одиночной заявке (п.3.2.1): пакет уходит через
+  // репозиторий, окно само показывает «идёт» и «не вышло».
+  const create = useCommand(() =>
+    requestsRepository.create(
       valid.map((r) => ({
         productId: r.product!.id,
         qty: r.qty,
         note: r.note,
       })),
       truck ? new Date(truck).getTime() : undefined,
-    );
-    onClose();
+    ),
+  );
+
+  const submit = async () => {
+    if (!valid.length) return;
+    const res = await create.run();
+    if (res.ok) onClose();
   };
 
   return (
@@ -307,6 +299,8 @@ function BulkRequestDialog({ onClose, t }: { onClose: () => void; t: TFunc }) {
       onSubmit={submit}
       submitLabel={t("seller.bulkCreate", { n: valid.length })}
       disabled={!valid.length}
+      pending={create.pending}
+      error={create.error}
     >
       <div className="flex flex-wrap items-center gap-2">
         <Button size="sm" variant="ghost" onClick={downloadTemplate}>
@@ -316,9 +310,7 @@ function BulkRequestDialog({ onClose, t }: { onClose: () => void; t: TFunc }) {
         <Button
           size="sm"
           variant="ghost"
-          onClick={() =>
-            setText("УК-1001;10;Маркетплейс, склад Коледино\nУК-2001;4;Розница")
-          }
+          onClick={() => setText("УК-1001;10;Маркетплейс, склад Коледино\nУК-2001;4;Розница")}
         >
           {t("recv.form.example")}
         </Button>
@@ -354,9 +346,7 @@ function BulkRequestDialog({ onClose, t }: { onClose: () => void; t: TFunc }) {
                       <span className="text-destructive">×</span>
                     )}
                   </td>
-                  <td className="px-2 py-1 font-mono text-muted-foreground">
-                    {r.code}
-                  </td>
+                  <td className="px-2 py-1 font-mono text-muted-foreground">{r.code}</td>
                   <td className="px-2 py-1">{r.product?.name ?? t("seller.unknownSku")}</td>
                   <td className="px-2 py-1 text-right tabular-nums">{r.qty}</td>
                 </tr>

@@ -12,6 +12,8 @@ import { useT, type TFunc } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { eyebrow } from "@/components/ui/eyebrow";
+import { card } from "@/components/ui/card";
 import { ScreenShell } from "./ScreenShell";
 
 /**
@@ -49,7 +51,7 @@ export function IntegrationsScreen() {
         if (!items.length) return null;
         return (
           <section key={cat.id} className="flex flex-col gap-2">
-            <h2 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <h2 className={eyebrow()}>
               {t(cat.key)} · {items.length}
             </h2>
             <div className="flex flex-col gap-2">
@@ -137,7 +139,7 @@ function IntegrationCard({
   const ready = filled === spec.fields.length;
 
   return (
-    <section className="overflow-hidden rounded-xl border border-border bg-card">
+    <section className={card({ pad: "none", className: "overflow-hidden" })}>
       <div className="flex flex-wrap items-center gap-3 px-4 py-3">
         <BrandMark brand={spec.brand} />
         <div className="min-w-0 flex-1">
@@ -153,7 +155,13 @@ function IntegrationCard({
             {t(spec.descriptionKey)}
           </p>
         </div>
-        <span className="shrink-0 rounded bg-muted px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+        <span
+          className={eyebrow({
+            size: "xs",
+            weight: "medium",
+            className: "shrink-0 rounded bg-muted px-2 py-0.5",
+          })}
+        >
           {t(`integr.auth.${spec.auth}`)}
         </span>
         <span
@@ -174,9 +182,7 @@ function IntegrationCard({
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {spec.fields.map((f) => (
               <label key={f.id} className="flex flex-col gap-1">
-                <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  {t(f.labelKey)}
-                </span>
+                <span className={eyebrow()}>{t(f.labelKey)}</span>
                 <Input
                   type={f.secret ? "password" : "text"}
                   autoComplete="off"
@@ -210,9 +216,7 @@ function IntegrationCard({
             </a>
           </div>
 
-          <p className="text-[11px] text-muted-foreground">
-            {t("integr.pendingNote")}
-          </p>
+          <p className="text-[11px] text-muted-foreground">{t("integr.pendingNote")}</p>
         </div>
       )}
     </section>

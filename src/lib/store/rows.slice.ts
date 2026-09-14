@@ -71,9 +71,7 @@ export const createRowsSlice: SliceCreator<RowsSlice> = (set, get) => ({
     const tall = members.filter((m) => m.h >= m.w).length;
     const vertical = tall >= members.length / 2;
     const crossMin = Math.min(...members.map((m) => (vertical ? m.x : m.y)));
-    const crossMax = Math.max(
-      ...members.map((m) => (vertical ? m.x + m.w : m.y + m.h)),
-    );
+    const crossMax = Math.max(...members.map((m) => (vertical ? m.x + m.w : m.y + m.h)));
     const extent = Math.max(1, crossMax - crossMin);
 
     // Направление копии по стороне: «before» — влево/вверх, «after» — вправо/вниз.
@@ -93,11 +91,7 @@ export const createRowsSlice: SliceCreator<RowsSlice> = (set, get) => ({
         ),
       );
     let k = 1;
-    while (
-      k < 50 &&
-      hits(vertical ? extent * k * dir : 0, vertical ? 0 : extent * k * dir)
-    )
-      k++;
+    while (k < 50 && hits(vertical ? extent * k * dir : 0, vertical ? 0 : extent * k * dir)) k++;
     const dx = vertical ? extent * k * dir : 0;
     const dy = vertical ? 0 : extent * k * dir;
 
@@ -152,8 +146,7 @@ export const createRowsSlice: SliceCreator<RowsSlice> = (set, get) => ({
         f.modules.push(...clones);
         // Копируем стороннность/нумерацию ряда-образца на новый ряд.
         const cfg = f.rows?.find(
-          (r) =>
-            r.number === (shiftFrom != null && row >= shiftFrom ? row + 1 : row),
+          (r) => r.number === (shiftFrom != null && row >= shiftFrom ? row + 1 : row),
         );
         if (cfg) {
           const rows = f.rows ? [...f.rows] : [];
@@ -189,8 +182,7 @@ export const createRowsSlice: SliceCreator<RowsSlice> = (set, get) => ({
       });
       if (anchor < 0) anchor = 0;
     }
-    const anchorNum =
-      groups[anchor].map((m) => oldOf.get(m.id)).find((n) => n != null) ?? 1;
+    const anchorNum = groups[anchor].map((m) => oldOf.get(m.id)).find((n) => n != null) ?? 1;
 
     // Номер ряда = номер якоря ± смещение по плану. Если левее якоря номера
     // ушли бы ниже единицы — сдвигаем всю шкалу вверх.
@@ -237,8 +229,7 @@ export const createRowsSlice: SliceCreator<RowsSlice> = (set, get) => ({
     set((s) =>
       mutateActiveFloor(s, (f) => {
         for (const m of f.modules) {
-          if (m.type === "section" && rowMap.get(m.id) === row)
-            m.number = undefined;
+          if (m.type === "section" && rowMap.get(m.id) === row) m.number = undefined;
         }
       }),
     );

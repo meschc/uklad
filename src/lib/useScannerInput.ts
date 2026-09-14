@@ -56,8 +56,13 @@ export function useScannerInput({
 }: ScannerOptions) {
   // Колбэк держим в ref: иначе каждый ререндер экрана переподписывал бы
   // глобальный слушатель и терял буфер на середине скана.
+  // Запись — в эффекте без зависимостей: он идёт после каждого рендера, но уже
+  // после отрисовки. Писать в ref прямо в теле хука нельзя: прерванный рендер
+  // React выбрасывает, а запись в ref остаётся.
   const onScanRef = useRef(onScan);
-  onScanRef.current = onScan;
+  useEffect(() => {
+    onScanRef.current = onScan;
+  });
 
   useEffect(() => {
     if (!enabled) return;

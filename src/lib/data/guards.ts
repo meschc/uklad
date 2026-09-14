@@ -1,6 +1,7 @@
 import type {
   Box,
   CellAddress,
+  ChatMessage,
   ExpectedShipment,
   FulfillmentRequest,
   Pallet,
@@ -23,21 +24,15 @@ type Rec = Record<string, unknown>;
 
 const isRec = (v: unknown): v is Rec => typeof v === "object" && v !== null;
 const isStr = (v: unknown): v is string => typeof v === "string";
-const isNum = (v: unknown): v is number =>
-  typeof v === "number" && Number.isFinite(v);
+const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
 const hasId = (v: unknown): v is Rec => isRec(v) && isStr(v.id) && v.id !== "";
 
 export type Guard<T> = (value: unknown) => value is T;
 
 export const isCellAddress: Guard<CellAddress> = (v): v is CellAddress =>
-  isRec(v) &&
-  isStr(v.floorId) &&
-  isStr(v.moduleId) &&
-  isNum(v.shelfIndex) &&
-  isNum(v.cellIndex);
+  isRec(v) && isStr(v.floorId) && isStr(v.moduleId) && isNum(v.shelfIndex) && isNum(v.cellIndex);
 
-const isBoxLine = (v: unknown): boolean =>
-  isRec(v) && isStr(v.productId) && isNum(v.qty);
+const isBoxLine = (v: unknown): boolean => isRec(v) && isStr(v.productId) && isNum(v.qty);
 
 export const isProduct: Guard<Product> = (v): v is Product =>
   hasId(v) && isStr(v.name) && isStr(v.sku);
@@ -56,28 +51,28 @@ export const isPallet: Guard<Pallet> = (v): v is Pallet =>
   v.boxIds.every(isStr) &&
   (v.address === undefined || isCellAddress(v.address));
 
-export const isExpectedShipment: Guard<ExpectedShipment> = (
-  v,
-): v is ExpectedShipment =>
+export const isExpectedShipment: Guard<ExpectedShipment> = (v): v is ExpectedShipment =>
   hasId(v) &&
   isStr(v.source) &&
   Array.isArray(v.lines) &&
-  v.lines.every(
-    (l) => hasId(l) && isStr((l as Rec).productId) && isNum((l as Rec).expectedQty),
-  );
+  v.lines.every((l) => hasId(l) && isStr((l as Rec).productId) && isNum((l as Rec).expectedQty));
 
-export const isReceivingEvent: Guard<ReceivingEvent> = (
-  v,
-): v is ReceivingEvent =>
+export const isReceivingEvent: Guard<ReceivingEvent> = (v): v is ReceivingEvent =>
   hasId(v) && isStr(v.productId) && isNum(v.qty) && isNum(v.timestamp);
 
-export const isRequest: Guard<FulfillmentRequest> = (
-  v,
-): v is FulfillmentRequest =>
+export const isRequest: Guard<FulfillmentRequest> = (v): v is FulfillmentRequest =>
   hasId(v) && isStr(v.productId) && isNum(v.qty) && isStr(v.status);
 
-export const isStaffMember: Guard<StaffMember> = (v): v is StaffMember =>
-  hasId(v) && isStr(v.name);
+export const isStaffMember: Guard<StaffMember> = (v): v is StaffMember => hasId(v) && isStr(v.name);
+
+/**
+ * Сообщение переписки. `from` проверяется только на «строка»: список ролей
+ * живёт в `UserRole` и меняется вместе с продуктом, а здесь важно отличить
+ * реплику от мусора, а не пересказать перечисление вторым списком, который
+ * разъедется с первым.
+ */
+export const isChatMessage: Guard<ChatMessage> = (v): v is ChatMessage =>
+  hasId(v) && isStr(v.from) && isStr(v.text) && isNum(v.at);
 
 /**
  * Отфильтровать список по проверке формы. Возвращает и сами записи, и число

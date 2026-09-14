@@ -1,6 +1,6 @@
 import type { DocKind, DocModel } from "@/lib/documents";
 import type { Warehouse } from "@/lib/types";
-import { useT } from "@/lib/i18n";
+import { useT, type MsgKey } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 /**
@@ -11,14 +11,14 @@ import { cn } from "@/lib/utils";
  * означала бы залитый тонером лист.
  */
 
-const TITLE_KEY: Record<DocKind, string> = {
+const TITLE_KEY: Record<DocKind, MsgKey> = {
   pick: "doc.kind.pick",
   shipment: "doc.kind.shipment",
   receiving: "doc.kind.receiving",
 };
 
 /** Кто вторая сторона: у сборки — куда, у отгрузки — кому, у приёмки — от кого. */
-const PARTY_KEY: Record<DocKind, string> = {
+const PARTY_KEY: Record<DocKind, MsgKey> = {
   pick: "doc.counterparty",
   shipment: "doc.recipient",
   receiving: "doc.supplier",
@@ -36,25 +36,18 @@ export function DocumentSheet({
   const t = useT();
   const showFact = doc.kind !== "pick" || (doc.totalFact ?? 0) > 0;
   const showDiff = doc.kind === "receiving";
-  const totalDiff =
-    doc.totalFact != null ? doc.totalFact - doc.totalQty : null;
+  const totalDiff = doc.totalFact != null ? doc.totalFact - doc.totalQty : null;
 
   return (
     <div
-      className={cn(
-        "print-sheet flex flex-col gap-4 bg-white p-[10mm] text-black",
-        className,
-      )}
+      className={cn("print-sheet flex flex-col gap-4 bg-white p-[10mm] text-black", className)}
       style={{ width: "210mm", minHeight: "297mm" }}
     >
       <header className="flex items-start justify-between gap-6 border-b-2 border-black pb-2">
         <div className="min-w-0">
-          <p className="text-[15px] font-bold uppercase leading-tight">
-            {t(TITLE_KEY[doc.kind])}
-          </p>
+          <p className="text-[15px] font-bold uppercase leading-tight">{t(TITLE_KEY[doc.kind])}</p>
           <p className="mt-0.5 font-mono text-[11px]">
-            {t("doc.number")} {doc.number} {t("doc.from")}{" "}
-            {new Date(doc.date).toLocaleDateString()}
+            {t("doc.number")} {doc.number} {t("doc.from")} {new Date(doc.date).toLocaleDateString()}
           </p>
         </div>
         <div className="shrink-0 text-right text-[10px] leading-snug">
@@ -82,12 +75,8 @@ export function DocumentSheet({
             <Th>{t("doc.col.name")}</Th>
             <Th className="w-28">{t("doc.col.address")}</Th>
             <Th className="w-16 text-right">{t("doc.col.qty")}</Th>
-            {showFact && (
-              <Th className="w-16 text-right">{t("doc.col.fact")}</Th>
-            )}
-            {showDiff && (
-              <Th className="w-16 text-right">{t("doc.col.diff")}</Th>
-            )}
+            {showFact && <Th className="w-16 text-right">{t("doc.col.fact")}</Th>}
+            {showDiff && <Th className="w-16 text-right">{t("doc.col.diff")}</Th>}
           </tr>
         </thead>
         <tbody>
@@ -101,18 +90,14 @@ export function DocumentSheet({
                 <Td className="font-mono">{l.sku}</Td>
                 <Td>
                   {l.name}
-                  {l.note && (
-                    <span className="text-neutral-600"> · {l.note}</span>
-                  )}
+                  {l.note && <span className="text-neutral-600"> · {l.note}</span>}
                 </Td>
                 <Td className="font-mono text-[9px]">{l.address ?? "—"}</Td>
                 <Td className="text-right tabular-nums">{l.qty}</Td>
                 {showFact && (
                   // Пустая клетка вместо нуля: если факта ещё нет, его вписывают
                   // ручкой на месте — лист для того и печатают.
-                  <Td className="text-right tabular-nums">
-                    {l.fact != null ? l.fact : ""}
-                  </Td>
+                  <Td className="text-right tabular-nums">{l.fact != null ? l.fact : ""}</Td>
                 )}
                 {showDiff && (
                   <Td
@@ -121,11 +106,7 @@ export function DocumentSheet({
                       diff != null && diff !== 0 && "font-bold",
                     )}
                   >
-                    {diff == null || diff === 0
-                      ? "—"
-                      : diff > 0
-                        ? `+${diff}`
-                        : diff}
+                    {diff == null || diff === 0 ? "—" : diff > 0 ? `+${diff}` : diff}
                   </Td>
                 )}
               </tr>
@@ -134,23 +115,15 @@ export function DocumentSheet({
           <tr className="bg-neutral-100 font-semibold">
             <Td colSpan={4}>{t("doc.total")}</Td>
             <Td className="text-right tabular-nums">{doc.totalQty}</Td>
-            {showFact && (
-              <Td className="text-right tabular-nums">{doc.totalFact ?? ""}</Td>
-            )}
-            {showDiff && (
-              <Td className="text-right tabular-nums">
-                {totalDiff ? totalDiff : "—"}
-              </Td>
-            )}
+            {showFact && <Td className="text-right tabular-nums">{doc.totalFact ?? ""}</Td>}
+            {showDiff && <Td className="text-right tabular-nums">{totalDiff ? totalDiff : "—"}</Td>}
           </tr>
         </tbody>
       </table>
 
       <SignatureRow kind={doc.kind} />
 
-      <p className="mt-auto pt-4 text-[8px] text-neutral-500">
-        {t("doc.disclaimer")}
-      </p>
+      <p className="mt-auto pt-4 text-[8px] text-neutral-500">{t("doc.disclaimer")}</p>
     </div>
   );
 }
@@ -161,7 +134,7 @@ export function DocumentSheet({
  */
 function SignatureRow({ kind }: { kind: DocKind }) {
   const t = useT();
-  const pairs =
+  const pairs: MsgKey[] =
     kind === "pick"
       ? ["doc.sign.picker", "doc.sign.checked"]
       : kind === "shipment"
@@ -196,20 +169,9 @@ function Field({ label, value }: { label: string; value?: string }) {
   );
 }
 
-function Th({
-  children,
-  className,
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
+function Th({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <th
-      className={cn(
-        "border border-neutral-400 px-1.5 py-1 text-left font-semibold",
-        className,
-      )}
-    >
+    <th className={cn("border border-neutral-400 px-1.5 py-1 text-left font-semibold", className)}>
       {children}
     </th>
   );
@@ -225,10 +187,7 @@ function Td({
   colSpan?: number;
 }) {
   return (
-    <td
-      colSpan={colSpan}
-      className={cn("border border-neutral-400 px-1.5 py-1", className)}
-    >
+    <td colSpan={colSpan} className={cn("border border-neutral-400 px-1.5 py-1", className)}>
       {children}
     </td>
   );

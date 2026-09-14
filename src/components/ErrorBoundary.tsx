@@ -37,12 +37,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   render() {
     if (!this.state.error) return this.props.children;
-    return (
-      <ScreenCrash
-        error={this.state.error}
-        onRetry={() => this.setState({ error: null })}
-      />
-    );
+    return <ScreenCrash error={this.state.error} onRetry={() => this.setState({ error: null })} />;
   }
 }
 
@@ -50,13 +45,7 @@ export class ErrorBoundary extends Component<Props, State> {
  * Экран-заглушка. Отдельным функциональным компонентом, потому что переводы
  * живут в хуке, а хуки в классовых компонентах не работают.
  */
-function ScreenCrash({
-  error,
-  onRetry,
-}: {
-  error: Error;
-  onRetry: () => void;
-}) {
+function ScreenCrash({ error, onRetry }: { error: Error; onRetry: () => void }) {
   const t = useT();
   const goToDashboard = useEditor((s) => s.goToDashboard);
 

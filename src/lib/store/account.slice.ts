@@ -53,9 +53,7 @@ export const createAccountSlice: SliceCreator<AccountSlice> = (set, get) => ({
       if (!target) return { appView: "editor" };
       return {
         warehouse: target,
-        otherWarehouses: s.otherWarehouses
-          .filter((w) => w.id !== id)
-          .concat(s.warehouse),
+        otherWarehouses: s.otherWarehouses.filter((w) => w.id !== id).concat(s.warehouse),
         activeFloorId: target.floors[0]?.id ?? "",
         appView: "editor",
         mode: "2d",
@@ -75,23 +73,14 @@ export const createAccountSlice: SliceCreator<AccountSlice> = (set, get) => ({
       return {
         profile,
         // Имя в профиле = имя пользователя; отражаем в шапке кабинета.
-        account:
-          patch.name && patch.name.trim()
-            ? { ...s.account, name: patch.name }
-            : s.account,
+        account: patch.name && patch.name.trim() ? { ...s.account, name: patch.name } : s.account,
       };
     }),
 
-  updateAccount: (patch) =>
-    set((s) => ({ account: { ...s.account, ...patch } })),
+  updateAccount: (patch) => set((s) => ({ account: { ...s.account, ...patch } })),
 
   createWarehouse: (name, kind, address, coords) => {
-    const wh = blankWarehouse(
-      name.trim() || "Новый склад",
-      kind,
-      address.trim(),
-      coords,
-    );
+    const wh = blankWarehouse(name.trim() || "Новый склад", kind, address.trim(), coords);
     set((s) => ({ otherWarehouses: [...s.otherWarehouses, wh] }));
     return wh.id;
   },
@@ -109,15 +98,11 @@ export const createAccountSlice: SliceCreator<AccountSlice> = (set, get) => ({
         // ключа, а не на значение: иначе «стереть тариф» было бы невозможно, а
         // переименование склада из другого места молча его затирало бы.
         storageRatePerCell:
-          "storageRatePerCell" in patch
-            ? patch.storageRatePerCell
-            : w.storageRatePerCell,
+          "storageRatePerCell" in patch ? patch.storageRatePerCell : w.storageRatePerCell,
       });
       if (s.warehouse.id === id) return { warehouse: apply(s.warehouse) };
       return {
-        otherWarehouses: s.otherWarehouses.map((w) =>
-          w.id === id ? apply(w) : w,
-        ),
+        otherWarehouses: s.otherWarehouses.map((w) => (w.id === id ? apply(w) : w)),
       };
     }),
 
@@ -125,9 +110,7 @@ export const createAccountSlice: SliceCreator<AccountSlice> = (set, get) => ({
     set((s) => {
       if (1 + s.otherWarehouses.length <= 1) return {}; // последний не удаляем
       const target =
-        s.warehouse.id === id
-          ? s.warehouse
-          : s.otherWarehouses.find((w) => w.id === id);
+        s.warehouse.id === id ? s.warehouse : s.otherWarehouses.find((w) => w.id === id);
       if (!target) return {};
       // Размещения товаров на этажах удаляемого склада — очищаем (ТЗ, разд. 4).
       const floorIds = new Set(target.floors.map((f) => f.id));

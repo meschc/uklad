@@ -18,12 +18,7 @@ export function formatPhone(raw: string): string {
   if (d.length > 11 || (d[0] !== "7" && d.length >= 11)) return raw.trim();
   if (d[0] !== "7") return d;
 
-  const parts = [
-    d.slice(1, 4),
-    d.slice(4, 7),
-    d.slice(7, 9),
-    d.slice(9, 11),
-  ].filter(Boolean);
+  const parts = [d.slice(1, 4), d.slice(4, 7), d.slice(7, 9), d.slice(9, 11)].filter(Boolean);
   const [code, a, b, c] = parts;
   let out = "+7";
   if (code) out += ` ${code}`;

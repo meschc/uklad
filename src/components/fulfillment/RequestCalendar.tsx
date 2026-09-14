@@ -3,8 +3,9 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { requestsByDay } from "@/lib/fulfillment";
 import type { FulfillmentRequest } from "@/lib/types";
 import { useT } from "@/lib/i18n";
-import { cn } from "@/lib/utils";
+import { cn, nowMs } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { eyebrow } from "@/components/ui/eyebrow";
 
 /**
  * Календарь заявок (п.10.4). Тот же источник данных, что у списка
@@ -57,8 +58,8 @@ export function RequestCalendar({
   // Стартуем с месяца ближайшей отгрузки, а не «всегда сегодня»: чаще всего
   // смотреть надо именно туда, где что-то есть.
   const [month, setMonth] = useState(() => {
-    const upcoming = days.find((d) => d.ts >= dayStart(Date.now())) ?? days[0];
-    return monthStart(upcoming?.ts ?? Date.now());
+    const upcoming = days.find((d) => d.ts >= dayStart(nowMs())) ?? days[0];
+    return monthStart(upcoming?.ts ?? nowMs());
   });
 
   const first = weekStart(month);
@@ -69,7 +70,10 @@ export function RequestCalendar({
     if (cells.length > 42) break;
   }
 
-  const today = dayStart(Date.now());
+  // Сегодняшний день снимаем один раз при открытии, а не в каждом рендере:
+  // рендер обязан быть чистым. Календарь не живёт до следующей полуночи —
+  // экран успевают закрыть, — а перерисовка от смены месяца дату не двигает.
+  const [today] = useState(() => dayStart(nowMs()));
   const monthLabel = new Date(month).toLocaleDateString(t.lang, {
     month: "long",
     year: "numeric",
@@ -97,7 +101,13 @@ export function RequestCalendar({
         </Button>
       </div>
 
-      <div className="grid grid-cols-7 gap-1 text-center text-[10px] uppercase tracking-wide text-muted-foreground">
+      <div
+        className={eyebrow({
+          size: "xs",
+          weight: "normal",
+          className: "grid grid-cols-7 gap-1 text-center",
+        })}
+      >
         {[0, 1, 2, 3, 4, 5, 6].map((i) => (
           <span key={i}>
             {new Date(first + i * DAY_MS).toLocaleDateString(t.lang, {
@@ -129,9 +139,7 @@ export function RequestCalendar({
                 ts === today && !selected && "ring-1 ring-primary/40",
               )}
             >
-              <span className="text-[11px] font-medium tabular-nums">
-                {new Date(ts).getDate()}
-              </span>
+              <span className="text-[11px] font-medium tabular-nums">{new Date(ts).getDate()}</span>
               {day && (
                 <span
                   className={cn(

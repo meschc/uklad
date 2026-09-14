@@ -10,6 +10,7 @@ import type {
   ReceivingEvent,
   Warehouse,
 } from "./types";
+import { nowMs } from "./utils";
 
 /**
  * Чистые расчёты по фулфилменту: где и сколько лежит товара, что показывать
@@ -73,9 +74,7 @@ export function stockAt(
   addr: CellAddress,
 ): StockLocation | undefined {
   const key = addressKey(addr);
-  return stock
-    .get(productId)
-    ?.locations.find((l) => addressKey(l.addr) === key);
+  return stock.get(productId)?.locations.find((l) => addressKey(l.addr) === key);
 }
 
 // --- Метрики дашборда ---------------------------------------------------------
@@ -114,11 +113,7 @@ function dayLabel(ts: number): string {
  * процесса, а не объёма: она отвечает на вопрос «насколько поставщику можно
  * верить», поэтому недостачи и перестачи считаем раздельно.
  */
-export function receivingStats(
-  events: ReceivingEvent[],
-  days = 14,
-  now = Date.now(),
-): ReceivingStats {
+export function receivingStats(events: ReceivingEvent[], days = 14, now = nowMs()): ReceivingStats {
   const from = dayStart(now) - (days - 1) * 86_400_000;
   const recent = events.filter((e) => e.timestamp >= from);
 
@@ -142,9 +137,7 @@ export function receivingStats(
     units,
     shortage,
     overage,
-    discrepancyShare: recent.length
-      ? (shortage + overage) / recent.length
-      : 0,
+    discrepancyShare: recent.length ? (shortage + overage) / recent.length : 0,
     byDay: [...buckets.entries()]
       .sort((a, b) => a[0] - b[0])
       .map(([ts, value]) => ({ ts, label: dayLabel(ts), value })),
@@ -171,18 +164,13 @@ export function requestStats(requests: FulfillmentRequest[]): RequestStats {
   // Отгруженная заявка тоже собрана — иначе после погрузки она выпадала бы
   // из метрик, и «среднее время сборки» считалось бы только по тому, что ещё
   // стоит на складе.
-  const picked = requests.filter(
-    (r) => r.status === "done" || r.status === "shipped",
-  );
-  const lead = picked
-    .map((r) => (r.shippedAt ?? r.updatedAt) - r.createdAt)
-    .filter((v) => v >= 0);
+  const picked = requests.filter((r) => r.status === "done" || r.status === "shipped");
+  const lead = picked.map((r) => (r.shippedAt ?? r.updatedAt) - r.createdAt).filter((v) => v >= 0);
   const pick = picked
     .filter((r) => r.startedAt != null)
     .map((r) => r.updatedAt - r.startedAt!)
     .filter((v) => v >= 0);
-  const avg = (xs: number[]) =>
-    xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null;
+  const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
 
   return {
     new: requests.filter((r) => r.status === "new").length,
@@ -282,9 +270,7 @@ export interface RequestGroup {
  *
  * Порядок заявок внутри группы сохраняется — сортирует их вызывающий экран.
  */
-export function groupRequestsByTarget(
-  requests: FulfillmentRequest[],
-): RequestGroup[] {
+export function groupRequestsByTarget(requests: FulfillmentRequest[]): RequestGroup[] {
   const byTarget = new Map<string, FulfillmentRequest[]>();
   for (const r of requests) {
     const key = r.note?.trim() || "";
@@ -327,10 +313,7 @@ export function groupRequestsByTarget(
  * принятое минус забронированное другими заявками. Без вычета брони одну и ту
  * же коробку можно было бы продать дважды.
  */
-export function freeToReserve(
-  line: ExpectedShipmentLine,
-  requests: FulfillmentRequest[],
-): number {
+function freeToReserve(line: ExpectedShipmentLine, requests: FulfillmentRequest[]): number {
   const booked = (line.reservedFor ?? []).reduce((sum, id) => {
     const r = requests.find((x) => x.id === id);
     return sum + (r ? r.qty : 0);
@@ -348,9 +331,7 @@ export function canReserve(
   return shipments.some(
     (sh) =>
       sh.status !== "closed" &&
-      sh.lines.some(
-        (l) => l.productId === productId && freeToReserve(l, requests) >= qty,
-      ),
+      sh.lines.some((l) => l.productId === productId && freeToReserve(l, requests) >= qty),
   );
 }
 

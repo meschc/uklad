@@ -26,8 +26,7 @@ export function isValidInn(raw: string): boolean {
   }
   if (value.length === 12) {
     return (
-      checkDigit(digits, COEF_12_1) === digits[10] &&
-      checkDigit(digits, COEF_12_2) === digits[11]
+      checkDigit(digits, COEF_12_1) === digits[10] && checkDigit(digits, COEF_12_2) === digits[11]
     );
   }
   return false;

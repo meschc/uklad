@@ -61,10 +61,7 @@ export const createPlacementSlice: SliceCreator<PlacementSlice> = (set, get) => 
       const pa = byId.get(a);
       const pb = byId.get(b);
       if (!pa || !pb) return 0;
-      return (
-        pa.category.localeCompare(pb.category, "ru") ||
-        pa.sku.localeCompare(pb.sku, "ru")
-      );
+      return pa.category.localeCompare(pb.category, "ru") || pa.sku.localeCompare(pb.sku, "ru");
     });
     for (const id of ordered) {
       const s = get();

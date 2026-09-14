@@ -18,7 +18,5 @@ export function combo(key: string): string {
 
 /** То же с Shift: «⇧⌘Z» на маке, «Ctrl+Shift+Z» на остальных. */
 export function shiftCombo(key: string): string {
-  return IS_MAC
-    ? `${SHIFT_KEY}${MOD_KEY}${key}`
-    : `${MOD_KEY}+${SHIFT_KEY}+${key}`;
+  return IS_MAC ? `${SHIFT_KEY}${MOD_KEY}${key}` : `${MOD_KEY}+${SHIFT_KEY}+${key}`;
 }

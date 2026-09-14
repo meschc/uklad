@@ -1,5 +1,7 @@
-import * as XLSX from "xlsx";
+import { readSheetMatrix } from "./sheets";
 import { PRODUCT_CATEGORIES, type Product, type ProductCategory } from "./types";
+import { BOM } from "./utils";
+import type { MsgKey } from "./i18n";
 
 /**
  * Импорт товаров (ТЗ, разд. 2.5: «импорт Excel/1С»).
@@ -9,17 +11,13 @@ import { PRODUCT_CATEGORIES, type Product, type ProductCategory } from "./types"
  * которую валидирует общее ядро `parseRows`. Здесь живут два алерта (ТЗ, разд. 4):
  *   — ошибка формата файла;
  *   — несовпадение колонок.
+ *
+ * Саму книгу читает `lib/sheets`: SheetJS грузится по требованию, поэтому разбор
+ * файла асинхронный, а разбор текста — нет.
  */
 
 type FieldKey =
-  | "sku"
-  | "barcode"
-  | "name"
-  | "category"
-  | "widthCm"
-  | "heightCm"
-  | "depthCm"
-  | "weightKg";
+  "sku" | "barcode" | "name" | "category" | "widthCm" | "heightCm" | "depthCm" | "weightKg";
 
 /** Синонимы заголовков колонок (в нормализованном виде). */
 const FIELD_SYNONYMS: Record<FieldKey, string[]> = {
@@ -33,18 +31,11 @@ const FIELD_SYNONYMS: Record<FieldKey, string[]> = {
   weightKg: ["вес", "масса", "weight"],
 };
 
-const REQUIRED: FieldKey[] = [
-  "sku",
-  "name",
-  "category",
-  "widthCm",
-  "heightCm",
-  "depthCm",
-];
+const REQUIRED: FieldKey[] = ["sku", "name", "category", "widthCm", "heightCm", "depthCm"];
 
 /** Ошибка строки: ключ i18n + подстановки (перевод — в UI). */
 export interface RowError {
-  key: string;
+  key: MsgKey;
   vars?: Record<string, string | number>;
 }
 
@@ -66,7 +57,7 @@ export interface ImportRow {
 
 export type ParseResult =
   | { ok: false; kind: "empty" }
-  | { ok: false; kind: "format"; reasonKey: string }
+  | { ok: false; kind: "format"; reasonKey: MsgKey }
   | {
       ok: false;
       kind: "columns";
@@ -148,7 +139,9 @@ function splitLine(line: string, delim: string): string[] {
 }
 
 function num(s: string): number {
-  const v = parseFloat(s.replace(",", ".").replace(/[^\d.\-]/g, ""));
+  // Дефис стоит последним в наборе и потому означает сам себя — экранировать
+  // его там не нужно.
+  const v = parseFloat(s.replace(",", ".").replace(/[^\d.-]/g, ""));
   return Number.isFinite(v) ? v : NaN;
 }
 
@@ -170,11 +163,10 @@ function looksBinary(s: string): boolean {
 }
 
 /** CSV/TSV-текст (вставка / выгрузка 1С) → матрица → общее ядро. */
-export function parseImportText(
-  text: string,
-  existingSkus: Set<string>,
-): ParseResult {
-  const clean = text.replace(/^﻿/, "").trim();
+export function parseImportText(text: string, existingSkus: Set<string>): ParseResult {
+  // Выгрузка из 1С и Excel начинается с BOM — срезаем, иначе первая колонка
+  // заголовка не совпадёт ни с одним ожидаемым именем.
+  const clean = (text.startsWith(BOM) ? text.slice(BOM.length) : text).trim();
   if (!clean) return { ok: false, kind: "empty" };
 
   if (looksBinary(clean)) {
@@ -196,29 +188,21 @@ export function parseImportText(
 }
 
 /** Бинарная книга .xlsx/.xls через SheetJS → матрица → общее ядро. */
-export function parseImportFile(
+export async function parseImportFile(
   buf: ArrayBuffer,
   existingSkus: Set<string>,
-): ParseResult {
-  let matrix: string[][];
+): Promise<ParseResult> {
+  let matrix: string[][] | null;
   try {
-    const wb = XLSX.read(buf, { type: "array" });
-    const sheetName = wb.SheetNames[0];
-    const sheet = sheetName ? wb.Sheets[sheetName] : undefined;
-    if (!sheet) {
-      return { ok: false, kind: "format", reasonKey: "import.msg.noSheet" };
-    }
-    const aoa = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
-      header: 1,
-      raw: false,
-      defval: "",
-      blankrows: false,
-    });
-    matrix = aoa.map((row) =>
-      (row as unknown[]).map((c) => (c == null ? "" : String(c))),
-    );
+    matrix = await readSheetMatrix(buf);
   } catch {
+    // Сюда попадают и битый файл, и недоступная библиотека. Разделять их в
+    // сообщении не за чем: обе беды человек чинит одним и тем же — повторить
+    // или выгрузить CSV, а второй путь работает и без SheetJS.
     return { ok: false, kind: "format", reasonKey: "import.msg.unreadable" };
+  }
+  if (!matrix) {
+    return { ok: false, kind: "format", reasonKey: "import.msg.noSheet" };
   }
 
   if (matrix.length < 2) {
@@ -228,10 +212,7 @@ export function parseImportFile(
 }
 
 /** Ядро: матрица (заголовок + строки) → маппинг колонок + валидация строк. */
-export function parseRows(
-  matrix: string[][],
-  existingSkus: Set<string>,
-): ParseResult {
+function parseRows(matrix: string[][], existingSkus: Set<string>): ParseResult {
   const headers = (matrix[0] ?? []).map((h) => (h ?? "").trim());
   const colField = headers.map(matchField);
   const present = new Set(colField.filter((f): f is FieldKey => f !== null));
@@ -264,8 +245,7 @@ export function parseRows(
     const weightKg = weightRaw ? num(weightRaw) : undefined;
 
     if (!sku) errors.push({ key: "import.row.noSku" });
-    else if (existingSkus.has(sku) || seen.has(sku))
-      errors.push({ key: "import.row.dupSku" });
+    else if (existingSkus.has(sku) || seen.has(sku)) errors.push({ key: "import.row.dupSku" });
     if (!name) errors.push({ key: "import.row.noName" });
     if (!category)
       errors.push(

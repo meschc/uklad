@@ -130,6 +130,7 @@ function RoleField({
           onChange={(e) => onChange(e.target.value)}
           placeholder={t("staff.roleCustom")}
           className="h-9"
+          // eslint-disable-next-line jsx-a11y/no-autofocus -- поле появляется по выбору «другая роль»: фокус идёт следом за действием пользователя
           autoFocus={otherPicked}
         />
       ) : null}

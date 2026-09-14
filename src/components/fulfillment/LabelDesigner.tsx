@@ -12,11 +12,12 @@ import {
   type LabelLayout,
   type LabelTemplate,
 } from "@/lib/types";
-import { useT } from "@/lib/i18n";
+import { useT, type MsgKey } from "@/lib/i18n";
 import { clamp, cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Segmented } from "@/components/ui/segmented";
+import { eyebrow } from "@/components/ui/eyebrow";
 
 /**
  * Настройки наклейки (п.6): ориентация, тип кода, размер печати и набор
@@ -24,7 +25,7 @@ import { Segmented } from "@/components/ui/segmented";
  * конструктор за один макет.
  */
 
-const ELEMENTS: { id: LabelElement; key: string }[] = [
+const ELEMENTS: { id: LabelElement; key: MsgKey }[] = [
   { id: "logo", key: "labels.el.logo" },
   { id: "title", key: "labels.el.title" },
   { id: "seq", key: "labels.el.seq" },
@@ -83,11 +84,7 @@ export function LabelDesigner({
   const setLayout = (layout: LabelLayout) => {
     const wide = draft.widthMm >= draft.heightMm;
     const swap = layout === "horizontal" ? !wide : wide;
-    onChange(
-      swap
-        ? { layout, widthMm: draft.heightMm, heightMm: draft.widthMm }
-        : { layout },
-    );
+    onChange(swap ? { layout, widthMm: draft.heightMm, heightMm: draft.widthMm } : { layout });
   };
 
   const onLogo = async (file: File | undefined) => {
@@ -95,9 +92,7 @@ export function LabelDesigner({
     try {
       onChange({
         logoUrl: await readLogo(file),
-        elements: draft.elements.includes("logo")
-          ? draft.elements
-          : [...draft.elements, "logo"],
+        elements: draft.elements.includes("logo") ? draft.elements : [...draft.elements, "logo"],
       });
     } catch {
       // Битый или неподдерживаемый файл — молча его не берём, но и наклейку
@@ -253,16 +248,10 @@ export function LabelDesigner({
           </div>
         </Block>
 
-        <Block
-          title={t("labels.elements")}
-          className="sm:col-span-2 xl:col-span-3"
-        >
+        <Block title={t("labels.elements")} className="sm:col-span-2 xl:col-span-3">
           <div className="grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2 xl:grid-cols-3">
             {ELEMENTS.map((el) => (
-              <label
-                key={el.id}
-                className="flex cursor-pointer items-center gap-2 text-xs"
-              >
+              <label key={el.id} className="flex cursor-pointer items-center gap-2 text-xs">
                 <input
                   type="checkbox"
                   checked={draft.elements.includes(el.id)}
@@ -292,9 +281,7 @@ export function LabelDesigner({
                   className="h-8 max-w-24 shrink-0 rounded bg-white object-contain p-0.5"
                 />
               ) : (
-                <span className="text-[11px] text-muted-foreground">
-                  {t("labels.logoEmpty")}
-                </span>
+                <span className="text-[11px] text-muted-foreground">{t("labels.logoEmpty")}</span>
               )}
               <input
                 ref={fileRef}
@@ -306,19 +293,11 @@ export function LabelDesigner({
                   e.target.value = "";
                 }}
               />
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => fileRef.current?.click()}
-              >
+              <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
                 {t(draft.logoUrl ? "labels.logoReplace" : "labels.logoAdd")}
               </Button>
               {draft.logoUrl && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => onChange({ logoUrl: undefined })}
-                >
+                <Button size="sm" variant="ghost" onClick={() => onChange({ logoUrl: undefined })}>
                   {t("labels.logoRemove")}
                 </Button>
               )}
@@ -331,12 +310,7 @@ export function LabelDesigner({
         <Button size="sm" disabled={!dirty || !draft.name.trim()} onClick={onSave}>
           {t("labels.save")}
         </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={!draft.name.trim()}
-          onClick={onSaveAsNew}
-        >
+        <Button size="sm" variant="outline" disabled={!draft.name.trim()} onClick={onSaveAsNew}>
           {t("labels.saveAsNew")}
         </Button>
         {selectedId && templates.length > 1 && (
@@ -397,9 +371,7 @@ function Block({
 }) {
   return (
     <section className={cn("flex min-w-0 flex-col gap-1.5", className)}>
-      <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-        {title}
-      </h3>
+      <h3 className={eyebrow()}>{title}</h3>
       {children}
     </section>
   );

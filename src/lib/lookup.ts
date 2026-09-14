@@ -1,10 +1,5 @@
-import {
-  addressKey,
-  cellDimsCm,
-  parseAddress,
-  type CellDims,
-} from "./address";
-import { BOX_PREFIX, PALLET_PREFIX, normalizeCode } from "./barcode";
+import { addressKey, cellDimsCm, parseAddress, type CellDims } from "./address";
+import { BOX_PREFIX, PALLET_PREFIX, findByCode, findProduct, normalizeCode } from "./barcode";
 import type { Box, CellAddress, Pallet, Product, Warehouse } from "./types";
 
 /**
@@ -150,7 +145,7 @@ export function lookup(raw: string, data: LookupData): LookupResult {
 
   // 1) Внутренние ярлыки — по префиксу: их формат придуман нами и однозначен.
   if (code.startsWith(BOX_PREFIX)) {
-    const box = data.boxes.find((b) => normalizeCode(b.barcode) === code);
+    const box = findByCode(data.boxes, code);
     if (!box) return { kind: "none", code };
     const lines = linesOf(box, data.products);
     return {
@@ -165,7 +160,7 @@ export function lookup(raw: string, data: LookupData): LookupResult {
   }
 
   if (code.startsWith(PALLET_PREFIX)) {
-    const pallet = data.pallets.find((p) => normalizeCode(p.barcode) === code);
+    const pallet = findByCode(data.pallets, code);
     if (!pallet) return { kind: "none", code };
     const boxes = data.boxes
       .filter((b) => b.palletId === pallet.id)
@@ -187,9 +182,7 @@ export function lookup(raw: string, data: LookupData): LookupResult {
 
   // 2) Товар — по штрихкоду или артикулу: с поля сканера приходит штрихкод, с
   //    клавиатуры чаще набирают артикул.
-  const product =
-    data.products.find((p) => normalizeCode(p.barcode) === code) ??
-    data.products.find((p) => normalizeCode(p.sku) === code);
+  const product = findProduct(data.products, code);
   if (product) {
     const places = placesOf(product, data);
     return {

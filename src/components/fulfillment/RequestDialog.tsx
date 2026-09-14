@@ -1,11 +1,17 @@
 import { useMemo, useState } from "react";
 import { X } from "lucide-react";
 import { useEditor } from "@/lib/store";
+import { requestsRepository } from "@/lib/data";
+import { useCommand } from "@/lib/useCommand";
 import { canReserve, stockByProduct } from "@/lib/fulfillment";
 import { useT } from "@/lib/i18n";
+import { matchesQuery, normalizeQuery } from "@/lib/productSearch";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Modal, Field } from "./Modal";
+
+/** Сколько подсказок показываем: список под полем, а не второй каталог. */
+const MAX_MATCHES = 8;
 
 /**
  * Заявка на отгрузку (п.26, п.9). Реальная заявка — это НЕ одна позиция:
@@ -30,8 +36,6 @@ export function RequestDialog({
   const boxes = useEditor((s) => s.boxes);
   const shipments = useEditor((s) => s.expectedShipments);
   const requests = useEditor((s) => s.requests);
-  const createRequests = useEditor((s) => s.createRequests);
-  const reserveRequest = useEditor((s) => s.reserveRequest);
   const [reserve, setReserve] = useState(true);
   const [lines, setLines] = useState<{ productId: string; qty: string }[]>(
     (productIds ?? []).map((id) => ({ productId: id, qty: "1" })),
@@ -42,17 +46,11 @@ export function RequestDialog({
   const [truck, setTruck] = useState("");
 
   const chosen = new Set(lines.map((l) => l.productId));
-  const q = query.trim().toLowerCase();
+  // Ищем тем же предикатом, что таблица номенклатуры: «нашёлся ли товар» —
+  // один вопрос, и отвечать на него по-разному в двух местах незачем.
+  const q = normalizeQuery(query);
   const matches = q
-    ? products
-        .filter(
-          (p) =>
-            !chosen.has(p.id) &&
-            (p.name.toLowerCase().includes(q) ||
-              p.sku.toLowerCase().includes(q) ||
-              p.barcode.includes(q)),
-        )
-        .slice(0, 8)
+    ? products.filter((p) => !chosen.has(p.id) && matchesQuery(p, q)).slice(0, MAX_MATCHES)
     : [];
 
   const qtyOf = (raw: string) => Math.max(1, parseInt(raw, 10) || 1);
@@ -60,20 +58,15 @@ export function RequestDialog({
 
   // Чего не хватает на складе и можно ли это забронировать под ожидаемую
   // поставку — вопрос, который решается до создания заявки, а не после.
-  const stock = useMemo(
-    () => stockByProduct(placements, boxes),
-    [placements, boxes],
-  );
-  const short = lines.filter(
-    (l) => (stock.get(l.productId)?.qty ?? 0) < qtyOf(l.qty),
-  );
-  const reservable = short.some((l) =>
-    canReserve(l.productId, qtyOf(l.qty), shipments, requests),
-  );
+  const stock = useMemo(() => stockByProduct(placements, boxes), [placements, boxes]);
+  const short = lines.filter((l) => (stock.get(l.productId)?.qty ?? 0) < qtyOf(l.qty));
+  const reservable = short.some((l) => canReserve(l.productId, qtyOf(l.qty), shipments, requests));
 
-  const submit = () => {
-    if (!lines.length) return;
-    const ids = createRequests(
+  // Создание идёт через репозиторий, а не через действие стора напрямую: это и
+  // есть шов, за которым появится сервер (п.3.2.1). Хук держит «идёт» и
+  // «не вышло», окно рисует их само.
+  const create = useCommand(async () => {
+    const created = await requestsRepository.create(
       lines.map((l) => ({
         productId: l.productId,
         qty: qtyOf(l.qty),
@@ -82,17 +75,36 @@ export function RequestDialog({
       })),
       truck ? new Date(truck).getTime() : undefined,
     );
+    if (!created.ok) return created;
+
     // Дропшиппинг (п.10.1): бронируем те строки, под которые есть ожидаемая
-    // поставка. Молча пропускать те, которым не хватило, — правильно: заявка
-    // всё равно создана, просто ждёт обычным порядком.
-    if (reserve) ids.forEach((id) => reserveRequest(id));
-    onClose();
+    // поставка. Провал брони не проваливает создание — заявки уже созданы, и
+    // сообщить «не получилось» значило бы позвать нажать кнопку ещё раз и
+    // завести их второй раз. Не забронированная заявка просто ждёт обычным
+    // порядком, ровно как та, которой не хватило количества.
+    if (reserve) {
+      for (const id of created.data) await requestsRepository.reserve(id);
+    }
+    return created;
+  });
+
+  const submit = async () => {
+    if (!lines.length) return;
+    const res = await create.run();
+    if (res.ok) onClose();
   };
 
   return (
-    <Modal title={t("seller.newRequest")} onClose={onClose} onSubmit={submit}>
+    <Modal
+      title={t("seller.newRequest")}
+      onClose={onClose}
+      onSubmit={submit}
+      pending={create.pending}
+      error={create.error}
+    >
       <Field label={t("seller.pickProduct")}>
         <Input
+          // eslint-disable-next-line jsx-a11y/no-autofocus -- диалог открыт по действию пользователя: фокус обязан уйти в первое поле
           autoFocus
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -113,9 +125,7 @@ export function RequestDialog({
               className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors hover:bg-accent"
             >
               <span className="truncate">{p.name}</span>
-              <span className="shrink-0 font-mono text-muted-foreground">
-                {p.sku}
-              </span>
+              <span className="shrink-0 font-mono text-muted-foreground">{p.sku}</span>
             </button>
           ))}
         </div>
@@ -129,26 +139,20 @@ export function RequestDialog({
               <div key={l.productId} className="flex items-center gap-2">
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-xs font-medium">{p?.name}</p>
-                  <p className="truncate font-mono text-[11px] text-muted-foreground">
-                    {p?.sku}
-                  </p>
+                  <p className="truncate font-mono text-[11px] text-muted-foreground">{p?.sku}</p>
                 </div>
                 <Input
                   value={l.qty}
                   inputMode="numeric"
                   onChange={(e) =>
                     setLines((prev) =>
-                      prev.map((x, j) =>
-                        j === i ? { ...x, qty: e.target.value } : x,
-                      ),
+                      prev.map((x, j) => (j === i ? { ...x, qty: e.target.value } : x)),
                     )
                   }
                   className="h-8 w-24 text-right tabular-nums"
                 />
                 <button
-                  onClick={() =>
-                    setLines((prev) => prev.filter((_, j) => j !== i))
-                  }
+                  onClick={() => setLines((prev) => prev.filter((_, j) => j !== i))}
                   title={t("common.delete")}
                   className="flex size-7 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:text-destructive"
                 >
@@ -188,14 +192,10 @@ export function RequestDialog({
         <div
           className={cn(
             "flex flex-col gap-1.5 rounded-lg border p-2.5 text-xs",
-            reservable
-              ? "border-amber-500/40 bg-amber-500/10"
-              : "border-border bg-muted/30",
+            reservable ? "border-amber-500/40 bg-amber-500/10" : "border-border bg-muted/30",
           )}
         >
-          <p className="font-semibold">
-            {t("seller.shortTitle", { n: short.length })}
-          </p>
+          <p className="font-semibold">{t("seller.shortTitle", { n: short.length })}</p>
           {reservable ? (
             <label className="flex cursor-pointer items-start gap-2">
               <input
@@ -204,9 +204,7 @@ export function RequestDialog({
                 onChange={(e) => setReserve(e.target.checked)}
                 className="mt-0.5 size-3.5 accent-[hsl(var(--primary))]"
               />
-              <span className="text-muted-foreground">
-                {t("seller.reserveHint")}
-              </span>
+              <span className="text-muted-foreground">{t("seller.reserveHint")}</span>
             </label>
           ) : (
             <p className="text-muted-foreground">{t("seller.noReserveHint")}</p>

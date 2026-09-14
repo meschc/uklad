@@ -1,11 +1,12 @@
 import type { Product, ShipmentSource } from "./types";
+import type { MsgKey } from "./i18n";
 
 /**
  * Источники ожидаемых поставок — тонкие адаптеры к ОДНОМУ контракту.
  *
  * На входе — матрица строк из файла/вставки в формате конкретной системы,
  * на выходе всегда один и тот же список строк поставки. Тогда реальная
- * интеграция с 1С/МойСклад/АВА/ГИС МТ — это новый адаптер, а не переделка
+ * интеграция с 1С/МойСклад/ГИС МТ — это новый адаптер, а не переделка
  * экрана приёмки. «manual» — универсальный шаблон для поставщика вообще без
  * системы учёта: артикул, название, количество.
  */
@@ -13,9 +14,9 @@ import type { Product, ShipmentSource } from "./types";
 export interface ShipmentSourceSpec {
   id: ShipmentSource;
   /** Ключ i18n названия источника. */
-  titleKey: string;
+  titleKey: MsgKey;
   /** Ключ i18n подсказки: что за файл сюда класть. */
-  hintKey: string;
+  hintKey: MsgKey;
   /** Синонимы заголовков колонок (в нормализованном виде). */
   columns: {
     /** Чем опознаём товар: артикул и/или штрихкод. */
@@ -53,15 +54,6 @@ export const SHIPMENT_SOURCES: ShipmentSourceSpec[] = [
     },
   },
   {
-    id: "ava",
-    titleKey: "ship.src.ava",
-    hintKey: "ship.src.ava.hint",
-    columns: {
-      code: ["артикул", "sku", "код позиции"],
-      qty: ["количество", "кол-во", "qty"],
-    },
-  },
-  {
     id: "honest-sign",
     titleKey: "ship.src.honestSign",
     hintKey: "ship.src.honestSign.hint",
@@ -72,7 +64,7 @@ export const SHIPMENT_SOURCES: ShipmentSourceSpec[] = [
   },
 ];
 
-export function shipmentSourceSpec(id: ShipmentSource): ShipmentSourceSpec {
+function shipmentSourceSpec(id: ShipmentSource): ShipmentSourceSpec {
   return SHIPMENT_SOURCES.find((s) => s.id === id) ?? SHIPMENT_SOURCES[0];
 }
 
@@ -84,19 +76,19 @@ export interface ShipmentRow {
   /** Найден в номенклатуре — тогда строка годна к приёмке со сверкой. */
   productId?: string;
   productName?: string;
-  errorKey?: string;
+  errorKey?: MsgKey;
 }
 
 export type ShipmentParseResult =
-  | { ok: false; errorKey: string }
-  | { ok: true; rows: ShipmentRow[]; validCount: number };
+  { ok: false; errorKey: MsgKey } | { ok: true; rows: ShipmentRow[]; validCount: number };
 
 function norm(h: string): string {
   return h.trim().toLowerCase().replace(/["']/g, "").replace(/\s+/g, " ").trim();
 }
 
 function toQty(raw: string): number {
-  const v = parseFloat(raw.replace(",", ".").replace(/[^\d.\-]/g, ""));
+  // Дефис последним в наборе — литерал, экранирования не требует.
+  const v = parseFloat(raw.replace(",", ".").replace(/[^\d.-]/g, ""));
   return Number.isFinite(v) ? Math.round(v) : NaN;
 }
 
@@ -131,7 +123,7 @@ export function parseShipmentRows(
     const qty = toQty(cells[qtyCol] ?? "");
     const product = bySku.get(code.toLowerCase()) ?? byBarcode.get(code);
 
-    let errorKey: string | undefined;
+    let errorKey: MsgKey | undefined;
     if (!code) errorKey = "ship.row.noCode";
     else if (!Number.isFinite(qty) || qty <= 0) errorKey = "ship.row.badQty";
     else if (!product) errorKey = "ship.row.unknown";

@@ -1,6 +1,7 @@
 import * as React from "react";
 import * as LabelPrimitive from "@radix-ui/react-label";
 import { cn } from "@/lib/utils";
+import { eyebrow } from "./eyebrow";
 
 const Label = React.forwardRef<
   React.ElementRef<typeof LabelPrimitive.Root>,
@@ -8,10 +9,9 @@ const Label = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <LabelPrimitive.Root
     ref={ref}
-    className={cn(
-      "text-[11px] font-medium uppercase tracking-wide text-muted-foreground",
-      className,
-    )}
+    // Подпись поля — тот же надзаголовок, только начертанием полегче: рядом с
+    // ним стоит само поле, и перебивать его подпись не должна.
+    className={cn(eyebrow({ weight: "medium" }), className)}
     {...props}
   />
 ));

@@ -5,6 +5,7 @@ import { formatPhone } from "@/lib/phone";
 import { useT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { card } from "@/components/ui/card";
 
 /**
  * Партнёры-продавцы склада (п.15). Товар на складе принадлежит разным
@@ -18,14 +19,12 @@ export function PartnersSection() {
   const removePartner = useEditor((s) => s.removePartner);
   const products = useEditor((s) => s.products);
   const t = useT();
-  const [draft, setDraft] = useState<{ name: string; contact: string } | null>(
-    null,
-  );
+  const [draft, setDraft] = useState<{ name: string; contact: string } | null>(null);
 
   const list = partners ?? [];
 
   return (
-    <section className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
+    <section className={card({ className: "flex flex-col gap-3" })}>
       <div className="flex items-center justify-between gap-3">
         <h2 className="flex items-center gap-1.5 text-sm font-semibold">
           <Store className="size-3.5 text-muted-foreground" />
@@ -42,6 +41,7 @@ export function PartnersSection() {
       {draft && (
         <div className="flex flex-col gap-2 rounded-lg border border-primary/40 bg-primary/5 p-3 sm:flex-row sm:items-center">
           <Input
+            // eslint-disable-next-line jsx-a11y/no-autofocus -- строка добавлена по клику пользователя: фокус обязан уйти в неё, иначе курсор остаётся на кнопке
             autoFocus
             value={draft.name}
             onChange={(e) => setDraft({ ...draft, name: e.target.value })}
@@ -66,12 +66,7 @@ export function PartnersSection() {
             >
               {t("common.save")}
             </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-9"
-              onClick={() => setDraft(null)}
-            >
+            <Button size="sm" variant="ghost" className="h-9" onClick={() => setDraft(null)}>
               {t("common.cancel")}
             </Button>
           </div>
@@ -99,9 +94,10 @@ export function PartnersSection() {
                   onChange={(e) =>
                     updatePartner(p.id, {
                       // Телефон форматируем, почту оставляем как есть.
-                      contact: /\d/.test(e.target.value) && !e.target.value.includes("@")
-                        ? formatPhone(e.target.value)
-                        : e.target.value,
+                      contact:
+                        /\d/.test(e.target.value) && !e.target.value.includes("@")
+                          ? formatPhone(e.target.value)
+                          : e.target.value,
                     })
                   }
                   placeholder={t("partners.contactPlaceholder")}

@@ -14,9 +14,11 @@ import {
 import { selectRole, useEditor } from "@/lib/store";
 import { allCells } from "@/lib/placement";
 import { addressKey } from "@/lib/address";
+import { planBounds } from "@/lib/planGeometry";
 import type { Box, CellAddress, ModuleType, Warehouse } from "@/lib/types";
 import { useT, type TFunc } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
+import { card } from "@/components/ui/card";
 import { RoleSwitch } from "@/components/nav/RoleSwitch";
 import { WarehouseDialog } from "./WarehouseDialog";
 
@@ -30,11 +32,7 @@ type DialogState = { mode: "new" } | { mode: "edit"; warehouse: Warehouse } | nu
  * приёмки, стоящую на полке. Иначе карточка склада показывала бы одно, а
  * тепловая карта и дашборд — другое (см. п. 2.1 плана фулфилмента).
  */
-function warehouseStats(
-  w: Warehouse,
-  placements: Record<string, CellAddress>,
-  boxes: Box[],
-) {
+function warehouseStats(w: Warehouse, placements: Record<string, CellAddress>, boxes: Box[]) {
   const floorIds = new Set(w.floors.map((f) => f.id));
   const cells = allCells(w).length;
   const keys = new Set<string>();
@@ -124,9 +122,7 @@ export function Dashboard() {
         <section>
           <div className="mb-3 flex items-baseline justify-between">
             <h2 className="text-sm font-semibold">{t("dash.warehouses.title")}</h2>
-            <p className="text-xs text-muted-foreground">
-              {t("dash.warehouses.subtitle")}
-            </p>
+            <p className="text-xs text-muted-foreground">{t("dash.warehouses.subtitle")}</p>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {warehouses.map((w) => (
@@ -136,11 +132,7 @@ export function Dashboard() {
                 active={w.id === activeId}
                 stats={warehouseStats(w, placements, boxes)}
                 onOpen={() => openWarehouse(w.id)}
-                onEdit={
-                  readOnly
-                    ? undefined
-                    : () => setDialog({ mode: "edit", warehouse: w })
-                }
+                onEdit={readOnly ? undefined : () => setDialog({ mode: "edit", warehouse: w })}
                 onInfo={() => {
                   // «О складе» — это контакты, ответственное лицо, партнёры и
                   // сотрудники: всё уже собрано на экране склада (п.5).
@@ -195,14 +187,16 @@ function WarehouseCard({
   onInfo: () => void;
   t: TFunc;
 }) {
-  const floorWord = t.plural(
-    stats.floors,
-    ["этаж", "этажа", "этажей"],
-    ["floor", "floors"],
-  );
+  const floorWord = t.plural(stats.floors, ["этаж", "этажа", "этажей"], ["floor", "floors"]);
 
   return (
-    <div className="group relative overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-[transform,box-shadow,border-color] hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md">
+    <div
+      className={card({
+        pad: "none",
+        className:
+          "group relative overflow-hidden shadow-sm transition-[transform,box-shadow,border-color] hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md",
+      })}
+    >
       <button onClick={onOpen} className="flex w-full flex-col text-left">
         {/* Мини-превью плана первого этажа */}
         <div className="relative aspect-[16/9] w-full border-b border-border bg-[hsl(var(--canvas-bg))]">
@@ -295,28 +289,18 @@ const THUMB_STROKE: Record<ModuleType, string> = {
   elevator: "hsl(var(--m-elevator-fg) / 0.4)",
 };
 
+/** Клетка запаса по краю миниатюры, чтобы план не упирался в рамку карточки. */
+const THUMB_PAD_CELLS = 1;
+
 /** Схематичное превью плана первого этажа (как обложка проекта в Figma). */
 function WarehouseThumb({ warehouse: w }: { warehouse: Warehouse }) {
   const mods = w.floors[0]?.modules ?? [];
-  if (!mods.length) return null;
-
-  let minX = Infinity;
-  let minY = Infinity;
-  let maxX = -Infinity;
-  let maxY = -Infinity;
-  for (const m of mods) {
-    minX = Math.min(minX, m.x);
-    minY = Math.min(minY, m.y);
-    maxX = Math.max(maxX, m.x + m.w);
-    maxY = Math.max(maxY, m.y + m.h);
-  }
-  const pad = 1;
-  const vbW = maxX - minX + pad * 2;
-  const vbH = maxY - minY + pad * 2;
+  const box = planBounds(mods, THUMB_PAD_CELLS);
+  if (!box) return null;
 
   return (
     <svg
-      viewBox={`${minX - pad} ${minY - pad} ${vbW} ${vbH}`}
+      viewBox={`${box.x} ${box.y} ${box.w} ${box.h}`}
       preserveAspectRatio="xMidYMid meet"
       className="absolute inset-0 h-full w-full p-2"
     >

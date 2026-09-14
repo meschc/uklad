@@ -54,10 +54,7 @@ export const createShelvesSlice: SliceCreator<ShelvesSlice> = (set, get) => ({
         }),
       );
     // Полки срезаются с конца — теряются товары с полок ниже нового счётчика.
-    const lost = goodsAt(
-      s.placements,
-      (a) => a.moduleId === id && a.shelfIndex >= n,
-    );
+    const lost = goodsAt(s.placements, (a) => a.moduleId === id && a.shelfIndex >= n);
     if (lost.length) {
       set({
         pendingConflict: {
@@ -79,9 +76,7 @@ export const createShelvesSlice: SliceCreator<ShelvesSlice> = (set, get) => ({
         mutateActiveFloor(st, (f) => {
           const m = f.modules.find((x) => x.id === id);
           if (!m || m.type !== "section" || !m.shelves?.[index]) return;
-          m.shelves = m.shelves.map((sh, i) =>
-            i === index ? { ...sh, cells: n } : sh,
-          );
+          m.shelves = m.shelves.map((sh, i) => (i === index ? { ...sh, cells: n } : sh));
         }),
       );
     const lost = goodsAt(
@@ -104,9 +99,7 @@ export const createShelvesSlice: SliceCreator<ShelvesSlice> = (set, get) => ({
 
   applyShelvesToSelection: (cells) => {
     const s = get();
-    const norm = cells
-      .slice(0, SHELF_MAX)
-      .map((c) => clamp(Math.round(c), CELLS_MIN, CELLS_MAX));
+    const norm = cells.slice(0, SHELF_MAX).map((c) => clamp(Math.round(c), CELLS_MIN, CELLS_MAX));
     const doIt = () =>
       set((st) =>
         mutateActiveFloor(st, (f) => {
@@ -165,9 +158,7 @@ export const createShelvesSlice: SliceCreator<ShelvesSlice> = (set, get) => ({
           if ("pickPriority" in patch) {
             const v = patch.pickPriority;
             next.pickPriority =
-              v == null
-                ? undefined
-                : clamp(Math.round(v), PICK_PRIORITY_MIN, PICK_PRIORITY_MAX);
+              v == null ? undefined : clamp(Math.round(v), PICK_PRIORITY_MIN, PICK_PRIORITY_MAX);
           }
           if (patch.pickable != null) {
             // `true` — это значение по умолчанию, хранить его незачем.
@@ -179,9 +170,7 @@ export const createShelvesSlice: SliceCreator<ShelvesSlice> = (set, get) => ({
     ),
 
   addTemplate: (cells, name) => {
-    const norm = cells
-      .slice(0, SHELF_MAX)
-      .map((c) => clamp(Math.round(c), CELLS_MIN, CELLS_MAX));
+    const norm = cells.slice(0, SHELF_MAX).map((c) => clamp(Math.round(c), CELLS_MIN, CELLS_MAX));
     const tpl: ShelfTemplate = {
       id: uid("tpl"),
       name: name?.trim() || nameForCells(norm),
@@ -191,8 +180,7 @@ export const createShelvesSlice: SliceCreator<ShelvesSlice> = (set, get) => ({
     return tpl.id;
   },
 
-  removeTemplate: (id) =>
-    set((s) => ({ templates: s.templates.filter((t) => t.id !== id) })),
+  removeTemplate: (id) => set((s) => ({ templates: s.templates.filter((t) => t.id !== id) })),
 
   applyTemplateToSelection: (templateId) => {
     const tpl = get().templates.find((t) => t.id === templateId);

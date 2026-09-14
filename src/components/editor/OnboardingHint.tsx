@@ -23,10 +23,7 @@ export function OnboardingHint() {
 
   if (!activeHint) return null;
 
-  const text =
-    activeHint === "dup"
-      ? t("onb.dup", { alt: ALT_KEY })
-      : t(`onb.${activeHint}`);
+  const text = activeHint === "dup" ? t("onb.dup", { alt: ALT_KEY }) : t(`onb.${activeHint}`);
 
   return (
     <div className="pointer-events-none absolute bottom-4 left-1/2 z-30 -translate-x-1/2">

@@ -3,11 +3,7 @@ import { MODULE_ORDER, type Tool } from "@/lib/types";
 import { useEditor } from "@/lib/store";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ModuleGlyph } from "./ModuleGlyph";
 
 interface RailButton {
@@ -24,14 +20,14 @@ export function ToolRail() {
 
   // Проход больше не размещается объектом: проход = пол между секциями (модель
   // «пол как проход»). Инструмент убран, нумерация клавиш идёт по оставшимся.
-  const moduleButtons: RailButton[] = MODULE_ORDER.filter(
-    (type) => type !== "aisle",
-  ).map((type, i) => ({
-    tool: type,
-    title: t(`module.${type}.title`),
-    shortcut: String(i + 1),
-    icon: <ModuleGlyph type={type} className="size-[18px]" />,
-  }));
+  const moduleButtons: RailButton[] = MODULE_ORDER.filter((type) => type !== "aisle").map(
+    (type, i) => ({
+      tool: type,
+      title: t(`module.${type}.title`),
+      shortcut: String(i + 1),
+      icon: <ModuleGlyph type={type} className="size-[18px]" />,
+    }),
+  );
 
   const renderBtn = (b: RailButton) => {
     const active = tool === b.tool;
@@ -54,9 +50,7 @@ export function ToolRail() {
         </TooltipTrigger>
         <TooltipContent side="right" className="flex items-center gap-2">
           <span>{b.title}</span>
-          <kbd className="rounded bg-background/20 px-1 text-[10px]">
-            {b.shortcut}
-          </kbd>
+          <kbd className="rounded bg-background/20 px-1 text-[10px]">{b.shortcut}</kbd>
         </TooltipContent>
       </Tooltip>
     );

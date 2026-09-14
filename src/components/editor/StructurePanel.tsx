@@ -1,13 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import {
-  AlertTriangle,
-  Copy,
-  Link2,
-  Pencil,
-  Plus,
-  Unlink,
-  X,
-} from "lucide-react";
+import { useRef, useState } from "react";
+import { AlertTriangle, Copy, Link2, Pencil, Plus, Unlink, X } from "lucide-react";
 import { MODULE_ORDER } from "@/lib/types";
 import { FLOOR_MAX, useEditor } from "@/lib/store";
 import { floorsWithoutVerticalLink } from "@/lib/planRules";
@@ -50,10 +42,7 @@ export function StructurePanel() {
               className="flex flex-col items-center gap-0.5 rounded-md py-1"
               title={t(`module.${c.type}.title`)}
             >
-              <ModuleGlyph
-                type={c.type}
-                className="size-4 text-muted-foreground"
-              />
+              <ModuleGlyph type={c.type} className="size-4 text-muted-foreground" />
               <span className="text-xs font-semibold tabular-nums">{c.n}</span>
             </div>
           ))}
@@ -93,12 +82,15 @@ function FloorsSection() {
   // «id:left» | «id:right» — половина строки, над которой курсор.
   const [hoverSide, setHoverSide] = useState<string | null>(null);
   const setFloorNumber = useEditor((s) => s.setFloorNumber);
-  // По одному ref на этаж: карандаш строки должен попасть именно в своё поле.
-  const numberRefs = useRef<Record<string, React.RefObject<HTMLInputElement>>>({});
-  const registerNumberRef = (id: string) => {
-    const ref = { current: null } as React.RefObject<HTMLInputElement>;
-    numberRefs.current[id] = ref;
-    return ref;
+  // По одному полю на этаж: карандаш строки должен попасть именно в своё.
+  // Складываем не ref-объекты, а сами элементы, и заполняет их callback-ref уже
+  // после отрисовки — раньше объект ref создавался прямо при рендере, а рендер
+  // React вправе выбросить и запустить заново, оставив в реестре ссылку из
+  // отменённой попытки. Ключ удаляется вместе со строкой этажа.
+  const numberEls = useRef<Record<string, HTMLInputElement | null>>({});
+  const setNumberEl = (id: string) => (el: HTMLInputElement | null) => {
+    if (el) numberEls.current[id] = el;
+    else delete numberEls.current[id];
   };
 
   return (
@@ -123,9 +115,7 @@ function FloorsSection() {
           const linked = !!f.aliasOf;
           // Алиас никогда не «активен» — активен всегда этаж-источник (п.7).
           const active = !linked && f.id === activeFloorId;
-          const src = linked
-            ? floors.find((x) => x.id === f.aliasOf)
-            : null;
+          const src = linked ? floors.find((x) => x.id === f.aliasOf) : null;
           const count = src ? src.modules.length : f.modules.length;
           return (
             <div
@@ -162,9 +152,7 @@ function FloorsSection() {
                 const side = e.clientX < r.left + r.width / 2 ? "left" : "right";
                 setHoverSide(`${f.id}:${side}`);
               }}
-              onPointerLeave={() =>
-                setHoverSide((h) => (h?.startsWith(f.id) ? null : h))
-              }
+              onPointerLeave={() => setHoverSide((h) => (h?.startsWith(f.id) ? null : h))}
               className={cn(
                 "group flex cursor-grab items-center gap-1 rounded-md pr-0.5 active:cursor-grabbing",
                 active && "bg-accent",
@@ -182,9 +170,7 @@ function FloorsSection() {
               >
                 {i > 0 && (
                   <button
-                    title={
-                      linked ? t("struct.unlinkFloor") : t("struct.linkFloor")
-                    }
+                    title={linked ? t("struct.unlinkFloor") : t("struct.linkFloor")}
                     onClick={() => toggleFloorLink(f.id)}
                     className={cn(
                       "flex size-5 items-center justify-center rounded transition-colors",
@@ -193,11 +179,7 @@ function FloorsSection() {
                         : "text-muted-foreground/60 hover:text-foreground",
                     )}
                   >
-                    {linked ? (
-                      <Unlink className="size-3" />
-                    ) : (
-                      <Link2 className="size-3" />
-                    )}
+                    {linked ? <Unlink className="size-3" /> : <Link2 className="size-3" />}
                   </button>
                 )}
               </div>
@@ -205,9 +187,7 @@ function FloorsSection() {
               <span
                 className={cn(
                   "flex size-5 shrink-0 items-center justify-center rounded text-[10px] font-semibold tabular-nums",
-                  active
-                    ? "bg-foreground text-background"
-                    : "bg-muted text-muted-foreground",
+                  active ? "bg-foreground text-background" : "bg-muted text-muted-foreground",
                 )}
               >
                 {f.number ?? i + 1}
@@ -229,7 +209,7 @@ function FloorsSection() {
                 value={f.number ?? i + 1}
                 active={active}
                 onCommit={(n) => setFloorNumber(f.id, n)}
-                inputRef={numberRefs.current[f.id] ?? registerNumberRef(f.id)}
+                inputRef={setNumberEl(f.id)}
               />
               {/* Карандаш при наведении: без него неочевидно, что цифра —
                   редактируемое поле, а не просто подпись (п.2). Нажатие ставит
@@ -239,7 +219,7 @@ function FloorsSection() {
                 title={t("struct.floorNumber")}
                 aria-label={t("struct.floorNumber")}
                 onClick={() => {
-                  const el = numberRefs.current[f.id]?.current;
+                  const el = numberEls.current[f.id];
                   el?.focus();
                   el?.select();
                 }}
@@ -264,23 +244,23 @@ function FloorsSection() {
                       : "w-11",
                 )}
               >
-              <button
-                title={t("struct.duplicateFloorRow")}
-                disabled={floors.length >= FLOOR_MAX}
-                onClick={() => duplicateFloor(f.id)}
-                className="flex h-6 w-5 shrink-0 items-center justify-center rounded text-muted-foreground/50 transition hover:text-foreground disabled:opacity-0"
-              >
-                <Copy className="size-3" />
-              </button>
-              {floors.length > 1 && (
                 <button
-                  title={t("struct.deleteFloor")}
-                  onClick={() => deleteFloor(f.id)}
-                  className="flex h-6 w-5 shrink-0 items-center justify-center rounded text-muted-foreground/50 transition hover:text-destructive"
+                  title={t("struct.duplicateFloorRow")}
+                  disabled={floors.length >= FLOOR_MAX}
+                  onClick={() => duplicateFloor(f.id)}
+                  className="flex h-6 w-5 shrink-0 items-center justify-center rounded text-muted-foreground/50 transition hover:text-foreground disabled:opacity-0"
                 >
-                  <X className="size-3" />
+                  <Copy className="size-3" />
                 </button>
-              )}
+                {floors.length > 1 && (
+                  <button
+                    title={t("struct.deleteFloor")}
+                    onClick={() => deleteFloor(f.id)}
+                    className="flex h-6 w-5 shrink-0 items-center justify-center rounded text-muted-foreground/50 transition hover:text-destructive"
+                  >
+                    <X className="size-3" />
+                  </button>
+                )}
               </div>
             </div>
           );
@@ -306,10 +286,18 @@ function FloorNumberInput({
   active: boolean;
   onCommit: (n: number) => void;
   /** Наружу — чтобы карандаш рядом ставил фокус в это поле (п.3). */
-  inputRef?: React.RefObject<HTMLInputElement>;
+  inputRef?: React.Ref<HTMLInputElement>;
 }) {
+  // Поле держит черновик, пока его правят, но должно принять новое значение,
+  // если номер сменился снаружи — перетаскиванием строки или отменой. Сверка с
+  // прошлым значением прямо при отрисовке, а не эффектом: эффект дал бы лишний
+  // проход с уже устаревшей цифрой на экране.
   const [v, setV] = useState(String(value));
-  useEffect(() => setV(String(value)), [value]);
+  const [lastValue, setLastValue] = useState(value);
+  if (value !== lastValue) {
+    setLastValue(value);
+    setV(String(value));
+  }
   const commit = () => {
     const n = Math.round(+v);
     // Верхней границы нет: номер этажа задаётся любой (мезонин может быть
@@ -352,9 +340,7 @@ function VerticalLinkWarning({ t }: { t: TFunc }) {
   if (!orphans.length) return null;
 
   // Номера этажей по позиции в складе (имя в данных — «Этаж N»).
-  const names = orphans
-    .map((f) => warehouse.floors.findIndex((x) => x.id === f.id) + 1)
-    .join(", ");
+  const names = orphans.map((f) => warehouse.floors.findIndex((x) => x.id === f.id) + 1).join(", ");
   const key = orphans.length === 1 ? "struct.noLinkOne" : "struct.noLinkMany";
   return (
     <div className="hazard-stripes mt-2 flex gap-1.5 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-[10px] leading-relaxed text-amber-800 dark:text-amber-300">

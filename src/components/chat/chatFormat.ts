@@ -1,4 +1,5 @@
 import type { TFunc } from "@/lib/i18n";
+import { nowMs } from "@/lib/utils";
 
 /**
  * Подписи времени в чате. Отдельный файл, потому что одни и те же правила
@@ -34,7 +35,7 @@ export function formatChatTime(at: number, t: TFunc): string {
  * списке за текущий год читается быстрее, чем «12.03.2026».
  */
 export function formatChatStamp(at: number, t: TFunc): string {
-  const now = Date.now();
+  const now = nowMs();
   const ago = daysAgo(at, now);
   if (ago === 0) return formatChatTime(at, t);
   if (ago === 1) return t("chat.yesterday");
@@ -48,15 +49,13 @@ export function formatChatStamp(at: number, t: TFunc): string {
 
 /** Заголовок дня-разделителя в ленте. */
 export function formatChatDay(at: number, t: TFunc): string {
-  const ago = daysAgo(at, Date.now());
+  const ago = daysAgo(at, nowMs());
   if (ago === 0) return t("chat.today");
   if (ago === 1) return t("chat.yesterday");
   return new Date(at).toLocaleDateString(t.lang, {
     day: "numeric",
     month: "long",
-    ...(new Date(at).getFullYear() === new Date().getFullYear()
-      ? {}
-      : { year: "numeric" }),
+    ...(new Date(at).getFullYear() === new Date().getFullYear() ? {} : { year: "numeric" }),
   });
 }
 

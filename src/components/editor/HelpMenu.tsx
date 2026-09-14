@@ -2,13 +2,9 @@ import { useEffect, useState } from "react";
 import { BookOpen, Check, HelpCircle, Keyboard, RotateCcw, X } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { useT, type TFunc } from "@/lib/i18n";
-import {
-  ALT_KEY as ALT,
-  DEL_KEY as DEL,
-  MOD_KEY as MOD,
-  SHIFT_KEY as SHIFT,
-} from "@/lib/platform";
+import { ALT_KEY as ALT, DEL_KEY as DEL, MOD_KEY as MOD, SHIFT_KEY as SHIFT } from "@/lib/platform";
 import { cn } from "@/lib/utils";
+import { eyebrow } from "@/components/ui/eyebrow";
 
 /**
  * Плавающая справка «?» (ТЗ, разд. 2 — онбординг и справка). Две вкладки:
@@ -123,9 +119,7 @@ function RowScheme({ t }: { t: TFunc }) {
       key={n}
       className={cn(
         "flex h-8 w-9 items-center justify-center rounded-[4px] text-xs font-bold tabular-nums",
-        near
-          ? "bg-primary text-primary-foreground"
-          : "bg-primary/40 text-primary-foreground",
+        near ? "bg-primary text-primary-foreground" : "bg-primary/40 text-primary-foreground",
       )}
     >
       {n}
@@ -133,17 +127,13 @@ function RowScheme({ t }: { t: TFunc }) {
   );
   return (
     <div className="flex items-stretch justify-center gap-1.5">
-      <div className="flex flex-col gap-1.5">
-        {[1, 3, 5].map((n) => cell(n, true))}
-      </div>
+      <div className="flex flex-col gap-1.5">{[1, 3, 5].map((n) => cell(n, true))}</div>
       <div className="flex w-6 items-center justify-center rounded-[4px] border border-dashed border-border bg-[hsl(var(--floor))]">
         <span className="rotate-180 text-[9px] uppercase tracking-wide text-muted-foreground [writing-mode:vertical-rl]">
           {t("module.aisle.title")}
         </span>
       </div>
-      <div className="flex flex-col gap-1.5">
-        {[2, 4, 6].map((n) => cell(n, false))}
-      </div>
+      <div className="flex flex-col gap-1.5">{[2, 4, 6].map((n) => cell(n, false))}</div>
     </div>
   );
 }
@@ -165,14 +155,10 @@ function AddressScheme({ t }: { t: TFunc }) {
             <span className="flex h-6 min-w-6 items-center justify-center rounded-md bg-primary/10 px-1.5 font-mono text-sm font-bold tabular-nums text-primary">
               {p.n}
             </span>
-            <span className="text-[8px] leading-none text-muted-foreground">
-              {p.label}
-            </span>
+            <span className="text-[8px] leading-none text-muted-foreground">{p.label}</span>
           </div>
           {i < parts.length - 1 && (
-            <span className="pb-3 font-mono text-sm text-muted-foreground/50">
-              -
-            </span>
+            <span className="pb-3 font-mono text-sm text-muted-foreground/50">-</span>
           )}
         </div>
       ))}
@@ -186,6 +172,40 @@ function FaqItem({ q, a }: { q: string; a: string }) {
       <p className="text-xs font-semibold text-foreground">{q}</p>
       <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{a}</p>
     </div>
+  );
+}
+
+/**
+ * Кнопка вкладки. Живёт снаружи `HelpMenu` намеренно: компонент, объявленный
+ * в теле другого компонента, при каждом рендере родителя оказывается новым
+ * типом — React выбрасывает старое поддерево и монтирует новое, теряя фокус.
+ */
+function TabBtn({
+  id,
+  icon,
+  label,
+  active,
+  onPick,
+}: {
+  id: "faq" | "keys";
+  icon: React.ReactNode;
+  label: string;
+  active: boolean;
+  onPick: (id: "faq" | "keys") => void;
+}) {
+  return (
+    <button
+      onClick={() => onPick(id)}
+      className={cn(
+        "flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition-colors",
+        active
+          ? "bg-background text-foreground shadow-sm"
+          : "text-muted-foreground hover:text-foreground",
+      )}
+    >
+      {icon}
+      {label}
+    </button>
   );
 }
 
@@ -208,10 +228,15 @@ export function HelpMenu() {
     return () => window.removeEventListener("keydown", onKey, true);
   }, [open]);
 
-  // Сбрасываем «галочку готово» при новом открытии панели.
-  useEffect(() => {
+  // Сбрасываем «галочку готово» при новом открытии панели. Правка прямо в
+  // рендере, а не в эффекте: React специально разрешает так подстраивать
+  // состояние под изменившийся вход — он повторит рендер до отрисовки, тогда
+  // как эффект успел бы показать галочку от прошлого открытия.
+  const [lastOpen, setLastOpen] = useState(open);
+  if (open !== lastOpen) {
+    setLastOpen(open);
     if (!open) setReset(false);
-  }, [open]);
+  }
 
   const groups = buildGroups(t);
   const faq = [
@@ -230,29 +255,6 @@ export function HelpMenu() {
     { q: t("faq.nav3d.q"), a: t("faq.nav3d.a") },
   ];
 
-  const TabBtn = ({
-    id,
-    icon,
-    label,
-  }: {
-    id: "faq" | "keys";
-    icon: React.ReactNode;
-    label: string;
-  }) => (
-    <button
-      onClick={() => setTab(id)}
-      className={cn(
-        "flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition-colors",
-        tab === id
-          ? "bg-background text-foreground shadow-sm"
-          : "text-muted-foreground hover:text-foreground",
-      )}
-    >
-      {icon}
-      {label}
-    </button>
-  );
-
   return (
     <div className="pointer-events-auto absolute bottom-4 left-4 z-20">
       {open && (
@@ -270,8 +272,20 @@ export function HelpMenu() {
             </div>
 
             <div className="mb-3 flex items-center gap-0.5 rounded-lg bg-muted p-0.5">
-              <TabBtn id="faq" icon={<BookOpen className="size-3.5" />} label={t("help.tab.faq")} />
-              <TabBtn id="keys" icon={<Keyboard className="size-3.5" />} label={t("help.tab.keys")} />
+              <TabBtn
+                id="faq"
+                icon={<BookOpen className="size-3.5" />}
+                label={t("help.tab.faq")}
+                active={tab === "faq"}
+                onPick={setTab}
+              />
+              <TabBtn
+                id="keys"
+                icon={<Keyboard className="size-3.5" />}
+                label={t("help.tab.keys")}
+                active={tab === "keys"}
+                onPick={setTab}
+              />
             </div>
 
             <div className="flex max-h-[62vh] flex-col gap-3 overflow-y-auto pr-0.5">
@@ -279,7 +293,7 @@ export function HelpMenu() {
                 <>
                   {/* Схема ряда — плоская, как сам 2D-план */}
                   <div className="rounded-lg border border-border bg-muted/30 p-2">
-                    <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    <p className={eyebrow({ size: "xs", className: "mb-1" })}>
                       {t("faq.rowScheme")}
                     </p>
                     <RowScheme t={t} />
@@ -290,7 +304,7 @@ export function HelpMenu() {
 
                   {/* Схема адреса */}
                   <div className="rounded-lg border border-border bg-muted/30 p-2">
-                    <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    <p className={eyebrow({ size: "xs", className: "mb-2" })}>
                       {t("faq.addrScheme")}
                     </p>
                     <AddressScheme t={t} />
@@ -325,15 +339,10 @@ export function HelpMenu() {
               ) : (
                 groups.map((g) => (
                   <div key={g.title}>
-                    <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      {g.title}
-                    </p>
+                    <p className={eyebrow({ size: "xs", className: "mb-1" })}>{g.title}</p>
                     <div className="flex flex-col">
                       {g.rows.map((r) => (
-                        <div
-                          key={r.label}
-                          className="flex items-center justify-between gap-3 py-1"
-                        >
+                        <div key={r.label} className="flex items-center justify-between gap-3 py-1">
                           <span className="text-xs text-foreground">{r.label}</span>
                           <Keys keys={r.keys} />
                         </div>

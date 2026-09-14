@@ -74,10 +74,7 @@ export function LabelCard({
   const info = (
     <>
       {showHeader && (
-        <div
-          className="flex w-full shrink-0 items-center gap-1"
-          style={{ fontSize: px(8) }}
-        >
+        <div className="flex w-full shrink-0 items-center gap-1" style={{ fontSize: px(8) }}>
           {has("logo") && tpl.logoUrl && (
             <img
               src={tpl.logoUrl}
@@ -120,10 +117,7 @@ export function LabelCard({
             </span>
           )}
           {has("mark") && (
-            <span
-              className="break-all font-mono leading-tight"
-              style={{ fontSize: px(5.5) }}
-            >
+            <span className="break-all font-mono leading-tight" style={{ fontSize: px(5.5) }}>
               {t("labels.markPrefix")} {markFor(code)}
             </span>
           )}
@@ -171,10 +165,7 @@ export function LabelCard({
           {/* В строке у текста нет собственной ширины — без базиса он схлопнулся
               бы в полоску, как только коду задали 100 %. Базис задаёт нижнюю
               границу колонки, а сжимаются обе стороны пропорционально. */}
-          <div
-            className="flex min-w-0 flex-col justify-center gap-0.5"
-            style={{ flex: "1 1 38%" }}
-          >
+          <div className="flex min-w-0 flex-col justify-center gap-0.5" style={{ flex: "1 1 38%" }}>
             {info}
           </div>
         </>

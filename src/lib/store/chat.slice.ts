@@ -1,4 +1,4 @@
-import { uid } from "../utils";
+import { nowMs, uid } from "../utils";
 import type { ChatMessage, Partner, UserRole } from "../types";
 import { demoReplyFor, seedChatFor } from "./seedChat";
 import type { ChatSlice, EditorState, SliceCreator } from "./state";
@@ -68,10 +68,11 @@ export const createChatSlice: SliceCreator<ChatSlice> = (set, get) => ({
     set({ chats: seedChatFor(partners) });
   },
 
-  openChat: (partnerId) => {
-    set({ activeChatId: partnerId });
-    get().markChatRead(partnerId);
-  },
+  // Какая переписка открыта — состояние интерфейса, соседнее с выделением и
+  // зумом, поэтому оно и осталось в сторе. Прочитанность отсюда не метится:
+  // это доменная правка, она уходит через `chatRepository` из самой ленты —
+  // той, что сообщения и показывает.
+  openChat: (partnerId) => set({ activeChatId: partnerId }),
 
   sendChatMessage: (partnerId, text) => {
     const body = text.trim();
@@ -80,7 +81,7 @@ export const createChatSlice: SliceCreator<ChatSlice> = (set, get) => ({
       id: uid("msg"),
       from: get().session.user.role,
       text: body,
-      at: Date.now(),
+      at: nowMs(),
     };
     set((s) => ({
       chats: { ...s.chats, [partnerId]: [...(s.chats[partnerId] ?? []), message] },
@@ -97,7 +98,7 @@ export const createChatSlice: SliceCreator<ChatSlice> = (set, get) => ({
       id: uid("msg"),
       from,
       text: demoReplyFor(from, messages.length),
-      at: Date.now(),
+      at: nowMs(),
     };
     set((st) => ({
       chats: { ...st.chats, [partnerId]: [...(st.chats[partnerId] ?? []), message] },
@@ -108,7 +109,7 @@ export const createChatSlice: SliceCreator<ChatSlice> = (set, get) => ({
     const role = get().session.user.role;
     const messages = get().chats[partnerId];
     if (!messages?.some((m) => m.from !== role && !m.readAt)) return;
-    const at = Date.now();
+    const at = nowMs();
     set((s) => ({
       chats: {
         ...s.chats,

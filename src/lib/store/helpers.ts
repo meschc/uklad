@@ -28,7 +28,7 @@ export function fieldValueKey(productId: string, fieldId: string): string {
 }
 
 /** Полки по умолчанию для новой секции (ТЗ, разд. 2.3). */
-export function defaultShelves(): ShelfConfig[] {
+function defaultShelves(): ShelfConfig[] {
   return Array.from({ length: DEFAULT_SHELF_COUNT }, () => ({
     id: uid("shelf"),
     cells: DEFAULT_SHELF_CELLS,
@@ -74,11 +74,7 @@ export function makeModule(
   size?: { w?: number; h?: number },
 ): PlacedModule {
   const spec = MODULE_SPECS[type];
-  const { w, h } = clampSize(
-    type,
-    size?.w ?? spec.defaultSize.w,
-    size?.h ?? spec.defaultSize.h,
-  );
+  const { w, h } = clampSize(type, size?.w ?? spec.defaultSize.w, size?.h ?? spec.defaultSize.h);
   return {
     id: uid("mod"),
     type,
@@ -125,11 +121,7 @@ export function cloneFloor(f: Floor): Floor {
  * для дублирования и вставки. Размещения товара не копируются: копии секций
  * начинаются пустыми, товар остаётся у оригинала.
  */
-export function cloneModules(
-  mods: PlacedModule[],
-  dx: number,
-  dy: number,
-): PlacedModule[] {
+export function cloneModules(mods: PlacedModule[], dx: number, dy: number): PlacedModule[] {
   return mods.map((m) => ({
     ...m,
     id: uid("mod"),
@@ -141,9 +133,7 @@ export function cloneModules(
 
 /** Сквозная нумерация этажей — она же часть адреса места хранения. */
 export function renumberFloors(floors: Floor[]): Floor[] {
-  return floors.map((f, i) =>
-    f.name === `Этаж ${i + 1}` ? f : { ...f, name: `Этаж ${i + 1}` },
-  );
+  return floors.map((f, i) => (f.name === `Этаж ${i + 1}` ? f : { ...f, name: `Этаж ${i + 1}` }));
 }
 
 /**
@@ -151,7 +141,7 @@ export function renumberFloors(floors: Floor[]): Floor[] {
  * (без циклов — один уровень; источник алиасом обычно не бывает). Если ссылка
  * битая, остаёмся на самом этаже.
  */
-export function floorSourceId(warehouse: Warehouse, floorId: string): string {
+function floorSourceId(warehouse: Warehouse, floorId: string): string {
   const f = warehouse.floors.find((x) => x.id === floorId);
   if (f?.aliasOf && warehouse.floors.some((x) => x.id === f.aliasOf)) {
     return f.aliasOf;

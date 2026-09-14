@@ -1,7 +1,7 @@
 import { Group, Library, Stamp, X } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import type { LayoutTemplate } from "@/lib/types";
-import { useT } from "@/lib/i18n";
+import { labelOr, useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { MODULE_STYLES } from "./constants";
 import { PanelSection } from "./PanelSection";
@@ -81,76 +81,77 @@ function LayoutTemplateList() {
       grow
       bodyClassName="flex flex-col gap-1.5 px-2 pb-2"
     >
-        <button
-          type="button"
-          disabled={!canSave}
-          onClick={() => addLayout()}
-          className={cn(
-            "rounded-md border border-dashed py-1.5 text-[11px] font-medium transition-colors",
-            canSave
-              ? "border-primary/40 text-primary hover:bg-primary/10"
-              : "cursor-not-allowed border-border text-muted-foreground/50",
-          )}
-        >
-          {canSave ? t("layout.saveN", { n: selection.length }) : t("layout.selectFirst")}
-        </button>
-
-        {templates.length === 0 && (
-          <p className="px-1 py-1 text-xs leading-relaxed text-muted-foreground">
-            {t("layout.empty")}
-          </p>
+      <button
+        type="button"
+        disabled={!canSave}
+        onClick={() => addLayout()}
+        className={cn(
+          "rounded-md border border-dashed py-1.5 text-[11px] font-medium transition-colors",
+          canSave
+            ? "border-primary/40 text-primary hover:bg-primary/10"
+            : "cursor-not-allowed border-border text-muted-foreground/50",
         )}
+      >
+        {canSave ? t("layout.saveN", { n: selection.length }) : t("layout.selectFirst")}
+      </button>
 
-        {templates.map((tpl) => {
-          const active = stampId === tpl.id;
-          const sec = tpl.modules.filter((m) => m.type === "section").length;
-          return (
-            <div
-              key={tpl.id}
-              className={cn(
-                "group rounded-md border p-2 transition-colors",
-                active ? "border-primary bg-primary/5" : "border-border",
-              )}
-            >
-              <div className="flex items-center gap-2">
-                <LayoutThumb tpl={tpl} />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-xs font-medium">{tpl.name}</div>
-                  <div className="text-[10px] text-muted-foreground">
-                    {tpl.modules.length}{" "}
-                    {t.plural(
-                      tpl.modules.length,
-                      ["модуль", "модуля", "модулей"],
-                      ["module", "modules"],
-                    )}
-                    {sec > 0 && ` · ${sec} ${t.plural(sec, ["секц.", "секц.", "секц."], ["sec.", "sec."])}`}
-                  </div>
+      {templates.length === 0 && (
+        <p className="px-1 py-1 text-xs leading-relaxed text-muted-foreground">
+          {t("layout.empty")}
+        </p>
+      )}
+
+      {templates.map((tpl) => {
+        const active = stampId === tpl.id;
+        const sec = tpl.modules.filter((m) => m.type === "section").length;
+        return (
+          <div
+            key={tpl.id}
+            className={cn(
+              "group rounded-md border p-2 transition-colors",
+              active ? "border-primary bg-primary/5" : "border-border",
+            )}
+          >
+            <div className="flex items-center gap-2">
+              <LayoutThumb tpl={tpl} />
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-xs font-medium">{tpl.name}</div>
+                <div className="text-[10px] text-muted-foreground">
+                  {tpl.modules.length}{" "}
+                  {t.plural(
+                    tpl.modules.length,
+                    ["модуль", "модуля", "модулей"],
+                    ["module", "modules"],
+                  )}
+                  {sec > 0 &&
+                    ` · ${sec} ${t.plural(sec, ["секц.", "секц.", "секц."], ["sec.", "sec."])}`}
                 </div>
-                <button
-                  type="button"
-                  title={t("tpl.remove")}
-                  onClick={() => removeLayout(tpl.id)}
-                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-muted-foreground/50 opacity-0 transition hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
-                >
-                  <X className="size-3.5" />
-                </button>
               </div>
               <button
                 type="button"
-                onClick={() => setStamp(active ? null : tpl.id)}
-                className={cn(
-                  "mt-2 flex w-full items-center justify-center gap-1.5 rounded-md py-1 text-[11px] font-medium transition-colors",
-                  active
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-primary/10 text-primary hover:bg-primary/15",
-                )}
+                title={t("tpl.remove")}
+                onClick={() => removeLayout(tpl.id)}
+                className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-muted-foreground/50 opacity-0 transition hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
               >
-                <Stamp className="size-3" />
-                {active ? t("layout.stamping") : t("layout.stamp")}
+                <X className="size-3.5" />
               </button>
             </div>
-          );
-        })}
+            <button
+              type="button"
+              onClick={() => setStamp(active ? null : tpl.id)}
+              className={cn(
+                "mt-2 flex w-full items-center justify-center gap-1.5 rounded-md py-1 text-[11px] font-medium transition-colors",
+                active
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-primary/10 text-primary hover:bg-primary/15",
+              )}
+            >
+              <Stamp className="size-3" />
+              {active ? t("layout.stamping") : t("layout.stamp")}
+            </button>
+          </div>
+        );
+      })}
     </PanelSection>
   );
 }
@@ -173,15 +174,15 @@ export function TemplateLibrary() {
 
   return (
     <>
-    <PanelSection
-      storageKey="tpl-shelves"
-      defaultCollapsed
-      title={t("tpl.title")}
-      count={templates.length}
-      icon={<Library className="size-3.5" />}
-      grow
-      bodyClassName="flex flex-col gap-1.5 px-2 pb-2"
-    >
+      <PanelSection
+        storageKey="tpl-shelves"
+        defaultCollapsed
+        title={t("tpl.title")}
+        count={templates.length}
+        icon={<Library className="size-3.5" />}
+        grow
+        bodyClassName="flex flex-col gap-1.5 px-2 pb-2"
+      >
         {templates.length === 0 && (
           <p className="px-1 py-2 text-xs leading-relaxed text-muted-foreground">
             {t("tpl.empty")}
@@ -191,16 +192,15 @@ export function TemplateLibrary() {
         {templates.map((tpl) => {
           const cellSum = tpl.cells.reduce((a, b) => a + b, 0);
           const canApply = selSections > 0;
-          const seedName = t(`tpl.seed.${tpl.name}`);
-          const name = seedName.startsWith("tpl.seed.") ? tpl.name : seedName;
+          // Готовые раскладки переведены, пользовательские названы вручную —
+          // такие показываем как есть.
+          const name = labelOr(t, `tpl.seed.${tpl.name}`, tpl.name);
           return (
             <div
               key={tpl.id}
               className={cn(
                 "group rounded-md border p-2 transition-colors",
-                canApply
-                  ? "border-border hover:border-primary/50"
-                  : "border-border",
+                canApply ? "border-border hover:border-primary/50" : "border-border",
               )}
             >
               <div className="flex items-center gap-2">
@@ -209,17 +209,9 @@ export function TemplateLibrary() {
                   <div className="truncate text-xs font-medium">{name}</div>
                   <div className="text-[10px] text-muted-foreground">
                     {tpl.cells.length}{" "}
-                    {t.plural(
-                      tpl.cells.length,
-                      ["полка", "полки", "полок"],
-                      ["shelf", "shelves"],
-                    )}{" "}
+                    {t.plural(tpl.cells.length, ["полка", "полки", "полок"], ["shelf", "shelves"])}{" "}
                     · {cellSum}{" "}
-                    {t.plural(
-                      cellSum,
-                      ["ячейка", "ячейки", "ячеек"],
-                      ["cell", "cells"],
-                    )}
+                    {t.plural(cellSum, ["ячейка", "ячейки", "ячеек"], ["cell", "cells"])}
                   </div>
                 </div>
                 <button
@@ -242,15 +234,13 @@ export function TemplateLibrary() {
                     : "cursor-not-allowed bg-muted/60 text-muted-foreground/60",
                 )}
               >
-                {canApply
-                  ? t("tpl.applyToN", { n: selSections })
-                  : t("tpl.selectSections")}
+                {canApply ? t("tpl.applyToN", { n: selSections }) : t("tpl.selectSections")}
               </button>
             </div>
           );
         })}
-    </PanelSection>
-    <LayoutTemplateList />
+      </PanelSection>
+      <LayoutTemplateList />
     </>
   );
 }

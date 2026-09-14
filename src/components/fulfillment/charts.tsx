@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { eyebrow } from "@/components/ui/eyebrow";
+import { card } from "@/components/ui/card";
 
 /**
  * Мини-графики ручным SVG — в том же духе, что `HeatmapView` (там тоже ручной
@@ -29,14 +31,12 @@ export function StatCard({
   }[tone];
 
   return (
-    <div className="flex flex-col gap-1 rounded-xl border border-border bg-card p-3.5">
-      <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+    <div className={card({ pad: "md", className: "flex flex-col gap-1" })}>
+      <div className={eyebrow({ weight: "medium", className: "flex items-center gap-1.5" })}>
         {icon}
         {label}
       </div>
-      <div className={cn("text-2xl font-bold tabular-nums", toneClass)}>
-        {value}
-      </div>
+      <div className={cn("text-2xl font-bold tabular-nums", toneClass)}>{value}</div>
       {hint && <div className="text-[11px] text-muted-foreground">{hint}</div>}
     </div>
   );
@@ -116,14 +116,7 @@ export function Donut({
   return (
     <div className="flex items-center gap-4">
       <svg width={size} height={size} viewBox="0 0 100 100" role="img">
-        <circle
-          cx="50"
-          cy="50"
-          r={r}
-          fill="none"
-          stroke="hsl(var(--muted))"
-          strokeWidth="14"
-        />
+        <circle cx="50" cy="50" r={r} fill="none" stroke="hsl(var(--muted))" strokeWidth="14" />
         {total > 0 &&
           segments.map((s) => {
             if (s.value <= 0) return null;
@@ -188,15 +181,7 @@ export function Donut({
 }
 
 /** Горизонтальная полоса заполненности — для разбивки по этажам. */
-export function FillBar({
-  label,
-  value,
-  total,
-}: {
-  label: string;
-  value: number;
-  total: number;
-}) {
+export function FillBar({ label, value, total }: { label: string; value: number; total: number }) {
   const pct = total ? Math.round((value / total) * 100) : 0;
   return (
     <div className="flex flex-col gap-1">

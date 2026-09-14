@@ -1,11 +1,6 @@
-import { rowNumbers } from "./numbering";
+import { planBounds, rowFrames } from "./planGeometry";
 import { buildOccupancy } from "./placement";
-import type {
-  CellAddress,
-  ProductCategory,
-  Product,
-  Warehouse,
-} from "./types";
+import type { CellAddress, ProductCategory, Product, Warehouse } from "./types";
 
 /**
  * Геометрия 3D-сцены (ТЗ, разд. 3.7).
@@ -19,14 +14,16 @@ import type {
 /** Высота секции в мировых единицах. Намеренно не зависит от realHeightCm. */
 export const SECTION_H = 2;
 /** Толщина межэтажного перекрытия. */
-export const SLAB_H = 0.1;
+const SLAB_H = 0.1;
 /** Просвет между верхом секции и следующим перекрытием. */
-export const FLOOR_GAP = 0.45;
+const FLOOR_GAP = 0.45;
 /** Шаг этажей по высоте. */
-export const FLOOR_STEP = SECTION_H + FLOOR_GAP + SLAB_H;
+const FLOOR_STEP = SECTION_H + FLOOR_GAP + SLAB_H;
 
 /** Зазор блока внутри ячейки, чтобы соседние слоты не слипались в полосу. */
 const PAD = 0.76;
+/** Запас плиты-пола за габаритом модулей, в клетках. */
+const FLOOR_PAD_CELLS = 1;
 /** Толщина полки. */
 const SHELF_T = 0.03;
 /** Ширина бруска рамки. */
@@ -202,84 +199,49 @@ export function buildScene(
     span: 10,
   };
 
-  let minX = Infinity,
-    maxX = -Infinity,
-    minZ = Infinity,
-    maxZ = -Infinity;
+  // Габарит всего здания — тот же счёт, что у этажа, только по всем модулям
+  // сразу: по нему встают перекрытия, земля и стартовая камера.
+  const bounds = planBounds(warehouse.floors.flatMap((f) => f.modules));
 
   warehouse.floors.forEach((floor, floorIdx) => {
     const baseY = floorIdx * FLOOR_STEP;
 
     // Плита-пол этажа: одна панель по габаритам его модулей + отступ. Проход =
     // пол между секциями (модель «пол как проход»), отдельных проходов больше нет.
-    let fMinX = Infinity,
-      fMaxX = -Infinity,
-      fMinZ = Infinity,
-      fMaxZ = -Infinity;
-    for (const m of floor.modules) {
-      fMinX = Math.min(fMinX, m.x);
-      fMaxX = Math.max(fMaxX, m.x + m.w);
-      fMinZ = Math.min(fMinZ, m.y);
-      fMaxZ = Math.max(fMaxZ, m.y + m.h);
-    }
-    if (fMinX < fMaxX) {
-      const pad = 1;
+    // Габарит считаем тем же `planBounds`, что и 2D-план: плита в сцене обязана
+    // совпасть с полом на холсте, иначе «тот же склад» выглядит по-разному.
+    // В сцене ось Y — высота, поэтому `y` прямоугольника ложится на Z.
+    const fb = planBounds(floor.modules);
+    if (fb) {
       out.structure.push({
-        cx: (fMinX + fMaxX) / 2,
+        cx: fb.x + fb.w / 2,
         cy: baseY + 0.02,
-        cz: (fMinZ + fMaxZ) / 2,
-        sx: fMaxX - fMinX + pad * 2,
+        cz: fb.y + fb.h / 2,
+        sx: fb.w + FLOOR_PAD_CELLS * 2,
         sy: 0.04,
-        sz: fMaxZ - fMinZ + pad * 2,
+        sz: fb.h + FLOOR_PAD_CELLS * 2,
         color: FLOOR_COLOR,
       });
       // Чип с именем этажа — у угла его плиты, над секциями.
       out.labels.push({
         text: floor.name,
-        x: fMinX - pad / 2,
+        x: fb.x - FLOOR_PAD_CELLS / 2,
         y: baseY + SECTION_H + 1.1,
-        z: fMinZ - pad / 2,
+        z: fb.y - FLOOR_PAD_CELLS / 2,
       });
     }
 
     // Чипы рядов — над центром габарита закреплённых рядов (как в 2D).
-    {
-      const rowMap = rowNumbers(floor);
-      const pinned = new Set<number>();
-      for (const m of floor.modules) if (m.row != null) pinned.add(m.row);
-      const boxes = new Map<
-        number,
-        { minX: number; minZ: number; maxX: number; maxZ: number }
-      >();
-      for (const m of floor.modules) {
-        const r = rowMap.get(m.id);
-        if (r == null || !pinned.has(r)) continue;
-        const b = boxes.get(r);
-        if (!b) {
-          boxes.set(r, { minX: m.x, minZ: m.y, maxX: m.x + m.w, maxZ: m.y + m.h });
-        } else {
-          b.minX = Math.min(b.minX, m.x);
-          b.minZ = Math.min(b.minZ, m.y);
-          b.maxX = Math.max(b.maxX, m.x + m.w);
-          b.maxZ = Math.max(b.maxZ, m.y + m.h);
-        }
-      }
-      for (const [row, b] of boxes) {
-        out.labels.push({
-          text: rowLabel(row),
-          x: (b.minX + b.maxX) / 2,
-          y: baseY + SECTION_H + 0.55,
-          z: (b.minZ + b.maxZ) / 2,
-        });
-      }
+    for (const f of rowFrames(floor)) {
+      out.labels.push({
+        text: rowLabel(f.row),
+        x: f.rect.x + f.rect.w / 2,
+        y: baseY + SECTION_H + 0.55,
+        z: f.rect.y + f.rect.h / 2,
+      });
     }
 
     for (const m of floor.modules) {
-      minX = Math.min(minX, m.x);
-      maxX = Math.max(maxX, m.x + m.w);
-      minZ = Math.min(minZ, m.y);
-      maxZ = Math.max(maxZ, m.y + m.h);
-
       const cx = m.x + m.w / 2;
       const cz = m.y + m.h / 2;
 
@@ -337,8 +299,7 @@ export function buildScene(
           // В ячейке может лежать и коробка приёмки с несколькими товарами —
           // для 3D берём первый известный товар как представителя ячейки.
           const occupied = occupancy[`${m.id}:${shelfIndex}:${cellIndex}`];
-          const productId =
-            occupied?.productIds.find((id) => byId.has(id)) ?? null;
+          const productId = occupied?.productIds.find((id) => byId.has(id)) ?? null;
 
           const sy = cellH * PAD;
           const along = shelfStart + (cellIndex + 0.5) * cellLen;
@@ -362,13 +323,13 @@ export function buildScene(
     }
   });
 
-  if (!Number.isFinite(minX)) return out;
+  if (!bounds) return out;
 
   const padXZ = 0.6;
-  const w = maxX - minX + padXZ * 2;
-  const d = maxZ - minZ + padXZ * 2;
-  const scx = (minX + maxX) / 2;
-  const scz = (minZ + maxZ) / 2;
+  const w = bounds.w + padXZ * 2;
+  const d = bounds.h + padXZ * 2;
+  const scx = bounds.x + bounds.w / 2;
+  const scz = bounds.y + bounds.h / 2;
   warehouse.floors.forEach((_, floorIdx) => {
     const cy = floorIdx * FLOOR_STEP - SLAB_H / 2;
     if (floorIdx === 0) {

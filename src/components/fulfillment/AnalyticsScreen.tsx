@@ -1,12 +1,5 @@
 import { useMemo } from "react";
-import {
-  AlertTriangle,
-  ClipboardList,
-  Gauge,
-  PackagePlus,
-  Timer,
-  Truck,
-} from "lucide-react";
+import { AlertTriangle, ClipboardList, Gauge, PackagePlus, Timer, Truck } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import {
   formatDuration,
@@ -16,6 +9,8 @@ import {
   storageCost,
 } from "@/lib/fulfillment";
 import { useT } from "@/lib/i18n";
+import { eyebrow } from "@/components/ui/eyebrow";
+import { card } from "@/components/ui/card";
 import { ScreenShell } from "./ScreenShell";
 import { BarChart, Donut, FillBar, StatCard } from "./charts";
 
@@ -46,11 +41,7 @@ export function AnalyticsScreen() {
   const recv = useMemo(() => receivingStats(events), [events]);
   const req = useMemo(() => requestStats(requests), [requests]);
 
-  const cost = storageCost(
-    occ.occupied,
-    warehouse.storageRatePerCell,
-    STORAGE_PERIOD_DAYS,
-  );
+  const cost = storageCost(occ.occupied, warehouse.storageRatePerCell, STORAGE_PERIOD_DAYS);
   const openShipments = shipments.filter((s) => s.status !== "closed").length;
   const discPct = Math.round(recv.discrepancyShare * 100);
   // Доля частично закрытых считается от ВСЕХ собранных заявок — и тех, что
@@ -58,9 +49,7 @@ export function AnalyticsScreen() {
   // тому же множеству; делить только на «собрана» значило бы получить долю
   // больше 100%, как только часть заявок отгрузили.
   const pickedTotal = req.done + req.shipped;
-  const partialPct = pickedTotal
-    ? Math.round((req.partial / pickedTotal) * 100)
-    : 0;
+  const partialPct = pickedTotal ? Math.round((req.partial / pickedTotal) * 100) : 0;
 
   return (
     <ScreenShell title={t("an.title")} subtitle={t("an.subtitle")} wide>
@@ -107,12 +96,10 @@ export function AnalyticsScreen() {
       </div>
 
       {/* Приёмка за период */}
-      <section className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
+      <section className={card({ className: "flex flex-col gap-3" })}>
         <div className="flex items-baseline justify-between gap-3">
           <h2 className="text-sm font-semibold">{t("an.receivingTitle")}</h2>
-          <p className="text-[11px] text-muted-foreground">
-            {t("an.receivingSubtitle")}
-          </p>
+          <p className="text-[11px] text-muted-foreground">{t("an.receivingSubtitle")}</p>
         </div>
         <BarChart data={recv.byDay} emptyLabel={t("an.noReceiving")} />
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -133,7 +120,7 @@ export function AnalyticsScreen() {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* Заявки продавца */}
-        <section className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
+        <section className={card({ className: "flex flex-col gap-3" })}>
           <h2 className="flex items-center gap-1.5 text-sm font-semibold">
             <ClipboardList className="size-3.5 text-muted-foreground" />
             {t("an.requestsTitle")}
@@ -170,36 +157,22 @@ export function AnalyticsScreen() {
             ]}
           />
           <dl className="flex flex-col gap-1.5 border-t border-border pt-3 text-xs">
-            <Row
-              label={t("an.leadTime")}
-              value={formatDuration(req.avgLeadMs, t.lang)}
-            />
-            <Row
-              label={t("an.pickTimeShort")}
-              value={formatDuration(req.avgPickMs, t.lang)}
-            />
-            <Row
-              label={t("an.partialShare")}
-              value={`${partialPct}% (${req.partial})`}
-            />
+            <Row label={t("an.leadTime")} value={formatDuration(req.avgLeadMs, t.lang)} />
+            <Row label={t("an.pickTimeShort")} value={formatDuration(req.avgPickMs, t.lang)} />
+            <Row label={t("an.partialShare")} value={`${partialPct}% (${req.partial})`} />
             <Row label={t("an.openShipments")} value={openShipments} />
           </dl>
         </section>
 
         {/* Занятость по этажам */}
-        <section className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
+        <section className={card({ className: "flex flex-col gap-3" })}>
           <h2 className="flex items-center gap-1.5 text-sm font-semibold">
             <Gauge className="size-3.5 text-muted-foreground" />
             {t("an.occupancyTitle")}
           </h2>
           <div className="flex flex-col gap-2.5">
             {occ.byFloor.map((f) => (
-              <FillBar
-                key={f.floorId}
-                label={f.name}
-                value={f.occupied}
-                total={f.cells}
-              />
+              <FillBar key={f.floorId} label={f.name} value={f.occupied} total={f.cells} />
             ))}
           </div>
           {/* Стоимость хранения (п.10.5): занятые ячейки × тариф × дни.
@@ -234,20 +207,10 @@ export function AnalyticsScreen() {
   );
 }
 
-function MiniStat({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: number;
-  tone?: "warn";
-}) {
+function MiniStat({ label, value, tone }: { label: string; value: number; tone?: "warn" }) {
   return (
     <div className="rounded-lg bg-muted/50 px-3 py-2">
-      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-        {label}
-      </div>
+      <div className={eyebrow({ size: "xs", weight: "normal" })}>{label}</div>
       <div
         className={
           tone === "warn"

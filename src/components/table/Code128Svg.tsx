@@ -31,9 +31,7 @@ export function Code128Svg({
     return (
       <div className={cn("bg-white px-2 py-3 text-center", className)}>
         <div className="font-mono text-xs text-black">{code}</div>
-        <div className="pt-1 text-[10px] text-neutral-500">
-          {t("barcode.notEncodable")}
-        </div>
+        <div className="pt-1 text-[10px] text-neutral-500">{t("barcode.notEncodable")}</div>
       </div>
     );
   }

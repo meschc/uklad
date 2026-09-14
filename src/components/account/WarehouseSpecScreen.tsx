@@ -13,6 +13,8 @@ import { selectRole, useEditor } from "@/lib/store";
 import type { FireCategory, WarehouseClass, WarehouseSpec } from "@/lib/types";
 import { useT } from "@/lib/i18n";
 import { ScreenShell } from "@/components/fulfillment/ScreenShell";
+import { eyebrow } from "@/components/ui/eyebrow";
+import { card } from "@/components/ui/card";
 import {
   BoolValue,
   ChipsValue,
@@ -52,15 +54,45 @@ const CLASSES: WarehouseClass[] = ["A+", "A", "B+", "B", "C", "D"];
  * объекте.
  */
 const COUNTED: (keyof WarehouseSpec)[] = [
-  "warehouseClass", "builtYear", "totalAreaM2", "storageAreaM2", "ceilingHeightM",
-  "floorLoadKgM2", "floorType", "rackType", "palletCapacity",
-  "hours", "round0Clock", "docks", "dockType", "rampHeightCm", "parkingSpots",
-  "railSpur", "accessNote",
-  "tempMinC", "tempMaxC", "humidityMin", "humidityMax", "climateNote",
-  "equipment", "wmsName", "networkNote",
-  "fireCategory", "fireNote", "securityNote", "guarded", "cctvCount", "accessControl",
-  "restrictions", "maxShelfKg", "features", "condition",
-  "insuranceNote", "licenses", "services", "contractNote",
+  "warehouseClass",
+  "builtYear",
+  "totalAreaM2",
+  "storageAreaM2",
+  "ceilingHeightM",
+  "floorLoadKgM2",
+  "floorType",
+  "rackType",
+  "palletCapacity",
+  "hours",
+  "round0Clock",
+  "docks",
+  "dockType",
+  "rampHeightCm",
+  "parkingSpots",
+  "railSpur",
+  "accessNote",
+  "tempMinC",
+  "tempMaxC",
+  "humidityMin",
+  "humidityMax",
+  "climateNote",
+  "equipment",
+  "wmsName",
+  "networkNote",
+  "fireCategory",
+  "fireNote",
+  "securityNote",
+  "guarded",
+  "cctvCount",
+  "accessControl",
+  "restrictions",
+  "maxShelfKg",
+  "features",
+  "condition",
+  "insuranceNote",
+  "licenses",
+  "services",
+  "contractNote",
 ];
 
 export function WarehouseSpecScreen() {
@@ -93,7 +125,7 @@ export function WarehouseSpecScreen() {
     >
       {/* Визитка объекта: класс, адрес, полнота и шесть цифр, которые
           спрашивают первыми в любом разговоре про склад. */}
-      <section className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4">
+      <section className={card({ className: "flex flex-col gap-4" })}>
         <div className="flex flex-wrap items-center gap-4">
           <ClassBadge value={spec.warehouseClass} />
           <div className="min-w-0 flex-1">
@@ -106,16 +138,12 @@ export function WarehouseSpecScreen() {
             )}
             {!ro && (
               <div className="mt-1.5 flex items-center gap-1.5">
-                <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                  {t("spec.class")}
-                </span>
+                <span className={eyebrow({ size: "xs", weight: "medium" })}>{t("spec.class")}</span>
                 <ChoiceValue
                   value={spec.warehouseClass}
                   options={CLASSES}
                   readOnly={false}
-                  onChange={(v) =>
-                    patch({ warehouseClass: v as WarehouseClass | undefined })
-                  }
+                  onChange={(v) => patch({ warehouseClass: v })}
                 />
               </div>
             )}
@@ -148,11 +176,7 @@ export function WarehouseSpecScreen() {
             />
           </Tile>
           <Tile label={t("spec.docks")}>
-            <StatValue
-              value={spec.docks}
-              readOnly={ro}
-              onCommit={(v) => patch({ docks: v })}
-            />
+            <StatValue value={spec.docks} readOnly={ro} onCommit={(v) => patch({ docks: v })} />
           </Tile>
           <Tile label={t("spec.floorLoad")}>
             <StatValue
@@ -173,10 +197,7 @@ export function WarehouseSpecScreen() {
       </section>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <SpecCard
-          icon={<Building2 className="size-3.5" />}
-          title={t("spec.buildingTitle")}
-        >
+        <SpecCard icon={<Building2 className="size-3.5" />} title={t("spec.buildingTitle")}>
           <TileGrid>
             <Tile label={t("spec.totalArea")}>
               <StatValue
@@ -279,10 +300,7 @@ export function WarehouseSpecScreen() {
           </TileGrid>
         </SpecCard>
 
-        <SpecCard
-          icon={<Thermometer className="size-3.5" />}
-          title={t("spec.climateTitle")}
-        >
+        <SpecCard icon={<Thermometer className="size-3.5" />} title={t("spec.climateTitle")}>
           <TileGrid>
             <Tile label={t("spec.temp")}>
               <RangeValue
@@ -366,9 +384,7 @@ export function WarehouseSpecScreen() {
                 options={FIRE_CATEGORIES}
                 labelFor={(c) => t(`spec.fire.${c}`)}
                 readOnly={ro}
-                onChange={(v) =>
-                  patch({ fireCategory: v as FireCategory | undefined })
-                }
+                onChange={(v) => patch({ fireCategory: v })}
               />
             </Tile>
             <Tile label={t("spec.fireNote")} wide>
@@ -382,10 +398,7 @@ export function WarehouseSpecScreen() {
           </TileGrid>
         </SpecCard>
 
-        <SpecCard
-          icon={<ShieldCheck className="size-3.5" />}
-          title={t("spec.securityTitle")}
-        >
+        <SpecCard icon={<ShieldCheck className="size-3.5" />} title={t("spec.securityTitle")}>
           <TileGrid>
             <Tile label={t("spec.guarded")}>
               <BoolValue

@@ -1,9 +1,9 @@
-import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Download, X } from "lucide-react";
 import { isValidEan13, toEan13 } from "@/lib/barcode";
 import { QR_QUIET_ZONE, qrMatrix } from "@/lib/qr";
 import { useT } from "@/lib/i18n";
+import { DialogHeader, DialogShell } from "@/components/ui/dialog-shell";
 import { Button } from "@/components/ui/button";
 import { QrSvg } from "./QrSvg";
 
@@ -15,23 +15,9 @@ import { QrSvg } from "./QrSvg";
  * Рисуем на canvas прямо из матрицы модулей — растеризация не зависит от SVG и
  * всегда даёт чёткий PNG без «мыла» на границах модулей.
  */
-export function BarcodeModal({
-  code,
-  onClose,
-}: {
-  code: string;
-  onClose: () => void;
-}) {
+export function BarcodeModal({ code, onClose }: { code: string; onClose: () => void }) {
   const t = useT();
   const normalized = isValidEan13(code) ? code : toEan13(code);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
 
   const exportPng = () => {
     const matrix = qrMatrix(normalized);
@@ -51,12 +37,7 @@ export function BarcodeModal({
     for (let r = 0; r < matrix.length; r++) {
       for (let c = 0; c < matrix[r].length; c++) {
         if (!matrix[r][c]) continue;
-        ctx.fillRect(
-          (c + QR_QUIET_ZONE) * scale,
-          (r + QR_QUIET_ZONE) * scale,
-          scale,
-          scale,
-        );
+        ctx.fillRect((c + QR_QUIET_ZONE) * scale, (r + QR_QUIET_ZONE) * scale, scale, scale);
       }
     }
     ctx.font = `${textH - 12}px monospace`;
@@ -74,29 +55,23 @@ export function BarcodeModal({
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div
-        className="absolute inset-0 animate-fade-in bg-black/40 backdrop-blur-[1px]"
-        onClick={onClose}
-      />
-      <div className="relative w-full max-w-sm animate-scale-in overflow-hidden rounded-xl border border-border bg-card shadow-2xl">
-        <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-3">
-          <p className="text-sm font-semibold">{t("barcode.title")}</p>
-          <Button variant="ghost" size="icon-sm" onClick={onClose}>
-            <X className="size-4" />
-          </Button>
+    <DialogShell size="sm" onClose={onClose}>
+      <DialogHeader>
+        <p className="text-sm font-semibold">{t("barcode.title")}</p>
+        <Button variant="ghost" size="icon-sm" onClick={onClose}>
+          <X className="size-4" />
+        </Button>
+      </DialogHeader>
+      <div className="flex flex-col items-center gap-4 px-5 py-5">
+        <div className="w-full rounded-md border border-border bg-white p-4">
+          <QrSvg code={normalized} size={180} className="w-full" />
         </div>
-        <div className="flex flex-col items-center gap-4 px-5 py-5">
-          <div className="w-full rounded-md border border-border bg-white p-4">
-            <QrSvg code={normalized} size={180} className="w-full" />
-          </div>
-          <Button size="sm" className="w-full" onClick={exportPng}>
-            <Download className="size-4" />
-            {t("barcode.exportPng")}
-          </Button>
-        </div>
+        <Button size="sm" className="w-full" onClick={exportPng}>
+          <Download className="size-4" />
+          {t("barcode.exportPng")}
+        </Button>
       </div>
-    </div>,
+    </DialogShell>,
     document.body,
   );
 }

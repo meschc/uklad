@@ -21,7 +21,6 @@ export function floorsWithoutVerticalLink(warehouse: Warehouse): Floor[] {
     return src ? src.modules : f.modules;
   };
   return warehouse.floors.filter(
-    (f) =>
-      !modulesOf(f).some((m) => m.type === "stairs" || m.type === "elevator"),
+    (f) => !modulesOf(f).some((m) => m.type === "stairs" || m.type === "elevator"),
   );
 }

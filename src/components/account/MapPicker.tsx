@@ -25,8 +25,14 @@ export function MapPicker({
   const elRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
+  // Колбэк держим в ref, чтобы карта не пересоздавалась из-за новой стрелочной
+  // функции в родителе. Запись — в эффекте без зависимостей: он идёт после
+  // каждого рендера, но уже после отрисовки, и не пострадает, если React
+  // выбросит результат прерванного рендера.
   const onPickRef = useRef(onPick);
-  onPickRef.current = onPick;
+  useEffect(() => {
+    onPickRef.current = onPick;
+  });
 
   // Инициализация карты один раз.
   useEffect(() => {
@@ -41,8 +47,7 @@ export function MapPicker({
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 19,
       noWrap: true,
-      attribution:
-        '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     }).addTo(map);
 
     const icon = L.divIcon({

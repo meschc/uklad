@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Check, Loader2 } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { useT } from "@/lib/i18n";
-import { cn } from "@/lib/utils";
+import { cn, nowMs } from "@/lib/utils";
 
 /**
  * Индикатор автосохранения. Изменения и так пишутся в хранилище на каждое
@@ -15,9 +15,12 @@ import { cn } from "@/lib/utils";
 export function SaveStatus() {
   const t = useT();
   const [saving, setSaving] = useState(false);
-  const [savedAt, setSavedAt] = useState(() => Date.now());
-  // Тик, чтобы «только что» со временем превращалось в «N мин назад».
-  const [, setTick] = useState(0);
+  const [savedAt, setSavedAt] = useState(() => nowMs());
+  // «Сейчас» держим в состоянии, а не читаем часы прямо в рендере: рендер
+  // обязан быть чистым, иначе два прогона одного и того же состояния дают
+  // разную подпись. Двигает время таймер ниже — раз в полминуты, чтобы
+  // «только что» само превращалось в «N мин назад».
+  const [now, setNow] = useState(() => nowMs());
 
   useEffect(() => {
     let timer: number | undefined;
@@ -25,8 +28,10 @@ export function SaveStatus() {
       setSaving(true);
       window.clearTimeout(timer);
       timer = window.setTimeout(() => {
+        const at = nowMs();
         setSaving(false);
-        setSavedAt(Date.now());
+        setSavedAt(at);
+        setNow(at);
       }, 500);
     };
     const unsub = useEditor.subscribe((s, prev) => {
@@ -44,7 +49,7 @@ export function SaveStatus() {
         pulse();
       }
     });
-    const iv = window.setInterval(() => setTick((n) => n + 1), 30_000);
+    const iv = window.setInterval(() => setNow(nowMs()), 30_000);
     return () => {
       unsub();
       window.clearTimeout(timer);
@@ -52,7 +57,7 @@ export function SaveStatus() {
     };
   }, []);
 
-  const mins = Math.floor((Date.now() - savedAt) / 60_000);
+  const mins = Math.floor((now - savedAt) / 60_000);
   const when = mins < 1 ? t("save.justNow") : t("save.minsAgo", { n: mins });
 
   return (
@@ -64,7 +69,7 @@ export function SaveStatus() {
         useEditor.setState({});
         window.setTimeout(() => {
           setSaving(false);
-          setSavedAt(Date.now());
+          setSavedAt(nowMs());
         }, 400);
       }}
       className={cn(

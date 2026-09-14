@@ -55,8 +55,7 @@ export function buildOccupancy(
     const key = addressKey(box.address);
     const prev = occ[key];
     const productIds = [...(prev?.productIds ?? []), ...box.lines.map((l) => l.productId)];
-    const qty =
-      (prev?.qty ?? 0) + box.lines.reduce((sum, l) => sum + l.qty, 0);
+    const qty = (prev?.qty ?? 0) + box.lines.reduce((sum, l) => sum + l.qty, 0);
     occ[key] = { productIds, boxId: box.id, qty };
   }
   return occ;
@@ -68,12 +67,6 @@ export function occupantsAt(occupancy: Occupancy, addr: CellAddress): string[] {
 }
 
 export type FitAxis = "width" | "height" | "depth";
-
-export const AXIS_TITLE: Record<FitAxis, string> = {
-  width: "ширина",
-  height: "высота",
-  depth: "глубина",
-};
 
 export interface FitResult {
   fits: boolean;
@@ -176,10 +169,7 @@ function bestFreeFit(
  * «на складе нет ячейки такого размера» от «подходящие есть, но все заняты» —
  * это разные проблемы с разными решениями.
  */
-export function tightestFittingCell(
-  warehouse: Warehouse,
-  product: Product,
-): CellCandidate | null {
+export function tightestFittingCell(warehouse: Warehouse, product: Product): CellCandidate | null {
   let best: CellCandidate | null = null;
   for (const c of allCells(warehouse)) {
     if (!checkFit(product, c.dims).fits) continue;

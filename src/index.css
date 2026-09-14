@@ -2,6 +2,75 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Golos Text — свой, а не с Google Fonts.
+ *
+ * Раньше шапка обеих страниц звала `fonts.googleapis.com`. Это стоило дорого по
+ * трём статьям сразу. Первая — время: таблица стилей с чужого домена блокирует
+ * отрисовку, и до первой буквы нужно было успеть разрешить имя, пожать руку по
+ * TLS, получить css и только потом пойти за самим шрифтом на третий домен —
+ * четыре обращения там, где хватает одного. Вторая — надёжность: сервис,
+ * который продаётся складам в России, не должен зависеть от домена, доступность
+ * которого здесь никто не гарантирует; без него весь текст ушёл бы в запасной
+ * системный шрифт. Третья — приватность: каждый заход отправлял бы адрес
+ * страницы и отпечаток браузера человека третьей стороне, а в политике
+ * обработки данных такой передачи не описано.
+ *
+ * Начертание переменное, 400..900 одним файлом на каждый набор символов.
+ * Наборы разделены по `unicode-range` ровно так же, как это делает Google:
+ * русская страница берёт кириллицу и латиницу и не грузит остальное.
+ * `font-display: swap` — текст виден сразу системным шрифтом и переключается,
+ * когда файл придёт; пустая страница в ожидании шрифта хуже подмены начертания.
+ *
+ * Про `latin-ext`: его тянет ровно один символ — знак рубля «₽», Google положил
+ * его именно туда. 19 КБ за один глиф выглядят обидно, но подрезать шрифт под
+ * себя ради них — значит завести в проекте самодельный файл гарнитуры, который
+ * некому будет пересобрать. Файл грузится параллельно, отрисовку не держит и
+ * кешируется навсегда; в прежней схеме с Google Fonts он приезжал точно так же.
+ *
+ * Файлы в `public/fonts`, лицензия — в `public/fonts/CREDITS.md`.
+ */
+@font-face {
+  font-family: "Golos Text";
+  src: url("/fonts/golos-text-cyrillic.woff2") format("woff2");
+  font-weight: 400 900;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+
+@font-face {
+  font-family: "Golos Text";
+  src: url("/fonts/golos-text-cyrillic-ext.woff2") format("woff2");
+  font-weight: 400 900;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+
+@font-face {
+  font-family: "Golos Text";
+  src: url("/fonts/golos-text-latin.woff2") format("woff2");
+  font-weight: 400 900;
+  font-style: normal;
+  font-display: swap;
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Golos Text";
+  src: url("/fonts/golos-text-latin-ext.woff2") format("woff2");
+  font-weight: 400 900;
+  font-style: normal;
+  font-display: swap;
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
+}
+
 @layer base {
   :root {
     /* Полосы прокрутки, поля ввода и меню выбора рисует не CSS, а система, и
@@ -273,53 +342,10 @@
   background: hsl(var(--background) / 0.8);
 }
 
-/* Печать (п.9): на бумагу уходит только план для сверки — интерфейс редактора
-   в распечатке бесполезен и съедает лист.
-
-   Один этаж — один лист A4 (п.2). Размер и ориентацию страницы задаёт сам
-   компонент печати (он знает пропорции плана), а высоту рисунка ограничиваем
-   в миллиметрах: иначе высокий план растягивается на несколько страниц. */
-@media print {
-  body * {
-    visibility: hidden;
-  }
-  .print-root,
-  .print-root * {
-    visibility: visible;
-  }
-  .print-root {
-    position: absolute;
-    inset: 0;
-    padding: 0;
-    background: #fff;
-    color: #000;
-  }
-  .print-sheet {
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
-  /* Наклейки печатаются рулоном: страница равна самой наклейке (её размер
-     задаёт @page прямо на экране наклеек). Корневой блок печати тогда не
-     растягивается на лист, а отдаёт поток самим наклейкам. */
-  .print-root.print-flow {
-    position: static;
-    inset: auto;
-  }
-  .print-label {
-    break-inside: avoid;
-    page-break-inside: avoid;
-    break-after: page;
-    page-break-after: always;
-  }
-  .print-label:last-child {
-    break-after: auto;
-    page-break-after: auto;
-  }
-  /* Свободная высота листа за вычетом шапки и легенды. Значение приходит из
-     компонента: у альбомной страницы её меньше, чем у книжной. */
-  .print-plan {
-    width: 100%;
-    height: auto;
-    max-height: var(--print-plan-h, 240mm);
-  }
-}
+/* Печатных правил здесь нет намеренно. Этот файл общий: его импортирует и
+   приложение (`src/main.tsx`), и витрина (`src/site/main.tsx`) — ради токенов
+   темы и базы Tailwind. Печать у них разная и живёт по своим файлам:
+   приложение — `src/print.css`, витрина — блок `@media print` в
+   `src/site/site.css`. Смешивать нельзя: правило приложения прячет всё, кроме
+   `.print-root`, а на витрине такого блока нет, и общий файл превращал любую
+   печать сайта в пустые листы. */

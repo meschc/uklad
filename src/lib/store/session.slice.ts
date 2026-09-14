@@ -1,4 +1,4 @@
-import { uid } from "../utils";
+import { nowMs, uid } from "../utils";
 import type { Session, UserRole } from "../types";
 import type { SessionSlice, SliceCreator } from "./state";
 
@@ -26,13 +26,12 @@ export function makeSession(role: UserRole, warehouseId: string): Session {
       warehouseId,
     },
     token: mockToken(),
-    startedAt: Date.now(),
+    startedAt: nowMs(),
   };
 }
 
 /** Роль текущего пользователя — единственный правильный способ её спросить. */
-export const selectRole = (s: { session: Session }): UserRole =>
-  s.session.user.role;
+export const selectRole = (s: { session: Session }): UserRole => s.session.user.role;
 
 export const createSessionSlice: SliceCreator<SessionSlice> = (set) => ({
   // Склад проставится при первой же смене роли; на старте важна только роль.
@@ -45,11 +44,6 @@ export const createSessionSlice: SliceCreator<SessionSlice> = (set) => ({
         user: { ...s.session.user, role, warehouseId: s.warehouse.id },
       },
       // Экран склада продавцу не показываем и наоборот: уводим на «свой» старт.
-      appView:
-        role === "seller"
-          ? "seller"
-          : s.appView === "seller"
-            ? "dashboard"
-            : s.appView,
+      appView: role === "seller" ? "seller" : s.appView === "seller" ? "dashboard" : s.appView,
     })),
 });

@@ -10,6 +10,7 @@ import type {
   Shipment,
   Warehouse,
 } from "./types";
+import { nowMs } from "./utils";
 
 /**
  * Складские документы (п.12): лист сборки, накладная на отгрузку, лист приёмки.
@@ -67,7 +68,7 @@ const PREFIX: Record<DocKind, string> = {
  * разные — разными. Сквозной счётчик здесь был бы враньём: он должен жить в
  * учётной системе, а не в браузере одного кладовщика.
  */
-export function docNumber(kind: DocKind, sourceId: string, date: number): string {
+function docNumber(kind: DocKind, sourceId: string, date: number): string {
   const d = new Date(date);
   const ymd =
     String(d.getFullYear() % 100).padStart(2, "0") +
@@ -80,10 +81,8 @@ export function docNumber(kind: DocKind, sourceId: string, date: number): string
   return `${PREFIX[kind]}-${ymd}-${hash.toString(16).toUpperCase().padStart(4, "0").slice(-4)}`;
 }
 
-const nameOf = (products: Product[], id: string) =>
-  products.find((p) => p.id === id)?.name ?? "—";
-const skuOf = (products: Product[], id: string) =>
-  products.find((p) => p.id === id)?.sku ?? "—";
+const nameOf = (products: Product[], id: string) => products.find((p) => p.id === id)?.name ?? "—";
+const skuOf = (products: Product[], id: string) => products.find((p) => p.id === id)?.sku ?? "—";
 
 const addrText = (warehouse: Warehouse, addr?: CellAddress) =>
   addr ? (formatAddress(warehouse, addr) ?? undefined) : undefined;
@@ -100,7 +99,7 @@ export function buildPickDoc(
   placements: Record<string, CellAddress>,
   boxes: Box[],
   sourceId: string,
-  now = Date.now(),
+  now = nowMs(),
 ): DocModel {
   const stock = stockByProduct(placements, boxes);
   const lines: DocLine[] = requests.map((r, i) => ({
@@ -148,7 +147,7 @@ export function buildPickDocFromProducts(
   warehouse: Warehouse,
   placements: Record<string, CellAddress>,
   boxes: Box[],
-  now = Date.now(),
+  now = nowMs(),
 ): DocModel {
   const stock = stockByProduct(placements, boxes);
   // Номер считаем от состава, а не от порядка отметки: тот же набор товаров
@@ -251,8 +250,6 @@ export function buildReceivingDoc(
     counterparty: shipment.title,
     lines,
     totalQty: lines.reduce((s, l) => s + l.qty, 0),
-    totalFact: anyFact
-      ? lines.reduce((s, l) => s + (l.fact ?? 0), 0)
-      : undefined,
+    totalFact: anyFact ? lines.reduce((s, l) => s + (l.fact ?? 0), 0) : undefined,
   };
 }

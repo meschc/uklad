@@ -9,9 +9,7 @@ export const createOnboardingSlice: SliceCreator<OnboardingSlice> = (set) => ({
   activeHint: null,
 
   showHint: (key) =>
-    set((s) =>
-      s.activeHint || s.seenHints.includes(key) ? {} : { activeHint: key },
-    ),
+    set((s) => (s.activeHint || s.seenHints.includes(key) ? {} : { activeHint: key })),
 
   dismissHint: () =>
     set((s) => ({

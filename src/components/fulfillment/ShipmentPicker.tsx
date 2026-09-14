@@ -1,16 +1,19 @@
 import { useMemo, useRef, useState } from "react";
-import * as XLSX from "xlsx";
 import {
   AlertTriangle,
   Check,
   Download,
   FileSpreadsheet,
+  Loader2,
   PackageSearch,
   Plus,
   Upload,
   X,
 } from "lucide-react";
 import { useEditor } from "@/lib/store";
+import { fulfillmentRepository } from "@/lib/data";
+import { useCommand } from "@/lib/useCommand";
+import { downloadSheet, readSheetMatrix } from "@/lib/sheets";
 import {
   SHIPMENT_SOURCES,
   SHIPMENT_TEMPLATE_EXAMPLE,
@@ -22,13 +25,15 @@ import type { ExpectedShipment, ShipmentSource } from "@/lib/types";
 import { useT, type TFunc } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { eyebrow } from "@/components/ui/eyebrow";
+import { card } from "@/components/ui/card";
 import { EmptyState } from "./ScreenShell";
 
 /**
  * Шаг 5.1 — выбор ожидаемой поставки.
  *
  * Источник поставки — тонкий адаптер к общему формату (`shipmentSources.ts`),
- * а не логика, зашитая в экран: реальная интеграция с 1С/МойСклад/АВА позже
+ * а не логика, зашитая в экран: реальная интеграция с 1С/МойСклад/ГИС МТ позже
  * будет новым адаптером, а не переделкой приёмки. Отдельно есть универсальный
  * путь для поставщика без своей системы учёта — шаблон таблицы.
  */
@@ -83,15 +88,11 @@ export function ShipmentPicker({
           {t("recv.pick.freeform")}
         </Button>
       </div>
-      <p className="text-[11px] text-muted-foreground">
-        {t("recv.pick.freeformHint")}
-      </p>
+      <p className="text-[11px] text-muted-foreground">{t("recv.pick.freeformHint")}</p>
 
       {closed.length > 0 && (
         <div className="flex flex-col gap-2 pt-2">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            {t("recv.pick.closed")}
-          </p>
+          <p className={eyebrow()}>{t("recv.pick.closed")}</p>
           {closed.slice(0, 5).map((sh) => (
             <ShipmentCard key={sh.id} shipment={sh} onPick={onPick} t={t} />
           ))}
@@ -118,17 +119,22 @@ function ShipmentCard({
   return (
     <button
       onClick={() => onPick(sh.id)}
-      className="flex flex-col gap-2 rounded-xl border border-border bg-card p-3.5 text-left transition-colors hover:border-primary/40 hover:bg-accent/40"
+      className={card({
+        pad: "md",
+        className:
+          "flex flex-col gap-2 text-left transition-colors hover:border-primary/40 hover:bg-accent/40",
+      })}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold">
-            {sh.title || t("recv.pick.untitled")}
-          </p>
+          <p className="truncate text-sm font-semibold">{sh.title || t("recv.pick.untitled")}</p>
           <p className="mt-0.5 text-[11px] text-muted-foreground">
             {source ? t(source.titleKey) : sh.source} ·{" "}
-            {t("recv.pick.lines", { n: sh.lines.length })} ·{" "}
-            {new Date(sh.createdAt).toLocaleDateString()}
+            {t("recv.pick.lines", {
+              n: sh.lines.length,
+              unit: t.plural(sh.lines.length, ["позиция", "позиции", "позиций"], ["line", "lines"]),
+            })}{" "}
+            · {new Date(sh.createdAt).toLocaleDateString()}
           </p>
         </div>
         {sh.crossDock && (
@@ -151,9 +157,7 @@ function ShipmentCard({
       </div>
       <div>
         <div className="mb-1 flex items-center justify-between text-[11px]">
-          <span className="text-muted-foreground">
-            {t("recv.pick.progress", { p: pct })}
-          </span>
+          <span className="text-muted-foreground">{t("recv.pick.progress", { p: pct })}</span>
           <span className="font-medium tabular-nums">
             {received}/{expected}
           </span>
@@ -178,7 +182,7 @@ function ShipmentForm({
   onCancel: () => void;
 }) {
   const products = useEditor((s) => s.products);
-  const createExpectedShipment = useEditor((s) => s.createExpectedShipment);
+  const showToast = useEditor((s) => s.showToast);
   const t = useT();
 
   const [source, setSource] = useState<ShipmentSource>("manual");
@@ -206,30 +210,25 @@ function ShipmentForm({
     setText("");
     const buf = await file.arrayBuffer();
     try {
-      const wb = XLSX.read(buf, { type: "array" });
-      const sheet = wb.Sheets[wb.SheetNames[0]];
-      const aoa = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
-        header: 1,
-        raw: false,
-        defval: "",
-        blankrows: false,
-      });
-      setFileMatrix(
-        aoa.map((row) => (row as unknown[]).map((c) => (c == null ? "" : String(c)))),
-      );
+      // Пустая матрица — это «файл прочитали, товара в нём нет»: разбор ниже
+      // сам скажет об этом на понятном человеку языке. Книга без листов даёт
+      // ровно тот же итог, поэтому отдельной ветки для неё здесь нет.
+      setFileMatrix((await readSheetMatrix(buf)) ?? []);
     } catch {
       setFileMatrix([]);
     }
   };
 
-  const downloadTemplate = () => {
-    const ws = XLSX.utils.aoa_to_sheet([
-      SHIPMENT_TEMPLATE_HEADERS,
-      ...SHIPMENT_TEMPLATE_EXAMPLE,
-    ]);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Поставка");
-    XLSX.writeFile(wb, "uklad-shipment-template.xlsx");
+  const downloadTemplate = async () => {
+    try {
+      await downloadSheet(
+        [SHIPMENT_TEMPLATE_HEADERS, ...SHIPMENT_TEMPLATE_EXAMPLE],
+        "Поставка",
+        "uklad-shipment-template.xlsx",
+      );
+    } catch {
+      showToast("import.msg.templateFailed");
+    }
   };
 
   const pasteExample = () => {
@@ -243,21 +242,27 @@ function ShipmentForm({
     );
   };
 
-  const submit = () => {
+  // Создание идёт через репозиторий (п.3.2.1). Разобранный файл при отказе
+  // остаётся на экране: он и есть работа человека — заново подбирать таблицу
+  // из-за обрыва связи было бы издевательством.
+  const create = useCommand((lines: { productId: string; expectedQty: number }[]) =>
+    fulfillmentRepository.createShipment(source, lines, title, { crossDock }),
+  );
+
+  const submit = async () => {
     if (!result.ok) return;
     const lines = result.rows
       .filter((r) => !r.errorKey && r.productId)
       .map((r) => ({ productId: r.productId!, expectedQty: r.qty }));
     if (!lines.length) return;
-    onDone(createExpectedShipment(source, lines, title, { crossDock }));
+    const res = await create.run(lines);
+    if (res.ok) onDone(res.data);
   };
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1.5">
-        <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-          {t("recv.form.source")}
-        </span>
+        <span className={eyebrow()}>{t("recv.form.source")}</span>
         <div className="flex flex-wrap gap-1">
           {SHIPMENT_SOURCES.map((s) => (
             <button
@@ -278,9 +283,7 @@ function ShipmentForm({
       </div>
 
       <label className="flex flex-col gap-1.5">
-        <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-          {t("recv.form.title")}
-        </span>
+        <span className={eyebrow()}>{t("recv.form.title")}</span>
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
@@ -291,6 +294,7 @@ function ShipmentForm({
 
       {/* Кроссдокинг (п.10.1): товар с рампы уходит прямо в заявку, минуя
           полку, и в занятость склада не попадает — он там не лежит. */}
+      {/* eslint-disable-next-line jsx-a11y/label-has-associated-control -- поле и подпись внутри label, но текст лежит на уровень глубже, чем ждёт правило по умолчанию; имя элемента браузер собирает верно */}
       <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-border bg-muted/30 p-2.5">
         <input
           type="checkbox"
@@ -300,9 +304,7 @@ function ShipmentForm({
         />
         <span className="flex flex-col gap-0.5">
           <span className="text-xs font-medium">{t("recv.form.crossDock")}</span>
-          <span className="text-[11px] text-muted-foreground">
-            {t("recv.form.crossDockHint")}
-          </span>
+          <span className="text-[11px] text-muted-foreground">{t("recv.form.crossDockHint")}</span>
         </span>
       </label>
 
@@ -358,30 +360,34 @@ function ShipmentForm({
       <ShipmentPreview result={result} t={t} />
 
       <div className="flex items-center justify-end gap-2">
+        {/* Отказ встаёт слева от кнопок, а не тостом: разобранная таблица
+            остаётся на экране, и сообщение должно быть рядом с ней. */}
+        {create.error && (
+          <p role="alert" className="mr-auto min-w-0 text-xs text-destructive">
+            {t(create.error)}
+          </p>
+        )}
         <Button size="sm" variant="ghost" onClick={onCancel}>
           {t("common.cancel")}
         </Button>
         <Button
           size="sm"
-          disabled={!result.ok || result.validCount === 0}
-          onClick={submit}
+          disabled={!result.ok || result.validCount === 0 || create.pending}
+          onClick={() => void submit()}
         >
-          {t("recv.form.create", {
-            n: result.ok ? result.validCount : 0,
-          })}
+          {create.pending && <Loader2 className="animate-spin" />}
+          {create.pending
+            ? t("data.busy")
+            : create.error
+              ? t("data.retry")
+              : t("recv.form.create", { n: result.ok ? result.validCount : 0 })}
         </Button>
       </div>
     </div>
   );
 }
 
-function ShipmentPreview({
-  result,
-  t,
-}: {
-  result: ShipmentParseResult;
-  t: TFunc;
-}) {
+function ShipmentPreview({ result, t }: { result: ShipmentParseResult; t: TFunc }) {
   if (!result.ok) {
     return (
       <div className="flex gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">
@@ -398,9 +404,7 @@ function ShipmentPreview({
             <th className="px-2 py-1.5 font-medium">{t("import.col.status")}</th>
             <th className="px-2 py-1.5 font-medium">{t("table.col.sku")}</th>
             <th className="px-2 py-1.5 font-medium">{t("table.col.name")}</th>
-            <th className="px-2 py-1.5 text-right font-medium">
-              {t("recv.form.qty")}
-            </th>
+            <th className="px-2 py-1.5 text-right font-medium">{t("recv.form.qty")}</th>
           </tr>
         </thead>
         <tbody>
@@ -418,9 +422,7 @@ function ShipmentPreview({
                   </span>
                 )}
               </td>
-              <td className="px-2 py-1.5 font-mono text-muted-foreground">
-                {r.code || "—"}
-              </td>
+              <td className="px-2 py-1.5 font-mono text-muted-foreground">{r.code || "—"}</td>
               <td className="px-2 py-1.5">{r.productName ?? "—"}</td>
               <td className="px-2 py-1.5 text-right tabular-nums">{r.qty}</td>
             </tr>

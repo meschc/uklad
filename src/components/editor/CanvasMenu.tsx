@@ -13,6 +13,7 @@ import type { XY } from "@/lib/types";
 import { combo, DEL_KEY } from "@/lib/platform";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { eyebrow } from "@/components/ui/eyebrow";
 
 /**
  * Контекстное меню по правому клику на плане. Правый клик и так подавлялся
@@ -40,13 +41,7 @@ interface MenuItem {
   danger?: boolean;
 }
 
-export function CanvasMenu({
-  state,
-  onClose,
-}: {
-  state: CanvasMenuState;
-  onClose: () => void;
-}) {
+export function CanvasMenu({ state, onClose }: { state: CanvasMenuState; onClose: () => void }) {
   const t = useT();
   const clipboard = useEditor((s) => s.clipboard);
   const selection = useEditor((s) => s.selection);
@@ -115,9 +110,7 @@ export function CanvasMenu({
           label: t("help.selectAll"),
           hint: combo("A"),
           disabled: st.activeFloor().modules.length === 0,
-          onClick: run(() =>
-            st.select(st.activeFloor().modules.map((m) => m.id)),
-          ),
+          onClick: run(() => st.select(st.activeFloor().modules.map((m) => m.id))),
         },
       ];
 
@@ -141,7 +134,7 @@ export function CanvasMenu({
         style={{ left, top, width: MENU_W }}
       >
         {state.onModule && selection.length > 1 && (
-          <p className="px-3 py-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+          <p className={eyebrow({ size: "xs", weight: "normal", className: "px-3 py-1" })}>
             {t("insp.selected", { n: selection.length })}
           </p>
         )}

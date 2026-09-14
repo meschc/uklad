@@ -1,4 +1,4 @@
-import { uid } from "../utils";
+import { nowMs, uid } from "../utils";
 import { generateBoxBarcode, generatePalletBarcode } from "../barcode";
 import { addressKey } from "../address";
 import { allCells } from "../placement";
@@ -49,7 +49,7 @@ const SUPPLIERS: { title: string; source: ShipmentSource }[] = [
   { title: "ТехноЛайн", source: "moysklad" },
   { title: "Северный склад", source: "1c" },
   { title: "Дом и Сад", source: "manual" },
-  { title: "Мамедова Л. Р.", source: "ava" },
+  { title: "Мамедова Л. Р.", source: "manual" },
   { title: "Ковалёв А. С.", source: "moysklad" },
 ];
 
@@ -90,20 +90,18 @@ export function seedHistory(
   warehouse: Warehouse,
   products: Product[],
   placements: Record<string, CellAddress>,
-  now = Date.now(),
+  now = nowMs(),
 ): SeededHistory {
   if (!products.length) return empty();
 
   const rand = rng(20260820);
-  const pick = <T,>(xs: T[]): T => xs[Math.floor(rand() * xs.length)];
-  const between = (min: number, max: number) =>
-    min + Math.floor(rand() * (max - min + 1));
+  const pick = <T>(xs: T[]): T => xs[Math.floor(rand() * xs.length)];
+  const between = (min: number, max: number) => min + Math.floor(rand() * (max - min + 1));
 
   const staff = warehouse.staff ?? [];
   const receivers = staff.filter((s) => /приём|кладов/i.test(s.role));
   const pickers = staff.filter((s) => /комплект|кладов/i.test(s.role));
-  const staffId = (pool: StaffMember[]) =>
-    pool.length ? pick(pool).id : undefined;
+  const staffId = (pool: StaffMember[]) => (pool.length ? pick(pool).id : undefined);
 
   // Свободные ячейки под тару: всё, что не занято прямым размещением товара.
   const taken = new Set(Object.values(placements).map(addressKey));
@@ -161,8 +159,7 @@ export function seedHistory(
 
     // Что из партии реально приняли. Закрытая — принята почти целиком (иногда
     // с недостачей), «в работе» — наполовину, «не начата» — вовсе нет.
-    const share =
-      plan.status === "closed" ? 1 : plan.status === "receiving" ? 0.5 : 0;
+    const share = plan.status === "closed" ? 1 : plan.status === "receiving" ? 0.5 : 0;
 
     let box: Box | null = null;
     let inBox = 0;

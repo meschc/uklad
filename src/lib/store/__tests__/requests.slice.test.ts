@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  makeRequest,
-  makeShipment,
-  makeShipmentLine,
-} from "../../__tests__/fixtures";
+import { makeRequest, makeShipment, makeShipmentLine } from "../../__tests__/fixtures";
 import { makeRequestsStore } from "./harness";
 
 /**
@@ -256,10 +252,7 @@ describe("applyCrossDock", () => {
 
     // Assert
     expect(used).toBe(0);
-    expect(store.getState().requests.map((r) => r.status)).toEqual([
-      "cancelled",
-      "done",
-    ]);
+    expect(store.getState().requests.map((r) => r.status)).toEqual(["cancelled", "done"]);
   });
 
   it("закрытая кроссдоком заявка отпускает свою бронь", () => {

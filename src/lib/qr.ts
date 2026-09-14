@@ -25,9 +25,7 @@ export type QrEcc = "L" | "M" | "Q" | "H";
  * «#R-BOX-000123» и после скана не нашёлся бы ни в одной коробке. Наши номера
  * тары начинаются с кириллицы, поэтому подменяем кодировщик один раз на модуль.
  */
-qrcode.stringToBytes = (s: string): number[] => [
-  ...new TextEncoder().encode(s),
-];
+qrcode.stringToBytes = (s: string): number[] => [...new TextEncoder().encode(s)];
 
 /**
  * Матрица модулей QR: `true` — чёрный. Версия 0 = «подобрать минимальную под

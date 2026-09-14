@@ -1,17 +1,12 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { uid } from "../utils";
+import { hasLocal } from "../safeStorage";
 import { buildCatalog } from "../catalog";
 import { autoPlace } from "../autoPlace";
 import { setAddressingConfig } from "../address";
 import { PRODUCT_CATEGORIES } from "../types";
-import type {
-  CellAddress,
-  Floor,
-  Product,
-  UserRole,
-  Warehouse,
-} from "../types";
+import type { CellAddress, Floor, Product, UserRole, Warehouse } from "../types";
 import type { EditorState } from "./state";
 import { fieldValueKey } from "./helpers";
 import { SEED_FIELD_VALUES, seedStaff } from "./seed";
@@ -42,11 +37,7 @@ import { sanitizeDomains } from "../data/sanitize";
 
 export { fieldValueKey, resolveFloor, FLOOR_MAX } from "./helpers";
 export { selectRole } from "./session.slice";
-export {
-  countUnread,
-  selectSellerPartnerId,
-  visibleChatPartners,
-} from "./chat.slice";
+export { countUnread, selectSellerPartnerId, visibleChatPartners } from "./chat.slice";
 export type { GoodsConflict, EditorState } from "./state";
 
 /** Ключ автосохранения в localStorage (ТЗ: изменения сохраняются сами). */
@@ -63,9 +54,7 @@ type PersistedState = {
  * Было ли сохранённое состояние на момент загрузки. Если да — демо-раздачу
  * размещений НЕ применяем (иначе она перезатёрла бы реальные данные польз.).
  */
-const HAD_PERSISTED =
-  typeof localStorage !== "undefined" &&
-  localStorage.getItem(PERSIST_KEY) != null;
+const HAD_PERSISTED = hasLocal(PERSIST_KEY);
 
 export const useEditor = create<EditorState>()(
   persist(
@@ -114,9 +103,7 @@ export const useEditor = create<EditorState>()(
           });
           state = {
             ...state,
-            warehouse: state.warehouse
-              ? stripWarehouse(state.warehouse)
-              : state.warehouse,
+            warehouse: state.warehouse ? stripWarehouse(state.warehouse) : state.warehouse,
             otherWarehouses: (state.otherWarehouses ?? []).map(stripWarehouse),
           };
         }
@@ -131,10 +118,7 @@ export const useEditor = create<EditorState>()(
             ...((state.placements as Record<string, CellAddress>) ?? {}),
           };
           if (state.warehouse) {
-            Object.assign(
-              placements,
-              autoPlace(state.warehouse, products, placements),
-            );
+            Object.assign(placements, autoPlace(state.warehouse, products, placements));
           }
           state = { ...state, products, placements };
         }
@@ -249,6 +233,9 @@ export const useEditor = create<EditorState>()(
         pallets: s.pallets,
         boxSeq: s.boxSeq,
         palletSeq: s.palletSeq,
+        // Незакрытая приёмка. Сохранённый ход сверяется с данными при возврате
+        // в мастер (`resumeReceiving`), поэтому устаревшие id здесь не страшны.
+        receiving: s.receiving,
         requests: s.requests,
         shipments: s.shipments,
         session: s.session,
@@ -269,7 +256,11 @@ installHistory(useEditor);
 // Доступ к стору из консоли в дев-режиме: сценарии редактора (вставка в
 // выбранное место, нумерация рядов, адресация) проверяются на реальном плане
 // вызовом действий, а не долгой ручной пантомимой мышью. В сборку не попадает.
-if (import.meta.env.DEV) {
+//
+// Проверка на `window` не лишняя: в дев-режиме модуль грузится и там, где окна
+// нет — в тестах на окружении node, — и без неё падал бы весь файл целиком
+// из-за строки, которая нужна только человеку с открытой консолью.
+if (import.meta.env.DEV && typeof window !== "undefined") {
   (window as unknown as { __uklad: typeof useEditor }).__uklad = useEditor;
 }
 

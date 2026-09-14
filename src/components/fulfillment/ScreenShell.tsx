@@ -21,15 +21,11 @@ export function ScreenShell({
 }) {
   return (
     <div className="h-full overflow-y-auto bg-background">
-      <div
-        className={`mx-auto flex ${wide ? "max-w-5xl" : "max-w-2xl"} flex-col gap-5 px-6 py-7`}
-      >
+      <div className={`mx-auto flex ${wide ? "max-w-5xl" : "max-w-2xl"} flex-col gap-5 px-6 py-7`}>
         <header className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <h1 className="text-lg font-semibold tracking-tight">{title}</h1>
-            {subtitle && (
-              <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>
-            )}
+            {subtitle && <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>}
           </div>
           {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
         </header>

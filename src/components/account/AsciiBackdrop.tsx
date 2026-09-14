@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 /**
  * ASCII-фон экрана входа (п.29). Волна из символов разной плотности: без
@@ -52,10 +52,7 @@ function frame(time: number, grid: Grid, pointer: { x: number; y: number } | nul
         }
       }
 
-      const idx = Math.max(
-        0,
-        Math.min(CHARS.length - 1, Math.round(v * (CHARS.length - 1))),
-      );
+      const idx = Math.max(0, Math.min(CHARS.length - 1, Math.round(v * (CHARS.length - 1))));
       line += CHARS[idx];
     }
     lines.push(line);
@@ -73,9 +70,30 @@ export function AsciiBackdrop({
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const [grid, setGrid] = useState<Grid>({ cols: 40, rows: 20 });
-  const [text, setText] = useState("");
   const pointerRef = useRef<{ x: number; y: number } | null>(null);
   const raf = useRef(0);
+
+  // Просьбу «меньше движения» читаем один раз при первом рендере: от неё
+  // зависит, запускать ли цикл кадров вообще, а не только что в нём рисовать.
+  const [reduced] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+  );
+
+  // Неподвижный кадр — чистая функция от сетки, поэтому считается прямо в
+  // рендере, а не складывается в состояние эффектом. В состоянии живёт только
+  // то, что нарисовали анимация и курсор; пока такого кадра нет, показываем
+  // неподвижный. Смена сетки его обнуляет: старый кадр другого размера.
+  const still = useMemo(() => frame(0, grid, null), [grid]);
+  const [animated, setAnimated] = useState<string | null>(null);
+  const [lastGrid, setLastGrid] = useState(grid);
+  if (grid !== lastGrid) {
+    setLastGrid(grid);
+    setAnimated(null);
+  }
+  const text = animated ?? still;
 
   // Сетка под размер контейнера: пересчитывается на любой ресайз окна.
   useEffect(() => {
@@ -95,18 +113,14 @@ export function AsciiBackdrop({
   }, [fontSize]);
 
   useEffect(() => {
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduced) {
-      setText(frame(0, grid, null));
-      return;
-    }
+    if (reduced) return;
     const loop = (time: number) => {
-      setText(frame(time, grid, pointerRef.current));
+      setAnimated(frame(time, grid, pointerRef.current));
       raf.current = requestAnimationFrame(loop);
     };
     raf.current = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf.current);
-  }, [grid]);
+  }, [grid, reduced]);
 
   const onMove = (e: React.PointerEvent) => {
     const host = hostRef.current;
@@ -118,7 +132,7 @@ export function AsciiBackdrop({
     };
     // Перерисовываем сразу, не дожидаясь кадра: отклик на курсор должен быть
     // мгновенным, и он остаётся даже там, где rAF приторможен (фон, вкладка).
-    setText(frame(performance.now(), grid, pointerRef.current));
+    setAnimated(frame(performance.now(), grid, pointerRef.current));
   };
 
   return (

@@ -176,9 +176,7 @@ export function LoginScreen() {
               <Button type="button" variant="outline" className="w-full" onClick={demo}>
                 {t("login.demo")}
               </Button>
-              <p className="text-center text-[11px] text-muted-foreground">
-                {t("login.demoHint")}
-              </p>
+              <p className="text-center text-[11px] text-muted-foreground">{t("login.demoHint")}</p>
             </form>
           </div>
 

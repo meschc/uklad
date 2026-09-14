@@ -5,7 +5,7 @@ import type { StaffMember } from "./types";
  * файл открывается в Excel и правится там же, без отдельного шаблона.
  */
 
-export const STAFF_CSV_HEADERS = ["Имя", "Должность", "Телефон", "Почта", "Фото"];
+const STAFF_CSV_HEADERS = ["Имя", "Должность", "Телефон", "Почта", "Фото"];
 
 /** Экранирование значения для CSV: кавычки удваиваются. */
 function cell(value: string): string {
@@ -14,9 +14,7 @@ function cell(value: string): string {
 
 export function staffToCsv(staff: StaffMember[]): string {
   const rows = staff.map((m) =>
-    [m.name, m.role, m.phone ?? "", m.email ?? "", m.photoUrl ?? ""]
-      .map(cell)
-      .join(";"),
+    [m.name, m.role, m.phone ?? "", m.email ?? "", m.photoUrl ?? ""].map(cell).join(";"),
   );
   return [STAFF_CSV_HEADERS.join(";"), ...rows].join("\n");
 }

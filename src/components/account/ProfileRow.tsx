@@ -96,6 +96,7 @@ export function RowEditor({
 }) {
   const t = useT();
   return (
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions -- обёртка ничего не ловит сама: она слушает всплывающие Enter/Escape от полей и кнопок внутри, а они и есть настоящие элементы управления
     <div
       className="flex w-full min-w-0 flex-col items-end gap-1"
       onKeyDown={(e) => {
@@ -133,10 +134,7 @@ export function RowEditor({
       </div>
       {hint && (
         <span
-          className={cn(
-            "text-[11px]",
-            hint.error ? "text-destructive" : "text-muted-foreground",
-          )}
+          className={cn("text-[11px]", hint.error ? "text-destructive" : "text-muted-foreground")}
         >
           {hint.text}
         </span>

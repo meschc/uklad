@@ -2,6 +2,8 @@ import { useState } from "react";
 import type { WarehouseClass } from "@/lib/types";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { eyebrow } from "@/components/ui/eyebrow";
+import { card } from "@/components/ui/card";
 
 /**
  * Кирпичики паспорта склада (п.1). Вынесены из экрана: экран отвечает за то,
@@ -37,12 +39,7 @@ export function SpecCard({
   children: React.ReactNode;
 }) {
   return (
-    <section
-      className={cn(
-        "flex flex-col gap-3 rounded-xl border border-border bg-card p-4",
-        className,
-      )}
-    >
+    <section className={cn(card({ className: "flex flex-col gap-3" }), className)}>
       <h2 className="flex items-center gap-2 text-sm font-semibold">
         <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
           {icon}
@@ -55,20 +52,9 @@ export function SpecCard({
 }
 
 /** Сетка факт-плиток внутри секции. */
-export function TileGrid({
-  cols = 2,
-  children,
-}: {
-  cols?: 2 | 3;
-  children: React.ReactNode;
-}) {
+export function TileGrid({ cols = 2, children }: { cols?: 2 | 3; children: React.ReactNode }) {
   return (
-    <div
-      className={cn(
-        "grid gap-2",
-        cols === 3 ? "grid-cols-2 sm:grid-cols-3" : "grid-cols-2",
-      )}
-    >
+    <div className={cn("grid gap-2", cols === 3 ? "grid-cols-2 sm:grid-cols-3" : "grid-cols-2")}>
       {children}
     </div>
   );
@@ -94,9 +80,7 @@ export function Tile({
         wide && "col-span-full",
       )}
     >
-      <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-        {label}
-      </span>
+      <span className={eyebrow({ size: "xs", weight: "medium" })}>{label}</span>
       {children}
     </div>
   );
@@ -130,9 +114,7 @@ export function StatValue({
         >
           {value ?? "—"}
         </span>
-        {value != null && unit && (
-          <span className="text-[11px] text-muted-foreground">{unit}</span>
-        )}
+        {value != null && unit && <span className="text-[11px] text-muted-foreground">{unit}</span>}
       </span>
     );
   }
@@ -168,12 +150,7 @@ export function TextValue({
 
   if (readOnly) {
     return (
-      <span
-        className={cn(
-          "text-[13px] leading-snug",
-          !value && "text-muted-foreground",
-        )}
-      >
+      <span className={cn("text-[13px] leading-snug", !value && "text-muted-foreground")}>
         {value || "—"}
       </span>
     );
@@ -231,6 +208,7 @@ export function ChipsValue({
     return (
       <textarea
         value={v}
+        // eslint-disable-next-line jsx-a11y/no-autofocus -- поле раскрыто по клику на значение: фокус обязан уйти в него
         autoFocus
         rows={Math.min(4, Math.max(1, Math.ceil((v.length || 1) / 44)))}
         placeholder={placeholder}
@@ -264,11 +242,7 @@ export function ChipsValue({
   );
 
   if (readOnly)
-    return chips.length ? (
-      list
-    ) : (
-      <span className="text-[13px] text-muted-foreground">—</span>
-    );
+    return chips.length ? list : <span className="text-[13px] text-muted-foreground">—</span>;
 
   return (
     <button
@@ -279,9 +253,7 @@ export function ChipsValue({
       {chips.length ? (
         list
       ) : (
-        <span className="text-[13px] text-muted-foreground">
-          {placeholder ?? "—"}
-        </span>
+        <span className="text-[13px] text-muted-foreground">{placeholder ?? "—"}</span>
       )}
     </button>
   );
@@ -316,8 +288,7 @@ export function RangeValue({
 }) {
   const [a, setA] = useState(from != null ? String(from) : "");
   const [b, setB] = useState(to != null ? String(to) : "");
-  const commit = () =>
-    onCommit(a.trim() ? Number(a) : undefined, b.trim() ? Number(b) : undefined);
+  const commit = () => onCommit(a.trim() ? Number(a) : undefined, b.trim() ? Number(b) : undefined);
 
   if (readOnly) {
     const empty = from == null && to == null;
@@ -336,19 +307,13 @@ export function RangeValue({
     );
   }
 
-  const field = (
-    val: string,
-    set: (s: string) => void,
-  ): React.ReactNode => (
+  const field = (val: string, set: (s: string) => void): React.ReactNode => (
     <input
       value={val}
       inputMode="decimal"
       onChange={(e) => set(e.target.value.replace(/[^\d.-]/g, ""))}
       onBlur={commit}
-      className={cn(
-        GHOST,
-        "w-12 text-center text-lg font-semibold leading-tight tabular-nums",
-      )}
+      className={cn(GHOST, "w-12 text-center text-lg font-semibold leading-tight tabular-nums")}
     />
   );
 
@@ -386,12 +351,7 @@ export function BoolValue({
 
   if (readOnly) {
     return (
-      <span
-        className={cn(
-          "w-fit rounded-md px-1.5 py-0.5 text-[11px] font-semibold ring-1",
-          tone,
-        )}
-      >
+      <span className={cn("w-fit rounded-md px-1.5 py-0.5 text-[11px] font-semibold ring-1", tone)}>
         {label}
       </span>
     );
@@ -411,19 +371,29 @@ export function BoolValue({
   );
 }
 
-/** Выбор из короткого закрытого списка (категория пожарной опасности). */
-export function ChoiceValue({
+/**
+ * Выбор из короткого закрытого списка (класс склада, категория пожарной
+ * опасности).
+ *
+ * Обобщён по типу варианта, а не прибит к `string`: список у каждого вызова
+ * свой и всегда узкий — `WarehouseClass`, `FireCategory`. Из-за этого `value`
+ * и `onChange` говорят на языке склада, а не «любая строка»: приведения типа
+ * на стороне вызова больше не нужны, и `labelFor` получает тот же узкий тип —
+ * а он нужен, чтобы ключ вида `spec.fire.${c}` собрался в настоящий ключ
+ * словаря, а не в «`spec.fire.` плюс что угодно».
+ */
+export function ChoiceValue<T extends string>({
   value,
   options,
   labelFor,
   readOnly,
   onChange,
 }: {
-  value?: string;
-  options: readonly string[];
-  labelFor?: (o: string) => string;
+  value?: T;
+  options: readonly T[];
+  labelFor?: (o: T) => string;
   readOnly: boolean;
-  onChange: (v: string | undefined) => void;
+  onChange: (v: T | undefined) => void;
 }) {
   const text = value ? (labelFor?.(value) ?? value) : undefined;
   if (readOnly)
@@ -436,7 +406,9 @@ export function ChoiceValue({
   return (
     <select
       value={value ?? ""}
-      onChange={(e) => onChange(e.target.value || undefined)}
+      // Приведение неизбежно: у `<select>` значение всегда строка, сузить его
+      // до варианта из списка может только сам список — а он здесь и есть.
+      onChange={(e) => onChange((e.target.value as T) || undefined)}
       className={cn(GHOST, "w-fit cursor-pointer text-[13px] leading-snug")}
     >
       <option value="">—</option>
@@ -470,9 +442,7 @@ export function ClassBadge({ value }: { value?: WarehouseClass }) {
         value ? CLASS_TONE[value] : "bg-muted text-muted-foreground ring-border",
       )}
     >
-      <span className="text-2xl font-bold leading-none tracking-tight">
-        {value ?? "—"}
-      </span>
+      <span className="text-2xl font-bold leading-none tracking-tight">{value ?? "—"}</span>
       <span className="mt-0.5 text-[9px] uppercase tracking-wide opacity-80">
         {t("spec.classShort")}
       </span>
@@ -485,36 +455,18 @@ export function ClassBadge({ value }: { value?: WarehouseClass }) {
  * характеристик не заполнена, — а это ровно тот случай, когда складу нельзя
  * доверять расчёт на глаз.
  */
-export function CompletenessRing({
-  filled,
-  total,
-}: {
-  filled: number;
-  total: number;
-}) {
+export function CompletenessRing({ filled, total }: { filled: number; total: number }) {
   const t = useT();
   const share = total ? filled / total : 0;
   const r = 22;
   const len = 2 * Math.PI * r;
-  const tone =
-    share > 0.85
-      ? "text-emerald-500"
-      : share > 0.6
-        ? "text-primary"
-        : "text-amber-500";
+  const tone = share > 0.85 ? "text-emerald-500" : share > 0.6 ? "text-primary" : "text-amber-500";
 
   return (
     <div className="flex shrink-0 items-center gap-2.5">
       <div className="relative size-14">
         <svg viewBox="0 0 56 56" className="size-full -rotate-90">
-          <circle
-            cx="28"
-            cy="28"
-            r={r}
-            fill="none"
-            strokeWidth="5"
-            className="stroke-muted"
-          />
+          <circle cx="28" cy="28" r={r} fill="none" strokeWidth="5" className="stroke-muted" />
           <circle
             cx="28"
             cy="28"

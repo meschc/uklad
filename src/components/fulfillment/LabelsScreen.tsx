@@ -1,11 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
-import { Layers, Package, Printer } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Layers, Loader2, Package, Printer } from "lucide-react";
 import { useEditor } from "@/lib/store";
+import { fulfillmentRepository } from "@/lib/data";
+import { useCommand } from "@/lib/useCommand";
 import type { LabelTemplate } from "@/lib/types";
 import { useT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/segmented";
 import { Input } from "@/components/ui/input";
+import { eyebrow } from "@/components/ui/eyebrow";
+import { card } from "@/components/ui/card";
 import { LabelCard, type LabelKind } from "./LabelCard";
 import { LabelDesigner, type LabelDraft } from "./LabelDesigner";
 import { ScreenShell } from "./ScreenShell";
@@ -60,8 +64,7 @@ export function LabelsScreen() {
   const t = useT();
   const boxes = useEditor((s) => s.boxes);
   const pallets = useEditor((s) => s.pallets);
-  const createBox = useEditor((s) => s.createBox);
-  const createPallet = useEditor((s) => s.createPallet);
+  const showToast = useEditor((s) => s.showToast);
   const warehouseName = useEditor((s) => s.warehouse.name);
   const templates = useEditor((s) => s.labelTemplates);
   const saveTemplate = useEditor((s) => s.saveLabelTemplate);
@@ -72,22 +75,21 @@ export function LabelsScreen() {
   /** Коды текущей пачки — то, что уйдёт на печать. */
   const [batch, setBatch] = useState<string[]>([]);
 
-  const [selectedId, setSelectedId] = useState<string | null>(
-    templates[0]?.id ?? null,
-  );
+  const [selectedId, setSelectedId] = useState<string | null>(templates[0]?.id ?? null);
   const [draft, setDraft] = useState<LabelDraft>(
     templates[0] ? toDraft(templates[0]) : EMPTY_DRAFT,
   );
 
   // Шаблон могли удалить в другой вкладке (стор общий) — не оставляем экран с
-  // выбранным «призраком».
-  useEffect(() => {
-    if (selectedId && !templates.some((tpl) => tpl.id === selectedId)) {
-      const first = templates[0] ?? null;
-      setSelectedId(first?.id ?? null);
-      setDraft(first ? toDraft(first) : EMPTY_DRAFT);
-    }
-  }, [templates, selectedId]);
+  // выбранным «призраком». Подгоняем прямо в рендере, а не эффектом: всё, что
+  // ниже, считается от `selectedId`, и эффект успел бы отрисовать кадр с
+  // формой несуществующего шаблона. Условие само себя снимает — после правки
+  // выбран либо существующий шаблон, либо ничего.
+  if (selectedId && !templates.some((tpl) => tpl.id === selectedId)) {
+    const first = templates[0] ?? null;
+    setSelectedId(first?.id ?? null);
+    setDraft(first ? toDraft(first) : EMPTY_DRAFT);
+  }
 
   const selected = templates.find((tpl) => tpl.id === selectedId) ?? null;
   const dirty = !selected || !sameDraft(draft, toDraft(selected));
@@ -111,13 +113,36 @@ export function LabelsScreen() {
       ? boxes.filter((b) => !b.address && b.lines.length === 0).map((b) => b.barcode)
       : pallets.filter((p) => p.boxIds.length === 0).map((p) => p.barcode);
 
-  const generate = () => {
-    const n = Math.max(1, Math.min(MAX_BATCH, Math.round(count)));
+  /**
+   * Пачка номеров через репозиторий (п.3.2.1). Формы здесь нет — есть кнопка,
+   * поэтому отказ уходит тостом, а сама кнопка на время команды занята: пачка
+   * на сотню наклеек по сети не мгновенна, и второе нажатие выдало бы вторую
+   * сотню пустых номеров.
+   *
+   * Уже выданные номера при обрыве на середине НЕ отменяются: тара с такими
+   * номерами существует, и отменять её значило бы потерять их из виду. Пачка
+   * показывается неполной — человек допечатает недостающие.
+   */
+  const create = useCommand(async (n: number, k: LabelKind) => {
     const codes: string[] = [];
     for (let i = 0; i < n; i++) {
-      codes.push(kind === "box" ? createBox().barcode : createPallet().barcode);
+      const res = await (k === "box"
+        ? fulfillmentRepository.createBox()
+        : fulfillmentRepository.createPallet());
+      if (!res.ok) {
+        setBatch(codes);
+        return res;
+      }
+      codes.push(res.data.barcode);
     }
-    setBatch(codes);
+    return { ok: true as const, data: codes };
+  });
+
+  const generate = async () => {
+    const n = Math.max(1, Math.min(MAX_BATCH, Math.round(count)));
+    const res = await create.run(n, kind);
+    if (res.ok) setBatch(res.data);
+    else showToast(res.error);
   };
 
   const applyTemplate = (id: string) => {
@@ -145,8 +170,7 @@ export function LabelsScreen() {
   // Заглушка предпросмотра — латиницей, как настоящие номера: Code128 B
   // кириллицу не кодирует, и на «УК-…» предпросмотр показывал бы ошибку там,
   // где реальная печать сработает.
-  const previewCode =
-    batch[0] ?? (kind === "box" ? "UK-BOX-000000" : "UK-PLT-000000");
+  const previewCode = batch[0] ?? (kind === "box" ? "UK-BOX-000000" : "UK-PLT-000000");
 
   return (
     <ScreenShell title={t("labels.title")} subtitle={t("labels.subtitle")} wide>
@@ -154,7 +178,7 @@ export function LabelsScreen() {
           Стиль живёт здесь, а не в index.css, потому что зависит от макета. */}
       <style>{`@page { size: ${previewTpl.widthMm}mm ${previewTpl.heightMm}mm; margin: 0; }`}</style>
 
-      <div className="flex flex-wrap items-end gap-3 rounded-xl border border-border bg-card p-4">
+      <div className={card({ className: "flex flex-wrap items-end gap-3" })}>
         <Segmented
           size="md"
           value={kind}
@@ -173,9 +197,7 @@ export function LabelsScreen() {
         />
 
         <label className="flex flex-col gap-1">
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            {t("labels.count")}
-          </span>
+          <span className={eyebrow()}>{t("labels.count")}</span>
           <Input
             type="number"
             min={1}
@@ -186,8 +208,9 @@ export function LabelsScreen() {
           />
         </label>
 
-        <Button className="h-9" onClick={generate}>
-          {t("labels.generate")}
+        <Button className="h-9" onClick={() => void generate()} disabled={create.pending}>
+          {create.pending && <Loader2 className="animate-spin" />}
+          {create.pending ? t("data.busy") : t("labels.generate")}
         </Button>
         <Button
           className="h-9"
@@ -210,7 +233,7 @@ export function LabelsScreen() {
           наклейка 58×40 занимает ладонь, а рядом с ней пустовала половина
           экрана — при том что настройки внизу той же колонки не помещались. */}
       <div className="flex flex-col gap-4">
-        <div className="rounded-xl border border-border bg-card p-4">
+        <div className={card()}>
           <LabelDesigner
             draft={draft}
             onChange={(patch) => setDraft((d) => ({ ...d, ...patch }))}
@@ -224,11 +247,9 @@ export function LabelsScreen() {
           />
         </div>
 
-        <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
+        <div className={card({ className: "flex flex-col gap-3" })}>
           <div className="flex items-baseline justify-between gap-2">
-            <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-              {t("labels.preview")}
-            </h3>
+            <h3 className={eyebrow()}>{t("labels.preview")}</h3>
             <span className="text-[11px] tabular-nums text-muted-foreground">
               {t("labels.previewScale", {
                 w: previewTpl.widthMm,

@@ -15,6 +15,8 @@
  * монограмма остаётся рабочим вариантом, а не заглушкой на время.
  */
 
+import type { MsgKey } from "./i18n";
+
 export type AuthKind = "basic" | "token" | "oauth" | "none";
 
 /** Раздел списка: маркетплейсы, учётные системы, доставка, государство. */
@@ -23,7 +25,7 @@ export type IntegrationCategory = "market" | "erp" | "delivery" | "gov";
 export interface IntegrationField {
   /** Ключ в конфиге подключения. */
   id: keyof IntegrationConfig & string;
-  labelKey: string;
+  labelKey: MsgKey;
   placeholder?: string;
   /** Значение скрывается точками и не показывается в открытую. */
   secret?: boolean;
@@ -51,7 +53,7 @@ export interface IntegrationSpec {
   title: string;
   brand: BrandMarkSpec;
   /** Что именно даёт интеграция складу. */
-  descriptionKey: string;
+  descriptionKey: MsgKey;
   /** Документация вендора — открывается в новой вкладке. */
   docsUrl: string;
   auth: AuthKind;
@@ -262,16 +264,6 @@ export const INTEGRATIONS: IntegrationSpec[] = [
       { id: "password", labelKey: "integr.field.password", secret: true },
     ],
   },
-  {
-    id: "ava",
-    category: "erp",
-    title: "АВА",
-    brand: { short: "AVA", bg: "#4B5563" },
-    descriptionKey: "integr.ava.desc",
-    docsUrl: "https://ava.ru/",
-    auth: "token",
-    fields: [FIELD_BASE, FIELD_TOKEN],
-  },
 
   // --- Доставка -------------------------------------------------------------
   {
@@ -376,7 +368,7 @@ export const INTEGRATIONS: IntegrationSpec[] = [
 
 export const INTEGRATION_CATEGORIES: {
   id: IntegrationCategory;
-  key: string;
+  key: MsgKey;
 }[] = [
   { id: "market", key: "integr.cat.market" },
   { id: "erp", key: "integr.cat.erp" },

@@ -1,18 +1,12 @@
 import { useState } from "react";
-import {
-  Boxes,
-  Grid3x3,
-  Layers,
-  MapPin,
-  Package,
-  ScanSearch,
-  SearchX,
-} from "lucide-react";
+import { Boxes, Grid3x3, Layers, MapPin, Package, ScanSearch, SearchX } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { cm, formatAddress } from "@/lib/address";
 import { lookup, type LookupLine, type LookupResult } from "@/lib/lookup";
 import { catLabel, useT, type TFunc } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
+import { eyebrow } from "@/components/ui/eyebrow";
+import { card } from "@/components/ui/card";
 import { ScanField, type ScanStatus } from "./ScanField";
 import { ScreenShell, EmptyState } from "./ScreenShell";
 
@@ -49,8 +43,7 @@ export function LookupScreen() {
     );
   };
 
-  const status: ScanStatus =
-    result === null ? "idle" : result.kind === "none" ? "error" : "ok";
+  const status: ScanStatus = result === null ? "idle" : result.kind === "none" ? "error" : "ok";
 
   return (
     <ScreenShell title={t("lookup.title")} subtitle={t("lookup.subtitle")} wide>
@@ -166,9 +159,7 @@ function ProductResult({
                     {place.boxBarcode}
                   </span>
                 ) : (
-                  <span className="text-[11px] text-muted-foreground">
-                    {t("lookup.direct")}
-                  </span>
+                  <span className="text-[11px] text-muted-foreground">{t("lookup.direct")}</span>
                 )
               }
               right={place.qty}
@@ -182,13 +173,7 @@ function ProductResult({
 
 // --- тара ---------------------------------------------------------------------
 
-function BoxResult({
-  result,
-  t,
-}: {
-  result: Extract<LookupResult, { kind: "box" }>;
-  t: TFunc;
-}) {
+function BoxResult({ result, t }: { result: Extract<LookupResult, { kind: "box" }>; t: TFunc }) {
   const { box, pallet, label, placed, lines, total } = result;
   return (
     <Card
@@ -208,7 +193,7 @@ function BoxResult({
           { label: t("lookup.total"), value: String(total), strong: true },
         ]}
       />
-      <SubTitle>{t("lookup.contents", { n: lines.length })}</SubTitle>
+      <SubTitle>{contentsTitle(lines.length, t)}</SubTitle>
       <LineRows lines={lines} empty={t("lookup.emptyBox")} t={t} />
     </Card>
   );
@@ -246,9 +231,7 @@ function PalletResult({
           {boxes.map(({ box, label: addr, placed: on, total: n }) => (
             <Row
               key={box.id}
-              left={
-                <span className="font-mono text-xs">{box.barcode}</span>
-              }
+              left={<span className="font-mono text-xs">{box.barcode}</span>}
               middle={<Addr label={addr} placed={on} t={t} />}
               right={n}
             />
@@ -261,13 +244,7 @@ function PalletResult({
 
 // --- ячейка -------------------------------------------------------------------
 
-function CellResult({
-  result,
-  t,
-}: {
-  result: Extract<LookupResult, { kind: "cell" }>;
-  t: TFunc;
-}) {
+function CellResult({ result, t }: { result: Extract<LookupResult, { kind: "cell" }>; t: TFunc }) {
   const { label, dims, lines, total } = result;
   return (
     <Card
@@ -280,14 +257,12 @@ function CellResult({
         items={[
           {
             label: t("lookup.cellDims"),
-            value: dims
-              ? `${cm(dims.widthCm)} × ${cm(dims.heightCm)} × ${cm(dims.depthCm)}`
-              : "—",
+            value: dims ? `${cm(dims.widthCm)} × ${cm(dims.heightCm)} × ${cm(dims.depthCm)}` : "—",
           },
           { label: t("lookup.total"), value: String(total), strong: true },
         ]}
       />
-      <SubTitle>{t("lookup.contents", { n: lines.length })}</SubTitle>
+      <SubTitle>{contentsTitle(lines.length, t)}</SubTitle>
       <LineRows lines={lines} empty={t("lookup.emptyCell")} t={t} />
     </Card>
   );
@@ -311,20 +286,16 @@ function Card({
   children: React.ReactNode;
 }) {
   return (
-    <section className="flex animate-pop flex-col gap-3 rounded-xl border border-border bg-card p-4">
+    <section className={card({ className: "flex animate-pop flex-col gap-3" })}>
       <header className="flex flex-wrap items-center gap-3">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
           {icon}
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            {kind}
-          </p>
+          <p className={eyebrow()}>{kind}</p>
           <p className="truncate text-sm font-semibold">{title}</p>
         </div>
-        <span className="shrink-0 rounded bg-muted px-2 py-1 font-mono text-xs">
-          {code}
-        </span>
+        <span className="shrink-0 rounded bg-muted px-2 py-1 font-mono text-xs">{code}</span>
         {action}
       </header>
       {children}
@@ -341,9 +312,7 @@ function Facts({
     <dl className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3">
       {items.map((it) => (
         <div key={it.label}>
-          <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">
-            {it.label}
-          </dt>
+          <dt className={eyebrow({ weight: "normal" })}>{it.label}</dt>
           <dd
             className={[
               "text-sm",
@@ -360,11 +329,15 @@ function Facts({
 }
 
 function SubTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-      {children}
-    </p>
-  );
+  return <p className={eyebrow({ className: "mt-1" })}>{children}</p>;
+}
+
+/** «Содержимое: 1 позиция», а не «1 позиций»: число согласуем со словом. */
+function contentsTitle(n: number, t: TFunc): string {
+  return t("lookup.contents", {
+    n,
+    unit: t.plural(n, ["позиция", "позиции", "позиций"], ["item", "items"]),
+  });
 }
 
 function Note({ children }: { children: React.ReactNode }) {
@@ -372,11 +345,7 @@ function Note({ children }: { children: React.ReactNode }) {
 }
 
 function Rows({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="overflow-hidden rounded-lg border border-border">
-      {children}
-    </div>
-  );
+  return <div className="overflow-hidden rounded-lg border border-border">{children}</div>;
 }
 
 function Row({
@@ -392,23 +361,13 @@ function Row({
     <div className="flex items-center gap-3 border-b border-border/60 px-3 py-2 last:border-0">
       <div className="min-w-0 flex-1 truncate text-sm">{left}</div>
       <div className="shrink-0">{middle}</div>
-      <div className="w-12 shrink-0 text-right text-sm font-medium tabular-nums">
-        {right}
-      </div>
+      <div className="w-12 shrink-0 text-right text-sm font-medium tabular-nums">{right}</div>
     </div>
   );
 }
 
 /** Список «товар — артикул — количество»: одинаков для тары и ячейки. */
-function LineRows({
-  lines,
-  empty,
-  t,
-}: {
-  lines: LookupLine[];
-  empty: string;
-  t: TFunc;
-}) {
+function LineRows({ lines, empty, t }: { lines: LookupLine[]; empty: string; t: TFunc }) {
   if (!lines.length) return <Note>{empty}</Note>;
   return (
     <Rows>
@@ -445,15 +404,7 @@ function whereText(label: string | null, placed: boolean, t: TFunc): string {
 }
 
 /** Адрес ячейки чипом — тем же, что в таблице и на ярлыках. */
-function Addr({
-  label,
-  placed,
-  t,
-}: {
-  label: string | null;
-  placed: boolean;
-  t: TFunc;
-}) {
+function Addr({ label, placed, t }: { label: string | null; placed: boolean; t: TFunc }) {
   if (!label) {
     return (
       <span

@@ -76,13 +76,16 @@
     <meta name="robots" content="noindex, nofollow" />
 
     <!-- Тот же шрифт, что и на витрине: переход с сайта в приложение не должен
-         читаться как переход в другой продукт. Если Google Fonts недоступен,
-         подхватится системный гротеск — приложение работает без сети. -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+         читаться как переход в другой продукт. Файлы свои — рабочее место
+         открывают на складе, где сеть бывает любой, и внешний домен здесь
+         лишняя точка отказа. Объявления — в `src/index.css`, общем для обеих
+         страниц. Кириллицу предзагружаем: интерфейс русский. -->
     <link
-      href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400..900&display=swap"
-      rel="stylesheet"
+      rel="preload"
+      href="/fonts/golos-text-cyrillic.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
     />
   </head>
   <body>
@@ -105,6 +108,13 @@
         <p style="font-size: 14px; line-height: 1.6; color: #6b7280">
           Рабочее место склада целиком работает скриптами. Включите JavaScript
           в браузере или откройте страницу в другом.
+        </p>
+        <!-- Оба языка сразу, а не по адресу, как на витрине: у рабочего места
+             один адрес на всех, язык выбирают скрипты — те самые, которых
+             здесь нет. Выбрать нечем, поэтому показываем оба. -->
+        <p lang="en" style="font-size: 14px; line-height: 1.6; color: #9ca3af">
+          The warehouse workplace runs entirely on scripts. Turn JavaScript on
+          in your browser, or open this page in another one.
         </p>
       </div>
     </noscript>

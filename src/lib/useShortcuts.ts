@@ -74,9 +74,7 @@ export function useShortcuts() {
             st.selection.length === 1
               ? st.activeFloor().modules.find((m) => m.id === st.selection[0])
               : undefined;
-          const at = one
-            ? { x: one.x, y: one.y }
-            : (st.pasteAnchor ?? undefined);
+          const at = one ? { x: one.x, y: one.y } : (st.pasteAnchor ?? undefined);
           st.pasteClipboard(at);
           return;
         }
@@ -90,10 +88,7 @@ export function useShortcuts() {
       // Действия
       if (key === "r" && st.selection.length) {
         st.rotateSelection();
-      } else if (
-        (e.key === "Delete" || e.key === "Backspace") &&
-        st.selection.length
-      ) {
+      } else if ((e.key === "Delete" || e.key === "Backspace") && st.selection.length) {
         e.preventDefault();
         st.deleteSelection();
       } else if (e.key === "Escape") {

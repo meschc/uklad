@@ -1,4 +1,4 @@
-import { uid } from "../utils";
+import { nowMs, uid } from "../utils";
 import { addressKey } from "../address";
 import type { FulfillmentRequest, Shipment } from "../types";
 import type { RequestsSlice, SliceCreator } from "./state";
@@ -15,7 +15,7 @@ export const createRequestsSlice: SliceCreator<RequestsSlice> = (set, get) => ({
   shipments: [],
 
   createRequest: (input) => {
-    const now = Date.now();
+    const now = nowMs();
     const req: FulfillmentRequest = {
       ...input,
       id: uid("req"),
@@ -29,7 +29,7 @@ export const createRequestsSlice: SliceCreator<RequestsSlice> = (set, get) => ({
   },
 
   createRequests: (items, truckDate) => {
-    const now = Date.now();
+    const now = nowMs();
     const created = items
       .filter((it) => it.productId && it.qty > 0)
       .map<FulfillmentRequest>((it) => ({
@@ -55,11 +55,10 @@ export const createRequestsSlice: SliceCreator<RequestsSlice> = (set, get) => ({
         return {
           ...r,
           status,
-          updatedAt: Date.now(),
+          updatedAt: nowMs(),
           // Момент взятия в работу фиксируем один раз — на нём стоит метрика
           // «среднее время сборки» в дашборде.
-          startedAt:
-            status === "in_progress" ? (r.startedAt ?? Date.now()) : r.startedAt,
+          startedAt: status === "in_progress" ? (r.startedAt ?? nowMs()) : r.startedAt,
         };
       }),
     }));
@@ -100,10 +99,7 @@ export const createRequestsSlice: SliceCreator<RequestsSlice> = (set, get) => ({
     let taken = 0;
     if (box) {
       taken = s.removeFromBox(box.id, productId, 1);
-    } else if (
-      s.placements[productId] &&
-      addressKey(s.placements[productId]) === key
-    ) {
+    } else if (s.placements[productId] && addressKey(s.placements[productId]) === key) {
       s.clearPlacement(productId);
       taken = 1;
     }
@@ -112,7 +108,7 @@ export const createRequestsSlice: SliceCreator<RequestsSlice> = (set, get) => ({
     const picked = Math.min(req.qty, (req.pickedQty ?? 0) + taken);
     set((st) => ({
       requests: st.requests.map((r) =>
-        r.id === id ? { ...r, pickedQty: picked, updatedAt: Date.now() } : r,
+        r.id === id ? { ...r, pickedQty: picked, updatedAt: nowMs() } : r,
       ),
     }));
     return picked;
@@ -121,9 +117,7 @@ export const createRequestsSlice: SliceCreator<RequestsSlice> = (set, get) => ({
   completeRequest: (id, partial = false) => {
     set((s) => ({
       requests: s.requests.map((r) =>
-        r.id === id
-          ? { ...r, status: "done", partial, updatedAt: Date.now() }
-          : r,
+        r.id === id ? { ...r, status: "done", partial, updatedAt: nowMs() } : r,
       ),
     }));
     // Собранная заявка больше ничего не ждёт: бронь под поставку снимается,
@@ -142,17 +136,13 @@ export const createRequestsSlice: SliceCreator<RequestsSlice> = (set, get) => ({
     const req = s.requests.find((r) => r.id === id);
     if (!req || req.reservedShipmentId) return req?.reservedShipmentId ?? null;
 
-    const qtyOf = (rid: string) =>
-      s.requests.find((r) => r.id === rid)?.qty ?? 0;
+    const qtyOf = (rid: string) => s.requests.find((r) => r.id === rid)?.qty ?? 0;
 
     for (const sh of s.expectedShipments) {
       if (sh.status === "closed") continue;
       const line = sh.lines.find((l) => {
         if (l.productId !== req.productId) return false;
-        const booked = (l.reservedFor ?? []).reduce(
-          (sum, rid) => sum + qtyOf(rid),
-          0,
-        );
+        const booked = (l.reservedFor ?? []).reduce((sum, rid) => sum + qtyOf(rid), 0);
         return l.expectedQty - l.receivedQty - booked >= req.qty;
       });
       if (!line) continue;
@@ -164,16 +154,12 @@ export const createRequestsSlice: SliceCreator<RequestsSlice> = (set, get) => ({
             : {
                 ...x,
                 lines: x.lines.map((l) =>
-                  l.id === line.id
-                    ? { ...l, reservedFor: [...(l.reservedFor ?? []), id] }
-                    : l,
+                  l.id === line.id ? { ...l, reservedFor: [...(l.reservedFor ?? []), id] } : l,
                 ),
               },
         ),
         requests: st.requests.map((r) =>
-          r.id === id
-            ? { ...r, reservedShipmentId: sh.id, updatedAt: Date.now() }
-            : r,
+          r.id === id ? { ...r, reservedShipmentId: sh.id, updatedAt: nowMs() } : r,
         ),
       }));
       return sh.id;
@@ -219,13 +205,10 @@ export const createRequestsSlice: SliceCreator<RequestsSlice> = (set, get) => ({
 
     const open = get()
       .requests.filter(
-        (r) =>
-          r.productId === productId &&
-          (r.status === "new" || r.status === "in_progress"),
+        (r) => r.productId === productId && (r.status === "new" || r.status === "in_progress"),
       )
       .sort((a, b) => {
-        const mine = (r: typeof a) =>
-          shipmentId && r.reservedShipmentId === shipmentId ? 0 : 1;
+        const mine = (r: typeof a) => (shipmentId && r.reservedShipmentId === shipmentId ? 0 : 1);
         return mine(a) - mine(b) || a.createdAt - b.createdAt;
       });
 
@@ -245,8 +228,8 @@ export const createRequestsSlice: SliceCreator<RequestsSlice> = (set, get) => ({
                 ...x,
                 pickedQty: picked,
                 status: picked >= x.qty ? "done" : "in_progress",
-                startedAt: x.startedAt ?? Date.now(),
-                updatedAt: Date.now(),
+                startedAt: x.startedAt ?? nowMs(),
+                updatedAt: nowMs(),
               }
             : x,
         ),
@@ -258,14 +241,12 @@ export const createRequestsSlice: SliceCreator<RequestsSlice> = (set, get) => ({
 
   shipRequests: (requestIds, info) => {
     const ids = new Set(requestIds);
-    const ready = get().requests.filter(
-      (r) => ids.has(r.id) && r.status === "done",
-    );
+    const ready = get().requests.filter((r) => ids.has(r.id) && r.status === "done");
     // Отгружаем только собранное: «в работе» и «новые» физически ещё на полках.
     if (!ready.length) return null;
 
     const shipmentId = uid("ship");
-    const at = Date.now();
+    const at = nowMs();
     const destination = ready[0].note?.trim() || "";
     const shipment: Shipment = {
       id: shipmentId,

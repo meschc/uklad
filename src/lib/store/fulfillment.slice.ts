@@ -1,5 +1,6 @@
-import { uid } from "../utils";
+import { nowMs, uid } from "../utils";
 import { generateBoxBarcode, generatePalletBarcode } from "../barcode";
+import { EMPTY_RECEIVING, resumeProgress } from "../receiving";
 import type { Box, ExpectedShipment, Pallet, ReceivingEvent } from "../types";
 import type { FulfillmentSlice, SliceCreator } from "./state";
 
@@ -12,10 +13,7 @@ import type { FulfillmentSlice, SliceCreator } from "./state";
  * поставки. Расхождение не блокирует приёмку, но и не проваливается молча —
  * оператор либо пересчитывает, либо явно записывает недостачу/перестачу.
  */
-export const createFulfillmentSlice: SliceCreator<FulfillmentSlice> = (
-  set,
-  get,
-) => ({
+export const createFulfillmentSlice: SliceCreator<FulfillmentSlice> = (set, get) => ({
   expectedShipments: [],
   receivingEvents: [],
   boxes: [],
@@ -28,7 +26,7 @@ export const createFulfillmentSlice: SliceCreator<FulfillmentSlice> = (
       id: uid("ship"),
       source,
       title: title?.trim() || undefined,
-      createdAt: Date.now(),
+      createdAt: nowMs(),
       status: "pending",
       crossDock: opts?.crossDock || undefined,
       lines: lines
@@ -46,9 +44,7 @@ export const createFulfillmentSlice: SliceCreator<FulfillmentSlice> = (
 
   setShipmentStatus: (id, status) =>
     set((s) => ({
-      expectedShipments: s.expectedShipments.map((sh) =>
-        sh.id === id ? { ...sh, status } : sh,
-      ),
+      expectedShipments: s.expectedShipments.map((sh) => (sh.id === id ? { ...sh, status } : sh)),
     })),
 
   setCrossDock: (id, on) =>
@@ -61,7 +57,7 @@ export const createFulfillmentSlice: SliceCreator<FulfillmentSlice> = (
   closeShipment: (id) =>
     set((s) => ({
       expectedShipments: s.expectedShipments.map((sh) =>
-        sh.id === id ? { ...sh, status: "closed", closedAt: Date.now() } : sh,
+        sh.id === id ? { ...sh, status: "closed", closedAt: nowMs() } : sh,
       ),
     })),
 
@@ -71,15 +67,7 @@ export const createFulfillmentSlice: SliceCreator<FulfillmentSlice> = (
    * отмена откатывала бы приёмку по частям, а метрики дашборда ловили бы
    * промежуточное состояние.
    */
-  receiveProduct: ({
-    productId,
-    qty,
-    boxId,
-    shipmentId,
-    lineId,
-    staffId,
-    discrepancy,
-  }) => {
+  receiveProduct: ({ productId, qty, boxId, shipmentId, lineId, staffId, discrepancy }) => {
     const n = Math.max(1, Math.round(qty));
     const event: ReceivingEvent = {
       id: uid("recv"),
@@ -87,7 +75,7 @@ export const createFulfillmentSlice: SliceCreator<FulfillmentSlice> = (
       qty: n,
       boxId,
       staffId,
-      timestamp: Date.now(),
+      timestamp: nowMs(),
       expectedShipmentLineId: lineId,
       discrepancy,
     };
@@ -98,9 +86,7 @@ export const createFulfillmentSlice: SliceCreator<FulfillmentSlice> = (
         const idx = b.lines.findIndex((l) => l.productId === productId);
         const lines =
           idx >= 0
-            ? b.lines.map((l, i) =>
-                i === idx ? { ...l, qty: l.qty + n } : l,
-              )
+            ? b.lines.map((l, i) => (i === idx ? { ...l, qty: l.qty + n } : l))
             : [...b.lines, { productId, qty: n }];
         return { ...b, lines };
       }),
@@ -126,7 +112,7 @@ export const createFulfillmentSlice: SliceCreator<FulfillmentSlice> = (
     const box: Box = {
       id: uid("box"),
       barcode: generateBoxBarcode(seq),
-      createdAt: Date.now(),
+      createdAt: nowMs(),
       lines: [],
     };
     set((s) => ({ boxes: [...s.boxes, box], boxSeq: seq }));
@@ -143,7 +129,7 @@ export const createFulfillmentSlice: SliceCreator<FulfillmentSlice> = (
     const pallet: Pallet = {
       id: uid("plt"),
       barcode: generatePalletBarcode(seq),
-      createdAt: Date.now(),
+      createdAt: nowMs(),
       boxIds: [],
     };
     set((s) => ({ pallets: [...s.pallets, pallet], palletSeq: seq }));
@@ -155,9 +141,7 @@ export const createFulfillmentSlice: SliceCreator<FulfillmentSlice> = (
       boxes: s.boxes.map((b) => (b.id === boxId ? { ...b, palletId } : b)),
       pallets: s.pallets.map((p) => {
         if (p.id !== palletId) return p;
-        return p.boxIds.includes(boxId)
-          ? p
-          : { ...p, boxIds: [...p.boxIds, boxId] };
+        return p.boxIds.includes(boxId) ? p : { ...p, boxIds: [...p.boxIds, boxId] };
       }),
     })),
 
@@ -177,13 +161,22 @@ export const createFulfillmentSlice: SliceCreator<FulfillmentSlice> = (
         return {
           ...b,
           lines: b.lines
-            .map((l) =>
-              l.productId === productId ? { ...l, qty: l.qty - take } : l,
-            )
+            .map((l) => (l.productId === productId ? { ...l, qty: l.qty - take } : l))
             .filter((l) => l.qty > 0),
         };
       }),
     }));
     return take;
   },
+
+  // --- ход мастера приёмки (п.4.7) ------------------------------------------
+
+  receiving: EMPTY_RECEIVING,
+
+  setReceiving: (patch) => set((s) => ({ receiving: { ...s.receiving, ...patch } })),
+
+  addReceived: (qty) =>
+    set((s) => ({ receiving: { ...s.receiving, received: s.receiving.received + qty } })),
+
+  resumeReceiving: () => set((s) => ({ receiving: resumeProgress(s.receiving, s) })),
 });
