@@ -49,9 +49,11 @@ test.describe("Cookie и согласия", () => {
 
   test("«Подробнее» открывает политику, не убирая выбор с экрана", async ({ page }) => {
     await page.goto("/");
-    await page.getByRole("button", { name: "Подробнее" }).click();
+    // Ссылка, а не кнопка: «Подробнее» ведёт на страницу, и робот, читающий
+    // баннер, обязан найти оттуда дорогу в саму политику.
+    await page.getByRole("link", { name: "Подробнее" }).click();
 
-    await expect(page).toHaveURL(/#\/legal\/cookies$/);
+    await expect(page).toHaveURL(/\/legal\/cookies\/$/);
     await expect(page.getByRole("heading", { level: 1 })).toContainText(/cookie/i);
     // Человек ушёл читать документ именно затем, чтобы решить: кнопки выбора
     // обязаны ждать его на той же странице.
@@ -74,10 +76,8 @@ test.describe("Cookie и согласия", () => {
     expect(await choice(page)).toBe("all");
   });
 
-  test("форма контактов не отправится без согласия на обработку данных", async ({
-    page,
-  }) => {
-    await page.goto("/#/contacts");
+  test("форма контактов не отправится без согласия на обработку данных", async ({ page }) => {
+    await page.goto("/contacts/");
     const form = page.locator("form");
     await form.scrollIntoViewIfNeeded();
 
@@ -85,7 +85,11 @@ test.describe("Cookie и согласия", () => {
     await form.getByPlaceholder("+7 900 000-00-00").fill("kirill@example.com");
     await form.locator("textarea").fill("1 200 SKU, Wildberries и Ozon, склад в Подмосковье");
 
-    const send = form.getByRole("button", { name: "Отправить" });
+    // Подпись кнопки — «Написать письмо»: пока приёмник заявок не настроен
+    // (`VITE_LEADS_ENDPOINT` пуст), форма не притворяется работающей, а честно
+    // открывает письмо. Если переменную однажды зададут, здесь будет
+    // «Отправить» — и тест на это и укажет, а не промолчит.
+    const send = form.getByRole("button", { name: "Написать письмо" });
     await expect(send).toBeDisabled();
     // Прямо об этом и написано под кнопкой — обещание должно совпадать с делом.
     await expect(form).toContainText(
@@ -98,29 +102,38 @@ test.describe("Cookie и согласия", () => {
 
     await form.getByRole("checkbox").first().check();
     await expect(send).toBeEnabled();
+    // Что произойдёт по нажатию, написано до нажатия, а не после.
+    await expect(form).toContainText(phrase("Отправить его нужно самому"));
 
     await send.click();
-    await expect(form.getByRole("button", { name: "Отправлено" })).toBeVisible();
-    await expect(form).toContainText(phrase("Форма пока не отправляет письма"));
+    await expect(form.getByRole("button", { name: "Письмо открыто" })).toBeVisible();
+    await expect(form).toContainText(phrase("Проверьте, что оно ушло"));
   });
 
   test("ссылка в подписи к галочке ведёт в документ", async ({ page }) => {
-    await page.goto("/#/contacts");
+    await page.goto("/contacts/");
     const form = page.locator("form");
     await form.scrollIntoViewIfNeeded();
 
-    await form
-      .getByRole("button", { name: "согласие на обработку персональных данных" })
-      .click();
+    // Документ открывается в новой вкладке — и это здесь не придирка к
+    // разметке, а суть проверки: заявка заполнена наполовину, и уход на
+    // согласие в этой же вкладке стёр бы всё напечатанное. Поэтому ждём
+    // именно всплывшую вкладку, а не смену адреса у текущей.
+    const [doc] = await Promise.all([
+      page.waitForEvent("popup"),
+      form.getByRole("link", { name: "согласие на обработку персональных данных" }).click(),
+    ]);
 
-    await expect(page).toHaveURL(/#\/legal\/consent$/);
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    await expect(doc).toHaveURL(/\/legal\/consent\/$/);
+    await expect(doc.getByRole("heading", { level: 1 })).toHaveText(
       "Согласие на обработку персональных данных",
     );
+    // Исходная вкладка остаётся на форме — вернуться есть куда.
+    await expect(page).toHaveURL(/\/contacts\/$/);
   });
 
   test("галочка ловит клик по нарисованному квадратику", async ({ page }) => {
-    await page.goto("/#/contacts");
+    await page.goto("/contacts/");
     const form = page.locator("form");
     await form.scrollIntoViewIfNeeded();
 
@@ -131,12 +144,7 @@ test.describe("Cookie и согласия", () => {
     // именно попадание по квадрату, иначе рассинхрон слоёв никто не заметит.
     // Подпись поля («Как к вам обращаться») — тоже `label`, поэтому отбираем
     // только те, внутри которых есть галочка.
-    await form
-      .locator("label:has(input[type=checkbox])")
-      .first()
-      .locator("span")
-      .first()
-      .click();
+    await form.locator("label:has(input[type=checkbox])").first().locator("span").first().click();
     await expect(box).toBeChecked();
   });
 });

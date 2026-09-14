@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 
 /** Ключ выбора в баннере cookie — тот же, что в `src/site/lib/cookieConsent.ts`. */
 export const CONSENT_KEY = "uklad.cookie-consent";
@@ -66,13 +66,43 @@ export async function scrollTo(page: Page, top: number): Promise<void> {
 /**
  * Открыть витрину складов напрямую.
  *
- * Через `goto` на хэш, а не кликом из шапки: путь «лендинг → кнопка → витрина»
- * проверяется отдельным тестом, и повторять его перед каждой проверкой фильтров
- * значит ловить в фильтрах падения навигации.
+ * Через `goto` по адресу, а не кликом из шапки: путь «лендинг → кнопка →
+ * витрина» проверяется отдельным тестом, и повторять его перед каждой проверкой
+ * фильтров значит ловить в фильтрах падения навигации.
+ *
+ * Адрес с завершающей косой чертой — так же, как его строит `href()` на самой
+ * витрине. Здесь это не украшение: страницы лежат файлами (`market/index.html`),
+ * и статике отдавать нечего, пока в адресе нет каталога.
+ *
+ * `search` — хвост с готовым отбором, вместе с `?`. Отбор живёт в адресе, и
+ * «открыть присланную ссылку» — такой же обычный вход на витрину, как и
+ * чистый.
  */
-export async function openMarket(page: Page): Promise<void> {
-  await page.goto("/#/market");
+export async function openMarket(page: Page, search = ""): Promise<void> {
+  await page.goto(`/market/${search}`);
   await page.getByRole("heading", { name: "Склады для фулфилмента" }).waitFor();
+}
+
+/**
+ * Заполнить заявку складу.
+ *
+ * Форма одна и та же на странице склада и в таблице сравнения, поэтому область
+ * приходит снаружи. Поля ищутся по `id`, а не по подписи: подписи проходят
+ * через типографику витрины, и образец в тесте начинал бы зависеть от правил
+ * переносов, а не от формы.
+ *
+ * Дата считается от нынешнего дня: записанная строкой она когда-нибудь
+ * наступит, и тест упадёт сам по себе, без единой правки в коде.
+ */
+export async function fillRequest(scope: Locator): Promise<void> {
+  const ahead = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+  const month = `${ahead.getMonth() + 1}`.padStart(2, "0");
+  const day = `${ahead.getDate()}`.padStart(2, "0");
+
+  await scope.locator("#request-goods").fill("Одежда и обувь");
+  await scope.locator("#request-places").fill("120");
+  await scope.locator("#request-date").fill(`${ahead.getFullYear()}-${month}-${day}`);
+  await scope.locator("#request-city").fill("Казань");
 }
 
 /** Сколько складов витрина насчитала под текущий отбор. */
