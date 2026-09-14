@@ -1,0 +1,13 @@
+{
+  "name": "uklad-leads",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Приёмник заявок с витрины Уклада — функция Яндекс Облака",
+  "main": "index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "nodemailer": "^10.0.9"
+  }
+}

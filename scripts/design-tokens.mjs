@@ -5,6 +5,8 @@
  * Tokens Studio, и палитра в Figma не расходится с кодом. Запуск: npm run tokens.
  */
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+// Явный импорт вместо глобальной переменной — см. тот же приём в prerender.mjs.
+import console from "node:console";
 
 const css = readFileSync("src/index.css", "utf8");
 
@@ -50,9 +52,7 @@ function colors(vars) {
   return out;
 }
 
-const existing = JSON.parse(
-  readFileSync("docs/design/design-tokens.json", "utf8"),
-);
+const existing = JSON.parse(readFileSync("docs/design/design-tokens.json", "utf8"));
 
 const tokens = {
   ...existing,
@@ -60,10 +60,7 @@ const tokens = {
 };
 
 mkdirSync("docs/design", { recursive: true });
-writeFileSync(
-  "docs/design/design-tokens.json",
-  `${JSON.stringify(tokens, null, 2)}\n`,
-);
+writeFileSync("docs/design/design-tokens.json", `${JSON.stringify(tokens, null, 2)}\n`);
 console.log(
   `tokens: ${Object.keys(tokens.color.light).length} light / ${Object.keys(tokens.color.dark).length} dark`,
 );
