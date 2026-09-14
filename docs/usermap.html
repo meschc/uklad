@@ -104,6 +104,7 @@ h1 { font-size: clamp(28px, 5vw, 42px); line-height: 1.05; }
 .dot.seller { border-color: var(--seller); }
 .dot.state { border-color: var(--state); }
 .dot.overlay { border-style: dashed; }
+.key .arrow { font-style: normal; font-size: 13px; color: var(--mfg); }
 .sample { width: 26px; height: 0; border-top: 2px solid var(--line); }
 .sample.main { border-color: var(--primary); }
 .sample.back { border-top-style: dashed; }
@@ -171,16 +172,26 @@ h1 { font-size: clamp(28px, 5vw, 42px); line-height: 1.05; }
 .node {
   position: relative;
   z-index: 1;
-  padding: 12px 14px 13px;
   border: 1.5px solid var(--border);
   border-radius: var(--r);
   background: var(--card);
   box-shadow: var(--shadow);
+  transition: border-color 0.15s, transform 0.15s, opacity 0.2s;
+}
+/* Карточка делает два разных дела: открывает разбор и ведёт на живую
+   страницу. Ссылка внутри кнопки — невалидная разметка, поэтому кнопка
+   занимает всю карточку целиком, а ссылка лежит рядом, поверх её угла. */
+.face {
+  display: block;
+  width: 100%;
+  padding: 12px 14px 13px;
+  border: 0;
+  border-radius: inherit;
+  background: none;
   cursor: pointer;
   text-align: left;
   font: inherit;
   color: inherit;
-  transition: border-color 0.15s, transform 0.15s, opacity 0.2s;
 }
 .node:hover { transform: translateY(-1px); border-color: var(--primary); }
 .node.sel { border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent); }
@@ -188,11 +199,13 @@ h1 { font-size: clamp(28px, 5vw, 42px); line-height: 1.05; }
 .node[data-kind="seller"] { border-left: 3px solid var(--seller); }
 .node[data-kind="overlay"] { border-style: dashed; background: var(--muted); box-shadow: none; }
 .node[data-kind="chrome"] { border-style: dotted; background: var(--muted); box-shadow: none; }
-.node[data-kind="entry"] { border-radius: 999px; padding: 10px 18px; }
+.node[data-kind="entry"] { border-radius: 999px; }
+.node[data-kind="entry"] .face { padding: 10px 18px; }
 .node[data-kind="bridge"] { border-left: 3px solid var(--seller); }
 .node[data-kind="state"] { border-left: 3px solid var(--state); background: var(--muted); box-shadow: none; }
 
 .node h3 { font-size: 14px; }
+.node.linked h3 { padding-right: 20px; }
 .node .meta {
   margin-top: 3px;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -209,6 +222,28 @@ h1 { font-size: clamp(28px, 5vw, 42px); line-height: 1.05; }
   color: var(--seller);
   font-size: 10px;
   font-weight: 500;
+}
+/* Ссылка на живую страницу — стрелкой в углу, а не строкой внизу карточки:
+   карточек больше сорока, и лишняя строка в каждой растянула бы доску на
+   экран вниз. Что именно откроется, написано в подсказке и в разборе. */
+.open {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  color: var(--mfg);
+  font-size: 12px;
+  line-height: 1;
+  text-decoration: none;
+}
+.open:hover, .open:focus-visible {
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  color: var(--primary);
 }
 
 /* ── Панель разбора ─────────────────────────────────────────────────────── */
@@ -231,6 +266,19 @@ h1 { font-size: clamp(28px, 5vw, 42px); line-height: 1.05; }
 .panel h3 { font-size: 17px; padding-right: 28px; }
 .panel .meta { margin-top: 4px; font-family: ui-monospace, monospace; font-size: 11px; color: var(--mfg); }
 .panel .desc { margin-top: 12px; font-size: 13px; color: var(--mfg); }
+.panel .open-page {
+  display: inline-block;
+  margin-top: 14px;
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--primary);
+  font-size: 12px;
+  text-decoration: none;
+}
+.panel .open-page[hidden] { display: none; }
+.panel .open-page:hover { border-color: var(--primary); }
+.panel .open-page span { color: var(--mfg); font-family: ui-monospace, monospace; font-size: 11px; }
 .panel h4 {
   margin: 18px 0 7px;
   font-size: 10px;
@@ -290,7 +338,7 @@ h1 { font-size: clamp(28px, 5vw, 42px); line-height: 1.05; }
       товар потом принимают, хранят и отгружают. Ниже — обе, целиком: каждый
       экран, каждое всплывающее окно, каждый тупик и каждый переход между
       ними. Наведите на карточку, чтобы увидеть её связи, нажмите — чтобы
-      прочитать разбор.
+      прочитать разбор, а стрелка в углу открывает саму страницу.
     </p>
     <div class="stats" id="stats"></div>
   </div>
@@ -304,6 +352,7 @@ h1 { font-size: clamp(28px, 5vw, 42px); line-height: 1.05; }
     <span class="key"><i class="sample main"></i> переход</span>
     <span class="key"><i class="sample back"></i> возврат</span>
     <span class="key"><i class="sample chrome"></i> сквозная навигация</span>
+    <span class="key"><i class="arrow">↗</i> открыть живую страницу</span>
     <label class="toggle"><input type="checkbox" id="chrome-toggle" checked /> шапка, подвал и рельс</label>
   </div>
 
@@ -311,10 +360,12 @@ h1 { font-size: clamp(28px, 5vw, 42px); line-height: 1.05; }
     <header>
       <h2>Сайт — витрина складов</h2>
       <p>
-        Маршруты живут в хэше и раскладываются статикой. Отличает адрес
-        раздела от якоря секции одна косая черта: «#how» ведёт на лендинг и
-        будет работать годами, «#/sklad» — честное «не найдено». Дверь в
-        систему на всём сайте одна — в подвале.
+        Каждая страница лежит на диске готовым файлом: «/market/» — это каталог
+        со своим index.html, собранный на сборке. Тем же способом сделана и
+        вторая версия сайта, английская: тот же набор страниц под «/en/».
+        Якорь секции («#how») ведёт на лендинг, а на адрес, которого нет,
+        хостинг отдаёт 404.html — собранный из той же витрины, с шапкой и
+        рабочими ссылками. Дверь в систему на всём сайте одна — в подвале.
       </p>
     </header>
     <div class="scroller"><div class="canvas"><svg class="wires"></svg><div class="cols"></div></div></div>
@@ -345,6 +396,7 @@ h1 { font-size: clamp(28px, 5vw, 42px); line-height: 1.05; }
   <h3 id="p-title"></h3>
   <p class="meta" id="p-meta"></p>
   <p class="desc" id="p-desc"></p>
+  <a class="open-page" id="p-open" target="_blank" rel="noopener" hidden></a>
   <div id="p-items"></div>
   <div id="p-in"></div>
   <div id="p-out"></div>
@@ -358,14 +410,74 @@ h1 { font-size: clamp(28px, 5vw, 42px); line-height: 1.05; }
  * сами, в том числе при смене ширины окна и размера шрифта.
  */
 
+/*
+ * Куда ведёт стрелка на карточке. Отдельной таблицей, а не полем в каждом
+ * узле: адрес есть не у всего, и в общем списке сразу видно, у чего своей
+ * страницы нет вовсе — у шапки, у окон поверх экрана, у сбоя рендера.
+ *
+ * Адреса записаны так, как их видно в адресной строке, — от корня сайта. BASE
+ * приставляется спереди и остаётся единственным местом, которое придётся
+ * править при переезде: карта лежит в docs/ рядом с сайтом, поэтому по
+ * умолчанию это «..» — уровень вверх. При вставке в портфолио здесь будет
+ * домен без завершающей косой черты.
+ *
+ * У экранов системы адрес появился ради этой карты: приложение хранит экран
+ * в состоянии, а не в адресе, и сослаться на него было нечем. Роль в ссылке
+ * указана явно — иначе экран склада откроется у того, кто в прошлый раз
+ * остался в роли продавца, и его развернёт обратно в кабинет продавца.
+ */
+const BASE = "..";
+
+const LINKS = {
+  /* Сайт */
+  header: "/", footer: "/", cookie: "/",
+  landing: "/", sellers: "/sellers/", pricing: "/pricing/",
+  market: "/market/", filters: "/market/", empty: "/market/",
+  contacts: "/contacts/", legal: "/legal/",
+  warehouse: "/warehouse/w-1/", doc: "/legal/offer/",
+  demo: "/app/", notfound: "/sklad/",
+
+  /* Система */
+  login: "/app/?view=login",
+  dashboard: "/app/?view=dashboard", rail: "/app/?view=dashboard", whdialog: "/app/?view=dashboard",
+  profile: "/app/?view=profile",
+  editor: "/app/?role=warehouse&view=editor",
+  tabledialogs: "/app/?role=warehouse&view=editor",
+  printplan: "/app/?role=warehouse&view=editor",
+  receiving: "/app/?role=warehouse&view=receiving",
+  flowdialogs: "/app/?role=warehouse&view=receiving",
+  tasks: "/app/?role=warehouse&view=tasks",
+  picking: "/app/?role=warehouse&view=picking",
+  chat: "/app/?role=warehouse&view=chat",
+  labels: "/app/?role=warehouse&view=labels",
+  documents: "/app/?role=warehouse&view=documents",
+  spec: "/app/?role=warehouse&view=spec",
+  staff: "/app/?role=warehouse&view=staff",
+  integrations: "/app/?role=warehouse&view=integrations",
+  analytics: "/app/?role=warehouse&view=analytics",
+  lookup: "/app/?role=warehouse&view=lookup",
+  seller: "/app/?role=seller&view=seller",
+  reqdialog: "/app/?role=seller&view=seller",
+  heatmap: "/app/?heatmap=1",
+};
+
+/**
+ * Узлы, у которых своей страницы нет: ссылка ведёт на ту, где их видно.
+ * Разница честная и важная — «Шапка» не открывается, она показывается.
+ */
+const HOSTED = new Set(["header", "footer", "cookie", "filters", "empty", "rail", "whdialog", "tabledialogs", "flowdialogs", "printplan", "reqdialog"]);
+
+const linkLabel = (id) => (HOSTED.has(id) ? "Смотреть на" : "Открыть");
+const esc = (s) => s.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
+
 const NODES = [
   /* ── Сайт ────────────────────────────────────────────────────────────── */
   { board: "site", col: 0, id: "enter", kind: "entry", title: "Заход на сайт", meta: "любой адрес",
-    desc: "Точка входа одна на все сценарии: поиск, прямая ссылка, ссылка из переписки. Дальше адрес расходится на три: якорь секции («#how») ведёт на лендинг, неизвестный раздел («#/sklad») — на страницу «не найдено», а обычный путь без хэша («/market») вообще не доходит до приложения и попадает на страницу хостинга." },
+    desc: "Точка входа одна на все сценарии: поиск, прямая ссылка, ссылка из переписки. Каждая страница лежит на диске отдельным файлом, поэтому прямая ссылка на склад открывает склад, а не главную с догрузкой. Адрес расходится на три: «/market/» и любой другой известный раздел отдаётся файлом, якорь секции («#how») ведёт на лендинг, а на «/sklad/», которого на диске нет, хостинг отдаёт 404.html. Английская версия — тот же набор адресов под «/en/», и переключатель в шапке ведёт на ту же страницу, а не на английскую главную." },
 
   { board: "site", col: 0, id: "header", kind: "chrome", title: "Шапка", meta: "на всех страницах",
     desc: "Сквозная навигация. На телефоне сворачивается в кнопку меню с укороченным набором разделов.",
-    items: ["Логотип — на главную", "Как это работает — к шагам лендинга", "Складам — к блоку для операторов", "Селлеру — отдельная страница", "Витрина — к тизеру каталога", "Тарифы", "Вопросы", "Кнопка «Подобрать склад»", "Меню на телефоне: Селлеру, Тарифы, Контакты, Правовая информация"] },
+    items: ["Логотип — на главную", "Как это работает — к шагам лендинга", "Складам — к блоку для операторов", "Селлеру — отдельная страница", "Витрина — к тизеру каталога", "Тарифы", "Вопросы", "Переключатель языка — на ту же страницу по-английски", "Кнопка «Подобрать склад»", "Внутри разделов набор другой: Селлеру, Тарифы, Контакты, Правовая информация — якорям лендинга там вести некуда"] },
 
   { board: "site", col: 0, id: "footer", kind: "chrome", title: "Подвал", meta: "на всех страницах",
     desc: "Три колонки ссылок, правовой блок и почта. Здесь же единственный на всём сайте вход в демонстрацию системы: демо — не то, за чем на витрину приходит селлер, и несколько дверей в него делили бы внимание с единственным нужным действием.",
@@ -374,50 +486,46 @@ const NODES = [
   { board: "site", col: 0, id: "cookie", kind: "overlay", title: "Cookie-бар", meta: "первый заход",
     desc: "Полоса согласия при первом визите. Вызывается повторно из подвала — «Настройки cookie»." },
 
-  { board: "site", col: 1, id: "landing", kind: "page", title: "Лендинг", meta: "#/",
+  { board: "site", col: 1, id: "landing", kind: "page", title: "Лендинг", meta: "/",
     desc: "Порядок секций повторяет порядок вопросов селлера: что это → почему сейчас плохо → как будет → что я увижу → сколько этого есть → где смотреть склады → а мне-то, складу, что → вопросы → действие.",
     items: ["Первый экран с макетом кабинета", "Бегущая строка площадок", "Проблема: долго, бумаги, ничего не видно", "Как это работает — пять шагов (#how)", "Что видит селлер — вкладки", "Цифры витрины", "Слоган про несколько площадок", "Тизер витрины (#warehouses)", "Складам и фулфилменту (#operators)", "Вопросы (#faq)", "Финальный блок с переходом в каталог"] },
 
-  { board: "site", col: 1, id: "sellers", kind: "page", title: "Селлеру", meta: "#/sellers",
+  { board: "site", col: 1, id: "sellers", kind: "page", title: "Селлеру", meta: "/sellers/",
     desc: "Вторая аудитория со своим вопросом «а мне-то что с этого». Отвечать на него посреди страницы про WMS значит не ответить ни одной из сторон, поэтому у селлера отдельная ветка.",
     items: ["Путь от выбора склада до отгрузки — пять шагов", "Что открыто в кабинете — четыре блока", "Документы и чат", "Живой макет заявки на отгрузку"] },
 
-  { board: "site", col: 1, id: "pricing", kind: "page", title: "Тарифы", meta: "#/pricing",
+  { board: "site", col: 1, id: "pricing", kind: "page", title: "Тарифы", meta: "/pricing/",
     desc: "Страница обязательная, а не маркетинговая: оферта ссылается на неё как на свою неотъемлемую часть. Порядок блоков — от бесплатного к платному: у витрины два кошелька, и если начать с подписки, селлер решит, что каталог платный.",
     items: ["Бесплатное навсегда: поиск, фильтры, заявки", "Платные дополнения селлеру — поштучно", "Подписка склада", "Ссылка на оферту"] },
 
-  { board: "site", col: 2, id: "market", kind: "page", title: "Витрина складов", meta: "#/market",
+  { board: "site", col: 2, id: "market", kind: "page", title: "Витрина складов", meta: "/market/",
     desc: "Каталог с одинаковыми карточками и одинаковым прайсом. Отбор живёт в состоянии экрана, а не в адресе: ссылку со всеми фильтрами никто не пересылает — пересылают ссылку на склад.",
     items: ["Фильтры: город, схема, площадки, услуги, потолок цены", "Панель объёма — меняет не выдачу, а расчёт в карточках", "Сортировка", "Два вида: списком и картой", "«Показать ещё» постранично", "Пустое состояние со сбросом отбора"] },
 
   { board: "site", col: 2, id: "filters", kind: "overlay", title: "Шторка фильтров", meta: "телефон",
     desc: "На узком экране колонка фильтров уезжает в шторку поверх каталога: Esc закрывает, список под ней стоит на месте." },
 
-  { board: "site", col: 2, id: "contacts", kind: "page", title: "Контакты", meta: "#/contacts",
+  { board: "site", col: 2, id: "contacts", kind: "page", title: "Контакты", meta: "/contacts/",
     desc: "Кроме формы обращения — обязательное раскрытие владельца: наименование, адрес, почта и режим работы. Печатаются из того же источника, что и правовые страницы, чтобы данные не разъехались.",
     items: ["Форма обращения с согласием на обработку данных", "Реквизиты и режим работы", "Ссылка на полное раскрытие"] },
 
-  { board: "site", col: 2, id: "legal", kind: "page", title: "Правовая информация", meta: "#/legal",
+  { board: "site", col: 2, id: "legal", kind: "page", title: "Правовая информация", meta: "/legal/",
     desc: "Список документов и сам документ — один экран на оба состояния: отличаются они только содержимым." },
 
-  { board: "site", col: 3, id: "warehouse", kind: "page", title: "Страница склада", meta: "#/warehouse/:id",
-    desc: "Отдельная страница, а не всплывающая карточка: склады сравнивают, открывая по одному в своей вкладке. Поэтому карточка в каталоге — настоящая ссылка, со всем, что ссылка умеет. Старый адрес #/market/:id продолжает работать.",
+  { board: "site", col: 3, id: "warehouse", kind: "page", title: "Страница склада", meta: "/warehouse/:id/",
+    desc: "Отдельная страница, а не всплывающая карточка: склады сравнивают, открывая по одному в своей вкладке. Поэтому карточка в каталоге — настоящая ссылка, со всем, что ссылка умеет. Ссылки, разосланные до перехода на пути, продолжают работать: «/market/w-12/» и «#/warehouse/w-12» из чужой закладки переписываются на нынешний адрес до первой отрисовки.",
     items: ["Обложка, значок «Уклад», проверка", "Прайс по одинаковым строкам", "Паспорт объекта и услуги", "Свободные места", "Заявка на склад — без комиссии", "Панель чата со складом"] },
 
-  { board: "site", col: 3, id: "doc", kind: "page", title: "Правовой документ", meta: "#/legal/:slug",
+  { board: "site", col: 3, id: "doc", kind: "page", title: "Правовой документ", meta: "/legal/:slug/",
     desc: "Семь документов с оглавлением и датой редакции. Порядок в списке — как их читают: сначала «кто вы такие», потом «на каких условиях», потом «что с моими данными».",
     items: ["Реквизиты и раскрытие", "Пользовательское соглашение", "Оферта", "Политика обработки ПДн", "Согласие на обработку ПДн", "Cookie", "Рекомендательные технологии"] },
 
-  { board: "site", col: 3, id: "demo", kind: "bridge", title: "Демо WMS", meta: "/app/",
+  { board: "site", col: 3, id: "demo", kind: "bridge", title: "Демо WMS", meta: "/app/ · отдельная точка входа",
     desc: "Переход из витрины в систему — отдельное приложение по собственному адресу. Дальше начинается вторая доска." },
 
-  { board: "site", col: 4, id: "hostmiss", kind: "state", title: "404 хостинга", meta: "/что-угодно",
-    desc: "Витрина живёт на хэше, поэтому обычный путь до неё не доходит вовсе: файла с таким именем на диске нет, и статический хостинг отдаёт свою страницу ошибки — у GitHub Pages это чужой бренд в лицо человеку, который искал наш склад. Отдельный public/404.html подменяет её собой: без сборки, со своими стилями, потому что выполниться здесь ничего не обязано.",
-    items: ["Своя вёрстка вместо страницы хостинга", "Известное имя раздела перебрасывается на настоящий адрес", "«Смотреть склады» и «На главную»", "noindex — в поиске такой странице делать нечего"] },
-
-  { board: "site", col: 4, id: "notfound", kind: "state", title: "Страница не найдена", meta: "#/что-угодно",
-    desc: "Один экран на три случая. Показывать вместо него лендинг нельзя: человек шёл по ссылке за конкретной страницей и решит, что такого раздела у сервиса нет вовсе. Заголовок вкладки меняется тоже — иначе закладка «Оферта» год за годом открывает тупик, а в истории браузера написано «Оферта».",
-    items: ["Неизвестный раздел: #/sklad", "Склад снят с витрины: #/warehouse/старый-id", "Документ переименован: #/legal/старый-код", "Якорь секции (#how) сюда не приводит — он ведёт на лендинг"] },
+  { board: "site", col: 4, id: "notfound", kind: "state", title: "Страница не найдена", meta: "/чего-нет/ · 404.html",
+    desc: "Один экран на все промахи, и он же — страница хостинга. Адресов у витрины конечное число, а ошибиться в ссылке можно бесконечным числом способов: всё, чего нет на диске, GitHub Pages отдаёт файлом 404.html, nginx — строкой error_page. Раньше это были две разные страницы: отдельная статическая для хостинга и своя внутри витрины. Теперь 404.html собран из той же витрины предрендером — человек, попавший на битый адрес, получает не голую ошибку, а обычный сайт с шапкой, подвалом и рабочими ссылками. Заголовок вкладки меняется тоже: иначе закладка «Оферта» год за годом открывает тупик, а в истории браузера написано «Оферта».",
+    items: ["Неизвестный раздел: /sklad/", "Склад снят с витрины: /warehouse/старый-id/", "Документ переименован: /legal/старый-код/", "Якорь секции (#how) сюда не приводит — он ведёт на лендинг", "«Смотреть склады» и «На главную»", "noindex — в поиске такой странице делать нечего"] },
 
   { board: "site", col: 4, id: "empty", kind: "state", title: "Пустая выдача", meta: "фильтры без совпадений",
     desc: "Не ошибка, а ответ: складов с таким набором условий нет. Тупиком это становится, когда из него не выйти, поэтому сброс отбора стоит прямо в пустом состоянии, а не в шапке фильтров." },
@@ -521,7 +629,7 @@ const NODES = [
 
 const EDGES = [
   /* Сайт */
-  ["enter", "landing", "неизвестный адрес открывает лендинг", "main"],
+  ["enter", "landing", "корень: / и /en/", "main"],
   ["header", "landing", "логотип и якоря разделов", "chrome"],
   ["header", "sellers", "«Селлеру»", "chrome"],
   ["header", "pricing", "«Тарифы»", "chrome"],
@@ -554,11 +662,9 @@ const EDGES = [
   ["warehouse", "doc", "реквизиты владельца агрегатора", "main"],
 
   /* Сайт: тупики */
-  ["enter", "hostmiss", "путь без хэша: /market, /sklad", "main"],
-  ["enter", "notfound", "неизвестный раздел: #/sklad", "main"],
+  ["enter", "market", "прямая ссылка на раздел: /market/", "main"],
+  ["enter", "notfound", "такого файла нет: /sklad/", "main"],
   ["enter", "nojs", "скрипты отключены или заблокированы", "main"],
-  ["hostmiss", "market", "известный раздел — переброс на настоящий адрес", "main"],
-  ["hostmiss", "landing", "«На главную»", "back"],
   ["warehouse", "notfound", "склад снят с витрины", "main"],
   ["doc", "notfound", "документ переименован", "main"],
   ["notfound", "market", "«Смотреть склады»", "back"],
@@ -638,15 +744,22 @@ for (const board of ["site", "app"]) {
     col.className = "col";
     col.innerHTML = `<div class="col-title">${title}</div>`;
     NODES.filter((n) => n.board === board && n.col === i).forEach((n) => {
-      const el = document.createElement("button");
-      el.type = "button";
-      el.className = "node";
+      const path = LINKS[n.id];
+      const el = document.createElement("div");
+      el.className = path ? "node linked" : "node";
       el.id = `n-${n.id}`;
       el.dataset.id = n.id;
       el.dataset.kind = n.kind;
       const items = n.items ? `<p class="count">${n.items.length} ${plural(n.items.length, "пункт", "пункта", "пунктов")} внутри</p>` : "";
       const tag = ["overlay", "chrome", "state"].includes(n.kind) ? `<span class="tag">${KIND_TITLE[n.kind]}</span>` : "";
-      el.innerHTML = `<h3>${n.title}</h3><p class="meta">${n.meta}</p>${items || tag}`;
+      const hint = path ? esc(`${linkLabel(n.id)} ${path}`) : "";
+      const open = path
+        ? `<a class="open" href="${esc(BASE + path)}" target="_blank" rel="noopener" title="${hint}" aria-label="${hint}">↗</a>`
+        : "";
+      el.innerHTML =
+        `<button type="button" class="face">` +
+        `<h3>${n.title}</h3><p class="meta">${n.meta}</p>${items || tag}` +
+        `</button>${open}`;
       col.appendChild(el);
     });
     host.appendChild(col);
@@ -781,6 +894,15 @@ function select(id) {
   document.getElementById("p-title").textContent = n.title;
   document.getElementById("p-meta").textContent = `${n.meta} · ${KIND_TITLE[n.kind]}`;
   document.getElementById("p-desc").textContent = n.desc;
+
+  const open = document.getElementById("p-open");
+  const path = LINKS[id];
+  open.hidden = !path;
+  if (path) {
+    open.href = BASE + path;
+    open.innerHTML = `${linkLabel(id)} <span>${esc(path)}</span> ↗`;
+  }
+
   document.getElementById("p-items").innerHTML = list("Что внутри", (n.items || []).map((i) => `<li>${i}</li>`));
 
   const link = (other, label) =>
@@ -802,7 +924,8 @@ function select(id) {
 }
 
 document.querySelectorAll(".node").forEach((el) => {
-  el.addEventListener("click", () => select(el.dataset.id));
+  // Стрелка — обычная ссылка, и клик по ней не должен заодно открывать разбор.
+  el.addEventListener("click", (e) => { if (!e.target.closest(".open")) select(el.dataset.id); });
   el.addEventListener("mouseenter", () => { if (!pinned) highlight(el.dataset.id); });
   el.addEventListener("mouseleave", () => { if (!pinned) highlight(null); });
 });

@@ -154,9 +154,10 @@ fulfillment.ts    stockByProduct / stockAt / groupRequestsByTarget /
                   requestsByDay (календарь) / storageCost / staffWorkload
                   (в groupRequestsByTarget даты машин считаются только по
                   НЕзакрытым заявкам — иначе группа вечно «просрочена»)
-data/             репозитории (п.0.4): productsRepository, placementRepository,
-                  fulfillmentRepository, requestsRepository, staffRepository —
-                  async-контракт поверх стора; guards.ts — проверки формы;
+data/             репозитории (п.0.4): catalogRepository, placementRepository,
+                  fulfillmentRepository, requestsRepository, chatRepository,
+                  staffRepository — async-контракт поверх стора (имя зеркалит
+                  срез); guards.ts — проверки формы;
                   sanitize.ts — разбор восстановленного персиста
 lookup.ts         lookup(code, data) -> товар | тара | паллета | ячейка | none
                   («Что это?»: один скан отвечает на вопрос «что это такое»)

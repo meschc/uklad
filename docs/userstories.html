@@ -1,0 +1,713 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Уклад — сценарии и заминки</title>
+<meta name="description" content="Шесть настоящих задач в «Укладе», разобранных по шагам: какой экран, какой адрес, что мешало и что с этим сделано." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+/*
+ * Второй файл к карте продукта и живёт по тем же правилам: один документ,
+ * никакой сборки, единственная внешняя зависимость — шрифт. Вставляют его в
+ * ту же страницу портфолио, где ассетов не будет.
+ *
+ * Палитра и токены скопированы из `usermap.html` намеренно, до значения: два
+ * файла читаются подряд, и легенда должна работать сквозная. Синий — сайт,
+ * бирюзовый — система, оранжевый — то, что не доведено. Здесь оранжевый
+ * означает ровно то же, что там означал «тупик».
+ */
+:root {
+  --bg: hsl(220 33% 99%);
+  --fg: hsl(222 24% 10%);
+  --card: #fff;
+  --muted: hsl(220 20% 96%);
+  --mfg: hsl(220 10% 40%);
+  --border: hsl(220 16% 88%);
+  --line: hsl(220 14% 80%);
+  --primary: hsl(226 100% 55%);
+  --seller: hsl(190 92% 32%);
+  --state: hsl(28 82% 44%);
+  --shadow: 0 1px 2px hsl(222 24% 10% / 0.04), 0 8px 24px hsl(222 24% 10% / 0.05);
+  --r: 14px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: hsl(222 24% 5%);
+    --fg: hsl(220 16% 93%);
+    --card: hsl(222 20% 8%);
+    --muted: hsl(222 16% 12%);
+    --mfg: hsl(220 10% 62%);
+    --border: hsl(222 14% 17%);
+    --line: hsl(222 12% 28%);
+    --primary: hsl(226 100% 66%);
+    --seller: hsl(190 85% 52%);
+    --state: hsl(30 90% 62%);
+    --shadow: 0 1px 2px hsl(0 0% 0% / 0.4), 0 12px 32px hsl(0 0% 0% / 0.3);
+  }
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: "Golos Text", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3 { margin: 0; font-weight: 500; letter-spacing: -0.02em; }
+p { margin: 0; }
+ul { margin: 0; padding: 0; list-style: none; }
+
+.wrap { max-width: 1060px; margin: 0 auto; padding: 40px 20px 96px; }
+
+/* ── Шапка ──────────────────────────────────────────────────────────────── */
+
+.top { max-width: 760px; }
+.eyebrow {
+  margin-bottom: 10px;
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+h1 { font-size: clamp(28px, 5vw, 42px); line-height: 1.05; }
+.lead { margin-top: 14px; color: var(--mfg); font-size: 16px; }
+
+.stats { display: flex; flex-wrap: wrap; gap: 28px; margin: 28px 0 0; }
+.stat b { display: block; font-size: 26px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.stat span { font-size: 12px; color: var(--mfg); }
+
+/* ── Полоса управления ──────────────────────────────────────────────────── */
+
+/* Здесь и легенда, и оглавление: шесть длинных сценариев подряд без быстрого
+   перехода читаются как одна простыня. Полоса липкая — на середине четвёртого
+   сценария оглавление нужнее, чем в самом верху. */
+.controls {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 18px;
+  margin: 32px 0 8px;
+  padding: 12px 0;
+  background: linear-gradient(var(--bg) 70%, transparent);
+}
+.key { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; color: var(--mfg); }
+.dot { width: 12px; height: 12px; border-radius: 4px; border: 1.5px solid var(--line); background: var(--card); }
+.dot.site { border-color: var(--primary); }
+.dot.app { border-color: var(--seller); }
+.dot.todo { border-color: var(--state); background: color-mix(in srgb, var(--state) 18%, transparent); }
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-left: auto;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--card);
+  font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+.toggle input { accent-color: var(--primary); margin: 0; }
+
+.jump { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 0; }
+.jump a {
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--mfg);
+  font-size: 12px;
+  text-decoration: none;
+  transition: border-color 0.15s, color 0.15s;
+}
+.jump a:hover { border-color: var(--accent, var(--primary)); color: var(--fg); }
+.jump a b { font-weight: 500; color: var(--accent, var(--primary)); }
+
+/* ── Сценарий ───────────────────────────────────────────────────────────── */
+
+.story {
+  margin-top: 30px;
+  padding: 24px 26px 26px;
+  border: 1.5px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--r);
+  background: var(--card);
+  box-shadow: var(--shadow);
+  /* Якорь под липкой полосой: без отступа заголовок сценария уезжает ровно
+     под неё, и после перехода по оглавлению виден не он, а второй шаг. */
+  scroll-margin-top: 76px;
+}
+.story > header { max-width: 660px; }
+.who {
+  display: inline-block;
+  margin-bottom: 9px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 13%, transparent);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 500;
+}
+.story h2 { font-size: 21px; line-height: 1.25; }
+/* Цель — прямая речь человека, поэтому набрана как цитата, а не как подзаголовок:
+   всё остальное на странице написано про него, и только эта строка — им самим. */
+.goal {
+  margin-top: 12px;
+  padding-left: 13px;
+  border-left: 2px solid var(--line);
+  color: var(--mfg);
+  font-size: 14px;
+}
+.facts {
+  margin-top: 14px;
+  font-size: 12px;
+  color: var(--mfg);
+  font-variant-numeric: tabular-nums;
+}
+.facts b { font-weight: 500; color: var(--fg); }
+
+/* ── Шаги ───────────────────────────────────────────────────────────────── */
+
+.rail { margin-top: 22px; }
+.step { position: relative; padding: 0 0 22px 42px; }
+.step:last-child { padding-bottom: 0; }
+/* Нитка между шагами рисуется псевдоэлементом самого шага, а не отдельной
+   линией на всю колонку: у последнего шага её быть не должно, а вычислять
+   высоту колонки скриптом ради этого незачем. */
+.step::before {
+  content: "";
+  position: absolute;
+  left: 13px;
+  top: 26px;
+  bottom: 0;
+  width: 1.5px;
+  background: var(--border);
+}
+.step:last-child::before { display: none; }
+.step > .n {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: grid;
+  place-items: center;
+  width: 27px;
+  height: 27px;
+  border: 1.5px solid var(--border);
+  border-radius: 50%;
+  background: var(--card);
+  color: var(--mfg);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.step.has-snag > .n { border-color: var(--accent); color: var(--accent); }
+/* Незакрытое красится оранжевым поверх цвета сценария — тем же, каким в карте
+   продукта отмечены тупики. Так по колонке номеров видно, где работа ещё
+   есть, не читая ни одного абзаца. Специфичность у обоих правил одинаковая,
+   поэтому порядок здесь и решает: это правило стоит вторым намеренно. */
+.step.has-todo > .n { border-color: var(--state); color: var(--state); }
+
+.screen { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; min-height: 27px; }
+.screen h3 { font-size: 15px; }
+/* Адрес и стрелка — одной ссылкой. В карте они были разнесены (там карточек
+   больше сорока и место дорого), здесь шагов тридцать и строка выдерживает
+   честную подпись: видно, куда именно ведёт стрелка, до нажатия. */
+.path {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 1px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--mfg);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.path:hover, .path:focus-visible { border-color: var(--accent); color: var(--accent); }
+.path i { font-style: normal; }
+
+.act { margin-top: 5px; max-width: 640px; font-size: 14px; color: var(--mfg); }
+
+/* ── Заминки ────────────────────────────────────────────────────────────── */
+
+.snag {
+  margin-top: 10px;
+  max-width: 640px;
+  padding: 9px 13px;
+  border-left: 2px solid var(--tone);
+  border-radius: 0 9px 9px 0;
+  background: color-mix(in srgb, var(--tone) 7%, transparent);
+  font-size: 13px;
+}
+.snag.ok { --tone: var(--primary); }
+.snag.todo { --tone: var(--state); }
+.snag b {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--tone);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.end {
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  max-width: 660px;
+  font-size: 14px;
+}
+
+/* Режим «только заминки»: шаги без единой заминки сворачиваются, но не
+   исчезают — иначе нумерация начинает врать. Остаётся строка с экраном и
+   адресом, уходит только описание действия. */
+body.only-snags .step:not(.has-snag) .act { display: none; }
+body.only-snags .step:not(.has-snag) { padding-bottom: 12px; opacity: 0.55; }
+
+.foot { margin-top: 56px; padding-top: 22px; border-top: 1px solid var(--border); color: var(--mfg); font-size: 13px; max-width: 760px; }
+.foot a { color: var(--primary); }
+
+@media (max-width: 720px) {
+  .wrap { padding: 28px 14px 80px; }
+  .story { padding: 20px 16px 22px; }
+  .controls { position: static; }
+  .story { scroll-margin-top: 12px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="top">
+    <p class="eyebrow">Уклад · сценарии</p>
+    <h1>Шесть дел и путь до каждого</h1>
+    <p class="lead">
+      Карта показывает, из чего продукт состоит. Здесь — как им пользуются:
+      шесть настоящих задач, от «найти склад» до «выписать реквизиты»,
+      разобранные по шагам. У каждого шага назван экран и его адрес — по нему
+      же открывается живая страница. Под шагами — то, что мешало: синим
+      отмечено решённое и чем именно, оранжевым — то, что осталось. Заминки не
+      спрятаны намеренно: список оранжевого и есть план работ.
+    </p>
+    <div class="stats">
+      <div class="stat"><b>6</b><span>сценариев</span></div>
+      <div class="stat"><b>29</b><span>шагов</span></div>
+      <div class="stat"><b>17</b><span>заминок решено</span></div>
+      <div class="stat"><b>13</b><span>осталось в работе</span></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <span class="key"><i class="dot site"></i> происходит на витрине</span>
+    <span class="key"><i class="dot app"></i> происходит в системе</span>
+    <span class="key"><i class="dot todo"></i> шаг с незакрытой заминкой</span>
+    <label class="toggle"><input type="checkbox" id="only-snags" /> только шаги с заминками</label>
+  </div>
+
+  <nav class="jump">
+    <a href="#find" style="--accent: var(--primary)"><b>1</b> Селлер</a>
+    <a href="#delivery" style="--accent: var(--seller)"><b>2</b> Селлер, уже клиент</a>
+    <a href="#receiving" style="--accent: var(--seller)"><b>3</b> Кладовщик</a>
+    <a href="#operator" style="--accent: var(--primary)"><b>4</b> Владелец склада</a>
+    <a href="#legal" style="--accent: var(--primary)"><b>5</b> Бухгалтер</a>
+    <a href="#english" style="--accent: var(--primary)"><b>6</b> Англоязычный селлер</a>
+  </nav>
+
+  <!--
+    Сценарии лежат разметкой, а не собираются скриптом из массива. Так было
+    сначала, и файл открывался пустым везде, где JavaScript не выполняется:
+    в предпросмотре мессенджера, в почте, в режиме чтения. Страница-отчёт,
+    которую нельзя переслать и открыть, отчётом не работает.
+
+    Адреса в ссылках даны от этого файла: он лежит в «/docs/», поэтому две
+    точки — корень витрины. При переносе в портфолио менять здесь нужно
+    только их.
+
+    Классы шага: `has-snag` — на шаге была заминка (номер красится акцентом
+    сценария), `has-todo` — заминка осталась незакрытой (номер оранжевый).
+    Оба класса читает переключатель «только шаги с заминками» внизу.
+  -->
+  <main>
+    <section class="story" id="find" style="--accent: var(--primary)">
+      <header>
+        <span class="who">Селлер</span>
+        <h2>1. Найти склад под FBS в Москве и написать ему</h2>
+        <p class="goal">«Вожу товар на маркетплейсы по FBS. Нужен склад в Москве не дороже 25 ₽ за место в сутки — и написать ему сегодня, а не в понедельник.»</p>
+        <p class="facts">
+          <b>6</b> шагов · <b>3</b> адреса · <b>5</b> решено · <b>4</b> осталось
+        </p>
+      </header>
+      <ul class="rail">
+        <li class="step has-snag">
+          <span class="n">1</span>
+          <div class="screen">
+            <h3>Лендинг</h3>
+            <a class="path" href="../" target="_blank" rel="noopener" title="Открыть /">/ <i>↗</i></a>
+          </div>
+          <p class="act">Пришёл из поиска по запросу «фулфилмент Москва». В первом экране одна кнопка наружу — «Подобрать склад», и та же кнопка повторяется в конце страницы.</p>
+          <div class="snag ok"><b>решено</b>Рядом стояла вторая кнопка, «Демо WMS». Две равные по весу кнопки делили внимание, и часть людей уходила смотреть складскую систему, которая им не нужна вовсе. Демо уехало в подвал — на первом экране осталось одно действие.</div>
+        </li>
+        <li class="step has-snag">
+          <span class="n">2</span>
+          <div class="screen">
+            <h3>Витрина складов</h3>
+            <a class="path" href="../market/" target="_blank" rel="noopener" title="Открыть /market/">/market/ <i>↗</i></a>
+          </div>
+          <p class="act">63 склада в 29 городах. Показывается по 12 карточек, дальше кнопка «Показать ещё».</p>
+          <div class="snag ok"><b>решено</b>Карточка — настоящая ссылка, а не кликабельный блок. Склады сравнивают, и открыть три штуки в соседних вкладках средней кнопкой мыши здесь нормальный ход, а не экзотика.</div>
+        </li>
+        <li class="step has-snag has-todo">
+          <span class="n">3</span>
+          <div class="screen">
+            <h3>Фильтры витрины</h3>
+            <a class="path" href="../market/" target="_blank" rel="noopener" title="Открыть /market/">/market/ <i>↗</i></a>
+          </div>
+          <p class="act">Город → Москва. Схема работы → FBS. Потолок цены за место в сутки → 25 ₽. Осталось четыре склада.</p>
+          <div class="snag ok"><b>решено</b>Кнопка «Сбросить» гаснет, пока ни один фильтр не тронут: не обещает действия, которого нет.</div>
+          <div class="snag todo"><b>осталось</b>Отбор живёт в состоянии экрана, а не в адресе. Прислать партнёру ссылку «вот мои четыре склада» нельзя — по ней откроется весь список из 63. Тем же и кнопка «назад» сломана: она уводит с витрины, а не снимает последний фильтр.</div>
+        </li>
+        <li class="step has-snag has-todo">
+          <span class="n">4</span>
+          <div class="screen">
+            <h3>Панель «Ваш объём»</h3>
+            <a class="path" href="../market/" target="_blank" rel="noopener" title="Открыть /market/">/market/ <i>↗</i></a>
+          </div>
+          <p class="act">Ввёл свои цифры: 120 мест хранения, 40 коробок приёмки, 300 сборок в месяц. Цены в карточках пересчитались под этот объём.</p>
+          <div class="snag todo"><b>осталось</b>Панель стоит рядом с фильтрами и читается как ещё один фильтр, хотя выдачу она не сужает — только считает «сколько это будет стоить мне». Подпись про это есть, но ошибаются всё равно один раз.</div>
+        </li>
+        <li class="step has-snag">
+          <span class="n">5</span>
+          <div class="screen">
+            <h3>Страница склада</h3>
+            <a class="path" href="../warehouse/w-1/" target="_blank" rel="noopener" title="Открыть /warehouse/w-1/">/warehouse/w-1/ <i>↗</i></a>
+          </div>
+          <p class="act">Паспорт: адрес, год, площадь, схемы работы, площадки, услуги, прайс по четырём строкам, отметка «Проверен Укладом», карта.</p>
+          <div class="snag ok"><b>решено</b>Заявка и чат — липкой колонкой справа. Прайс длинный, и кнопка в конце страницы означала бы, что до неё доскроллит не каждый.</div>
+        </li>
+        <li class="step has-snag has-todo">
+          <span class="n">6</span>
+          <div class="screen">
+            <h3>Заявка складу</h3>
+            <a class="path" href="../warehouse/w-1/" target="_blank" rel="noopener" title="Открыть /warehouse/w-1/">/warehouse/w-1/ <i>↗</i></a>
+          </div>
+          <p class="act">Отметил согласие на обработку данных — кнопка «Отправить заявку» ожила. Нажал.</p>
+          <div class="snag ok"><b>решено</b>Галочка согласия не проставлена заранее. Заранее проставленное согласие согласием не считается — ни по-человечески, ни по 152-ФЗ.</div>
+          <div class="snag todo"><b>осталось</b>Заявка уходит одному складу. Логика сравнения — до четырёх складов разом — написана и покрыта тестами, но на витрине её не за что взять: панели сравнения нет. Сравнивают двумя вкладками.</div>
+          <div class="snag todo"><b>осталось</b>Полей в заявке нет вовсе: склад узнаёт объём и сроки уже в переписке. Для прототипа честно, для работы — лишний круг.</div>
+        </li>
+      </ul>
+      <p class="end">Шесть шагов до отправленной заявки, лишних экранов нет. Две заминки из трёх — про одно и то же: витрина не умеет ссылаться сама на себя.</p>
+    </section>
+
+    <section class="story" id="delivery" style="--accent: var(--seller)">
+      <header>
+        <span class="who">Селлер, уже клиент</span>
+        <h2>2. Узнать, что с поставкой ПС-118, и спросить прямо в строке</h2>
+        <p class="goal">«Отдал товар складу неделю назад. Хочу увидеть, приняли ли его, и задать вопрос — не по телефону.»</p>
+        <p class="facts">
+          <b>5</b> шагов · <b>4</b> адреса · <b>3</b> решено · <b>2</b> осталось
+        </p>
+      </header>
+      <ul class="rail">
+        <li class="step has-snag">
+          <span class="n">1</span>
+          <div class="screen">
+            <h3>Подвал сайта</h3>
+            <a class="path" href="../" target="_blank" rel="noopener" title="Открыть /">/ <i>↗</i></a>
+          </div>
+          <p class="act">Единственная дверь в систему на всём сайте: ссылка «Демо WMS» в подвале.</p>
+          <div class="snag ok"><b>решено</b>Кнопки «Войти» в шапке нет намеренно. Витрина сделана для тех, кто ещё выбирает; у того, кто уже внутри, кабинет лежит в закладках, а не разыскивается в шапке.</div>
+        </li>
+        <li class="step">
+          <span class="n">2</span>
+          <div class="screen">
+            <h3>Вход в систему</h3>
+            <a class="path" href="../app/" target="_blank" rel="noopener" title="Открыть /app/">/app/ <i>↗</i></a>
+          </div>
+          <p class="act">Выбрать, с чьей стороны смотреть: склад или продавец.</p>
+        </li>
+        <li class="step has-snag has-todo">
+          <span class="n">3</span>
+          <div class="screen">
+            <h3>Кабинет продавца</h3>
+            <a class="path" href="../app/?role=seller&amp;view=seller" target="_blank" rel="noopener" title="Открыть /app/?role=seller&amp;view=seller">/app/?role=seller&amp;view=seller <i>↗</i></a>
+          </div>
+          <p class="act">Две вкладки: «Остатки» и «Мои заявки».</p>
+          <div class="snag todo"><b>осталось</b>Экран живёт в состоянии, а не в адресе. Параметры «?role=&amp;view=» читаются один раз на запуске и обратно в строку не возвращаются: прислать коллеге ссылку «смотри вот сюда» нельзя, а «назад» в браузере уводит с сайта целиком.</div>
+        </li>
+        <li class="step has-snag">
+          <span class="n">4</span>
+          <div class="screen">
+            <h3>Остатки</h3>
+            <a class="path" href="../app/?role=seller&amp;view=seller" target="_blank" rel="noopener" title="Открыть /app/?role=seller&amp;view=seller">/app/?role=seller&amp;view=seller <i>↗</i></a>
+          </div>
+          <p class="act">Та же таблица номенклатуры, что видит кладовщик: артикул, количество, где лежит. Строка ПС-118 — принята, расхождение 4 шт, к нему фото.</p>
+          <div class="snag ok"><b>решено</b>Данные не пересказаны «для селлера» и не отстают на сутки — это буквально та же таблица. Отдельная витрина для клиента означала бы вторую правду о складе, и расходиться они начали бы на первой же неделе.</div>
+        </li>
+        <li class="step has-snag has-todo">
+          <span class="n">5</span>
+          <div class="screen">
+            <h3>Чат со складом</h3>
+            <a class="path" href="../app/?role=seller&amp;view=chat" target="_blank" rel="noopener" title="Открыть /app/?role=seller&amp;view=chat">/app/?role=seller&amp;view=chat <i>↗</i></a>
+          </div>
+          <p class="act">Вопрос по строке уходит вместе с её номером — складу не нужно догадываться, о какой поставке речь.</p>
+          <div class="snag ok"><b>решено</b>Ответ, пришедший, пока человек на другом экране, показывается всплывающим уведомлением. Иначе переписку видел бы только тот, кто в ней сидит.</div>
+          <div class="snag todo"><b>осталось</b>Уведомление живёт, пока открыта вкладка. Ни письма, ни push: закрыл — увидишь в следующий заход.</div>
+        </li>
+      </ul>
+      <p class="end">Пять шагов, из них два — просто вход. Дорого здесь не количество кликов, а то, что ни один экран нельзя переслать ссылкой.</p>
+    </section>
+
+    <section class="story" id="receiving" style="--accent: var(--seller)">
+      <header>
+        <span class="who">Кладовщик</span>
+        <h2>3. Принять поставку, в которой не хватает четырёх штук</h2>
+        <p class="goal">«Машина у ворот. Принять 128 коробок, разложить по местам и не потерять недостачу, которая всплывёт при пересчёте.»</p>
+        <p class="facts">
+          <b>6</b> шагов · <b>1</b> адрес · <b>3</b> решено · <b>1</b> осталось
+        </p>
+      </header>
+      <ul class="rail">
+        <li class="step">
+          <span class="n">1</span>
+          <div class="screen">
+            <h3>Приёмка</h3>
+            <a class="path" href="../app/?role=warehouse&amp;view=receiving" target="_blank" rel="noopener" title="Открыть /app/?role=warehouse&amp;view=receiving">/app/?role=warehouse&amp;view=receiving <i>↗</i></a>
+          </div>
+          <p class="act">Рельс слева, группа «Поток», пункт «Приёмка». Дальше мастер из шести шагов.</p>
+        </li>
+        <li class="step has-snag">
+          <span class="n">2</span>
+          <div class="screen">
+            <h3>Шаг «Поставка»</h3>
+            <a class="path" href="../app/?role=warehouse&amp;view=receiving" target="_blank" rel="noopener" title="Открыть /app/?role=warehouse&amp;view=receiving">/app/?role=warehouse&amp;view=receiving <i>↗</i></a>
+          </div>
+          <p class="act">Выбрать ПС-118 из ожидаемых и назвать себя — кто принимает.</p>
+          <div class="snag ok"><b>решено</b>Если поставки в списке нет — привезли без заявки, — мастер идёт свободной приёмкой: шаг «Сверка» становится обычным вводом количества. Сверять не с чем, и притворяться, что есть с чем, незачем.</div>
+        </li>
+        <li class="step">
+          <span class="n">3</span>
+          <div class="screen">
+            <h3>Шаги «Паллета» и «Тара»</h3>
+            <a class="path" href="../app/?role=warehouse&amp;view=receiving" target="_blank" rel="noopener" title="Открыть /app/?role=warehouse&amp;view=receiving">/app/?role=warehouse&amp;view=receiving <i>↗</i></a>
+          </div>
+          <p class="act">Куда кладём: паллета, на ней короб. И то и другое заводится здесь же, если его ещё нет.</p>
+        </li>
+        <li class="step has-snag">
+          <span class="n">4</span>
+          <div class="screen">
+            <h3>Шаг «Товар»</h3>
+            <a class="path" href="../app/?role=warehouse&amp;view=receiving" target="_blank" rel="noopener" title="Открыть /app/?role=warehouse&amp;view=receiving">/app/?role=warehouse&amp;view=receiving <i>↗</i></a>
+          </div>
+          <p class="act">Скан одной единицы, чтобы опознать артикул. Количество — числом.</p>
+          <div class="snag ok"><b>решено</b>Сканировать 128 раз никто не станет. Мастера, которые «честно» требуют скан на каждую единицу, обходят одним сканом и ручным вводом — только мимо системы, и учёт после этого врёт.</div>
+        </li>
+        <li class="step has-snag">
+          <span class="n">5</span>
+          <div class="screen">
+            <h3>Шаг «Сверка»</h3>
+            <a class="path" href="../app/?role=warehouse&amp;view=receiving" target="_blank" rel="noopener" title="Открыть /app/?role=warehouse&amp;view=receiving">/app/?role=warehouse&amp;view=receiving <i>↗</i></a>
+          </div>
+          <p class="act">Факт меньше ожидаемого. Открывается окно расхождения: сколько не хватает, почему, фотография.</p>
+          <div class="snag ok"><b>решено</b>Расхождение не проскочить дальше молча: оно фиксируется здесь, вместе с фото, и ровно в таком виде селлер увидит его у себя в строке поставки. Один ввод — обе стороны в курсе.</div>
+        </li>
+        <li class="step has-snag has-todo">
+          <span class="n">6</span>
+          <div class="screen">
+            <h3>Шаг «Место»</h3>
+            <a class="path" href="../app/?role=warehouse&amp;view=receiving" target="_blank" rel="noopener" title="Открыть /app/?role=warehouse&amp;view=receiving">/app/?role=warehouse&amp;view=receiving <i>↗</i></a>
+          </div>
+          <p class="act">Адрес ячейки: ряд, стеллаж, ярус. Кроссдок этот шаг пропускает — товар уходит в тот же день.</p>
+          <div class="snag todo"><b>осталось</b>Все шесть шагов живут в состоянии экрана. Ушёл в «Задания» ответить на срочное — вернёшься на первый шаг, к выбору поставки.</div>
+        </li>
+      </ul>
+      <p class="end">Самый длинный путь в продукте — и единственный, где потерянное состояние стоит не раздражения, а реальных минут у ворот.</p>
+    </section>
+
+    <section class="story" id="operator" style="--accent: var(--primary)">
+      <header>
+        <span class="who">Владелец склада</span>
+        <h2>4. Попасть в витрину со своим складом</h2>
+        <p class="goal">«У меня фулфилмент в Химках, четыре тысячи паллето-мест. Хочу, чтобы селлеры находили меня здесь.»</p>
+        <p class="facts">
+          <b>4</b> шага · <b>3</b> адреса · <b>1</b> решено · <b>2</b> осталось
+        </p>
+      </header>
+      <ul class="rail">
+        <li class="step has-snag has-todo">
+          <span class="n">1</span>
+          <div class="screen">
+            <h3>Лендинг, секция «Складам»</h3>
+            <a class="path" href="../#operators" target="_blank" rel="noopener" title="Открыть /#operators">/#operators <i>↗</i></a>
+          </div>
+          <p class="act">Пришёл по рекомендации. Пролистал до блока, адресованного не селлеру, а ему.</p>
+          <div class="snag todo"><b>осталось</b>У селлера есть своя страница — «/sellers/», с разбором по шагам. У склада отдельной страницы нет: одна секция лендинга и несколько вопросов в FAQ. Вторая половина маркетплейса рассказана вчетверо короче первой — при том, что без неё маркетплейса не существует.</div>
+        </li>
+        <li class="step">
+          <span class="n">2</span>
+          <div class="screen">
+            <h3>Вопросы и ответы</h3>
+            <a class="path" href="../#faq" target="_blank" rel="noopener" title="Открыть /#faq">/#faq <i>↗</i></a>
+          </div>
+          <p class="act">Ссылка «Как попасть в витрину» ведёт в вопросы: кого берут, что проверяют, сколько это стоит.</p>
+        </li>
+        <li class="step has-snag">
+          <span class="n">3</span>
+          <div class="screen">
+            <h3>Контакты</h3>
+            <a class="path" href="../contacts/" target="_blank" rel="noopener" title="Открыть /contacts/">/contacts/ <i>↗</i></a>
+          </div>
+          <p class="act">Кнопка «Подключить склад» ведёт сюда. Форма: имя, способ связи, компания, что нужно.</p>
+          <div class="snag ok"><b>решено</b>Кнопка не нажимается, пока не отмечено согласие, и галочка не проставлена заранее — та же логика, что в заявке складу.</div>
+        </li>
+        <li class="step has-snag has-todo">
+          <span class="n">4</span>
+          <div class="screen">
+            <h3>Отправка формы</h3>
+            <a class="path" href="../contacts/" target="_blank" rel="noopener" title="Открыть /contacts/">/contacts/ <i>↗</i></a>
+          </div>
+          <p class="act">Нажал «Отправить».</p>
+          <div class="snag todo"><b>осталось</b>Форма писем не отправляет — под кнопкой честно написано: напишите на почту. Путь из четырёх шагов заканчивается почтовым клиентом, и это первый экран той половины рынка, ради которой всё затевалось.</div>
+        </li>
+      </ul>
+      <p class="end">Дорога до цели есть, самообслуживания нет. Из шести сценариев этот единственный упирается не в неудобство, а в недостающий кусок продукта.</p>
+    </section>
+
+    <section class="story" id="legal" style="--accent: var(--primary)">
+      <header>
+        <span class="who">Бухгалтер</span>
+        <h2>5. Найти оферту и выписать реквизиты</h2>
+        <p class="goal">«Руководитель подписывает договор. Нужен текст оферты и реквизиты второй стороны — сегодня, без переписки.»</p>
+        <p class="facts">
+          <b>4</b> шага · <b>4</b> адреса · <b>2</b> решено · <b>2</b> осталось
+        </p>
+      </header>
+      <ul class="rail">
+        <li class="step">
+          <span class="n">1</span>
+          <div class="screen">
+            <h3>Подвал сайта</h3>
+            <a class="path" href="../" target="_blank" rel="noopener" title="Открыть /">/ <i>↗</i></a>
+          </div>
+          <p class="act">Правовая информация — в подвале, и подвал одинаковый на всех страницах.</p>
+        </li>
+        <li class="step has-snag">
+          <span class="n">2</span>
+          <div class="screen">
+            <h3>Правовая информация</h3>
+            <a class="path" href="../legal/" target="_blank" rel="noopener" title="Открыть /legal/">/legal/ <i>↗</i></a>
+          </div>
+          <p class="act">Семь документов списком: оферта, политика обработки данных, согласие, куки, правила сервиса, рекомендательные технологии, реквизиты.</p>
+          <div class="snag ok"><b>решено</b>Ни один не спрятан в PDF по ссылке — каждый лежит отдельной страницей и открывается в браузере телефона, а не скачивается в загрузки.</div>
+        </li>
+        <li class="step has-snag has-todo">
+          <span class="n">3</span>
+          <div class="screen">
+            <h3>Оферта</h3>
+            <a class="path" href="../legal/offer/" target="_blank" rel="noopener" title="Открыть /legal/offer/">/legal/offer/ <i>↗</i></a>
+          </div>
+          <p class="act">Оглавление, дата редакции, текст по разделам.</p>
+          <div class="snag ok"><b>решено</b>Заголовок вкладки у каждого документа свой. Семь закладок с одинаковым названием «Уклад» — это семь закладок, которые придётся открывать по очереди.</div>
+          <div class="snag todo"><b>осталось</b>Ни поиска по документу, ни версии для печати. Печатают из браузера как есть.</div>
+        </li>
+        <li class="step has-snag has-todo">
+          <span class="n">4</span>
+          <div class="screen">
+            <h3>Реквизиты</h3>
+            <a class="path" href="../legal/requisites/" target="_blank" rel="noopener" title="Открыть /legal/requisites/">/legal/requisites/ <i>↗</i></a>
+          </div>
+          <p class="act">ИП, ИНН, ОГРНИП, адрес, банковские данные.</p>
+          <div class="snag todo"><b>осталось</b>Данные пока условные, и это не спрятано: в подвале рядом стоит оговорка, что реквизиты демонстрационные. Держится она на одном флаге в данных и снимется вместе с ним — как только появится выписка из ЕГРИП.</div>
+        </li>
+      </ul>
+      <p class="end">Четыре шага и ни одной ловушки в интерфейсе. Единственный сценарий, где чинить нужно не экран, а содержимое.</p>
+    </section>
+
+    <section class="story" id="english" style="--accent: var(--primary)">
+      <header>
+        <span class="who">Англоязычный селлер</span>
+        <h2>6. Open the marketplace in English</h2>
+        <p class="goal">«Вожу товар из Стамбула. По-русски читаю плохо, но склад в Москве нужен.»</p>
+        <p class="facts">
+          <b>4</b> шага · <b>4</b> адреса · <b>3</b> решено · <b>2</b> осталось
+        </p>
+      </header>
+      <ul class="rail">
+        <li class="step has-snag">
+          <span class="n">1</span>
+          <div class="screen">
+            <h3>Лендинг</h3>
+            <a class="path" href="../" target="_blank" rel="noopener" title="Открыть /">/ <i>↗</i></a>
+          </div>
+          <p class="act">Переключатель «EN» в шапке, рядом с навигацией.</p>
+          <div class="snag ok"><b>решено</b>Это ссылка с hreflang на ту же самую страницу по-английски, а не кнопка на скриптах: поисковый робот по ней пройдёт, «открыть в новой вкладке» сработает, и человек не улетает на английскую главную из середины каталога.</div>
+        </li>
+        <li class="step has-snag">
+          <span class="n">2</span>
+          <div class="screen">
+            <h3>Витрина по-английски</h3>
+            <a class="path" href="../en/market/" target="_blank" rel="noopener" title="Открыть /en/market/">/en/market/ <i>↗</i></a>
+          </div>
+          <p class="act">Тот же каталог, те же фильтры, те же 63 склада.</p>
+          <div class="snag ok"><b>решено</b>Английская версия — не второй сайт с отставшим содержимым, а тот же набор страниц, собранный из тех же данных. Забыть обновить половину физически не выйдет.</div>
+        </li>
+        <li class="step has-snag has-todo">
+          <span class="n">3</span>
+          <div class="screen">
+            <h3>Страница склада</h3>
+            <a class="path" href="../en/warehouse/w-1/" target="_blank" rel="noopener" title="Открыть /en/warehouse/w-1/">/en/warehouse/w-1/ <i>↗</i></a>
+          </div>
+          <p class="act">Прайс: storage, receiving, picking, marking.</p>
+          <div class="snag todo"><b>осталось</b>Цены только в рублях. Для склада в Химках это правда, но человек, считающий в долларах, пересчитывает сам.</div>
+        </li>
+        <li class="step has-snag has-todo">
+          <span class="n">4</span>
+          <div class="screen">
+            <h3>Оферта</h3>
+            <a class="path" href="../en/legal/offer/" target="_blank" rel="noopener" title="Открыть /en/legal/offer/">/en/legal/offer/ <i>↗</i></a>
+          </div>
+          <p class="act">Открыл — текст по-русски.</p>
+          <div class="snag ok"><b>решено</b>Так и задумано: договор работает в той редакции, в которой подписан, и «перевод для удобства» в споре не значит ничего. Переводить юридический текст — обещать точность, которой нет.</div>
+          <div class="snag todo"><b>осталось</b>А вот блок «здесь нужен JavaScript» остаётся русским и на «/en/»: он лежит прямо в разметке страницы, до всякого выбора языка. Увидит его ровно тот, у кого скрипты отключены, — и не поймёт ни слова.</div>
+        </li>
+      </ul>
+      <p class="end">Четыре шага и две стены. Одна поставлена намеренно и объяснима, вторая — просто не дошли руки.</p>
+    </section>
+  </main>
+
+  <p class="foot">
+    Сценарии сняты с работающего прототипа, а не придуманы под красивый вывод:
+    каждый адрес в шагах существует, каждая заминка проверена на экране.
+    Полная схема экранов и переходов — в <a href="usermap.html">карте
+    продукта</a>.
+  </p>
+</div>
+
+<script>
+/*
+ * Единственный скрипт на странице — переключатель «только шаги с заминками».
+ * Всё остальное лежит разметкой выше: страница обязана читаться и с
+ * выключенным JavaScript, потому что её пересылают файлом. Если скрипт не
+ * выполнится, потеряется только фильтр, а не содержимое.
+ */
+document.getElementById("only-snags").addEventListener("change", (e) => {
+  document.body.classList.toggle("only-snags", e.target.checked);
+});
+</script>
+</body>
+</html>

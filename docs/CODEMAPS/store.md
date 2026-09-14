@@ -17,30 +17,30 @@ seed.ts    seedWarehouse/B, blankWarehouse, seedProducts, seedCategoryFields,
            SEED_FIELD_VALUES
 ```
 
-Персист: ключ `uklad-store-v1`, version 7, `partialize` перечисляет доменные
+Персист: ключ `uklad-store-v1`, version 8, `partialize` перечисляет доменные
 поля явно — **новое доменное поле нужно туда добавить руками**. `merge`
 прогоняет восстановленное через `lib/data/sanitize.ts`: запись неверной формы
 выбрасывается с предупреждением, а не роняет приложение.
 
 ## Срезы
 
-| Файл | Состояние | Основные действия |
-|---|---|---|
-| `account.slice` | `appView, account, profile, warehouse, otherWarehouses` | `goToDashboard/Profile/Editor/View/Login`, `openWarehouse`, `updateProfile/Account`, `createWarehouse`, `updateWarehouse`, `deleteWarehouse`, `allWarehouses()` |
-| `floors.slice` | `activeFloorId` | `activeFloor()`, `setActiveFloor`, `duplicateFloor`, `deleteFloor`, `moveFloor`, `setFloorPosition/Number`, `replicateActiveFloor`, `toggleFloorLink` |
-| `catalog.slice` | `products, search, categoryFields, fieldValues` | `addProduct`, `updateProduct`, `deleteProduct(s)`, `setProductsCategory`, `importProducts`, `addCategoryField`, `removeCategoryField`, `setFieldValue`, `setSearch`, `searchInTable` |
-| `placement.slice` | `placements, pendingConflict, conflictResult` | `placeProduct`, `clearPlacement(s)`, `relocateProducts`, `resolveConflict`, `cancelConflict` |
-| `modules.slice` | `tool, selection, clipboard, pasteAnchor` | `setTool`, `select`, `toggleSelect`, `addModule(s)`, `updateModule`, `setModuleRect`, `moveSelection`, `rotateModule/Selection`, `deleteSelection`, `copy/cut/paste/duplicate/cloneSelectionInPlace` |
-| `shelves.slice` | `activeShelf, templates, layoutTemplates, stampTemplateId` | `setShelfCount/Cells/Number`, `setShelfPicking`, `applyShelvesToSelection`, `add/removeTemplate`, `applyTemplateToSelection`, `add/removeLayoutTemplate`, `setStampTemplate`, `stampLayoutTemplate` |
-| `rows.slice` | `addressing, rowProposal` | `updateAddressing`, `applyRows`, `setModuleRow`, `setRowForSelection`, `setRowConfig`, `cloneRow`, `resetRowNumbers`, `renumberFloorRows`, `toggle/apply/dismissRowProposal`, `setModuleNumber`, `autoNumberFloor` |
-| `view.slice` | `mode, zoom, pan, toast` | `setMode`, `setZoom/View/Pan`, `showToast` |
-| `onboarding.slice` | `seenHints, activeHint` | `showHint`, `dismissHint`, `resetHints` |
-| `history.slice` | `past, future` | `undo`, `redo`; `installHistory(store)` вешает подписку, `flushHistory()` |
-| `fulfillment.slice` | `expectedShipments, receivingEvents, boxes, pallets, boxSeq, palletSeq` | `createExpectedShipment`, `setShipmentStatus`, `setCrossDock`, `closeShipment`, `receiveProduct`, `createBox`, `placeBox`, `attachBoxToPallet`, `createPallet`, `removeFromBox` |
-| `requests.slice` | `requests, shipments` | `createRequest(s)`, `updateRequestStatus`, `startPicking`, `recordPick`, `completeRequest`, `shipRequests`, `reserveRequest`, `releaseReservation`, `applyCrossDock` |
-| `session.slice` | `session` | `setRole`; `selectRole(s)` — единственный способ спросить роль, `makeSession(role, warehouseId)` |
-| `labels.slice` | `labelTemplates` | `saveLabelTemplate` (создаёт или перезаписывает по `id`), `removeLabelTemplate` |
-| `staff.slice` | (в `warehouse.staff`) | `addStaffMember`, `updateStaffMember`, `removeStaffMember` |
+| Файл                | Состояние                                                               | Основные действия                                                                                                                                                                                                                                           |
+| ------------------- | ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `account.slice`     | `appView, account, profile, warehouse, otherWarehouses`                 | `goToDashboard/Profile/Editor/View/Login`, `openWarehouse`, `updateProfile/Account`, `createWarehouse`, `updateWarehouse`, `deleteWarehouse`, `allWarehouses()`                                                                                             |
+| `floors.slice`      | `activeFloorId`                                                         | `activeFloor()`, `setActiveFloor`, `duplicateFloor`, `deleteFloor`, `moveFloor`, `setFloorPosition/Number`, `replicateActiveFloor`, `toggleFloorLink`                                                                                                       |
+| `catalog.slice`     | `products, search, categories, categoryFields, fieldValues`             | `addProduct`, `updateProduct`, `deleteProducts`, `setProductsCategory`, `setProductsPartner`, `importProducts`, `addCategory`, `renameCategory`, `removeCategory`, `addCategoryField`, `removeCategoryField`, `setFieldValue`, `setSearch`, `searchInTable` |
+| `placement.slice`   | `placements, pendingConflict, conflictResult`                           | `placeProduct`, `clearPlacement(s)`, `relocateProducts`, `resolveConflict`, `cancelConflict`                                                                                                                                                                |
+| `modules.slice`     | `tool, selection, clipboard, pasteAnchor`                               | `setTool`, `select`, `toggleSelect`, `addModule(s)`, `updateModule`, `setModuleRect`, `moveSelection`, `rotateModule/Selection`, `deleteSelection`, `copy/cut/paste/duplicate/cloneSelectionInPlace`                                                        |
+| `shelves.slice`     | `activeShelf, templates, layoutTemplates, stampTemplateId`              | `setShelfCount/Cells/Number`, `setShelfPicking`, `applyShelvesToSelection`, `add/removeTemplate`, `applyTemplateToSelection`, `add/removeLayoutTemplate`, `setStampTemplate`, `stampLayoutTemplate`                                                         |
+| `rows.slice`        | `addressing, rowProposal`                                               | `updateAddressing`, `applyRows`, `setModuleRow`, `setRowForSelection`, `setRowConfig`, `cloneRow`, `resetRowNumbers`, `renumberFloorRows`, `toggle/apply/dismissRowProposal`, `setModuleNumber`, `autoNumberFloor`                                          |
+| `view.slice`        | `mode, zoom, pan, toast`                                                | `setMode`, `setZoom/View/Pan`, `showToast`                                                                                                                                                                                                                  |
+| `onboarding.slice`  | `seenHints, activeHint`                                                 | `showHint`, `dismissHint`, `resetHints`                                                                                                                                                                                                                     |
+| `history.slice`     | `past, future`                                                          | `undo`, `redo`; `installHistory(store)` вешает подписку, `flushHistory()`                                                                                                                                                                                   |
+| `fulfillment.slice` | `expectedShipments, receivingEvents, boxes, pallets, boxSeq, palletSeq` | `createExpectedShipment`, `setShipmentStatus`, `setCrossDock`, `closeShipment`, `receiveProduct`, `createBox`, `placeBox`, `attachBoxToPallet`, `createPallet`, `removeFromBox`                                                                             |
+| `requests.slice`    | `requests, shipments`                                                   | `createRequest(s)`, `updateRequestStatus`, `startPicking`, `recordPick`, `completeRequest`, `shipRequests`, `reserveRequest`, `releaseReservation`, `applyCrossDock`                                                                                        |
+| `session.slice`     | `session`                                                               | `setRole`; `selectRole(s)` — единственный способ спросить роль, `makeSession(role, warehouseId)`                                                                                                                                                            |
+| `labels.slice`      | `labelTemplates`                                                        | `saveLabelTemplate` (создаёт или перезаписывает по `id`), `removeLabelTemplate`                                                                                                                                                                             |
+| `staff.slice`       | (в `warehouse.staff`)                                                   | `addStaffMember`, `importStaff`, `updateStaffMember`, `removeStaffMember`                                                                                                                                                                                   |
 
 ## Правила
 
