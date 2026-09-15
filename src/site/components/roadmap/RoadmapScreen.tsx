@@ -1,15 +1,13 @@
-import { ArrowRight } from "lucide-react";
 import { RELEASES } from "../../data/roadmap";
 import { ROADMAP_ITEMS } from "../../data/roadmapItems";
 import { countByStatus } from "../../lib/roadmapStats";
 import { shortDate } from "../../lib/date";
-import { href } from "../../lib/route";
 import { c, useT } from "../../lib/copy";
 import { eyebrow as eyebrowClass } from "../../lib/eyebrow";
-import { Reveal } from "../Reveal";
 import { RoadmapMilestones } from "./RoadmapMilestones";
 import { RoadmapBoard } from "./RoadmapBoard";
 import { RoadmapChangelog } from "./RoadmapChangelog";
+import { RoadmapAsk } from "./RoadmapAsk";
 
 const T = {
   eyebrow: c("Дорожная карта", "Roadmap"),
@@ -34,8 +32,8 @@ const T = {
   boardEyebrow: c("Все работы", "Everything"),
   boardTitle: c("Доска по стадиям", "The board, by stage"),
   boardNote: c(
-    "Отберите по направлению, если интересует что-то одно.",
-    "Filter by area if you only care about one of them.",
+    "Отберите по направлению, если интересует что-то одно, и отметьте голосом то, что нужно вам раньше прочего.",
+    "Filter by area if you only care about one of them, and mark what you need before the rest.",
   ),
 
   logEyebrow: c("Журнал", "Changelog"),
@@ -44,13 +42,6 @@ const T = {
     "Тот же список, что в CHANGELOG.md репозитория: один источник, чтобы страница не разошлась с кодом.",
     "The same list as the repository's CHANGELOG.md: one source, so the page cannot drift from the code.",
   ),
-
-  askTitle: c("Не хватает чего-то важного?", "Missing something important?"),
-  askNote: c(
-    "Напишите, чего не хватает именно вашему складу. Мы не показываем голоса за пункты: пользователей у Уклада пока единицы, и любая цифра рядом с идеей была бы нарисованной. А письмо от живого склада меняет очерёдность по-настоящему.",
-    "Tell us what your warehouse is missing. We do not show vote counts on items: Uklad has a handful of users so far, and any number next to an idea would be made up. A letter from a real warehouse changes the order for real.",
-  ),
-  askCta: c("Написать нам", "Write to us"),
 };
 
 /**
@@ -125,19 +116,7 @@ export function RoadmapScreen() {
         </div>
       </section>
 
-      <Reveal className="r-window mt-16 border border-border bg-card/60 p-6 text-center sm:mt-20 sm:p-8">
-        <h2 className="font-display text-[20px] font-medium tracking-tight">{t(T.askTitle)}</h2>
-        <p className="mx-auto mt-3 max-w-2xl text-[14px] leading-relaxed text-muted-foreground">
-          {t(T.askNote)}
-        </p>
-        <a
-          href={href("/contacts")}
-          className="group mt-6 inline-flex h-11 items-center justify-center gap-2 rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-        >
-          {t(T.askCta)}
-          <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
-        </a>
-      </Reveal>
+      <RoadmapAsk />
     </div>
   );
 }

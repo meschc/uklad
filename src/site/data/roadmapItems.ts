@@ -348,6 +348,17 @@ export const ROADMAP_ITEMS: readonly RoadmapItem[] = [
     track: "platform",
     milestone: "launch",
   },
+  {
+    id: "roadmap-votes",
+    title: c("Голоса и идеи в дорожной карте", "Votes and ideas on the roadmap"),
+    summary: c(
+      "Отметьте на этой доске нужное вам и отправьте формой внизу — вместе со своей идеей, если списка не хватило",
+      "Mark what you need on this board and send it with the form below — along with your own idea if the list falls short",
+    ),
+    status: "done",
+    track: "market",
+    milestone: "launch",
+  },
 
   // ——— В работе ———
   {

@@ -20,7 +20,7 @@
 /* global module */
 
 /** Виды заявок — ровно те же, что в `LeadKind` на витрине. */
-const KINDS = ["contact", "request", "complaint"];
+const KINDS = ["contact", "request", "complaint", "vote", "idea"];
 
 /** Языки витрины. Заявка приходит на том, на котором её заполняли. */
 const LANGS = ["ru", "en"];

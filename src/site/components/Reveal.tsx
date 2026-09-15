@@ -16,12 +16,15 @@ export function Reveal({
   children,
   delay = 0,
   className,
+  id,
   as: Tag = "div",
 }: {
   children: ReactNode;
   /** Задержка каскада, мс. */
   delay?: number;
   className?: string;
+  /** Якорь: на блок ведёт ссылка вида `#ideas` с той же страницы. */
+  id?: string;
   as?: "div" | "section" | "li" | "article";
 }) {
   const ref = useRef<HTMLElement>(null);
@@ -55,6 +58,7 @@ export function Reveal({
   return (
     <Tag
       ref={ref as never}
+      id={id}
       className={cn("reveal", shown && "is-in", className)}
       style={{ "--reveal-delay": `${delay}ms` } as React.CSSProperties}
     >
