@@ -33,6 +33,7 @@ const COLUMNS: { title: Copy; items: Item[] }[] = [
       { label: c("Уклад для складов", "Uklad for warehouses"), to: "/warehouses" },
       { label: c("Демо WMS", "WMS demo"), url: withBase("app/") },
       { label: c("Тарифы", "Pricing"), to: "/pricing" },
+      { label: c("Дорожная карта", "Roadmap"), to: "/roadmap" },
       { label: c("Контакты", "Contacts"), to: "/contacts" },
     ],
   },

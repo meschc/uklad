@@ -41,6 +41,7 @@ const TITLES: Record<Page, Copy> = {
   legal: c("Правовая информация — Уклад", "Legal — Uklad"),
   pricing: c("Тарифы — Уклад", "Pricing — Uklad"),
   contacts: c("Контакты — Уклад", "Contacts — Uklad"),
+  roadmap: c("Дорожная карта — Уклад", "Roadmap — Uklad"),
   notfound: c("Страница не найдена — Уклад", "Page not found — Uklad"),
 };
 
@@ -83,6 +84,10 @@ const DESCRIPTIONS: Record<Page, Copy> = {
   contacts: c(
     "Почта, телефон и режим работы Уклада, реквизиты владельца сайта и форма для вопросов о складе, интеграции или переносе остатков.",
     "Email, phone and working hours, the site owner's legal details and a form for questions about a warehouse, an integration or moving stock.",
+  ),
+  roadmap: c(
+    "Что в Укладе уже работает, что пишется сейчас и что запланировано: план склада, смена, обмен с площадками. Журнал выпусков.",
+    "What already works in Uklad, what is being written now and what is planned: the floor plan, the shift, marketplace exchange. Plus a changelog.",
   ),
   notfound: c(
     "Страница не найдена. Всё, что есть на витрине, собрано в шапке и в подвале сайта.",

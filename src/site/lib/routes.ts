@@ -24,6 +24,7 @@ export const SITE_ROUTES: readonly Route[] = [
   { page: "sellers" },
   { page: "market" },
   { page: "pricing" },
+  { page: "roadmap" },
   { page: "contacts" },
   { page: "legal" },
   ...LEGAL_DOCS.map((doc) => ({ page: "legal" as const, id: doc.slug })),

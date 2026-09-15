@@ -35,6 +35,7 @@ export type Page =
   | "legal"
   | "pricing"
   | "contacts"
+  | "roadmap"
   | "notfound";
 
 export interface Route {
@@ -56,6 +57,7 @@ const PAGES: Record<string, Page> = {
   legal: "legal",
   pricing: "pricing",
   contacts: "contacts",
+  roadmap: "roadmap",
 };
 
 /**

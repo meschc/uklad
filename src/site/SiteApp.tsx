@@ -5,6 +5,7 @@ import { SiteFooter } from "./components/SiteFooter";
 import { CookieBar } from "./components/CookieBar";
 import { ContactsScreen } from "./components/ContactsScreen";
 import { PricingScreen } from "./components/PricingScreen";
+import { RoadmapScreen } from "./components/roadmap/RoadmapScreen";
 import { MarketScreen } from "./components/market/MarketScreen";
 import { WarehouseScreen } from "./components/market/WarehouseScreen";
 import { SellersPage } from "./SellersPage";
@@ -102,6 +103,7 @@ export function SiteApp() {
           {route.page === "warehouse" && <WarehouseScreen id={route.id} />}
           {route.page === "legal" && <LegalScreen slug={route.id} />}
           {route.page === "pricing" && <PricingScreen />}
+          {route.page === "roadmap" && <RoadmapScreen />}
           {route.page === "contacts" && <ContactsScreen />}
           {route.page === "notfound" && (
             <NotFoundScreen caption={t(T.notFoundCaption)} title={t(T.notFoundTitle)}>
