@@ -196,7 +196,7 @@
       },
       "primary": {
         "$type": "color",
-        "$value": "#3C83F6",
+        "$value": "#4294FF",
         "$description": "CSS: hsl(var(--primary))"
       },
       "primary-foreground": {
@@ -256,7 +256,7 @@
       },
       "ring": {
         "$type": "color",
-        "$value": "#3C83F6",
+        "$value": "#4294FF",
         "$description": "CSS: hsl(var(--ring))"
       },
       "canvas-bg": {
@@ -286,12 +286,12 @@
       },
       "m-section": {
         "$type": "color",
-        "$value": "#1D366D",
+        "$value": "#133972",
         "$description": "CSS: hsl(var(--m-section))"
       },
       "m-section-fg": {
         "$type": "color",
-        "$value": "#A1BCF7",
+        "$value": "#85BCFF",
         "$description": "CSS: hsl(var(--m-section-fg))"
       },
       "m-aisle": {
@@ -306,22 +306,22 @@
       },
       "m-stairs": {
         "$type": "color",
-        "$value": "#6A5639",
+        "$value": "#7B310F",
         "$description": "CSS: hsl(var(--m-stairs))"
       },
       "m-stairs-fg": {
         "$type": "color",
-        "$value": "#FAD589",
+        "$value": "#FF854D",
         "$description": "CSS: hsl(var(--m-stairs-fg))"
       },
       "m-elevator": {
         "$type": "color",
-        "$value": "#432A6F",
+        "$value": "#451F7A",
         "$description": "CSS: hsl(var(--m-elevator))"
       },
       "m-elevator-fg": {
         "$type": "color",
-        "$value": "#C8AFF4",
+        "$value": "#C599FF",
         "$description": "CSS: hsl(var(--m-elevator-fg))"
       }
     }

@@ -1,8 +1,11 @@
 /**
- * Генерация docs/design/design-tokens.json из CSS-переменных темы.
+ * Генерация файлов темы из CSS-переменных: docs/design/design-tokens.json для
+ * Figma и site/src/tokens.css для витрины.
  *
- * Источник истины — src/index.css: дизайнер импортирует полученный файл в
- * Tokens Studio, и палитра в Figma не расходится с кодом. Запуск: npm run tokens.
+ * Источник истины — src/index.css: дизайнер импортирует полученный json в
+ * Tokens Studio, а лендинг забирает те же переменные готовым css. Обе копии
+ * генерируются, а не пишутся руками, иначе палитра разъезжается по трём местам
+ * на первой же правке цвета. Запуск: npm run tokens.
  */
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 
@@ -64,6 +67,29 @@ writeFileSync(
   "docs/design/design-tokens.json",
   `${JSON.stringify(tokens, null, 2)}\n`,
 );
+/** Переменные блока обратно в css-текст — в том же порядке, что в источнике. */
+function cssBlock(selector, vars) {
+  const body = Object.entries(vars)
+    .map(([name, value]) => `  --${name}: ${value};`)
+    .join("\n");
+  return `${selector} {\n${body}\n}`;
+}
+
+const light = block(":root");
+const dark = block("\\.dark");
+
+mkdirSync("site/src", { recursive: true });
+writeFileSync(
+  "site/src/tokens.css",
+  [
+    "/* Сгенерировано `npm run tokens` из src/index.css — правьте источник. */",
+    cssBlock(":root", light),
+    cssBlock(".dark", dark),
+    "",
+  ].join("\n\n"),
+);
+
 console.log(
-  `tokens: ${Object.keys(tokens.color.light).length} light / ${Object.keys(tokens.color.dark).length} dark`,
+  `tokens: ${Object.keys(tokens.color.light).length} light / ${Object.keys(tokens.color.dark).length} dark` +
+    `, site/src/tokens.css: ${Object.keys(light).length} + ${Object.keys(dark).length}`,
 );

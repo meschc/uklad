@@ -1,0 +1,114 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Палитра темы приезжает из редактора файлом `tokens.css` (генерируется
+   `npm run tokens` из src/index.css). Здесь — только то, чего в редакторе нет
+   и быть не должно: цвета статусов роадмапа и оформление витрины. */
+
+@layer base {
+  :root {
+    /* Статус работы — не украшение, а смысл: по цвету колонки видно, чем
+       занята команда. Тона взяты из палитры модулей плана, чтобы витрина и
+       редактор выглядели одним продуктом: фиолетовый лифта, оранжевый
+       лестницы, синий секции. Зелёного в палитре не было — добавлен здесь. */
+    --st-idea: 220 9% 46%;
+    --st-idea-soft: 220 14% 94%;
+    --st-planned: 262 55% 48%;
+    --st-planned-soft: 262 72% 95%;
+    --st-progress: 27 82% 42%;
+    --st-progress-soft: 30 92% 94%;
+    --st-done: 158 64% 32%;
+    --st-done-soft: 152 60% 94%;
+  }
+
+  .dark {
+    /* Тёмная тема тянет цвет на себя — знак берём неоном, подложку тёмной, но
+       такой же насыщенной (то же правило, что у модулей плана). */
+    --st-idea: 220 9% 62%;
+    --st-idea-soft: 223 12% 18%;
+    --st-planned: 266 100% 80%;
+    --st-planned-soft: 265 60% 22%;
+    --st-progress: 19 100% 65%;
+    --st-progress-soft: 19 78% 20%;
+    --st-done: 156 72% 62%;
+    --st-done-soft: 158 60% 16%;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  html,
+  body,
+  #root {
+    min-height: 100%;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /* Те же правила висячих строк, что в редакторе: короткие слова склеивает
+     `noOrphans`, последнюю строку абзаца балансирует браузер. Работают только
+     вместе. */
+  p,
+  li,
+  dd,
+  figcaption,
+  blockquote {
+    text-wrap: pretty;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    text-wrap: balance;
+  }
+
+  svg.lucide {
+    stroke-width: 1.6;
+  }
+}
+
+@layer utilities {
+  /* Клетчатый фон героя — тот же мотив «тетради в клетку», по которому в
+     редакторе рисуют план. Гаснет книзу, чтобы не спорить с содержимым. */
+  .grid-backdrop {
+    background-image:
+      linear-gradient(to right, hsl(var(--grid-minor)) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(var(--grid-minor)) 1px, transparent 1px);
+    background-size: 28px 28px;
+    -webkit-mask-image: linear-gradient(to bottom, #000 0, transparent 100%);
+    mask-image: linear-gradient(to bottom, #000 0, transparent 100%);
+  }
+
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--border));
+    border-radius: 9999px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

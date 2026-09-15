@@ -1,0 +1,73 @@
+/* Сгенерировано `npm run tokens` из src/index.css — правьте источник. */
+
+:root {
+  --background: 0 0% 100%;
+  --foreground: 224 12% 12%;
+  --card: 0 0% 100%;
+  --card-foreground: 224 12% 12%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 224 12% 12%;
+  --primary: 221 83% 53%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 220 14% 96%;
+  --secondary-foreground: 224 12% 20%;
+  --muted: 220 14% 96%;
+  --muted-foreground: 220 9% 46%;
+  --accent: 220 14% 96%;
+  --accent-foreground: 224 12% 20%;
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 220 13% 91%;
+  --input: 220 13% 91%;
+  --ring: 221 83% 53%;
+  --radius: 0.625rem;
+  --canvas-bg: 220 20% 98%;
+  --grid-minor: 220 16% 90%;
+  --grid-major: 220 14% 83%;
+  --floor: 220 20% 98%;
+  --floor-edge: 220 15% 91%;
+  --m-section: 221 83% 88%;
+  --m-section-fg: 221 68% 40%;
+  --m-aisle: 220 16% 92%;
+  --m-aisle-fg: 220 10% 44%;
+  --m-stairs: 30 92% 86%;
+  --m-stairs-fg: 27 82% 42%;
+  --m-elevator: 262 72% 89%;
+  --m-elevator-fg: 262 55% 48%;
+}
+
+.dark {
+  --background: 224 14% 9%;
+  --foreground: 220 14% 92%;
+  --card: 224 13% 11%;
+  --card-foreground: 220 14% 92%;
+  --popover: 224 13% 11%;
+  --popover-foreground: 220 14% 92%;
+  --primary: 214 100% 63%;
+  --primary-foreground: 224 14% 9%;
+  --secondary: 223 12% 17%;
+  --secondary-foreground: 220 14% 92%;
+  --muted: 223 12% 16%;
+  --muted-foreground: 220 9% 60%;
+  --accent: 223 12% 18%;
+  --accent-foreground: 220 14% 92%;
+  --destructive: 0 63% 50%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 223 12% 20%;
+  --input: 223 12% 22%;
+  --ring: 214 100% 63%;
+  --canvas-bg: 224 14% 8%;
+  --grid-minor: 223 12% 16%;
+  --grid-major: 223 12% 22%;
+  --floor: 224 14% 8%;
+  --floor-edge: 223 12% 17%;
+  --m-section: 216 72% 26%;
+  --m-section-fg: 213 100% 76%;
+  --m-aisle: 223 12% 22%;
+  --m-aisle-fg: 220 10% 66%;
+  --m-stairs: 19 78% 27%;
+  --m-stairs-fg: 19 100% 65%;
+  --m-elevator: 265 60% 30%;
+  --m-elevator-fg: 266 100% 80%;
+}
+

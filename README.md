@@ -61,6 +61,19 @@ npm run dev
 React 18 + TypeScript, Vite, Zustand (срезы + `persist`), Tailwind и shadcn/ui,
 Vitest. Три.js — под флагом, для 3D-вида плана.
 
+## Витрина
+
+Публичная страница продукта живёт отдельным проектом в `site/`: дашборд
+статусов работ, роадмап колонками и по кварталам, журнал обновлений.
+
+```bash
+cd site && npm install && npm run dev   # http://localhost:5175
+```
+
+Сборка своя, зависимости свои, палитра общая — `site/src/tokens.css`
+генерируется из `src/index.css` командой `npm run tokens`. Содержимое роадмапа
+правится в `site/src/data/roadmap.ts`; подробности — в [site/README.md](site/README.md).
+
 ## Структура
 
 ```
@@ -70,6 +83,7 @@ src/lib/store/     стор по срезам (17 штук), история пр
 src/lib/data/      репозитории поверх localStorage — экраны туда не ходят сами
 docs/CODEMAPS/     карты кода: компоненты, стор, домен
 public/brands/     логотипы вендоров для списка интеграций
+site/              витрина: роадмап и статусы работ (своя сборка)
 ```
 
 Подробности по правилам работы со стором и историей — в [CLAUDE.md](CLAUDE.md) и
