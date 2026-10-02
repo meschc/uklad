@@ -9,6 +9,7 @@ import {
   writeChoice,
   type CookieChoice,
 } from "../lib/cookieConsent";
+import { siteButton } from "../lib/button";
 import { c, useT } from "../lib/copy";
 
 const T = {
@@ -66,7 +67,7 @@ export function CookieBar() {
       <div className="r-window mx-auto flex max-w-3xl animate-slide-up flex-col gap-4 border border-border bg-card/95 p-4 shadow-2xl backdrop-blur-xl sm:flex-row sm:items-center sm:p-5">
         <Cookie className="size-5 shrink-0 text-primary" />
 
-        <p className="flex-1 text-[13px] leading-relaxed text-muted-foreground">
+        <p className="flex-1 text-sm leading-relaxed text-muted-foreground">
           {t(T.text)}{" "}
           {/* Баннер остаётся на экране: человек ушёл читать политику именно
               затем, чтобы решить, и кнопки выбора должны ждать его там же. */}
@@ -79,15 +80,17 @@ export function CookieBar() {
         </p>
 
         <div className="flex shrink-0 gap-2">
+          {/* Обе кнопки одного размера и стоят рядом: выбор здесь
+              равноправный, а не «согласиться и мелким шрифтом отказаться». */}
           <button
             onClick={() => decide("necessary")}
-            className="h-10 flex-1 rounded-full border border-border px-4 text-[13px] font-medium transition-colors hover:bg-muted sm:flex-none"
+            className={siteButton({ tone: "outline", className: "flex-1 sm:flex-none" })}
           >
             {t(T.necessary)}
           </button>
           <button
             onClick={() => decide("all")}
-            className="h-10 flex-1 rounded-full bg-primary px-4 text-[13px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 sm:flex-none"
+            className={siteButton({ className: "flex-1 sm:flex-none" })}
           >
             {t(T.all)}
           </button>

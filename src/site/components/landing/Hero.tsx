@@ -1,6 +1,7 @@
 import { ArrowRight } from "lucide-react";
 import { warehousesRepository } from "../../data/warehousesRepository";
 import { href } from "../../lib/route";
+import { ctaPill, siteButton } from "../../lib/button";
 import { c, useT, type TFunc } from "../../lib/copy";
 
 /**
@@ -79,31 +80,29 @@ export function Hero() {
         <div>
           <a
             href={href("/sellers")}
-            className="group inline-flex items-center gap-2 rounded-full border border-foreground/[0.12] py-1.5 pl-2.5 pr-3 text-[12px] font-medium text-muted-foreground transition-colors hover:border-foreground/25 hover:text-foreground"
+            className="group inline-flex items-center gap-2 rounded-full border border-stroke py-1.5 pl-2.5 pr-3 text-xs font-medium text-muted-foreground transition-colors hover:border-stroke-hover hover:text-foreground"
           >
             <span className="size-1.5 rounded-full bg-primary" />
             {t(T.badge)}
             <ArrowRight className="size-3 transition-transform group-hover:translate-x-0.5" />
           </a>
 
-          <h1 className="mt-7 font-display text-[38px] font-medium leading-[1.05] tracking-[-0.025em] sm:text-[56px] lg:text-[52px] xl:text-[60px]">
+          <h1 className="mt-7 font-display text-4xl font-heading leading-display tracking-tight sm:text-5xl xl:text-6xl">
             {t(T.titleTop)}
             <br />
             <span className="text-brand-strong">{t(T.titleAccent)}</span>
           </h1>
 
-          <p className="mt-6 max-w-xl text-[15px] leading-relaxed text-muted-foreground sm:text-base">
+          <p className="mt-6 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-base">
             {t(T.lead)}
           </p>
 
           <div className="mt-9 flex flex-wrap items-center gap-3">
-            {/* Пилюля в пилюле: высота 52, поле справа 6 → кружок 40. Единственное
-                место на странице, где вложение показано формой, — и та же
-                кнопка повторяется в финале. */}
-            <a
-              href={href("/market")}
-              className="group inline-flex h-[52px] w-full items-center justify-between gap-4 rounded-full bg-foreground pl-6 pr-1.5 text-sm font-medium text-background transition-transform hover:-translate-y-px active:translate-y-0 sm:w-auto sm:justify-start"
-            >
+            {/* Пилюля в пилюле: поле справа 6 → кружок 40. Единственное место
+                на странице, где вложение показано формой, — и та же кнопка
+                повторяется в финале, поэтому форма живёт
+                в [`ctaPill`](../../lib/button.ts), а не здесь. */}
+            <a href={href("/market")} className={ctaPill("w-full sm:w-auto")}>
               {t(T.cta)}
               <span className="flex size-10 items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors group-hover:bg-primary/85">
                 <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
@@ -112,13 +111,13 @@ export function Hero() {
 
             <a
               href="#how"
-              className="inline-flex h-[52px] w-full items-center justify-center rounded-full border border-foreground/[0.14] px-7 text-sm font-medium transition-colors hover:border-foreground/30 hover:bg-foreground/[0.04] sm:w-auto"
+              className={siteButton({ size: "lg", tone: "outline", className: "w-full sm:w-auto" })}
             >
               {t(T.how)}
             </a>
           </div>
 
-          <p className="mt-9 text-[13px] leading-relaxed text-muted-foreground">
+          <p className="mt-9 text-sm leading-relaxed text-muted-foreground">
             <Num>{total}</Num>{" "}
             {t.plural(total, ["склад", "склада", "складов"], ["warehouse", "warehouses"])} {t(T.in)}{" "}
             <Num>{cities}</Num>{" "}
@@ -129,10 +128,10 @@ export function Hero() {
 
         {/* Схема, а не скриншот: три состояния товара одной колонкой. Рамка
             одна, заливки нет — строки разделены линейками, как в накладной. */}
-        <div className="r-window border border-foreground/[0.09]">
-          <div className="flex items-center justify-between gap-3 border-b border-foreground/[0.09] px-4 py-3">
-            <span className="text-[13px] font-medium">{t(T.panelTitle)}</span>
-            <span className="flex items-center gap-1.5 font-mono text-[10px] text-muted-foreground">
+        <div className="r-window border border-frame">
+          <div className="flex items-center justify-between gap-3 border-b border-frame px-4 py-3">
+            <span className="text-sm font-medium">{t(T.panelTitle)}</span>
+            <span className="flex items-center gap-1.5 font-mono text-2xs text-muted-foreground">
               <span className="size-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400" />
               {t(T.panelSource)}
             </span>
@@ -142,7 +141,7 @@ export function Hero() {
             <StateRow key={row.step} {...row} />
           ))}
 
-          <p className="px-4 py-3 text-[11px] leading-relaxed text-muted-foreground">
+          <p className="px-4 py-3 text-xs leading-relaxed text-muted-foreground">
             {t(T.panelNote)}
           </p>
         </div>
@@ -171,17 +170,13 @@ function StateRow({
   tone: string;
 }) {
   return (
-    <div className="flex items-start gap-3 border-b border-foreground/[0.09] px-4 py-3.5 last:border-0">
-      <span className="mt-0.5 font-mono text-[11px] tabular-nums text-muted-foreground">
-        {step}
-      </span>
+    <div className="flex items-start gap-3 border-b border-frame px-4 py-3.5 last:border-0">
+      <span className="mt-0.5 font-mono text-xs tabular-nums text-muted-foreground">{step}</span>
       <span className="min-w-0 flex-1">
         <span className="block text-sm font-medium">{title}</span>
-        <span className="mt-0.5 block text-[11px] leading-relaxed text-muted-foreground">
-          {note}
-        </span>
+        <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">{note}</span>
       </span>
-      <span className={`shrink-0 whitespace-nowrap text-[11px] font-semibold tabular-nums ${tone}`}>
+      <span className={`shrink-0 whitespace-nowrap text-xs font-semibold tabular-nums ${tone}`}>
         {state}
       </span>
     </div>

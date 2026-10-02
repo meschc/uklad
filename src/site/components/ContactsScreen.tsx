@@ -62,12 +62,10 @@ export function ContactsScreen() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 pb-24 pt-28 sm:px-6 sm:pt-32">
-      <h1 className="font-display text-[30px] font-medium leading-[1.05] tracking-[-0.02em] sm:text-[40px]">
+      <h1 className="font-display text-3xl font-heading leading-display tracking-tight sm:text-5xl">
         {t(T.title)}
       </h1>
-      <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-muted-foreground">
-        {t(T.lead)}
-      </p>
+      <p className="mt-3 max-w-2xl text-base leading-relaxed text-muted-foreground">{t(T.lead)}</p>
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
         <Reveal>
@@ -82,7 +80,7 @@ export function ContactsScreen() {
             >
               {ORG.email}
             </a>
-            <p className="mt-1 text-[13px] text-muted-foreground">{t(T.mailNote)}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{t(T.mailNote)}</p>
           </Card>
 
           <Card icon={ShieldCheck} title={t(T.privacy)}>
@@ -92,7 +90,7 @@ export function ContactsScreen() {
             >
               {ORG.privacyEmail}
             </a>
-            <p className="mt-1 text-[13px] text-muted-foreground">{t(T.privacyNote)}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{t(T.privacyNote)}</p>
           </Card>
 
           <Card icon={Phone} title={t(T.phone)}>
@@ -104,7 +102,7 @@ export function ContactsScreen() {
             >
               {ORG.phone}
             </a>
-            <p className="mt-1 flex items-center gap-1.5 text-[13px] text-muted-foreground">
+            <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
               <Clock className="size-3.5" />
               {t(ORG.hours)}
             </p>
@@ -113,7 +111,7 @@ export function ContactsScreen() {
           <Card icon={Building2} title={t(T.requisites)}>
             {/* Реквизиты не переводятся — они имеют силу в том виде, в каком
                 записаны в ЕГРИП (см. `data/org.ts`), поэтому здесь помечен язык. */}
-            <p lang="ru" className="text-[13px] leading-relaxed text-muted-foreground">
+            <p lang="ru" className="text-sm leading-relaxed text-muted-foreground">
               {ORG.legalName}
               <br />
               ИНН {ORG.inn}, ОГРНИП {ORG.ogrnip}
@@ -122,7 +120,7 @@ export function ContactsScreen() {
             </p>
             <a
               href={href("/legal/requisites")}
-              className="mt-2 inline-block text-[13px] font-medium text-primary underline-offset-4 hover:underline"
+              className="mt-2 inline-block text-sm font-medium text-primary underline-offset-4 hover:underline"
             >
               {t(T.fullDisclosure)}
             </a>
@@ -144,7 +142,7 @@ function Card({
 }) {
   return (
     <div className="r-window border border-border bg-card p-5">
-      <p className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+      <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
         <Icon className="size-3.5" />
         {title}
       </p>
@@ -200,7 +198,7 @@ function ContactForm() {
           <Field label={t(T.fCompany)} name="company" placeholder={t(T.fCompanyPh)} />
         </div>
         <div className="sm:col-span-2">
-          <label className="text-[13px] font-medium">{t(T.fNeed)}</label>
+          <label className="text-sm font-medium">{t(T.fNeed)}</label>
           <textarea
             name="message"
             rows={4}
@@ -238,7 +236,7 @@ function Field({
 }) {
   return (
     <div>
-      <label htmlFor={name} className="text-[13px] font-medium">
+      <label htmlFor={name} className="text-sm font-medium">
         {label}
         {required && <span className="ml-0.5 text-primary">*</span>}
       </label>
@@ -247,7 +245,7 @@ function Field({
         name={name}
         required={required}
         placeholder={placeholder}
-        className="mt-1.5 h-11 w-full rounded-full border border-border bg-background px-4 text-sm outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary"
+        className="mt-1.5 h-10 w-full rounded-full border border-border bg-background px-4 text-sm outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary"
       />
     </div>
   );

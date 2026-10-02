@@ -1,6 +1,7 @@
 import { ArrowUpRight, Check } from "lucide-react";
 import { Reveal } from "../Reveal";
 import { warehousesRepository } from "../../data/warehousesRepository";
+import { siteButton } from "../../lib/button";
 import { c, useT } from "../../lib/copy";
 import { eyebrow } from "../../lib/eyebrow";
 import { href } from "../../lib/route";
@@ -68,12 +69,12 @@ export function Operators() {
         <div>
           <Reveal>
             <p className={eyebrow("mb-3")}>{t(T.eyebrow)}</p>
-            <h2 className="font-display text-[30px] font-medium leading-[1.05] tracking-[-0.02em] sm:text-[42px]">
+            <h2 className="font-display text-3xl font-heading leading-display tracking-tight sm:text-5xl">
               {t(T.titleTop)}
               <br />
               {t(T.titleBottom)}
             </h2>
-            <p className="mt-4 text-base leading-relaxed text-muted-foreground sm:text-[17px]">
+            <p className="mt-4 text-base leading-relaxed text-muted-foreground sm:text-lg">
               {t(T.lead)}
             </p>
           </Reveal>
@@ -83,20 +84,14 @@ export function Operators() {
               на этом шаге нужен не тур по интерфейсу, а разговор: он покупает
               систему вместе с потоком клиентов, а такое не выбирают кнопкой. */}
           <Reveal delay={120} className="mt-8 flex flex-wrap gap-3">
-            <a
-              href={href("/contacts")}
-              className="group inline-flex h-11 items-center gap-2 rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-            >
+            <a href={href("/contacts")} className={siteButton({ className: "group" })}>
               {t(T.connect)}
               <ArrowUpRight className="size-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
             </a>
             {/* Раньше вторая кнопка вела в FAQ — то есть отвечала на вопрос
                 «как попасть в витрину» тремя строками в чужом разделе. Теперь
                 у склада есть своя страница с разбором по шагам. */}
-            <a
-              href={href("/warehouses")}
-              className="inline-flex h-11 items-center rounded-full border border-foreground/[0.14] px-5 text-sm font-medium transition-colors hover:border-foreground/30 hover:bg-foreground/[0.04]"
-            >
+            <a href={href("/warehouses")} className={siteButton({ tone: "outline" })}>
               {t(T.howToList)}
             </a>
           </Reveal>
@@ -120,13 +115,13 @@ export function Operators() {
             читаются подряд. Она только добавляет четыре прямоугольника туда,
             где хватает волосяной линейки, — и именно из таких «на всякий
             случай обвели» страница набирает тяжесть. */}
-        <ul className="divide-y divide-foreground/[0.07] border-y border-foreground/[0.07]">
+        <ul className="divide-y divide-hairline border-y border-hairline">
           {GAINS.map((g, i) => (
             <Reveal key={g.title.ru} as="li" delay={i * 80}>
               <div className="flex gap-4 py-6">
                 <Check className="mt-1 size-4 shrink-0 text-primary" strokeWidth={2.5} />
                 <div>
-                  <h3 className="font-display text-[15px] font-medium tracking-tight">
+                  <h3 className="font-display text-base font-heading tracking-tight">
                     {t(g.title)}
                   </h3>
                   <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">

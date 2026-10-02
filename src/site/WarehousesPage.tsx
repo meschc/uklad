@@ -5,6 +5,7 @@ import { InboxBoard } from "./components/warehouses/InboxBoard";
 import { PLANS, YEARLY_DISCOUNT, yearlyPrice } from "./data/plans";
 import { money } from "./data/warehouses";
 import { warehousesRepository } from "./data/warehousesRepository";
+import { ctaPill, siteButton } from "./lib/button";
 import { c, useT, type Copy } from "./lib/copy";
 import { eyebrow } from "./lib/eyebrow";
 import { href } from "./lib/route";
@@ -178,18 +179,15 @@ export function WarehousesPage() {
       <div className="mx-auto grid max-w-6xl items-center gap-12 px-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.82fr)] lg:gap-16">
         <Reveal className="max-w-2xl">
           <p className={eyebrow("mb-3")}>{t(T.eyebrow)}</p>
-          <h1 className="font-display text-[32px] font-medium leading-[1.05] tracking-[-0.025em] sm:text-[42px]">
+          <h1 className="font-display text-3xl font-heading leading-display tracking-tight sm:text-5xl">
             {t(T.titleTop)} <span className="text-primary">{t(T.titleAccent)}</span>
           </h1>
-          <p className="mt-5 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-[17px]">
+          <p className="mt-5 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
             {t(T.lead)}
           </p>
 
           <div className="mt-8 flex flex-wrap items-center gap-3">
-            <a
-              href={href("/contacts")}
-              className="group inline-flex h-[52px] w-full items-center justify-between gap-4 rounded-full bg-foreground pl-6 pr-1.5 text-sm font-medium text-background transition-transform hover:-translate-y-px active:translate-y-0 sm:w-auto sm:justify-start"
-            >
+            <a href={href("/contacts")} className={ctaPill("w-full sm:w-auto")}>
               {t(T.ctaConnect)}
               <span className="flex size-10 items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors group-hover:bg-primary/85">
                 <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
@@ -197,13 +195,13 @@ export function WarehousesPage() {
             </a>
             <a
               href={href("/pricing")}
-              className="inline-flex h-[52px] w-full items-center justify-center rounded-full border border-foreground/[0.14] px-7 text-sm font-medium transition-colors hover:border-foreground/30 hover:bg-foreground/[0.04] sm:w-auto"
+              className={siteButton({ size: "lg", tone: "outline", className: "w-full sm:w-auto" })}
             >
               {t(T.ctaPricing)}
             </a>
           </div>
 
-          <p className="mt-8 text-[13px] leading-relaxed text-muted-foreground">
+          <p className="mt-8 text-sm leading-relaxed text-muted-foreground">
             {t(T.stats, {
               n: total,
               w: t.plural(total, ["склад", "склада", "складов"], ["warehouse", "warehouses"]),
@@ -229,9 +227,9 @@ export function WarehousesPage() {
           {PATH.map((s, i) => (
             <Reveal key={s.title.ru} as="li" delay={i * 70}>
               <div className="grid gap-2 border-b border-border py-6 sm:grid-cols-[64px_minmax(0,1fr)] sm:gap-6">
-                <span className="font-mono text-[12px] tabular-nums text-primary">0{i + 1}</span>
+                <span className="font-mono text-xs tabular-nums text-primary">0{i + 1}</span>
                 <div>
-                  <h3 className="font-display text-lg font-medium tracking-tight">{t(s.title)}</h3>
+                  <h3 className="font-display text-lg font-heading tracking-tight">{t(s.title)}</h3>
                   <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground">
                     {t(s.body)}
                   </p>
@@ -254,7 +252,9 @@ export function WarehousesPage() {
           {GAINS.map((g, i) => (
             <Reveal key={g.title.ru} as="article" delay={i * 80}>
               <g.icon className="size-5 text-primary" strokeWidth={1.75} />
-              <h3 className="mt-4 font-display text-lg font-medium tracking-tight">{t(g.title)}</h3>
+              <h3 className="mt-4 font-display text-lg font-heading tracking-tight">
+                {t(g.title)}
+              </h3>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t(g.body)}</p>
             </Reveal>
           ))}
@@ -283,13 +283,13 @@ export function WarehousesPage() {
               живёт на странице цен, и вторая такая же превратила бы страницу в
               её дубль. Складу тут нужен ответ «во сколько это встанет», а не
               выбор плана. */}
-          <ul className="divide-y divide-foreground/[0.07] border-y border-foreground/[0.07]">
+          <ul className="divide-y divide-hairline border-y border-hairline">
             {SUBSCRIPTION.map((s, i) => (
               <Reveal key={s.title.ru} as="li" delay={i * 80}>
                 <div className="flex gap-4 py-6">
                   <Check className="mt-1 size-4 shrink-0 text-primary" strokeWidth={2.5} />
                   <div>
-                    <h3 className="font-display text-[15px] font-medium tracking-tight">
+                    <h3 className="font-display text-base font-heading tracking-tight">
                       {t(s.title)}
                     </h3>
                     <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
@@ -306,7 +306,7 @@ export function WarehousesPage() {
       <section className="mx-auto mt-20 max-w-6xl px-4 sm:mt-24 sm:px-6">
         <div className="border-t border-border pt-10 sm:flex sm:items-end sm:justify-between sm:gap-8">
           <div>
-            <h2 className="font-display text-[24px] font-medium leading-[1.1] tracking-[-0.02em] sm:text-[30px]">
+            <h2 className="font-display text-2xl font-heading leading-title tracking-tight sm:text-3xl">
               {t(T.endTitle)}
             </h2>
             <p className="mt-2 max-w-lg text-sm leading-relaxed text-muted-foreground">
@@ -322,7 +322,7 @@ export function WarehousesPage() {
           </div>
           <a
             href={href("/contacts")}
-            className="group mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-primary px-7 text-[15px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 sm:mt-0 sm:w-auto"
+            className={siteButton({ size: "lg", className: "group mt-6 w-full sm:mt-0 sm:w-auto" })}
           >
             {t(T.endCta)}
             <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />

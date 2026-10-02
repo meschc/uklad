@@ -107,7 +107,7 @@ export function SiteHeader({ route }: { route: Route }) {
             <a
               key={l.anchor ?? l.to}
               href={linkHref(l)}
-              className="rounded-full px-3.5 py-2 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-foreground/[0.06] hover:text-foreground"
+              className="rounded-full px-3.5 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-wash hover:text-foreground"
             >
               {t(l.label)}
             </a>
@@ -139,7 +139,7 @@ export function SiteHeader({ route }: { route: Route }) {
               switchLang(other);
             }}
             aria-label={t(T.switchTo)}
-            className="rounded-full px-2.5 py-2 text-[13px] font-medium uppercase tracking-[0.08em] text-muted-foreground transition-colors hover:bg-foreground/[0.06] hover:text-foreground"
+            className="rounded-full px-2.5 py-2 text-sm font-medium uppercase tracking-[0.08em] text-muted-foreground transition-colors hover:bg-wash hover:text-foreground"
           >
             {other}
           </a>
@@ -151,7 +151,7 @@ export function SiteHeader({ route }: { route: Route }) {
               строка в одну линию поместилась рядом с логотипом и меню. */}
           <a
             href={href("/market")}
-            className="group relative whitespace-nowrap rounded-full bg-foreground px-3 py-2 text-[13px] font-medium text-background transition-colors hover:bg-foreground/85 sm:px-4"
+            className="group relative whitespace-nowrap rounded-full bg-foreground px-3 py-2 text-sm font-medium text-background transition-colors hover:bg-foreground/85 sm:px-4"
           >
             {t(T.cta)}
           </a>
@@ -160,7 +160,7 @@ export function SiteHeader({ route }: { route: Route }) {
             onClick={() => setOpen((v) => !v)}
             aria-label={t(T.menu)}
             aria-expanded={open}
-            className="rounded-full border border-foreground/[0.14] p-2.5 text-muted-foreground transition-colors hover:border-foreground/30 lg:hidden"
+            className="rounded-full border border-stroke p-2.5 text-muted-foreground transition-colors hover:border-stroke-hover lg:hidden"
           >
             {open ? <X className="size-4" /> : <Menu className="size-4" />}
           </button>
@@ -177,7 +177,7 @@ export function SiteHeader({ route }: { route: Route }) {
               key={l.anchor ?? l.to}
               href={linkHref(l)}
               onClick={() => setOpen(false)}
-              className="block w-full rounded-full px-4 py-2.5 text-left text-sm font-medium text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground"
+              className="block w-full rounded-full px-4 py-2.5 text-left text-sm font-medium text-muted-foreground hover:bg-wash hover:text-foreground"
             >
               {t(l.label)}
             </a>

@@ -65,10 +65,10 @@ export function RoadmapScreen() {
     <div className="mx-auto max-w-6xl px-4 pb-24 pt-28 sm:px-6 sm:pt-32">
       <div className="text-center">
         <p className={eyebrowClass("mb-3")}>{t(T.eyebrow)}</p>
-        <h1 className="font-display text-[30px] font-medium leading-[1.05] tracking-[-0.02em] sm:text-[44px]">
+        <h1 className="font-display text-3xl font-heading leading-display tracking-tight sm:text-5xl">
           {t(T.title)}
         </h1>
-        <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-[17px]">
+        <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
           {t(T.lead)}
         </p>
 
@@ -79,7 +79,7 @@ export function RoadmapScreen() {
         </div>
 
         {latest && (
-          <p className="mt-6 text-[12px] tabular-nums text-muted-foreground">
+          <p className="mt-6 text-xs tabular-nums text-muted-foreground">
             {t(T.updated, {
               date: shortDate(t.lang, Date.parse(`${latest.date}T12:00:00Z`)),
             })}
@@ -124,10 +124,10 @@ export function RoadmapScreen() {
 function Stat({ value, label }: { value: number; label: string }) {
   return (
     <p className="flex flex-col items-center">
-      <span className="font-display text-[30px] font-medium tabular-nums leading-none tracking-tight">
+      <span className="font-display text-3xl font-medium tabular-nums leading-none tracking-tight">
         {value}
       </span>
-      <span className="mt-1.5 text-[12px] text-muted-foreground">{label}</span>
+      <span className="mt-1.5 text-xs text-muted-foreground">{label}</span>
     </p>
   );
 }
@@ -136,10 +136,10 @@ function SectionLabel({ eyebrow, title, note }: { eyebrow: string; title: string
   return (
     <div className="mx-auto max-w-2xl text-center">
       <p className={eyebrowClass()}>{eyebrow}</p>
-      <h2 className="mt-2 font-display text-[22px] font-medium tracking-tight sm:text-[26px]">
+      <h2 className="mt-2 font-display text-2xl font-heading tracking-tight sm:text-2xl">
         {title}
       </h2>
-      <p className="mt-3 text-[14px] leading-relaxed text-muted-foreground">{note}</p>
+      <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{note}</p>
     </div>
   );
 }

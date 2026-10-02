@@ -3,6 +3,7 @@ import { ArrowLeft, Download, FileText, Languages } from "lucide-react";
 import { LEGAL_BY_SLUG, LEGAL_DOCS } from "../../data/legal";
 import type { LegalDoc } from "../../data/legal/types";
 import { LEGAL_UPDATED } from "../../data/org";
+import { siteButton } from "../../lib/button";
 import { c, fill, useT } from "../../lib/copy";
 import { searchDoc } from "../../lib/legalSearch";
 import { href } from "../../lib/route";
@@ -92,7 +93,7 @@ function LegalDocView({ doc }: { doc: LegalDoc }) {
       <div data-print="hide" className="flex flex-wrap items-center justify-between gap-3">
         <a
           href={href("/legal")}
-          className="inline-flex items-center gap-1.5 text-[13px] font-medium text-muted-foreground transition-colors hover:text-primary"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
         >
           <ArrowLeft className="size-3.5" />
           {t(T.allDocs)}
@@ -109,7 +110,13 @@ function LegalDocView({ doc }: { doc: LegalDoc }) {
         <button
           onClick={() => window.print()}
           title={t(T.printHint)}
-          className="inline-flex h-9 items-center gap-2 rounded-full border border-border px-4 text-[13px] font-medium transition-colors hover:border-primary/50 hover:text-primary"
+          // Подсветка своя: под курсором кнопка окрашивается фирменным,
+          // а не подливается фоном, — это единственное действие на странице
+          // документа, и оно должно отзываться заметнее обычной кнопки.
+          className={siteButton({
+            tone: "outline",
+            className: "hover:border-primary/50 hover:bg-transparent hover:text-primary",
+          })}
         >
           <Download className="size-3.5" />
           {t(T.download)}
@@ -121,16 +128,16 @@ function LegalDocView({ doc }: { doc: LegalDoc }) {
             версии, и без явной пометки браузер предложит прочитать его вслух
             по-английски, а поисковик посчитает страницу английской. */}
         <article className="min-w-0" lang="ru">
-          <h1 className="font-display text-[28px] font-medium leading-[1.1] tracking-[-0.02em] sm:text-[34px]">
+          <h1 className="font-display text-3xl font-heading leading-title tracking-tight sm:text-4xl">
             {doc.title}
           </h1>
-          <p className="mt-4 text-[15px] leading-relaxed text-muted-foreground">{doc.lead}</p>
+          <p className="mt-4 text-base leading-relaxed text-muted-foreground">{doc.lead}</p>
           {/* Подпись под документом всегда русская: она стоит в одном
               предложении с основанием (`doc.basis`), и «…Гражданского кодекса
               Российской Федерации. Version of 27 August 2026» читалось бы как
               недоперевод. Английскому читателю ту же дату сообщает список
               документов и врезка ниже. */}
-          <p className="mt-5 border-l-2 border-border pl-4 text-[13px] leading-relaxed text-muted-foreground">
+          <p className="mt-5 border-l-2 border-border pl-4 text-sm leading-relaxed text-muted-foreground">
             {doc.basis}. {fill(VERSION_LINE, { date: LEGAL_UPDATED.ru })}
           </p>
 
@@ -138,7 +145,7 @@ function LegalDocView({ doc }: { doc: LegalDoc }) {
             <p
               data-print="hide"
               lang="en"
-              className="mt-5 flex items-start gap-2.5 border border-border bg-muted/40 p-4 text-[13px] leading-relaxed text-muted-foreground r-inset"
+              className="mt-5 flex items-start gap-2.5 border border-border bg-muted/40 p-4 text-sm leading-relaxed text-muted-foreground r-inset"
             >
               <Languages className="mt-0.5 size-4 shrink-0 text-primary" />
               {t(T.ruOnly)}
@@ -162,7 +169,7 @@ function LegalDocView({ doc }: { doc: LegalDoc }) {
             которого пришлось бы прокручивать сам документ. */}
         <nav data-print="hide" className="hidden lg:block">
           <div className="sticky top-24">
-            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               {t(T.inDoc)}
             </p>
             <div lang="ru" className="mt-3 flex flex-col gap-1.5 border-l border-border">
@@ -174,7 +181,7 @@ function LegalDocView({ doc }: { doc: LegalDoc }) {
                 <a
                   key={s.id}
                   href={`#${s.id}`}
-                  className="-ml-px border-l border-transparent pl-3 text-left text-[13px] leading-snug text-muted-foreground transition-colors hover:border-primary hover:text-primary"
+                  className="-ml-px border-l border-transparent pl-3 text-left text-sm leading-snug text-muted-foreground transition-colors hover:border-primary hover:text-primary"
                 >
                   {s.title}
                 </a>
@@ -192,10 +199,10 @@ function LegalIndex() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 pb-24 pt-28 sm:px-6 sm:pt-32">
-      <h1 className="font-display text-[30px] font-medium leading-[1.05] tracking-[-0.02em] sm:text-[40px]">
+      <h1 className="font-display text-3xl font-heading leading-display tracking-tight sm:text-5xl">
         {t(T.indexTitle)}
       </h1>
-      <p className="mt-4 max-w-2xl text-[15px] leading-relaxed text-muted-foreground">
+      <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground">
         {t(T.indexLead, { date: t(LEGAL_UPDATED) })}
       </p>
 
@@ -216,11 +223,11 @@ function LegalIndex() {
             className="r-window group flex flex-col border border-border bg-card p-6 text-left transition-colors hover:border-primary/40 sm:p-7"
           >
             <FileText className="size-5 text-primary" />
-            <h2 className="mt-5 font-display text-[16px] font-medium leading-snug tracking-tight">
+            <h2 className="mt-5 font-display text-base font-heading leading-snug tracking-tight">
               {doc.title}
             </h2>
-            <p className="mt-3 text-[13px] leading-relaxed text-muted-foreground">{doc.lead}</p>
-            <p className="mt-auto pt-6 text-[11px] leading-snug text-muted-foreground/70">
+            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{doc.lead}</p>
+            <p className="mt-auto pt-6 text-xs leading-snug text-muted-foreground/70">
               {doc.basis}
             </p>
           </a>

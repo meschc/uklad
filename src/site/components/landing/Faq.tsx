@@ -140,7 +140,7 @@ export function Faq() {
                   aria-expanded={on}
                   className="flex w-full items-center gap-4 px-5 py-4 text-left"
                 >
-                  <span className="flex-1 font-display text-[15px] font-medium tracking-tight sm:text-base">
+                  <span className="flex-1 font-display text-base font-medium tracking-tight sm:text-base">
                     {t(item.q)}
                   </span>
                   <Plus

@@ -118,10 +118,10 @@ export function SellerView() {
                 setLocked(true);
               }}
               className={cn(
-                "relative inline-flex h-10 items-center gap-2 overflow-hidden rounded-full border px-4 text-[13px] font-medium transition-colors",
+                "relative inline-flex h-10 items-center gap-2 overflow-hidden rounded-full border px-4 text-sm font-medium transition-colors",
                 on
                   ? "border-primary/45 bg-primary/[0.08] text-foreground"
-                  : "border-border text-muted-foreground hover:border-foreground/25 hover:text-foreground",
+                  : "border-border text-muted-foreground hover:border-stroke-hover hover:text-foreground",
               )}
             >
               <tab.icon
@@ -255,7 +255,7 @@ function StockMock() {
           >
             <div className="flex items-baseline justify-between gap-3">
               <span className="truncate text-sm font-semibold">{t(r.name)}</span>
-              <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
+              <span className="shrink-0 font-mono text-xs text-muted-foreground">
                 {t(M.sku)}-{r.sku}
               </span>
             </div>
@@ -263,7 +263,7 @@ function StockMock() {
               <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
                 <div className="h-full rounded-full bg-primary" style={{ width: `${share}%` }} />
               </div>
-              <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
+              <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
                 {t(M.stock, { total: r.total, reserved: r.reserved, cells: r.cells })}
               </span>
             </div>
@@ -286,7 +286,7 @@ function ReceivingMock() {
 
   return (
     <div className="r-inset overflow-hidden border border-border">
-      <div className="grid grid-cols-[1fr_auto_auto_auto] gap-4 border-b border-border bg-muted/50 px-4 py-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+      <div className="grid grid-cols-[1fr_auto_auto_auto] gap-4 border-b border-border bg-muted/50 px-4 py-2 text-2xs font-medium uppercase tracking-wide text-muted-foreground">
         <span>{t(M.colSku)}</span>
         <span className="text-right">{t(M.colPlan)}</span>
         <span className="text-right">{t(M.colFact)}</span>
@@ -300,7 +300,7 @@ function ReceivingMock() {
             className="grid grid-cols-[1fr_auto_auto_auto] gap-4 border-b border-border px-4 py-2.5 text-sm last:border-0"
             style={{ animation: `plan-cell 420ms cubic-bezier(.16,1,.3,1) ${i * 70}ms backwards` }}
           >
-            <span className="font-mono text-[12px]">
+            <span className="font-mono text-xs">
               {t(M.sku)}-{r.sku}
             </span>
             <span className="text-right tabular-nums text-muted-foreground">{r.plan}</span>
@@ -321,7 +321,7 @@ function ReceivingMock() {
           </div>
         );
       })}
-      <p className="bg-amber-500/10 px-4 py-2 text-[11px] text-amber-700 dark:text-amber-300">
+      <p className="bg-amber-500/10 px-4 py-2 text-xs text-amber-700 dark:text-amber-300">
         {t(M.mismatch)}
       </p>
     </div>
@@ -383,12 +383,12 @@ function ShippingMock() {
             {t(M.order)}-{s.id}
           </span>
           <span className="min-w-0 flex-1 truncate text-sm">{t(s.to)}</span>
-          <span className="text-[11px] tabular-nums text-muted-foreground">
+          <span className="text-xs tabular-nums text-muted-foreground">
             {t(M.items, { n: s.items, when: t(s.when) })}
           </span>
           <span
             className={cn(
-              "rounded-full px-2.5 py-0.5 text-[10px] font-semibold",
+              "rounded-full px-2.5 py-0.5 text-2xs font-semibold",
               SHIPMENT_STATES[s.state].tone,
             )}
           >

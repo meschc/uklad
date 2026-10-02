@@ -63,7 +63,7 @@ export function BrandMark({ brand, className }: { brand: MarketplaceRef; classNa
         />
       ) : (
         <span
-          className="text-[10px] font-bold tracking-tight"
+          className="text-2xs font-bold tracking-tight"
           style={{ color: brand.fg ?? "#ffffff" }}
         >
           {brand.short}

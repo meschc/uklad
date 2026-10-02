@@ -46,7 +46,7 @@ export function VolumeFields({
         <div key={f.key}>
           <label
             htmlFor={`${idPrefix}-${f.key}`}
-            className="block text-[11px] uppercase tracking-wide text-muted-foreground"
+            className="block text-xs uppercase tracking-wide text-muted-foreground"
           >
             {t(f.label)}
           </label>
@@ -62,7 +62,7 @@ export function VolumeFields({
             onChange={(e) => onChange({ ...value, [f.key]: toNumber(e.target.value) })}
             className="mt-1.5 h-10 w-full rounded-full border border-border bg-background px-3.5 text-sm tabular-nums outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-primary"
           />
-          <p className="mt-1 truncate text-[11px] text-muted-foreground">{t(f.unit)}</p>
+          <p className="mt-1 truncate text-xs text-muted-foreground">{t(f.unit)}</p>
         </div>
       ))}
     </div>

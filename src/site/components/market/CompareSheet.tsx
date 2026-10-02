@@ -86,7 +86,7 @@ export function CompareSheet({
         className="relative mx-auto mt-auto flex max-h-[92vh] w-full max-w-[1100px] animate-slide-up flex-col border-t border-border bg-background sm:my-auto sm:max-h-[88vh] sm:border"
       >
         <header className="flex items-center justify-between gap-4 border-b border-border px-4 py-3 sm:px-6">
-          <h2 id="compare-title" className="font-display text-base font-medium">
+          <h2 id="compare-title" className="font-display text-base font-heading">
             {t(T.title)}
           </h2>
           <button
@@ -108,7 +108,7 @@ export function CompareSheet({
             <CompareTable list={list} rows={rows} onRemove={onRemove} />
           </div>
 
-          <div className="space-y-1.5 px-4 pt-4 text-[12px] leading-relaxed text-muted-foreground sm:px-6">
+          <div className="space-y-1.5 px-4 pt-4 text-xs leading-relaxed text-muted-foreground sm:px-6">
             {!isVolumeSet(volume) && <p>{t(T.noVolume)}</p>}
             {hasDash && <p>{t(T.dash)}</p>}
           </div>
@@ -176,7 +176,7 @@ function CompareTable({
               <div className="flex items-start justify-between gap-2">
                 <a
                   href={warehouseHref(w.id)}
-                  className="min-w-0 flex-1 font-display text-[13px] font-medium leading-snug hover:text-primary"
+                  className="min-w-0 flex-1 font-display text-sm font-medium leading-snug hover:text-primary"
                 >
                   {t(w.name)}
                 </a>
@@ -189,7 +189,7 @@ function CompareTable({
                   <X className="size-3.5" />
                 </button>
               </div>
-              <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{t(w.cityTitle)}</p>
+              <p className="mt-0.5 truncate text-xs text-muted-foreground">{t(w.cityTitle)}</p>
             </th>
           ))}
         </tr>
@@ -204,9 +204,9 @@ function CompareTable({
                 scope="row"
                 className="sticky left-0 z-10 border-b border-border bg-inherit px-4 py-2.5 align-top font-normal sm:px-6"
               >
-                <span className="text-[13px] font-medium">{t(row.label)}</span>
+                <span className="text-sm font-medium">{t(row.label)}</span>
                 {row.unit && (
-                  <span className="ml-1 text-[11px] text-muted-foreground">{t(row.unit)}</span>
+                  <span className="ml-1 text-xs text-muted-foreground">{t(row.unit)}</span>
                 )}
               </th>
               {row.values.map((value, i) => (

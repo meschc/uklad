@@ -116,7 +116,7 @@ export function RequestForm({
   return (
     <div className={cn("r-window border border-border bg-card p-4 sm:p-5", className)}>
       <p className="text-sm font-medium">{title}</p>
-      <p className="mt-1 max-w-2xl text-[12px] leading-relaxed text-muted-foreground">{note}</p>
+      <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">{note}</p>
 
       {!done && (
         <div className="mt-4 space-y-4">
@@ -129,7 +129,7 @@ export function RequestForm({
           />
 
           <fieldset>
-            <legend className="text-[11px] uppercase tracking-wide text-muted-foreground">
+            <legend className="text-xs uppercase tracking-wide text-muted-foreground">
               {t(T.volume)}
             </legend>
             <VolumeFields
@@ -197,10 +197,7 @@ function Text({
 }) {
   return (
     <div>
-      <label
-        htmlFor={id}
-        className="block text-[11px] uppercase tracking-wide text-muted-foreground"
-      >
+      <label htmlFor={id} className="block text-xs uppercase tracking-wide text-muted-foreground">
         {label}
       </label>
       <input

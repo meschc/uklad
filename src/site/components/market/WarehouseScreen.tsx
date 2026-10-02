@@ -227,7 +227,7 @@ export function WarehouseScreen({ id }: { id?: string }) {
     <div className="mx-auto max-w-6xl px-4 pb-24 pt-28 sm:px-6 sm:pt-32">
       <a
         href={href("/market")}
-        className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground transition-colors hover:text-foreground"
+        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
       >
         <ArrowLeft className="size-3.5" />
         {t(T.back)}
@@ -239,7 +239,7 @@ export function WarehouseScreen({ id }: { id?: string }) {
       {w.photo && (
         <figure className="mt-5">
           <WarehouseCover warehouse={w} className="r-window aspect-[16/5] border border-border" />
-          <figcaption className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+          <figcaption className="mt-2 text-xs leading-relaxed text-muted-foreground">
             {t(T.photoNote)}
           </figcaption>
         </figure>
@@ -248,13 +248,13 @@ export function WarehouseScreen({ id }: { id?: string }) {
       <header className="mt-5 flex items-start gap-4">
         <WarehouseAvatar warehouse={w} className="size-14 shrink-0" />
         <div className="min-w-0">
-          <h1 className="flex items-center gap-2 font-display text-[26px] font-medium leading-tight tracking-[-0.02em] sm:text-[34px]">
+          <h1 className="flex items-center gap-2 font-display text-2xl font-heading leading-tight tracking-tight sm:text-4xl">
             {t(w.name)}
             {w.verified && (
               <BadgeCheck className="size-5 shrink-0 text-primary" aria-label={t(T.verified)} />
             )}
           </h1>
-          <p className="mt-1 text-[13px] text-muted-foreground">
+          <p className="mt-1 text-sm text-muted-foreground">
             {t(T.meta, { legal: t(w.legal), y: w.since, place: place(t, w) })}
           </p>
         </div>
@@ -262,7 +262,7 @@ export function WarehouseScreen({ id }: { id?: string }) {
 
       <div className="mt-8 grid gap-10 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="min-w-0">
-          <p className="max-w-2xl text-[15px] leading-relaxed">{t(w.pitch)}</p>
+          <p className="max-w-2xl text-base leading-relaxed">{t(w.pitch)}</p>
 
           <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
             {/* У склада без отзывов в этой клетке стоит прочерк, а не ноль:
@@ -317,10 +317,10 @@ export function WarehouseScreen({ id }: { id?: string }) {
                 {w.uklad && <TrustItem>{t(T.ukladLine)}</TrustItem>}
               </ul>
             ) : (
-              <p className="text-[13px] leading-relaxed text-muted-foreground">{t(T.notChecked)}</p>
+              <p className="text-sm leading-relaxed text-muted-foreground">{t(T.notChecked)}</p>
             )}
 
-            <p className="mt-3.5 text-[12px] leading-relaxed text-muted-foreground">
+            <p className="mt-3.5 text-xs leading-relaxed text-muted-foreground">
               {t(T.notGuarantee)}{" "}
               <a
                 href={href("/legal/requisites")}
@@ -342,19 +342,19 @@ export function WarehouseScreen({ id }: { id?: string }) {
             <ol className="border-t border-border">
               {START.map((s, i) => (
                 <li key={s.title.ru} className="flex gap-4 border-b border-border py-3.5">
-                  <span className="mt-0.5 shrink-0 font-mono text-[11px] tabular-nums text-primary">
+                  <span className="mt-0.5 shrink-0 font-mono text-xs tabular-nums text-primary">
                     0{i + 1}
                   </span>
                   <span className="min-w-0">
                     <span className="block text-sm font-medium">{t(s.title)}</span>
-                    <span className="mt-0.5 block text-[13px] leading-relaxed text-muted-foreground">
+                    <span className="mt-0.5 block text-sm leading-relaxed text-muted-foreground">
                       {t(s.body)}
                     </span>
                   </span>
                 </li>
               ))}
             </ol>
-            <p className="mt-3 flex items-start gap-2 text-[12px] leading-relaxed text-muted-foreground">
+            <p className="mt-3 flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
               <FileSignature className="mt-0.5 size-3.5 shrink-0 text-primary" />
               {t(T.eSign)}
             </p>
@@ -370,21 +370,23 @@ export function WarehouseScreen({ id }: { id?: string }) {
               />
               <Row label={t(T.picking)} value={`${w.price.picking} ₽`} unit={t(T.pickingUnit)} />
               <Row label={t(T.marking)} value={`${w.price.marking} ₽`} unit={t(T.markingUnit)} />
-              <div className="flex items-baseline justify-between gap-3 bg-primary/[0.06] px-4 py-3">
+              {/* Итоговая строка выделена токеном палитры, а не синим с
+                  прозрачностью: см. PriceCell в WarehouseCard. */}
+              <div className="flex items-baseline justify-between gap-3 bg-muted px-4 py-3">
                 <span className="text-sm font-semibold text-primary">{t(T.perMonth)}</span>
                 <span className="font-display text-lg font-medium tabular-nums text-primary">
                   ≈ {money(monthlyPerPlace(w))} ₽
                 </span>
               </div>
             </div>
-            <p className="mt-2.5 text-[12px] leading-relaxed text-muted-foreground">{t(T.base)}</p>
-            <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
+            <p className="mt-2.5 text-xs leading-relaxed text-muted-foreground">{t(T.base)}</p>
+            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
               {w.minPlaces === 0 ? t(T.noMin) : t(T.min, { n: w.minPlaces })}{" "}
               {t(T.payment, { busy })}
             </p>
             <p
               className={cn(
-                "mt-2 flex items-start gap-1.5 text-[12px] leading-relaxed",
+                "mt-2 flex items-start gap-1.5 text-xs leading-relaxed",
                 fresh === "stale" ? "text-amber-600 dark:text-amber-500" : "text-muted-foreground",
               )}
             >
@@ -397,7 +399,7 @@ export function WarehouseScreen({ id }: { id?: string }) {
             <div className="flex flex-col gap-1.5">
               {SCHEMES.filter((s) => w.schemes.includes(s.id)).map((s) => (
                 <div key={s.id} className="flex items-center gap-2.5 text-sm">
-                  <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-bold text-primary">
+                  <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-bold text-primary">
                     {s.title}
                   </span>
                   <span className="text-muted-foreground">{t(s.hint)}</span>
@@ -450,7 +452,7 @@ export function WarehouseScreen({ id }: { id?: string }) {
               <span>
                 {place(t, w)}, {t(w.address)}
                 <br />
-                <span className="font-mono text-[11px]">
+                <span className="font-mono text-xs">
                   {w.lat.toFixed(4)}, {w.lng.toFixed(4)}
                 </span>
               </span>
@@ -521,7 +523,7 @@ function registration(legal: string): { form: Copy; registry: Copy } {
 /** Строка списка проверок: галочка и одно проверенное утверждение. */
 function TrustItem({ children }: { children: React.ReactNode }) {
   return (
-    <li className="flex items-start gap-2.5 text-[13px] leading-relaxed">
+    <li className="flex items-start gap-2.5 text-sm leading-relaxed">
       <Check className="mt-0.5 size-3.5 shrink-0 text-primary" strokeWidth={3} />
       <span className="min-w-0">{children}</span>
     </li>
@@ -537,7 +539,7 @@ function Fact({ icon: Icon, value, label }: { icon: typeof Star; value: string; 
           {value}
         </span>
       </span>
-      <span className="mt-0.5 block text-[11px] leading-snug text-muted-foreground">{label}</span>
+      <span className="mt-0.5 block text-xs leading-snug text-muted-foreground">{label}</span>
     </div>
   );
 }
@@ -548,7 +550,7 @@ function Row({ label, value, unit }: { label: string; value: string; unit: strin
       <span className="text-sm">{label}</span>
       <span className="flex items-baseline gap-1.5">
         <span className="font-semibold tabular-nums">{value}</span>
-        <span className="text-[11px] text-muted-foreground">{unit}</span>
+        <span className="text-xs text-muted-foreground">{unit}</span>
       </span>
     </div>
   );

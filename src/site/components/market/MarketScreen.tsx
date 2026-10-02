@@ -11,6 +11,7 @@ import { COMPARE_LIMIT, comparedWarehouses, toggleCompare } from "../../lib/comp
 import { EMPTY_VOLUME, estimateRange, type SellerVolume } from "../../lib/estimate";
 import { DEFAULT_FILTERS, SORTS, activeCount, type SortId } from "../../lib/filters";
 import { filtersQuery } from "../../lib/marketQuery";
+import { siteButton } from "../../lib/button";
 import { c, useT } from "../../lib/copy";
 import { goWarehouse } from "../../lib/route";
 import { useMarketFilters } from "../../lib/useMarketFilters";
@@ -157,13 +158,13 @@ export function MarketScreen() {
       )}
     >
       <header className="mb-8">
-        <h1 className="font-display text-[30px] font-medium leading-[1.05] tracking-[-0.02em] sm:text-[40px]">
+        <h1 className="font-display text-3xl font-heading leading-display tracking-tight sm:text-5xl">
           {t(T.title)}
         </h1>
         {/* Не «честная занятость»: это оценка, которую читатель не может
             проверить. Проверить он может то, что лежит в карточке, — про это и
             пишем. Та же правка уже сделана в блоке витрины на лендинге. */}
-        <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-muted-foreground">
+        <p className="mt-3 max-w-2xl text-base leading-relaxed text-muted-foreground">
           {t(T.lead)}
         </p>
         {/* Что означает галочка — словами и один раз на список, а не подписью
@@ -171,9 +172,7 @@ export function MarketScreen() {
             селлер кода не читает и видит только значок, который сам по себе
             читается как «ручаемся за качество». Ручаться за качество склада
             витрина не может и не должна: для этого есть отзывы и жалобы. */}
-        <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-muted-foreground">
-          {t(T.badge)}
-        </p>
+        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">{t(T.badge)}</p>
       </header>
 
       <div className="grid gap-8 lg:grid-cols-[264px_minmax(0,1fr)] lg:gap-10">
@@ -205,7 +204,7 @@ export function MarketScreen() {
 
             <button
               onClick={() => setSheet(true)}
-              className="inline-flex h-9 items-center gap-2 rounded-full border border-border px-3.5 text-xs font-medium lg:hidden"
+              className={siteButton({ size: "sm", tone: "outline", className: "lg:hidden" })}
             >
               <SlidersHorizontal className="size-3.5" />
               {t(T.filters)}
@@ -246,10 +245,7 @@ export function MarketScreen() {
               <div className="grid gap-4 xl:grid-cols-2">{cards}</div>
               {limit < found.length && (
                 <div className="mt-8 text-center">
-                  <button
-                    onClick={showMore}
-                    className="inline-flex h-11 items-center rounded-full border border-border px-6 text-sm font-medium transition-colors hover:bg-muted"
-                  >
+                  <button onClick={showMore} className={siteButton({ tone: "outline" })}>
                     {t(T.more, { n: Math.min(PAGE, found.length - limit) })}
                   </button>
                 </div>
@@ -286,10 +282,7 @@ export function MarketScreen() {
               <div className="grid auto-rows-max content-start gap-3 lg:max-h-[calc(100vh-9rem)] lg:overflow-y-auto lg:pr-1">
                 {cards}
                 {limit < found.length && (
-                  <button
-                    onClick={showMore}
-                    className="h-11 rounded-full border border-border text-sm font-medium transition-colors hover:bg-muted"
-                  >
+                  <button onClick={showMore} className={siteButton({ tone: "outline" })}>
                     {t(T.more, { n: Math.min(PAGE, found.length - limit) })}
                   </button>
                 )}
@@ -323,10 +316,7 @@ export function MarketScreen() {
             <div className="flex-1 overflow-y-auto p-4">
               <Filters value={filters} onChange={setFilters} />
             </div>
-            <button
-              onClick={() => setSheet(false)}
-              className="m-4 h-11 rounded-full bg-primary text-sm font-medium text-primary-foreground"
-            >
+            <button onClick={() => setSheet(false)} className={siteButton({ className: "m-4" })}>
               {t(T.show, { n: found.length })}
             </button>
           </div>
@@ -391,10 +381,7 @@ function Empty({ onReset }: { onReset: () => void }) {
     <div className="r-window border border-dashed border-border py-20 text-center">
       <p className="font-display text-lg font-medium">{t(T.emptyTitle)}</p>
       <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">{t(T.emptyBody)}</p>
-      <button
-        onClick={onReset}
-        className="mt-5 inline-flex h-10 items-center rounded-full border border-border px-5 text-sm font-medium transition-colors hover:bg-muted"
-      >
+      <button onClick={onReset} className={siteButton({ tone: "outline", className: "mt-5" })}>
         {t(T.emptyReset)}
       </button>
     </div>

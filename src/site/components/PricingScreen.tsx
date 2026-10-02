@@ -14,6 +14,7 @@ import {
 import { money } from "../data/warehouses";
 import { Reveal } from "./Reveal";
 import { href } from "../lib/route";
+import { siteButton } from "../lib/button";
 import { c, useT } from "../lib/copy";
 // Под псевдонимом: `eyebrow` ниже — имя свойства с текстом надзаголовка.
 import { eyebrow as eyebrowClass } from "../lib/eyebrow";
@@ -103,11 +104,11 @@ export function PricingScreen() {
     <div className="mx-auto max-w-6xl px-4 pb-24 pt-28 sm:px-6 sm:pt-32">
       <div className="text-center">
         <p className={eyebrowClass("mb-3")}>{t(T.eyebrow)}</p>
-        <h1 className="font-display text-[30px] font-medium leading-[1.05] tracking-[-0.02em] sm:text-[44px]">
+        <h1 className="font-display text-3xl font-heading leading-display tracking-tight sm:text-5xl">
           {t(T.titleTop)}
           <br className="hidden sm:block" /> {t(T.titleBottom)}
         </h1>
-        <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-[17px]">
+        <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
           {t(T.lead)}
         </p>
       </div>
@@ -136,29 +137,24 @@ function SellerBlock() {
             между списком и кнопкой читается как «здесь что-то не загрузилось». */}
         <Reveal className="self-start">
           <div className="r-window flex flex-col border border-border bg-card p-6">
-            <h3 className="font-display text-[19px] font-medium tracking-tight">
-              {t(T.freeTitle)}
-            </h3>
+            <h3 className="font-display text-xl font-heading tracking-tight">{t(T.freeTitle)}</h3>
             <p className="mt-5 flex items-baseline gap-1.5">
-              <span className="font-display text-[34px] font-medium tabular-nums tracking-tight">
+              <span className="font-display text-4xl font-medium tabular-nums tracking-tight">
                 0 ₽
               </span>
             </p>
-            <p className="mt-1 text-[12px] text-muted-foreground">{t(T.freeNote)}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{t(T.freeNote)}</p>
 
             <ul className="mt-6 flex flex-col gap-2.5">
               {SELLER_FREE.map((f) => (
-                <li key={f.ru} className="flex gap-2.5 text-[13px] leading-snug">
+                <li key={f.ru} className="flex gap-2.5 text-sm leading-snug">
                   <Check className="mt-0.5 size-3.5 shrink-0 text-primary" strokeWidth={3} />
                   <span className="text-foreground/85">{t(f)}</span>
                 </li>
               ))}
             </ul>
 
-            <a
-              href={href("/market")}
-              className="group mt-6 inline-flex h-11 items-center justify-center gap-2 rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-            >
+            <a href={href("/market")} className={siteButton({ className: "group mt-6" })}>
               {t(T.freeCta)}
               <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
             </a>
@@ -209,10 +205,10 @@ function SectionLabel({ eyebrow, title, note }: { eyebrow: string; title: string
   return (
     <div className="mx-auto max-w-2xl text-center">
       <p className={eyebrowClass()}>{eyebrow}</p>
-      <h2 className="mt-2 font-display text-[22px] font-medium tracking-tight sm:text-[26px]">
+      <h2 className="mt-2 font-display text-2xl font-heading tracking-tight sm:text-2xl">
         {title}
       </h2>
-      <p className="mt-3 text-[14px] leading-relaxed text-muted-foreground">{note}</p>
+      <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{note}</p>
     </div>
   );
 }
@@ -228,21 +224,21 @@ function ExtraCard({ extra }: { extra: SellerExtra }) {
   return (
     <div className="r-window flex h-full flex-col border border-border bg-card p-5 transition-colors hover:border-primary/40">
       <div className="flex items-start justify-between gap-4">
-        <h3 className="font-display text-[16px] font-medium leading-tight tracking-tight">
+        <h3 className="font-display text-base font-heading leading-tight tracking-tight">
           {t(extra.title)}
         </h3>
         <span className="shrink-0 text-right">
-          <span className="block font-display text-[20px] font-medium tabular-nums leading-none tracking-tight">
+          <span className="block font-display text-xl font-medium tabular-nums leading-none tracking-tight">
             {money(extra.price)} ₽
           </span>
-          <span className="mt-1 block text-[11px] text-muted-foreground">
+          <span className="mt-1 block text-xs text-muted-foreground">
             {t(extraUnitLabel(extra))}
           </span>
         </span>
       </div>
 
-      <p className="mt-3 text-[13px] leading-relaxed text-foreground/85">{t(extra.what)}</p>
-      <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">{t(extra.why)}</p>
+      <p className="mt-3 text-sm leading-relaxed text-foreground/85">{t(extra.what)}</p>
+      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t(extra.why)}</p>
 
       <FirstScreen text={t(extra.firstScreen)} />
     </div>
@@ -263,7 +259,7 @@ function FirstScreen({ text }: { text: string }) {
     // Отступ сверху живёт на обёртке, а не на самой строке: `mt-auto` съел бы
     // любой `mt-*`, и линия прилипла бы к тексту выше.
     <div className="mt-auto pt-4">
-      <p className="flex items-start gap-2 border-t border-border/60 pt-3.5 text-[12px] leading-relaxed text-muted-foreground">
+      <p className="flex items-start gap-2 border-t border-border/60 pt-3.5 text-xs leading-relaxed text-muted-foreground">
         <ArrowRight className="mt-0.5 size-3.5 shrink-0 text-primary" />
         <span>{text}</span>
       </p>
@@ -303,7 +299,7 @@ function PeriodSwitch({ yearly, onChange }: { yearly: boolean; onChange: (v: boo
           onClick={() => onChange(opt.v)}
           aria-pressed={opt.on}
           className={cn(
-            "relative z-10 inline-flex h-9 min-w-[140px] items-center justify-center rounded-full px-4 text-[13px] font-medium transition-colors",
+            "relative z-10 inline-flex h-9 min-w-[140px] items-center justify-center rounded-full px-4 text-sm font-medium transition-colors",
             opt.on ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground",
           )}
         >
@@ -328,32 +324,28 @@ function PlanCard({ plan, yearly }: { plan: Plan; yearly: boolean }) {
       )}
     >
       <div className="flex items-center gap-2">
-        <h3 className="font-display text-[19px] font-medium tracking-tight">{t(plan.title)}</h3>
+        <h3 className="font-display text-xl font-heading tracking-tight">{t(plan.title)}</h3>
         {plan.featured && (
-          <span className="rounded-full border border-primary/40 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">
+          <span className="rounded-full border border-primary/40 px-2.5 py-0.5 text-2xs font-bold uppercase tracking-wide text-primary">
             {t(T.popular)}
           </span>
         )}
       </div>
-      <p className="mt-2 min-h-[40px] text-[13px] leading-snug text-muted-foreground">
-        {t(plan.who)}
-      </p>
+      <p className="mt-2 min-h-[40px] text-sm leading-snug text-muted-foreground">{t(plan.who)}</p>
 
       <p className="mt-5 flex items-baseline gap-1.5">
-        <span className="font-display text-[34px] font-medium tabular-nums tracking-tight">
+        <span className="font-display text-4xl font-medium tabular-nums tracking-tight">
           {money(amount)} ₽
         </span>
-        <span className="text-[13px] text-muted-foreground">
-          {t(yearly ? T.perYear : T.perMonth)}
-        </span>
+        <span className="text-sm text-muted-foreground">{t(yearly ? T.perYear : T.perMonth)}</span>
       </p>
-      <p className="mt-1 text-[12px] text-muted-foreground">
+      <p className="mt-1 text-xs text-muted-foreground">
         {yearly ? t(T.insteadOf, { n: money(plan.monthly * 12) }) : t(T.vat)}
       </p>
 
       <ul className="mt-6 flex flex-1 flex-col gap-2.5">
         {plan.features.map((f) => (
-          <li key={f.ru} className="flex gap-2.5 text-[13px] leading-snug">
+          <li key={f.ru} className="flex gap-2.5 text-sm leading-snug">
             <Check className="mt-0.5 size-3.5 shrink-0 text-primary" strokeWidth={3} />
             <span className="text-foreground/85">{t(f)}</span>
           </li>
@@ -364,12 +356,10 @@ function PlanCard({ plan, yearly }: { plan: Plan; yearly: boolean }) {
 
       <a
         href={href("/market")}
-        className={cn(
-          "mt-6 inline-flex h-11 items-center justify-center rounded-full px-5 text-sm font-medium transition-colors",
-          plan.featured
-            ? "bg-primary text-primary-foreground hover:bg-primary/90"
-            : "border border-border hover:bg-muted",
-        )}
+        className={siteButton({
+          tone: plan.featured ? "primary" : "outline",
+          className: "mt-6",
+        })}
       >
         {t(plan.cta)}
       </a>
@@ -383,14 +373,14 @@ function PaymentFacts() {
 
   return (
     <Reveal className="r-window mt-16 border border-border bg-card/60 p-6 sm:p-7">
-      <h2 className="font-display text-[19px] font-medium tracking-tight">{t(T.factsTitle)}</h2>
+      <h2 className="font-display text-xl font-heading tracking-tight">{t(T.factsTitle)}</h2>
       <dl className="mt-5 grid gap-x-8 gap-y-5 sm:grid-cols-2">
         <Fact term={t(T.factWhatTerm)}>{t(T.factWhat)}</Fact>
         <Fact term={t(T.factOrderTerm)}>{t(T.factOrder)}</Fact>
         <Fact term={t(T.factRefundTerm)}>{t(T.factRefund)}</Fact>
         <Fact term={t(T.factPricesTerm)}>{t(T.factPrices)}</Fact>
       </dl>
-      <p className="mt-6 text-[13px] leading-relaxed text-muted-foreground">
+      <p className="mt-6 text-sm leading-relaxed text-muted-foreground">
         {t(T.offerBefore)}
         <a
           href={href("/legal/offer")}
@@ -407,10 +397,8 @@ function PaymentFacts() {
 function Fact({ term, children }: { term: string; children: React.ReactNode }) {
   return (
     <div>
-      <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-        {term}
-      </dt>
-      <dd className="mt-1.5 text-[14px] leading-relaxed text-foreground/85">{children}</dd>
+      <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{term}</dt>
+      <dd className="mt-1.5 text-sm leading-relaxed text-foreground/85">{children}</dd>
     </div>
   );
 }

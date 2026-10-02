@@ -93,10 +93,10 @@ export function WarehouseReputation({ warehouse: w }: { warehouse: Warehouse }) 
 
   return (
     <Block title={t(T.title)}>
-      <p className="text-[12px] leading-relaxed text-muted-foreground">{t(T.rule)}</p>
+      <p className="text-xs leading-relaxed text-muted-foreground">{t(T.rule)}</p>
 
       {nothing ? (
-        <p className="mt-3 text-[13px] leading-relaxed">{t(T.empty)}</p>
+        <p className="mt-3 text-sm leading-relaxed">{t(T.empty)}</p>
       ) : (
         <ul className="mt-4 flex flex-col gap-3">
           {reviews.map((review) => (
@@ -109,11 +109,11 @@ export function WarehouseReputation({ warehouse: w }: { warehouse: Warehouse }) 
 
       {complaints.length > 0 && (
         <>
-          <h3 className="mb-3 mt-7 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          <h3 className="mb-3 mt-7 text-xs font-heading uppercase tracking-wide text-muted-foreground">
             {t(T.complaintsTitle)}
           </h3>
           {w.reputation.demoted && (
-            <p className="mb-3 flex items-start gap-2 text-[12px] font-medium leading-relaxed text-amber-600 dark:text-amber-500">
+            <p className="mb-3 flex items-start gap-2 text-xs font-medium leading-relaxed text-amber-600 dark:text-amber-500">
               <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
               {t(T.demoted, { n: w.reputation.confirmedComplaints })}
             </p>
@@ -128,7 +128,7 @@ export function WarehouseReputation({ warehouse: w }: { warehouse: Warehouse }) 
         </>
       )}
 
-      <p className="mt-4 text-[12px] leading-relaxed text-muted-foreground">
+      <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
         <span className="font-medium text-foreground">{t(T.howTitle)}. </span>
         {t(T.how, { n: COMPLAINT_ANSWER_DAYS })}
       </p>
@@ -160,11 +160,11 @@ function ReviewCard({ review, t }: { review: Review; t: TFunc }) {
             />
           ))}
         </span>
-        <span className="text-[11px] text-muted-foreground">
+        <span className="text-xs text-muted-foreground">
           {t(T.seller, { id: review.authorId })} · {shortDate(t.lang, review.createdAt)}
         </span>
       </header>
-      <p className="mt-2 text-[13px] leading-relaxed">{t(review.text)}</p>
+      <p className="mt-2 text-sm leading-relaxed">{t(review.text)}</p>
     </article>
   );
 }
@@ -186,28 +186,28 @@ function ComplaintCard({ complaint, now, t }: { complaint: Complaint; now: numbe
       className={`r-inset border p-4 ${confirmed ? "border-amber-500/50" : "border-border"}`}
     >
       <header className="flex items-center justify-between gap-3">
-        <span className="flex items-center gap-1.5 text-[12px] font-medium">
+        <span className="flex items-center gap-1.5 text-xs font-medium">
           <AlertTriangle className="size-3.5 shrink-0 text-amber-600 dark:text-amber-500" />
           {t(T.seller, { id: complaint.authorId })}
         </span>
-        <span className="text-[11px] text-muted-foreground">
+        <span className="text-xs text-muted-foreground">
           {shortDate(t.lang, complaint.createdAt)}
         </span>
       </header>
-      <p className="mt-2 text-[13px] leading-relaxed">{t(complaint.text)}</p>
+      <p className="mt-2 text-sm leading-relaxed">{t(complaint.text)}</p>
 
       {complaint.answer ? (
         <div className="mt-3 border-l-2 border-primary/40 pl-3">
-          <p className="flex items-center gap-1.5 text-[11px] font-medium text-primary">
+          <p className="flex items-center gap-1.5 text-xs font-medium text-primary">
             <MessageSquare className="size-3" />
             {t(T.answered)} · {shortDate(t.lang, complaint.answeredAt ?? complaint.createdAt)}
           </p>
-          <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
+          <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
             {t(complaint.answer)}
           </p>
         </div>
       ) : (
-        <p className="mt-2 text-[11px] text-muted-foreground">
+        <p className="mt-2 text-xs text-muted-foreground">
           {t(T.silent, { n: days, word: t.plural(days, DAYS, DAYS_EN) })}
           {confirmed && ` — ${t(T.confirmed, { n: COMPLAINT_ANSWER_DAYS })}`}
         </p>
@@ -259,7 +259,7 @@ function ComplaintForm({ warehouse: w }: { warehouse: Warehouse }) {
       <button
         type="button"
         onClick={() => setShown(true)}
-        className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-border px-3.5 py-1.5 text-[12px] font-medium text-muted-foreground transition-colors hover:border-amber-500/60 hover:text-foreground"
+        className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-border px-3.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-amber-500/60 hover:text-foreground"
       >
         <AlertTriangle className="size-3.5" />
         {t(T.open)}
@@ -272,14 +272,14 @@ function ComplaintForm({ warehouse: w }: { warehouse: Warehouse }) {
   return (
     <div className="r-window mt-4 border border-border bg-card p-4 sm:p-5">
       <p className="text-sm font-medium">{t(T.open)}</p>
-      <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">{t(T.formNote)}</p>
+      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{t(T.formNote)}</p>
 
       {!done && (
         <div className="mt-4 space-y-4">
           <div>
             <label
               htmlFor="complaint-deal"
-              className="block text-[11px] uppercase tracking-wide text-muted-foreground"
+              className="block text-xs uppercase tracking-wide text-muted-foreground"
             >
               {t(T.deal)}
             </label>
@@ -296,7 +296,7 @@ function ComplaintForm({ warehouse: w }: { warehouse: Warehouse }) {
           <div>
             <label
               htmlFor="complaint-what"
-              className="block text-[11px] uppercase tracking-wide text-muted-foreground"
+              className="block text-xs uppercase tracking-wide text-muted-foreground"
             >
               {t(T.what)}
             </label>
@@ -326,7 +326,7 @@ function ComplaintForm({ warehouse: w }: { warehouse: Warehouse }) {
           <button
             type="button"
             onClick={() => setShown(false)}
-            className="shrink-0 text-[12px] text-muted-foreground transition-colors hover:text-foreground"
+            className="shrink-0 text-xs text-muted-foreground transition-colors hover:text-foreground"
           >
             {t(T.cancel)}
           </button>

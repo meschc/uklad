@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { href } from "../lib/route";
+import { siteButton } from "../lib/button";
 import { c, useT } from "../lib/copy";
+import { eyebrowMono } from "../lib/eyebrow";
 
 /**
  * «Ничего не нашлось» — одним экраном на все случаи витрины.
@@ -34,26 +36,16 @@ export function NotFoundScreen({ caption, title, children, action }: Props) {
 
   return (
     <div className="mx-auto max-w-2xl px-4 pb-24 pt-32 text-center sm:px-6">
-      {caption && (
-        <p className="font-mono text-[13px] uppercase tracking-[0.14em] text-muted-foreground">
-          {caption}
-        </p>
-      )}
-      <h1 className="mt-3 font-display text-[26px] font-medium tracking-[-0.02em]">{title}</h1>
+      {caption && <p className={eyebrowMono()}>{caption}</p>}
+      <h1 className="mt-3 font-display text-2xl font-heading tracking-tight">{title}</h1>
       <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
         {children}
       </p>
       <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-        <a
-          href={href(primary.to)}
-          className="inline-flex h-11 items-center rounded-full border border-border px-6 text-sm font-medium transition-colors hover:bg-muted"
-        >
+        <a href={href(primary.to)} className={siteButton({ tone: "outline" })}>
           {primary.label}
         </a>
-        <a
-          href={href("/")}
-          className="inline-flex h-11 items-center px-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
-        >
+        <a href={href("/")} className={siteButton({ tone: "ghost" })}>
           {t(T.home)}
         </a>
       </div>
