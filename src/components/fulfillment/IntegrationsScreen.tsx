@@ -115,7 +115,7 @@ function BrandMark({ brand }: { brand: BrandMarkSpec }) {
       aria-hidden
       // Тонкая обводка: у тёмных марок (Lamoda) плитка иначе сливается с
       // карточкой в тёмной теме и читается как дырка в вёрстке.
-      className="flex size-9 shrink-0 items-center justify-center rounded-full text-[11px] font-bold tracking-tight ring-1 ring-black/10 dark:ring-white/15"
+      className="flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-bold tracking-tight ring-1 ring-black/10 dark:ring-white/15"
       style={{ backgroundColor: brand.bg, color: brand.fg ?? "#ffffff" }}
     >
       {brand.short}
@@ -146,12 +146,12 @@ function IntegrationCard({
           <p className="flex items-center gap-1.5 text-sm font-semibold">
             {spec.title}
             {config.enabled && (
-              <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
+              <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-2xs font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
                 {t("integr.on")}
               </span>
             )}
           </p>
-          <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
+          <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
             {t(spec.descriptionKey)}
           </p>
         </div>
@@ -166,7 +166,7 @@ function IntegrationCard({
         </span>
         <span
           className={cn(
-            "shrink-0 text-[11px] tabular-nums",
+            "shrink-0 text-xs tabular-nums",
             ready ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground",
           )}
         >
@@ -216,7 +216,7 @@ function IntegrationCard({
             </a>
           </div>
 
-          <p className="text-[11px] text-muted-foreground">{t("integr.pendingNote")}</p>
+          <p className="text-xs text-muted-foreground">{t("integr.pendingNote")}</p>
         </div>
       )}
     </section>

@@ -25,7 +25,7 @@ export function ChatDemoNote() {
   return (
     <div className="flex items-start gap-2.5 border-b border-border bg-muted/40 px-4 py-2.5">
       <FlaskConical className="mt-px size-3.5 shrink-0 text-muted-foreground" />
-      <p className="text-[11px] leading-relaxed text-muted-foreground">
+      <p className="text-xs leading-relaxed text-muted-foreground">
         <span className="font-medium text-foreground/80">{t("chat.demo")}</span>{" "}
         {t("chat.demoHint")}
       </p>

@@ -118,7 +118,7 @@ export function LabelDesigner({
               )}
             >
               <span className="block font-medium">{tpl.name}</span>
-              <span className="block text-[10px] tabular-nums opacity-70">
+              <span className="block text-2xs tabular-nums opacity-70">
                 {tpl.widthMm}×{tpl.heightMm} {t("labels.mm")}
               </span>
             </button>
@@ -182,7 +182,7 @@ export function LabelDesigner({
               },
             ]}
           />
-          <p className="text-[11px] leading-relaxed text-muted-foreground">
+          <p className="text-xs leading-relaxed text-muted-foreground">
             {t(draft.codeType === "qr" ? "labels.code.qrHint" : "labels.code.barHint")}
           </p>
         </Block>
@@ -201,7 +201,7 @@ export function LabelDesigner({
               {Math.round(draft.codeScale * 100)}%
             </span>
           </div>
-          <p className="text-[11px] leading-relaxed text-muted-foreground">
+          <p className="text-xs leading-relaxed text-muted-foreground">
             {t("labels.codeSizeHint")}
           </p>
         </Block>
@@ -281,7 +281,7 @@ export function LabelDesigner({
                   className="h-8 max-w-24 shrink-0 rounded bg-white object-contain p-0.5"
                 />
               ) : (
-                <span className="text-[11px] text-muted-foreground">{t("labels.logoEmpty")}</span>
+                <span className="text-xs text-muted-foreground">{t("labels.logoEmpty")}</span>
               )}
               <input
                 ref={fileRef}

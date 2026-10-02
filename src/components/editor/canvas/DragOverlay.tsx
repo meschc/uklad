@@ -79,7 +79,7 @@ export function DragOverlay({ preview, stampCell, toScreen }: DragOverlayProps) 
             height: previewBox.height,
           }}
         >
-          <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[10px] font-semibold text-primary">
+          <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-2xs font-semibold text-primary">
             {preview.rect.w}×{preview.rect.h}
           </span>
         </div>

@@ -119,7 +119,7 @@ export function LoginScreen() {
                     { value: "seller", label: t("role.seller"), icon: <Store /> },
                   ]}
                 />
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   {t(role === "warehouse" ? "login.roleWarehouse" : "login.roleSeller")}
                 </p>
               </div>
@@ -157,7 +157,7 @@ export function LoginScreen() {
               )}
 
               {resetSent && (
-                <p className="rounded-md border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-2 text-[11px] text-emerald-700 dark:text-emerald-400">
+                <p className="rounded-md border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-2 text-xs text-emerald-700 dark:text-emerald-400">
                   {t("login.resetSent", { email: email.trim() })}
                 </p>
               )}
@@ -176,7 +176,7 @@ export function LoginScreen() {
               <Button type="button" variant="outline" className="w-full" onClick={demo}>
                 {t("login.demo")}
               </Button>
-              <p className="text-center text-[11px] text-muted-foreground">{t("login.demoHint")}</p>
+              <p className="text-center text-xs text-muted-foreground">{t("login.demoHint")}</p>
             </form>
           </div>
 
@@ -239,7 +239,7 @@ function LoginField({
         {label}
       </Label>
       {children}
-      {error && <span className="text-[11px] text-destructive">{error}</span>}
+      {error && <span className="text-xs text-destructive">{error}</span>}
     </div>
   );
 }

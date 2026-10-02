@@ -71,7 +71,7 @@ export function QrSvg({
         </g>
       </svg>
       {showCode && (
-        <div className="pt-0.5 text-center font-mono text-[10px] leading-tight tracking-wide text-black">
+        <div className="pt-0.5 text-center font-mono text-2xs leading-tight tracking-wide text-black">
           {code}
         </div>
       )}

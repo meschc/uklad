@@ -57,7 +57,7 @@ export function FieldConstructor({
           <Settings2 className="size-4 text-muted-foreground" />
           <div>
             <p className="text-sm font-semibold">{t("fields.title")}</p>
-            <p className="text-[11px] text-muted-foreground">{t("fields.subtitle")}</p>
+            <p className="text-xs text-muted-foreground">{t("fields.subtitle")}</p>
           </div>
         </div>
         <Button variant="ghost" size="icon-sm" onClick={onClose}>
@@ -153,11 +153,11 @@ function FieldRow({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
             <span className="truncate text-sm font-medium">{name}</span>
-            <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+            <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-2xs font-medium text-muted-foreground">
               {t(`ftype.${type}`)}
             </span>
           </div>
-          <p className="mt-0.5 text-[11px] text-muted-foreground">
+          <p className="mt-0.5 text-xs text-muted-foreground">
             {type === "select" && options?.length
               ? `${t("fields.optionsLabel")}: ${options.join(", ")} · `
               : ""}

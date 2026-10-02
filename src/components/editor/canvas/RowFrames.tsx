@@ -78,7 +78,7 @@ function RowLabel({
   const t = useT();
   const label = t("canvas.rowFrame", { n: frame.row });
   const base =
-    "absolute left-1/2 top-0 -translate-x-1/2 -translate-y-full whitespace-nowrap px-1 py-0.5 text-[10px] font-semibold leading-none tabular-nums";
+    "absolute left-1/2 top-0 -translate-x-1/2 -translate-y-full whitespace-nowrap px-1 py-0.5 text-2xs font-semibold leading-none tabular-nums";
 
   if (readOnly) {
     return <span className={cn(base, "text-primary/55")}>{label}</span>;

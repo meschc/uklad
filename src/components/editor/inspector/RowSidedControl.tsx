@@ -33,9 +33,7 @@ export function RowSidedControl({ row, floor, t }: { row: number; floor: Floor; 
 
   return (
     <div className="flex flex-col gap-1.5 rounded-md border border-border bg-muted/30 p-2">
-      <span className="text-[11px] font-medium text-muted-foreground">
-        {t("insp.rowSided.label")}
-      </span>
+      <span className="text-xs font-medium text-muted-foreground">{t("insp.rowSided.label")}</span>
       <div className="flex rounded-md border border-border p-0.5">
         {opts.map((o) => (
           <button
@@ -44,7 +42,7 @@ export function RowSidedControl({ row, floor, t }: { row: number; floor: Floor; 
             onClick={() => setRowConfig(row, { sided: o.v })}
             className={cn(
               // Вложение: контейнер rounded-md (8) − p-0.5 (2) = 6 → sm.
-              "flex-1 rounded-sm px-1 py-1 text-[11px] font-medium transition-colors",
+              "flex-1 rounded-sm px-1 py-1 text-xs font-medium transition-colors",
               sided === o.v
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:text-foreground",
@@ -56,7 +54,7 @@ export function RowSidedControl({ row, floor, t }: { row: number; floor: Floor; 
       </div>
       {effectiveTwo && (
         <div className="flex items-center justify-between gap-2">
-          <span className="text-[11px] text-muted-foreground">{t("insp.rowSided.oddSide")}</span>
+          <span className="text-xs text-muted-foreground">{t("insp.rowSided.oddSide")}</span>
           <div className="flex rounded-md border border-border p-0.5">
             {(["near", "far"] as const).map((sd) => (
               <button
@@ -64,7 +62,7 @@ export function RowSidedControl({ row, floor, t }: { row: number; floor: Floor; 
                 type="button"
                 onClick={() => setRowConfig(row, { oddSide: sd })}
                 className={cn(
-                  "rounded-sm px-2 py-0.5 text-[11px] font-medium transition-colors",
+                  "rounded-sm px-2 py-0.5 text-xs font-medium transition-colors",
                   oddSide === sd
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:text-foreground",
@@ -76,7 +74,7 @@ export function RowSidedControl({ row, floor, t }: { row: number; floor: Floor; 
           </div>
         </div>
       )}
-      <p className="text-[10px] leading-relaxed text-muted-foreground">
+      <p className="text-2xs leading-relaxed text-muted-foreground">
         {sided === "auto"
           ? t("insp.rowSided.autoNote", {
               kind: autoTwo ? t("insp.rowSided.two") : t("insp.rowSided.one"),

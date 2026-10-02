@@ -97,7 +97,7 @@ export function SideNav() {
           <Boxes className="size-4 group-hover:hidden" />
           <ArrowLeft className="hidden size-4 group-hover:block" />
         </span>
-        <span className="text-center text-[10px] font-medium leading-tight text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100">
+        <span className="text-center text-2xs font-medium leading-tight text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100">
           {t("nav.side.toDashboard")}
         </span>
       </button>
@@ -154,7 +154,7 @@ export function SideNav() {
                         <item.icon className="size-4 shrink-0" />
                         <span className="min-w-0 flex-1 truncate">{t(item.key)}</span>
                         {n > 0 && (
-                          <span className="shrink-0 rounded-full bg-primary px-1.5 text-[10px] font-bold tabular-nums text-primary-foreground">
+                          <span className="shrink-0 rounded-full bg-primary px-1.5 text-2xs font-bold tabular-nums text-primary-foreground">
                             {n}
                           </span>
                         )}
@@ -207,7 +207,7 @@ function RailButton({
       aria-current={current ? "page" : undefined}
       aria-expanded={expanded}
       className={cn(
-        "relative mx-auto flex w-[3.75rem] flex-col items-center gap-1 rounded-lg px-1 py-2 text-[10px] font-medium leading-tight transition-colors",
+        "relative mx-auto flex w-[3.75rem] flex-col items-center gap-1 rounded-lg px-1 py-2 text-2xs font-medium leading-tight transition-colors",
         active
           ? "bg-primary/10 text-primary"
           : "text-muted-foreground hover:bg-accent hover:text-foreground",
@@ -216,7 +216,7 @@ function RailButton({
       <Icon className="size-[1.15rem]" />
       <span className="text-center">{label}</span>
       {badge > 0 && (
-        <span className="absolute right-1.5 top-1.5 flex min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground">
+        <span className="absolute right-1.5 top-1.5 flex min-w-4 items-center justify-center rounded-full bg-primary px-1 text-2xs font-bold text-primary-foreground">
           {badge}
         </span>
       )}

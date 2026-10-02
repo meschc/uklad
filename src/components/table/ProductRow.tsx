@@ -41,7 +41,7 @@ function ProductThumb({ product }: { product: Product }) {
   }
   return (
     <div
-      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-black/10 text-[13px] font-semibold"
+      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-black/10 text-sm font-semibold"
       style={{
         background: `linear-gradient(135deg, hsl(${h} 70% 88%), hsl(${(h + 45) % 360} 70% 74%))`,
         color: `hsl(${h} 55% 28%)`,

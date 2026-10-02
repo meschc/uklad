@@ -290,14 +290,14 @@ function Hint({ density }: { density: { shown: number; total: number } }) {
   const t = useT();
   return (
     <div className="pointer-events-none absolute inset-x-0 bottom-3 mx-auto flex w-fit flex-col items-center gap-1">
-      <div className="rounded-lg border border-border bg-card/90 px-3 py-1.5 text-[11px] text-muted-foreground backdrop-blur">
+      <div className="rounded-lg border border-border bg-card/90 px-3 py-1.5 text-xs text-muted-foreground backdrop-blur">
         <span className="inline-flex items-center gap-1.5">
           <MousePointerClick className="size-3" />
           {t("view3d.hint")}
         </span>
       </div>
       {culled && (
-        <div className="hazard-stripes rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-[10px] font-medium text-amber-800 dark:text-amber-300">
+        <div className="hazard-stripes rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-2xs font-medium text-amber-800 dark:text-amber-300">
           {t("view3d.density", { shown: density.shown, total: density.total })}
         </div>
       )}
@@ -442,7 +442,7 @@ function Sidebar({ productId, onClose }: { productId: string; onClose: () => voi
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className={cn("flex items-baseline justify-between gap-2 py-1.5")}>
-      <span className="shrink-0 text-[11px] text-muted-foreground">{label}</span>
+      <span className="shrink-0 text-xs text-muted-foreground">{label}</span>
       <span className="min-w-0 text-right">{children}</span>
     </div>
   );
@@ -480,7 +480,7 @@ function CustomFieldInput({ productId, field }: { productId: string; field: Cate
 
   return (
     <label className="flex flex-col gap-1 py-1">
-      <span className="text-[11px] text-muted-foreground">{field.name}</span>
+      <span className="text-xs text-muted-foreground">{field.name}</span>
       {field.type === "select" ? (
         <select
           value={draft}
@@ -514,7 +514,7 @@ function CustomFieldInput({ productId, field }: { productId: string; field: Cate
         />
       )}
       {save.error && (
-        <span role="alert" className="text-[11px] text-destructive">
+        <span role="alert" className="text-xs text-destructive">
           {t(save.error)}
         </span>
       )}

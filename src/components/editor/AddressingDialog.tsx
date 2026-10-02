@@ -63,7 +63,7 @@ export function AddressingDialog({ onClose }: { onClose: () => void }) {
           ) : (
             <p className="mt-1 text-xs text-muted-foreground">{t("addr.previewNone")}</p>
           )}
-          <p className="mt-1 text-[11px] text-muted-foreground">
+          <p className="mt-1 text-xs text-muted-foreground">
             {[
               cfg.useFloor !== false && t("addr.level.floor"),
               cfg.useRows && t("addr.level.row"),
@@ -93,9 +93,7 @@ export function AddressingDialog({ onClose }: { onClose: () => void }) {
             />
             <span>
               <span className="block text-sm">{t("addr.useFloor")}</span>
-              <span className="block text-[11px] text-muted-foreground">
-                {t("addr.useFloorHint")}
-              </span>
+              <span className="block text-xs text-muted-foreground">{t("addr.useFloorHint")}</span>
             </span>
           </label>
           {/* eslint-disable-next-line jsx-a11y/label-has-associated-control -- то же, что выше: текст на уровень глубже, чем ждёт правило */}
@@ -108,9 +106,7 @@ export function AddressingDialog({ onClose }: { onClose: () => void }) {
             />
             <span>
               <span className="block text-sm">{t("addr.useRows")}</span>
-              <span className="block text-[11px] text-muted-foreground">
-                {t("addr.useRowsHint")}
-              </span>
+              <span className="block text-xs text-muted-foreground">{t("addr.useRowsHint")}</span>
             </span>
           </label>
         </Block>
@@ -138,7 +134,7 @@ export function AddressingDialog({ onClose }: { onClose: () => void }) {
                         <Rows3 className="size-3 text-muted-foreground" />
                         {t("addr.rowN", { n: i + 1 })}
                       </span>
-                      <span className="text-[11px] text-muted-foreground">
+                      <span className="text-xs text-muted-foreground">
                         {t("addr.rowSections", { n: r.length })}
                       </span>
                     </button>
@@ -251,7 +247,7 @@ export function AddressingButton({ t }: { t: TFunc }) {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex w-full items-center justify-center gap-1.5 rounded-md border border-border py-1.5 text-[11px] font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:bg-primary/5 hover:text-primary"
+        className="flex w-full items-center justify-center gap-1.5 rounded-md border border-border py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:bg-primary/5 hover:text-primary"
       >
         <Rows3 className="size-3" />
         {t("addr.open")}

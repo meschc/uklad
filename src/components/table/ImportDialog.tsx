@@ -100,7 +100,7 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
           <FileSpreadsheet className="size-4 text-muted-foreground" />
           <div>
             <p className="text-sm font-semibold">{t("import.title")}</p>
-            <p className="text-[11px] text-muted-foreground">{t("import.subtitle")}</p>
+            <p className="text-xs text-muted-foreground">{t("import.subtitle")}</p>
           </div>
         </div>
         <Button variant="ghost" size="icon-sm" onClick={onClose}>
@@ -286,7 +286,7 @@ function ResultView({
         </table>
       </div>
       {validCount < rows.length && (
-        <p className="mt-2 text-[11px] text-muted-foreground">
+        <p className="mt-2 text-xs text-muted-foreground">
           {t("import.onlyOk", { valid: validCount, total: rows.length })}
         </p>
       )}

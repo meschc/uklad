@@ -30,7 +30,7 @@ export function ShipmentLines({ shipment, t }: { shipment: ExpectedShipment; t: 
               <tr key={l.id} className="border-t border-border/60">
                 <td className="px-2.5 py-1.5">
                   {p?.name ?? "—"}{" "}
-                  <span className="font-mono text-[10px] text-muted-foreground">{p?.sku}</span>
+                  <span className="font-mono text-2xs text-muted-foreground">{p?.sku}</span>
                 </td>
                 <td className="px-2.5 py-1.5 text-right tabular-nums">{l.expectedQty}</td>
                 <td

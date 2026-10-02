@@ -187,7 +187,7 @@ export function HeatmapView() {
           </div>
         )}
         {/* Легенда шкалы (п.9.4) */}
-        <div className="flex shrink-0 items-center gap-2 text-[11px] text-muted-foreground">
+        <div className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
           <span>{t("heat.free")}</span>
           <div
             className="h-2 w-28 rounded-full"

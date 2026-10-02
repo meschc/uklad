@@ -67,7 +67,7 @@ export function DiscrepancyAlert({
           <Save className="size-3.5" />
           {t("recv.disc.record")}
         </Button>
-        <p className="text-center text-[11px] text-muted-foreground">{t("recv.disc.note")}</p>
+        <p className="text-center text-xs text-muted-foreground">{t("recv.disc.note")}</p>
       </div>
     </DialogShell>
   );

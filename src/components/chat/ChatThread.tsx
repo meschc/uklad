@@ -83,12 +83,12 @@ export function ChatThread({
   return (
     <section className="flex min-w-0 flex-1 flex-col">
       <header className="flex shrink-0 items-center gap-3 border-b border-border px-5 py-3">
-        <span className="flex size-9 items-center justify-center rounded-full bg-muted text-[11px] font-semibold text-muted-foreground">
+        <span className="flex size-9 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">
           {chatInitials(partner.name)}
         </span>
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold tracking-tight">{partner.name}</p>
-          <p className="truncate text-[11px] text-muted-foreground">
+          <p className="truncate text-xs text-muted-foreground">
             {partner.contact || t("chat.subtitle")}
           </p>
         </div>
@@ -104,7 +104,7 @@ export function ChatThread({
             {days.map((day) => (
               <div key={day.at} className="flex flex-col gap-1.5">
                 <div className="sticky top-0 z-10 flex justify-center py-1">
-                  <span className="rounded-full bg-muted px-2.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                  <span className="rounded-full bg-muted px-2.5 py-0.5 text-2xs font-medium text-muted-foreground">
                     {formatChatDay(day.at, t)}
                   </span>
                 </div>
@@ -158,7 +158,7 @@ export function ChatThread({
             вверх на каждой неудачной отправке. */}
         <p
           className={cn(
-            "mx-auto mt-1.5 max-w-2xl text-[10px]",
+            "mx-auto mt-1.5 max-w-2xl text-2xs",
             send.error ? "text-destructive" : "text-muted-foreground",
           )}
         >
@@ -195,7 +195,7 @@ function Bubble({
         <p className="whitespace-pre-wrap break-words">{message.text}</p>
         <p
           className={cn(
-            "mt-1 flex items-center justify-end gap-1 text-[10px] tabular-nums",
+            "mt-1 flex items-center justify-end gap-1 text-2xs tabular-nums",
             own ? "text-primary-foreground/70" : "text-muted-foreground",
           )}
         >

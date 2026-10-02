@@ -76,7 +76,7 @@ function PrintPreview({ onClose, page, t }: { onClose: () => void; page: PageFit
       <DialogHeader>
         <div>
           <p className="text-sm font-semibold">{t("print.previewTitle")}</p>
-          <p className="text-[11px] text-muted-foreground">{t("print.hint")}</p>
+          <p className="text-xs text-muted-foreground">{t("print.hint")}</p>
         </div>
         <div className="flex items-center gap-1.5">
           <Button size="sm" onClick={() => window.print()}>
@@ -153,7 +153,7 @@ function PlanSheet({ t, fill }: { t: TFunc; fill?: boolean }) {
         <h1 className="text-base font-bold">
           {warehouse.name} · {t("floor.word")} {floorNum}
         </h1>
-        <span className="text-[10px]">{new Date().toLocaleString()}</span>
+        <span className="text-2xs">{new Date().toLocaleString()}</span>
       </header>
 
       <svg
@@ -173,7 +173,7 @@ function PlanSheet({ t, fill }: { t: TFunc; fill?: boolean }) {
         ))}
       </svg>
 
-      <p className="mt-2 text-[10px]">
+      <p className="mt-2 text-2xs">
         {selectedCount > 0 ? t("print.legendSelected", { n: selectedCount }) : t("print.legend")}
       </p>
     </div>

@@ -92,7 +92,7 @@ export function LayersTree({ floor, t }: { floor: Floor; t: TFunc }) {
         key={m.id}
         onClick={(e) => toggleSelect(m.id, e.shiftKey)}
         className={cn(
-          "flex w-full items-center gap-2 rounded-md py-1 pl-6 pr-2 text-left text-[13px] transition-colors",
+          "flex w-full items-center gap-2 rounded-md py-1 pl-6 pr-2 text-left text-sm transition-colors",
           sel
             ? "bg-primary/10 text-foreground ring-1 ring-inset ring-primary/30"
             : "text-muted-foreground hover:bg-accent/60",
@@ -100,7 +100,7 @@ export function LayersTree({ floor, t }: { floor: Floor; t: TFunc }) {
       >
         <ModuleGlyph type={m.type} className="size-3.5 shrink-0" />
         <span className="flex-1 truncate">{label}</span>
-        <span className="shrink-0 font-mono text-[10px] text-muted-foreground/70">
+        <span className="shrink-0 font-mono text-2xs text-muted-foreground/70">
           {m.w}×{m.h}
         </span>
       </button>
@@ -110,7 +110,7 @@ export function LayersTree({ floor, t }: { floor: Floor; t: TFunc }) {
   return (
     <div className="flex flex-col gap-0.5">
       {/* Корень — этаж */}
-      <div className="flex items-center gap-2 rounded-md px-2 py-1 text-[13px] font-medium text-foreground">
+      <div className="flex items-center gap-2 rounded-md px-2 py-1 text-sm font-medium text-foreground">
         <Layers className="size-3.5 shrink-0 text-muted-foreground" />
         <span className="flex-1 truncate">
           {t("floor.word")} {floorNum}
@@ -150,7 +150,7 @@ export function LayersTree({ floor, t }: { floor: Floor; t: TFunc }) {
                   else select(ids);
                 }}
                 title={t("layers.selectRow")}
-                className="flex min-w-0 flex-1 items-center gap-1 rounded-md py-1 pr-1 text-left text-[13px]"
+                className="flex min-w-0 flex-1 items-center gap-1 rounded-md py-1 pr-1 text-left text-sm"
               >
                 <span
                   className={cn(
@@ -160,7 +160,7 @@ export function LayersTree({ floor, t }: { floor: Floor; t: TFunc }) {
                 >
                   {t("canvas.rowFrame", { n: row })}
                 </span>
-                <span className="shrink-0 font-mono text-[10px] text-muted-foreground/70">
+                <span className="shrink-0 font-mono text-2xs text-muted-foreground/70">
                   {mods.length}
                 </span>
               </button>

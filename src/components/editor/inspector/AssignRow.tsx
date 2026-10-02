@@ -26,7 +26,7 @@ export function AssignRow({ count, t }: { count: number; t: TFunc }) {
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-border bg-muted/40 p-3">
       <Label>{t("insp.assignRow")}</Label>
-      <p className="text-[11px] leading-relaxed text-muted-foreground">
+      <p className="text-xs leading-relaxed text-muted-foreground">
         {t("insp.assignRowHint", { n: count })}
       </p>
       <div className="flex items-center gap-2">
@@ -48,7 +48,7 @@ export function AssignRow({ count, t }: { count: number; t: TFunc }) {
       <button
         type="button"
         onClick={() => setRowForSelection(undefined)}
-        className="text-[11px] text-muted-foreground hover:text-foreground"
+        className="text-xs text-muted-foreground hover:text-foreground"
       >
         {t("insp.assignRowClear")}
       </button>

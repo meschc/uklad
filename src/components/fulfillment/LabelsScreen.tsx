@@ -250,7 +250,7 @@ export function LabelsScreen() {
         <div className={card({ className: "flex flex-col gap-3" })}>
           <div className="flex items-baseline justify-between gap-2">
             <h3 className={eyebrow()}>{t("labels.preview")}</h3>
-            <span className="text-[11px] tabular-nums text-muted-foreground">
+            <span className="text-xs tabular-nums text-muted-foreground">
               {t("labels.previewScale", {
                 w: previewTpl.widthMm,
                 h: previewTpl.heightMm,

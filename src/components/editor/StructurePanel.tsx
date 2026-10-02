@@ -186,7 +186,7 @@ function FloorsSection() {
               {/* Иконка этажа — его номер в адресе; видна всегда. */}
               <span
                 className={cn(
-                  "flex size-5 shrink-0 items-center justify-center rounded text-[10px] font-semibold tabular-nums",
+                  "flex size-5 shrink-0 items-center justify-center rounded text-2xs font-semibold tabular-nums",
                   active ? "bg-foreground text-background" : "bg-muted text-muted-foreground",
                 )}
               >
@@ -228,9 +228,7 @@ function FloorsSection() {
                 <Pencil className="size-3" />
               </button>
               <span className="flex-1" />
-              <span className="shrink-0 font-mono text-[10px] text-muted-foreground/70">
-                {count}
-              </span>
+              <span className="shrink-0 font-mono text-2xs text-muted-foreground/70">{count}</span>
               {/* Действия справа — выезжают при наведении на ПРАВУЮ часть. */}
               <div
                 className={cn(
@@ -343,7 +341,7 @@ function VerticalLinkWarning({ t }: { t: TFunc }) {
   const names = orphans.map((f) => warehouse.floors.findIndex((x) => x.id === f.id) + 1).join(", ");
   const key = orphans.length === 1 ? "struct.noLinkOne" : "struct.noLinkMany";
   return (
-    <div className="hazard-stripes mt-2 flex gap-1.5 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-[10px] leading-relaxed text-amber-800 dark:text-amber-300">
+    <div className="hazard-stripes mt-2 flex gap-1.5 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-2xs leading-relaxed text-amber-800 dark:text-amber-300">
       <AlertTriangle className="mt-px size-3 shrink-0" />
       <span>{t(key, { names })}</span>
     </div>

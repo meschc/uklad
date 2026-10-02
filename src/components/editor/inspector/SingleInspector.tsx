@@ -40,7 +40,7 @@ export function SingleInspector({ module: m, t }: { module: PlacedModule; t: TFu
         </div>
         <div className="min-w-0">
           <div className="text-sm font-semibold">{t(`module.${m.type}.title`)}</div>
-          <div className="truncate text-[11px] text-muted-foreground">
+          <div className="truncate text-xs text-muted-foreground">
             {isFixed
               ? t("insp.fixed", { w: spec.fixed!.w, h: spec.fixed!.h })
               : t("insp.sizeRange", { min: spec.min, max: spec.max })}
@@ -104,7 +104,7 @@ export function SingleInspector({ module: m, t }: { module: PlacedModule; t: TFu
           />
         </Row>
         {overlapping && (
-          <div className="flex gap-1.5 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-[11px] leading-relaxed text-amber-800 dark:text-amber-300">
+          <div className="flex gap-1.5 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs leading-relaxed text-amber-800 dark:text-amber-300">
             <AlertTriangle className="mt-px size-3.5 shrink-0" />
             <span>{t("insp.overlap")}</span>
           </div>
@@ -117,7 +117,7 @@ export function SingleInspector({ module: m, t }: { module: PlacedModule; t: TFu
       <div className="flex flex-col gap-2.5">
         <div className="flex items-center justify-between">
           <Label>{t("insp.dims")}</Label>
-          <span className="text-[10px] text-muted-foreground/70">{t("insp.noScale")}</span>
+          <span className="text-2xs text-muted-foreground/70">{t("insp.noScale")}</span>
         </div>
         <Row label={t("insp.width")}>
           <Input
@@ -154,7 +154,7 @@ export function SingleInspector({ module: m, t }: { module: PlacedModule; t: TFu
         <Button variant="outline" size="sm" className="w-full" onClick={duplicateSelection}>
           <CopyPlus className="size-3.5" />
           {t("insp.duplicate")}
-          <kbd className="ml-auto rounded bg-muted px-1 text-[10px] text-muted-foreground">
+          <kbd className="ml-auto rounded bg-muted px-1 text-2xs text-muted-foreground">
             {combo("D")}
           </kbd>
         </Button>

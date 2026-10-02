@@ -28,7 +28,7 @@ export function RowProposalPanel() {
         </div>
         <div className="leading-tight">
           <p className="text-xs font-semibold">{t("proposal.title")}</p>
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             {t("proposal.subtitle", { picked, total })}
           </p>
         </div>

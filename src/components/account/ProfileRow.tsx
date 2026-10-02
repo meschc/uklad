@@ -133,9 +133,7 @@ export function RowEditor({
         </button>
       </div>
       {hint && (
-        <span
-          className={cn("text-[11px]", hint.error ? "text-destructive" : "text-muted-foreground")}
-        >
+        <span className={cn("text-xs", hint.error ? "text-destructive" : "text-muted-foreground")}>
           {hint.text}
         </span>
       )}

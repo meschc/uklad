@@ -37,7 +37,7 @@ export function StatCard({
         {label}
       </div>
       <div className={cn("text-2xl font-bold tabular-nums", toneClass)}>{value}</div>
-      {hint && <div className="text-[11px] text-muted-foreground">{hint}</div>}
+      {hint && <div className="text-xs text-muted-foreground">{hint}</div>}
     </div>
   );
 }
@@ -88,7 +88,7 @@ export function BarChart({
           </div>
         ))}
       </div>
-      <div className="flex justify-between text-[10px] tabular-nums text-muted-foreground">
+      <div className="flex justify-between text-2xs tabular-nums text-muted-foreground">
         <span>{data[0]?.label}</span>
         <span>{data[data.length - 1]?.label}</span>
       </div>

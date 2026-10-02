@@ -171,7 +171,7 @@ export function DocumentsScreen() {
                   )}
                 >
                   <span className="truncate text-xs font-medium">{s.title}</span>
-                  <span className="text-[10px] text-muted-foreground">{s.hint}</span>
+                  <span className="text-2xs text-muted-foreground">{s.hint}</span>
                 </button>
               </li>
             ))}

@@ -150,7 +150,7 @@ export function MultiInspector({ selected, t }: { selected: PlacedModule[]; t: T
             <button
               type="button"
               onClick={seedFromFirst}
-              className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+              className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
             >
               <Copy className="size-3" />
               {t("insp.takeFromFirst")}
@@ -165,7 +165,7 @@ export function MultiInspector({ selected, t }: { selected: PlacedModule[]; t: T
         <Button variant="outline" size="sm" className="w-full" onClick={duplicateSelection}>
           <CopyPlus className="size-3.5" />
           {t("insp.duplicateSel")}
-          <kbd className="ml-auto rounded bg-muted px-1 text-[10px] text-muted-foreground">
+          <kbd className="ml-auto rounded bg-muted px-1 text-2xs text-muted-foreground">
             {combo("D")}
           </kbd>
         </Button>

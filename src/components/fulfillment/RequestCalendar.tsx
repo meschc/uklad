@@ -139,11 +139,11 @@ export function RequestCalendar({
                 ts === today && !selected && "ring-1 ring-primary/40",
               )}
             >
-              <span className="text-[11px] font-medium tabular-nums">{new Date(ts).getDate()}</span>
+              <span className="text-xs font-medium tabular-nums">{new Date(ts).getDate()}</span>
               {day && (
                 <span
                   className={cn(
-                    "w-full truncate rounded px-1 py-0.5 text-[9px] font-semibold",
+                    "w-full truncate rounded px-1 py-0.5 text-2xs font-semibold",
                     day.done
                       ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
                       : overdue
@@ -159,7 +159,7 @@ export function RequestCalendar({
         })}
       </div>
 
-      <p className="text-[11px] text-muted-foreground">{t("cal.hint")}</p>
+      <p className="text-xs text-muted-foreground">{t("cal.hint")}</p>
     </div>
   );
 }

@@ -99,7 +99,7 @@ export function AnalyticsScreen() {
       <section className={card({ className: "flex flex-col gap-3" })}>
         <div className="flex items-baseline justify-between gap-3">
           <h2 className="text-sm font-semibold">{t("an.receivingTitle")}</h2>
-          <p className="text-[11px] text-muted-foreground">{t("an.receivingSubtitle")}</p>
+          <p className="text-xs text-muted-foreground">{t("an.receivingSubtitle")}</p>
         </div>
         <BarChart data={recv.byDay} emptyLabel={t("an.noReceiving")} />
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -197,7 +197,7 @@ export function AnalyticsScreen() {
               </div>
             )}
           </dl>
-          <p className="border-t border-border pt-3 text-[11px] text-muted-foreground">
+          <p className="border-t border-border pt-3 text-xs text-muted-foreground">
             {t("an.occupancyNote")}
             {cost == null ? ` ${t("an.storageHint")}` : ""}
           </p>

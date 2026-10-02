@@ -165,22 +165,20 @@ export function TasksScreen() {
             <section key={g.target ?? "—"} className="flex flex-col gap-2">
               <div className="flex flex-wrap items-center gap-2">
                 <MapPin className="size-3.5 text-muted-foreground" />
-                <h2 className={eyebrow({ size: "base", tone: "current" })}>
-                  {g.target ?? t("tasks.noTarget")}
-                </h2>
-                <span className="text-[11px] text-muted-foreground">
+                <h2 className={eyebrow({ tone: "current" })}>{g.target ?? t("tasks.noTarget")}</h2>
+                <span className="text-xs text-muted-foreground">
                   {t("tasks.groupCount", { n: g.items.length })}
                 </span>
                 {/* Даты отгрузки — подписью к назначению: их в группе может быть
                     несколько, и просроченную видно сразу. */}
                 {g.shipDates.length === 0 ? (
-                  <span className="text-[11px] text-muted-foreground">{t("tasks.noShipDate")}</span>
+                  <span className="text-xs text-muted-foreground">{t("tasks.noShipDate")}</span>
                 ) : (
                   g.shipDates.map((d) => (
                     <span
                       key={d}
                       className={cn(
-                        "inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold",
+                        "inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-2xs font-semibold",
                         isOverdue(d)
                           ? "bg-destructive/15 text-destructive"
                           : "bg-muted text-muted-foreground",
@@ -229,14 +227,12 @@ export function TasksScreen() {
                         <tr key={r.id} className="border-t border-border/60">
                           <td className="px-3 py-2">
                             <div className="font-medium">{p?.name ?? "—"}</div>
-                            <div className="font-mono text-[10px] text-muted-foreground">
-                              {p?.sku}
-                            </div>
+                            <div className="font-mono text-2xs text-muted-foreground">{p?.sku}</div>
                             {/* Бронь под поставку: заявку нельзя читать как
                                 обычную — товара на складе ещё нет. */}
                             <div className="mt-0.5 flex flex-wrap gap-1">
                               {r.reservedShipmentId && (
-                                <span className="rounded bg-amber-500/15 px-1 py-0.5 text-[9px] font-semibold text-amber-700 dark:text-amber-400">
+                                <span className="rounded bg-amber-500/15 px-1 py-0.5 text-2xs font-semibold text-amber-700 dark:text-amber-400">
                                   {t("req.reservedBadge")}
                                 </span>
                               )}
@@ -247,7 +243,7 @@ export function TasksScreen() {
                               {r.pickedQty ? `${r.pickedQty}/` : ""}
                               {r.qty}
                             </span>
-                            <div className="text-[10px] text-muted-foreground">
+                            <div className="text-2xs text-muted-foreground">
                               {t("tasks.inStock", { n: have })}
                             </div>
                           </td>
@@ -326,9 +322,7 @@ export function StatusBadge({
     cancelled: "bg-muted text-muted-foreground",
   };
   return (
-    <span
-      className={cn("inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold", tone[status])}
-    >
+    <span className={cn("inline-block rounded px-1.5 py-0.5 text-2xs font-semibold", tone[status])}>
       {t(`req.status.${status}`)}
       {status === "done" && partial ? ` · ${t("req.partial")}` : ""}
     </span>
