@@ -81,11 +81,11 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:image" content="https://u-klad.ru/og.png" />
 
-    <!-- Golos Text — один шрифт и на текст, и на заголовки. Он рисовался
-         сразу под кириллицу, а не дорисовывался к латинице, поэтому «д», «з» и
-         «ф» в нём не выпадают из ритма строки. Переменное начертание 400..900
-         отдаёт весь диапазон одним файлом: отдельный шрифт для заголовков
-         больше не нужен, и второй запрос за ним — тоже.
+    <!-- Geist — один шрифт и на текст, и на заголовки. Кириллица у него
+         настоящая: весь русский алфавит, ударение, «₽» и «№», — а не латиница
+         с дорисованными «Я» и «Ж». Переменное начертание 100..900 отдаёт весь
+         диапазон одним файлом: отдельный шрифт для заголовков больше не нужен,
+         и второй запрос за ним — тоже.
 
          Лежит у нас, а не на Google Fonts: почему именно так — подробно в
          `src/index.css`, там же объявления. Предзагружаем кириллицу: страница
@@ -94,7 +94,7 @@
          строке заголовка. -->
     <link
       rel="preload"
-      href="/fonts/golos-text-cyrillic.woff2"
+      href="/fonts/geist-cyrillic.woff2"
       as="font"
       type="font/woff2"
       crossorigin
@@ -115,7 +115,7 @@
           max-width: 460px;
           margin: 120px auto;
           padding: 0 24px;
-          font-family: 'Golos Text', -apple-system, BlinkMacSystemFont, sans-serif;
+          font-family: 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
           color: hsl(220 16% 93%);
           text-align: center;
         "
