@@ -11,6 +11,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build && npm run build:ssr && node scripts/prerender.mjs",
     "build:ssr": "vite build --ssr src/site/entry-server.tsx --outDir dist-ssr",
+    "build:app": "tsc -b && vite build --mode app && node scripts/build-app.mjs",
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit",
     "lint": "eslint .",

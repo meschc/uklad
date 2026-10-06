@@ -1,33 +1,51 @@
-import { defineConfig } from "vite";
+import { defineConfig, type BuildOptions } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "node:path";
 
-export default defineConfig(({ isSsrBuild }) => ({
+/**
+ * Кабинет отдельно — под поддомен app.u-klad.ru (ADR 0008, `npm run build:app`).
+ * Один вход и свой каталог, чтобы не затереть сборку витрины. `public/` целиком
+ * не копируется: CNAME, robots и фото витрины на поддомене были бы чужими, а
+ * нужное кабинету — иконки, шрифты, знаки партнёров — докладывает
+ * `scripts/build-app.mjs`.
+ */
+const CABINET_BUILD: BuildOptions = {
+  outDir: "dist-app",
+  copyPublicDir: false,
+  rollupOptions: {
+    input: { app: path.resolve(__dirname, "app/index.html") },
+  },
+};
+
+export default defineConfig(({ isSsrBuild, mode }) => ({
   plugins: [react()],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
   },
-  build: {
-    // Две страницы, а не одна: витрина и рабочее место — разная аудитория и
-    // разный вес. Селлер приходит на `/` за складом, кладовщик открывает
-    // `/app/` и тянет туда редактор плана, three.js и всю доменную логику. Один
-    // бандл на двоих означал бы, что лендинг грузит редактор ради первого
-    // экрана.
-    //
-    // У серверной сборки вход один и задаётся флагом `--ssr` — эти два входа ей
-    // не нужны и всё сломали бы: Vite попытался бы собрать HTML-страницы как
-    // модули Node.
-    rollupOptions: isSsrBuild
-      ? {}
+  build:
+    mode === "app"
+      ? CABINET_BUILD
       : {
-          input: {
-            site: path.resolve(__dirname, "index.html"),
-            app: path.resolve(__dirname, "app/index.html"),
-          },
+          // Две страницы, а не одна: витрина и рабочее место — разная
+          // аудитория и разный вес. Селлер приходит на `/` за складом,
+          // кладовщик открывает `/app/` и тянет туда редактор плана, three.js
+          // и всю доменную логику. Один бандл на двоих означал бы, что лендинг
+          // грузит редактор ради первого экрана.
+          //
+          // У серверной сборки вход один и задаётся флагом `--ssr` — эти два
+          // входа ей не нужны и всё сломали бы: Vite попытался бы собрать
+          // HTML-страницы как модули Node.
+          rollupOptions: isSsrBuild
+            ? {}
+            : {
+                input: {
+                  site: path.resolve(__dirname, "index.html"),
+                  app: path.resolve(__dirname, "app/index.html"),
+                },
+              },
         },
-  },
   server: {
     host: true,
     // Закреплён на 5174 (где живёт localStorage реального плана). strictPort —

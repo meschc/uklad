@@ -94,6 +94,16 @@
     font-size: 12.5px;
     font-family: var(--mono);
   }
+  /* быстрые ссылки в шапке: сам продукт и дизайн-система, которую правят вместе с кодом */
+  .quick {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-right: auto;
+  }
+  .quick .ext {
+    color: var(--muted);
+  }
   h2 {
     margin: 0 0 10px;
     font-size: 11px;
@@ -722,6 +732,22 @@
 <div class="wrap">
   <header class="top">
     <h1>Карта Уклада</h1>
+    <nav class="quick" aria-label="Ссылки проекта">
+      <a class="btn" href="https://u-klad.ru/" target="_blank" rel="noopener"
+        >Витрина <span class="ext" aria-hidden="true">↗</span></a
+      >
+      <!-- после переезда кабинета (ADR 0008) — https://app.u-klad.ru/ -->
+      <a class="btn" href="https://u-klad.ru/app/" target="_blank" rel="noopener"
+        >Демо WMS <span class="ext" aria-hidden="true">↗</span></a
+      >
+      <a
+        class="btn"
+        href="https://claude.ai/artifact/Tadqydujk1gJrKcysRePzm"
+        target="_blank"
+        rel="noopener"
+        >Дизайн-система <span class="ext" aria-hidden="true">↗</span></a
+      >
+    </nav>
     <span class="meta" id="meta">загружаю данные…</span>
   </header>
 
@@ -1660,13 +1686,11 @@
       save.setAttribute("disabled", "");
       msg.textContent = "Сохраняю…";
       try {
-        await db
-          .doc("nodes/" + n.id)
-          .update({
-            status: statusSel.value,
-            note: noteTa.value.slice(0, 4000),
-            updated: new Date().toISOString().slice(0, 10),
-          });
+        await db.doc("nodes/" + n.id).update({
+          status: statusSel.value,
+          note: noteTa.value.slice(0, 4000),
+          updated: new Date().toISOString().slice(0, 10),
+        });
         msg.textContent = "Сохранено.";
       } catch (e) {
         msg.textContent =
