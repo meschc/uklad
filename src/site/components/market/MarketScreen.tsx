@@ -1,5 +1,6 @@
 import { Suspense, lazy, useMemo, useState } from "react";
 import { Loader2, Map as MapIcon, Rows3, SlidersHorizontal, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { CompareBar } from "./CompareBar";
 import { CompareSheet } from "./CompareSheet";
@@ -11,7 +12,6 @@ import { COMPARE_LIMIT, comparedWarehouses, toggleCompare } from "../../lib/comp
 import { EMPTY_VOLUME, estimateRange, type SellerVolume } from "../../lib/estimate";
 import { DEFAULT_FILTERS, SORTS, activeCount, type SortId } from "../../lib/filters";
 import { filtersQuery } from "../../lib/marketQuery";
-import { siteButton } from "../../lib/button";
 import { c, useT } from "../../lib/copy";
 import { goWarehouse } from "../../lib/route";
 import { useMarketFilters } from "../../lib/useMarketFilters";
@@ -202,14 +202,17 @@ export function MarketScreen() {
               </span>
             </p>
 
-            <button
+            <Button
+              variant="outline"
+              size="sm"
+              shape="pill"
               onClick={() => setSheet(true)}
-              className={siteButton({ size: "sm", tone: "outline", className: "lg:hidden" })}
+              className="lg:hidden"
             >
-              <SlidersHorizontal className="size-3.5" />
+              <SlidersHorizontal />
               {t(T.filters)}
               {active > 0 && ` · ${active}`}
-            </button>
+            </Button>
 
             <div className="ml-auto flex items-center gap-2">
               <select
@@ -245,9 +248,9 @@ export function MarketScreen() {
               <div className="grid gap-4 xl:grid-cols-2">{cards}</div>
               {limit < found.length && (
                 <div className="mt-8 text-center">
-                  <button onClick={showMore} className={siteButton({ tone: "outline" })}>
+                  <Button variant="outline" size="lg" shape="pill" onClick={showMore}>
                     {t(T.more, { n: Math.min(PAGE, found.length - limit) })}
-                  </button>
+                  </Button>
                 </div>
               )}
             </>
@@ -282,9 +285,9 @@ export function MarketScreen() {
               <div className="grid auto-rows-max content-start gap-3 lg:max-h-[calc(100vh-9rem)] lg:overflow-y-auto lg:pr-1">
                 {cards}
                 {limit < found.length && (
-                  <button onClick={showMore} className={siteButton({ tone: "outline" })}>
+                  <Button variant="outline" size="lg" shape="pill" onClick={showMore}>
                     {t(T.more, { n: Math.min(PAGE, found.length - limit) })}
-                  </button>
+                  </Button>
                 )}
               </div>
             </div>
@@ -316,9 +319,9 @@ export function MarketScreen() {
             <div className="flex-1 overflow-y-auto p-4">
               <Filters value={filters} onChange={setFilters} />
             </div>
-            <button onClick={() => setSheet(false)} className={siteButton({ className: "m-4" })}>
+            <Button size="lg" shape="pill" onClick={() => setSheet(false)} className="m-4">
               {t(T.show, { n: found.length })}
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -381,9 +384,9 @@ function Empty({ onReset }: { onReset: () => void }) {
     <div className="r-window border border-dashed border-border py-20 text-center">
       <p className="font-display text-lg font-medium">{t(T.emptyTitle)}</p>
       <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">{t(T.emptyBody)}</p>
-      <button onClick={onReset} className={siteButton({ tone: "outline", className: "mt-5" })}>
+      <Button variant="outline" size="lg" shape="pill" onClick={onReset} className="mt-5">
         {t(T.emptyReset)}
-      </button>
+      </Button>
     </div>
   );
 }

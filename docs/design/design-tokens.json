@@ -1,777 +1,397 @@
 {
-  "$description": "Токены «Уклада». Блок color пересобирает npm run tokens из src/index.css (кабинет) и src/site/site.css (витрина) — отсюда четыре набора: color.app.light|dark и color.site.light|dark. Витрина переопределяет часть палитры своей и добавляет brand, которого в кабинете нет. Остальные блоки ведутся руками; шкала скруглений витрины — блок radiusSite.",
+  "$description": "Токены «Уклада». Блок color пересобирает npm run tokens из src/index.css — палитра одна на витрину и кабинет (ADR 0007), отсюда два набора: color.light и color.dark. Своей палитры у витрины нет; её характер — скругление, блок radiusSite. Остальные блоки ведутся руками.",
   "color": {
-    "app": {
-      "light": {
-        "background": {
-          "$type": "color",
-          "$value": "#FFFFFF",
-          "$description": "CSS: hsl(var(--background))"
-        },
-        "foreground": {
-          "$type": "color",
-          "$value": "#1B1D22",
-          "$description": "CSS: hsl(var(--foreground))"
-        },
-        "card": {
-          "$type": "color",
-          "$value": "#FFFFFF",
-          "$description": "CSS: hsl(var(--card))"
-        },
-        "card-foreground": {
-          "$type": "color",
-          "$value": "#1B1D22",
-          "$description": "CSS: hsl(var(--card-foreground))"
-        },
-        "popover": {
-          "$type": "color",
-          "$value": "#FFFFFF",
-          "$description": "CSS: hsl(var(--popover))"
-        },
-        "popover-foreground": {
-          "$type": "color",
-          "$value": "#1B1D22",
-          "$description": "CSS: hsl(var(--popover-foreground))"
-        },
-        "primary": {
-          "$type": "color",
-          "$value": "#2463EB",
-          "$description": "CSS: hsl(var(--primary))"
-        },
-        "primary-foreground": {
-          "$type": "color",
-          "$value": "#FFFFFF",
-          "$description": "CSS: hsl(var(--primary-foreground))"
-        },
-        "secondary": {
-          "$type": "color",
-          "$value": "#F3F4F6",
-          "$description": "CSS: hsl(var(--secondary))"
-        },
-        "secondary-foreground": {
-          "$type": "color",
-          "$value": "#2D3039",
-          "$description": "CSS: hsl(var(--secondary-foreground))"
-        },
-        "muted": {
-          "$type": "color",
-          "$value": "#F3F4F6",
-          "$description": "CSS: hsl(var(--muted))"
-        },
-        "muted-foreground": {
-          "$type": "color",
-          "$value": "#6B7280",
-          "$description": "CSS: hsl(var(--muted-foreground))"
-        },
-        "accent": {
-          "$type": "color",
-          "$value": "#F3F4F6",
-          "$description": "CSS: hsl(var(--accent))"
-        },
-        "accent-foreground": {
-          "$type": "color",
-          "$value": "#2D3039",
-          "$description": "CSS: hsl(var(--accent-foreground))"
-        },
-        "destructive": {
-          "$type": "color",
-          "$value": "#DC2828",
-          "$description": "CSS: hsl(var(--destructive))"
-        },
-        "destructive-foreground": {
-          "$type": "color",
-          "$value": "#FFFFFF",
-          "$description": "CSS: hsl(var(--destructive-foreground))"
-        },
-        "border": {
-          "$type": "color",
-          "$value": "#E5E7EB",
-          "$description": "CSS: hsl(var(--border))"
-        },
-        "input": {
-          "$type": "color",
-          "$value": "#E5E7EB",
-          "$description": "CSS: hsl(var(--input))"
-        },
-        "ring": {
-          "$type": "color",
-          "$value": "#2463EB",
-          "$description": "CSS: hsl(var(--ring))"
-        },
-        "hairline": {
-          "$type": "color",
-          "$value": "#1B1D2212",
-          "$description": "CSS: var(--hairline)"
-        },
-        "frame": {
-          "$type": "color",
-          "$value": "#1B1D2217",
-          "$description": "CSS: var(--frame)"
-        },
-        "stroke": {
-          "$type": "color",
-          "$value": "#1B1D2224",
-          "$description": "CSS: var(--stroke)"
-        },
-        "stroke-hover": {
-          "$type": "color",
-          "$value": "#1B1D224D",
-          "$description": "CSS: var(--stroke-hover)"
-        },
-        "wash": {
-          "$type": "color",
-          "$value": "#1B1D220D",
-          "$description": "CSS: var(--wash)"
-        },
-        "canvas-bg": {
-          "$type": "color",
-          "$value": "#F9FAFB",
-          "$description": "CSS: hsl(var(--canvas-bg))"
-        },
-        "grid-minor": {
-          "$type": "color",
-          "$value": "#E1E4EA",
-          "$description": "CSS: hsl(var(--grid-minor))"
-        },
-        "grid-major": {
-          "$type": "color",
-          "$value": "#CED2DA",
-          "$description": "CSS: hsl(var(--grid-major))"
-        },
-        "floor": {
-          "$type": "color",
-          "$value": "#F9FAFB",
-          "$description": "CSS: hsl(var(--floor))"
-        },
-        "floor-edge": {
-          "$type": "color",
-          "$value": "#E5E7EB",
-          "$description": "CSS: hsl(var(--floor-edge))"
-        },
-        "m-section": {
-          "$type": "color",
-          "$value": "#C7D7FA",
-          "$description": "CSS: hsl(var(--m-section))"
-        },
-        "m-section-fg": {
-          "$type": "color",
-          "$value": "#214DAB",
-          "$description": "CSS: hsl(var(--m-section-fg))"
-        },
-        "m-aisle": {
-          "$type": "color",
-          "$value": "#E7EAEE",
-          "$description": "CSS: hsl(var(--m-aisle))"
-        },
-        "m-aisle-fg": {
-          "$type": "color",
-          "$value": "#656C7B",
-          "$description": "CSS: hsl(var(--m-aisle-fg))"
-        },
-        "m-stairs": {
-          "$type": "color",
-          "$value": "#FCDBBA",
-          "$description": "CSS: hsl(var(--m-stairs))"
-        },
-        "m-stairs-fg": {
-          "$type": "color",
-          "$value": "#C36213",
-          "$description": "CSS: hsl(var(--m-stairs-fg))"
-        },
-        "m-elevator": {
-          "$type": "color",
-          "$value": "#DECFF7",
-          "$description": "CSS: hsl(var(--m-elevator))"
-        },
-        "m-elevator-fg": {
-          "$type": "color",
-          "$value": "#6837BE",
-          "$description": "CSS: hsl(var(--m-elevator-fg))"
-        }
+    "light": {
+      "background": {
+        "$type": "color",
+        "$value": "#FFFFFF",
+        "$description": "CSS: hsl(var(--background))"
       },
-      "dark": {
-        "background": {
-          "$type": "color",
-          "$value": "#14151A",
-          "$description": "CSS: hsl(var(--background))"
-        },
-        "foreground": {
-          "$type": "color",
-          "$value": "#E8EAED",
-          "$description": "CSS: hsl(var(--foreground))"
-        },
-        "card": {
-          "$type": "color",
-          "$value": "#181A20",
-          "$description": "CSS: hsl(var(--card))"
-        },
-        "card-foreground": {
-          "$type": "color",
-          "$value": "#E8EAED",
-          "$description": "CSS: hsl(var(--card-foreground))"
-        },
-        "popover": {
-          "$type": "color",
-          "$value": "#181A20",
-          "$description": "CSS: hsl(var(--popover))"
-        },
-        "popover-foreground": {
-          "$type": "color",
-          "$value": "#E8EAED",
-          "$description": "CSS: hsl(var(--popover-foreground))"
-        },
-        "primary": {
-          "$type": "color",
-          "$value": "#4294FF",
-          "$description": "CSS: hsl(var(--primary))"
-        },
-        "primary-foreground": {
-          "$type": "color",
-          "$value": "#14151A",
-          "$description": "CSS: hsl(var(--primary-foreground))"
-        },
-        "secondary": {
-          "$type": "color",
-          "$value": "#262931",
-          "$description": "CSS: hsl(var(--secondary))"
-        },
-        "secondary-foreground": {
-          "$type": "color",
-          "$value": "#E8EAED",
-          "$description": "CSS: hsl(var(--secondary-foreground))"
-        },
-        "muted": {
-          "$type": "color",
-          "$value": "#24272E",
-          "$description": "CSS: hsl(var(--muted))"
-        },
-        "muted-foreground": {
-          "$type": "color",
-          "$value": "#9096A2",
-          "$description": "CSS: hsl(var(--muted-foreground))"
-        },
-        "accent": {
-          "$type": "color",
-          "$value": "#282C33",
-          "$description": "CSS: hsl(var(--accent))"
-        },
-        "accent-foreground": {
-          "$type": "color",
-          "$value": "#E8EAED",
-          "$description": "CSS: hsl(var(--accent-foreground))"
-        },
-        "destructive": {
-          "$type": "color",
-          "$value": "#D02F2F",
-          "$description": "CSS: hsl(var(--destructive))"
-        },
-        "destructive-foreground": {
-          "$type": "color",
-          "$value": "#FFFFFF",
-          "$description": "CSS: hsl(var(--destructive-foreground))"
-        },
-        "border": {
-          "$type": "color",
-          "$value": "#2D3039",
-          "$description": "CSS: hsl(var(--border))"
-        },
-        "input": {
-          "$type": "color",
-          "$value": "#31353F",
-          "$description": "CSS: hsl(var(--input))"
-        },
-        "ring": {
-          "$type": "color",
-          "$value": "#4294FF",
-          "$description": "CSS: hsl(var(--ring))"
-        },
-        "hairline": {
-          "$type": "color",
-          "$value": "#E8EAED12",
-          "$description": "CSS: var(--hairline)"
-        },
-        "frame": {
-          "$type": "color",
-          "$value": "#E8EAED17",
-          "$description": "CSS: var(--frame)"
-        },
-        "stroke": {
-          "$type": "color",
-          "$value": "#E8EAED24",
-          "$description": "CSS: var(--stroke)"
-        },
-        "stroke-hover": {
-          "$type": "color",
-          "$value": "#E8EAED4D",
-          "$description": "CSS: var(--stroke-hover)"
-        },
-        "wash": {
-          "$type": "color",
-          "$value": "#E8EAED0D",
-          "$description": "CSS: var(--wash)"
-        },
-        "canvas-bg": {
-          "$type": "color",
-          "$value": "#121317",
-          "$description": "CSS: hsl(var(--canvas-bg))"
-        },
-        "grid-minor": {
-          "$type": "color",
-          "$value": "#24272E",
-          "$description": "CSS: hsl(var(--grid-minor))"
-        },
-        "grid-major": {
-          "$type": "color",
-          "$value": "#31353F",
-          "$description": "CSS: hsl(var(--grid-major))"
-        },
-        "floor": {
-          "$type": "color",
-          "$value": "#121317",
-          "$description": "CSS: hsl(var(--floor))"
-        },
-        "floor-edge": {
-          "$type": "color",
-          "$value": "#262931",
-          "$description": "CSS: hsl(var(--floor-edge))"
-        },
-        "m-section": {
-          "$type": "color",
-          "$value": "#133972",
-          "$description": "CSS: hsl(var(--m-section))"
-        },
-        "m-section-fg": {
-          "$type": "color",
-          "$value": "#85BCFF",
-          "$description": "CSS: hsl(var(--m-section-fg))"
-        },
-        "m-aisle": {
-          "$type": "color",
-          "$value": "#31353F",
-          "$description": "CSS: hsl(var(--m-aisle))"
-        },
-        "m-aisle-fg": {
-          "$type": "color",
-          "$value": "#A0A5B1",
-          "$description": "CSS: hsl(var(--m-aisle-fg))"
-        },
-        "m-stairs": {
-          "$type": "color",
-          "$value": "#7B310F",
-          "$description": "CSS: hsl(var(--m-stairs))"
-        },
-        "m-stairs-fg": {
-          "$type": "color",
-          "$value": "#FF854D",
-          "$description": "CSS: hsl(var(--m-stairs-fg))"
-        },
-        "m-elevator": {
-          "$type": "color",
-          "$value": "#451F7A",
-          "$description": "CSS: hsl(var(--m-elevator))"
-        },
-        "m-elevator-fg": {
-          "$type": "color",
-          "$value": "#C599FF",
-          "$description": "CSS: hsl(var(--m-elevator-fg))"
-        }
+      "foreground": {
+        "$type": "color",
+        "$value": "#1B1D22",
+        "$description": "CSS: hsl(var(--foreground))"
+      },
+      "card": {
+        "$type": "color",
+        "$value": "#FFFFFF",
+        "$description": "CSS: hsl(var(--card))"
+      },
+      "card-foreground": {
+        "$type": "color",
+        "$value": "#1B1D22",
+        "$description": "CSS: hsl(var(--card-foreground))"
+      },
+      "popover": {
+        "$type": "color",
+        "$value": "#FFFFFF",
+        "$description": "CSS: hsl(var(--popover))"
+      },
+      "popover-foreground": {
+        "$type": "color",
+        "$value": "#1B1D22",
+        "$description": "CSS: hsl(var(--popover-foreground))"
+      },
+      "primary": {
+        "$type": "color",
+        "$value": "#2463EB",
+        "$description": "CSS: hsl(var(--primary))"
+      },
+      "primary-foreground": {
+        "$type": "color",
+        "$value": "#FFFFFF",
+        "$description": "CSS: hsl(var(--primary-foreground))"
+      },
+      "secondary": {
+        "$type": "color",
+        "$value": "#F3F4F6",
+        "$description": "CSS: hsl(var(--secondary))"
+      },
+      "secondary-foreground": {
+        "$type": "color",
+        "$value": "#2D3039",
+        "$description": "CSS: hsl(var(--secondary-foreground))"
+      },
+      "muted": {
+        "$type": "color",
+        "$value": "#F3F4F6",
+        "$description": "CSS: hsl(var(--muted))"
+      },
+      "muted-foreground": {
+        "$type": "color",
+        "$value": "#6B7280",
+        "$description": "CSS: hsl(var(--muted-foreground))"
+      },
+      "accent": {
+        "$type": "color",
+        "$value": "#F3F4F6",
+        "$description": "CSS: hsl(var(--accent))"
+      },
+      "accent-foreground": {
+        "$type": "color",
+        "$value": "#2D3039",
+        "$description": "CSS: hsl(var(--accent-foreground))"
+      },
+      "destructive": {
+        "$type": "color",
+        "$value": "#DC2828",
+        "$description": "CSS: hsl(var(--destructive))"
+      },
+      "destructive-foreground": {
+        "$type": "color",
+        "$value": "#FFFFFF",
+        "$description": "CSS: hsl(var(--destructive-foreground))"
+      },
+      "success": {
+        "$type": "color",
+        "$value": "#047756",
+        "$description": "CSS: hsl(var(--success))"
+      },
+      "border": {
+        "$type": "color",
+        "$value": "#E5E7EB",
+        "$description": "CSS: hsl(var(--border))"
+      },
+      "input": {
+        "$type": "color",
+        "$value": "#E5E7EB",
+        "$description": "CSS: hsl(var(--input))"
+      },
+      "ring": {
+        "$type": "color",
+        "$value": "#2463EB",
+        "$description": "CSS: hsl(var(--ring))"
+      },
+      "hairline": {
+        "$type": "color",
+        "$value": "#1B1D2212",
+        "$description": "CSS: var(--hairline)"
+      },
+      "frame": {
+        "$type": "color",
+        "$value": "#1B1D2217",
+        "$description": "CSS: var(--frame)"
+      },
+      "stroke": {
+        "$type": "color",
+        "$value": "#1B1D2224",
+        "$description": "CSS: var(--stroke)"
+      },
+      "stroke-hover": {
+        "$type": "color",
+        "$value": "#1B1D224D",
+        "$description": "CSS: var(--stroke-hover)"
+      },
+      "wash": {
+        "$type": "color",
+        "$value": "#1B1D220D",
+        "$description": "CSS: var(--wash)"
+      },
+      "canvas-bg": {
+        "$type": "color",
+        "$value": "#F9FAFB",
+        "$description": "CSS: hsl(var(--canvas-bg))"
+      },
+      "grid-minor": {
+        "$type": "color",
+        "$value": "#E1E4EA",
+        "$description": "CSS: hsl(var(--grid-minor))"
+      },
+      "grid-major": {
+        "$type": "color",
+        "$value": "#CED2DA",
+        "$description": "CSS: hsl(var(--grid-major))"
+      },
+      "floor": {
+        "$type": "color",
+        "$value": "#F9FAFB",
+        "$description": "CSS: hsl(var(--floor))"
+      },
+      "floor-edge": {
+        "$type": "color",
+        "$value": "#E5E7EB",
+        "$description": "CSS: hsl(var(--floor-edge))"
+      },
+      "m-section": {
+        "$type": "color",
+        "$value": "#C7D7FA",
+        "$description": "CSS: hsl(var(--m-section))"
+      },
+      "m-section-fg": {
+        "$type": "color",
+        "$value": "#214DAB",
+        "$description": "CSS: hsl(var(--m-section-fg))"
+      },
+      "m-aisle": {
+        "$type": "color",
+        "$value": "#E7EAEE",
+        "$description": "CSS: hsl(var(--m-aisle))"
+      },
+      "m-aisle-fg": {
+        "$type": "color",
+        "$value": "#656C7B",
+        "$description": "CSS: hsl(var(--m-aisle-fg))"
+      },
+      "m-stairs": {
+        "$type": "color",
+        "$value": "#FCDBBA",
+        "$description": "CSS: hsl(var(--m-stairs))"
+      },
+      "m-stairs-fg": {
+        "$type": "color",
+        "$value": "#C36213",
+        "$description": "CSS: hsl(var(--m-stairs-fg))"
+      },
+      "m-elevator": {
+        "$type": "color",
+        "$value": "#DECFF7",
+        "$description": "CSS: hsl(var(--m-elevator))"
+      },
+      "m-elevator-fg": {
+        "$type": "color",
+        "$value": "#6837BE",
+        "$description": "CSS: hsl(var(--m-elevator-fg))"
       }
     },
-    "site": {
-      "light": {
-        "background": {
-          "$type": "color",
-          "$value": "#FCFCFD",
-          "$description": "CSS: hsl(var(--background))"
-        },
-        "foreground": {
-          "$type": "color",
-          "$value": "#131720",
-          "$description": "CSS: hsl(var(--foreground))"
-        },
-        "card": {
-          "$type": "color",
-          "$value": "#FFFFFF",
-          "$description": "CSS: hsl(var(--card))"
-        },
-        "card-foreground": {
-          "$type": "color",
-          "$value": "#131720",
-          "$description": "CSS: hsl(var(--card-foreground))"
-        },
-        "popover": {
-          "$type": "color",
-          "$value": "#FFFFFF",
-          "$description": "CSS: hsl(var(--popover))"
-        },
-        "popover-foreground": {
-          "$type": "color",
-          "$value": "#131720",
-          "$description": "CSS: hsl(var(--popover-foreground))"
-        },
-        "primary": {
-          "$type": "color",
-          "$value": "#1A4FFF",
-          "$description": "CSS: hsl(var(--primary))"
-        },
-        "primary-foreground": {
-          "$type": "color",
-          "$value": "#FFFFFF",
-          "$description": "CSS: hsl(var(--primary-foreground))"
-        },
-        "secondary": {
-          "$type": "color",
-          "$value": "#F3F4F7",
-          "$description": "CSS: hsl(var(--secondary))"
-        },
-        "secondary-foreground": {
-          "$type": "color",
-          "$value": "#212631",
-          "$description": "CSS: hsl(var(--secondary-foreground))"
-        },
-        "muted": {
-          "$type": "color",
-          "$value": "#F3F4F7",
-          "$description": "CSS: hsl(var(--muted))"
-        },
-        "muted-foreground": {
-          "$type": "color",
-          "$value": "#5C6370",
-          "$description": "CSS: hsl(var(--muted-foreground))"
-        },
-        "accent": {
-          "$type": "color",
-          "$value": "#EDEFF3",
-          "$description": "CSS: hsl(var(--accent))"
-        },
-        "accent-foreground": {
-          "$type": "color",
-          "$value": "#212631",
-          "$description": "CSS: hsl(var(--accent-foreground))"
-        },
-        "destructive": {
-          "$type": "color",
-          "$value": "#D32222",
-          "$description": "CSS: hsl(var(--destructive))"
-        },
-        "destructive-foreground": {
-          "$type": "color",
-          "$value": "#FFFFFF",
-          "$description": "CSS: hsl(var(--destructive-foreground))"
-        },
-        "border": {
-          "$type": "color",
-          "$value": "#DCDFE5",
-          "$description": "CSS: hsl(var(--border))"
-        },
-        "input": {
-          "$type": "color",
-          "$value": "#D0D4DD",
-          "$description": "CSS: hsl(var(--input))"
-        },
-        "ring": {
-          "$type": "color",
-          "$value": "#1A4FFF",
-          "$description": "CSS: hsl(var(--ring))"
-        },
-        "hairline": {
-          "$type": "color",
-          "$value": "#13172012",
-          "$description": "CSS: var(--hairline)"
-        },
-        "frame": {
-          "$type": "color",
-          "$value": "#13172017",
-          "$description": "CSS: var(--frame)"
-        },
-        "stroke": {
-          "$type": "color",
-          "$value": "#13172024",
-          "$description": "CSS: var(--stroke)"
-        },
-        "stroke-hover": {
-          "$type": "color",
-          "$value": "#1317204D",
-          "$description": "CSS: var(--stroke-hover)"
-        },
-        "wash": {
-          "$type": "color",
-          "$value": "#1317200D",
-          "$description": "CSS: var(--wash)"
-        },
-        "canvas-bg": {
-          "$type": "color",
-          "$value": "#FCFCFD",
-          "$description": "CSS: hsl(var(--canvas-bg))"
-        },
-        "grid-minor": {
-          "$type": "color",
-          "$value": "#EAECF0",
-          "$description": "CSS: hsl(var(--grid-minor))"
-        },
-        "grid-major": {
-          "$type": "color",
-          "$value": "#D6D9E1",
-          "$description": "CSS: hsl(var(--grid-major))"
-        },
-        "floor": {
-          "$type": "color",
-          "$value": "#FFFFFF",
-          "$description": "CSS: hsl(var(--floor))"
-        },
-        "floor-edge": {
-          "$type": "color",
-          "$value": "#DCDFE5",
-          "$description": "CSS: hsl(var(--floor-edge))"
-        },
-        "m-section": {
-          "$type": "color",
-          "$value": "#E4E7EC",
-          "$description": "CSS: hsl(var(--m-section))"
-        },
-        "m-section-fg": {
-          "$type": "color",
-          "$value": "#606876",
-          "$description": "CSS: hsl(var(--m-section-fg))"
-        },
-        "m-aisle": {
-          "$type": "color",
-          "$value": "#E7EAEE",
-          "$description": "CSS: hsl(var(--m-aisle))"
-        },
-        "m-aisle-fg": {
-          "$type": "color",
-          "$value": "#656C7B",
-          "$description": "CSS: hsl(var(--m-aisle-fg))"
-        },
-        "m-stairs": {
-          "$type": "color",
-          "$value": "#D9DCE3",
-          "$description": "CSS: hsl(var(--m-stairs))"
-        },
-        "m-stairs-fg": {
-          "$type": "color",
-          "$value": "#535965",
-          "$description": "CSS: hsl(var(--m-stairs-fg))"
-        },
-        "m-elevator": {
-          "$type": "color",
-          "$value": "#DECFF7",
-          "$description": "CSS: hsl(var(--m-elevator))"
-        },
-        "m-elevator-fg": {
-          "$type": "color",
-          "$value": "#6837BE",
-          "$description": "CSS: hsl(var(--m-elevator-fg))"
-        },
-        "brand": {
-          "$type": "color",
-          "$value": "#0034E0",
-          "$description": "CSS: hsl(var(--brand))"
-        },
-        "brand-strong": {
-          "$type": "color",
-          "$value": "#0A43FF",
-          "$description": "CSS: hsl(var(--brand-strong))"
-        }
+    "dark": {
+      "background": {
+        "$type": "color",
+        "$value": "#14151A",
+        "$description": "CSS: hsl(var(--background))"
       },
-      "dark": {
-        "background": {
-          "$type": "color",
-          "$value": "#0A0C10",
-          "$description": "CSS: hsl(var(--background))"
-        },
-        "foreground": {
-          "$type": "color",
-          "$value": "#EAECF0",
-          "$description": "CSS: hsl(var(--foreground))"
-        },
-        "card": {
-          "$type": "color",
-          "$value": "#101318",
-          "$description": "CSS: hsl(var(--card))"
-        },
-        "card-foreground": {
-          "$type": "color",
-          "$value": "#EAECF0",
-          "$description": "CSS: hsl(var(--card-foreground))"
-        },
-        "popover": {
-          "$type": "color",
-          "$value": "#12151C",
-          "$description": "CSS: hsl(var(--popover))"
-        },
-        "popover-foreground": {
-          "$type": "color",
-          "$value": "#EAECF0",
-          "$description": "CSS: hsl(var(--popover-foreground))"
-        },
-        "primary": {
-          "$type": "color",
-          "$value": "#1A4FFF",
-          "$description": "CSS: hsl(var(--primary))"
-        },
-        "primary-foreground": {
-          "$type": "color",
-          "$value": "#FFFFFF",
-          "$description": "CSS: hsl(var(--primary-foreground))"
-        },
-        "secondary": {
-          "$type": "color",
-          "$value": "#1C1F26",
-          "$description": "CSS: hsl(var(--secondary))"
-        },
-        "secondary-foreground": {
-          "$type": "color",
-          "$value": "#EAECF0",
-          "$description": "CSS: hsl(var(--secondary-foreground))"
-        },
-        "muted": {
-          "$type": "color",
-          "$value": "#1A1D23",
-          "$description": "CSS: hsl(var(--muted))"
-        },
-        "muted-foreground": {
-          "$type": "color",
-          "$value": "#949BA8",
-          "$description": "CSS: hsl(var(--muted-foreground))"
-        },
-        "accent": {
-          "$type": "color",
-          "$value": "#20242C",
-          "$description": "CSS: hsl(var(--accent))"
-        },
-        "accent-foreground": {
-          "$type": "color",
-          "$value": "#EAECF0",
-          "$description": "CSS: hsl(var(--accent-foreground))"
-        },
-        "destructive": {
-          "$type": "color",
-          "$value": "#DF3A3A",
-          "$description": "CSS: hsl(var(--destructive))"
-        },
-        "destructive-foreground": {
-          "$type": "color",
-          "$value": "#FFFFFF",
-          "$description": "CSS: hsl(var(--destructive-foreground))"
-        },
-        "border": {
-          "$type": "color",
-          "$value": "#252931",
-          "$description": "CSS: hsl(var(--border))"
-        },
-        "input": {
-          "$type": "color",
-          "$value": "#2C303A",
-          "$description": "CSS: hsl(var(--input))"
-        },
-        "ring": {
-          "$type": "color",
-          "$value": "#1A4FFF",
-          "$description": "CSS: hsl(var(--ring))"
-        },
-        "hairline": {
-          "$type": "color",
-          "$value": "#EAECF012",
-          "$description": "CSS: var(--hairline)"
-        },
-        "frame": {
-          "$type": "color",
-          "$value": "#EAECF017",
-          "$description": "CSS: var(--frame)"
-        },
-        "stroke": {
-          "$type": "color",
-          "$value": "#EAECF024",
-          "$description": "CSS: var(--stroke)"
-        },
-        "stroke-hover": {
-          "$type": "color",
-          "$value": "#EAECF04D",
-          "$description": "CSS: var(--stroke-hover)"
-        },
-        "wash": {
-          "$type": "color",
-          "$value": "#EAECF00D",
-          "$description": "CSS: var(--wash)"
-        },
-        "canvas-bg": {
-          "$type": "color",
-          "$value": "#0A0C10",
-          "$description": "CSS: hsl(var(--canvas-bg))"
-        },
-        "grid-minor": {
-          "$type": "color",
-          "$value": "#1A1D23",
-          "$description": "CSS: hsl(var(--grid-minor))"
-        },
-        "grid-major": {
-          "$type": "color",
-          "$value": "#272B34",
-          "$description": "CSS: hsl(var(--grid-major))"
-        },
-        "floor": {
-          "$type": "color",
-          "$value": "#0E1016",
-          "$description": "CSS: hsl(var(--floor))"
-        },
-        "floor-edge": {
-          "$type": "color",
-          "$value": "#23272F",
-          "$description": "CSS: hsl(var(--floor-edge))"
-        },
-        "m-section": {
-          "$type": "color",
-          "$value": "#272B34",
-          "$description": "CSS: hsl(var(--m-section))"
-        },
-        "m-section-fg": {
-          "$type": "color",
-          "$value": "#89909F",
-          "$description": "CSS: hsl(var(--m-section-fg))"
-        },
-        "m-aisle": {
-          "$type": "color",
-          "$value": "#31353F",
-          "$description": "CSS: hsl(var(--m-aisle))"
-        },
-        "m-aisle-fg": {
-          "$type": "color",
-          "$value": "#A0A5B1",
-          "$description": "CSS: hsl(var(--m-aisle-fg))"
-        },
-        "m-stairs": {
-          "$type": "color",
-          "$value": "#2C303A",
-          "$description": "CSS: hsl(var(--m-stairs))"
-        },
-        "m-stairs-fg": {
-          "$type": "color",
-          "$value": "#A0A5B1",
-          "$description": "CSS: hsl(var(--m-stairs-fg))"
-        },
-        "m-elevator": {
-          "$type": "color",
-          "$value": "#451F7A",
-          "$description": "CSS: hsl(var(--m-elevator))"
-        },
-        "m-elevator-fg": {
-          "$type": "color",
-          "$value": "#C599FF",
-          "$description": "CSS: hsl(var(--m-elevator-fg))"
-        },
-        "brand": {
-          "$type": "color",
-          "$value": "#426EFF",
-          "$description": "CSS: hsl(var(--brand))"
-        },
-        "brand-strong": {
-          "$type": "color",
-          "$value": "#295BFF",
-          "$description": "CSS: hsl(var(--brand-strong))"
-        }
+      "foreground": {
+        "$type": "color",
+        "$value": "#E8EAED",
+        "$description": "CSS: hsl(var(--foreground))"
+      },
+      "card": {
+        "$type": "color",
+        "$value": "#181A20",
+        "$description": "CSS: hsl(var(--card))"
+      },
+      "card-foreground": {
+        "$type": "color",
+        "$value": "#E8EAED",
+        "$description": "CSS: hsl(var(--card-foreground))"
+      },
+      "popover": {
+        "$type": "color",
+        "$value": "#181A20",
+        "$description": "CSS: hsl(var(--popover))"
+      },
+      "popover-foreground": {
+        "$type": "color",
+        "$value": "#E8EAED",
+        "$description": "CSS: hsl(var(--popover-foreground))"
+      },
+      "primary": {
+        "$type": "color",
+        "$value": "#4294FF",
+        "$description": "CSS: hsl(var(--primary))"
+      },
+      "primary-foreground": {
+        "$type": "color",
+        "$value": "#14151A",
+        "$description": "CSS: hsl(var(--primary-foreground))"
+      },
+      "secondary": {
+        "$type": "color",
+        "$value": "#262931",
+        "$description": "CSS: hsl(var(--secondary))"
+      },
+      "secondary-foreground": {
+        "$type": "color",
+        "$value": "#E8EAED",
+        "$description": "CSS: hsl(var(--secondary-foreground))"
+      },
+      "muted": {
+        "$type": "color",
+        "$value": "#24272E",
+        "$description": "CSS: hsl(var(--muted))"
+      },
+      "muted-foreground": {
+        "$type": "color",
+        "$value": "#9096A2",
+        "$description": "CSS: hsl(var(--muted-foreground))"
+      },
+      "accent": {
+        "$type": "color",
+        "$value": "#282C33",
+        "$description": "CSS: hsl(var(--accent))"
+      },
+      "accent-foreground": {
+        "$type": "color",
+        "$value": "#E8EAED",
+        "$description": "CSS: hsl(var(--accent-foreground))"
+      },
+      "destructive": {
+        "$type": "color",
+        "$value": "#D02F2F",
+        "$description": "CSS: hsl(var(--destructive))"
+      },
+      "destructive-foreground": {
+        "$type": "color",
+        "$value": "#FFFFFF",
+        "$description": "CSS: hsl(var(--destructive-foreground))"
+      },
+      "success": {
+        "$type": "color",
+        "$value": "#36D399",
+        "$description": "CSS: hsl(var(--success))"
+      },
+      "border": {
+        "$type": "color",
+        "$value": "#2D3039",
+        "$description": "CSS: hsl(var(--border))"
+      },
+      "input": {
+        "$type": "color",
+        "$value": "#31353F",
+        "$description": "CSS: hsl(var(--input))"
+      },
+      "ring": {
+        "$type": "color",
+        "$value": "#4294FF",
+        "$description": "CSS: hsl(var(--ring))"
+      },
+      "hairline": {
+        "$type": "color",
+        "$value": "#E8EAED12",
+        "$description": "CSS: var(--hairline)"
+      },
+      "frame": {
+        "$type": "color",
+        "$value": "#E8EAED17",
+        "$description": "CSS: var(--frame)"
+      },
+      "stroke": {
+        "$type": "color",
+        "$value": "#E8EAED24",
+        "$description": "CSS: var(--stroke)"
+      },
+      "stroke-hover": {
+        "$type": "color",
+        "$value": "#E8EAED4D",
+        "$description": "CSS: var(--stroke-hover)"
+      },
+      "wash": {
+        "$type": "color",
+        "$value": "#E8EAED0D",
+        "$description": "CSS: var(--wash)"
+      },
+      "canvas-bg": {
+        "$type": "color",
+        "$value": "#121317",
+        "$description": "CSS: hsl(var(--canvas-bg))"
+      },
+      "grid-minor": {
+        "$type": "color",
+        "$value": "#24272E",
+        "$description": "CSS: hsl(var(--grid-minor))"
+      },
+      "grid-major": {
+        "$type": "color",
+        "$value": "#31353F",
+        "$description": "CSS: hsl(var(--grid-major))"
+      },
+      "floor": {
+        "$type": "color",
+        "$value": "#121317",
+        "$description": "CSS: hsl(var(--floor))"
+      },
+      "floor-edge": {
+        "$type": "color",
+        "$value": "#262931",
+        "$description": "CSS: hsl(var(--floor-edge))"
+      },
+      "m-section": {
+        "$type": "color",
+        "$value": "#133972",
+        "$description": "CSS: hsl(var(--m-section))"
+      },
+      "m-section-fg": {
+        "$type": "color",
+        "$value": "#85BCFF",
+        "$description": "CSS: hsl(var(--m-section-fg))"
+      },
+      "m-aisle": {
+        "$type": "color",
+        "$value": "#31353F",
+        "$description": "CSS: hsl(var(--m-aisle))"
+      },
+      "m-aisle-fg": {
+        "$type": "color",
+        "$value": "#A0A5B1",
+        "$description": "CSS: hsl(var(--m-aisle-fg))"
+      },
+      "m-stairs": {
+        "$type": "color",
+        "$value": "#7B310F",
+        "$description": "CSS: hsl(var(--m-stairs))"
+      },
+      "m-stairs-fg": {
+        "$type": "color",
+        "$value": "#FF854D",
+        "$description": "CSS: hsl(var(--m-stairs-fg))"
+      },
+      "m-elevator": {
+        "$type": "color",
+        "$value": "#451F7A",
+        "$description": "CSS: hsl(var(--m-elevator))"
+      },
+      "m-elevator-fg": {
+        "$type": "color",
+        "$value": "#C599FF",
+        "$description": "CSS: hsl(var(--m-elevator-fg))"
       }
+    }
+  },
+  "brand": {
+    "$description": "Ведётся руками. Цвета знака, а не темы: они не меняются ни со светлой и тёмной темой, ни с правкой --primary.",
+    "mark": {
+      "$type": "color",
+      "$value": "#426EFF",
+      "$description": "Плитка знака. Копии: MARK_BLUE в src/site/components/Logo.tsx, public/favicon.svg, public/og.svg — меняются вместе."
     }
   },
   "radius": {
@@ -886,11 +506,12 @@
     "label": {
       "$type": "typography",
       "$value": {
-        "fontSize": "11px",
+        "fontSize": "12px",
         "fontWeight": "600",
         "textCase": "uppercase",
-        "letterSpacing": "0.05em"
-      }
+        "letterSpacing": "0.025em"
+      },
+      "$description": "ui/eyebrow, ступень sm (text-xs). Вторичная ступень xs — 10px (text-2xs)."
     },
     "body": {
       "$type": "typography",
@@ -910,9 +531,10 @@
     "caption": {
       "$type": "typography",
       "$value": {
-        "fontSize": "11px",
+        "fontSize": "12px",
         "fontWeight": "400"
-      }
+      },
+      "$description": "Подсказки и ошибки под полем (text-xs). Нечётных кеглей в шкале нет."
     },
     "titleScreen": {
       "$type": "typography",

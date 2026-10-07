@@ -1,11 +1,11 @@
 import { Check } from "lucide-react";
+import { eyebrow } from "@/components/ui/eyebrow";
 import { cn } from "@/lib/utils";
 import { BrandMark } from "../BrandMark";
 import { MARKETPLACE_BY_ID } from "../../data/marketplaces";
 import { money, type Warehouse } from "../../data/warehouses";
 import { warehousesRepository } from "../../data/warehousesRepository";
 import { c, useT } from "../../lib/copy";
-import { eyebrow } from "../../lib/eyebrow";
 
 /** Сколько складов показываем в заявке. */
 const SHOWN = 3;
@@ -82,7 +82,7 @@ export function RequestBoard() {
               {t(T.meta, { n: REQUEST_PLACES, city: t(T.city) })}
             </p>
           </div>
-          <span className={eyebrow("shrink-0 text-muted-foreground")}>
+          <span className={eyebrow({ className: "shrink-0" })}>
             {CANDIDATES.length}{" "}
             {t.plural(
               CANDIDATES.length,

@@ -1,7 +1,8 @@
 import { ArrowRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { warehousesRepository } from "../../data/warehousesRepository";
 import { href } from "../../lib/route";
-import { ctaPill, siteButton } from "../../lib/button";
+import { CtaLink } from "../CtaLink";
 import { c, useT, type TFunc } from "../../lib/copy";
 
 /**
@@ -52,7 +53,7 @@ const ROWS = (t: TFunc) =>
         "received 14 May · 4 pcs short, with photo",
       ),
       state: c("Принята", "Received"),
-      tone: "text-emerald-700 dark:text-emerald-300",
+      tone: "text-success",
     },
     {
       step: "02",
@@ -80,7 +81,7 @@ export function Hero() {
         <div>
           <a
             href={href("/sellers")}
-            className="group inline-flex items-center gap-2 rounded-full border border-stroke py-1.5 pl-2.5 pr-3 text-xs font-medium text-muted-foreground transition-colors hover:border-stroke-hover hover:text-foreground"
+            className="group inline-flex h-8 items-center gap-2 whitespace-nowrap rounded-full border border-stroke pl-2.5 pr-3 text-xs font-medium text-muted-foreground transition-colors hover:border-stroke-hover hover:text-foreground"
           >
             <span className="size-1.5 rounded-full bg-primary" />
             {t(T.badge)}
@@ -90,7 +91,7 @@ export function Hero() {
           <h1 className="mt-7 font-display text-4xl font-heading leading-display tracking-tight sm:text-5xl xl:text-6xl">
             {t(T.titleTop)}
             <br />
-            <span className="text-brand-strong">{t(T.titleAccent)}</span>
+            <span className="text-primary">{t(T.titleAccent)}</span>
           </h1>
 
           <p className="mt-6 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-base">
@@ -98,23 +99,15 @@ export function Hero() {
           </p>
 
           <div className="mt-9 flex flex-wrap items-center gap-3">
-            {/* Пилюля в пилюле: поле справа 6 → кружок 40. Единственное место
-                на странице, где вложение показано формой, — и та же кнопка
-                повторяется в финале, поэтому форма живёт
-                в [`ctaPill`](../../lib/button.ts), а не здесь. */}
-            <a href={href("/market")} className={ctaPill("w-full sm:w-auto")}>
+            {/* Тот же призыв повторяется в финале страницы, поэтому он живёт
+                в [`CtaLink`](../CtaLink.tsx), а не здесь. */}
+            <CtaLink href={href("/market")} className="w-full sm:w-auto">
               {t(T.cta)}
-              <span className="flex size-10 items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors group-hover:bg-primary/85">
-                <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
-              </span>
-            </a>
+            </CtaLink>
 
-            <a
-              href="#how"
-              className={siteButton({ size: "lg", tone: "outline", className: "w-full sm:w-auto" })}
-            >
-              {t(T.how)}
-            </a>
+            <Button asChild variant="outline" size="lg" shape="pill" className="w-full sm:w-auto">
+              <a href="#how">{t(T.how)}</a>
+            </Button>
           </div>
 
           <p className="mt-9 text-sm leading-relaxed text-muted-foreground">
@@ -132,7 +125,7 @@ export function Hero() {
           <div className="flex items-center justify-between gap-3 border-b border-frame px-4 py-3">
             <span className="text-sm font-medium">{t(T.panelTitle)}</span>
             <span className="flex items-center gap-1.5 font-mono text-2xs text-muted-foreground">
-              <span className="size-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400" />
+              <span className="size-1.5 rounded-full bg-success" />
               {t(T.panelSource)}
             </span>
           </div>

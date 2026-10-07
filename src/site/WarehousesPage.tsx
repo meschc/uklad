@@ -1,13 +1,14 @@
 import { ArrowRight, ArrowRightLeft, BadgeCheck, Check, Inbox, LayoutGrid } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { eyebrow } from "@/components/ui/eyebrow";
+import { CtaLink } from "./components/CtaLink";
 import { Reveal } from "./components/Reveal";
 import { SectionHead } from "./components/SectionHead";
 import { InboxBoard } from "./components/warehouses/InboxBoard";
 import { PLANS, YEARLY_DISCOUNT, yearlyPrice } from "./data/plans";
 import { money } from "./data/warehouses";
 import { warehousesRepository } from "./data/warehousesRepository";
-import { ctaPill, siteButton } from "./lib/button";
 import { c, useT, type Copy } from "./lib/copy";
-import { eyebrow } from "./lib/eyebrow";
 import { href } from "./lib/route";
 
 /** Путь склада от письма до первой смены в системе. */
@@ -178,7 +179,7 @@ export function WarehousesPage() {
     <div className="pb-24 pt-28 sm:pt-32">
       <div className="mx-auto grid max-w-6xl items-center gap-12 px-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.82fr)] lg:gap-16">
         <Reveal className="max-w-2xl">
-          <p className={eyebrow("mb-3")}>{t(T.eyebrow)}</p>
+          <p className={eyebrow({ tone: "primary", className: "mb-3" })}>{t(T.eyebrow)}</p>
           <h1 className="font-display text-3xl font-heading leading-display tracking-tight sm:text-5xl">
             {t(T.titleTop)} <span className="text-primary">{t(T.titleAccent)}</span>
           </h1>
@@ -187,18 +188,12 @@ export function WarehousesPage() {
           </p>
 
           <div className="mt-8 flex flex-wrap items-center gap-3">
-            <a href={href("/contacts")} className={ctaPill("w-full sm:w-auto")}>
+            <CtaLink href={href("/contacts")} className="w-full sm:w-auto">
               {t(T.ctaConnect)}
-              <span className="flex size-10 items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors group-hover:bg-primary/85">
-                <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
-              </span>
-            </a>
-            <a
-              href={href("/pricing")}
-              className={siteButton({ size: "lg", tone: "outline", className: "w-full sm:w-auto" })}
-            >
-              {t(T.ctaPricing)}
-            </a>
+            </CtaLink>
+            <Button asChild variant="outline" size="lg" shape="pill" className="w-full sm:w-auto">
+              <a href={href("/pricing")}>{t(T.ctaPricing)}</a>
+            </Button>
           </div>
 
           <p className="mt-8 text-sm leading-relaxed text-muted-foreground">
@@ -320,13 +315,9 @@ export function WarehousesPage() {
               .
             </p>
           </div>
-          <a
-            href={href("/contacts")}
-            className={siteButton({ size: "lg", className: "group mt-6 w-full sm:mt-0 sm:w-auto" })}
-          >
+          <CtaLink href={href("/contacts")} className="mt-6 w-full sm:mt-0 sm:w-auto">
             {t(T.endCta)}
-            <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
-          </a>
+          </CtaLink>
         </div>
       </section>
     </div>

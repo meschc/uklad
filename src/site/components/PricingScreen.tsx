@@ -1,5 +1,8 @@
 import { useState } from "react";
 import { ArrowRight, Check } from "lucide-react";
+import { Button } from "@/components/ui/button";
+// Под псевдонимом: `eyebrow` ниже — имя свойства с текстом надзаголовка.
+import { eyebrow as eyebrowClass } from "@/components/ui/eyebrow";
 import { cn } from "@/lib/utils";
 import {
   PLANS,
@@ -14,10 +17,8 @@ import {
 import { money } from "../data/warehouses";
 import { Reveal } from "./Reveal";
 import { href } from "../lib/route";
-import { siteButton } from "../lib/button";
+import { CtaLink } from "./CtaLink";
 import { c, useT } from "../lib/copy";
-// Под псевдонимом: `eyebrow` ниже — имя свойства с текстом надзаголовка.
-import { eyebrow as eyebrowClass } from "../lib/eyebrow";
 
 const T = {
   eyebrow: c("Тарифы", "Pricing"),
@@ -103,7 +104,7 @@ export function PricingScreen() {
   return (
     <div className="mx-auto max-w-6xl px-4 pb-24 pt-28 sm:px-6 sm:pt-32">
       <div className="text-center">
-        <p className={eyebrowClass("mb-3")}>{t(T.eyebrow)}</p>
+        <p className={eyebrowClass({ tone: "primary", className: "mb-3" })}>{t(T.eyebrow)}</p>
         <h1 className="font-display text-3xl font-heading leading-display tracking-tight sm:text-5xl">
           {t(T.titleTop)}
           <br className="hidden sm:block" /> {t(T.titleBottom)}
@@ -154,10 +155,9 @@ function SellerBlock() {
               ))}
             </ul>
 
-            <a href={href("/market")} className={siteButton({ className: "group mt-6" })}>
+            <CtaLink href={href("/market")} className="mt-6">
               {t(T.freeCta)}
-              <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
-            </a>
+            </CtaLink>
           </div>
         </Reveal>
 
@@ -204,7 +204,7 @@ function WarehouseBlock() {
 function SectionLabel({ eyebrow, title, note }: { eyebrow: string; title: string; note: string }) {
   return (
     <div className="mx-auto max-w-2xl text-center">
-      <p className={eyebrowClass()}>{eyebrow}</p>
+      <p className={eyebrowClass({ tone: "primary" })}>{eyebrow}</p>
       <h2 className="mt-2 font-display text-2xl font-heading tracking-tight sm:text-2xl">
         {title}
       </h2>
@@ -354,15 +354,15 @@ function PlanCard({ plan, yearly }: { plan: Plan; yearly: boolean }) {
 
       <FirstScreen text={t(plan.firstScreen)} />
 
-      <a
-        href={href("/market")}
-        className={siteButton({
-          tone: plan.featured ? "primary" : "outline",
-          className: "mt-6",
-        })}
+      <Button
+        asChild
+        variant={plan.featured ? "default" : "outline"}
+        size="lg"
+        shape="pill"
+        className="mt-6"
       >
-        {t(plan.cta)}
-      </a>
+        <a href={href("/market")}>{t(plan.cta)}</a>
+      </Button>
     </div>
   );
 }

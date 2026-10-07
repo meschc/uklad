@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
+import { Button } from "@/components/ui/button";
+import { eyebrow } from "@/components/ui/eyebrow";
 import { href } from "../lib/route";
-import { siteButton } from "../lib/button";
 import { c, useT } from "../lib/copy";
-import { eyebrowMono } from "../lib/eyebrow";
 
 /**
  * «Ничего не нашлось» — одним экраном на все случаи витрины.
@@ -36,18 +36,18 @@ export function NotFoundScreen({ caption, title, children, action }: Props) {
 
   return (
     <div className="mx-auto max-w-2xl px-4 pb-24 pt-32 text-center sm:px-6">
-      {caption && <p className={eyebrowMono()}>{caption}</p>}
+      {caption && <p className={eyebrow({ className: "font-mono" })}>{caption}</p>}
       <h1 className="mt-3 font-display text-2xl font-heading tracking-tight">{title}</h1>
       <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
         {children}
       </p>
       <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-        <a href={href(primary.to)} className={siteButton({ tone: "outline" })}>
-          {primary.label}
-        </a>
-        <a href={href("/")} className={siteButton({ tone: "ghost" })}>
-          {t(T.home)}
-        </a>
+        <Button asChild variant="outline" size="lg" shape="pill">
+          <a href={href(primary.to)}>{primary.label}</a>
+        </Button>
+        <Button asChild variant="ghost" size="lg" shape="pill">
+          <a href={href("/")}>{t(T.home)}</a>
+        </Button>
       </div>
     </div>
   );

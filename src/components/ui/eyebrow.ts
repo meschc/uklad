@@ -54,6 +54,11 @@ export const eyebrow = cva("uppercase tracking-wide", {
        * встал бы рядом с ним, и какой победит — решал бы порядок в CSS-файле.
        */
       current: "",
+      /**
+       * Фирменным цветом — рубрика над крупным заголовком секции на витрине
+       * («ТАРИФЫ», «СЕЛЛЕРУ»): там надзаголовок называет раздел, а не поле.
+       */
+      primary: "text-primary",
     },
   },
   defaultVariants: { size: "sm", weight: "semibold", tone: "muted" },

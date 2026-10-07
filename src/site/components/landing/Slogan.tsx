@@ -46,7 +46,7 @@ export function Slogan() {
         <p className="font-display text-3xl font-heading leading-display tracking-tight sm:text-5xl">
           {t(T.titleTop)}
           <br />
-          <span className="text-brand-strong">{t(T.titleAccent)}</span>
+          <span className="text-primary">{t(T.titleAccent)}</span>
         </p>
       </Reveal>
 

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { BadgeCheck, RotateCcw, Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { BrandMark } from "../BrandMark";
 import { LogoMark } from "../Logo";
@@ -13,7 +14,6 @@ import {
   toggle,
   type MarketFilters,
 } from "../../lib/filters";
-import { siteButton } from "../../lib/button";
 import { c, useT } from "../../lib/copy";
 
 const SERVICES_SHOWN = 8;
@@ -171,15 +171,17 @@ export function Filters({
         </div>
       </Group>
 
-      <button
+      <Button
+        variant="outline"
+        size="lg"
+        shape="pill"
         onClick={() => onChange({ ...DEFAULT_FILTERS, sort: value.sort })}
         disabled={active === 0}
-        className={siteButton({ tone: "outline" })}
       >
-        <RotateCcw className="size-3.5" />
+        <RotateCcw />
         {t(T.reset)}
         {active > 0 && ` (${active})`}
-      </button>
+      </Button>
     </div>
   );
 }
@@ -212,7 +214,7 @@ function Chip({
       title={title}
       aria-pressed={on}
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-all duration-200",
+        "inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-all duration-200",
         on
           ? "border-primary bg-primary/10 text-primary"
           : "border-border text-muted-foreground hover:border-stroke-hover hover:text-foreground",
@@ -237,7 +239,7 @@ function Switch({
       onClick={onClick}
       aria-pressed={on}
       className={cn(
-        "flex items-center gap-2 rounded-full border px-3.5 py-2 text-xs font-medium transition-colors",
+        "flex h-8 items-center gap-2 rounded-full border px-3.5 text-xs font-medium transition-colors",
         on ? "border-primary bg-primary/[0.07]" : "border-border hover:bg-muted",
       )}
     >

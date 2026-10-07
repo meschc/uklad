@@ -1,7 +1,7 @@
 import { Send } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ORG } from "../data/org";
-import { siteButton } from "../lib/button";
 import { c, useT } from "../lib/copy";
 import type { LeadSend } from "../lib/useLeadSend";
 
@@ -101,25 +101,25 @@ export function LeadSubmit({
     <div className={className}>
       {text && <p className="text-xs leading-relaxed text-muted-foreground">{text}</p>}
 
-      <button
+      <Button
         type={type}
+        size="lg"
+        shape="pill"
         onClick={onClick}
         disabled={disabled}
-        className={siteButton({
-          // Отправленная заявка — не кнопка другого тона, а кнопка,
-          // переставшая быть кнопкой: зелёным по зелёному и без подсветки
-          // под курсором, иначе она продолжает звать нажать ещё раз.
-          className: cn(
-            "w-full",
-            text && "mt-4",
-            done &&
-              "bg-emerald-500/12 text-emerald-700 hover:bg-emerald-500/12 dark:text-emerald-300",
-          ),
-        })}
+        // Отправленная заявка — не кнопка другого тона, а кнопка, переставшая
+        // быть кнопкой: зелёным по зелёному и без подсветки под курсором, иначе
+        // она продолжает звать нажать ещё раз. Зелёный — токен `success`, тот же,
+        // что у «принята» в кабинете.
+        className={cn(
+          "w-full",
+          text && "mt-4",
+          done && "bg-success/12 text-success shadow-none hover:bg-success/12",
+        )}
       >
-        {icon && !done && state !== "sending" && <Send className="size-4" />}
+        {icon && !done && state !== "sending" && <Send />}
         {label()}
-      </button>
+      </Button>
     </div>
   );
 }

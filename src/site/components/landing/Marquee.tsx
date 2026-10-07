@@ -1,7 +1,7 @@
+import { eyebrow } from "@/components/ui/eyebrow";
 import { MARKETPLACES } from "../../data/marketplaces";
 import { BrandMark } from "../BrandMark";
 import { c, useT } from "../../lib/copy";
-import { eyebrow } from "../../lib/eyebrow";
 
 /**
  * Лента площадок. Отвечает на первый вопрос селлера — «а с моим маркетплейсом
@@ -24,7 +24,7 @@ export function Marquee() {
 
   return (
     <section className="mt-24 border-y border-border bg-muted/30 py-10 sm:mt-32 sm:py-12">
-      <p className={eyebrow("mb-7 text-center text-muted-foreground")}>{t(T.label)}</p>
+      <p className={eyebrow({ weight: "medium", className: "mb-7 text-center" })}>{t(T.label)}</p>
       <div className="relative overflow-hidden [mask-image:linear-gradient(90deg,transparent,#000_12%,#000_88%,transparent)]">
         <div className="flex w-max animate-marquee items-center gap-12 pr-12">
           {row.map((m, i) => (

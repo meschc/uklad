@@ -99,9 +99,12 @@ test.describe("Отбор витрины в адресе", () => {
     await expect(page).toHaveURL(/mp=wildberries/);
   });
 
-  test("переключение языка не теряет отбор", async ({ page }) => {
+  test("переключение языка не теряет отбор", async ({ page, isMobile }) => {
     await openMarket(page, "?mp=wildberries");
     const narrowed = await foundCount(page);
+
+    // На телефоне переключатель живёт в меню: в шапке ему не хватает места.
+    if (isMobile) await page.getByRole("button", { name: "Меню" }).click();
 
     // Смена языка — переход по другому адресу того же маршрута, и хвост с
     // отбором обязан переехать вместе с путём: иначе англичанин, которому

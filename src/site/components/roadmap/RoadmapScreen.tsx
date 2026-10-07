@@ -1,9 +1,10 @@
+// Под псевдонимом: в `SectionLabel` ниже `eyebrow` — уже имя свойства с текстом.
+import { eyebrow as eyebrowClass } from "@/components/ui/eyebrow";
 import { RELEASES } from "../../data/roadmap";
 import { ROADMAP_ITEMS } from "../../data/roadmapItems";
 import { countByStatus } from "../../lib/roadmapStats";
 import { shortDate } from "../../lib/date";
 import { c, useT } from "../../lib/copy";
-import { eyebrow as eyebrowClass } from "../../lib/eyebrow";
 import { RoadmapMilestones } from "./RoadmapMilestones";
 import { RoadmapBoard } from "./RoadmapBoard";
 import { RoadmapChangelog } from "./RoadmapChangelog";
@@ -64,7 +65,7 @@ export function RoadmapScreen() {
   return (
     <div className="mx-auto max-w-6xl px-4 pb-24 pt-28 sm:px-6 sm:pt-32">
       <div className="text-center">
-        <p className={eyebrowClass("mb-3")}>{t(T.eyebrow)}</p>
+        <p className={eyebrowClass({ tone: "primary", className: "mb-3" })}>{t(T.eyebrow)}</p>
         <h1 className="font-display text-3xl font-heading leading-display tracking-tight sm:text-5xl">
           {t(T.title)}
         </h1>
@@ -135,7 +136,7 @@ function Stat({ value, label }: { value: number; label: string }) {
 function SectionLabel({ eyebrow, title, note }: { eyebrow: string; title: string; note: string }) {
   return (
     <div className="mx-auto max-w-2xl text-center">
-      <p className={eyebrowClass()}>{eyebrow}</p>
+      <p className={eyebrowClass({ tone: "primary" })}>{eyebrow}</p>
       <h2 className="mt-2 font-display text-2xl font-heading tracking-tight sm:text-2xl">
         {title}
       </h2>

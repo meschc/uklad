@@ -1,9 +1,9 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
+import { Button } from "@/components/ui/button";
+import { eyebrow } from "@/components/ui/eyebrow";
 import { c, pick } from "../lib/copy";
 import { getLang } from "../lib/lang";
 import { href } from "../lib/route";
-import { siteButton } from "../lib/button";
-import { eyebrowMono } from "../lib/eyebrow";
 
 /**
  * Язык берём функцией `getLang`, а не хуком: это классовый компонент, и хуки
@@ -66,7 +66,7 @@ export class SiteErrorBoundary extends Component<Props, State> {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-6 text-center">
         <div className="max-w-md">
-          <p className={eyebrowMono()}>{pick(lang, T.eyebrow)}</p>
+          <p className={eyebrow({ className: "font-mono" })}>{pick(lang, T.eyebrow)}</p>
           <h1 className="mt-3 font-display text-2xl font-heading tracking-tight">
             {pick(lang, T.title)}
           </h1>
@@ -81,12 +81,14 @@ export class SiteErrorBoundary extends Component<Props, State> {
             {this.state.error.message}
           </p>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-            <button
+            <Button
+              variant="outline"
+              size="lg"
+              shape="pill"
               onClick={() => window.location.reload()}
-              className={siteButton({ tone: "outline" })}
             >
               {pick(lang, T.reload)}
-            </button>
+            </Button>
             {/*
              * Обычная ссылка — и это как раз тот случай, когда полная
              * перезагрузка нужна: витрина уже сломана, и переводить её на
@@ -94,9 +96,9 @@ export class SiteErrorBoundary extends Component<Props, State> {
              * Перехватчик кликов тут не помешает: он живёт в `SiteApp`, а
              * `SiteApp` в этот момент уже снят с экрана.
              */}
-            <a href={href("/contacts")} className={siteButton({ tone: "ghost" })}>
-              {pick(lang, T.write)}
-            </a>
+            <Button asChild variant="ghost" size="lg" shape="pill">
+              <a href={href("/contacts")}>{pick(lang, T.write)}</a>
+            </Button>
           </div>
         </div>
       </div>

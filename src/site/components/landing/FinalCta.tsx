@@ -1,7 +1,6 @@
-import { ArrowRight } from "lucide-react";
 import { Reveal } from "../Reveal";
+import { CtaLink } from "../CtaLink";
 import { href } from "../../lib/route";
-import { ctaPill } from "../../lib/button";
 import { CITIES } from "../../data/cities";
 import { warehousesRepository } from "../../data/warehousesRepository";
 import { c, useT } from "../../lib/copy";
@@ -25,9 +24,13 @@ export function FinalCta() {
   const { total } = warehousesRepository.stats();
 
   return (
-    // Заливка одна — тёмная полоса `ink`. Пятно света поверх неё убрано: оно
-    // добавляло второй фон ради самого себя и ровно так же размывало текст.
-    <section className="ink relative overflow-hidden">
+    // Заливка одна — приподнятая полоса с волосяными кромками сверху и снизу:
+    // «другой блок», а не «другая страница». Своего цвета у неё нет (была
+    // полоса `ink` с собственной светлотой в site.css) — это приглушённая
+    // поверхность из общих токенов, и в тёмной теме она светлее фона, а в
+    // светлой темнее сама. Пятно света поверх убрано: оно добавляло второй фон
+    // ради самого себя и размывало текст.
+    <section className="relative overflow-hidden border-y border-border bg-muted/50">
       <div className="relative mx-auto max-w-4xl px-4 py-24 text-center sm:px-6 sm:py-32">
         <Reveal>
           <h2 className="font-display text-4xl font-heading leading-display tracking-tight sm:text-6xl">
@@ -62,15 +65,11 @@ export function FinalCta() {
               Это разные люди и разные намерения, и в конце страницы для
               селлера остаётся то, за чем он пришёл. */}
           <div className="mt-9 flex justify-center">
-            <a href={href("/market")} className={ctaPill("w-full sm:w-auto")}>
+            {/* Тот же призыв, что и на первом экране: два конца страницы
+                держит одна форма — [`CtaLink`](../CtaLink.tsx). */}
+            <CtaLink href={href("/market")} className="w-full sm:w-auto">
               {t(T.cta)}
-              {/* Та же пилюля в пилюле, что и на первом экране: два конца
-                  страницы держит одна форма — теперь буквально одна,
-                  [`ctaPill`](../../lib/button.ts), а не две копии. */}
-              <span className="flex size-10 items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors group-hover:bg-primary/85">
-                <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
-              </span>
-            </a>
+            </CtaLink>
           </div>
         </Reveal>
       </div>

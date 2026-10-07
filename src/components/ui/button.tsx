@@ -23,10 +23,19 @@ const buttonVariants = cva(
         icon: "h-9 w-9",
         "icon-sm": "h-8 w-8",
       },
+      // Форма — характер витрины (ADR 0007): поверхности у неё почти прямые,
+      // а действия круглые, и круглое читается как «нажимается». Высоты и
+      // цвета при этом общие — пилюля меняет только угол. Идёт после `size`,
+      // и `cn` (tailwind-merge) отдаёт победу её `rounded-full`.
+      shape: {
+        default: "",
+        pill: "rounded-full",
+      },
     },
     defaultVariants: {
       variant: "default",
       size: "default",
+      shape: "default",
     },
   },
 );
@@ -37,10 +46,14 @@ export interface ButtonProps
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
+  ({ className, variant, size, shape, asChild = false, ...props }, ref) => {
     const Comp = asChild ? Slot : "button";
     return (
-      <Comp className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props} />
+      <Comp
+        className={cn(buttonVariants({ variant, size, shape, className }))}
+        ref={ref}
+        {...props}
+      />
     );
   },
 );

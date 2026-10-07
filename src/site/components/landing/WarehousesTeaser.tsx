@@ -1,9 +1,8 @@
-import { ArrowRight } from "lucide-react";
+import { CtaLink } from "../CtaLink";
 import { Reveal } from "../Reveal";
 import { SectionHead } from "../SectionHead";
 import { WarehouseCard } from "../market/WarehouseCard";
 import { warehousesRepository } from "../../data/warehousesRepository";
-import { siteButton } from "../../lib/button";
 import { c, useT } from "../../lib/copy";
 import { href } from "../../lib/route";
 
@@ -62,10 +61,7 @@ export function WarehousesTeaser() {
 
         <Reveal delay={280}>
           <div className="mt-10 text-center">
-            <a href={href("/market")} className={siteButton({ size: "lg", className: "group" })}>
-              {t(T.cta)}
-              <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
-            </a>
+            <CtaLink href={href("/market")}>{t(T.cta)}</CtaLink>
             <p className="mt-3 text-xs text-muted-foreground">{t(T.note)}</p>
           </div>
         </Reveal>

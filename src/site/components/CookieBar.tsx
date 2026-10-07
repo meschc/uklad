@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { Cookie } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { href } from "../lib/route";
 import {
   REOPEN_EVENT,
@@ -9,7 +10,6 @@ import {
   writeChoice,
   type CookieChoice,
 } from "../lib/cookieConsent";
-import { siteButton } from "../lib/button";
 import { c, useT } from "../lib/copy";
 
 const T = {
@@ -82,18 +82,23 @@ export function CookieBar() {
         <div className="flex shrink-0 gap-2">
           {/* Обе кнопки одного размера и стоят рядом: выбор здесь
               равноправный, а не «согласиться и мелким шрифтом отказаться». */}
-          <button
+          <Button
+            variant="outline"
+            size="lg"
+            shape="pill"
             onClick={() => decide("necessary")}
-            className={siteButton({ tone: "outline", className: "flex-1 sm:flex-none" })}
+            className="flex-1 sm:flex-none"
           >
             {t(T.necessary)}
-          </button>
-          <button
+          </Button>
+          <Button
+            size="lg"
+            shape="pill"
             onClick={() => decide("all")}
-            className={siteButton({ className: "flex-1 sm:flex-none" })}
+            className="flex-1 sm:flex-none"
           >
             {t(T.all)}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

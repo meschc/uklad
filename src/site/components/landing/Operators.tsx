@@ -1,9 +1,9 @@
 import { ArrowUpRight, Check } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { eyebrow } from "@/components/ui/eyebrow";
 import { Reveal } from "../Reveal";
 import { warehousesRepository } from "../../data/warehousesRepository";
-import { siteButton } from "../../lib/button";
 import { c, useT } from "../../lib/copy";
-import { eyebrow } from "../../lib/eyebrow";
 import { href } from "../../lib/route";
 
 const GAINS = [
@@ -68,7 +68,7 @@ export function Operators() {
       <div className="grid items-start gap-12 lg:grid-cols-2 lg:gap-16">
         <div>
           <Reveal>
-            <p className={eyebrow("mb-3")}>{t(T.eyebrow)}</p>
+            <p className={eyebrow({ tone: "primary", className: "mb-3" })}>{t(T.eyebrow)}</p>
             <h2 className="font-display text-3xl font-heading leading-display tracking-tight sm:text-5xl">
               {t(T.titleTop)}
               <br />
@@ -84,16 +84,18 @@ export function Operators() {
               на этом шаге нужен не тур по интерфейсу, а разговор: он покупает
               систему вместе с потоком клиентов, а такое не выбирают кнопкой. */}
           <Reveal delay={120} className="mt-8 flex flex-wrap gap-3">
-            <a href={href("/contacts")} className={siteButton({ className: "group" })}>
-              {t(T.connect)}
-              <ArrowUpRight className="size-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-            </a>
+            <Button asChild size="lg" shape="pill" className="group">
+              <a href={href("/contacts")}>
+                {t(T.connect)}
+                <ArrowUpRight className="transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+              </a>
+            </Button>
             {/* Раньше вторая кнопка вела в FAQ — то есть отвечала на вопрос
                 «как попасть в витрину» тремя строками в чужом разделе. Теперь
                 у склада есть своя страница с разбором по шагам. */}
-            <a href={href("/warehouses")} className={siteButton({ tone: "outline" })}>
-              {t(T.howToList)}
-            </a>
+            <Button asChild variant="outline" size="lg" shape="pill">
+              <a href={href("/warehouses")}>{t(T.howToList)}</a>
+            </Button>
           </Reveal>
 
           <Reveal delay={200}>

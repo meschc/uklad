@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { ArrowLeft, Download, FileText, Languages } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { LEGAL_BY_SLUG, LEGAL_DOCS } from "../../data/legal";
 import type { LegalDoc } from "../../data/legal/types";
 import { LEGAL_UPDATED } from "../../data/org";
-import { siteButton } from "../../lib/button";
 import { c, fill, useT } from "../../lib/copy";
 import { searchDoc } from "../../lib/legalSearch";
 import { href } from "../../lib/route";
@@ -107,20 +107,20 @@ function LegalDocView({ doc }: { doc: LegalDoc }) {
          * только что прочитал, с датой редакции и реквизитами. Оформление
          * бумажной версии задано в `site.css`, блок `@media print`.
          */}
-        <button
+        <Button
+          variant="outline"
+          size="lg"
+          shape="pill"
           onClick={() => window.print()}
           title={t(T.printHint)}
           // Подсветка своя: под курсором кнопка окрашивается фирменным,
           // а не подливается фоном, — это единственное действие на странице
           // документа, и оно должно отзываться заметнее обычной кнопки.
-          className={siteButton({
-            tone: "outline",
-            className: "hover:border-primary/50 hover:bg-transparent hover:text-primary",
-          })}
+          className="hover:border-primary/50 hover:bg-transparent hover:text-primary"
         >
-          <Download className="size-3.5" />
+          <Download />
           {t(T.download)}
-        </button>
+        </Button>
       </div>
 
       <div data-print="doc" className="mt-8 grid gap-12 lg:grid-cols-[minmax(0,1fr)_240px]">

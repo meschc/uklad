@@ -1,11 +1,11 @@
 import { Check } from "lucide-react";
+import { eyebrow } from "@/components/ui/eyebrow";
 import { cn } from "@/lib/utils";
 import { BrandMark } from "../BrandMark";
 import { MARKETPLACE_BY_ID } from "../../data/marketplaces";
 import { money } from "../../data/warehouses";
 import { warehousesRepository } from "../../data/warehousesRepository";
 import { c, useT, type Copy } from "../../lib/copy";
-import { eyebrow } from "../../lib/eyebrow";
 
 /** Сколько заявок ещё без ответа — верхняя, та, что пришла только что. */
 const NEW = 1;
@@ -80,7 +80,7 @@ export function InboxBoard() {
               {t(T.meta, { name: t(HOST.name), city: t(HOST.cityTitle) })}
             </p>
           </div>
-          <span className={eyebrow("shrink-0 text-muted-foreground")}>
+          <span className={eyebrow({ className: "shrink-0" })}>
             {t(T.count, { n: REQUESTS.length })}
           </span>
         </header>

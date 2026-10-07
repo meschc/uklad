@@ -251,7 +251,7 @@ function VoteButton({ item, voted, full }: { item: RoadmapItem; voted: boolean; 
       aria-label={t(voted ? T.votedFor : T.voteFor, { title })}
       title={blocked ? t(T.voteFull, { max: MAX_VOTES }) : undefined}
       className={cn(
-        "r-chip ml-auto inline-flex h-7 shrink-0 items-center gap-1 border px-2 text-xs font-medium transition-colors",
+        "r-chip ml-auto inline-flex h-8 shrink-0 items-center gap-1 border px-2 text-xs font-medium transition-colors",
         voted
           ? "border-primary bg-primary/10 text-primary"
           : "border-border enabled:hover:border-primary/40 enabled:hover:text-foreground disabled:opacity-40",

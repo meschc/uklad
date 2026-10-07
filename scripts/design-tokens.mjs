@@ -5,34 +5,30 @@
  * Studio, и палитра в Figma не расходится с тем, что видно в браузере.
  * Запуск: npm run tokens.
  *
- * Источников два, и это не удвоение, а две разные программы под одним доменом.
- * `src/index.css` держит палитру кабинета; `src/site/site.css` подгружается
- * следом только в сборке витрины и переопределяет часть токенов своими — у
- * витрины темнее фон, другой синий и есть собственный `--brand`, которого в
- * кабинете нет вовсе. Пока скрипт читал один файл, выгрузка описывала кабинет
- * и молча выдавала его за весь продукт.
+ * Источник один — `src/index.css`, общий для витрины и кабинета (ADR 0007).
+ * Раньше их было два: `src/site/site.css` переопределял витрине фон, синий и
+ * добавлял свой `--brand`, и выгрузка держала четыре набора —
+ * `color.app.light|dark` и `color.site.light|dark`. Своей палитры у витрины
+ * больше нет: в `site.css` остался только характер (скругление `--r`), а не
+ * цвет. Два одинаковых набора под разными именами в Figma читались бы как два
+ * разных продукта, поэтому наборов теперь тоже два — `color.light|dark`.
  *
- * Отсюда четыре набора вместо двух: `color.app.light|dark` и
- * `color.site.light|dark`. Каждый собирается наложением блоков ровно в том
- * порядке, в каком их накладывает браузер: `:root` кабинета → `.dark` кабинета
- * → блок витрины. Селекторы `:root`, `.light` и `.dark` садятся на один и тот
- * же элемент (`html`) и весят одинаково, поэтому спорные свойства решаются
- * порядком, а не важностью.
+ * Тёмный набор — наложение `.dark` на `:root`, ровно как в браузере: оба
+ * селектора садятся на один и тот же элемент (`html`), и `.dark` перебивает
+ * только то, что задаёт сам.
  */
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 // Явный импорт вместо глобальной переменной — см. тот же приём в prerender.mjs.
 import console from "node:console";
 
-const APP_CSS = readFileSync("src/index.css", "utf8");
-const SITE_CSS = readFileSync("src/site/site.css", "utf8");
+const THEME_CSS = readFileSync("src/index.css", "utf8");
 
 /**
  * Тело блока, открывающегося на позиции `open`, — по балансу скобок.
  *
- * Считать скобки, а не искать закрывающую по отступу: блоки лежат на разной
- * глубине (в `index.css` они внутри `@layer base`, в `site.css` — на верхнем
- * уровне), и правило «закрывается двумя пробелами и скобкой» верно ровно для
- * одного из двух файлов.
+ * Считать скобки, а не искать закрывающую по отступу: блоки темы лежат внутри
+ * `@layer base`, и правило «закрывается двумя пробелами и скобкой» сломается
+ * от первой же перестановки слоёв.
  */
 function braced(css, open) {
   let depth = 0;
@@ -49,10 +45,10 @@ function braced(css, open) {
 /**
  * Вырезает `@media print` целиком.
  *
- * На печати витрина переворачивает палитру одним блоком: белый лист вместо
- * почти чёрного фона. Это третья тема, и в Figma ей делать нечего — но
- * селекторы там те же `.dark` и `.light`, и без этого шага печатный белый
- * затёр бы экранный.
+ * Печать — третья тема (серый лист витрины лежит в `site.css`, правила бумаги
+ * кабинета — в `index.css` и `print.css`), и в Figma ей делать нечего. Если
+ * однажды печатный блок переопределит здесь `.dark` или `:root`, без этого
+ * шага бумажный белый молча затёр бы экранный.
  */
 function withoutPrint(css) {
   let out = css;
@@ -176,21 +172,14 @@ function colors(vars) {
   return out;
 }
 
-const appLight = block(APP_CSS, ":root");
-const appDark = layer(appLight, block(APP_CSS, "\\.dark"));
-// `:root` витрины идёт в её файле последним и потому кладётся поверх темы.
-const siteRoot = block(SITE_CSS, ":root");
-const siteLight = layer(appLight, block(SITE_CSS, "\\.light"), siteRoot);
-const siteDark = layer(appDark, block(SITE_CSS, "\\.dark"), siteRoot);
+const light = block(THEME_CSS, ":root");
+const dark = layer(light, block(THEME_CSS, "\\.dark"));
 
 const existing = JSON.parse(readFileSync("docs/design/design-tokens.json", "utf8"));
 
 const tokens = {
   ...existing,
-  color: {
-    app: { light: colors(appLight), dark: colors(appDark) },
-    site: { light: colors(siteLight), dark: colors(siteDark) },
-  },
+  color: { light: colors(light), dark: colors(dark) },
 };
 
 mkdirSync("docs/design", { recursive: true });
@@ -198,6 +187,6 @@ writeFileSync("docs/design/design-tokens.json", `${JSON.stringify(tokens, null, 
 
 const count = (set) => Object.keys(set).length;
 console.log(
-  `tokens: кабинет ${count(tokens.color.app.light)}/${count(tokens.color.app.dark)}, ` +
-    `витрина ${count(tokens.color.site.light)}/${count(tokens.color.site.dark)} (светлая/тёмная)`,
+  `tokens: ${count(tokens.color.light)}/${count(tokens.color.dark)} цветов (светлая/тёмная), ` +
+    "общие для витрины и кабинета",
 );

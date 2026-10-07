@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Menu, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Logo } from "./Logo";
 import { anchorHref, href, routePath, switchLang, type Route } from "../lib/route";
@@ -80,6 +81,17 @@ export function SiteHeader({ route }: { route: Route }) {
     setOpen(false);
   }
 
+  // Ссылка, а не кнопка: у английской версии свой адрес, и робот должен по
+  // нему пройти — иначе она в выдачу не попадёт вовсе. Но переключение — не
+  // переход: адрес и язык меняются вместе, одним `replaceState`, чтобы
+  // «назад» вело на предыдущую страницу, а не на эту же по-русски.
+  const langHref = href(routePath(route), other);
+  const onSwitchLang = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setOpen(false);
+    switchLang(other);
+  };
+
   // Адрес пункта меню. Якорь секции тоже адрес, а не действие: ссылка `/#faq`
   // работает и с других страниц, и в новой вкладке.
   const linkHref = (link: Link) => (link.anchor ? anchorHref(link.anchor) : href(link.to ?? "/"));
@@ -93,7 +105,7 @@ export function SiteHeader({ route }: { route: Route }) {
           : "border-b border-transparent",
       )}
     >
-      <div className="mx-auto flex h-16 max-w-6xl items-center gap-6 px-4 sm:px-6">
+      <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:gap-6 sm:px-6">
         <a
           href={href("/")}
           aria-label={t(T.home)}
@@ -124,46 +136,41 @@ export function SiteHeader({ route }: { route: Route }) {
               пункт меню, и она не должна спорить за внимание с единственным
               действием шапки. Показываем язык, куда ведёт кнопка, а не
               текущий: «EN» рядом с русским текстом читается однозначно, «RU»
-              рядом с ним — как утверждение, а не как ссылка. */}
-          {/* Ссылка, а не кнопка: у английской версии свой адрес, и робот
-              должен по нему пройти — иначе она в выдачу не попадёт вовсе.
-              `hreflang` подсказывает, что за язык на том конце. */}
-          <a
-            href={href(routePath(route), other)}
-            hrefLang={other}
-            onClick={(e) => {
-              // Переключение — не переход: адрес и язык меняются вместе, одним
-              // `replaceState`, чтобы «назад» вело на предыдущую страницу, а не
-              // на эту же по-русски.
-              e.preventDefault();
-              switchLang(other);
-            }}
-            aria-label={t(T.switchTo)}
-            className="rounded-full px-2.5 py-2 text-sm font-medium uppercase tracking-[0.08em] text-muted-foreground transition-colors hover:bg-wash hover:text-foreground"
+              рядом с ним — как утверждение, а не как ссылка. На телефоне он
+              уходит в меню: логотип, действие, язык и меню в 375 точек не
+              встают, и шапка вылезала за край экрана. `hreflang` подсказывает,
+              что за язык на том конце. */}
+          <Button
+            asChild
+            variant="ghost"
+            shape="pill"
+            className="hidden px-2.5 uppercase tracking-[0.08em] text-muted-foreground sm:inline-flex"
           >
-            {other}
-          </a>
+            <a href={langHref} hrefLang={other} onClick={onSwitchLang} aria-label={t(T.switchTo)}>
+              {other}
+            </a>
+          </Button>
 
-          {/* `whitespace-nowrap` здесь не для красоты: на узком экране
-              «Подобрать склад» переносилось по пробелу, и единственное
-              действие шапки превращалось в двухэтажную пилюлю вдвое выше
-              соседей — шапка ехала следом. Отступы на мобильном ужаты, чтобы
-              строка в одну линию поместилась рядом с логотипом и меню. */}
-          <a
-            href={href("/market")}
-            className="group relative whitespace-nowrap rounded-full bg-foreground px-3 py-2 text-sm font-medium text-background transition-colors hover:bg-foreground/85 sm:px-4"
-          >
-            {t(T.cta)}
-          </a>
+          {/* Все три контрола шапки — общая кнопка ступени 36: одна строка
+              интерфейса, одна высота. Действие — того же цвета, что призыв
+              героя (`CtaLink`), а не тёмное: два разных «главных» на одном
+              экране спорили бы друг с другом. Отступы на телефоне ужаты, чтобы
+              строка в одну линию встала рядом с логотипом и меню. */}
+          <Button asChild shape="pill" className="px-3 sm:px-4">
+            <a href={href("/market")}>{t(T.cta)}</a>
+          </Button>
 
-          <button
+          <Button
+            variant="outline"
+            size="icon"
+            shape="pill"
             onClick={() => setOpen((v) => !v)}
             aria-label={t(T.menu)}
             aria-expanded={open}
-            className="rounded-full border border-stroke p-2.5 text-muted-foreground transition-colors hover:border-stroke-hover lg:hidden"
+            className="text-muted-foreground lg:hidden"
           >
-            {open ? <X className="size-4" /> : <Menu className="size-4" />}
-          </button>
+            {open ? <X /> : <Menu />}
+          </Button>
         </div>
       </div>
 
@@ -182,6 +189,14 @@ export function SiteHeader({ route }: { route: Route }) {
               {t(l.label)}
             </a>
           ))}
+          <a
+            href={langHref}
+            hrefLang={other}
+            onClick={onSwitchLang}
+            className="block w-full rounded-full px-4 py-2.5 text-left text-sm font-medium text-muted-foreground hover:bg-wash hover:text-foreground sm:hidden"
+          >
+            {t(T.switchTo)}
+          </a>
         </nav>
       )}
     </header>

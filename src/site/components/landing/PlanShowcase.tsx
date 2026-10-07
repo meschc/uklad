@@ -84,6 +84,15 @@ function cellRect(sectionIndex: number, cellIndex: number) {
   };
 }
 
+/**
+ * Цвета плана — общие роли, а не складская палитра кабинета. Там секция
+ * голубая, а лестница оранжевая: оператору надо отличать типы модулей с одного
+ * взгляда. Здесь отличать нечего — план показывает одну мысль, «вот ваша
+ * коробка», и цветной на нём должна остаться ровно одна ячейка. Поэтому секции
+ * и зона приёмки набраны рамкой и приглушённым текстом (`--border`,
+ * `--muted-foreground`), а цель — основным синим (`--primary`). Раньше ту же
+ * задачу решала своя приглушённая палитра модулей в site.css.
+ */
 export function PlanShowcase({ className }: { className?: string }) {
   const t = useT();
   const target = cellRect(TARGET.section, TARGET.cell);
@@ -123,7 +132,7 @@ export function PlanShowcase({ className }: { className?: string }) {
             width={SECTION_W}
             height={SECTION_H}
             rx="10"
-            fill="hsl(var(--m-section))"
+            fill="hsl(var(--border))"
             opacity=".55"
           />
           <text
@@ -132,7 +141,7 @@ export function PlanShowcase({ className }: { className?: string }) {
             className="font-mono"
             fontSize="9"
             fontWeight="700"
-            fill="hsl(var(--m-section-fg))"
+            fill="hsl(var(--muted-foreground))"
             opacity=".75"
           >
             {s.label}
@@ -152,9 +161,9 @@ export function PlanShowcase({ className }: { className?: string }) {
                 rx="1"
                 fill={
                   isTarget
-                    ? "hsl(var(--brand))"
+                    ? "hsl(var(--primary))"
                     : busy
-                      ? "hsl(var(--m-section-fg))"
+                      ? "hsl(var(--muted-foreground))"
                       : "hsl(var(--background))"
                 }
                 opacity={isTarget ? 1 : busy ? 0.82 : 0.9}
@@ -175,7 +184,7 @@ export function PlanShowcase({ className }: { className?: string }) {
         height={target.h + 4}
         rx="3"
         fill="none"
-        stroke="hsl(var(--brand))"
+        stroke="hsl(var(--primary))"
         strokeWidth="1.5"
         className="animate-float"
         opacity=".7"
@@ -208,14 +217,14 @@ export function PlanShowcase({ className }: { className?: string }) {
       </g>
 
       {/* Зона приёмки и коробка, которая едет оттуда на полку. */}
-      <rect x="30" y="248" width="96" height="26" rx="8" fill="hsl(var(--m-stairs))" opacity=".6" />
-      <text x="43" y="265" fontSize="10" fontWeight="600" fill="hsl(var(--m-stairs-fg))">
+      <rect x="30" y="248" width="96" height="26" rx="8" fill="hsl(var(--border))" opacity=".6" />
+      <text x="43" y="265" fontSize="10" fontWeight="600" fill="hsl(var(--muted-foreground))">
         {t(T.intake)}
       </text>
       {/* Коробка того же цвета, что и целевая ячейка: это один и тот же груз,
           просто в двух моментах времени. */}
       <g className="plan-fly">
-        <rect width="13" height="11" rx="1" fill="hsl(var(--brand))" />
+        <rect width="13" height="11" rx="1" fill="hsl(var(--primary))" />
         <path d="M6.5 0V11" stroke="hsl(var(--background))" strokeWidth="1" opacity=".5" />
       </g>
     </svg>

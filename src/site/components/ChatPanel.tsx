@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FlaskConical, Send } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { siteButton } from "../lib/button";
 import { c, useT } from "../lib/copy";
 
 const T = {
@@ -111,7 +111,7 @@ export function ChatPanel({ to, subject, responseHours, presets = [], className 
                 key={p}
                 type="button"
                 onClick={() => setText(p)}
-                className="rounded-full border border-border px-3 py-1 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+                className="inline-flex h-8 items-center rounded-full border border-border px-3 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
               >
                 {p}
               </button>
@@ -136,19 +136,21 @@ export function ChatPanel({ to, subject, responseHours, presets = [], className 
             aria-label={t(T.aria, { to, subject })}
             className="r-inset min-h-[52px] flex-1 resize-none border border-input bg-background px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
           />
-          <button
+          {/* Та же общая кнопка, только квадратная: подписи у неё нет, и
+              ступень `icon` (36) встаёт на место высоты. Цвет, подсветка и
+              погасший вид приходят из примитива: здесь они были собраны
+              руками и жили на девятой высоте (44). */}
+          <Button
             type="button"
+            size="icon"
+            shape="pill"
             onClick={send}
             disabled={!text.trim()}
             aria-label={t(T.send)}
-            // Та же кнопка витрины, только квадратная: подписи у неё нет —
-            // значит, нет и горизонтальных полей, а `size-10` встаёт на место
-            // высоты. Цвет, подсветка и погасший вид приходят из модуля:
-            // здесь они были собраны руками и жили на девятой высоте (44).
-            className={siteButton({ className: "size-10 shrink-0 p-0" })}
+            className="shrink-0"
           >
-            <Send className="size-4" />
-          </button>
+            <Send />
+          </Button>
         </div>
       </div>
     </div>

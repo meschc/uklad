@@ -308,12 +308,11 @@ function ReceivingMock() {
             <span
               className={cn(
                 "text-right tabular-nums",
-                // Оттенки на две ступени светлее «бумажных»: на тёмном фоне
-                // 600-е из палитры Tailwind уходят в грязь и читаются хуже
-                // серого текста рядом.
-                diff === 0
-                  ? "text-emerald-600 dark:text-emerald-400"
-                  : "font-semibold text-amber-600 dark:text-amber-400",
+                // Сошлось — токен `success`, он сам светлеет в тёмной теме.
+                // Расхождение пока набрано янтарём по месту: роли «внимание»
+                // в общих токенах ещё нет, а на тёмном фоне 600-е из палитры
+                // Tailwind уходят в грязь — отсюда `dark:` на две ступени светлее.
+                diff === 0 ? "text-success" : "font-semibold text-amber-600 dark:text-amber-400",
               )}
             >
               {diff === 0 ? "—" : diff}
@@ -335,7 +334,7 @@ function ReceivingMock() {
 const SHIPMENT_STATES = {
   gone: {
     label: c("Уехала", "Shipped"),
-    tone: "bg-emerald-500/12 text-emerald-700 dark:text-emerald-300",
+    tone: "bg-success/12 text-success",
   },
   loading: {
     label: c("Ждёт погрузки", "Awaiting loading"),

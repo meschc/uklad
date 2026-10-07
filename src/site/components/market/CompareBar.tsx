@@ -1,7 +1,7 @@
 import { Scale, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { COMPARE_LIMIT } from "../../lib/compare";
 import { useCookieBannerOpen } from "../../lib/cookieConsent";
-import { siteButton } from "../../lib/button";
 import { c, useT } from "../../lib/copy";
 import type { Warehouse } from "../../data/warehouses";
 
@@ -99,12 +99,12 @@ export function CompareBar({
               {t(T.alone)}
             </span>
           )}
-          <button type="button" onClick={onClear} className={siteButton({ tone: "outline" })}>
+          <Button type="button" variant="outline" size="lg" shape="pill" onClick={onClear}>
             {t(T.clear)}
-          </button>
-          <button type="button" onClick={onOpen} disabled={alone} className={siteButton()}>
+          </Button>
+          <Button type="button" size="lg" shape="pill" onClick={onOpen} disabled={alone}>
             {t(T.open)}
-          </button>
+          </Button>
         </div>
       </section>
     </div>
