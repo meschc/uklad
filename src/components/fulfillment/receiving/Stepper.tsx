@@ -28,7 +28,7 @@ export function Stepper({
   const steps = crossDock ? STEPS.filter((s) => s.id !== "place") : STEPS;
   const idx = steps.findIndex((s) => s.id === step);
   return (
-    <ol className="flex items-center gap-1 text-[11px]">
+    <ol className="flex items-center gap-1 text-xs">
       {steps.map((s, i) => {
         // Без сверки шаг «количество» остаётся, но подписан иначе.
         const active = i === idx;

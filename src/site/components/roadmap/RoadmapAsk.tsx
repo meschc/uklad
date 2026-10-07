@@ -113,8 +113,8 @@ export function RoadmapAsk() {
       className="r-window mt-16 border border-border bg-card/60 p-6 sm:mt-20 sm:p-8"
     >
       <div className="mx-auto max-w-2xl">
-        <h2 className="font-display text-[20px] font-medium tracking-tight">{t(T.title)}</h2>
-        <p className="mt-3 text-[14px] leading-relaxed text-muted-foreground">{t(T.note)}</p>
+        <h2 className="font-display text-xl font-heading tracking-tight">{t(T.title)}</h2>
+        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{t(T.note)}</p>
 
         {!done && (
           <div className="mt-6 space-y-5">
@@ -123,7 +123,7 @@ export function RoadmapAsk() {
             <div>
               <label
                 htmlFor="roadmap-idea"
-                className="block text-[11px] uppercase tracking-wide text-muted-foreground"
+                className="block text-xs uppercase tracking-wide text-muted-foreground"
               >
                 {t(T.idea)}
               </label>
@@ -141,7 +141,7 @@ export function RoadmapAsk() {
             <div>
               <label
                 htmlFor="roadmap-contact"
-                className="block text-[11px] uppercase tracking-wide text-muted-foreground"
+                className="block text-xs uppercase tracking-wide text-muted-foreground"
               >
                 {t(T.contact)}
               </label>
@@ -182,13 +182,13 @@ function MarkedList({ items }: { items: readonly { id: string; title: Copy }[] }
   const t = useT();
 
   if (items.length === 0) {
-    return <p className="text-[12px] text-muted-foreground">{t(T.markedEmpty)}</p>;
+    return <p className="text-xs text-muted-foreground">{t(T.markedEmpty)}</p>;
   }
 
   return (
     <div>
       <div className="flex items-baseline justify-between gap-3">
-        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+        <p className="text-xs uppercase tracking-wide text-muted-foreground">
           <span className="tabular-nums">
             {t(T.marked, { count: items.length, max: MAX_VOTES })}
           </span>
@@ -196,7 +196,7 @@ function MarkedList({ items }: { items: readonly { id: string; title: Copy }[] }
         <button
           type="button"
           onClick={clearVotes}
-          className="text-[12px] text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
+          className="text-xs text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
         >
           {t(T.clear)}
         </button>
@@ -213,7 +213,7 @@ function MarkedList({ items }: { items: readonly { id: string; title: Copy }[] }
                 aria-label={t(T.unmark, { title })}
                 className={cn(
                   "r-chip inline-flex h-8 items-center gap-1.5 border border-primary/40 bg-primary/10",
-                  "px-3 text-[12px] text-foreground transition-colors hover:border-primary",
+                  "px-3 text-xs text-foreground transition-colors hover:border-primary",
                 )}
               >
                 {title}

@@ -56,15 +56,13 @@ export function RowInspector({ row, floor, t }: { row: number; floor: Floor; t: 
           <CopyPlus className="size-3.5" />
           {t("insp.rowClone")}
         </Button>
-        <p className="text-[10px] leading-relaxed text-muted-foreground">
-          {t("insp.rowCloneHint")}
-        </p>
+        <p className="text-2xs leading-relaxed text-muted-foreground">{t("insp.rowCloneHint")}</p>
       </div>
 
       <button
         type="button"
         onClick={() => setRowForSelection(undefined)}
-        className="self-start text-[11px] text-muted-foreground transition-colors hover:text-destructive"
+        className="self-start text-xs text-muted-foreground transition-colors hover:text-destructive"
       >
         {t("insp.rowUnpin")}
       </button>

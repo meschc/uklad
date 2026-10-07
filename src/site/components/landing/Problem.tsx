@@ -70,7 +70,7 @@ export function Problem() {
             className="md:px-7 md:first:pl-0 md:last:pr-0"
           >
             <p.icon className="size-5 text-primary" strokeWidth={1.75} />
-            <h3 className="mt-4 font-display text-lg font-medium tracking-tight">{t(p.title)}</h3>
+            <h3 className="mt-4 font-display text-lg font-heading tracking-tight">{t(p.title)}</h3>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t(p.body)}</p>
           </Reveal>
         ))}

@@ -35,7 +35,7 @@ export function QtyStep({
     <div className="flex flex-col gap-4">
       <div className={card()}>
         <p className="text-sm font-semibold">{draft.product.name}</p>
-        <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
+        <p className="mt-0.5 font-mono text-xs text-muted-foreground">
           {draft.product.sku} · {draft.product.barcode}
         </p>
         {remainder != null ? (

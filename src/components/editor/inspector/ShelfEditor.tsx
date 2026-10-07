@@ -45,7 +45,7 @@ export function ShelfEditor({ module: m, t }: { module: PlacedModule; t: TFunc }
           onChange={(n) => setShelfCount(m.id, n)}
         />
       </div>
-      <p className="text-[11px] leading-relaxed text-muted-foreground">{t("insp.shelvesHint")}</p>
+      <p className="text-xs leading-relaxed text-muted-foreground">{t("insp.shelvesHint")}</p>
 
       <div className="flex flex-col gap-1.5">
         {shelves.map((sh, i) => {
@@ -98,7 +98,7 @@ export function ShelfEditor({ module: m, t }: { module: PlacedModule; t: TFunc }
                   <button
                     type="button"
                     onClick={() => setShelfNumber(m.id, i, undefined)}
-                    className="text-[10px] text-muted-foreground hover:text-foreground"
+                    className="text-2xs text-muted-foreground hover:text-foreground"
                   >
                     {t("insp.numberReset")}
                   </button>
@@ -127,7 +127,7 @@ export function ShelfEditor({ module: m, t }: { module: PlacedModule; t: TFunc }
                     });
                   }}
                 />
-                <label className="flex cursor-pointer items-center gap-1 text-[10px] text-muted-foreground">
+                <label className="flex cursor-pointer items-center gap-1 text-2xs text-muted-foreground">
                   <input
                     type="checkbox"
                     checked={sh.pickable === false}
@@ -172,7 +172,7 @@ function ShelfDetail({ index, cells, t }: { index: number; cells: number; t: TFu
           <div
             key={j}
             className={cn(
-              "flex min-w-0 flex-1 items-center justify-center bg-module-section/60 text-[10px] font-semibold text-module-section-fg",
+              "flex min-w-0 flex-1 items-center justify-center bg-module-section/60 text-2xs font-semibold text-module-section-fg",
               j > 0 && "border-l border-black/15 dark:border-white/20",
             )}
           >
@@ -180,7 +180,7 @@ function ShelfDetail({ index, cells, t }: { index: number; cells: number; t: TFu
           </div>
         ))}
       </div>
-      <p className="mt-1.5 text-[10px] leading-relaxed text-muted-foreground">
+      <p className="mt-1.5 text-2xs leading-relaxed text-muted-foreground">
         {t("insp.shelfDetailNote")}
       </p>
     </div>

@@ -41,18 +41,16 @@ function MilestoneCard({ row }: { row: MilestoneProgress }) {
   return (
     <article className="r-window flex h-full flex-col border border-border bg-card/60 p-5">
       <div className="flex items-baseline justify-between gap-3">
-        <h3 className="font-display text-[17px] font-medium tracking-tight">
-          {t(milestone.title)}
-        </h3>
-        <span className="shrink-0 text-[12px] tabular-nums text-muted-foreground">
+        <h3 className="font-display text-lg font-heading tracking-tight">{t(milestone.title)}</h3>
+        <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
           {milestone.target ? quarterLabel(t.lang, milestone.target) : t(T.finished)}
         </span>
       </div>
-      <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">{t(milestone.goal)}</p>
+      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t(milestone.goal)}</p>
 
       <div className="mt-auto pt-5">
         <ProgressBar row={row} />
-        <p className="mt-2 flex flex-wrap gap-x-3 text-[11px] text-muted-foreground">
+        <p className="mt-2 flex flex-wrap gap-x-3 text-xs text-muted-foreground">
           <span className="tabular-nums">
             {t(T.ofTotal, { done, total })} {t(T.done)}
           </span>

@@ -71,7 +71,7 @@ export function SelectionOverlay({
 
           {/* Бейдж размера под выделенным */}
           <div
-            className="absolute -translate-x-1/2 rounded bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground shadow-sm"
+            className="absolute -translate-x-1/2 rounded bg-primary px-1.5 py-0.5 text-2xs font-semibold text-primary-foreground shadow-sm"
             style={{ left: box.left + box.width / 2, top: box.top + box.height + 6 }}
           >
             {single.w}×{single.h}

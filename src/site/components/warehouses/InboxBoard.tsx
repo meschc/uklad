@@ -5,6 +5,7 @@ import { MARKETPLACE_BY_ID } from "../../data/marketplaces";
 import { money } from "../../data/warehouses";
 import { warehousesRepository } from "../../data/warehousesRepository";
 import { c, useT, type Copy } from "../../lib/copy";
+import { eyebrow } from "../../lib/eyebrow";
 
 /** Сколько заявок ещё без ответа — верхняя, та, что пришла только что. */
 const NEW = 1;
@@ -71,15 +72,15 @@ export function InboxBoard() {
 
   return (
     <figure className="m-0">
-      <div className="r-window border border-foreground/[0.09]">
+      <div className="r-window border border-frame">
         <header className="flex items-baseline justify-between gap-4 border-b border-border px-5 py-4">
           <div className="min-w-0">
-            <p className="font-display text-[15px] font-medium tracking-tight">{t(T.title)}</p>
-            <p className="mt-1 truncate text-[12px] text-muted-foreground">
+            <p className="font-display text-base font-medium tracking-tight">{t(T.title)}</p>
+            <p className="mt-1 truncate text-xs text-muted-foreground">
               {t(T.meta, { name: t(HOST.name), city: t(HOST.cityTitle) })}
             </p>
           </div>
-          <span className="shrink-0 text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+          <span className={eyebrow("shrink-0 text-muted-foreground")}>
             {t(T.count, { n: REQUESTS.length })}
           </span>
         </header>
@@ -89,10 +90,10 @@ export function InboxBoard() {
             <li key={r.goods.ru} className={cn("px-5 py-4", i > 0 && "border-t border-border")}>
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <p className="truncate font-display text-[15px] font-medium tracking-tight">
+                  <p className="truncate font-display text-base font-medium tracking-tight">
                     {t(r.goods)}
                   </p>
-                  <p className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px]">
+                  <p className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs">
                     {i < NEW ? (
                       <>
                         {/* Точка пульсирует только у неотвеченной заявки: это
@@ -113,8 +114,8 @@ export function InboxBoard() {
                 </div>
 
                 <div className="shrink-0 text-right">
-                  <p className="font-mono text-[13px] tabular-nums">{money(monthly(r.places))} ₽</p>
-                  <p className="mt-0.5 text-[11px] text-muted-foreground">{t(T.unit)}</p>
+                  <p className="font-mono text-sm tabular-nums">{money(monthly(r.places))} ₽</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{t(T.unit)}</p>
                 </div>
               </div>
 
@@ -123,7 +124,7 @@ export function InboxBoard() {
                   const brand = MARKETPLACE_BY_ID[id];
                   return brand ? <BrandMark key={id} brand={brand} className="size-5" /> : null;
                 })}
-                <span className="ml-1 text-[11px] tabular-nums text-muted-foreground">
+                <span className="ml-1 text-xs tabular-nums text-muted-foreground">
                   {r.places} {t.plural(r.places, ["место", "места", "мест"], ["slot", "slots"])}
                 </span>
               </div>
@@ -132,7 +133,7 @@ export function InboxBoard() {
         </ul>
       </div>
 
-      <figcaption className="mt-3 text-[12px] leading-relaxed text-muted-foreground">
+      <figcaption className="mt-3 text-xs leading-relaxed text-muted-foreground">
         {t(T.caption)}
       </figcaption>
     </figure>

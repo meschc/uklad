@@ -50,7 +50,7 @@ export function ToolRail() {
         </TooltipTrigger>
         <TooltipContent side="right" className="flex items-center gap-2">
           <span>{b.title}</span>
-          <kbd className="rounded bg-background/20 px-1 text-[10px]">{b.shortcut}</kbd>
+          <kbd className="rounded bg-background/20 px-1 text-2xs">{b.shortcut}</kbd>
         </TooltipContent>
       </Tooltip>
     );

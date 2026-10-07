@@ -141,7 +141,7 @@ function CardBody({ warehouse: w, volume }: { warehouse: Warehouse; volume?: Sel
         <header className="flex items-start gap-4">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
-              <h3 className="truncate font-display text-base font-medium tracking-tight">
+              <h3 className="truncate font-display text-base font-heading tracking-tight">
                 {t(w.name)}
               </h3>
               {w.verified && (
@@ -175,7 +175,7 @@ function CardBody({ warehouse: w, volume }: { warehouse: Warehouse; volume?: Sel
         </dl>
 
         {stale && (
-          <p className="mt-2.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          <p className="mt-2.5 flex items-center gap-1.5 text-xs text-muted-foreground">
             <Clock className="size-3 shrink-0" />
             <span className="truncate">
               {t(T.stale, { date: shortDate(t.lang, w.confirmedAt) })}
@@ -196,7 +196,7 @@ function CardBody({ warehouse: w, volume }: { warehouse: Warehouse; volume?: Sel
             {w.schemes.map((s) => (
               <span
                 key={s}
-                className="rounded-full bg-muted px-2.5 py-0.5 text-[10px] font-bold tracking-wide text-muted-foreground"
+                className="rounded-full bg-muted px-2.5 py-0.5 text-2xs font-bold tracking-wide text-muted-foreground"
               >
                 {s}
               </span>
@@ -206,12 +206,12 @@ function CardBody({ warehouse: w, volume }: { warehouse: Warehouse; volume?: Sel
               return brand ? <BrandMark key={id} brand={brand} className="size-5" /> : null;
             })}
             {w.marketplaces.length > MAX_BRANDS && (
-              <span className="text-[11px] text-muted-foreground">
+              <span className="text-xs text-muted-foreground">
                 +{w.marketplaces.length - MAX_BRANDS}
               </span>
             )}
           </span>
-          <span className="ml-auto shrink-0 whitespace-nowrap text-[11px] tabular-nums text-muted-foreground">
+          <span className="ml-auto shrink-0 whitespace-nowrap text-xs tabular-nums text-muted-foreground">
             {t(T.free, { n: money(w.cellsFree) })}
           </span>
         </footer>
@@ -241,14 +241,14 @@ function ReputationMark({ warehouse: w }: { warehouse: Warehouse }) {
   return (
     <div className="shrink-0 text-right">
       {rating === null ? (
-        <span className="text-[11px] text-muted-foreground">{t(T.noReviews)}</span>
+        <span className="text-xs text-muted-foreground">{t(T.noReviews)}</span>
       ) : (
         <>
           <span className="flex items-center justify-end gap-1 text-sm font-semibold">
             <Star className="size-3.5 fill-amber-400 text-amber-400" />
             {rating.toFixed(1)}
           </span>
-          <span className="text-[11px] text-muted-foreground">
+          <span className="text-xs text-muted-foreground">
             {t(T.reviews, {
               n: reviews,
               word: t.plural(reviews, ["отзыв", "отзыва", "отзывов"], ["review", "reviews"]),
@@ -257,7 +257,7 @@ function ReputationMark({ warehouse: w }: { warehouse: Warehouse }) {
         </>
       )}
       {openComplaints > 0 && (
-        <span className="mt-1 flex items-center justify-end gap-1 text-[11px] text-amber-600 dark:text-amber-500">
+        <span className="mt-1 flex items-center justify-end gap-1 text-xs text-amber-600 dark:text-amber-500">
           <AlertTriangle className="size-3 shrink-0" />
           {openComplaints > 1 ? t(T.complaints, { n: openComplaints }) : t(T.complaint)}
         </span>
@@ -298,7 +298,7 @@ function CompareToggle({
       aria-label={t(on ? T.uncompare : T.compare, { name })}
       title={disabled ? t(T.compareLimit, { n: COMPARE_LIMIT }) : undefined}
       className={cn(
-        "absolute right-3 top-3 z-10 inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-[11px] font-medium backdrop-blur transition-colors",
+        "absolute right-3 top-3 z-10 inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-medium backdrop-blur transition-colors",
         on
           ? "border-primary bg-primary text-primary-foreground"
           : "border-border/60 bg-background/85 text-muted-foreground hover:text-foreground disabled:opacity-40",
@@ -324,7 +324,7 @@ function EstimateRow({ warehouse: w, volume }: { warehouse: Warehouse; volume: S
   if (!fitsVolume(w, volume)) {
     const tooBig = volume.places > w.cellsFree;
     return (
-      <p className="mt-3 text-[12px] leading-relaxed text-muted-foreground">
+      <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
         {tooBig ? t(T.tooBig, { n: money(w.cellsFree) }) : t(T.tooSmall, { n: money(w.minPlaces) })}
       </p>
     );
@@ -335,7 +335,7 @@ function EstimateRow({ warehouse: w, volume }: { warehouse: Warehouse; volume: S
       <span className="font-display text-lg font-medium tabular-nums tracking-tight">
         ≈ {money(estimateMonth(w, volume).total)} ₽
       </span>
-      <span className="text-[11px] text-muted-foreground">{t(T.perMonth)}</span>
+      <span className="text-xs text-muted-foreground">{t(T.perMonth)}</span>
     </p>
   );
 }
@@ -352,8 +352,13 @@ function PriceCell({
   accent?: boolean;
 }) {
   return (
-    <div className={cn("bg-card px-3.5 py-3", accent && "bg-primary/[0.05]")}>
-      <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</dt>
+    /* Выделенная ячейка залита токеном палитры, а не синим с прозрачностью.
+       Полупрозрачная заливка не имеет собственного значения: цвет получается
+       смешением с тем, что под ней, и в палитре такого оттенка нет — его не
+       назвать, не вынести в токен и не повторить в другом месте. Акцент на
+       главной цене держат фон-ступень и синее число, а не тень синевы. */
+    <div className={cn("bg-card px-3.5 py-3", accent && "bg-muted")}>
+      <dt className="text-2xs uppercase tracking-wide text-muted-foreground">{label}</dt>
       <dd className="mt-0.5">
         <span
           className={cn(
@@ -363,7 +368,7 @@ function PriceCell({
         >
           {value}
         </span>
-        <span className="ml-1 text-[10px] text-muted-foreground">{unit}</span>
+        <span className="ml-1 text-2xs text-muted-foreground">{unit}</span>
       </dd>
     </div>
   );

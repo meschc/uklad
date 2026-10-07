@@ -117,7 +117,7 @@ export function HowItWorks() {
                 <Reveal key={s.n} as="li" delay={i * 70} className="relative">
                   <span
                     className={cn(
-                      "absolute -left-12 top-1 flex size-8 items-center justify-center rounded-full border text-[11px] font-bold transition-all duration-500 sm:-left-16 sm:size-9",
+                      "absolute -left-12 top-1 flex size-8 items-center justify-center rounded-full border text-xs font-bold transition-all duration-500 sm:-left-16 sm:size-9",
                       active
                         ? "border-primary bg-primary text-primary-foreground"
                         : "border-border bg-muted text-muted-foreground",
@@ -127,13 +127,13 @@ export function HowItWorks() {
                   </span>
                   <h3
                     className={cn(
-                      "font-display text-xl font-medium tracking-tight transition-colors duration-500 sm:text-2xl",
+                      "font-display text-xl font-heading tracking-tight transition-colors duration-500 sm:text-2xl",
                       active ? "text-foreground" : "text-muted-foreground",
                     )}
                   >
                     {t(s.title)}
                   </h3>
-                  <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-[15px]">
+                  <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base">
                     {t(s.body)}
                   </p>
                 </Reveal>

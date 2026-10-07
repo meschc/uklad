@@ -47,22 +47,22 @@ export function Numbers() {
   const t = useT();
 
   return (
-    <section className="border-y border-foreground/[0.07]">
+    <section className="border-y border-hairline">
       <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-16">
         {/* На широком экране числа стоят в один ряд и разделены такими же
             волосяными вертикалями — так же, как разложены колонки у страниц,
             с которых взят ориентир. На узком ряд ломается на две строки, и
             вертикаль пришлась бы посреди строки, поэтому только с lg. */}
-        <div className="grid grid-cols-2 gap-x-6 gap-y-10 lg:grid-cols-4 lg:gap-x-0 lg:divide-x lg:divide-foreground/[0.07]">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-10 lg:grid-cols-4 lg:gap-x-0 lg:divide-x lg:divide-hairline">
           {STATS.map((s, i) => (
             <Reveal key={s.id} delay={i * 80} className="text-center lg:px-6">
               <CountUp
                 to={s.value}
                 prefix={s.prefix && t(s.prefix)}
                 suffix={s.suffix}
-                className="block font-display text-[34px] font-medium tabular-nums tracking-[-0.02em] text-primary sm:text-[46px]"
+                className="block font-display text-4xl font-medium tabular-nums tracking-tight text-primary sm:text-5xl"
               />
-              <p className="mt-1.5 text-[13px] leading-snug text-muted-foreground">{t(s.label)}</p>
+              <p className="mt-1.5 text-sm leading-snug text-muted-foreground">{t(s.label)}</p>
             </Reveal>
           ))}
         </div>

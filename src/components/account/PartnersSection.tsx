@@ -103,7 +103,7 @@ export function PartnersSection() {
                   placeholder={t("partners.contactPlaceholder")}
                   className="h-8 flex-1"
                 />
-                <span className="w-24 shrink-0 text-right text-[11px] text-muted-foreground">
+                <span className="w-24 shrink-0 text-right text-xs text-muted-foreground">
                   {t("partners.goods", { n })}
                 </span>
                 <button

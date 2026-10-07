@@ -155,11 +155,11 @@ function ProductResult({
               left={<Addr label={place.label} placed t={t} />}
               middle={
                 place.boxBarcode ? (
-                  <span className="font-mono text-[11px] text-muted-foreground">
+                  <span className="font-mono text-xs text-muted-foreground">
                     {place.boxBarcode}
                   </span>
                 ) : (
-                  <span className="text-[11px] text-muted-foreground">{t("lookup.direct")}</span>
+                  <span className="text-xs text-muted-foreground">{t("lookup.direct")}</span>
                 )
               }
               right={place.qty}
@@ -376,7 +376,7 @@ function LineRows({ lines, empty, t }: { lines: LookupLine[]; empty: string; t: 
           key={`${l.product.id}-${l.boxBarcode ?? ""}-${i}`}
           left={l.product.name}
           middle={
-            <span className="font-mono text-[11px] text-muted-foreground">
+            <span className="font-mono text-xs text-muted-foreground">
               {l.boxBarcode ? `${l.product.sku} · ${l.boxBarcode}` : l.product.sku}
             </span>
           }
@@ -409,9 +409,7 @@ function Addr({ label, placed, t }: { label: string | null; placed: boolean; t: 
     return (
       <span
         className={
-          placed
-            ? "text-[11px] text-amber-600 dark:text-amber-400"
-            : "text-[11px] text-muted-foreground"
+          placed ? "text-xs text-amber-600 dark:text-amber-400" : "text-xs text-muted-foreground"
         }
       >
         {placed ? t("lookup.staleAddr") : t("lookup.notPlaced")}

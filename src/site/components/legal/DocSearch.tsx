@@ -63,7 +63,7 @@ export function DocSearch({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={t(T.placeholder)}
-          className="h-11 w-full rounded-full border border-border bg-background pl-11 pr-11 text-sm outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-primary"
+          className="h-10 w-full rounded-full border border-border bg-background pl-11 pr-11 text-sm outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-primary"
         />
         {value !== "" && (
           <button
@@ -79,7 +79,7 @@ export function DocSearch({
 
       {/* Ответ поиска читают голосом тоже: без `aria-live` человек, не видящий
           экрана, набирает слово и не узнаёт, нашлось ли хоть что-нибудь. */}
-      <div aria-live="polite" className="mt-3 text-[13px] leading-relaxed text-muted-foreground">
+      <div aria-live="polite" className="mt-3 text-sm leading-relaxed text-muted-foreground">
         {hits.tooShort && <p>{t(T.short)}</p>}
 
         {hits.query !== "" && hits.total === 0 && <p className="max-w-md">{t(T.none)}</p>}
@@ -102,7 +102,7 @@ export function DocSearch({
                   <a
                     lang="ru"
                     href={`#${s.id}`}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-[12px] leading-snug transition-colors hover:border-primary/50 hover:text-primary"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs leading-snug transition-colors hover:border-primary/50 hover:text-primary"
                   >
                     {s.title}
                     <span className="tabular-nums text-muted-foreground">{s.count}</span>

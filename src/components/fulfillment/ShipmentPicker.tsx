@@ -88,7 +88,7 @@ export function ShipmentPicker({
           {t("recv.pick.freeform")}
         </Button>
       </div>
-      <p className="text-[11px] text-muted-foreground">{t("recv.pick.freeformHint")}</p>
+      <p className="text-xs text-muted-foreground">{t("recv.pick.freeformHint")}</p>
 
       {closed.length > 0 && (
         <div className="flex flex-col gap-2 pt-2">
@@ -128,7 +128,7 @@ function ShipmentCard({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold">{sh.title || t("recv.pick.untitled")}</p>
-          <p className="mt-0.5 text-[11px] text-muted-foreground">
+          <p className="mt-0.5 text-xs text-muted-foreground">
             {source ? t(source.titleKey) : sh.source} ·{" "}
             {t("recv.pick.lines", {
               n: sh.lines.length,
@@ -138,13 +138,13 @@ function ShipmentCard({
           </p>
         </div>
         {sh.crossDock && (
-          <span className="shrink-0 rounded bg-sky-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700 dark:text-sky-400">
+          <span className="shrink-0 rounded bg-sky-500/15 px-1.5 py-0.5 text-2xs font-semibold text-sky-700 dark:text-sky-400">
             {t("recv.crossDockBadge")}
           </span>
         )}
         <span
           className={cn(
-            "shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold",
+            "shrink-0 rounded px-1.5 py-0.5 text-2xs font-semibold",
             sh.status === "receiving"
               ? "bg-primary/10 text-primary"
               : sh.status === "closed"
@@ -156,7 +156,7 @@ function ShipmentCard({
         </span>
       </div>
       <div>
-        <div className="mb-1 flex items-center justify-between text-[11px]">
+        <div className="mb-1 flex items-center justify-between text-xs">
           <span className="text-muted-foreground">{t("recv.pick.progress", { p: pct })}</span>
           <span className="font-medium tabular-nums">
             {received}/{expected}
@@ -279,7 +279,7 @@ function ShipmentForm({
             </button>
           ))}
         </div>
-        <p className="text-[11px] text-muted-foreground">{t(spec.hintKey)}</p>
+        <p className="text-xs text-muted-foreground">{t(spec.hintKey)}</p>
       </div>
 
       <label className="flex flex-col gap-1.5">
@@ -304,7 +304,7 @@ function ShipmentForm({
         />
         <span className="flex flex-col gap-0.5">
           <span className="text-xs font-medium">{t("recv.form.crossDock")}</span>
-          <span className="text-[11px] text-muted-foreground">{t("recv.form.crossDockHint")}</span>
+          <span className="text-xs text-muted-foreground">{t("recv.form.crossDockHint")}</span>
         </span>
       </label>
 

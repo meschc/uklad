@@ -97,11 +97,11 @@ export function RoadmapBoard() {
       </div>
 
       {visible.length === 0 && (
-        <p className="mt-8 text-center text-[14px] text-muted-foreground">{t(T.empty)}</p>
+        <p className="mt-8 text-center text-sm text-muted-foreground">{t(T.empty)}</p>
       )}
 
       {votes.length > 0 && (
-        <p className="mt-8 text-center text-[13px] leading-relaxed text-muted-foreground">
+        <p className="mt-8 text-center text-sm leading-relaxed text-muted-foreground">
           <span className="tabular-nums">
             {t(T.marked, { count: votes.length, max: MAX_VOTES })}
           </span>{" "}
@@ -147,7 +147,7 @@ function TrackChip({ label, on, onClick }: { label: string; on: boolean; onClick
       onClick={onClick}
       aria-pressed={on}
       className={cn(
-        "inline-flex h-9 items-center rounded-full border px-4 text-[13px] font-medium transition-colors",
+        "inline-flex h-9 items-center rounded-full border px-4 text-sm font-medium transition-colors",
         on
           ? "border-primary bg-primary text-primary-foreground"
           : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground",
@@ -177,16 +177,12 @@ function Column({
     <div className="flex h-full flex-col">
       <div className="flex items-baseline gap-2">
         <span className={cn("size-2 shrink-0 self-center rounded-full", STATUS_DOT[status])} />
-        <h3 className="font-display text-[16px] font-medium tracking-tight">
+        <h3 className="font-display text-base font-heading tracking-tight">
           {t(STATUS_LABELS[status])}
         </h3>
-        <span className="ml-auto text-[13px] tabular-nums text-muted-foreground">
-          {items.length}
-        </span>
+        <span className="ml-auto text-sm tabular-nums text-muted-foreground">{items.length}</span>
       </div>
-      <p className="mt-1 text-[12px] leading-snug text-muted-foreground">
-        {t(STATUS_HINTS[status])}
-      </p>
+      <p className="mt-1 text-xs leading-snug text-muted-foreground">{t(STATUS_HINTS[status])}</p>
 
       <ul className="mt-4 flex flex-col gap-3">
         {items.map((item) => (
@@ -216,9 +212,9 @@ function Card({ item, voted, full }: { item: RoadmapItem; voted: boolean; full: 
     <article
       className={cn("r-window h-full border p-4 transition-colors", STATUS_CARD[item.status])}
     >
-      <h4 className="text-[14px] font-medium leading-snug">{t(item.title)}</h4>
-      <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">{t(item.summary)}</p>
-      <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-2 text-[11px] text-muted-foreground">
+      <h4 className="text-sm font-heading leading-snug">{t(item.title)}</h4>
+      <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{t(item.summary)}</p>
+      <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-2 text-xs text-muted-foreground">
         <span className="rounded-full border border-border px-2 py-0.5">
           {t(TRACK_LABELS[item.track])}
         </span>
@@ -255,7 +251,7 @@ function VoteButton({ item, voted, full }: { item: RoadmapItem; voted: boolean; 
       aria-label={t(voted ? T.votedFor : T.voteFor, { title })}
       title={blocked ? t(T.voteFull, { max: MAX_VOTES }) : undefined}
       className={cn(
-        "r-chip ml-auto inline-flex h-7 shrink-0 items-center gap-1 border px-2 text-[11px] font-medium transition-colors",
+        "r-chip ml-auto inline-flex h-7 shrink-0 items-center gap-1 border px-2 text-xs font-medium transition-colors",
         voted
           ? "border-primary bg-primary/10 text-primary"
           : "border-border enabled:hover:border-primary/40 enabled:hover:text-foreground disabled:opacity-40",

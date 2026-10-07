@@ -475,7 +475,7 @@ export function WarehouseSpecScreen() {
         </SpecCard>
       </div>
 
-      <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+      <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
         <Shield className="size-3" />
         {spec.updatedAt
           ? t("spec.updated", {

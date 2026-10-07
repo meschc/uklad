@@ -1,6 +1,7 @@
 import { Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ORG } from "../data/org";
+import { siteButton } from "../lib/button";
 import { c, useT } from "../lib/copy";
 import type { LeadSend } from "../lib/useLeadSend";
 
@@ -98,19 +99,23 @@ export function LeadSubmit({
 
   return (
     <div className={className}>
-      {text && <p className="text-[12px] leading-relaxed text-muted-foreground">{text}</p>}
+      {text && <p className="text-xs leading-relaxed text-muted-foreground">{text}</p>}
 
       <button
         type={type}
         onClick={onClick}
         disabled={disabled}
-        className={cn(
-          "inline-flex h-11 w-full items-center justify-center gap-2 rounded-full px-5 text-sm font-medium transition-colors",
-          text && "mt-4",
-          done
-            ? "bg-emerald-500/12 text-emerald-700 dark:text-emerald-300"
-            : "bg-primary text-primary-foreground enabled:hover:bg-primary/90 disabled:opacity-45",
-        )}
+        className={siteButton({
+          // Отправленная заявка — не кнопка другого тона, а кнопка,
+          // переставшая быть кнопкой: зелёным по зелёному и без подсветки
+          // под курсором, иначе она продолжает звать нажать ещё раз.
+          className: cn(
+            "w-full",
+            text && "mt-4",
+            done &&
+              "bg-emerald-500/12 text-emerald-700 hover:bg-emerald-500/12 dark:text-emerald-300",
+          ),
+        })}
       >
         {icon && !done && state !== "sending" && <Send className="size-4" />}
         {label()}

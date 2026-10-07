@@ -2,6 +2,8 @@ import { Component, type ErrorInfo, type ReactNode } from "react";
 import { c, pick } from "../lib/copy";
 import { getLang } from "../lib/lang";
 import { href } from "../lib/route";
+import { siteButton } from "../lib/button";
+import { eyebrowMono } from "../lib/eyebrow";
 
 /**
  * Язык берём функцией `getLang`, а не хуком: это классовый компонент, и хуки
@@ -64,10 +66,8 @@ export class SiteErrorBoundary extends Component<Props, State> {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-6 text-center">
         <div className="max-w-md">
-          <p className="font-mono text-[13px] uppercase tracking-[0.14em] text-muted-foreground">
-            {pick(lang, T.eyebrow)}
-          </p>
-          <h1 className="mt-3 font-display text-[26px] font-medium tracking-[-0.02em]">
+          <p className={eyebrowMono()}>{pick(lang, T.eyebrow)}</p>
+          <h1 className="mt-3 font-display text-2xl font-heading tracking-tight">
             {pick(lang, T.title)}
           </h1>
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{pick(lang, T.lead)}</p>
@@ -77,13 +77,13 @@ export class SiteErrorBoundary extends Component<Props, State> {
            * написать нам. Без него сообщение «у вас что-то не работает»
            * невозможно проверить.
            */}
-          <p className="mt-4 break-words font-mono text-[11px] leading-relaxed text-muted-foreground/70">
+          <p className="mt-4 break-words font-mono text-xs leading-relaxed text-muted-foreground/70">
             {this.state.error.message}
           </p>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
             <button
               onClick={() => window.location.reload()}
-              className="inline-flex h-11 items-center rounded-full border border-border px-6 text-sm font-medium transition-colors hover:bg-muted"
+              className={siteButton({ tone: "outline" })}
             >
               {pick(lang, T.reload)}
             </button>
@@ -94,10 +94,7 @@ export class SiteErrorBoundary extends Component<Props, State> {
              * Перехватчик кликов тут не помешает: он живёт в `SiteApp`, а
              * `SiteApp` в этот момент уже снят с экрана.
              */}
-            <a
-              href={href("/contacts")}
-              className="inline-flex h-11 items-center px-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
-            >
+            <a href={href("/contacts")} className={siteButton({ tone: "ghost" })}>
               {pick(lang, T.write)}
             </a>
           </div>

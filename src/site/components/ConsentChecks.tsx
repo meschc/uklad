@@ -95,7 +95,7 @@ function Row({
           />
         </span>
       </span>
-      <span className="text-[12px] leading-[1.5] text-muted-foreground">{children}</span>
+      <span className="text-xs leading-normal text-muted-foreground">{children}</span>
     </label>
   );
 }

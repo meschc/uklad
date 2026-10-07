@@ -40,7 +40,7 @@ export function RowProposals({ candidates, toScreen }: RowProposalsProps) {
               type="button"
               onClick={() => useEditor.getState().toggleRowProposal(i)}
               className={cn(
-                "pointer-events-auto absolute left-1/2 top-0 flex -translate-x-1/2 -translate-y-full items-center gap-1 whitespace-nowrap rounded px-1.5 py-0.5 text-[10px] font-semibold leading-none tabular-nums shadow-sm transition-colors",
+                "pointer-events-auto absolute left-1/2 top-0 flex -translate-x-1/2 -translate-y-full items-center gap-1 whitespace-nowrap rounded px-1.5 py-0.5 text-2xs font-semibold leading-none tabular-nums shadow-sm transition-colors",
                 c.checked
                   ? "bg-primary text-primary-foreground"
                   : "bg-card text-muted-foreground ring-1 ring-inset ring-border",

@@ -114,7 +114,7 @@ export function StatValue({
         >
           {value ?? "—"}
         </span>
-        {value != null && unit && <span className="text-[11px] text-muted-foreground">{unit}</span>}
+        {value != null && unit && <span className="text-xs text-muted-foreground">{unit}</span>}
       </span>
     );
   }
@@ -129,7 +129,7 @@ export function StatValue({
         onBlur={() => onCommit(v.trim() ? Number(v) : undefined)}
         className={cn(GHOST, "text-lg font-semibold leading-tight tabular-nums")}
       />
-      {unit && <span className="shrink-0 text-[11px] text-muted-foreground">{unit}</span>}
+      {unit && <span className="shrink-0 text-xs text-muted-foreground">{unit}</span>}
     </span>
   );
 }
@@ -150,7 +150,7 @@ export function TextValue({
 
   if (readOnly) {
     return (
-      <span className={cn("text-[13px] leading-snug", !value && "text-muted-foreground")}>
+      <span className={cn("text-sm leading-snug", !value && "text-muted-foreground")}>
         {value || "—"}
       </span>
     );
@@ -176,7 +176,7 @@ export function TextValue({
           (e.target as HTMLTextAreaElement).blur();
         }
       }}
-      className={cn(GHOST, "resize-none text-[13px] leading-snug")}
+      className={cn(GHOST, "resize-none text-sm leading-snug")}
     />
   );
 }
@@ -223,7 +223,7 @@ export function ChipsValue({
             (e.target as HTMLTextAreaElement).blur();
           }
         }}
-        className={cn(GHOST, "resize-none text-[13px] leading-snug")}
+        className={cn(GHOST, "resize-none text-sm leading-snug")}
       />
     );
   }
@@ -233,7 +233,7 @@ export function ChipsValue({
       {chips.map((c, i) => (
         <span
           key={`${c}-${i}`}
-          className="rounded-md bg-background px-1.5 py-0.5 text-[11px] leading-tight text-foreground ring-1 ring-border"
+          className="rounded-md bg-background px-1.5 py-0.5 text-xs leading-tight text-foreground ring-1 ring-border"
         >
           {c}
         </span>
@@ -242,7 +242,7 @@ export function ChipsValue({
   );
 
   if (readOnly)
-    return chips.length ? list : <span className="text-[13px] text-muted-foreground">—</span>;
+    return chips.length ? list : <span className="text-sm text-muted-foreground">—</span>;
 
   return (
     <button
@@ -253,7 +253,7 @@ export function ChipsValue({
       {chips.length ? (
         list
       ) : (
-        <span className="text-[13px] text-muted-foreground">{placeholder ?? "—"}</span>
+        <span className="text-sm text-muted-foreground">{placeholder ?? "—"}</span>
       )}
     </button>
   );
@@ -302,7 +302,7 @@ export function RangeValue({
         >
           {empty ? "—" : `${from ?? "—"}…${to ?? "—"}`}
         </span>
-        {!empty && <span className="text-[11px] text-muted-foreground">{unit}</span>}
+        {!empty && <span className="text-xs text-muted-foreground">{unit}</span>}
       </span>
     );
   }
@@ -322,7 +322,7 @@ export function RangeValue({
       {field(a, setA)}
       <span className="shrink-0 text-muted-foreground">…</span>
       {field(b, setB)}
-      <span className="shrink-0 text-[11px] text-muted-foreground">{unit}</span>
+      <span className="shrink-0 text-xs text-muted-foreground">{unit}</span>
     </span>
   );
 }
@@ -351,7 +351,7 @@ export function BoolValue({
 
   if (readOnly) {
     return (
-      <span className={cn("w-fit rounded-md px-1.5 py-0.5 text-[11px] font-semibold ring-1", tone)}>
+      <span className={cn("w-fit rounded-md px-1.5 py-0.5 text-xs font-semibold ring-1", tone)}>
         {label}
       </span>
     );
@@ -362,7 +362,7 @@ export function BoolValue({
       type="button"
       onClick={() => onChange(!value)}
       className={cn(
-        "w-fit rounded-md px-1.5 py-0.5 text-[11px] font-semibold ring-1 transition-colors hover:brightness-110",
+        "w-fit rounded-md px-1.5 py-0.5 text-xs font-semibold ring-1 transition-colors hover:brightness-110",
         tone,
       )}
     >
@@ -398,7 +398,7 @@ export function ChoiceValue<T extends string>({
   const text = value ? (labelFor?.(value) ?? value) : undefined;
   if (readOnly)
     return (
-      <span className={cn("text-[13px] leading-snug", !text && "text-muted-foreground")}>
+      <span className={cn("text-sm leading-snug", !text && "text-muted-foreground")}>
         {text || "—"}
       </span>
     );
@@ -409,7 +409,7 @@ export function ChoiceValue<T extends string>({
       // Приведение неизбежно: у `<select>` значение всегда строка, сузить его
       // до варианта из списка может только сам список — а он здесь и есть.
       onChange={(e) => onChange((e.target.value as T) || undefined)}
-      className={cn(GHOST, "w-fit cursor-pointer text-[13px] leading-snug")}
+      className={cn(GHOST, "w-fit cursor-pointer text-sm leading-snug")}
     >
       <option value="">—</option>
       {options.map((o) => (
@@ -443,7 +443,7 @@ export function ClassBadge({ value }: { value?: WarehouseClass }) {
       )}
     >
       <span className="text-2xl font-bold leading-none tracking-tight">{value ?? "—"}</span>
-      <span className="mt-0.5 text-[9px] uppercase tracking-wide opacity-80">
+      <span className="mt-0.5 text-2xs uppercase tracking-wide opacity-80">
         {t("spec.classShort")}
       </span>
     </div>
@@ -478,13 +478,13 @@ export function CompletenessRing({ filled, total }: { filled: number; total: num
             className={cn("stroke-current transition-all", tone)}
           />
         </svg>
-        <span className="absolute inset-0 flex items-center justify-center text-[11px] font-semibold tabular-nums">
+        <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold tabular-nums">
           {Math.round(share * 100)}%
         </span>
       </div>
       <div className="flex flex-col leading-tight">
-        <span className="text-[11px] font-medium">{t("spec.completeness")}</span>
-        <span className="text-[11px] tabular-nums text-muted-foreground">
+        <span className="text-xs font-medium">{t("spec.completeness")}</span>
+        <span className="text-xs tabular-nums text-muted-foreground">
           {t("spec.filledOf", { n: filled, total })}
         </span>
       </div>

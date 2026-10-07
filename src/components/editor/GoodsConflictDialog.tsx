@@ -67,7 +67,7 @@ export function GoodsConflictDialog() {
               return (
                 <li key={id} className="flex items-center justify-between gap-2 py-1 text-xs">
                   <span className="truncate">{p.name}</span>
-                  <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
+                  <span className="shrink-0 font-mono text-xs text-muted-foreground">
                     {(addr && formatAddress(warehouse, addr)) ?? "—"}
                   </span>
                 </li>
@@ -151,9 +151,9 @@ function ResultView({
             <li key={id} className="flex items-center justify-between gap-2 py-1 text-xs">
               <span className="truncate">{p.name}</span>
               {place ? (
-                <span className="shrink-0 font-mono text-[11px] text-primary">{place}</span>
+                <span className="shrink-0 font-mono text-xs text-primary">{place}</span>
               ) : (
-                <span className="shrink-0 text-[11px] text-muted-foreground">
+                <span className="shrink-0 text-xs text-muted-foreground">
                   {t("conflict.noPlace")}
                 </span>
               )}

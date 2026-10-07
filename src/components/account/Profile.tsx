@@ -186,7 +186,7 @@ export function Profile() {
               <ShieldCheck className="size-3.5" />
               {t("profile.emailConfirmTitle", { email: pendingEmail })}
             </p>
-            <p className="text-[11px] text-amber-800/80 dark:text-amber-300/80">
+            <p className="text-xs text-amber-800/80 dark:text-amber-300/80">
               {t("profile.emailConfirmBody", { n: CONFIRM_CODE_LENGTH })}
             </p>
             <div className="flex items-center gap-2">
@@ -298,9 +298,7 @@ export function Profile() {
                 ) : (
                   <div className="flex flex-col items-end gap-0.5">
                     <ReadValue value={account.inn ?? ""} mono onEdit={() => open("inn")} />
-                    {innNote && (
-                      <span className="text-[11px] text-muted-foreground">{innNote}</span>
-                    )}
+                    {innNote && <span className="text-xs text-muted-foreground">{innNote}</span>}
                   </div>
                 )}
               </Row>
@@ -424,7 +422,7 @@ export function Profile() {
           <Row icon={<DatabaseBackup className="size-4" />} label={t("profile.demoData")}>
             {confirmReset ? (
               <div className="flex flex-wrap items-center justify-end gap-2">
-                <span className="text-[11px] text-destructive">{t("profile.demoWarn")}</span>
+                <span className="text-xs text-destructive">{t("profile.demoWarn")}</span>
                 <Button size="sm" variant="outline" onClick={() => setConfirmReset(false)}>
                   {t("common.cancel")}
                 </Button>

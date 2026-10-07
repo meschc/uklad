@@ -214,7 +214,7 @@ export function PickingScreen() {
                   >
                     <div className="min-w-0">
                       <p className="truncate font-mono text-sm font-bold">{p?.sku ?? "—"}</p>
-                      <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                      <p className="mt-0.5 truncate text-xs text-muted-foreground">
                         {p?.name} ·{" "}
                         {r.truckDate
                           ? t("pick.shipDate", {
@@ -231,7 +231,7 @@ export function PickingScreen() {
                       </p>
                       <p
                         className={cn(
-                          "text-[11px]",
+                          "text-xs",
                           have < r.qty ? "text-destructive" : "text-muted-foreground",
                         )}
                       >
@@ -346,9 +346,9 @@ function RequestHeader({
         <div className="min-w-0">
           {/* Собирают по артикулу, а не по названию — он и главный (п.23). */}
           <p className="font-mono text-lg font-bold tracking-tight">{sku}</p>
-          <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{name}</p>
+          <p className="mt-0.5 truncate text-xs text-muted-foreground">{name}</p>
           {addr && (
-            <p className="mt-1 inline-flex items-center gap-1 text-[11px] text-primary">
+            <p className="mt-1 inline-flex items-center gap-1 text-xs text-primary">
               <MapPin className="size-3" />
               {addr}
             </p>
@@ -359,7 +359,7 @@ function RequestHeader({
             {picked}
             <span className="text-base font-medium text-muted-foreground">/{total}</span>
           </p>
-          <p className="text-[11px] text-muted-foreground">{t("pick.counted")}</p>
+          <p className="text-xs text-muted-foreground">{t("pick.counted")}</p>
         </div>
       </div>
       <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-muted">
@@ -405,7 +405,7 @@ function SuggestedPlaces({
             <span className="font-mono">{formatAddress(warehouse, l.addr)}</span>
             <span className="tabular-nums text-muted-foreground">× {l.qty}</span>
             {l.boxBarcode && (
-              <span className="font-mono text-[10px] text-muted-foreground">{l.boxBarcode}</span>
+              <span className="font-mono text-2xs text-muted-foreground">{l.boxBarcode}</span>
             )}
           </button>
         ))}

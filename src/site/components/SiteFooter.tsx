@@ -133,7 +133,7 @@ export function SiteFooter() {
 
         {COLUMNS.map((col) => (
           <nav key={col.title.ru} className="flex flex-col gap-2.5">
-            <h3 className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            <h3 className="text-xs font-heading uppercase tracking-wide text-muted-foreground">
               {t(col.title)}
             </h3>
             {col.items.map((item) =>

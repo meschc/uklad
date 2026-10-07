@@ -1,6 +1,7 @@
 import { Scale, X } from "lucide-react";
 import { COMPARE_LIMIT } from "../../lib/compare";
 import { useCookieBannerOpen } from "../../lib/cookieConsent";
+import { siteButton } from "../../lib/button";
 import { c, useT } from "../../lib/copy";
 import type { Warehouse } from "../../data/warehouses";
 
@@ -60,10 +61,10 @@ export function CompareBar({
       >
         <div className="flex min-w-0 shrink-0 items-center gap-2">
           <Scale className="size-4 shrink-0 text-primary" />
-          <span id="compare-bar-title" className="text-[13px] font-medium">
+          <span id="compare-bar-title" className="text-sm font-medium">
             {t(T.heading)}
           </span>
-          <span className="text-[12px] tabular-nums text-muted-foreground">
+          <span className="text-xs tabular-nums text-muted-foreground">
             {t(T.of, { n: list.length, max: COMPARE_LIMIT })}
           </span>
         </div>
@@ -75,7 +76,7 @@ export function CompareBar({
           {list.map((w) => (
             <span
               key={w.id}
-              className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full border border-border bg-background pl-3 pr-1 text-[12px]"
+              className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full border border-border bg-background pl-3 pr-1 text-xs"
             >
               <span className="max-w-[10rem] truncate">{t(w.name)}</span>
               <button
@@ -94,23 +95,14 @@ export function CompareBar({
           {/* Объяснение стоит рядом с погасшей кнопкой, а не прячется в
               подсказке при наведении: на телефоне наводить нечем. */}
           {alone && (
-            <span className="hidden max-w-[16rem] text-[12px] leading-snug text-muted-foreground lg:block">
+            <span className="hidden max-w-[16rem] text-xs leading-snug text-muted-foreground lg:block">
               {t(T.alone)}
             </span>
           )}
-          <button
-            type="button"
-            onClick={onClear}
-            className="h-10 rounded-full border border-border px-4 text-[13px] font-medium transition-colors hover:bg-muted"
-          >
+          <button type="button" onClick={onClear} className={siteButton({ tone: "outline" })}>
             {t(T.clear)}
           </button>
-          <button
-            type="button"
-            onClick={onOpen}
-            disabled={alone}
-            className="h-10 rounded-full bg-primary px-5 text-[13px] font-medium text-primary-foreground transition-colors enabled:hover:bg-primary/90 disabled:opacity-45"
-          >
+          <button type="button" onClick={onOpen} disabled={alone} className={siteButton()}>
             {t(T.open)}
           </button>
         </div>

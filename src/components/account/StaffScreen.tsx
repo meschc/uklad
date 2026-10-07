@@ -412,7 +412,7 @@ function ReadOnlyContacts({
               )}
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium">{m.name}</p>
-                <p className="truncate text-[11px] text-muted-foreground">
+                <p className="truncate text-xs text-muted-foreground">
                   {[m.role, m.phone, m.email].filter(Boolean).join(" · ") || "—"}
                 </p>
               </div>

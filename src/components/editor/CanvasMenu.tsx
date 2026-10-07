@@ -154,7 +154,7 @@ export function CanvasMenu({ state, onClose }: { state: CanvasMenuState; onClose
           >
             {it.icon}
             <span className="flex-1">{it.label}</span>
-            <kbd className="text-[10px] text-muted-foreground/70">{it.hint}</kbd>
+            <kbd className="text-2xs text-muted-foreground/70">{it.hint}</kbd>
           </button>
         ))}
       </div>

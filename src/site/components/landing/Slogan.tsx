@@ -43,7 +43,7 @@ export function Slogan() {
   return (
     <section id="slogan" className="mx-auto max-w-4xl px-4 py-28 text-center sm:px-6 sm:py-36">
       <Reveal>
-        <p className="font-display text-[30px] font-medium leading-[1.08] tracking-[-0.025em] sm:text-[46px]">
+        <p className="font-display text-3xl font-heading leading-display tracking-tight sm:text-5xl">
           {t(T.titleTop)}
           <br />
           <span className="text-brand-strong">{t(T.titleAccent)}</span>
@@ -51,13 +51,13 @@ export function Slogan() {
       </Reveal>
 
       <Reveal delay={100}>
-        <p className="mx-auto mt-7 max-w-2xl text-[15px] leading-relaxed text-muted-foreground sm:text-[17px]">
+        <p className="mx-auto mt-7 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
           {t(T.why)}
         </p>
       </Reveal>
 
       <Reveal delay={160}>
-        <p className="mx-auto mt-5 max-w-2xl text-[15px] leading-relaxed text-muted-foreground sm:text-[17px]">
+        <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
           {t(T.catchStart)} {count}{" "}
           {t.plural(count, ["площадку", "площадки", "площадок"], ["marketplace", "marketplaces"])}{" "}
           {t(T.catchEnd)}
@@ -70,12 +70,12 @@ export function Slogan() {
         {schemes.map((s) => (
           <span
             key={s}
-            className="inline-flex h-8 items-center rounded-full border border-border px-3.5 font-mono text-[11px] tracking-wide text-muted-foreground"
+            className="inline-flex h-8 items-center rounded-full border border-border px-3.5 font-mono text-xs tracking-wide text-muted-foreground"
           >
             {s}
           </span>
         ))}
-        <span className="inline-flex h-8 items-center rounded-full border border-border px-3.5 text-[12px] text-muted-foreground">
+        <span className="inline-flex h-8 items-center rounded-full border border-border px-3.5 text-xs text-muted-foreground">
           {total} {t.plural(total, ["склад", "склада", "складов"], ["warehouse", "warehouses"])}{" "}
           {t(T.listed)}
         </span>

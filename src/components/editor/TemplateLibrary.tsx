@@ -86,7 +86,7 @@ function LayoutTemplateList() {
         disabled={!canSave}
         onClick={() => addLayout()}
         className={cn(
-          "rounded-md border border-dashed py-1.5 text-[11px] font-medium transition-colors",
+          "rounded-md border border-dashed py-1.5 text-xs font-medium transition-colors",
           canSave
             ? "border-primary/40 text-primary hover:bg-primary/10"
             : "cursor-not-allowed border-border text-muted-foreground/50",
@@ -116,7 +116,7 @@ function LayoutTemplateList() {
               <LayoutThumb tpl={tpl} />
               <div className="min-w-0 flex-1">
                 <div className="truncate text-xs font-medium">{tpl.name}</div>
-                <div className="text-[10px] text-muted-foreground">
+                <div className="text-2xs text-muted-foreground">
                   {tpl.modules.length}{" "}
                   {t.plural(
                     tpl.modules.length,
@@ -140,7 +140,7 @@ function LayoutTemplateList() {
               type="button"
               onClick={() => setStamp(active ? null : tpl.id)}
               className={cn(
-                "mt-2 flex w-full items-center justify-center gap-1.5 rounded-md py-1 text-[11px] font-medium transition-colors",
+                "mt-2 flex w-full items-center justify-center gap-1.5 rounded-md py-1 text-xs font-medium transition-colors",
                 active
                   ? "bg-primary text-primary-foreground"
                   : "bg-primary/10 text-primary hover:bg-primary/15",
@@ -207,7 +207,7 @@ export function TemplateLibrary() {
                 <TemplateThumb cells={tpl.cells} />
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-xs font-medium">{name}</div>
-                  <div className="text-[10px] text-muted-foreground">
+                  <div className="text-2xs text-muted-foreground">
                     {tpl.cells.length}{" "}
                     {t.plural(tpl.cells.length, ["полка", "полки", "полок"], ["shelf", "shelves"])}{" "}
                     · {cellSum}{" "}
@@ -228,7 +228,7 @@ export function TemplateLibrary() {
                 disabled={!canApply}
                 onClick={() => applyTemplate(tpl.id)}
                 className={cn(
-                  "mt-2 w-full rounded-md py-1 text-[11px] font-medium transition-colors",
+                  "mt-2 w-full rounded-md py-1 text-xs font-medium transition-colors",
                   canApply
                     ? "bg-primary/10 text-primary hover:bg-primary/15"
                     : "cursor-not-allowed bg-muted/60 text-muted-foreground/60",

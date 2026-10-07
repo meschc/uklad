@@ -42,7 +42,7 @@ export function MultiSize({ selected, t }: { selected: PlacedModule[]; t: TFunc 
     <div className="flex flex-col gap-2.5">
       <div className="flex items-center justify-between">
         <Label>{t("insp.multiSize")}</Label>
-        <span className="text-[10px] text-muted-foreground/70">
+        <span className="text-2xs text-muted-foreground/70">
           {t("insp.multiSizeHint", { n: selected.length })}
         </span>
       </div>

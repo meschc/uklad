@@ -1,6 +1,7 @@
 import { ArrowRight } from "lucide-react";
 import { Reveal } from "../Reveal";
 import { href } from "../../lib/route";
+import { ctaPill } from "../../lib/button";
 import { CITIES } from "../../data/cities";
 import { warehousesRepository } from "../../data/warehousesRepository";
 import { c, useT } from "../../lib/copy";
@@ -29,7 +30,7 @@ export function FinalCta() {
     <section className="ink relative overflow-hidden">
       <div className="relative mx-auto max-w-4xl px-4 py-24 text-center sm:px-6 sm:py-32">
         <Reveal>
-          <h2 className="font-display text-[34px] font-medium leading-[1.05] tracking-[-0.025em] sm:text-[56px]">
+          <h2 className="font-display text-4xl font-heading leading-display tracking-tight sm:text-6xl">
             {t(T.titleTop)}
             <br />
             {/* Вторая строка — единственное цветное пятно в блоке. Градиент
@@ -61,13 +62,11 @@ export function FinalCta() {
               Это разные люди и разные намерения, и в конце страницы для
               селлера остаётся то, за чем он пришёл. */}
           <div className="mt-9 flex justify-center">
-            <a
-              href={href("/market")}
-              className="group inline-flex h-[52px] w-full items-center justify-center gap-4 rounded-full bg-foreground pl-7 pr-1.5 text-[15px] font-medium text-background transition-transform hover:-translate-y-px active:translate-y-0 sm:w-auto"
-            >
+            <a href={href("/market")} className={ctaPill("w-full sm:w-auto")}>
               {t(T.cta)}
               {/* Та же пилюля в пилюле, что и на первом экране: два конца
-                  страницы держит одна форма, а не две разные кнопки. */}
+                  страницы держит одна форма — теперь буквально одна,
+                  [`ctaPill`](../../lib/button.ts), а не две копии. */}
               <span className="flex size-10 items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors group-hover:bg-primary/85">
                 <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
               </span>

@@ -83,18 +83,16 @@ export function VolumeBar({
     <section aria-labelledby="volume-title" className="r-window bg-muted p-4 sm:p-5">
       <div className="flex flex-wrap items-start gap-x-6 gap-y-2">
         <div className="min-w-0 flex-1">
-          <h2 id="volume-title" className="font-display text-[15px] font-medium tracking-tight">
+          <h2 id="volume-title" className="font-display text-base font-heading tracking-tight">
             {t(T.title)}
           </h2>
-          <p className="mt-1 max-w-xl text-[12px] leading-relaxed text-muted-foreground">
-            {t(T.lead)}
-          </p>
+          <p className="mt-1 max-w-xl text-xs leading-relaxed text-muted-foreground">{t(T.lead)}</p>
         </div>
         {filled && (
           <button
             type="button"
             onClick={() => onChange(EMPTY_VOLUME)}
-            className="flex shrink-0 items-center gap-1.5 text-[12px] text-muted-foreground transition-colors hover:text-foreground"
+            className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
           >
             <RotateCcw className="size-3.5" />
             {t(T.reset)}
@@ -127,7 +125,7 @@ function Answer({ range }: { range: EstimateRange | null }) {
 
   if (!range) {
     return (
-      <p className="mt-4 border-t border-border pt-3 text-[12px] leading-relaxed text-muted-foreground">
+      <p className="mt-4 border-t border-border pt-3 text-xs leading-relaxed text-muted-foreground">
         {t(T.none)}
       </p>
     );
@@ -136,13 +134,13 @@ function Answer({ range }: { range: EstimateRange | null }) {
   return (
     <div className="mt-4 flex flex-wrap items-baseline gap-x-2 gap-y-1 border-t border-border pt-3">
       <Equal className="size-3.5 shrink-0 self-center text-muted-foreground" aria-hidden />
-      <span className="text-[12px] text-muted-foreground">{t(T.month)}</span>
+      <span className="text-xs text-muted-foreground">{t(T.month)}</span>
       <span className="font-display text-lg font-medium tabular-nums tracking-tight">
         {range.min === range.max
           ? t(T.flat, { min: money(range.min) })
           : t(T.spread, { min: money(range.min), max: money(range.max) })}
       </span>
-      <span className="text-[12px] text-muted-foreground">
+      <span className="text-xs text-muted-foreground">
         {t(T.across, { n: range.count })}{" "}
         {t.plural(range.count, ["складу", "складам", "складам"], ["warehouse", "warehouses"])}
       </span>

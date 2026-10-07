@@ -203,7 +203,7 @@ function WarehouseCard({
           <WarehouseThumb warehouse={w} />
           {/* Углы в углу карточки: rounded-xl (12) − отступ 8 = 4 → DEFAULT. */}
           {active && (
-            <span className="absolute left-2 top-2 rounded bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground shadow-sm">
+            <span className="absolute left-2 top-2 rounded bg-primary px-1.5 py-0.5 text-2xs font-semibold text-primary-foreground shadow-sm">
               {t("dash.card.active")}
             </span>
           )}
@@ -213,10 +213,10 @@ function WarehouseCard({
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold">{w.name}</p>
-              <p className="mt-0.5 text-[11px] text-muted-foreground">
+              <p className="mt-0.5 text-xs text-muted-foreground">
                 {stats.floors} {floorWord}
               </p>
-              <p className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground/80">
+              <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground/80">
                 <MapPin className="size-3 shrink-0" />
                 <span className="truncate">{w.address || t("wh.noAddress")}</span>
               </p>
@@ -228,14 +228,14 @@ function WarehouseCard({
 
           {/* Кто отвечает за склад — самое частое, что ищут в карточке (п.5) */}
           {(w.manager?.name || w.phone) && (
-            <p className="truncate text-[11px] text-muted-foreground/80">
+            <p className="truncate text-xs text-muted-foreground/80">
               {[w.manager?.name, w.phone].filter(Boolean).join(" · ")}
             </p>
           )}
 
           {/* Заполненность */}
           <div>
-            <div className="mb-1 flex items-center justify-between text-[11px]">
+            <div className="mb-1 flex items-center justify-between text-xs">
               <span className="text-muted-foreground">
                 {t("dash.card.fill", { p: stats.fill })}
               </span>

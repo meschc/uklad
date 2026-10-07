@@ -83,18 +83,18 @@ function Keys({ keys }: { keys: Tok[] }) {
     <span className="flex items-center gap-1">
       {keys.map((k, i) =>
         k === "plus" ? (
-          <span key={i} className="text-[10px] text-muted-foreground/50">
+          <span key={i} className="text-2xs text-muted-foreground/50">
             +
           </span>
         ) : "kbd" in k ? (
           <kbd
             key={i}
-            className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded border border-border bg-muted px-1 text-[11px] font-medium text-foreground shadow-[0_1px_0_hsl(var(--border))]"
+            className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded border border-border bg-muted px-1 text-xs font-medium text-foreground shadow-[0_1px_0_hsl(var(--border))]"
           >
             {k.kbd}
           </kbd>
         ) : (
-          <span key={i} className="text-[11px] text-muted-foreground">
+          <span key={i} className="text-xs text-muted-foreground">
             {k.txt}
           </span>
         ),
@@ -129,7 +129,7 @@ function RowScheme({ t }: { t: TFunc }) {
     <div className="flex items-stretch justify-center gap-1.5">
       <div className="flex flex-col gap-1.5">{[1, 3, 5].map((n) => cell(n, true))}</div>
       <div className="flex w-6 items-center justify-center rounded-[4px] border border-dashed border-border bg-[hsl(var(--floor))]">
-        <span className="rotate-180 text-[9px] uppercase tracking-wide text-muted-foreground [writing-mode:vertical-rl]">
+        <span className="rotate-180 text-2xs uppercase tracking-wide text-muted-foreground [writing-mode:vertical-rl]">
           {t("module.aisle.title")}
         </span>
       </div>
@@ -155,7 +155,7 @@ function AddressScheme({ t }: { t: TFunc }) {
             <span className="flex h-6 min-w-6 items-center justify-center rounded-md bg-primary/10 px-1.5 font-mono text-sm font-bold tabular-nums text-primary">
               {p.n}
             </span>
-            <span className="text-[8px] leading-none text-muted-foreground">{p.label}</span>
+            <span className="text-2xs leading-none text-muted-foreground">{p.label}</span>
           </div>
           {i < parts.length - 1 && (
             <span className="pb-3 font-mono text-sm text-muted-foreground/50">-</span>
@@ -170,7 +170,7 @@ function FaqItem({ q, a }: { q: string; a: string }) {
   return (
     <div className="rounded-lg border border-border bg-card/60 p-2.5">
       <p className="text-xs font-semibold text-foreground">{q}</p>
-      <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{a}</p>
+      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{a}</p>
     </div>
   );
 }
@@ -297,7 +297,7 @@ export function HelpMenu() {
                       {t("faq.rowScheme")}
                     </p>
                     <RowScheme t={t} />
-                    <p className="mt-1 text-center text-[10px] text-muted-foreground">
+                    <p className="mt-1 text-center text-2xs text-muted-foreground">
                       {t("faq.rowSchemeNote")}
                     </p>
                   </div>

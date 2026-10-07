@@ -466,7 +466,7 @@ function Field({
     <label className="flex flex-col gap-1">
       <span className={eyebrow()}>{label}</span>
       {children}
-      {error && <span className="text-[11px] text-destructive">{error}</span>}
+      {error && <span className="text-xs text-destructive">{error}</span>}
     </label>
   );
 }
@@ -492,7 +492,7 @@ function NumInput({
         className={cn("h-9 tabular-nums", suffix && "pr-6")}
       />
       {suffix && (
-        <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground">
+        <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
           {suffix}
         </span>
       )}

@@ -39,7 +39,7 @@ export function ChatThreadList({
     <aside className="flex w-72 shrink-0 flex-col border-r border-border bg-card">
       <div className="border-b border-border p-3">
         <h1 className="text-sm font-semibold tracking-tight">{t("chat.title")}</h1>
-        <p className="mt-0.5 text-[11px] text-muted-foreground">{t("chat.subtitle")}</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">{t("chat.subtitle")}</p>
         <div className="relative mt-2.5">
           <Search className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
           <input
@@ -76,7 +76,7 @@ export function ChatThreadList({
               >
                 <span
                   className={cn(
-                    "flex size-9 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold",
+                    "flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
                     active
                       ? "bg-primary text-primary-foreground"
                       : "bg-muted text-muted-foreground",
@@ -95,7 +95,7 @@ export function ChatThreadList({
                       {p.name}
                     </span>
                     {last && (
-                      <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
+                      <span className="shrink-0 text-2xs tabular-nums text-muted-foreground">
                         {formatChatStamp(last.at, t)}
                       </span>
                     )}
@@ -112,7 +112,7 @@ export function ChatThreadList({
                         : t("chat.emptyThread")}
                     </span>
                     {unread > 0 && (
-                      <span className="flex min-w-4 shrink-0 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold tabular-nums text-primary-foreground">
+                      <span className="flex min-w-4 shrink-0 items-center justify-center rounded-full bg-primary px-1 text-2xs font-bold tabular-nums text-primary-foreground">
                         {unread}
                       </span>
                     )}

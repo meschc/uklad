@@ -138,19 +138,17 @@ function RequestsTab({ t }: { t: TFunc }) {
           <section key={g.target ?? "—"} className="flex flex-col gap-2">
             <div className="flex flex-wrap items-center gap-2">
               <MapPin className="size-3.5 text-muted-foreground" />
-              <h2 className={eyebrow({ size: "base", tone: "current" })}>
-                {g.target ?? t("tasks.noTarget")}
-              </h2>
-              <span className="text-[11px] text-muted-foreground">
+              <h2 className={eyebrow({ tone: "current" })}>{g.target ?? t("tasks.noTarget")}</h2>
+              <span className="text-xs text-muted-foreground">
                 {t("tasks.groupCount", { n: g.items.length })}
               </span>
               {g.shipDates.length === 0 && (
-                <span className="text-[11px] text-muted-foreground">{t("tasks.noShipDate")}</span>
+                <span className="text-xs text-muted-foreground">{t("tasks.noShipDate")}</span>
               )}
               {g.shipDates.map((d) => (
                 <span
                   key={d}
-                  className="inline-flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground"
+                  className="inline-flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 text-2xs font-semibold text-muted-foreground"
                 >
                   <CalendarClock className="size-3" />
                   {t("tasks.shipDate", { d: new Date(d).toLocaleDateString() })}
@@ -174,9 +172,7 @@ function RequestsTab({ t }: { t: TFunc }) {
                       <tr key={r.id} className="border-t border-border/60">
                         <td className="px-3 py-2">
                           <div className="font-medium">{p?.name ?? "—"}</div>
-                          <div className="font-mono text-[10px] text-muted-foreground">
-                            {p?.sku}
-                          </div>
+                          <div className="font-mono text-2xs text-muted-foreground">{p?.sku}</div>
                         </td>
                         <td className="px-3 py-2 text-right tabular-nums">
                           {r.pickedQty ? `${r.pickedQty}/` : ""}
@@ -190,7 +186,7 @@ function RequestsTab({ t }: { t: TFunc }) {
                           {/* Продавцу важно не «собрано», а «уехало»: под
                               статусом показываем дату вывоза и машину. */}
                           {r.status === "shipped" && (
-                            <div className="mt-0.5 text-[10px] text-muted-foreground">
+                            <div className="mt-0.5 text-2xs text-muted-foreground">
                               {t("seller.shippedAt", {
                                 d: new Date(r.shippedAt ?? r.updatedAt).toLocaleDateString(),
                               })}
@@ -355,7 +351,7 @@ function BulkRequestDialog({ onClose, t }: { onClose: () => void; t: TFunc }) {
           </table>
         </div>
       )}
-      <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+      <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
         <Truck className="size-3" />
         {t("seller.bulkNote")}
       </p>

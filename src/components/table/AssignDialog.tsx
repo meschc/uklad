@@ -209,9 +209,7 @@ export function AssignDialog({ product, onClose }: { product: Product; onClose: 
               manualErr ? "border-destructive" : "border-input",
             )}
           />
-          <span
-            className={cn("text-[11px]", manualErr ? "text-destructive" : "text-muted-foreground")}
-          >
+          <span className={cn("text-xs", manualErr ? "text-destructive" : "text-muted-foreground")}>
             {manualErr ? t("assign.manualErr") : t("assign.manualHint")}
           </span>
         </Field>
@@ -317,7 +315,7 @@ export function AssignDialog({ product, onClose }: { product: Product; onClose: 
           <div className="mb-1.5 flex items-baseline justify-between">
             <span className={eyebrow()}>{t("assign.cell")}</span>
             {shelf?.cells === 1 && (
-              <span className="text-[11px] text-muted-foreground">{t("assign.oneCellNote")}</span>
+              <span className="text-xs text-muted-foreground">{t("assign.oneCellNote")}</span>
             )}
           </div>
           <div className="flex gap-1">
@@ -398,7 +396,7 @@ export function AssignDialog({ product, onClose }: { product: Product; onClose: 
           <Alert tone="warn">
             <p>
               <span className="font-semibold">{t("assign.occupied.title")}</span> {occupant.name}{" "}
-              <span className="font-mono text-[11px] opacity-70">{occupant.sku}</span>
+              <span className="font-mono text-xs opacity-70">{occupant.sku}</span>
               {occupantMore > 0 && ` ${t("assign.occupied.more", { n: occupantMore })}`}.{" "}
               {t("assign.occupied.body", { name: occupant.name })}
             </p>
@@ -532,7 +530,7 @@ function Shell({
         <div className="min-w-0">
           <p className={eyebrow()}>{t("assign.header")}</p>
           <p className="truncate text-sm font-semibold">{product.name}</p>
-          <p className="font-mono text-[11px] text-muted-foreground">
+          <p className="font-mono text-xs text-muted-foreground">
             {product.sku} · {catLabel(t, product.category)}
           </p>
         </div>

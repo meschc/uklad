@@ -26,7 +26,6 @@ export function Inspector() {
     >
       <div
         className={eyebrow({
-          size: "base",
           className: "flex h-10 shrink-0 items-center border-b border-border px-3",
         })}
       >

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { FlaskConical, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { siteButton } from "../lib/button";
 import { c, useT } from "../lib/copy";
 
 const T = {
@@ -75,7 +76,7 @@ export function ChatPanel({ to, subject, responseHours, presets = [], className 
     <div className={cn("r-window border border-border bg-card", className)}>
       <div className="border-b border-border px-4 py-3">
         <p className="text-sm font-medium">{t(T.title)}</p>
-        <p className="mt-0.5 text-[11px] text-muted-foreground">
+        <p className="mt-0.5 text-xs text-muted-foreground">
           {to} · {t(T.subject)}: {subject}
         </p>
       </div>
@@ -85,7 +86,7 @@ export function ChatPanel({ to, subject, responseHours, presets = [], className 
           что не сказать вовсе. На карточке склада панель стоит прямо под
           настоящей формой заявки, и без этой строки две одинаковые с виду
           формы означали бы разное, ничем это не показывая. */}
-      <p className="flex items-start gap-2 border-b border-border bg-muted/40 px-4 py-2.5 text-[11px] leading-relaxed text-muted-foreground">
+      <p className="flex items-start gap-2 border-b border-border bg-muted/40 px-4 py-2.5 text-xs leading-relaxed text-muted-foreground">
         <FlaskConical className="mt-px size-3.5 shrink-0" />
         <span>{t(T.demo)}</span>
       </p>
@@ -93,10 +94,10 @@ export function ChatPanel({ to, subject, responseHours, presets = [], className 
       <div className="space-y-2 p-4">
         {sent.map((message, i) => (
           <div key={i} className="flex flex-col items-end gap-1">
-            <p className="r-inset max-w-[85%] bg-primary/[0.08] px-3.5 py-2 text-[13px] leading-relaxed">
+            <p className="r-inset max-w-[85%] bg-primary/[0.08] px-3.5 py-2 text-sm leading-relaxed">
               {message}
             </p>
-            <span className="text-[10px] text-muted-foreground">
+            <span className="text-2xs text-muted-foreground">
               {t(T.sent)}
               {responseHours ? ` · ${t(T.answers, { h: responseHours })}` : ""}
             </span>
@@ -110,7 +111,7 @@ export function ChatPanel({ to, subject, responseHours, presets = [], className 
                 key={p}
                 type="button"
                 onClick={() => setText(p)}
-                className="rounded-full border border-border px-3 py-1 text-[11px] text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+                className="rounded-full border border-border px-3 py-1 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
               >
                 {p}
               </button>
@@ -133,14 +134,18 @@ export function ChatPanel({ to, subject, responseHours, presets = [], className 
             rows={2}
             placeholder={t(T.placeholder)}
             aria-label={t(T.aria, { to, subject })}
-            className="r-inset min-h-[52px] flex-1 resize-none border border-input bg-background px-3 py-2 text-[13px] outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
+            className="r-inset min-h-[52px] flex-1 resize-none border border-input bg-background px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
           />
           <button
             type="button"
             onClick={send}
             disabled={!text.trim()}
             aria-label={t(T.send)}
-            className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors enabled:hover:bg-primary/90 disabled:opacity-40"
+            // Та же кнопка витрины, только квадратная: подписи у неё нет —
+            // значит, нет и горизонтальных полей, а `size-10` встаёт на место
+            // высоты. Цвет, подсветка и погасший вид приходят из модуля:
+            // здесь они были собраны руками и жили на девятой высоте (44).
+            className={siteButton({ className: "size-10 shrink-0 p-0" })}
           >
             <Send className="size-4" />
           </button>

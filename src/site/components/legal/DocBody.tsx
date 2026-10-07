@@ -47,7 +47,7 @@ function Block({ block, query }: { block: LegalBlock; query: string }) {
   switch (block.kind) {
     case "p":
       return (
-        <p className="mt-4 leading-[1.75] text-foreground/85">
+        <p className="mt-4 leading-prose text-foreground/85">
           <Marked text={block.text} query={query} />
         </p>
       );
@@ -56,7 +56,7 @@ function Block({ block, query }: { block: LegalBlock; query: string }) {
       return (
         <ul className="mt-4 flex flex-col gap-2.5">
           {block.items.map((item, i) => (
-            <li key={i} className="flex gap-3 leading-[1.7] text-foreground/85">
+            <li key={i} className="flex gap-3 leading-prose text-foreground/85">
               {/* Маркер — точка, набранная вручную: у ul с list-style маркер
                   прилипает к первой строке и разъезжается на переносах. */}
               <span className="mt-[0.6em] size-1.5 shrink-0 rounded-full bg-primary/50" />
@@ -72,8 +72,8 @@ function Block({ block, query }: { block: LegalBlock; query: string }) {
       return (
         <ol className="mt-4 flex flex-col gap-2.5">
           {block.items.map((item, i) => (
-            <li key={i} className="flex gap-3 leading-[1.7] text-foreground/85">
-              <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-bold tabular-nums text-primary">
+            <li key={i} className="flex gap-3 leading-prose text-foreground/85">
+              <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold tabular-nums text-primary">
                 {i + 1}
               </span>
               <span>
@@ -88,7 +88,7 @@ function Block({ block, query }: { block: LegalBlock; query: string }) {
       return (
         <div className="r-inset mt-5 flex gap-3 border border-primary/25 bg-primary/[0.05] p-4">
           <Info className="mt-0.5 size-4 shrink-0 text-primary" />
-          <p className="text-[14px] leading-[1.7] text-foreground/85">
+          <p className="text-sm leading-prose text-foreground/85">
             <Marked text={block.text} query={query} />
           </p>
         </div>
@@ -99,13 +99,13 @@ function Block({ block, query }: { block: LegalBlock; query: string }) {
         // Обёртка со своей прокруткой: в таблице реквизитов строки длинные, и
         // без неё на телефоне горизонтально уезжала бы вся страница.
         <div className="r-inset mt-5 overflow-x-auto border border-border">
-          <table className="w-full min-w-[520px] border-collapse text-[14px]">
+          <table className="w-full min-w-[520px] border-collapse text-sm">
             <thead>
               <tr className="bg-muted/60">
                 {block.head.map((h) => (
                   <th
                     key={h}
-                    className="border-b border-border px-4 py-2.5 text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
+                    className="border-b border-border px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground"
                   >
                     <Marked text={h} query={query} />
                   </th>
@@ -119,9 +119,12 @@ function Block({ block, query }: { block: LegalBlock; query: string }) {
                     <td
                       key={j}
                       className={
+                        // В ячейке строки короче, чем в абзаце, и полный
+                        // `leading-prose` разгоняет таблицу на пол-экрана —
+                        // здесь ступень ниже, но тоже из шкалы, не на глаз.
                         j === 0
-                          ? "px-4 py-3 align-top font-medium leading-[1.6]"
-                          : "px-4 py-3 align-top leading-[1.6] text-foreground/80"
+                          ? "px-4 py-3 align-top font-medium leading-relaxed"
+                          : "px-4 py-3 align-top leading-relaxed text-foreground/80"
                       }
                     >
                       <Marked text={cell} query={query} />
@@ -142,7 +145,7 @@ export function DocSection({ section, query = "" }: { section: LegalSection; que
       id={section.id}
       className="scroll-mt-28 border-t border-border pt-8 first:border-0 first:pt-0"
     >
-      <h2 className="font-display text-[21px] font-medium leading-snug tracking-tight">
+      <h2 className="font-display text-xl font-heading leading-snug tracking-tight">
         <Marked text={section.title} query={query} />
       </h2>
       {section.blocks.map((block, i) => (

@@ -5,6 +5,7 @@ import { MARKETPLACE_BY_ID } from "../../data/marketplaces";
 import { money, type Warehouse } from "../../data/warehouses";
 import { warehousesRepository } from "../../data/warehousesRepository";
 import { c, useT } from "../../lib/copy";
+import { eyebrow } from "../../lib/eyebrow";
 
 /** Сколько складов показываем в заявке. */
 const SHOWN = 3;
@@ -73,15 +74,15 @@ export function RequestBoard() {
 
   return (
     <figure className="m-0">
-      <div className="r-window border border-foreground/[0.09]">
+      <div className="r-window border border-frame">
         <header className="flex items-baseline justify-between gap-4 border-b border-border px-5 py-4">
           <div className="min-w-0">
-            <p className="font-display text-[15px] font-medium tracking-tight">{t(T.title)}</p>
-            <p className="mt-1 text-[12px] text-muted-foreground">
+            <p className="font-display text-base font-medium tracking-tight">{t(T.title)}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
               {t(T.meta, { n: REQUEST_PLACES, city: t(T.city) })}
             </p>
           </div>
-          <span className="shrink-0 text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+          <span className={eyebrow("shrink-0 text-muted-foreground")}>
             {CANDIDATES.length}{" "}
             {t.plural(
               CANDIDATES.length,
@@ -96,10 +97,10 @@ export function RequestBoard() {
             <li key={w.id} className={cn("px-5 py-4", i > 0 && "border-t border-border")}>
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <p className="truncate font-display text-[15px] font-medium tracking-tight">
+                  <p className="truncate font-display text-base font-medium tracking-tight">
                     {t(w.name)}
                   </p>
-                  <p className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px]">
+                  <p className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs">
                     {i < ANSWERED ? (
                       <>
                         <Check className="size-3.5 text-primary" strokeWidth={2.5} />
@@ -123,8 +124,8 @@ export function RequestBoard() {
                 </div>
 
                 <div className="shrink-0 text-right">
-                  <p className="font-mono text-[13px] tabular-nums">{money(w.price.storage)} ₽</p>
-                  <p className="mt-0.5 text-[11px] text-muted-foreground">{t(T.unit)}</p>
+                  <p className="font-mono text-sm tabular-nums">{money(w.price.storage)} ₽</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{t(T.unit)}</p>
                 </div>
               </div>
 
@@ -134,7 +135,7 @@ export function RequestBoard() {
                   return brand ? <BrandMark key={id} brand={brand} className="size-5" /> : null;
                 })}
                 {w.marketplaces.length > MAX_BRANDS && (
-                  <span className="text-[11px] text-muted-foreground">
+                  <span className="text-xs text-muted-foreground">
                     +{w.marketplaces.length - MAX_BRANDS}
                   </span>
                 )}
@@ -144,7 +145,7 @@ export function RequestBoard() {
         </ul>
       </div>
 
-      <figcaption className="mt-3 text-[12px] leading-relaxed text-muted-foreground">
+      <figcaption className="mt-3 text-xs leading-relaxed text-muted-foreground">
         {t(T.caption)}
       </figcaption>
     </figure>

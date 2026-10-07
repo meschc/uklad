@@ -13,6 +13,7 @@ import {
   toggle,
   type MarketFilters,
 } from "../../lib/filters";
+import { siteButton } from "../../lib/button";
 import { c, useT } from "../../lib/copy";
 
 const SERVICES_SHOWN = 8;
@@ -112,7 +113,7 @@ export function Filters({
             </Chip>
           ))}
         </div>
-        <p className="mt-2 text-[11px] leading-snug text-muted-foreground">{t(T.andNote)}</p>
+        <p className="mt-2 text-xs leading-snug text-muted-foreground">{t(T.andNote)}</p>
       </Group>
 
       <Group title={t(T.price)}>
@@ -124,7 +125,7 @@ export function Filters({
           onChange={(e) => set({ maxStorage: Number(e.target.value) })}
           className="range-input w-full"
         />
-        <div className="mt-1 flex justify-between text-[11px] tabular-nums text-muted-foreground">
+        <div className="mt-1 flex justify-between text-xs tabular-nums text-muted-foreground">
           <span>{t(T.from, { n: PRICE_MIN })}</span>
           <span className={cn(value.maxStorage < PRICE_MAX && "font-semibold text-primary")}>
             {t(T.to, { n: value.maxStorage })}
@@ -173,7 +174,7 @@ export function Filters({
       <button
         onClick={() => onChange({ ...DEFAULT_FILTERS, sort: value.sort })}
         disabled={active === 0}
-        className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-border text-sm font-medium transition-colors enabled:hover:bg-muted disabled:opacity-40"
+        className={siteButton({ tone: "outline" })}
       >
         <RotateCcw className="size-3.5" />
         {t(T.reset)}
@@ -186,7 +187,7 @@ export function Filters({
 function Group({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+      <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
         {title}
       </p>
       {children}
@@ -214,7 +215,7 @@ function Chip({
         "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-all duration-200",
         on
           ? "border-primary bg-primary/10 text-primary"
-          : "border-border text-muted-foreground hover:border-foreground/25 hover:text-foreground",
+          : "border-border text-muted-foreground hover:border-stroke-hover hover:text-foreground",
       )}
     >
       {children}

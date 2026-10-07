@@ -177,7 +177,7 @@ export function WarehouseDialog({
               placeholder={t("wh.storageRatePlaceholder")}
               className="max-w-40 text-right tabular-nums"
             />
-            <span className="text-[11px] text-muted-foreground">{t("wh.storageRateHint")}</span>
+            <span className="text-xs text-muted-foreground">{t("wh.storageRateHint")}</span>
           </label>
         )}
 
@@ -220,7 +220,7 @@ export function WarehouseDialog({
               {geocoding ? t("wh.geocoding") : t("wh.findOnMap")}
             </Button>
           </div>
-          {geoErr && <span className="text-[11px] text-destructive">{t("wh.geocodeFail")}</span>}
+          {geoErr && <span className="text-xs text-destructive">{t("wh.geocodeFail")}</span>}
         </label>
 
         {/* Карта — по кнопке, чтобы не занимать полдиалога при создании */}
@@ -248,7 +248,7 @@ export function WarehouseDialog({
                       setLatText("");
                       setLngText("");
                     }}
-                    className="text-[11px] text-muted-foreground hover:text-foreground"
+                    className="text-xs text-muted-foreground hover:text-foreground"
                   >
                     {t("wh.clearPoint")}
                   </button>
@@ -290,11 +290,11 @@ export function WarehouseDialog({
                 <MapPicker lat={lat} lng={lng} onPick={onMapPick} />
               </Suspense>
               <div className="flex items-center justify-between">
-                <span className="text-[11px] text-muted-foreground">{t("wh.mapHint")}</span>
+                <span className="text-xs text-muted-foreground">{t("wh.mapHint")}</span>
                 <button
                   type="button"
                   onClick={() => setShowMap(false)}
-                  className="text-[11px] text-muted-foreground hover:text-foreground"
+                  className="text-xs text-muted-foreground hover:text-foreground"
                 >
                   {t("wh.hideMap")}
                 </button>

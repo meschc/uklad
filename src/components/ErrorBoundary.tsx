@@ -57,7 +57,7 @@ function ScreenCrash({ error, onRetry }: { error: Error; onRetry: () => void }) 
         </span>
         <p className="text-sm font-semibold">{t("crash.title")}</p>
         <p className="text-xs text-muted-foreground">{t("crash.body")}</p>
-        <code className="max-w-full overflow-x-auto rounded bg-muted px-2 py-1 text-[10px] text-muted-foreground">
+        <code className="max-w-full overflow-x-auto rounded bg-muted px-2 py-1 text-2xs text-muted-foreground">
           {error.message}
         </code>
         <div className="mt-1 flex gap-2">

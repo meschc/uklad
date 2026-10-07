@@ -77,14 +77,14 @@ export function SectionNumber({
             />
           </Row>
           <div className="flex items-center justify-between">
-            <span className="text-[11px] text-muted-foreground">
+            <span className="text-xs text-muted-foreground">
               {rowPinned ? t("insp.rowPinned") : t("insp.numberAuto")}
             </span>
             {rowPinned && (
               <button
                 type="button"
                 onClick={() => setModuleRow(m.id, undefined)}
-                className="text-[11px] text-muted-foreground hover:text-foreground"
+                className="text-xs text-muted-foreground hover:text-foreground"
               >
                 {t("insp.numberReset")}
               </button>
@@ -107,20 +107,20 @@ export function SectionNumber({
         />
       </Row>
       <div className="flex items-center justify-between">
-        <span className="text-[11px] text-muted-foreground">
+        <span className="text-xs text-muted-foreground">
           {manual ? t("insp.numberManual") : t("insp.numberAuto")}
         </span>
         {manual && (
           <button
             type="button"
             onClick={() => setModuleNumber(m.id, undefined)}
-            className="text-[11px] text-muted-foreground hover:text-foreground"
+            className="text-xs text-muted-foreground hover:text-foreground"
           >
             {t("insp.numberReset")}
           </button>
         )}
       </div>
-      {duplicate && <span className="text-[11px] text-destructive">{t("insp.numberDup")}</span>}
+      {duplicate && <span className="text-xs text-destructive">{t("insp.numberDup")}</span>}
     </div>
   );
 }

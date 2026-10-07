@@ -139,7 +139,7 @@ export function RequestDialog({
               <div key={l.productId} className="flex items-center gap-2">
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-xs font-medium">{p?.name}</p>
-                  <p className="truncate font-mono text-[11px] text-muted-foreground">{p?.sku}</p>
+                  <p className="truncate font-mono text-xs text-muted-foreground">{p?.sku}</p>
                 </div>
                 <Input
                   value={l.qty}
@@ -161,7 +161,7 @@ export function RequestDialog({
               </div>
             );
           })}
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             {t("seller.linesTotal", { lines: lines.length, n: total })}
           </p>
         </div>
