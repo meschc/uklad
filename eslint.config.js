@@ -28,6 +28,7 @@ export default tseslint.config(
     ignores: [
       "dist/**",
       "dist-ssr/**",
+      "dist-app/**",
       "coverage/**",
       "node_modules/**",
       "test-results/**",

@@ -1,0 +1,1863 @@
+<title>Карта Уклада</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link
+  rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap"
+/>
+<style>
+  /* Раскладка: сводка (этапы запуска → сейчас → отсечка) сверху, ниже карта: Уклад в центре, разработка слева, смысл и маркетинг справа, связи пунктиром; справа карточка узла */
+  :root {
+    --bg: hsl(220 20% 98%);
+    --surface: hsl(0 0% 100%);
+    --fg: hsl(224 12% 12%);
+    --muted: hsl(220 9% 46%);
+    --line: hsl(220 13% 88%);
+    --soft: hsl(220 14% 95%);
+    --accent: hsl(221 83% 53%);
+    --accent-soft: hsl(221 83% 53% / 0.1);
+    --st-done: hsl(152 52% 36%);
+    --st-now: hsl(221 83% 53%);
+    --st-next: hsl(262 52% 55%);
+    --st-blocked: hsl(4 72% 50%);
+    --st-question: hsl(36 92% 42%);
+    --st-later: hsl(220 9% 60%);
+    --font: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: hsl(224 14% 8%);
+      --surface: hsl(224 14% 11%);
+      --fg: hsl(220 14% 92%);
+      --muted: hsl(220 9% 62%);
+      --line: hsl(223 12% 22%);
+      --soft: hsl(223 12% 15%);
+      --accent: hsl(214 100% 63%);
+      --accent-soft: hsl(214 100% 63% / 0.14);
+      --st-done: hsl(152 45% 52%);
+      --st-now: hsl(214 100% 66%);
+      --st-next: hsl(262 70% 72%);
+      --st-blocked: hsl(4 80% 64%);
+      --st-question: hsl(40 90% 58%);
+      --st-later: hsl(220 9% 52%);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: hsl(224 14% 8%);
+    --surface: hsl(224 14% 11%);
+    --fg: hsl(220 14% 92%);
+    --muted: hsl(220 9% 62%);
+    --line: hsl(223 12% 22%);
+    --soft: hsl(223 12% 15%);
+    --accent: hsl(214 100% 63%);
+    --accent-soft: hsl(214 100% 63% / 0.14);
+    --st-done: hsl(152 45% 52%);
+    --st-now: hsl(214 100% 66%);
+    --st-next: hsl(262 70% 72%);
+    --st-blocked: hsl(4 80% 64%);
+    --st-question: hsl(40 90% 58%);
+    --st-later: hsl(220 9% 52%);
+    color-scheme: dark;
+  }
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font: 14px/1.5 var(--font);
+  }
+  .wrap {
+    max-width: 1720px;
+    margin: 0 auto;
+    padding-inline: 16px;
+    padding-block: 20px 48px;
+    display: grid;
+    gap: 20px;
+  }
+  header.top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px 16px;
+  }
+  h1 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .meta {
+    color: var(--muted);
+    font-size: 12.5px;
+    font-family: var(--mono);
+  }
+  /* быстрые ссылки в шапке: сам продукт и дизайн-система, которую правят вместе с кодом */
+  .quick {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-right: auto;
+  }
+  .quick .ext {
+    color: var(--muted);
+  }
+  h2 {
+    margin: 0 0 10px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+  }
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 14px 16px;
+    min-width: 0;
+  }
+
+  /* этапы запуска */
+  .stages {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 8px;
+  }
+  .stage {
+    border-top: 3px solid var(--st-later);
+    padding: 8px 2px 0;
+    min-width: 0;
+  }
+  .stage[data-s="done"] {
+    border-color: var(--st-done);
+  }
+  .stage[data-s="now"] {
+    border-color: var(--st-now);
+  }
+  .stage .n {
+    font: 500 11px var(--mono);
+    color: var(--muted);
+  }
+  .stage .t {
+    font-weight: 600;
+    font-size: 13.5px;
+    line-height: 1.3;
+    text-wrap: balance;
+  }
+  .stage .c {
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.4;
+    margin-top: 3px;
+  }
+  .stage .w {
+    font: 11px var(--mono);
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  .cols {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    gap: 16px;
+  }
+  @media (max-width: 860px) {
+    .cols {
+      grid-template-columns: 1fr;
+    }
+  }
+  ul.plain {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 4px;
+    font-size: 13px;
+  }
+  ul.plain li {
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+    min-width: 0;
+  }
+  ul.plain li button {
+    all: unset;
+    cursor: pointer;
+    text-align: left;
+  }
+  ul.plain li button:hover {
+    color: var(--accent);
+  }
+  ul.plain li button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 3px;
+  }
+  .where {
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  /* отсечки */
+  .cp {
+    border-left: 2px solid var(--line);
+    padding-left: 12px;
+    display: grid;
+    gap: 4px;
+  }
+  .cp + .cp {
+    margin-top: 14px;
+  }
+  .cp .h {
+    font: 500 12.5px var(--mono);
+    color: var(--muted);
+  }
+  .cp .s {
+    font-weight: 600;
+    font-size: 15.5px;
+    line-height: 1.4;
+  }
+  .cp ul {
+    margin: 2px 0 0;
+    padding-left: 18px;
+    color: var(--fg);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .cp .lbl {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+  details.older summary {
+    cursor: pointer;
+    color: var(--accent);
+    font-size: 13px;
+    margin-top: 12px;
+  }
+
+  /* статусы */
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex: none;
+    background: var(--st-later);
+    transform: translateY(-1px);
+  }
+  [data-st="done"] .dot,
+  .dot[data-st="done"] {
+    background: var(--st-done);
+  }
+  [data-st="now"] .dot,
+  .dot[data-st="now"] {
+    background: var(--st-now);
+  }
+  [data-st="next"] .dot,
+  .dot[data-st="next"] {
+    background: var(--st-next);
+  }
+  [data-st="blocked"] .dot,
+  .dot[data-st="blocked"] {
+    background: var(--st-blocked);
+  }
+  [data-st="question"] .dot,
+  .dot[data-st="question"] {
+    background: var(--st-question);
+  }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .chip {
+    all: unset;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 28px;
+    padding: 0 10px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    font-size: 12.5px;
+    background: var(--surface);
+  }
+  .chip[aria-pressed="true"] {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+  .chip:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .chip .k {
+    font: 11px var(--mono);
+    color: var(--muted);
+  }
+
+  /* дерево: Уклад в центре, разработка слева, смысл и маркетинг справа */
+  .mapbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .mapbtns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+  }
+  .btn {
+    all: unset;
+    cursor: pointer;
+    height: 28px;
+    padding: 0 10px;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    font-size: 12.5px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+  }
+  .btn:hover {
+    background: var(--soft);
+  }
+  .btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .btn.mini {
+    height: 24px;
+    padding: 0 8px;
+    font-size: 12px;
+  }
+  .seg {
+    display: inline-flex;
+    gap: 2px;
+    padding: 2px;
+    border-radius: 8px;
+    background: var(--soft);
+    align-items: center;
+  }
+  .seg .k {
+    font-size: 12px;
+    color: var(--muted);
+    padding: 0 6px 0 4px;
+  }
+  .seg button {
+    all: unset;
+    cursor: pointer;
+    height: 24px;
+    padding: 0 9px;
+    border-radius: 6px;
+    font-size: 12.5px;
+    display: inline-flex;
+    align-items: center;
+  }
+  .seg button[aria-pressed="true"] {
+    background: var(--surface);
+    box-shadow: 0 0 0 1px var(--line);
+  }
+  .seg button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+  .lnkey {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .lnkey svg {
+    width: 26px;
+    height: 8px;
+  }
+  .mapgrid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 16px;
+    align-items: start;
+  }
+  @media (max-width: 760px) {
+    .mapgrid {
+      grid-template-columns: 1fr;
+    }
+    .card {
+      height: auto;
+      min-height: 0;
+      max-height: 60dvh;
+    }
+  }
+  .scroller {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--surface);
+    height: calc(100vh - 76px);
+    height: calc(100dvh - 76px);
+    min-height: 460px;
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .scroller.grabbing {
+    cursor: grabbing;
+  }
+  .scroller.grabbing .node {
+    cursor: grabbing;
+  }
+  .tree {
+    position: absolute;
+    left: 0;
+    top: 0;
+    transform-origin: 0 0;
+    will-change: transform;
+  }
+  .zoom {
+    position: absolute;
+    right: 10px;
+    bottom: 10px;
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    z-index: 3;
+  }
+  .zoom .btn {
+    background: var(--surface);
+  }
+  .zoom .pct {
+    font-size: 12px;
+    color: var(--muted);
+    min-width: 40px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+  .hint {
+    position: absolute;
+    left: 10px;
+    bottom: 10px;
+    font-size: 12px;
+    color: var(--muted);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 3px 8px;
+    pointer-events: none;
+    z-index: 3;
+  }
+  .tree svg {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: visible;
+  }
+  .tree svg .tw {
+    fill: none;
+    stroke: var(--line);
+    stroke-width: 1.5;
+  }
+  .ln {
+    fill: none;
+    stroke-width: 1.5;
+    opacity: 0.5;
+  }
+  .ln.hi {
+    opacity: 1;
+    stroke-width: 2.2;
+  }
+  .ln.lo {
+    opacity: 0.07;
+  }
+  .ln-blocks {
+    stroke: var(--st-blocked);
+    stroke-dasharray: 6 4;
+  }
+  .ln-affects {
+    stroke: var(--st-next);
+    stroke-dasharray: 2 4;
+    stroke-linecap: round;
+  }
+  .ln-touches {
+    stroke: var(--st-later);
+    stroke-dasharray: 1 3;
+    stroke-linecap: round;
+  }
+  .side-h {
+    position: absolute;
+    top: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .node {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    height: 28px;
+    padding: 0 8px 0 6px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    background: var(--surface);
+    font-size: 13px;
+    white-space: nowrap;
+    cursor: pointer;
+    max-width: 216px;
+  }
+  .node.left {
+    flex-direction: row-reverse;
+    padding: 0 6px 0 8px;
+  }
+  .node .lab {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .node:hover {
+    border-color: var(--line);
+    background: var(--soft);
+  }
+  .node:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+  .node.sel {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+  .node.root {
+    height: 40px;
+    justify-content: center;
+    border-radius: 20px;
+    background: var(--fg);
+    color: var(--bg);
+    font-weight: 700;
+    font-size: 16px;
+    max-width: none;
+  }
+  .node.root:hover {
+    background: var(--fg);
+    filter: brightness(1.15);
+  }
+  .node.root.sel {
+    box-shadow: 0 0 0 3px var(--accent);
+  }
+  .node.branch {
+    font-weight: 600;
+    border-color: var(--line);
+  }
+  .node.dim {
+    opacity: 0.28;
+  }
+  .node .tg {
+    font: 11px var(--mono);
+    color: var(--muted);
+    padding-inline: 2px;
+  }
+  .node .lk {
+    font: 10.5px var(--mono);
+    color: var(--st-next);
+  }
+
+  /* карточка узла */
+  .card {
+    display: grid;
+    gap: 10px;
+    align-content: start;
+    height: calc(100vh - 76px);
+    height: calc(100dvh - 76px);
+    min-height: 460px;
+    overflow-y: auto;
+  }
+  .card .path {
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .card h3 {
+    margin: 0;
+    font-size: 16px;
+    line-height: 1.3;
+    text-wrap: balance;
+  }
+  .card .note {
+    white-space: pre-wrap;
+    font-size: 13.5px;
+  }
+  .card dl {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 4px 12px;
+    margin: 0;
+    font-size: 12.5px;
+  }
+  .card dt {
+    color: var(--muted);
+  }
+  .card dd {
+    margin: 0;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .card code {
+    font: 12px var(--mono);
+  }
+  .card a {
+    color: var(--accent);
+  }
+  .card .lbl {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+  .files {
+    display: grid;
+    gap: 8px;
+  }
+  .file {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 1px 8px;
+    align-items: center;
+  }
+  .file .fn {
+    font-weight: 500;
+    font-size: 13px;
+    overflow-wrap: anywhere;
+  }
+  .file .fp {
+    grid-column: 1 / -1;
+    font: 11px var(--mono);
+    color: var(--muted);
+    overflow-wrap: anywhere;
+  }
+  .file .fp input {
+    width: 100%;
+    font: inherit;
+    color: var(--fg);
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 2px 4px;
+  }
+  .file .acts {
+    display: flex;
+    gap: 4px;
+  }
+  .card .btn.mini {
+    color: var(--fg);
+    text-decoration: none;
+  }
+  .rel ul.plain {
+    gap: 4px;
+    font-size: 13px;
+  }
+  .rel .where {
+    display: block;
+  }
+  .card label {
+    font-size: 12px;
+    color: var(--muted);
+    display: grid;
+    gap: 4px;
+  }
+  .card select,
+  .card textarea {
+    font: inherit;
+    font-size: 13px;
+    color: var(--fg);
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 6px 8px;
+  }
+  .card select {
+    height: 32px;
+    padding-block: 0;
+  }
+  .card textarea {
+    min-height: 90px;
+    resize: vertical;
+  }
+  .card .row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .btn.pri {
+    background: var(--accent);
+    color: var(--surface);
+    border-color: var(--accent);
+  }
+  .btn.pri:hover {
+    background: var(--accent);
+    filter: brightness(1.08);
+  }
+  .btn[disabled] {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+  .msg {
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .empty {
+    color: var(--muted);
+    padding: 24px;
+    text-align: center;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .node {
+      transition:
+        opacity 0.15s,
+        background 0.15s;
+    }
+  }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <h1>Карта Уклада</h1>
+    <nav class="quick" aria-label="Ссылки проекта">
+      <a class="btn" href="https://u-klad.ru/" target="_blank" rel="noopener"
+        >Витрина <span class="ext" aria-hidden="true">↗</span></a
+      >
+      <!-- после переезда кабинета (ADR 0008) — https://app.u-klad.ru/ -->
+      <a class="btn" href="https://u-klad.ru/app/" target="_blank" rel="noopener"
+        >Демо WMS <span class="ext" aria-hidden="true">↗</span></a
+      >
+      <a
+        class="btn"
+        href="https://claude.ai/artifact/Tadqydujk1gJrKcysRePzm"
+        target="_blank"
+        rel="noopener"
+        >Дизайн-система <span class="ext" aria-hidden="true">↗</span></a
+      >
+    </nav>
+    <span class="meta" id="meta">загружаю данные…</span>
+  </header>
+
+  <section class="panel" aria-labelledby="h-stages">
+    <h2 id="h-stages">Этапы запуска</h2>
+    <div class="stages" id="stages">
+      <div class="empty">Этапы появятся, когда база ответит.</div>
+    </div>
+  </section>
+
+  <div class="cols">
+    <section class="panel" aria-labelledby="h-now">
+      <h2 id="h-now">Делаем сейчас и что блокирует</h2>
+      <ul class="plain" id="now"></ul>
+    </section>
+    <section class="panel" aria-labelledby="h-cp">
+      <h2 id="h-cp">Отсечки сессий</h2>
+      <div id="cps">
+        <div class="empty">Отсечек пока нет. Каждая сессия добавляет свою в конце работы.</div>
+      </div>
+    </section>
+  </div>
+
+  <section aria-labelledby="h-map" id="map-sec">
+    <div class="mapbar">
+      <h2 id="h-map" style="margin: 0">Карта продукта</h2>
+      <div class="legend" id="legend"></div>
+      <div class="mapbtns">
+        <span class="lnkey"
+          ><svg viewBox="0 0 26 8" aria-hidden="true">
+            <path class="ln ln-blocks" style="opacity: 1" d="M0 4 H26" /></svg
+          >блокирует</span
+        >
+        <span class="lnkey"
+          ><svg viewBox="0 0 26 8" aria-hidden="true">
+            <path class="ln ln-affects" style="opacity: 1" d="M0 4 H26" /></svg
+          >влияет</span
+        >
+        <span class="lnkey"
+          ><svg viewBox="0 0 26 8" aria-hidden="true">
+            <path class="ln ln-touches" style="opacity: 1" d="M0 4 H26" /></svg
+          >связано</span
+        >
+        <div class="seg" id="lmode" role="group" aria-label="Какие связи показывать">
+          <span class="k">Связи</span>
+        </div>
+        <div class="seg" id="ed" role="group" aria-label="В каком редакторе открывать файлы">
+          <span class="k">Файлы в</span>
+        </div>
+        <button class="btn" id="expand" type="button">Раскрыть всё</button>
+        <button class="btn" id="collapse" type="button">Свернуть</button>
+      </div>
+    </div>
+    <div class="mapgrid">
+      <div class="scroller" id="view">
+        <div class="tree" id="tree">
+          <div class="empty">Дерево веток появится, когда база ответит.</div>
+        </div>
+        <div class="hint">тяните холст · колесо — сдвиг · Ctrl/⌘ + колесо или щипок — масштаб</div>
+        <div class="zoom">
+          <button class="btn mini" id="zout" type="button" aria-label="Уменьшить">−</button
+          ><span class="pct" id="zpct">100%</span
+          ><button class="btn mini" id="zin" type="button" aria-label="Увеличить">+</button
+          ><button class="btn mini" id="zfit" type="button">Вместить</button>
+        </div>
+      </div>
+      <aside class="panel card" id="card" aria-live="polite">
+        <div class="msg">Нажмите на узел, чтобы увидеть, что в нём, где лежит и кто делает.</div>
+      </aside>
+    </div>
+  </section>
+</div>
+
+<script>
+  const STATUS = {
+    now: { label: "в работе" },
+    blocked: { label: "блокер" },
+    question: { label: "открытый вопрос" },
+    next: { label: "следующее" },
+    done: { label: "готово" },
+    later: { label: "потом" },
+  };
+  const STATUS_ORDER = ["now", "blocked", "question", "next", "done", "later"];
+  const COL_W = 236,
+    ROW_H = 34,
+    PAD = 16,
+    HEAD = 30,
+    ROOT_W = 120,
+    GAP = 32,
+    NODE_MAX = 216;
+  const SIDES = { dev: "Разработка", sense: "Смысл и маркетинг" };
+  const LINK_KIND = { blocks: "блокирует", affects: "влияет на", touches: "связано с" };
+  const LINK_COLOR = { blocks: "--st-blocked", affects: "--st-next", touches: "--st-later" };
+  // Файл открывается в редакторе по его ссылочной схеме; путь кодируем — в нём кириллица и пробелы
+  const EDITORS = {
+    claude: {
+      label: "Claude",
+      prompt: (p) =>
+        `Открой и прочитай файл ${p}. Коротко перескажи, что в нём, и скажи, что в нём устарело или не сходится с картой продукта.`,
+    },
+    sublime: { label: "Sublime", url: (p) => "subl://open?url=file://" + encodeURI(p) }, // нужен обработчик subl:// (macOS сам его не ставит)
+  };
+  const readEditor = () => {
+    try {
+      return localStorage.getItem("uklad-map-editor");
+    } catch {
+      return null;
+    }
+  };
+
+  const state = {
+    nodes: new Map(),
+    links: [],
+    stages: [],
+    cps: [],
+    open: new Set(["root"]),
+    sel: null,
+    filter: null,
+    initOpened: false,
+    centered: false,
+    linkMode: "sel",
+    editor: EDITORS[readEditor()] ? readEditor() : "claude",
+  };
+  let db = null;
+
+  const $ = (id) => document.getElementById(id);
+  const el = (tag, props = {}, kids = []) => {
+    const n = document.createElement(tag);
+    for (const [k, v] of Object.entries(props)) {
+      if (k === "text") n.textContent = v;
+      else if (k === "dataset") Object.assign(n.dataset, v);
+      else if (k.startsWith("on")) n.addEventListener(k.slice(2), v);
+      else n.setAttribute(k, v);
+    }
+    for (const c of [].concat(kids)) if (c != null) n.append(c);
+    return n;
+  };
+  const safeUrl = (u) =>
+    typeof u === "string" &&
+    /^(https:\/\/|claude:\/\/|http:\/\/(127\.0\.0\.1|localhost):\d+\/)/.test(u);
+  const dot = (st) => el("span", { class: "dot", "data-st": st });
+
+  function childrenOf(id) {
+    return [...state.nodes.values()]
+      .filter((n) => n.parent === id)
+      .sort(
+        (a, b) =>
+          (a.order ?? 99) - (b.order ?? 99) || String(a.title).localeCompare(String(b.title), "ru"),
+      );
+  }
+  function pathOf(n) {
+    const out = [];
+    let cur = state.nodes.get(n.parent);
+    while (cur && cur.id !== "root") {
+      out.unshift(cur.title);
+      cur = state.nodes.get(cur.parent);
+    }
+    return out;
+  }
+  function branchOf(n) {
+    let cur = n;
+    while (cur && cur.parent && cur.parent !== "root") cur = state.nodes.get(cur.parent);
+    return cur;
+  }
+  function countSub(id, st) {
+    let c = 0;
+    for (const k of childrenOf(id)) {
+      if (k.status === st) c++;
+      c += countSub(k.id, st);
+    }
+    return c;
+  }
+
+  /* ---------- этапы ---------- */
+  function renderStages() {
+    const box = $("stages");
+    if (!state.stages.length) return;
+    box.replaceChildren(
+      ...state.stages.map((s, i) =>
+        el("div", { class: "stage", "data-s": s.status || "next" }, [
+          el("div", { class: "n", text: `${i + 1} · ${STATUS[s.status]?.label || ""}` }),
+          el("div", { class: "t", text: s.title }),
+          s.when ? el("div", { class: "w", text: s.when }) : null,
+          s.criteria ? el("div", { class: "c", text: s.criteria }) : null,
+        ]),
+      ),
+    );
+  }
+
+  /* ---------- сейчас ---------- */
+  function renderNow() {
+    const list = [...state.nodes.values()]
+      .filter((n) => n.status === "now" || n.status === "blocked")
+      .sort((a, b) => STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status));
+    const ul = $("now");
+    if (!list.length) {
+      ul.replaceChildren(
+        el("li", { class: "msg", text: "Ничего не помечено «в работе» или «блокер»." }),
+      );
+      return;
+    }
+    ul.replaceChildren(
+      ...list.map((n) =>
+        el("li", { "data-st": n.status }, [
+          dot(n.status),
+          el("span", {}, [
+            el("button", { type: "button", text: n.title, onclick: () => select(n.id, true) }),
+            el("span", {
+              class: "where",
+              text: `  ${branchOf(n)?.title || ""}${n.owner ? " · " + n.owner : ""}`,
+            }),
+          ]),
+        ]),
+      ),
+    );
+  }
+
+  /* ---------- отсечки ---------- */
+  function cpBlock(c) {
+    const list = (label, arr) =>
+      arr && arr.length
+        ? [
+            el("div", { class: "lbl", text: label }),
+            el(
+              "ul",
+              {},
+              arr.map((t) => el("li", { text: t })),
+            ),
+          ]
+        : [];
+    return el("div", { class: "cp" }, [
+      el("div", {
+        class: "h",
+        text: `${c.date || ""} · ${c.session || ""}${c.branch ? " · " + c.branch : ""}`,
+      }),
+      el("div", { class: "s", text: c.summary || "" }),
+      ...list("Сделано", c.done),
+      ...list("Дальше", c.next),
+      ...list("Открыто", c.questions),
+    ]);
+  }
+  function renderCps() {
+    if (!state.cps.length) return;
+    const sorted = [...state.cps].sort((a, b) =>
+      String(b.date + b.id).localeCompare(String(a.date + a.id)),
+    );
+    const [first, ...rest] = sorted;
+    const kids = [cpBlock(first)];
+    if (rest.length)
+      kids.push(
+        el("details", { class: "older" }, [
+          el("summary", { text: `Ещё ${rest.length}` }),
+          ...rest.map(cpBlock),
+        ]),
+      );
+    $("cps").replaceChildren(...kids);
+  }
+
+  /* ---------- легенда ---------- */
+  function renderLegend() {
+    const counts = {};
+    for (const n of state.nodes.values())
+      if (n.id !== "root") counts[n.status] = (counts[n.status] || 0) + 1;
+    $("legend").replaceChildren(
+      ...STATUS_ORDER.map((st) =>
+        el(
+          "button",
+          {
+            type: "button",
+            class: "chip",
+            "data-st": st,
+            "aria-pressed": String(state.filter === st),
+            onclick: () => {
+              state.filter = state.filter === st ? null : st;
+              if (state.filter) openMatching(st);
+              render();
+            },
+          },
+          [dot(st), STATUS[st].label, el("span", { class: "k", text: String(counts[st] || 0) })],
+        ),
+      ),
+    );
+  }
+  function openMatching(st) {
+    for (const n of state.nodes.values())
+      if (n.status === st) {
+        let p = n.parent;
+        while (p) {
+          state.open.add(p);
+          p = state.nodes.get(p)?.parent;
+        }
+      }
+  }
+
+  /* ---------- дерево: две стороны от центра ---------- */
+  // Узел стоит в колонке своей глубины. Левая сторона зеркальна: узел прижат к правому краю колонки,
+  // связь идёт от левого края родителя к правому краю ребёнка. Ширину узла меряем уже в DOM.
+  function sideOf(n) {
+    return n.id === "root" ? null : branchOf(n)?.side === "dev" ? "dev" : "sense";
+  }
+  function layoutSide(side) {
+    let rows = 0;
+    const walk = (n, depth) => {
+      const kids = state.open.has(n.id) ? childrenOf(n.id) : [];
+      if (!kids.length) return { n, depth, y: rows++, kids: [] };
+      const laid = kids.map((k) => walk(k, depth + 1));
+      return { n, depth, y: (laid[0].y + laid[laid.length - 1].y) / 2, kids: laid };
+    };
+    const trees = childrenOf("root")
+      .filter((b) => sideOf(b) === side)
+      .map((b) => walk(b, 1));
+    const flat = [];
+    const visit = (t) => {
+      flat.push(t);
+      t.kids.forEach(visit);
+    };
+    trees.forEach(visit);
+    return { trees, flat, rows, depth: Math.max(0, ...flat.map((t) => t.depth)) };
+  }
+  function nodeEl(n, side, style) {
+    const kids = childrenOf(n.id),
+      hasKids = kids.length > 0,
+      isOpen = state.open.has(n.id),
+      isRoot = n.id === "root";
+    const lk = linkCount(n.id);
+    const cls = [
+      "node",
+      side === "dev" ? "left" : "",
+      isRoot ? "root" : n.parent === "root" ? "branch" : "",
+      state.sel === n.id ? "sel" : "",
+      state.filter &&
+      !isRoot &&
+      n.status !== state.filter &&
+      !(hasKids && countSub(n.id, state.filter))
+        ? "dim"
+        : "",
+    ].join(" ");
+    const tag = hasKids && !isRoot ? (isOpen ? "−" : `+${kids.length}`) : null;
+    return el(
+      "div",
+      {
+        class: cls,
+        tabindex: "0",
+        role: "button",
+        "data-st": n.status || "later",
+        "data-id": n.id,
+        title: n.title,
+        style,
+        onclick: (e) => {
+          if (hasKids && !isRoot && (e.target.classList.contains("tg") || state.sel === n.id))
+            toggle(n.id);
+          select(n.id);
+        },
+        onkeydown: (e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            if (hasKids && !isRoot) toggle(n.id);
+            select(n.id);
+          }
+        },
+      },
+      [
+        isRoot ? null : dot(n.status || "later"),
+        el("span", { class: "lab", text: n.title }),
+        lk ? el("span", { class: "lk", text: `↔${lk}`, title: `связей: ${lk}` }) : null,
+        tag ? el("span", { class: "tg", text: tag }) : null,
+      ],
+    );
+  }
+  function renderTree() {
+    const box = $("tree");
+    const root = state.nodes.get("root");
+    if (!root) return;
+    const L = layoutSide("dev"),
+      R = layoutSide("sense");
+    const maxRows = Math.max(L.rows, R.rows, 1);
+    const X0 = PAD + (L.depth ? NODE_MAX + (L.depth - 1) * COL_W + GAP : 0) + ROOT_W / 2;
+    const rx = (d) => X0 - ROOT_W / 2 - GAP - (d - 1) * COL_W; // правый край узла слева
+    const lx = (d) => X0 + ROOT_W / 2 + GAP + (d - 1) * COL_W; // левый край узла справа
+    const W = R.depth ? lx(R.depth) + NODE_MAX + PAD : X0 + ROOT_W / 2 + PAD;
+    const H = HEAD + PAD * 2 + maxRows * ROW_H;
+    const top = (side, t) => HEAD + PAD + ((maxRows - side.rows) / 2 + t.y) * ROW_H;
+    box.style.width = W + "px";
+    box.style.height = H + "px";
+
+    const items = []; // { n, side, el, d, cy }
+    const rootCy = HEAD + PAD + ((maxRows - 1) / 2) * ROW_H + 14;
+    const rootEl = nodeEl(
+      root,
+      null,
+      `left:${X0 - ROOT_W / 2}px;width:${ROOT_W}px;top:${rootCy - 20}px`,
+    );
+    items.push({ n: root, side: null, el: rootEl, d: 0, cy: rootCy });
+    for (const [side, S] of [
+      ["dev", L],
+      ["sense", R],
+    ]) {
+      for (const t of S.flat) {
+        const y = top(S, t);
+        const style =
+          side === "dev"
+            ? `right:${W - rx(t.depth)}px;top:${y}px`
+            : `left:${lx(t.depth)}px;top:${y}px`;
+        items.push({ n: t.n, side, el: nodeEl(t.n, side, style), d: t.depth, cy: y + 14, t });
+      }
+    }
+    const heads = [
+      L.depth
+        ? el("div", { class: "side-h", text: "← " + SIDES.dev, style: `right:${W - rx(1)}px` })
+        : null,
+      R.depth
+        ? el("div", { class: "side-h", text: SIDES.sense + " →", style: `left:${lx(1)}px` })
+        : null,
+    ];
+    const svg = document.createElementNS(SVG_NS, "svg");
+    svg.setAttribute("width", W);
+    svg.setAttribute("height", H);
+    box.replaceChildren(svg, ...heads.filter(Boolean), ...items.map((i) => i.el));
+
+    // края узлов — уже по настоящей ширине
+    const geo = new Map();
+    for (const i of items) {
+      const w = i.el.offsetWidth;
+      if (!i.side)
+        geo.set(i.n.id, {
+          inner: X0,
+          outer: X0,
+          l: X0 - ROOT_W / 2,
+          r: X0 + ROOT_W / 2,
+          cy: i.cy,
+          side: null,
+        });
+      else if (i.side === "dev")
+        geo.set(i.n.id, { inner: rx(i.d), outer: rx(i.d) - w, cy: i.cy, side: "dev" });
+      else geo.set(i.n.id, { inner: lx(i.d), outer: lx(i.d) + w, cy: i.cy, side: "sense" });
+    }
+    const outEdge = (id, side) => {
+      const g = geo.get(id);
+      return g.side ? g.outer : side === "dev" ? g.l : g.r;
+    };
+    for (const i of items) {
+      if (!i.side) continue;
+      const g = geo.get(i.n.id);
+      const x1 = outEdge(i.n.parent, i.side),
+        y1 = geo.get(i.n.parent).cy,
+        x2 = g.inner,
+        y2 = g.cy,
+        mx = (x1 + x2) / 2;
+      svg.append(
+        svgEl("path", { class: "tw", d: `M${x1} ${y1} C${mx} ${y1} ${mx} ${y2} ${x2} ${y2}` }),
+      );
+    }
+    drawLinks(svg, geo);
+    state.size = { w: W, h: H, x0: X0 };
+    if (!state.centered) {
+      state.centered = true;
+      fitView();
+    } else applyView();
+  }
+
+  /* ---------- свободное перемещение по холсту ---------- */
+  const ZMIN = 0.3,
+    ZMAX = 2.2;
+  const view = { x: 0, y: 0, k: 1 };
+  function applyView() {
+    $("tree").style.transform = `translate(${view.x}px,${view.y}px) scale(${view.k})`;
+    $("zpct").textContent = Math.round(view.k * 100) + "%";
+  }
+  function fitView() {
+    const vp = $("view"),
+      s = state.size;
+    if (!s) return;
+    const cw = vp.clientWidth,
+      ch = vp.clientHeight;
+    view.k = Math.min(1, Math.max(0.5, Math.min(cw / s.w, ch / s.h)));
+    view.x = cw / 2 - s.x0 * view.k; // Уклад — по центру экрана
+    view.y = Math.max(8, (ch - s.h * view.k) / 2);
+    applyView();
+  }
+  function zoomAt(k2, cx, cy) {
+    const k = Math.min(ZMAX, Math.max(ZMIN, k2));
+    view.x = cx - (cx - view.x) * (k / view.k);
+    view.y = cy - (cy - view.y) * (k / view.k);
+    view.k = k;
+    applyView();
+  }
+  function zoomBy(f) {
+    const vp = $("view");
+    zoomAt(view.k * f, vp.clientWidth / 2, vp.clientHeight / 2);
+  }
+  function initPan() {
+    const vp = $("view"),
+      pts = new Map();
+    let moved = 0,
+      pinch = 0;
+    vp.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0 || e.target.closest(".zoom")) return;
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      moved = 0;
+      pinch = 0;
+    });
+    vp.addEventListener("pointermove", (e) => {
+      const p = pts.get(e.pointerId);
+      if (!p) return;
+      const dx = e.clientX - p.x,
+        dy = e.clientY - p.y;
+      p.x = e.clientX;
+      p.y = e.clientY;
+      moved += Math.abs(dx) + Math.abs(dy);
+      if (moved < 5) return; // клик по узлу не считаем перетаскиванием
+      if (!vp.classList.contains("grabbing")) {
+        vp.classList.add("grabbing");
+        try {
+          vp.setPointerCapture(e.pointerId);
+        } catch {}
+      }
+      if (pts.size === 2) {
+        // щипок двумя пальцами
+        const [a, b] = [...pts.values()],
+          d = Math.hypot(a.x - b.x, a.y - b.y),
+          r = vp.getBoundingClientRect();
+        if (pinch) zoomAt(view.k * (d / pinch), (a.x + b.x) / 2 - r.left, (a.y + b.y) / 2 - r.top);
+        pinch = d;
+      } else {
+        view.x += dx;
+        view.y += dy;
+        applyView();
+      }
+    });
+    const end = (e) => {
+      pts.delete(e.pointerId);
+      pinch = 0;
+      if (!pts.size) setTimeout(() => vp.classList.remove("grabbing"), 0);
+    };
+    vp.addEventListener("pointerup", end);
+    vp.addEventListener("pointercancel", end);
+    vp.addEventListener(
+      "click",
+      (e) => {
+        if (moved >= 5) {
+          e.stopPropagation();
+          e.preventDefault();
+          moved = 0;
+        }
+      },
+      true,
+    );
+    vp.addEventListener(
+      "wheel",
+      (e) => {
+        e.preventDefault();
+        if (e.ctrlKey || e.metaKey) {
+          const r = vp.getBoundingClientRect();
+          zoomAt(view.k * Math.exp(-e.deltaY * 0.01), e.clientX - r.left, e.clientY - r.top);
+        } else {
+          view.x -= e.deltaX;
+          view.y -= e.deltaY;
+          applyView();
+        }
+      },
+      { passive: false },
+    );
+    $("zin").addEventListener("click", () => zoomBy(1.25));
+    $("zout").addEventListener("click", () => zoomBy(0.8));
+    $("zfit").addEventListener("click", fitView);
+    window.addEventListener("resize", () => {
+      if (state.size) applyView();
+    });
+  }
+  const SVG_NS = "http://www.w3.org/2000/svg";
+  function svgEl(tag, attrs) {
+    const n = document.createElementNS(SVG_NS, tag);
+    for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+    return n;
+  }
+  function toggle(id) {
+    state.open.has(id) ? state.open.delete(id) : state.open.add(id);
+    renderTree();
+  }
+
+  /* ---------- связи «что на что влияет» ---------- */
+  // Конец связи, спрятанный в свёрнутой ветке, подтягивается к ближайшему видимому предку:
+  // в свёрнутом виде видно, какие направления держат друг друга.
+  function visibleOf(id, geo) {
+    let cur = id;
+    while (cur && !geo.has(cur)) cur = state.nodes.get(cur)?.parent;
+    return cur;
+  }
+  // Обзор без выбранного узла: связи сведены к веткам — видно, какие направления держат друг друга
+  function endsOf(l, geo, overview) {
+    if (!overview) return [visibleOf(l.from, geo), visibleOf(l.to, geo)];
+    const a = branchOf(state.nodes.get(l.from) || {}),
+      b = branchOf(state.nodes.get(l.to) || {});
+    return [a?.id, b?.id];
+  }
+  // id лежит внутри ветки anc (или это она сама): связи узла-ветки — это связи всего, что под ней
+  function within(id, anc) {
+    for (let c = id, i = 0; c && i < 20; c = state.nodes.get(c)?.parent, i++)
+      if (c === anc) return true;
+    return false;
+  }
+  function linksOf(id) {
+    return state.links.filter((l) => within(l.from, id) !== within(l.to, id));
+  }
+  function linkCount(id) {
+    return linksOf(id).length;
+  }
+  function drawLinks(svg, geo) {
+    if (state.linkMode === "off") return;
+    const defs = svgEl("defs", {});
+    for (const k of Object.keys(LINK_KIND)) {
+      const m = svgEl("marker", {
+        id: "ar-" + k,
+        viewBox: "0 0 8 8",
+        refX: "7",
+        refY: "4",
+        markerWidth: "7",
+        markerHeight: "7",
+        orient: "auto-start-reverse",
+      });
+      m.append(svgEl("path", { d: "M0 0 L8 4 L0 8 z", style: `fill: var(${LINK_COLOR[k]})` }));
+      defs.append(m);
+    }
+    svg.append(defs);
+    const seen = new Set();
+    const overview = state.linkMode === "sel" && (!state.sel || state.sel === "root");
+    for (const l of state.links) {
+      const [a, b] = endsOf(l, geo, overview);
+      if (!a || !b || a === b || a === "root" || b === "root" || !geo.has(a) || !geo.has(b))
+        continue;
+      const touchesSel =
+        state.sel && state.sel !== "root" && within(l.from, state.sel) !== within(l.to, state.sel);
+      if (state.linkMode === "sel" && !overview && !touchesSel) continue;
+      const key = `${a}|${b}|${l.kind}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const A = geo.get(a),
+        B = geo.get(b);
+      const da = A.side === "dev" ? 1 : -1,
+        dbb = B.side === "dev" ? 1 : -1;
+      const k = Math.max(60, Math.abs(B.inner - A.inner) / 3, Math.abs(B.cy - A.cy) * 0.25);
+      const kind = LINK_KIND[l.kind] ? l.kind : "affects";
+      const cls = [
+        "ln",
+        "ln-" + kind,
+        state.sel && !overview ? (touchesSel ? "hi" : "lo") : "",
+      ].join(" ");
+      svg.append(
+        svgEl("path", {
+          class: cls,
+          "marker-end": `url(#ar-${kind})`,
+          d: `M${A.inner} ${A.cy} C${A.inner + da * k} ${A.cy} ${B.inner + dbb * k} ${B.cy} ${B.inner} ${B.cy}`,
+        }),
+      );
+    }
+  }
+
+  /* ---------- карточка ---------- */
+  function select(id, reveal) {
+    state.sel = id;
+    if (reveal) {
+      let p = state.nodes.get(id)?.parent;
+      while (p) {
+        state.open.add(p);
+        p = state.nodes.get(p)?.parent;
+      }
+    }
+    renderTree();
+    renderCard();
+  }
+  async function copyText(text, btn) {
+    try {
+      await navigator.clipboard.writeText(text);
+      btn.textContent = "Скопировано";
+    } catch {
+      btn.textContent = "Выделите и ⌘C";
+      btn.previousElementSibling?.querySelector?.("input")?.select();
+    }
+    setTimeout(() => {
+      btn.textContent = "Путь";
+    }, 1600);
+  }
+  // Локальный html репозитория открывается и как страница — через запущенный dev-сервер (порт 5174)
+  function devUrl(path) {
+    const m = /\/Сервис уклад\/(?:\.claude\/worktrees\/[^/]+\/)?(.+\.html)$/.exec(
+      path.normalize("NFC"),
+    );
+    return m ? "http://127.0.0.1:5174/" + m[1].split("/").map(encodeURIComponent).join("/") : null;
+  }
+  // Claude открывает файл не по ссылке, а по просьбе: копируем готовую фразу, её остаётся вставить в сессию
+  function openInClaude(path, ed) {
+    const btn = el("button", {
+      type: "button",
+      class: "btn mini",
+      text: ed.label,
+      title: "Скопировать просьбу «прочитай этот файл» для Claude",
+    });
+    btn.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(ed.prompt(path));
+        btn.textContent = "Скопировано";
+      } catch {
+        btn.textContent = "Нет доступа к буферу";
+      }
+      setTimeout(() => {
+        btn.textContent = ed.label;
+      }, 1600);
+    });
+    return btn;
+  }
+  function filesBlock(files) {
+    const ed = EDITORS[state.editor] || EDITORS.claude;
+    return el("div", {}, [
+      el("div", { class: "lbl", text: "Файлы" }),
+      el(
+        "div",
+        { class: "files" },
+        files
+          .filter((p) => typeof p === "string" && p.startsWith("/"))
+          .map((p) => {
+            const name = p.replace(/\/$/, "").split("/").pop() + (p.endsWith("/") ? "/" : "");
+            const fp = el("div", { class: "fp" }, [p]);
+            const copy = el("button", {
+              type: "button",
+              class: "btn mini",
+              text: "Путь",
+              title: "Скопировать полный путь",
+            });
+            copy.addEventListener("click", () => {
+              fp.replaceChildren(Object.assign(el("input", { readonly: "" }), { value: p }));
+              copyText(p, copy);
+            });
+            const web = devUrl(p);
+            return el("div", { class: "file" }, [
+              el("span", { class: "fn", text: name }),
+              el("span", { class: "acts" }, [
+                ed.prompt
+                  ? openInClaude(p, ed)
+                  : el("a", {
+                      class: "btn mini",
+                      href: ed.url(p),
+                      target: "_blank",
+                      rel: "noopener",
+                      text: ed.label,
+                      title: `Открыть в ${ed.label}`,
+                    }),
+                web
+                  ? el("a", {
+                      class: "btn mini",
+                      href: web,
+                      target: "_blank",
+                      rel: "noopener",
+                      text: "Страница",
+                      title: "Открыть через dev-сервер (npm run dev)",
+                    })
+                  : null,
+                copy,
+              ]),
+              fp,
+            ]);
+          }),
+      ),
+    ]);
+  }
+  function relGroups(n) {
+    const mine = linksOf(n.id),
+      out = (l) => within(l.from, n.id); // связь уходит из узла (или из-под ветки)
+    return [
+      ["Блокирует", mine.filter((l) => out(l) && l.kind === "blocks"), "to"],
+      ["Влияет на", mine.filter((l) => out(l) && l.kind === "affects"), "to"],
+      ["Зависит от", mine.filter((l) => !out(l) && l.kind !== "touches"), "from"],
+      ["Связано с", mine.filter((l) => l.kind === "touches"), null],
+    ]
+      .filter(([, arr]) => arr.length)
+      .map(([label, arr, end]) => ({
+        label,
+        end,
+        items: arr
+          .map((l) => ({
+            link: l,
+            other: state.nodes.get(end ? l[end] : within(l.from, n.id) ? l.to : l.from),
+          }))
+          .filter((x) => x.other),
+      }))
+      .filter((g) => g.items.length);
+  }
+  function relBlock(n) {
+    const groups = relGroups(n);
+    if (!groups.length) return null;
+    return el(
+      "div",
+      { class: "rel" },
+      groups.flatMap(({ label, end, items }) => [
+        el("div", { class: "lbl", text: label }),
+        el(
+          "ul",
+          { class: "plain" },
+          items.map(({ link: l, other }) => {
+            const how = end === "from" ? `${LINK_KIND[l.kind] || ""} это` : "";
+            return el("li", { "data-st": other.status }, [
+              dot(other.status),
+              el("span", {}, [
+                el("button", {
+                  type: "button",
+                  text: other.title,
+                  onclick: () => select(other.id, true),
+                }),
+                el("span", { class: "where", text: [how, l.note].filter(Boolean).join(" · ") }),
+              ]),
+            ]);
+          }),
+        ),
+      ]),
+    );
+  }
+  function urlRow(u) {
+    if (!safeUrl(u)) return [];
+    const isLocal = /^http:\/\/(127\.0\.0\.1|localhost):/.test(u);
+    const label = u.startsWith("claude://")
+      ? "Открыть сессию"
+      : isLocal
+        ? "Открыть в браузере (нужен npm run dev)"
+        : u.replace(/^https?:\/\//, "");
+    return [
+      el("dt", { text: "Ссылка" }),
+      el("dd", {}, [el("a", { href: u, target: "_blank", rel: "noopener", text: label })]),
+    ];
+  }
+  /* ---------- промпт для Claude ---------- */
+  const MAP_URL = "https://claude.ai/artifact/2m7ZxFcT6uFBWeNohwsaPF";
+  const TASK_BY_STATUS = {
+    blocked:
+      "Выясни, что именно блокирует этот узел, и предложи способ снять блокер. До правок покажи, что нашёл.",
+    question:
+      "Разбери открытый вопрос: собери факты из файлов и кода, предложи ответ с аргументами и скажи, чего не хватает для решения.",
+    done: "Проверь, что всё действительно сделано: сверь заметку с файлами и кодом, назови расхождения.",
+  };
+  function buildPrompt(n) {
+    const pth = [sideOf(n) ? SIDES[sideOf(n)] : null, ...pathOf(n)].filter(Boolean).join(" › ");
+    const lines = [`Работаем над узлом карты продукта «Уклад»: «${n.title}».`, ""];
+    if (pth) lines.push(`Где на карте: ${pth}`);
+    lines.push(`Статус: ${STATUS[n.status]?.label || "—"}`);
+    if (n.owner) lines.push(`Кто ведёт: ${n.owner}`);
+    if (n.note) lines.push("", "Заметка:", n.note);
+    const sub = (id, depth) =>
+      childrenOf(id).flatMap((k) => [
+        `${"  ".repeat(depth)}- [${STATUS[k.status]?.label || "—"}] ${k.title}${k.note ? " — " + k.note.replace(/\s+/g, " ").slice(0, 240) : ""}`,
+        ...(depth < 2 ? sub(k.id, depth + 1) : []),
+      ]);
+    const inside = sub(n.id, 0);
+    if (inside.length) lines.push("", "Что внутри:", ...inside);
+    const files = (Array.isArray(n.files) ? n.files : []).filter(
+      (f) => typeof f === "string" && f.startsWith("/"),
+    );
+    if (files.length) lines.push("", "Файлы:", ...files.map((f) => `- ${f}`));
+    if (n.refs) lines.push("", `Где в проекте: ${n.refs}`);
+    const rel = relGroups(n);
+    if (rel.length) {
+      lines.push("", "Связи с другими узлами:");
+      for (const g of rel)
+        lines.push(
+          `${g.label}:`,
+          ...g.items.map(
+            ({ link: l, other }) =>
+              `- ${other.title} [${STATUS[other.status]?.label || "—"}]${l.note ? " — " + l.note : ""}`,
+          ),
+        );
+    }
+    lines.push(
+      "",
+      "Что сделать:",
+      TASK_BY_STATUS[n.status] ||
+        `Продолжи работу по этому узлу. Сначала прочитай ${files.length ? "файлы выше и " : ""}CLAUDE.md проекта, коротко скажи, как понял задачу и что собираешься делать, и только потом правь.`,
+    );
+    lines.push(
+      "",
+      `Когда закончишь — обнови узел «${n.id}» на карте (${MAP_URL}, коллекция nodes): статус и заметку, а если появились связи с другими узлами — добавь их в links.`,
+    );
+    return lines.join("\n");
+  }
+  function promptButton(n) {
+    const btn = el("button", {
+      type: "button",
+      class: "btn",
+      text: "Скопировать промпт для Claude",
+      title: "Собрать из узла готовое задание: контекст, файлы, связи",
+    });
+    const box = el("div", { class: "row" }, [btn]);
+    btn.addEventListener("click", async () => {
+      const text = buildPrompt(n);
+      try {
+        await navigator.clipboard.writeText(text);
+        btn.textContent = "Промпт скопирован";
+        setTimeout(() => {
+          btn.textContent = "Скопировать промпт для Claude";
+        }, 1800);
+      } catch {
+        // буфер недоступен в песочнице — покажем текст, чтобы выделить вручную
+        const ta = Object.assign(
+          el("textarea", { readonly: "", "aria-label": "Промпт для Claude" }),
+          { value: text },
+        );
+        ta.style.minHeight = "220px";
+        box.after(ta);
+        ta.focus();
+        ta.select();
+        btn.textContent = "Выделите и ⌘C";
+      }
+    });
+    return box;
+  }
+
+  function renderCard() {
+    const card = $("card");
+    const n = state.nodes.get(state.sel);
+    if (!n) return;
+    const kids = childrenOf(n.id);
+    const statusSel = el(
+      "select",
+      { id: "f-status" },
+      STATUS_ORDER.map((st) => {
+        const o = el("option", { value: st, text: STATUS[st].label });
+        if (st === (n.status || "later")) o.selected = true;
+        return o;
+      }),
+    );
+    const noteTa = el("textarea", { id: "f-note" });
+    noteTa.value = n.note || "";
+    const msg = el("span", { class: "msg" });
+    const save = el("button", { type: "button", class: "btn pri", text: "Сохранить" });
+    save.addEventListener("click", async () => {
+      if (!db) {
+        msg.textContent = "Сохранять можно только в открытом артефакте с доступом на правку.";
+        return;
+      }
+      save.setAttribute("disabled", "");
+      msg.textContent = "Сохраняю…";
+      try {
+        await db.doc("nodes/" + n.id).update({
+          status: statusSel.value,
+          note: noteTa.value.slice(0, 4000),
+          updated: new Date().toISOString().slice(0, 10),
+        });
+        msg.textContent = "Сохранено.";
+      } catch (e) {
+        msg.textContent =
+          e?.code === "not_granted"
+            ? "Нет права на правку — менять может владелец и редакторы."
+            : "Не сохранилось: " + (e?.message || "ошибка связи") + ". Попробуйте ещё раз.";
+      } finally {
+        save.removeAttribute("disabled");
+      }
+    });
+    const pth = pathOf(n);
+    const side = sideOf(n);
+    const isRoot = n.id === "root";
+    card.replaceChildren(
+      ...[
+        el("div", {
+          class: "path",
+          text: [side ? SIDES[side] : null, ...pth].filter(Boolean).join(" › "),
+        }),
+        el("h3", { text: n.title }),
+        isRoot ? null : promptButton(n),
+        n.note ? el("div", { class: "note", text: n.note }) : null,
+        Array.isArray(n.files) && n.files.length ? filesBlock(n.files) : null,
+        relBlock(n),
+        el("dl", {}, [
+          el("dt", { text: "Статус" }),
+          el("dd", { "data-st": n.status }, [STATUS[n.status]?.label || "—"]),
+          n.owner ? el("dt", { text: "Кто" }) : null,
+          n.owner ? el("dd", { text: n.owner }) : null,
+          n.refs ? el("dt", { text: "Где" }) : null,
+          n.refs ? el("dd", {}, [el("code", { text: n.refs })]) : null,
+          ...urlRow(n.url),
+          n.updated ? el("dt", { text: "Обновлено" }) : null,
+          n.updated ? el("dd", { text: n.updated }) : null,
+          kids.length ? el("dt", { text: "Внутри" }) : null,
+          kids.length
+            ? el("dd", {
+                text: STATUS_ORDER.map((st) => [st, kids.filter((k) => k.status === st).length])
+                  .filter(([, c]) => c)
+                  .map(([st, c]) => `${STATUS[st].label} ${c}`)
+                  .join(" · "),
+              })
+            : null,
+          el("dt", { text: "Код узла" }),
+          el("dd", {}, [el("code", { text: n.id })]),
+        ]),
+        isRoot ? null : el("label", { for: "f-status" }, ["Статус", statusSel]),
+        isRoot ? null : el("label", { for: "f-note" }, ["Заметка", noteTa]),
+        isRoot ? null : el("div", { class: "row" }, [save, msg]),
+      ].filter(Boolean),
+    );
+  }
+
+  /* ---------- переключатели ---------- */
+  function segButtons(boxId, options, current, onPick) {
+    const box = $(boxId);
+    box.querySelectorAll("button").forEach((b) => b.remove());
+    for (const [val, label] of options)
+      box.append(
+        el("button", {
+          type: "button",
+          "aria-pressed": String(val === current),
+          text: label,
+          onclick: () => onPick(val),
+        }),
+      );
+  }
+  function renderSwitches() {
+    segButtons(
+      "lmode",
+      [
+        ["sel", "ветки / узла"],
+        ["all", "все"],
+        ["off", "нет"],
+      ],
+      state.linkMode,
+      (v) => {
+        state.linkMode = v;
+        renderSwitches();
+        renderTree();
+      },
+    );
+    segButtons(
+      "ed",
+      Object.entries(EDITORS).map(([k, e]) => [k, e.label]),
+      state.editor,
+      (v) => {
+        state.editor = v;
+        try {
+          localStorage.setItem("uklad-map-editor", v);
+        } catch {}
+        renderSwitches();
+        if (state.sel) renderCard();
+      },
+    );
+  }
+
+  /* ---------- данные ---------- */
+  function render() {
+    renderLegend();
+    renderTree();
+    renderNow();
+    if (state.sel) renderCard();
+  }
+  function updateMeta() {
+    const dates = [...state.nodes.values()]
+      .map((n) => n.updated)
+      .filter(Boolean)
+      .sort();
+    const last = dates[dates.length - 1];
+    $("meta").textContent =
+      `${state.nodes.size ? state.nodes.size - 1 : 0} узлов · ${state.links.length} связей${last ? " · обновлено " + last : ""}`;
+  }
+  renderSwitches();
+  (async () => {
+    try {
+      db = await window.claude?.use?.("db");
+    } catch {
+      db = null;
+    }
+    if (!db) {
+      $("meta").textContent = "база недоступна в этом просмотре";
+      return;
+    }
+    const fail = (e) => {
+      $("meta").textContent = "не удалось прочитать базу: " + (e?.message || e?.code || "ошибка");
+    };
+    db.collection("nodes").onSnapshot((snap) => {
+      state.nodes = new Map(snap.docs.map((d) => [d.id, { id: d.id, ...d.data() }]));
+      if (!state.initOpened) {
+        for (const n of state.nodes.values())
+          if (n.parent === "root" && n.status !== "done") state.open.add(n.id);
+        state.initOpened = state.nodes.size > 0;
+      }
+      updateMeta();
+      render();
+    }, fail);
+    db.collection("links").onSnapshot((snap) => {
+      state.links = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .filter((l) => typeof l.from === "string" && typeof l.to === "string");
+      updateMeta();
+      renderTree();
+      if (state.sel) renderCard();
+    }, fail);
+    db.collection("stages").onSnapshot((snap) => {
+      state.stages = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      renderStages();
+    }, fail);
+    db.collection("checkpoints").onSnapshot((snap) => {
+      state.cps = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      renderCps();
+    }, fail);
+  })();
+  initPan();
+  $("expand").addEventListener("click", () => {
+    for (const n of state.nodes.values()) state.open.add(n.id);
+    renderTree();
+  });
+  $("collapse").addEventListener("click", () => {
+    state.open = new Set(["root"]);
+    renderTree();
+  });
+</script>
