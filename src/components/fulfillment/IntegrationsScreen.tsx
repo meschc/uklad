@@ -41,7 +41,7 @@ export function IntegrationsScreen() {
       })}
       wide
     >
-      <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
+      <div className="flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning">
         <ShieldAlert className="mt-px size-3.5 shrink-0" />
         <span>{t("integr.securityNote")}</span>
       </div>

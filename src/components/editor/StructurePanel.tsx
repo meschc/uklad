@@ -341,7 +341,7 @@ function VerticalLinkWarning({ t }: { t: TFunc }) {
   const names = orphans.map((f) => warehouse.floors.findIndex((x) => x.id === f.id) + 1).join(", ");
   const key = orphans.length === 1 ? "struct.noLinkOne" : "struct.noLinkMany";
   return (
-    <div className="hazard-stripes mt-2 flex gap-1.5 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-2xs leading-relaxed text-amber-800 dark:text-amber-300">
+    <div className="hazard-stripes mt-2 flex gap-1.5 rounded-md border border-warning/40 bg-warning/10 p-2 text-2xs leading-relaxed text-warning">
       <AlertTriangle className="mt-px size-3 shrink-0" />
       <span>{t(key, { names })}</span>
     </div>

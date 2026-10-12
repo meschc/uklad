@@ -192,7 +192,7 @@ export function RequestDialog({
         <div
           className={cn(
             "flex flex-col gap-1.5 rounded-lg border p-2.5 text-xs",
-            reservable ? "border-amber-500/40 bg-amber-500/10" : "border-border bg-muted/30",
+            reservable ? "border-warning/40 bg-warning/10" : "border-border bg-muted/30",
           )}
         >
           <p className="font-semibold">{t("seller.shortTitle", { n: short.length })}</p>

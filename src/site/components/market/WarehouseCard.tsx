@@ -245,7 +245,7 @@ function ReputationMark({ warehouse: w }: { warehouse: Warehouse }) {
       ) : (
         <>
           <span className="flex items-center justify-end gap-1 text-sm font-semibold">
-            <Star className="size-3.5 fill-amber-400 text-amber-400" />
+            <Star className="size-3.5 fill-warning text-warning" />
             {rating.toFixed(1)}
           </span>
           <span className="text-xs text-muted-foreground">
@@ -257,7 +257,7 @@ function ReputationMark({ warehouse: w }: { warehouse: Warehouse }) {
         </>
       )}
       {openComplaints > 0 && (
-        <span className="mt-1 flex items-center justify-end gap-1 text-xs text-amber-600 dark:text-amber-500">
+        <span className="mt-1 flex items-center justify-end gap-1 text-xs text-warning">
           <AlertTriangle className="size-3 shrink-0" />
           {openComplaints > 1 ? t(T.complaints, { n: openComplaints }) : t(T.complaint)}
         </span>

@@ -167,7 +167,7 @@ export function AssignDialog({ product, onClose }: { product: Product; onClose: 
     return (
       <Shell product={product} onClose={onClose} t={t}>
         <div className="flex flex-col items-center gap-3 px-5 py-10 text-center">
-          <div className="flex size-10 items-center justify-center rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400">
+          <div className="flex size-10 items-center justify-center rounded-full bg-warning/15 text-warning">
             <AlertTriangle className="size-5" />
           </div>
           <p className="text-sm font-medium">{t("assign.noPlan.title")}</p>
@@ -347,7 +347,7 @@ export function AssignDialog({ product, onClose }: { product: Product; onClose: 
                       : !fits
                         ? "border-destructive/40 bg-destructive/10 text-destructive"
                         : busy
-                          ? "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                          ? "border-warning/40 bg-warning/10 text-warning"
                           : "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
                     selected && "ring-2 ring-ring ring-offset-1",
                   )}
@@ -560,7 +560,7 @@ function Alert({ tone, children }: { tone: "warn" | "danger"; children: React.Re
       className={cn(
         "flex gap-2 rounded-md border p-2.5 text-xs leading-relaxed",
         tone === "warn"
-          ? "border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300"
+          ? "border-warning/40 bg-warning/10 text-warning"
           : "border-destructive/40 bg-destructive/10 text-destructive",
       )}
     >

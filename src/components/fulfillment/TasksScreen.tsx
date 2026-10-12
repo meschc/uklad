@@ -232,7 +232,7 @@ export function TasksScreen() {
                                 обычную — товара на складе ещё нет. */}
                             <div className="mt-0.5 flex flex-wrap gap-1">
                               {r.reservedShipmentId && (
-                                <span className="rounded bg-amber-500/15 px-1 py-0.5 text-2xs font-semibold text-amber-700 dark:text-amber-400">
+                                <span className="rounded bg-warning/15 px-1 py-0.5 text-2xs font-semibold text-warning">
                                   {t("req.reservedBadge")}
                                 </span>
                               )}
@@ -314,7 +314,7 @@ export function StatusBadge({
   t: TFunc;
 }) {
   const tone: Record<RequestStatus, string> = {
-    new: "bg-amber-500/15 text-amber-700 dark:text-amber-400",
+    new: "bg-warning/15 text-warning",
     in_progress: "bg-primary/10 text-primary",
     done: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
     // Отгружено — финал пути: спокойный синий, чтобы отличать от «собрано».

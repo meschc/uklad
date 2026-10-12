@@ -29,7 +29,7 @@ export function OverlapMarks({ modules, toScreen }: OverlapMarksProps) {
           return (
             <div
               key={`ov-${m.id}`}
-              className="absolute rounded-[4px] border-2 border-dashed border-amber-500/80"
+              className="absolute rounded-[4px] border-2 border-dashed border-warning/80"
               style={{ left: s.left, top: s.top, width: s.width, height: s.height }}
             />
           );

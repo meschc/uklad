@@ -214,7 +214,7 @@ function MiniStat({ label, value, tone }: { label: string; value: number; tone?:
       <div
         className={
           tone === "warn"
-            ? "text-lg font-bold tabular-nums text-amber-600 dark:text-amber-400"
+            ? "text-lg font-bold tabular-nums text-warning"
             : "text-lg font-bold tabular-nums"
         }
       >

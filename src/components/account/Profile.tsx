@@ -181,12 +181,12 @@ export function Profile() {
 
         {/* Подтверждение новой почты */}
         {pendingEmail && (
-          <div className="flex flex-col gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3.5">
-            <p className="flex items-center gap-1.5 text-xs font-semibold text-amber-800 dark:text-amber-300">
+          <div className="flex flex-col gap-2 rounded-xl border border-warning/40 bg-warning/10 p-3.5">
+            <p className="flex items-center gap-1.5 text-xs font-semibold text-warning">
               <ShieldCheck className="size-3.5" />
               {t("profile.emailConfirmTitle", { email: pendingEmail })}
             </p>
-            <p className="text-xs text-amber-800/80 dark:text-amber-300/80">
+            <p className="text-xs text-warning/80">
               {t("profile.emailConfirmBody", { n: CONFIRM_CODE_LENGTH })}
             </p>
             <div className="flex items-center gap-2">

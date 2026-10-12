@@ -387,7 +387,7 @@ export function WarehouseScreen({ id }: { id?: string }) {
             <p
               className={cn(
                 "mt-2 flex items-start gap-1.5 text-xs leading-relaxed",
-                fresh === "stale" ? "text-amber-600 dark:text-amber-500" : "text-muted-foreground",
+                fresh === "stale" ? "text-warning" : "text-muted-foreground",
               )}
             >
               <Clock className="mt-0.5 size-3.5 shrink-0" />

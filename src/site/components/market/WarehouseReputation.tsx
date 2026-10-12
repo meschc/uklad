@@ -113,7 +113,7 @@ export function WarehouseReputation({ warehouse: w }: { warehouse: Warehouse }) 
             {t(T.complaintsTitle)}
           </h3>
           {w.reputation.demoted && (
-            <p className="mb-3 flex items-start gap-2 text-xs font-medium leading-relaxed text-amber-600 dark:text-amber-500">
+            <p className="mb-3 flex items-start gap-2 text-xs font-medium leading-relaxed text-warning">
               <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
               {t(T.demoted, { n: w.reputation.confirmedComplaints })}
             </p>
@@ -153,9 +153,7 @@ function ReviewCard({ review, t }: { review: Review; t: TFunc }) {
               key={n}
               aria-hidden
               className={
-                n <= review.rating
-                  ? "size-3.5 fill-amber-400 text-amber-400"
-                  : "size-3.5 text-border"
+                n <= review.rating ? "size-3.5 fill-warning text-warning" : "size-3.5 text-border"
               }
             />
           ))}
@@ -182,12 +180,10 @@ function ComplaintCard({ complaint, now, t }: { complaint: Complaint; now: numbe
   const confirmed = open && days > COMPLAINT_ANSWER_DAYS;
 
   return (
-    <article
-      className={`r-inset border p-4 ${confirmed ? "border-amber-500/50" : "border-border"}`}
-    >
+    <article className={`r-inset border p-4 ${confirmed ? "border-warning/50" : "border-border"}`}>
       <header className="flex items-center justify-between gap-3">
         <span className="flex items-center gap-1.5 text-xs font-medium">
-          <AlertTriangle className="size-3.5 shrink-0 text-amber-600 dark:text-amber-500" />
+          <AlertTriangle className="size-3.5 shrink-0 text-warning" />
           {t(T.seller, { id: complaint.authorId })}
         </span>
         <span className="text-xs text-muted-foreground">
@@ -259,7 +255,7 @@ function ComplaintForm({ warehouse: w }: { warehouse: Warehouse }) {
       <button
         type="button"
         onClick={() => setShown(true)}
-        className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-border px-3.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-amber-500/60 hover:text-foreground"
+        className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-border px-3.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-warning/60 hover:text-foreground"
       >
         <AlertTriangle className="size-3.5" />
         {t(T.open)}

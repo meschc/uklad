@@ -87,6 +87,11 @@
         "$value": "#047756",
         "$description": "CSS: hsl(var(--success))"
       },
+      "warning": {
+        "$type": "color",
+        "$value": "#B35309",
+        "$description": "CSS: hsl(var(--warning))"
+      },
       "border": {
         "$type": "color",
         "$value": "#E5E7EB",
@@ -278,6 +283,11 @@
         "$type": "color",
         "$value": "#36D399",
         "$description": "CSS: hsl(var(--success))"
+      },
+      "warning": {
+        "$type": "color",
+        "$value": "#FBBD23",
+        "$description": "CSS: hsl(var(--warning))"
       },
       "border": {
         "$type": "color",

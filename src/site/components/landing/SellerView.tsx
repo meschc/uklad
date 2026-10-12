@@ -312,7 +312,7 @@ function ReceivingMock() {
                 // Расхождение пока набрано янтарём по месту: роли «внимание»
                 // в общих токенах ещё нет, а на тёмном фоне 600-е из палитры
                 // Tailwind уходят в грязь — отсюда `dark:` на две ступени светлее.
-                diff === 0 ? "text-success" : "font-semibold text-amber-600 dark:text-amber-400",
+                diff === 0 ? "text-success" : "font-semibold text-warning",
               )}
             >
               {diff === 0 ? "—" : diff}
@@ -320,9 +320,7 @@ function ReceivingMock() {
           </div>
         );
       })}
-      <p className="bg-amber-500/10 px-4 py-2 text-xs text-amber-700 dark:text-amber-300">
-        {t(M.mismatch)}
-      </p>
+      <p className="bg-warning/10 px-4 py-2 text-xs text-warning">{t(M.mismatch)}</p>
     </div>
   );
 }
@@ -338,7 +336,7 @@ const SHIPMENT_STATES = {
   },
   loading: {
     label: c("Ждёт погрузки", "Awaiting loading"),
-    tone: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
+    tone: "bg-warning/15 text-warning",
   },
   picking: { label: c("Собирается", "Being picked"), tone: "bg-primary/12 text-primary" },
 } as const;

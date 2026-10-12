@@ -428,7 +428,7 @@ const CLASS_TONE: Record<WarehouseClass, string> = {
   A: "bg-emerald-500/15 text-emerald-600 ring-emerald-500/30 dark:text-emerald-400",
   "B+": "bg-primary/15 text-primary ring-primary/30",
   B: "bg-primary/15 text-primary ring-primary/30",
-  C: "bg-amber-500/15 text-amber-600 ring-amber-500/30 dark:text-amber-400",
+  C: "bg-warning/15 text-warning ring-warning/30",
   D: "bg-destructive/15 text-destructive ring-destructive/30",
 };
 
@@ -460,7 +460,7 @@ export function CompletenessRing({ filled, total }: { filled: number; total: num
   const share = total ? filled / total : 0;
   const r = 22;
   const len = 2 * Math.PI * r;
-  const tone = share > 0.85 ? "text-emerald-500" : share > 0.6 ? "text-primary" : "text-amber-500";
+  const tone = share > 0.85 ? "text-emerald-500" : share > 0.6 ? "text-primary" : "text-warning";
 
   return (
     <div className="flex shrink-0 items-center gap-2.5">

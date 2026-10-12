@@ -104,7 +104,7 @@ export function SingleInspector({ module: m, t }: { module: PlacedModule; t: TFu
           />
         </Row>
         {overlapping && (
-          <div className="flex gap-1.5 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs leading-relaxed text-amber-800 dark:text-amber-300">
+          <div className="flex gap-1.5 rounded-md border border-warning/40 bg-warning/10 p-2 text-xs leading-relaxed text-warning">
             <AlertTriangle className="mt-px size-3.5 shrink-0" />
             <span>{t("insp.overlap")}</span>
           </div>

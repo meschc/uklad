@@ -283,7 +283,7 @@ export function PickingScreen() {
               <ScanField label={t("pick.item.label")} status={scan.status} onSubmit={onScanItem} />
               {/* 8.4 — не тупик: если физически не хватает, есть явный выход. */}
               {confirmPartial ? (
-                <div className="hazard-stripes flex flex-col gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
+                <div className="hazard-stripes flex flex-col gap-2 rounded-lg border border-warning/40 bg-warning/10 p-3">
                   <p className="text-xs font-semibold">
                     {t("pick.partial.confirm", {
                       picked,

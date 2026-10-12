@@ -407,11 +407,7 @@ function whereText(label: string | null, placed: boolean, t: TFunc): string {
 function Addr({ label, placed, t }: { label: string | null; placed: boolean; t: TFunc }) {
   if (!label) {
     return (
-      <span
-        className={
-          placed ? "text-xs text-amber-600 dark:text-amber-400" : "text-xs text-muted-foreground"
-        }
-      >
+      <span className={placed ? "text-xs text-warning" : "text-xs text-muted-foreground"}>
         {placed ? t("lookup.staleAddr") : t("lookup.notPlaced")}
       </span>
     );

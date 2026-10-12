@@ -312,8 +312,8 @@ export function PlaceFailedAlert({
 
   return (
     <DialogShell onClose={onClose}>
-      <div className="hazard-stripes flex gap-3 bg-amber-500/10 px-5 py-4">
-        <AlertTriangle className="mt-0.5 size-5 shrink-0 text-amber-600 dark:text-amber-400" />
+      <div className="hazard-stripes flex gap-3 bg-warning/10 px-5 py-4">
+        <AlertTriangle className="mt-0.5 size-5 shrink-0 text-warning" />
         <div className="min-w-0">
           <p className="text-sm font-semibold">{t("table.place.failedTitle")}</p>
           <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
