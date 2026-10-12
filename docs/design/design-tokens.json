@@ -59,7 +59,7 @@
       },
       "muted-foreground": {
         "$type": "color",
-        "$value": "#6B7280",
+        "$value": "#616875",
         "$description": "CSS: hsl(var(--muted-foreground))"
       },
       "accent": {
@@ -169,7 +169,7 @@
       },
       "m-aisle-fg": {
         "$type": "color",
-        "$value": "#656C7B",
+        "$value": "#535965",
         "$description": "CSS: hsl(var(--m-aisle-fg))"
       },
       "m-stairs": {
@@ -179,7 +179,7 @@
       },
       "m-stairs-fg": {
         "$type": "color",
-        "$value": "#C36213",
+        "$value": "#954B0F",
         "$description": "CSS: hsl(var(--m-stairs-fg))"
       },
       "m-elevator": {
@@ -226,12 +226,12 @@
       },
       "primary": {
         "$type": "color",
-        "$value": "#4294FF",
+        "$value": "#156BF4",
         "$description": "CSS: hsl(var(--primary))"
       },
       "primary-foreground": {
         "$type": "color",
-        "$value": "#14151A",
+        "$value": "#FFFFFF",
         "$description": "CSS: hsl(var(--primary-foreground))"
       },
       "secondary": {
@@ -291,7 +291,7 @@
       },
       "ring": {
         "$type": "color",
-        "$value": "#4294FF",
+        "$value": "#156BF4",
         "$description": "CSS: hsl(var(--ring))"
       },
       "hairline": {
@@ -371,7 +371,7 @@
       },
       "m-stairs-fg": {
         "$type": "color",
-        "$value": "#FF854D",
+        "$value": "#FF9D70",
         "$description": "CSS: hsl(var(--m-stairs-fg))"
       },
       "m-elevator": {
