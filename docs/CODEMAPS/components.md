@@ -170,8 +170,8 @@ ui/              примитивы: button, input, label, separator, tooltip,
 
 - Строки — только через `useT()`; ключ добавляется сразу в ru **и** en.
 - Иконки — `lucide-react`, размер `size-3.5` / `size-4`. Толщина штриха
-  утоньшена глобально в `index.css` (`svg.lucide { stroke-width: 1.6 }`) —
-  штатные 2 при кегле подписи 10–13 px выглядели жирнее текста.
+  берётся из веса соседнего текста через `--icon-stroke` в `index.css`
+  (400 → 1.5, 500 → 2, 600+ → 2.25): иконка и текст рядом — одной толщины.
 - Диалог: `fixed inset-0 z-50` + backdrop `animate-fade-in` + карточка
   `animate-scale-in rounded-xl border border-border bg-card`.
 - Предупреждение о потере данных — `hazard-stripes` + amber, как в
