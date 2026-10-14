@@ -35,6 +35,8 @@ export default tseslint.config(
       "playwright-report/**",
       "refs/**",
       "docs/**",
+      // Жатва — вендоренный CommonJS-сборщик кейсов, не код приложения.
+      ".zhatva/**",
     ],
   },
 
