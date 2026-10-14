@@ -33,3 +33,8 @@ docs/userstories.html
 
 # Шрифты идут как есть от Google Fonts, лицензия — дословно.
 public/fonts/
+
+# Жатва — копия внешнего сборщика кейсов и его скилл. Код чужой, кладётся
+# скриптом vendor-cloud.sh целиком и при обновлении перезаписывается.
+.zhatva/
+.claude/skills/zhatva/

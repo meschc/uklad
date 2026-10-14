@@ -18,7 +18,9 @@ npm-debug.log*
 # Сборочный мусор
 coverage
 tsconfig.tsbuildinfo
-.claude
+.claude/*
+!.claude/settings.json
+!.claude/skills/
 
 # Артефакты сквозных тестов: трассы, скриншоты, отчёт
 test-results
