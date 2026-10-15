@@ -110,11 +110,11 @@ export function ContactsScreen() {
 
           <Card icon={Building2} title={t(T.requisites)}>
             {/* Реквизиты не переводятся — они имеют силу в том виде, в каком
-                записаны в ЕГРИП (см. `data/org.ts`), поэтому здесь помечен язык. */}
+                записаны в справке ФНС (см. `data/org.ts`), поэтому здесь помечен язык. */}
             <p lang="ru" className="text-sm leading-relaxed text-muted-foreground">
               {ORG.legalName}
               <br />
-              ИНН {ORG.inn}, ОГРНИП {ORG.ogrnip}
+              ИНН {ORG.inn}, {ORG.taxStatus}
               <br />
               {ORG.address}
             </p>

@@ -73,7 +73,7 @@ function crumbs(route: Route, lang: SiteLang): Crumb[] {
 }
 
 /**
- * Владелец сайта. Реквизиты сюда не идут — ни ИНН, ни ОГРНИП: пока они
+ * Владелец сайта. Реквизиты сюда не идут — ни ФИО, ни ИНН: пока они
  * учебные (`ORG.filled === false`), машиночитаемо утверждать их нельзя.
  */
 function organization(lang: SiteLang) {
