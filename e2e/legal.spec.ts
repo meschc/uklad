@@ -152,9 +152,10 @@ test.describe("Правовая информация", () => {
       const footer = page.getByRole("contentinfo");
       // Формат, а не конкретные цифры: тест должен пережить подстановку
       // настоящих реквизитов вместо заглушек в src/site/data/org.ts. Формат
-      // предпринимательский — ИНН из двенадцати цифр и ОГРНИП из пятнадцати.
+      // самозанятого — ИНН из двенадцати цифр и налоговый статус вместо ОГРНИП.
       await expect(footer).toContainText(/ИНН \d{12}\b/);
-      await expect(footer).toContainText(/ОГРНИП \d{15}\b/);
+      await expect(footer).toContainText(/налога\s+на\s+профессиональный\s+доход/);
+      await expect(footer).not.toContainText("ОГРНИП");
       await expect(footer).toContainText("Уклад");
     }
   });

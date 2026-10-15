@@ -165,7 +165,7 @@ export const OFFER: LegalDoc = {
       blocks: [
         list(
           ORG.legalName,
-          `ИНН ${ORG.inn}, ОГРНИП ${ORG.ogrnip}`,
+          `ИНН ${ORG.inn}, ${ORG.taxStatus}`,
           `Адрес: ${ORG.address}`,
           `Электронная почта: ${ORG.email}`,
           `Телефон: ${ORG.phone}`,
