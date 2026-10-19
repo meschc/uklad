@@ -99,15 +99,21 @@ export function ConnectPath() {
       </div>
 
       <div className="mt-14 grid grid-cols-1 gap-4 md:grid-cols-3">
-        <Scheme title={t(T.schemeAddresses)}>
-          <AddressesScheme />
-        </Scheme>
-        <Scheme title={t(T.schemeGoods)}>
-          <GoodsScheme />
-        </Scheme>
-        <Scheme title={t(T.schemeStaff)}>
-          <StaffScheme />
-        </Scheme>
+        <Reveal>
+          <Scheme title={t(T.schemeAddresses)}>
+            <AddressesScheme />
+          </Scheme>
+        </Reveal>
+        <Reveal delay={90}>
+          <Scheme title={t(T.schemeGoods)}>
+            <GoodsScheme />
+          </Scheme>
+        </Reveal>
+        <Reveal delay={180}>
+          <Scheme title={t(T.schemeStaff)}>
+            <StaffScheme />
+          </Scheme>
+        </Reveal>
       </div>
     </section>
   );

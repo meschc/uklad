@@ -58,8 +58,8 @@ export const PRIVACY: LegalDoc = {
           ["Реквизит", "Значение"],
           [
             ["Наименование", ORG.legalName],
-            ["ИНН / ОГРНИП", `${ORG.inn} / ${ORG.ogrnip}`],
-            ["Адрес для корреспонденции", ORG.address],
+            ["Статус", ORG.status],
+            ["ИНН", ORG.inn],
             ["Адрес для обращений по персональным данным", ORG.privacyEmail],
             ["Телефон", ORG.phone],
             [

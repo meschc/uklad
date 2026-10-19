@@ -1,4 +1,6 @@
-import { ArrowUp } from "lucide-react";
+import { useId, useState } from "react";
+import { ArrowUp, ChevronDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { LEGAL_DOCS } from "../../data/legal";
 import { ORG } from "../../data/org";
 import { openCookieSettings } from "../../lib/cookieConsent";
@@ -12,6 +14,7 @@ const T = {
   product: ru("Продукт"),
   uklad: ru("Уклад"),
   legal: ru("Правовая информация"),
+  docs: ru("Документы"),
   cookies: ru("Настройки cookie"),
   up: ru("Наверх"),
   copyright: ru("© {year} Уклад"),
@@ -43,13 +46,16 @@ const LINKS: { title: Copy; items: { label: Copy; to: string }[] }[] = [
  * быть один»). Продолжает синий финальный блок и забирает у общего подвала
  * витрины всё обязательное: реквизиты владельца сайта (ч. 2 ст. 10 149-ФЗ),
  * ссылки на правовые документы, вход в настройки cookie и оговорку о
- * демонстрационных данных. Обязательное — мелко, нижней строкой.
+ * демонстрационных данных. Обязательное — мелко, нижней строкой, документы —
+ * раскрывающимся списком.
  *
  * Стоит вне `main`, поэтому для вспомогательных технологий это настоящий
  * подвал страницы (`contentinfo`), как и общий.
  */
 export function WarehousesFooter() {
   const t = useT();
+  const [docsOpen, setDocsOpen] = useState(false);
+  const docsId = useId();
 
   return (
     <footer className="overflow-hidden bg-[var(--wh-blue)] text-white">
@@ -91,30 +97,56 @@ export function WarehousesFooter() {
           </a>
         </div>
 
+        {/* Обязательное — одной строкой (Кирилл 19 окт: длинный список
+            документов «выглядит плохо»). Семь документов прячутся под
+            «Документы», ссылки остаются в разметке и для робота. */}
         <div className="mt-12 flex flex-col gap-3 text-xs leading-relaxed text-white/60">
-          <nav aria-label={t(T.legal)} className="flex flex-wrap gap-x-4 gap-y-1.5">
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+            <span>{t(T.copyright, { year: new Date().getFullYear() })}</span>
+            <button
+              type="button"
+              aria-expanded={docsOpen}
+              aria-controls={docsId}
+              onClick={() => setDocsOpen((v) => !v)}
+              className="inline-flex items-center gap-1 hover:text-white"
+            >
+              {t(T.docs)}
+              <ChevronDown
+                className={cn(
+                  "size-3.5 transition-transform duration-300 motion-reduce:transition-none",
+                  docsOpen && "rotate-180",
+                )}
+              />
+            </button>
+            <button type="button" onClick={openCookieSettings} className="hover:text-white">
+              {t(T.cookies)}
+            </button>
+            {/* Реквизиты не переводятся: см. `data/org.ts` и общий подвал. */}
+            <span lang="ru" className="sm:ml-auto">
+              {ORG.legalName} · ИНН {ORG.inn} ·{" "}
+              <a href={`mailto:${ORG.email}`} className="hover:text-white">
+                {ORG.email}
+              </a>
+            </span>
+          </div>
+          <nav
+            id={docsId}
+            aria-label={t(T.legal)}
+            hidden={!docsOpen}
+            className={cn(
+              "gap-x-6 gap-y-1.5 rounded-xl bg-white/10 p-4 sm:grid-cols-2 lg:grid-cols-4",
+              docsOpen ? "grid" : "hidden",
+            )}
+          >
             {LEGAL_DOCS.map((doc) => (
               <a key={doc.slug} href={href(`/legal/${doc.slug}`)} className="hover:text-white">
                 {doc.short}
               </a>
             ))}
-            <button type="button" onClick={openCookieSettings} className="hover:text-white">
-              {t(T.cookies)}
-            </button>
           </nav>
-          {/* Реквизиты не переводятся: см. `data/org.ts` и общий подвал. */}
-          <p lang="ru">
-            {ORG.legalName} · ИНН {ORG.inn} · ОГРНИП {ORG.ogrnip} · {ORG.address} ·{" "}
-            <a href={`mailto:${ORG.email}`} className="hover:text-white">
-              {ORG.email}
-            </a>
-          </p>
-          <p className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:gap-4">
-            <span>{t(T.copyright, { year: new Date().getFullYear() })}</span>
-            <span>
-              {t(T.demo)}
-              {ORG.filled ? "" : t(T.fake)}.
-            </span>
+          <p>
+            {t(T.demo)}
+            {ORG.filled ? "" : t(T.fake)}.
           </p>
         </div>
       </div>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Reveal } from "../Reveal";
 import { PLANS, type Plan } from "../../data/plans";
@@ -63,6 +63,23 @@ const COMPARE: { label: Copy; cells: (Copy | string)[] }[] = [
 export function Tariffs() {
   const t = useT();
   const [period, setPeriod] = useState<Period>("half");
+  // Подложка выбранного срока ездит между кнопками (Кирилл 19 окт: «плавно»).
+  // Пока её не измерили (предрендер, первый кадр), фон стоит на самой кнопке.
+  const group = useRef<HTMLDivElement>(null);
+  const [pill, setPill] = useState<{ left: number; width: number } | null>(null);
+
+  useEffect(() => {
+    const root = group.current;
+    if (!root) return;
+    const measure = () => {
+      const on = root.querySelector<HTMLElement>('[aria-checked="true"]');
+      if (on) setPill({ left: on.offsetLeft, width: on.offsetWidth });
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(root);
+    return () => ro.disconnect();
+  }, [period]);
   const plans = ORDER.map((id) => PLANS.find((p) => p.id === id)).filter((p): p is Plan => !!p);
 
   const price = (p: Plan) => (period === "half" ? money(p.monthly) : t(T.noPrice));
@@ -80,10 +97,18 @@ export function Tariffs() {
         <h2 className="wh-h2">{t(T.title)}</h2>
         <p className="wh-muted max-w-[34rem] text-[17px] leading-relaxed">{t(T.lead)}</p>
         <div
+          ref={group}
           role="radiogroup"
           aria-label={t(T.period)}
-          className="inline-flex gap-1 rounded-full p-1 shadow-[inset_0_0_0_1px_var(--wh-line)]"
+          className="relative inline-flex gap-1 rounded-full p-1 shadow-[inset_0_0_0_1px_var(--wh-line)]"
         >
+          {pill && (
+            <span
+              aria-hidden
+              className="absolute inset-y-1 rounded-full bg-[var(--wh-ink)] transition-[left,width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none"
+              style={{ left: pill.left, width: pill.width }}
+            />
+          )}
           {PERIODS.map((p) => {
             const on = p.id === period;
             return (
@@ -94,8 +119,10 @@ export function Tariffs() {
                 aria-checked={on}
                 onClick={() => setPeriod(p.id)}
                 className={cn(
-                  "inline-flex h-9 items-center gap-1.5 rounded-full px-2.5 text-[13px] font-medium transition-colors sm:h-10 sm:gap-2 sm:pl-3.5 sm:pr-[18px] sm:text-sm",
-                  on ? "bg-[var(--wh-ink)] text-[var(--wh-ground)]" : "hover:bg-[var(--wh-soft)]",
+                  "relative inline-flex h-9 items-center gap-1.5 rounded-full px-2.5 text-[13px] font-medium transition-colors duration-300 sm:h-10 sm:gap-2 sm:pl-3.5 sm:pr-[18px] sm:text-sm",
+                  on
+                    ? cn("text-[var(--wh-ground)]", !pill && "bg-[var(--wh-ink)]")
+                    : "hover:bg-[var(--wh-soft)]",
                 )}
               >
                 <PeriodIcon id={p.id} />
@@ -123,7 +150,7 @@ export function Tariffs() {
             >
               {/* Оптимальный тариф живой: тот же склад из знаков, что на первом
                   экране, только тише — цены должны читаться. */}
-              {blue && <AsciiField mode="card" className="text-white" />}
+              {blue && <AsciiField strength={0.45} font={12} />}
               <div className="flex items-center justify-between gap-3">
                 <h3 className="text-[22px] font-medium">{t(plan.title)}</h3>
                 {blue && (
@@ -135,7 +162,7 @@ export function Tariffs() {
               <p className={cn("flex-1 text-[15px]", blue ? "text-white/80" : "wh-muted")}>
                 {plan.id === "start" ? t(T.startWho) : t(plan.who)}
               </p>
-              <p className="text-[44px] font-light tracking-[-0.04em]">
+              <p key={`p-${period}`} className="wh-swap text-[44px] font-light tracking-[-0.04em]">
                 {price(plan)}{" "}
                 <span
                   className={cn("text-[15px] tracking-normal", blue ? "text-white/80" : "wh-muted")}
@@ -143,7 +170,13 @@ export function Tariffs() {
                   {t(T.perMonth)}
                 </span>
               </p>
-              <p className={cn("text-[13px]", blue ? "text-white/75" : "wh-muted")}>{note(plan)}</p>
+              <p
+                key={`n-${period}`}
+                className={cn("wh-swap text-[13px]", blue ? "text-white/75" : "wh-muted")}
+                style={{ animationDelay: "60ms" }}
+              >
+                {note(plan)}
+              </p>
               <a
                 href="#connect"
                 className={cn("wh-btn w-full", blue ? "wh-btn--white" : "wh-btn--soft")}

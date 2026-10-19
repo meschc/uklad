@@ -106,8 +106,8 @@ export function Offer() {
             </a>
           </div>
           <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-3 sm:gap-4">
-            {ROADMAP.map((col) => (
-              <div key={col.stage} className="flex flex-col gap-2">
+            {ROADMAP.map((col, ci) => (
+              <Reveal key={col.stage} delay={120 + ci * 90} className="flex flex-col gap-2">
                 <span className="flex items-center gap-2 text-white/60">
                   <span
                     className={cn(
@@ -134,7 +134,7 @@ export function Offer() {
                     {t(item)}
                   </span>
                 ))}
-              </div>
+              </Reveal>
             ))}
           </div>
         </Reveal>
