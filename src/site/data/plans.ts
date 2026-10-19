@@ -217,6 +217,33 @@ export const YEARLY_DISCOUNT = 0.2;
  */
 export const PLANS: Plan[] = [
   {
+    id: "start",
+    title: c("Старт", "Start"),
+    who: c(
+      "Небольшому складу, который переходит с таблиц на систему",
+      "A small warehouse moving from spreadsheets to a system",
+    ),
+    monthly: 3900,
+    cta: c("Начать 14 дней бесплатно", "Start 14 days free"),
+    firstScreen: c(
+      "Тот же мастер склада, что и в тарифе «Склад»: назвать склад, разметить стеллажи и залить остатки из XLSX. Когда позиций или людей станет больше, тариф меняется без переноса данных.",
+      "The same warehouse wizard as on the Warehouse plan: name the warehouse, lay out the racks and import stock from XLSX. When you outgrow the limits, the plan changes with no data migration.",
+    ),
+    features: [
+      c("1 склад, до 1 000 позиций номенклатуры", "1 warehouse, up to 1,000 SKUs"),
+      c("До 2 пользователей", "Up to 2 users"),
+      c(
+        "Печать этикеток и штрихкодов, работа со сканером",
+        "Label and barcode printing, scanner support",
+      ),
+      c("Импорт остатков из XLSX", "Stock import from XLSX"),
+      c(
+        "Карточка склада на витрине с отметкой «учёт в Укладе»",
+        "A catalogue card marked “runs on Uklad”",
+      ),
+    ],
+  },
+  {
     id: "warehouse",
     title: c("Склад", "Warehouse"),
     who: c(

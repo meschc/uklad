@@ -13,10 +13,7 @@ import {
 import { c, useT } from "../lib/copy";
 
 const T = {
-  text: c(
-    "Уклад использует cookie. Без технических не работают вход и фильтры. Аналитические включаются только с вашего согласия и собирают обезличенную статистику.",
-    "Uklad uses cookies. Without the technical ones sign-in and filters break. Analytics cookies are switched on only with your consent and collect anonymous statistics.",
-  ),
+  text: c("Уклад использует cookie.", "Uklad uses cookies."),
   more: c("Подробнее", "Details"),
   necessary: c("Только необходимые", "Necessary only"),
   all: c("Принять все", "Accept all"),
@@ -62,41 +59,43 @@ export function CookieBar() {
     setCookieBannerOpen(false);
   };
 
+  // Компактная плашка в углу (Кирилл 19 окт: большая карточка внизу
+  // закрывала полэкрана). Что и зачем собираем, подробно — на странице
+  // политики по ссылке «Подробнее».
   return (
-    <div data-print="hide" className="fixed inset-x-0 bottom-0 z-[80] px-3 pb-3 sm:px-4 sm:pb-4">
-      <div className="r-window mx-auto flex max-w-3xl animate-slide-up flex-col gap-4 border border-border bg-card/95 p-4 shadow-2xl backdrop-blur-xl sm:flex-row sm:items-center sm:p-5">
-        <Cookie className="size-5 shrink-0 text-primary" />
-
-        <p className="flex-1 text-sm leading-relaxed text-muted-foreground">
-          {t(T.text)}{" "}
-          {/* Баннер остаётся на экране: человек ушёл читать политику именно
-              затем, чтобы решить, и кнопки выбора должны ждать его там же. */}
-          <a
-            href={href("/legal/cookies")}
-            className="font-medium text-primary underline underline-offset-2"
-          >
-            {t(T.more)}
-          </a>
+    <div
+      data-print="hide"
+      className="fixed inset-x-3 bottom-3 z-[80] sm:inset-x-auto sm:bottom-4 sm:left-4 sm:w-[360px]"
+    >
+      <div className="r-window flex animate-slide-up flex-col gap-2.5 border border-border bg-card/95 px-3.5 py-3 shadow-lg backdrop-blur-xl">
+        <p className="flex items-center gap-2 text-[13px] leading-snug text-muted-foreground">
+          <Cookie className="size-4 shrink-0 text-primary" />
+          <span>
+            {t(T.text)}{" "}
+            {/* Баннер остаётся на экране: человек ушёл читать политику именно
+                затем, чтобы решить, и кнопки выбора должны ждать его там же. */}
+            <a
+              href={href("/legal/cookies")}
+              className="font-medium text-primary underline underline-offset-2"
+            >
+              {t(T.more)}
+            </a>
+          </span>
         </p>
 
-        <div className="flex shrink-0 gap-2">
+        <div className="flex gap-2">
           {/* Обе кнопки одного размера и стоят рядом: выбор здесь
               равноправный, а не «согласиться и мелким шрифтом отказаться». */}
           <Button
             variant="outline"
-            size="lg"
+            size="sm"
             shape="pill"
             onClick={() => decide("necessary")}
-            className="flex-1 sm:flex-none"
+            className="flex-1"
           >
             {t(T.necessary)}
           </Button>
-          <Button
-            size="lg"
-            shape="pill"
-            onClick={() => decide("all")}
-            className="flex-1 sm:flex-none"
-          >
+          <Button size="sm" shape="pill" onClick={() => decide("all")} className="flex-1">
             {t(T.all)}
           </Button>
         </div>

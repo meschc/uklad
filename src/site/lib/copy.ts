@@ -31,6 +31,15 @@ export function c(ru: string, en: string): Copy {
   return { ru, en };
 }
 
+/**
+ * Строка только на русском — для страниц, у которых английской версии нет
+ * намеренно (лендинг для складов: его аудитория в России). На `/en/` такая
+ * страница показывается по-русски, а не пустыми местами.
+ */
+export function ru(text: string): Copy {
+  return { ru: text, en: text };
+}
+
 export type Vars = Record<string, string | number>;
 
 /** Функция перевода с прикреплённым языком и согласованием числа. */
