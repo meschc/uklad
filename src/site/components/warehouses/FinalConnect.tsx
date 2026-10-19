@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowUp } from "lucide-react";
 import { ru, useT, type Copy } from "../../lib/copy";
-import { href } from "../../lib/route";
 import { CELL_QR_PATH, CELL_QR_SIZE } from "./cellQr";
 import { ConnectForm } from "./ConnectForm";
 
@@ -15,14 +13,6 @@ const T = {
   cell: ru("A-01-01-01"),
   cellNote: ru("Первая ячейка вашего склада в Укладе"),
   qr: ru("QR-код ячейки A-01-01-01"),
-  contactTitle: ru("Связь"),
-  mail: ru("[почта]"),
-  chat: ru("Чат в рабочие дни, 10–18 МСК"),
-  product: ru("Продукт"),
-  uklad: ru("Уклад"),
-  docs: ru("Документы"),
-  up: ru("Наверх"),
-  copyright: ru("© 2026 Уклад"),
 };
 
 const STEPS: { title: Copy; body: Copy }[] = [
@@ -40,32 +30,6 @@ const STEPS: { title: Copy; body: Copy }[] = [
   },
 ];
 
-const LINKS: { title: Copy; items: { label: Copy; to: string }[] }[] = [
-  {
-    title: T.product,
-    items: [
-      { label: ru("Как устроена система"), to: "#inside" },
-      { label: ru("Тарифы"), to: "#tariffs" },
-      { label: ru("Дорожная карта"), to: "/roadmap" },
-    ],
-  },
-  {
-    title: T.uklad,
-    items: [
-      { label: ru("Каталог складов"), to: "/market" },
-      { label: ru("Селлерам"), to: "/sellers" },
-      { label: ru("Контакты"), to: "/contacts" },
-    ],
-  },
-  {
-    title: T.docs,
-    items: [
-      { label: ru("Политика обработки данных"), to: "/legal/privacy" },
-      { label: ru("Пользовательское соглашение"), to: "/legal/terms" },
-    ],
-  },
-];
-
 /** Время по Москве и рабочие часы чата: будни, 10–18. */
 function moscowNow() {
   const d = new Date(Date.now() + 3 * 3600 * 1000);
@@ -80,8 +44,8 @@ function moscowNow() {
 
 /**
  * Конец страницы (19 окт): бегущая строка, синий блок с живым статусом связи,
- * шагами после заявки и формой в виде складского ярлыка, под ним подвал
- * страницы и огромное слово «Уклад», обрезанное краем.
+ * шагами после заявки и формой в виде складского ярлыка. Подвал страницы
+ * продолжает этот синий блок отдельным компонентом (`WarehousesFooter`).
  *
  * Статус считается в браузере после монтирования: при предрендере время
  * сборки выдало бы посетителю чужие часы.
@@ -127,7 +91,7 @@ export function FinalConnect() {
 
       <section
         id="connect"
-        className="mt-16 scroll-mt-4 overflow-hidden rounded-t-[24px] bg-[var(--wh-blue)] text-white sm:rounded-t-[32px]"
+        className="mt-16 scroll-mt-4 rounded-t-[24px] bg-[var(--wh-blue)] text-white sm:rounded-t-[32px]"
       >
         <div className="mx-auto max-w-[1280px] px-5 pt-16 sm:px-10 sm:pt-24">
           <div className="grid grid-cols-1 gap-14 lg:grid-cols-2 lg:gap-20">
@@ -174,16 +138,11 @@ export function FinalConnect() {
                   aria-label={t(T.qr)}
                   viewBox={`-2 -2 ${CELL_QR_SIZE + 4} ${CELL_QR_SIZE + 4}`}
                   shapeRendering="crispEdges"
-                  className="size-[84px] shrink-0 sm:size-[92px]"
+                  className="size-[84px] shrink-0 text-foreground sm:size-[92px]"
                 >
-                  <rect
-                    x="-2"
-                    y="-2"
-                    width={CELL_QR_SIZE + 4}
-                    height={CELL_QR_SIZE + 4}
-                    fill="#fff"
-                  />
-                  <path fill="#0d0e11" d={CELL_QR_PATH} />
+                  {/* Без подложки, цветом текста (Кирилл 19 окт): на светлой карточке
+                      код чёрный, на тёмной — инверсный белый. */}
+                  <path fill="currentColor" d={CELL_QR_PATH} />
                 </svg>
               </div>
               {/* Линия отрыва с вырезами по краям, как у ярлыка тары. */}
@@ -194,53 +153,6 @@ export function FinalConnect() {
               <ConnectForm idPrefix="final" className="px-5 pb-8 pt-7 sm:px-8" />
             </div>
           </div>
-
-          <footer className="mt-24 flex flex-wrap justify-between gap-8 border-t border-white/25 pt-10 text-sm sm:mt-32">
-            <div className="flex min-w-[200px] flex-1 flex-col gap-2.5">
-              <span className="text-white/60">{t(T.contactTitle)}</span>
-              <span className="text-xl tracking-[-0.02em]">{t(T.mail)}</span>
-              <span className="text-white/70">{t(T.chat)}</span>
-            </div>
-            {LINKS.map((col) => (
-              <nav
-                key={col.title.ru}
-                aria-label={t(col.title)}
-                className="flex min-w-[160px] flex-col gap-2.5"
-              >
-                <span className="text-white/60">{t(col.title)}</span>
-                {col.items.map((l) => (
-                  <a
-                    key={l.label.ru}
-                    href={l.to.startsWith("#") ? l.to : href(l.to)}
-                    className="text-white hover:underline"
-                  >
-                    {t(l.label)}
-                  </a>
-                ))}
-              </nav>
-            ))}
-            <a
-              href="#top"
-              onClick={(e) => {
-                e.preventDefault();
-                window.scrollTo({ top: 0, behavior: "smooth" });
-              }}
-              aria-label={t(T.up)}
-              className="flex size-14 shrink-0 items-center justify-center rounded-full bg-white text-[var(--wh-blue)]"
-            >
-              <ArrowUp className="size-5" />
-            </a>
-          </footer>
-          <div className="mt-12 flex justify-between gap-4 text-[13px] text-white/60">
-            <span>{t(T.copyright)}</span>
-            <span>u-klad.ru</span>
-          </div>
-        </div>
-        <div
-          aria-hidden
-          className="mt-2 h-[0.6em] select-none overflow-hidden whitespace-nowrap px-6 text-center text-[27vw] font-semibold leading-[0.72] tracking-[-0.07em] text-white/[0.14]"
-        >
-          {t(T.uklad)}
         </div>
       </section>
     </>

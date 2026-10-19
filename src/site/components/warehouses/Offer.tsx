@@ -33,7 +33,7 @@ const NUMBERS: { value: string; unit: Copy; body: Copy }[] = [
     body: ru("Критичные ошибки исправляем сразу."),
   },
   {
-    value: "10–18",
+    value: "10…18",
     unit: ru("чат в рабочие дни"),
     body: ru("Отвечаем по московскому времени."),
   },
@@ -70,36 +70,42 @@ export function Offer() {
           <p className="wh-muted mt-6 max-w-[26rem] text-[17px] leading-relaxed">{t(T.sub)}</p>
         </Reveal>
 
-        <div className="grid flex-1 grid-cols-1 border-t border-[var(--wh-line)] sm:grid-cols-2">
+        {/* Две равные колонки на любой ширине (Кирилл 19 окт: «одинаковую
+            ширину квадратов»): ширина ячейки не зависит от длины числа. */}
+        <div className="grid min-w-0 flex-1 grid-cols-2 border-t border-[var(--wh-line)]">
           {NUMBERS.map((n, i) => (
             <Reveal
               key={n.unit.ru}
               delay={i * 70}
               className={cn(
-                "border-b border-[var(--wh-line)] py-7",
-                i % 2 === 0 ? "sm:pr-6" : "sm:border-l sm:pl-6",
+                "min-w-0 border-b border-[var(--wh-line)] py-6 sm:py-7",
+                i % 2 === 0 ? "pr-3 sm:pr-6" : "border-l pl-3 sm:pl-6",
               )}
             >
-              <p className="text-[clamp(64px,6vw,80px)] font-light leading-[0.9] tracking-[-0.05em] text-[var(--wh-blue)]">
+              <p className="text-[clamp(40px,6vw,80px)] font-light leading-[0.9] tracking-[-0.05em] text-[var(--wh-blue)]">
                 {n.value}
               </p>
-              <p className="mt-3.5 text-lg font-medium">{t(n.unit)}</p>
-              <p className="wh-muted mt-1.5 text-[15px] leading-relaxed">{t(n.body)}</p>
+              <p className="mt-3.5 text-base font-medium sm:text-lg">{t(n.unit)}</p>
+              <p className="wh-muted mt-1.5 text-sm leading-relaxed sm:text-[15px]">{t(n.body)}</p>
             </Reveal>
           ))}
         </div>
       </section>
 
       <section className="mx-auto mt-16 max-w-[1280px] px-5 sm:px-10">
-        <Reveal className="flex flex-col gap-8 rounded-[28px] bg-[#0d0e11] p-6 text-white sm:p-10 lg:flex-row lg:items-center lg:gap-16">
-          <div className="lg:w-[340px] lg:shrink-0">
-            <h3 className="text-[28px] font-normal tracking-[-0.03em]">{t(T.roadmapTitle)}</h3>
-            <p className="mt-3 text-base leading-relaxed text-white/70">{t(T.roadmapBody)}</p>
-            <a href={href("/roadmap")} className="mt-5 inline-block font-medium text-white">
+        {/* Колонки карты — по всей ширине блока (Кирилл 19 окт), текст строкой
+            над ними. */}
+        <Reveal className="flex flex-col gap-8 rounded-[28px] bg-[#0d0e11] p-6 text-white sm:p-10">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between lg:gap-16">
+            <div className="max-w-[560px]">
+              <h3 className="text-[28px] font-normal tracking-[-0.03em]">{t(T.roadmapTitle)}</h3>
+              <p className="mt-3 text-base leading-relaxed text-white/70">{t(T.roadmapBody)}</p>
+            </div>
+            <a href={href("/roadmap")} className="shrink-0 font-medium text-white">
               {t(T.roadmapLink)}
             </a>
           </div>
-          <div className="grid flex-1 grid-cols-1 gap-3 text-[13px] sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-3 sm:gap-4">
             {ROADMAP.map((col) => (
               <div key={col.stage} className="flex flex-col gap-2">
                 <span className="flex items-center gap-2 text-white/60">

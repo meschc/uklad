@@ -4,6 +4,7 @@ import { Reveal } from "../Reveal";
 import { PLANS, type Plan } from "../../data/plans";
 import { money } from "../../data/warehouses";
 import { ru, useT, type Copy } from "../../lib/copy";
+import { AsciiField } from "./AsciiField";
 
 const T = {
   title: ru("Тарифы"),
@@ -115,9 +116,14 @@ export function Tariffs() {
               as="article"
               className={cn(
                 "flex flex-col gap-4 rounded-[22px] p-7",
-                blue ? "bg-[var(--wh-blue)] text-white" : "shadow-[inset_0_0_0_1px_var(--wh-line)]",
+                blue
+                  ? "relative overflow-hidden bg-[var(--wh-blue)] text-white [&>:not(canvas)]:relative"
+                  : "shadow-[inset_0_0_0_1px_var(--wh-line)]",
               )}
             >
+              {/* Оптимальный тариф живой: тот же склад из знаков, что на первом
+                  экране, только тише — цены должны читаться. */}
+              {blue && <AsciiField mode="card" className="text-white" />}
               <div className="flex items-center justify-between gap-3">
                 <h3 className="text-[22px] font-medium">{t(plan.title)}</h3>
                 {blue && (

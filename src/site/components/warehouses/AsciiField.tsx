@@ -1,47 +1,80 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type RefObject } from "react";
 import { cn } from "@/lib/utils";
 
 /**
- * Живое поле квадратов: склад, на котором товар раскладывают по ячейкам.
+ * Живое ASCII-поле: склад, нарисованный знаками.
  *
- * Квадраты стоят в узлах сетки, как коробки по адресам, и время от времени
- * один из них переезжает в свободную ячейку. Курсор (или палец) расталкивает
- * их, после чего они возвращаются на свои места. Попросил Кирилл 19 окт:
- * интерактивное поле, где перемещаются квадраты, а не знаки и не круги.
+ * По полю медленно идут волны рассыпанных символов ` .·:-=+*#%`, а из них
+ * время от времени складываются квадраты — ячейки-коробки, плотно набранные
+ * знаками. Квадрат собирается из россыпи, держится и снова рассыпается.
+ * Курсор (или палец) разбивает знаки под собой обратно в россыпь. Попросил
+ * Кирилл 19 окт: анимация остаётся символьной, а квадраты — рисунок из
+ * символов, никаких заливок.
  *
- * Два режима:
- * - `field` заполняет первый экран. Слева, под заголовком, поле гаснет, чтобы
- *   текст читался;
- * - `frame` кладёт квадраты полосой вокруг окна кабинета и подсвечивает его,
- *   не заходя внутрь: середину закрывает само окно.
+ * Три режима:
+ * - `field` — фон первого экрана. Над текстом, переданным в `quiet`, поле
+ *   гаснет, и квадраты там не появляются;
+ * - `frame` — подсветка окна кабинета: знаки по полосе вокруг окна
+ *   складываются в рамку. Середину закрывает само окно;
+ * - `card` — тонкий фон карточки тарифа, чтобы цены читались.
  *
- * Canvas, а не DOM: сотни объектов 60 раз в секунду DOM не потянет. Кадры не
+ * Canvas, а не DOM: тысячи знаков 20 раз в секунду DOM не потянет. Кадры не
  * рисуются, пока поле вне экрана или вкладка скрыта; при
  * `prefers-reduced-motion` остаётся один неподвижный кадр без реакции на
- * курсор.
+ * курсор. Цвет берётся из CSS `color` холста.
  */
 
-type Mode = "field" | "frame";
+type Mode = "field" | "frame" | "card";
+
+const RAMP = "  .·:-=+*#%";
+const LOOSE = ".·:-=+";
+const FPS = 20;
+const RADIUS = 90;
+/** Сборка, удержание и распад квадрата, мс. */
+const BUILD = 1800;
+const HOLD = 3200;
+const FALL = 1400;
+const LIFE = BUILD + HOLD + FALL;
+
+const SETUP: Record<Mode, { font: number; noise: number; ink: number; boxes: number }> = {
+  field: { font: 14, noise: 0.5, ink: 0.95, boxes: 1 / 220 },
+  frame: { font: 12, noise: 0.45, ink: 0.9, boxes: 0 },
+  card: { font: 12, noise: 0.22, ink: 0.32, boxes: 1 / 150 },
+};
+
+/** Постоянный «шум» клетки: ломает ровные строки одинаковых знаков. */
+const grain = (x: number, y: number) => {
+  const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
+  return s - Math.floor(s);
+};
 
 interface Box {
-  /** Индекс ячейки, где квадрат стоит или куда едет. */
-  cell: number;
-  /** Откуда едет и когда выехал: переезд плавный, а не прыжком. */
-  from: number;
-  moveAt: number;
-  /** Смещение от курсора, затухает пружиной. */
-  dx: number;
-  dy: number;
-  size: number;
-  alpha: number;
+  c: number;
+  r: number;
+  w: number;
+  h: number;
+  born: number;
 }
 
-const MOVE_MS = 900;
-const RADIUS = 120;
-
-const ease = (k: number) => (k < 0.5 ? 4 * k * k * k : 1 - (-2 * k + 2) ** 3 / 2);
-
-export function AsciiField({ mode = "field", className }: { mode?: Mode; className?: string }) {
+export function AsciiField({
+  mode = "field",
+  quiet,
+  over,
+  overColor = "#ffffff",
+  className,
+}: {
+  mode?: Mode;
+  /** Блоки текста, под которыми поле гаснет (только `field`). */
+  quiet?: RefObject<HTMLElement | null>[];
+  /**
+   * Блок, на который холст заходит сверху (синий первый экран под рамкой
+   * окна): строки над его нижним краем рисуются цветом `overColor`, иначе
+   * синие знаки пропали бы на синем.
+   */
+  over?: RefObject<HTMLElement | null>;
+  overColor?: string;
+  className?: string;
+}) {
   const ref = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -49,25 +82,28 @@ export function AsciiField({ mode = "field", className }: { mode?: Mode; classNa
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
 
+    const set = SETUP[mode];
     const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const step = mode === "field" ? 26 : 18;
+    const ch = set.font * 1.2;
+    let cw = set.font * 0.6;
+    let cols = 0;
+    let rows = 0;
     let w = 0;
     let h = 0;
-    let cells: { x: number; y: number }[] = [];
-    let boxes: Box[] = [];
-    let taken = new Set<number>();
-    let raf = 0;
-    let visible = true;
-    let nextMove = 0;
-    const pointer = { x: -1e4, y: -1e4 };
     let color = "#ffffff";
-
-    /** Ячейки режима `frame`: полоса шириной в три клетки вокруг окна. */
-    const inBand = (x: number, y: number) => {
-      const pad = step * 3;
-      const inner = x > pad && x < w - pad && y > pad && y < h - pad;
-      return !inner;
-    };
+    /** Яркость клетки: 1 — поле видно, меньше — под текстом тише. */
+    let mask = new Float32Array(0);
+    /** До какого момента клетка разбита курсором. */
+    let hit = new Float64Array(0);
+    let boxes: Box[] = [];
+    /** Кольцо рамки (режим `frame`): отступ в клетках от края холста. */
+    let ring = { c: 0, r: 0 };
+    /** Строки выше этой рисуются цветом `overColor`. */
+    let overRows = 0;
+    let raf = 0;
+    let last = 0;
+    let visible = true;
+    const pointer = { x: -1e4, y: -1e4 };
 
     const build = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -76,114 +112,174 @@ export function AsciiField({ mode = "field", className }: { mode?: Mode; classNa
       canvas.width = Math.round(w * dpr);
       canvas.height = Math.round(h * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.font = `${set.font}px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace`;
+      ctx.textBaseline = "top";
+      cw = ctx.measureText("M").width || cw;
       color = getComputedStyle(canvas).color || color;
+      cols = Math.ceil(w / cw);
+      rows = Math.ceil(h / ch);
 
-      cells = [];
-      for (let y = step / 2; y < h; y += step) {
-        for (let x = step / 2; x < w; x += step) {
-          if (mode === "frame" && !inBand(x, y)) continue;
-          cells.push({ x, y });
-        }
+      mask = new Float32Array(cols * rows).fill(1);
+      hit = new Float64Array(cols * rows);
+      const box = canvas.getBoundingClientRect();
+      for (const q of quiet ?? []) {
+        const el = q.current;
+        if (!el) continue;
+        const r = el.getBoundingClientRect();
+        const pad = 28;
+        const c0 = Math.max(0, Math.floor((r.left - box.left - pad) / cw));
+        const c1 = Math.min(cols, Math.ceil((r.right - box.left + pad) / cw));
+        const r0 = Math.max(0, Math.floor((r.top - box.top - pad) / ch));
+        const r1 = Math.min(rows, Math.ceil((r.bottom - box.top + pad) / ch));
+        for (let y = r0; y < r1; y++) for (let x = c0; x < c1; x++) mask[y * cols + x] = 0.14;
       }
 
-      // Заняты не все ячейки: свободные нужны, чтобы было куда переезжать.
-      const share = mode === "field" ? 0.24 : 0.22;
-      taken = new Set();
+      if (mode === "frame") {
+        // Холст выступает за окно одинаково со всех сторон: рамка идёт по
+        // середине этой полосы.
+        const parent = canvas.parentElement?.getBoundingClientRect();
+        const band = parent ? Math.max(0, (box.width - parent.width) / 2) : 16;
+        ring = {
+          c: Math.max(0, Math.round(band / 2 / cw - 0.5)),
+          r: Math.max(0, Math.round(band / 2 / ch - 0.5)),
+        };
+      }
+      const ov = over?.current?.getBoundingClientRect();
+      overRows = ov ? Math.max(0, Math.round((ov.bottom - box.top) / ch)) : 0;
+
+      // Сразу заполняем поле квадратами в разных фазах: иначе первые секунды
+      // оно пустое, а циклы потом идут в ногу.
       boxes = [];
-      cells.forEach((_, i) => {
-        if (Math.random() > share) return;
-        taken.add(i);
-        boxes.push({
-          cell: i,
-          from: i,
-          moveAt: -MOVE_MS,
-          dx: 0,
-          dy: 0,
-          size:
-            mode === "field"
-              ? 4 + Math.round(Math.random() * 4)
-              : 3 + Math.round(Math.random() * 3),
-          alpha: mode === "field" ? 0.15 + Math.random() * 0.35 : 0.25 + Math.random() * 0.55,
-        });
-      });
+      const now = performance.now();
+      const want = Math.round(cols * rows * set.boxes);
+      for (let i = 0; i < want * 4 && boxes.length < want; i++)
+        spawn(still ? now - BUILD : now - Math.random() * LIFE);
     };
 
-    /** Один квадрат уезжает в соседнюю свободную ячейку. */
-    const relocate = (now: number) => {
-      if (!boxes.length) return;
-      const box = boxes[Math.floor(Math.random() * boxes.length)];
-      const here = cells[box.cell];
-      const near: number[] = [];
-      cells.forEach((c, i) => {
-        if (taken.has(i)) return;
-        const d = Math.abs(c.x - here.x) + Math.abs(c.y - here.y);
-        if (d > 0 && d <= step * 3) near.push(i);
-      });
-      if (!near.length) return;
-      const to = near[Math.floor(Math.random() * near.length)];
-      taken.delete(box.cell);
-      taken.add(to);
-      box.from = box.cell;
-      box.cell = to;
-      box.moveAt = now;
+    /** Свободное место под новый квадрат: не под текстом и не на соседе. */
+    const spawn = (now: number) => {
+      for (let tries = 0; tries < 20; tries++) {
+        const hr = 2 + Math.floor(Math.random() * (mode === "card" ? 2 : 3));
+        // Знак вдвое выше своей ширины: квадрат на глаз — вдвое больше колонок.
+        const wc = Math.round((hr * ch) / cw);
+        const c = Math.floor(Math.random() * Math.max(1, cols - wc));
+        const r = Math.floor(Math.random() * Math.max(1, rows - hr));
+        let ok = true;
+        for (let y = r - 1; ok && y <= r + hr; y++)
+          for (let x = c - 2; ok && x <= c + wc + 1; x++) {
+            if (x < 0 || y < 0 || x >= cols || y >= rows) continue;
+            if (mask[y * cols + x] < 1) ok = false;
+          }
+        for (const b of boxes)
+          if (c < b.c + b.w + 3 && b.c < c + wc + 3 && r < b.r + b.h + 1 && b.r < r + hr + 1)
+            ok = false;
+        if (ok) return void boxes.push({ c, r, w: wc, h: hr, born: now });
+      }
     };
 
-    /** Гасит поле слева, где на широком экране стоит заголовок. */
-    const mask = (x: number) => {
-      if (mode !== "field" || w < 1024) return 1;
-      return Math.min(1, Math.max(0.12, (x / w - 0.25) * 2.4));
+    /** Сколько знаков квадрата уже собрано: 0 — россыпь, 1 — целиком. */
+    const formed = (age: number) => {
+      if (age < BUILD) return age / BUILD;
+      if (age < BUILD + HOLD) return 1;
+      return Math.max(0, 1 - (age - BUILD - HOLD) / FALL);
     };
+
+    /** Знак собранной фигуры: край плотный, середина легче — коробка. */
+    const solid = (edge: boolean) => (edge ? "#" : "=");
 
     const draw = (now: number) => {
       ctx.clearRect(0, 0, w, h);
       ctx.fillStyle = color;
+      const t = now;
+      const flicker = Math.floor(t / 120);
+
+      // Фигуры поверх россыпи: какой знак стоит в клетке.
+      const shape = new Map<number, string>();
+      const put = (x: number, y: number, k: number, edge: boolean) => {
+        if (x < 0 || y < 0 || x >= cols || y >= rows) return;
+        const i = y * cols + x;
+        if (hit[i] > t) return;
+        shape.set(i, grain(x, y) < k ? solid(edge) : LOOSE[Math.floor(grain(x + flicker, y) * 6)]);
+      };
+
       for (const b of boxes) {
-        const a = cells[b.from];
-        const z = cells[b.cell];
-        const k = ease(Math.min(1, (now - b.moveAt) / MOVE_MS));
-        let x = a.x + (z.x - a.x) * k;
-        let y = a.y + (z.y - a.y) * k;
-
-        // Курсор расталкивает: чем ближе, тем дальше отлетает.
-        const px = x - pointer.x;
-        const py = y - pointer.y;
-        const d = Math.hypot(px, py);
-        if (d < RADIUS && d > 0.01) {
-          const push = (1 - d / RADIUS) ** 2 * 36;
-          b.dx += ((px / d) * push - b.dx) * 0.2;
-          b.dy += ((py / d) * push - b.dy) * 0.2;
-        } else {
-          b.dx *= 0.9;
-          b.dy *= 0.9;
+        const k = formed(t - b.born);
+        for (let y = 0; y < b.h; y++)
+          for (let x = 0; x < b.w; x++)
+            put(b.c + x, b.r + y, k, y === 0 || x === 0 || y === b.h - 1 || x === b.w - 1);
+      }
+      if (mode === "frame") {
+        const cycle = LIFE + 1200;
+        const k = still ? 1 : formed((t % cycle) * (LIFE / cycle));
+        const { c, r } = ring;
+        for (let x = c; x < cols - c; x++) {
+          put(x, r, k, true);
+          put(x, rows - 1 - r, k, true);
         }
-        x += b.dx;
-        y += b.dy;
+        for (let y = r; y < rows - r; y++) {
+          put(c, y, k, true);
+          put(cols - 1 - c, y, k, true);
+        }
+      }
 
-        const moving = k < 1;
-        ctx.globalAlpha = Math.min(1, (moving ? b.alpha + 0.3 : b.alpha) * mask(x));
-        const s = b.size;
-        ctx.fillRect(Math.round(x - s / 2), Math.round(y - s / 2), s, s);
+      for (let y = 0; y < rows; y++) {
+        ctx.fillStyle = y < overRows ? overColor : color;
+        for (let x = 0; x < cols; x++) {
+          const i = y * cols + x;
+          const m = mask[i];
+          const s = shape.get(i);
+          if (s && s !== " ") {
+            const dense = s === "#" || s === "=";
+            ctx.globalAlpha = (dense ? set.ink : set.ink * 0.45) * m;
+            ctx.fillText(s, x * cw, y * ch);
+            continue;
+          }
+          const v =
+            Math.sin(x * 0.21 + t * 0.0007) +
+            Math.sin(y * 0.29 - t * 0.0005) +
+            Math.sin((x - y) * 0.13 + t * 0.0004);
+          const n = (v + 3) / 6 + (grain(x, y) - 0.5) * 0.3;
+          const level = Math.min(1, Math.max(0, n * n * 1.5 - 0.1 + (hit[i] > t ? 0.3 : 0)));
+          const idx = Math.floor(level * (RAMP.length - 1));
+          if (idx < 2) continue;
+          ctx.globalAlpha = set.noise * (0.2 + level * 0.8) * m;
+          ctx.fillText(RAMP[idx], x * cw, y * ch);
+        }
       }
       ctx.globalAlpha = 1;
     };
 
-    const tick = (now: number) => {
-      raf = 0;
-      if (!visible || document.hidden) return;
-      if (now >= nextMove) {
-        relocate(now);
-        nextMove = now + (mode === "field" ? 90 : 160);
+    const step = (now: number) => {
+      boxes = boxes.filter((b) => now - b.born < LIFE);
+      const want = Math.round(cols * rows * set.boxes);
+      // Новые квадраты рождаются по одному, чтобы циклы не совпадали.
+      if (boxes.length < want && Math.random() < 0.3) spawn(now);
+      if (pointer.x > -1e3) {
+        const pc = pointer.x / cw;
+        const pr = pointer.y / ch;
+        const rc = RADIUS / cw;
+        const rr = RADIUS / ch;
+        for (let y = Math.max(0, Math.floor(pr - rr)); y < Math.min(rows, pr + rr); y++)
+          for (let x = Math.max(0, Math.floor(pc - rc)); x < Math.min(cols, pc + rc); x++)
+            if (((x - pc) / rc) ** 2 + ((y - pr) / rr) ** 2 < 1)
+              hit[y * cols + x] = now + 900 + grain(x, y) * 900;
       }
-      draw(now);
-      raf = requestAnimationFrame(tick);
     };
-    const start = () => {
-      if (!raf && !still) raf = requestAnimationFrame(tick);
+
+    const loop = (now: number) => {
+      raf = requestAnimationFrame(loop);
+      if (!visible || document.hidden || now - last < 1000 / FPS) return;
+      last = now;
+      step(now);
+      draw(now);
     };
 
     build();
-    draw(performance.now());
-    if (still) return;
+    if (still) {
+      // Один кадр: квадраты уже собраны и стоят, рамка целиком.
+      draw(performance.now());
+      return;
+    }
 
     const onPointer = (e: PointerEvent) => {
       const r = canvas.getBoundingClientRect();
@@ -194,32 +290,28 @@ export function AsciiField({ mode = "field", className }: { mode?: Mode; classNa
       pointer.x = -1e4;
       pointer.y = -1e4;
     };
-    const onResize = () => {
+    const ro = new ResizeObserver(() => {
       build();
-      draw(performance.now());
-    };
-    const io = new IntersectionObserver(([entry]) => {
-      visible = entry.isIntersecting;
-      if (visible) start();
+      draw(last);
     });
-    const onVisibility = () => !document.hidden && start();
+    const io = new IntersectionObserver(([e]) => {
+      visible = e.isIntersecting;
+    });
 
+    ro.observe(canvas);
     io.observe(canvas);
     window.addEventListener("pointermove", onPointer, { passive: true });
     document.addEventListener("pointerleave", onLeave);
-    window.addEventListener("resize", onResize);
-    document.addEventListener("visibilitychange", onVisibility);
-    start();
+    raf = requestAnimationFrame(loop);
 
     return () => {
       cancelAnimationFrame(raf);
+      ro.disconnect();
       io.disconnect();
       window.removeEventListener("pointermove", onPointer);
       document.removeEventListener("pointerleave", onLeave);
-      window.removeEventListener("resize", onResize);
-      document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [mode]);
+  }, [mode, quiet, over, overColor]);
 
   return (
     <canvas

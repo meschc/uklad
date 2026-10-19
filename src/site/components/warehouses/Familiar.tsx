@@ -89,9 +89,16 @@ export function Familiar() {
 const BLUE = "var(--wh-blue)";
 const MONO = "var(--font-mono, monospace)";
 
-function Art({ children }: { children: ReactNode }) {
+/** Высота у всех рисунков одна, ширина — по рисунку: подписи в пузырях длиннее. */
+function Art({ children, width = 160 }: { children: ReactNode; width?: number }) {
   return (
-    <svg viewBox="0 0 160 96" className="wh-muted block h-24 w-40" aria-hidden>
+    <svg
+      viewBox={`0 0 ${width} 96`}
+      width={width}
+      height={96}
+      className="wh-muted block h-24 max-w-full"
+      aria-hidden
+    >
       {children}
     </svg>
   );
@@ -195,17 +202,17 @@ function TasksArt() {
 function ChatsArt() {
   const asks = [
     { x: 2, y: 6, text: "Сколько осталось?" },
-    { x: 22, y: 36, text: "Когда отгрузка?" },
+    { x: 28, y: 36, text: "Когда отгрузка?" },
     { x: 2, y: 66, text: "Где моя поставка?" },
   ];
   return (
-    <Art>
+    <Art width={200}>
       {asks.map((a) => (
         <g key={a.text}>
           <rect
             x={a.x}
             y={a.y}
-            width={a.x ? 104 : 108}
+            width={132}
             height="24"
             rx="12"
             fill="var(--wh-ground)"
@@ -217,8 +224,8 @@ function ChatsArt() {
           </text>
         </g>
       ))}
-      <circle cx="144" cy="18" r="11" fill={BLUE} />
-      <text x="144" y="22" fontSize="11" fill="#fff" textAnchor="middle">
+      <circle cx="184" cy="18" r="11" fill={BLUE} />
+      <text x="184" y="22" fontSize="11" fill="#fff" textAnchor="middle">
         12
       </text>
     </Art>

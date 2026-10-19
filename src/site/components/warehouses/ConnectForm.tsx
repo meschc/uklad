@@ -17,7 +17,7 @@ const T = {
   other: ru("Другая программа"),
   none: ru("Пока никак"),
   send: ru("Отправить заявку"),
-  consentNote: ru("Отметьте согласие на обработку данных, без него заявку не отправить."),
+  consentNote: ru("Отметьте согласие на обработку данных. Без него заявку не подать."),
   subject: ru("Подключение склада — {name}"),
 };
 
@@ -41,6 +41,9 @@ export function ConnectForm({ idPrefix, className }: { idPrefix: string; classNa
   const [consent, setConsent] = useState<ConsentState>(EMPTY_CONSENT);
   const [accounting, setAccounting] = useState<Accounting>("");
   const lead = useLeadSend();
+  // Подсказку о согласии показываем только после попытки отправить без
+  // галочки, под кнопкой (Кирилл 19 окт): заранее она читалась как упрёк.
+  const [tried, setTried] = useState(false);
 
   const accountingLabel = {
     "": "",
@@ -52,6 +55,10 @@ export function ConnectForm({ idPrefix, className }: { idPrefix: string; classNa
 
   const submit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!consent.data) {
+      setTried(true);
+      return;
+    }
     const data = new FormData(e.currentTarget);
     const name = String(data.get("name") ?? "");
 
@@ -122,12 +129,12 @@ export function ConnectForm({ idPrefix, className }: { idPrefix: string; classNa
 
       <ConsentChecks value={consent} onChange={setConsent} />
 
-      <LeadSubmit
-        lead={lead}
-        idle={t(T.send)}
-        blocker={consent.data ? null : t(T.consentNote)}
-        type="submit"
-      />
+      <LeadSubmit lead={lead} idle={t(T.send)} type="submit" />
+      {tried && !consent.data && (
+        <p role="alert" className="-mt-1 text-xs leading-relaxed text-destructive">
+          {t(T.consentNote)}
+        </p>
+      )}
     </form>
   );
 }

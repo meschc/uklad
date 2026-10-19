@@ -96,9 +96,11 @@ export function SiteApp() {
       {route.page !== "warehouses" && <SiteHeader route={route} />}
       {route.page === "landing" ? (
         <LandingPage />
+      ) : route.page === "warehouses" ? (
+        // Своя разметка целиком: main внутри и свой подвал после него.
+        <WarehousesPage />
       ) : (
         <main>
-          {route.page === "warehouses" && <WarehousesPage />}
           {route.page === "sellers" && <SellersPage />}
           {route.page === "market" && <MarketScreen />}
           {route.page === "warehouse" && <WarehouseScreen id={route.id} />}
@@ -113,7 +115,7 @@ export function SiteApp() {
           )}
         </main>
       )}
-      <SiteFooter />
+      {route.page !== "warehouses" && <SiteFooter />}
       <CookieBar />
     </>
   );

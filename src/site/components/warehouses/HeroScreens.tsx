@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ru, useT, type Copy } from "../../lib/copy";
@@ -13,7 +13,7 @@ const T = {
   connect: ru("Подключить склад"),
   title: ru("Внедрим адаптивную систему управления складом"),
   lead: ru(
-    "Хранение и учёт товара, сотрудники и задачи, связь с селлерами в одной системе. Три месяца бесплатно.",
+    "Хранение и учёт товара, сотрудники и задачи, связь с селлерами в одной системе. Три\u00a0месяца бесплатно.",
   ),
   look: ru("Посмотреть кабинет"),
   tabs: ru("Экраны кабинета"),
@@ -63,6 +63,14 @@ export function HeroScreens() {
   const t = useT();
   const [screen, setScreen] = useState(0);
   const [auto, setAuto] = useState(true);
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const leadRef = useRef<HTMLDivElement>(null);
+  const heroRef = useRef<HTMLElement>(null);
+  const navRef = useRef<HTMLElement>(null);
+  const tabsRef = useRef<HTMLDivElement>(null);
+  // Один и тот же массив на все рендеры: иначе поле пересобиралось бы при
+  // каждой смене экрана и квадраты рассыпались бы на полуслове.
+  const quiet = useMemo(() => [navRef, titleRef, leadRef, tabsRef], []);
 
   useEffect(() => {
     if (!auto) return;
@@ -75,11 +83,14 @@ export function HeroScreens() {
 
   return (
     <>
-      <section className="relative overflow-hidden rounded-b-[24px] bg-[var(--wh-blue)] text-white sm:rounded-b-[32px]">
-        <AsciiField className="text-white" />
+      <section
+        ref={heroRef}
+        className="relative overflow-hidden rounded-b-[24px] bg-[var(--wh-blue)] text-white sm:rounded-b-[32px]"
+      >
+        <AsciiField quiet={quiet} className="text-white" />
 
         <div className="relative mx-auto max-w-[1280px] px-5 pb-[clamp(120px,22vw,340px)] sm:px-10">
-          <header className="flex items-center justify-between gap-6 py-5 sm:py-6">
+          <header ref={navRef} className="flex items-center justify-between gap-6 py-5 sm:py-6">
             <a
               href={href("/")}
               className="flex items-center gap-2 text-xl font-semibold tracking-tight text-white"
@@ -104,12 +115,15 @@ export function HeroScreens() {
           </header>
 
           <div className="flex flex-col gap-8 pt-10 sm:pt-[72px] lg:flex-row lg:items-end lg:justify-between lg:gap-16">
-            <h1 className="max-w-[15ch] text-[clamp(40px,4.8vw,64px)] font-normal leading-[0.98] tracking-[-0.045em] [text-wrap:balance]">
+            <h1
+              ref={titleRef}
+              className="max-w-[15ch] text-[clamp(40px,4.8vw,64px)] font-normal leading-[0.98] tracking-[-0.045em] [text-wrap:balance]"
+            >
               {t(T.title)}
             </h1>
-            <div className="flex min-w-0 flex-col gap-5 lg:w-[420px] lg:shrink-0">
+            <div ref={leadRef} className="flex min-w-0 flex-col gap-5 lg:w-[470px] lg:shrink-0">
               <p className="text-[17px] leading-[1.55] text-white/85">{t(T.lead)}</p>
-              <div className="flex flex-wrap gap-2.5">
+              <div className="flex flex-col gap-2.5 sm:flex-row">
                 <a href="#connect" className="wh-btn wh-btn--white group">
                   {t(T.connect)}
                   <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
@@ -122,6 +136,7 @@ export function HeroScreens() {
           </div>
 
           <div
+            ref={tabsRef}
             role="tablist"
             aria-label={t(T.tabs)}
             className="mb-5 mt-12 flex gap-1.5 overflow-x-auto pb-1 sm:mt-16 sm:flex-wrap sm:overflow-visible"
@@ -154,11 +169,13 @@ export function HeroScreens() {
       </section>
 
       {/* Окно кабинета ровно по колонке контента. За ним — полоса тех же
-          квадратов: подсветка окна, а не второе поле. */}
+          знаков, которые складываются в рамку: подсветка окна, а не второе
+          поле. */}
       <div className="relative mx-auto -mt-[clamp(120px,22vw,340px)] max-w-[1280px] px-5 sm:px-10">
         <div className="relative">
           <AsciiField
             mode="frame"
+            over={heroRef}
             className="-inset-4 h-[calc(100%+32px)] w-[calc(100%+32px)] text-[var(--wh-blue)] sm:-inset-9 sm:h-[calc(100%+72px)] sm:w-[calc(100%+72px)]"
           />
           <div className="relative overflow-hidden rounded-[14px] bg-white shadow-[0_0_0_1px_rgba(13,14,17,0.1),0_4px_12px_rgba(13,14,17,0.06)]">

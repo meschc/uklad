@@ -6,6 +6,7 @@ import { Inside } from "./components/warehouses/Inside";
 import { Offer } from "./components/warehouses/Offer";
 import { Questions } from "./components/warehouses/Questions";
 import { Tariffs } from "./components/warehouses/Tariffs";
+import { WarehousesFooter } from "./components/warehouses/WarehousesFooter";
 
 /**
  * Страница для складов — лендинг подключения и образец нового стиля витрины.
@@ -20,14 +21,18 @@ import { Tariffs } from "./components/warehouses/Tariffs";
 export function WarehousesPage() {
   return (
     <div className="wh">
-      <HeroScreens />
-      <Familiar />
-      <Inside />
-      <Offer />
-      <ConnectPath />
-      <Tariffs />
-      <Questions />
-      <FinalConnect />
+      <main>
+        <HeroScreens />
+        <Familiar />
+        <Inside />
+        <Offer />
+        <ConnectPath />
+        <Tariffs />
+        <Questions />
+        <FinalConnect />
+      </main>
+      {/* Подвал один, свой: общий подвал витрины здесь не выводится. */}
+      <WarehousesFooter />
     </div>
   );
 }
