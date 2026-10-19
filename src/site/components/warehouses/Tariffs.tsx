@@ -1,14 +1,11 @@
 import { Check } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Reveal } from "../Reveal";
-import { SectionHead } from "../SectionHead";
 import { PLANS, YEARLY_DISCOUNT } from "../../data/plans";
 import { money } from "../../data/warehouses";
 import { ru, useT } from "../../lib/copy";
 
 const T = {
-  eyebrow: ru("Цена"),
   title: ru("Тарифы"),
   special: ru(
     "Проект только запускается, поэтому сейчас можно получить специальную цену: она фиксируется на полгода при оплате за этот срок.",
@@ -38,83 +35,86 @@ export function Tariffs() {
   const plans = [...PLANS].sort((a, b) => b.monthly - a.monthly);
 
   return (
-    <section id="tariffs" className="mx-auto mt-20 max-w-6xl scroll-mt-24 px-4 sm:mt-24 sm:px-6">
-      <SectionHead align="left" eyebrow={t(T.eyebrow)} title={t(T.title)} lead={t(T.special)} />
-
-      <div className="mt-10 grid gap-4 lg:grid-cols-3">
-        {plans.map((plan, i) => (
-          <Reveal
-            key={plan.id}
-            delay={i * 80}
-            as="article"
-            className={cn(
-              "r-window flex flex-col border p-5 sm:p-6",
-              plan.featured ? "border-primary/50 bg-primary/5" : "border-border bg-card",
-            )}
-          >
-            <div className="flex items-center justify-between gap-3">
-              <h3 className="font-display text-lg font-heading tracking-tight">{t(plan.title)}</h3>
-              {plan.featured && (
-                <span className="rounded-full bg-primary/12 px-2.5 py-0.5 text-xs font-medium text-primary">
-                  {t(T.optimal)}
-                </span>
-              )}
-            </div>
-            <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{t(plan.who)}</p>
-
-            <p className="mt-5">
-              <span className="font-display text-3xl font-medium tabular-nums tracking-tight">
-                {money(plan.monthly)}
-              </span>{" "}
-              <span className="text-sm text-muted-foreground">{t(T.perMonth)}</span>
-            </p>
-
-            <ul className="mt-5 flex flex-1 flex-col gap-2.5">
-              {plan.features.slice(0, 5).map((f) => (
-                <li key={f.ru} className="flex gap-2.5 text-sm leading-snug">
-                  <Check className="mt-0.5 size-4 shrink-0 text-primary" strokeWidth={2.25} />
-                  {t(f)}
-                </li>
-              ))}
-            </ul>
-
-            <Button
-              asChild
-              size="lg"
-              shape="pill"
-              variant={plan.featured ? "default" : "outline"}
-              className="mt-6 w-full"
-            >
-              <a href="#connect">{t(T.choose)}</a>
-            </Button>
-          </Reveal>
-        ))}
-      </div>
-
-      <Reveal className="r-window mt-4 flex flex-col gap-4 border border-border bg-card p-5 sm:flex-row sm:items-center sm:justify-between sm:gap-8 sm:p-6">
-        <div>
-          <div className="flex flex-wrap items-baseline gap-x-3">
-            <h3 className="font-display text-lg font-heading tracking-tight">{t(T.corpTitle)}</h3>
-            <span className="text-sm text-muted-foreground">{t(T.corpPrice)}</span>
-          </div>
-          <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-            {t(T.corpBody)}
-          </p>
-        </div>
-        <Button
-          asChild
-          size="lg"
-          shape="pill"
-          variant="outline"
-          className="w-full shrink-0 sm:w-auto"
-        >
-          <a href="#connect">{t(T.corpCta)}</a>
-        </Button>
+    <section
+      id="tariffs"
+      className="mx-auto mt-28 max-w-[1320px] scroll-mt-24 px-5 sm:mt-36 sm:px-10"
+    >
+      <Reveal className="grid gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-end lg:gap-20">
+        <h2 className="wh-h2">{t(T.title)}</h2>
+        <p className="wh-statement">{t(T.special)}</p>
       </Reveal>
 
-      <p className="mt-4 text-sm text-muted-foreground">
-        {t(T.yearly, { p: YEARLY_DISCOUNT * 100 })}
-      </p>
+      <div className="mt-12 grid gap-3 lg:grid-cols-3">
+        {plans.map((plan, i) => {
+          const blue = !!plan.featured;
+          return (
+            <Reveal
+              key={plan.id}
+              delay={i * 80}
+              as="article"
+              className={cn(blue ? "wh-blue" : "wh-tile", "flex flex-col p-6 sm:p-8")}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="wh-h3">{t(plan.title)}</h3>
+                {blue && (
+                  <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-[var(--wh-blue)]">
+                    {t(T.optimal)}
+                  </span>
+                )}
+              </div>
+              <p
+                className={cn("mt-2 text-sm leading-relaxed", blue ? "text-white/80" : "wh-muted")}
+              >
+                {t(plan.who)}
+              </p>
+
+              <p className="mt-8 flex items-baseline gap-2">
+                <span className="wh-num !text-[clamp(52px,5vw,76px)]">{money(plan.monthly)}</span>
+                <span className={cn("text-sm", blue ? "text-white/80" : "wh-muted")}>
+                  {t(T.perMonth)}
+                </span>
+              </p>
+
+              <ul className="mt-8 flex flex-1 flex-col gap-3">
+                {plan.features.slice(0, 5).map((f) => (
+                  <li key={f.ru} className="flex gap-3 text-base leading-snug">
+                    <Check
+                      className={cn(
+                        "mt-0.5 size-4 shrink-0",
+                        blue ? "text-white" : "text-[var(--wh-blue)]",
+                      )}
+                      strokeWidth={2.25}
+                    />
+                    {t(f)}
+                  </li>
+                ))}
+              </ul>
+
+              <a
+                href="#connect"
+                className={cn("wh-btn mt-8 w-full", blue ? "wh-btn--white" : "wh-btn--blue")}
+              >
+                {t(T.choose)}
+              </a>
+            </Reveal>
+          );
+        })}
+      </div>
+
+      <Reveal className="wh-ink mt-3 flex flex-col gap-5 p-6 sm:flex-row sm:items-center sm:justify-between sm:gap-8 sm:p-8">
+        <div>
+          <div className="flex flex-wrap items-baseline gap-x-3">
+            <h3 className="wh-h3">{t(T.corpTitle)}</h3>
+            <span className="text-sm opacity-70">{t(T.corpPrice)}</span>
+          </div>
+          <p className="mt-2 max-w-2xl text-base leading-relaxed opacity-75">{t(T.corpBody)}</p>
+        </div>
+        <a href="#connect" className="wh-btn wh-btn--white shrink-0">
+          {t(T.corpCta)}
+        </a>
+      </Reveal>
+
+      <p className="wh-muted mt-5 text-sm">{t(T.yearly, { p: YEARLY_DISCOUNT * 100 })}</p>
     </section>
   );
 }

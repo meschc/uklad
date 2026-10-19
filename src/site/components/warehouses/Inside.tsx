@@ -1,15 +1,12 @@
 import { useState } from "react";
 import { ArrowRight, FileText, MessagesSquare, Package, Store, Users } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Reveal } from "../Reveal";
-import { SectionHead } from "../SectionHead";
 import { ru, useT, type Copy } from "../../lib/copy";
 import { href } from "../../lib/route";
 import { DemoForm } from "./DemoForm";
 
 const T = {
-  eyebrow: ru("Система"),
   title: ru("Товар, сотрудники и селлеры в одном кабинете"),
   showcaseTitle: ru("Ваш склад на витрине Уклада"),
   showcaseBody: ru(
@@ -70,45 +67,50 @@ export function Inside() {
   const [demoOpen, setDemoOpen] = useState(false);
 
   return (
-    <section id="inside" className="mx-auto mt-20 max-w-6xl scroll-mt-24 px-4 sm:mt-24 sm:px-6">
-      <SectionHead align="left" eyebrow={t(T.eyebrow)} title={t(T.title)} />
+    <section
+      id="inside"
+      className="mx-auto mt-28 max-w-[1320px] scroll-mt-24 px-5 sm:mt-36 sm:px-10"
+    >
+      <Reveal>
+        <h2 className="wh-h2 max-w-[16ch]">{t(T.title)}</h2>
+      </Reveal>
 
-      <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1.4fr_1fr]">
+      <div className="mt-12 grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1.4fr_1fr]">
         {PILLARS.map((p, i) => (
           <Reveal
             key={p.title.ru}
             as="article"
             delay={i * 70}
             className={cn(
-              "r-window flex flex-col border p-5 sm:p-6",
-              p.key
-                ? "border-primary/40 bg-primary/5 sm:col-span-2 lg:col-span-1"
-                : "border-border bg-card",
+              "flex min-h-[280px] flex-col p-6 sm:p-7",
+              p.key ? "wh-blue sm:col-span-2 lg:col-span-1" : "wh-tile",
             )}
           >
-            <p.icon className="size-5 text-primary" strokeWidth={1.75} />
-            <h3 className="mt-4 font-display text-lg font-heading tracking-tight">{t(p.title)}</h3>
-            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t(p.body)}</p>
+            <p.icon
+              className={cn("size-6", p.key ? "text-white" : "text-[var(--wh-blue)]")}
+              strokeWidth={1.5}
+            />
+            <h3 className="wh-h3 mt-auto pt-10">{t(p.title)}</h3>
+            <p
+              className={cn("mt-3 text-base leading-relaxed", p.key ? "text-white/85" : "wh-muted")}
+            >
+              {t(p.body)}
+            </p>
           </Reveal>
         ))}
       </div>
 
-      <Reveal className="r-window mt-4 flex flex-col gap-4 border border-border bg-card p-5 sm:flex-row sm:items-center sm:justify-between sm:gap-8 sm:p-6">
+      <Reveal className="wh-ink mt-3 flex flex-col gap-5 p-6 sm:flex-row sm:items-center sm:justify-between sm:gap-8 sm:p-8">
         <div className="flex gap-4">
-          <Store className="mt-0.5 size-5 shrink-0 text-primary" strokeWidth={1.75} />
+          <Store className="mt-0.5 size-6 shrink-0" strokeWidth={1.5} />
           <div>
-            <h3 className="font-display text-lg font-heading tracking-tight">
-              {t(T.showcaseTitle)}
-            </h3>
-            <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+            <h3 className="wh-h3">{t(T.showcaseTitle)}</h3>
+            <p className="mt-2 max-w-2xl text-base leading-relaxed opacity-75">
               {t(T.showcaseBody)}
             </p>
           </div>
         </div>
-        <a
-          href={href("/market")}
-          className="inline-flex shrink-0 items-center gap-2 text-sm font-medium text-primary underline-offset-4 hover:underline"
-        >
+        <a href={href("/market")} className="wh-btn wh-btn--white shrink-0">
           {t(T.showcaseLink)}
           <ArrowRight className="size-4" />
         </a>
@@ -116,21 +118,19 @@ export function Inside() {
 
       <div className="mt-8">
         {demoOpen ? (
-          <div className="r-window max-w-2xl border border-border bg-card p-5 sm:p-6">
+          <div className="max-w-2xl rounded-[22px] bg-background p-5 text-foreground sm:p-7">
             <DemoForm />
           </div>
         ) : (
           <div className="flex flex-col items-start gap-2">
-            <Button
-              size="lg"
-              shape="pill"
-              variant="outline"
+            <button
+              type="button"
               onClick={() => setDemoOpen(true)}
-              className="w-full sm:w-auto"
+              className="wh-btn wh-btn--ghost w-full sm:w-auto"
             >
               {t(T.demo)}
-            </Button>
-            <p className="text-xs text-muted-foreground">{t(T.demoNote)}</p>
+            </button>
+            <p className="wh-muted text-sm">{t(T.demoNote)}</p>
           </div>
         )}
       </div>

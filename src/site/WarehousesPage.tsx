@@ -1,23 +1,17 @@
-import { ArrowRight, ClipboardList, MessageSquareText, Sheet } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { eyebrow } from "@/components/ui/eyebrow";
-import { CtaLink } from "./components/CtaLink";
+import { ArrowRight } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Reveal } from "./components/Reveal";
-import { SectionHead } from "./components/SectionHead";
-import { PlanShowcase } from "./components/landing/PlanShowcase";
 import { ConnectForm } from "./components/warehouses/ConnectForm";
 import { ConnectPath } from "./components/warehouses/ConnectPath";
 import { Inside } from "./components/warehouses/Inside";
+import { LiveFlow } from "./components/warehouses/LiveFlow";
 import { Questions } from "./components/warehouses/Questions";
 import { Tariffs } from "./components/warehouses/Tariffs";
 import { ru, useT, type Copy } from "./lib/copy";
 import { href } from "./lib/route";
 
 const T = {
-  eyebrow: ru("Бесплатное подключение складов"),
-  // Заголовок разрезан надвое: вторая половина набрана акцентным цветом.
-  titleTop: ru("Внедрим"),
-  titleAccent: ru("адаптивную систему управления складом"),
+  title: ru("Внедрим адаптивную систему управления складом"),
   lead: ru(
     "Хранение и учёт товара, сотрудники и задачи, связь с селлерами в одной системе. Адаптируем под ваши процессы. Три месяца бесплатно.",
   ),
@@ -25,13 +19,11 @@ const T = {
   ctaInside: ru("Как устроена система"),
   heroNote: ru("Три месяца бесплатно с момента загрузки первых товаров"),
 
-  painsEyebrow: ru("Знакомо?"),
   painsTitle: ru("Склад работает, а учёт разбросан"),
   bridge: ru(
     "Типовые программы рассчитаны на средний склад: процессы приходится менять под программу. Уклад внедряется в ваши процессы и адаптируется под ваш склад.",
   ),
 
-  offerEyebrow: ru("Что вы получаете"),
   offerTitle: ru("Систему, настроенную под ваш склад"),
   offerNote: ru("От вас нужно только короткое знакомство: расскажете, как устроен склад."),
   roadmapLink: ru("Дорожная карта"),
@@ -42,23 +34,20 @@ const T = {
   ),
 };
 
-const PAINS: { icon: typeof Sheet; title: Copy; body: Copy }[] = [
+const PAINS: { title: Copy; body: Copy }[] = [
   {
-    icon: Sheet,
     title: ru("Учёт в Excel, чатах и разных программах"),
     body: ru(
       "Чтобы найти товар, проверить остаток, провести приёмку или отгрузку, приходится сверять несколько источников.",
     ),
   },
   {
-    icon: ClipboardList,
     title: ru("Задачи ставятся устно, часы считаются отдельно"),
     body: ru(
       "Кто что сделал, не фиксируется. Рабочее время ведётся в другой программе или не ведётся вовсе.",
     ),
   },
   {
-    icon: MessageSquareText,
     title: ru("Ответы клиентам ищут по чатам"),
     body: ru(
       "Чтобы ответить про остатки и отгрузки, сотрудник ищет переписку в мессенджерах или вспоминает звонки.",
@@ -67,28 +56,28 @@ const PAINS: { icon: typeof Sheet; title: Copy; body: Copy }[] = [
 ];
 
 /** Плитки с крупным числом: условия, которые склад сравнивает первыми. */
-const NUMBERS: { value: Copy; label: Copy; body: Copy }[] = [
+const NUMBERS: { value: Copy; unit: Copy; body: Copy }[] = [
   {
-    value: ru("3 месяца"),
-    label: ru("бесплатно"),
+    value: ru("3"),
+    unit: ru("месяца бесплатно"),
     body: ru("Отсчёт идёт с момента загрузки первых товаров, а не с даты заявки."),
   },
   {
-    value: ru("4 функции"),
-    label: ru("под ваш склад"),
+    value: ru("4"),
+    unit: ru("новые функции под ваш склад"),
     body: ru(
-      "Например, новое поле в карточке товара, отчёт в вашей форме или свой бланк накладной. Каждая становится частью системы для всех складов, а не отдельной версией под один.",
+      "Например, новое поле в карточке товара, отчёт в вашей форме или свой бланк накладной. Каждая становится частью системы для всех складов.",
     ),
   },
   {
-    value: ru("5 дней"),
-    label: ru("на одну функцию"),
-    body: ru("Рабочих. Критичные ошибки исправляем сразу."),
+    value: ru("5"),
+    unit: ru("рабочих дней на функцию"),
+    body: ru("Критичные ошибки исправляем сразу."),
   },
   {
     value: ru("10–18"),
-    label: ru("чат в рабочие дни"),
-    body: ru("Отвечаем в чате по московскому времени."),
+    unit: ru("чат в рабочие дни"),
+    body: ru("Отвечаем по московскому времени."),
   },
 ];
 
@@ -114,108 +103,124 @@ const EXTRAS: { title: Copy; body: Copy; link?: boolean }[] = [
 ];
 
 /**
- * Страница для складов — лендинг подключения (19 окт).
+ * Страница для складов — лендинг подключения и образец нового стиля витрины
+ * (19 окт): светло-серое поле, целые поля синего вместо обводок, крупный
+ * светлый гротеск. Токены — в `site.css` под `.wh`.
  *
- * Только по-русски, английской пары у текстов нет: клиентов начинаем со складов
- * в России, и перевод, который никто не прочтёт, только задерживал бы правки.
- * Порядок блоков: боль → что получаете → путь с формой → что внутри → тарифы →
- * вопросы → форма. Тарифы стоят перед вопросами, потому что про цену
- * спрашивают последним, когда остальное уже понятно.
- *
- * Все призывы ведут к форме в шаге «Заявка» (`#connect`), а не на страницу
- * контактов: склад не уходит со страницы, чтобы оставить заявку.
+ * Только по-русски: клиентов начинаем со складов в России. Порядок блоков:
+ * боль → что получаете → путь с формой → что внутри → тарифы → вопросы →
+ * форма. Все призывы ведут к форме в шаге «Заявка» (`#connect`): склад не
+ * уходит со страницы, чтобы оставить заявку.
  */
 export function WarehousesPage() {
   const t = useT();
 
   return (
-    <div className="pb-24 pt-28 sm:pt-32">
-      <div className="mx-auto grid max-w-6xl items-center gap-12 px-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.82fr)] lg:gap-16">
-        <Reveal className="max-w-2xl">
-          <p className={eyebrow({ tone: "primary", className: "mb-3" })}>{t(T.eyebrow)}</p>
-          <h1 className="font-display text-3xl font-heading leading-display tracking-tight sm:text-5xl">
-            {t(T.titleTop)} <span className="text-primary">{t(T.titleAccent)}</span>
-          </h1>
-          <p className="mt-5 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-            {t(T.lead)}
-          </p>
-
-          <div className="mt-8 flex flex-wrap items-center gap-3">
-            <CtaLink href="#connect" className="w-full sm:w-auto">
-              {t(T.ctaConnect)}
-            </CtaLink>
-            <Button asChild variant="outline" size="lg" shape="pill" className="w-full sm:w-auto">
-              <a href="#inside">{t(T.ctaInside)}</a>
-            </Button>
-          </div>
-
-          <p className="mt-6 text-sm leading-relaxed text-muted-foreground">{t(T.heroNote)}</p>
-        </Reveal>
-
-        <Reveal delay={120} className="r-window border border-border bg-card p-4 sm:p-6">
-          <PlanShowcase />
-        </Reveal>
-      </div>
-
-      <section className="mx-auto mt-20 max-w-6xl px-4 sm:mt-24 sm:px-6">
-        <SectionHead align="left" eyebrow={t(T.painsEyebrow)} title={t(T.painsTitle)} />
-
-        <div className="mt-10 grid gap-4 md:grid-cols-3">
-          {PAINS.map((p, i) => (
-            <Reveal
-              key={p.title.ru}
-              as="article"
-              delay={i * 70}
-              className="r-window border border-border bg-card p-5 sm:p-6"
-            >
-              <p.icon className="size-5 text-primary" strokeWidth={1.75} />
-              <h3 className="mt-4 font-display text-lg font-heading tracking-tight">
-                {t(p.title)}
-              </h3>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t(p.body)}</p>
-            </Reveal>
-          ))}
+    <div className="wh pb-3 pt-20 sm:pt-[72px]">
+      {/* Первый экран — синее поле целиком, кабинет в рамке устройства.
+          Белые полосы за рамкой — из референса Roombox: они дают полю
+          глубину без градиента и тени. */}
+      <section className="wh-blue relative mx-2 overflow-hidden sm:mx-3">
+        <div aria-hidden className="pointer-events-none absolute inset-0 opacity-[0.14]">
+          <span className="absolute -right-24 top-[18%] h-5 w-[70%] -rotate-[28deg] bg-white" />
+          <span className="absolute -right-10 top-[62%] h-5 w-[55%] -rotate-[28deg] bg-white" />
+          <span className="absolute right-[38%] top-0 h-full w-5 bg-white" />
         </div>
 
-        <Reveal className="mt-8 max-w-3xl border-l-2 border-primary pl-5">
-          <p className="text-base leading-relaxed sm:text-lg">{t(T.bridge)}</p>
-        </Reveal>
+        <div className="relative mx-auto grid max-w-[1320px] items-center gap-12 px-5 py-14 sm:px-10 sm:py-20 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-16 lg:py-24">
+          <Reveal>
+            <h1 className="wh-h1 max-w-[17ch]">{t(T.title)}</h1>
+            <p className="mt-7 max-w-xl text-lg leading-relaxed text-white/85">{t(T.lead)}</p>
+
+            <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
+              <a href="#connect" className="wh-btn wh-btn--white group">
+                {t(T.ctaConnect)}
+                <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+              </a>
+              <a href="#inside" className="wh-btn wh-btn--ghost">
+                {t(T.ctaInside)}
+              </a>
+            </div>
+            <p className="mt-6 text-sm text-white/70">{t(T.heroNote)}</p>
+          </Reveal>
+
+          <Reveal delay={120}>
+            <LiveFlow />
+          </Reveal>
+        </div>
       </section>
 
-      <section className="mx-auto mt-20 max-w-6xl px-4 sm:mt-24 sm:px-6">
-        <SectionHead align="left" eyebrow={t(T.offerEyebrow)} title={t(T.offerTitle)} />
-
-        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {NUMBERS.map((n, i) => (
-            <Reveal
-              key={n.value.ru}
-              as="article"
-              delay={i * 70}
-              className="r-window flex flex-col border border-border bg-card p-5 sm:p-6"
-            >
-              <p className="font-display text-3xl font-medium tabular-nums tracking-tight text-primary">
-                {t(n.value)}
-              </p>
-              <p className="mt-1 text-sm font-medium">{t(n.label)}</p>
-              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{t(n.body)}</p>
+      {/* Боль: тихая колонка, без иконок — три утверждения. */}
+      <section className="mx-auto mt-28 grid max-w-[1320px] gap-10 px-5 sm:mt-36 sm:px-10 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-20">
+        <Reveal>
+          <h2 className="wh-h2 max-w-[11ch] lg:sticky lg:top-28">{t(T.painsTitle)}</h2>
+        </Reveal>
+        <div className="flex flex-col gap-3">
+          {PAINS.map((p, i) => (
+            <Reveal key={p.title.ru} delay={i * 80} className="wh-tile p-6 sm:p-8">
+              <h3 className="wh-h3">{t(p.title)}</h3>
+              <p className="wh-muted mt-3 text-base leading-relaxed">{t(p.body)}</p>
             </Reveal>
           ))}
         </div>
+      </section>
 
-        <div className="mt-4 grid gap-4 lg:grid-cols-3">
+      <Reveal className="mx-auto mt-16 max-w-[1320px] px-5 sm:mt-24 sm:px-10">
+        <p className="wh-statement max-w-4xl">{t(T.bridge)}</p>
+      </Reveal>
+
+      {/* Что получаете: числа — синими плитками во всю силу шрифта, как в
+          референсе Denmar; остальное — белыми плитками словами. */}
+      <section className="mx-auto mt-28 max-w-[1320px] px-5 sm:mt-36 sm:px-10">
+        <Reveal>
+          <h2 className="wh-h2 max-w-[14ch]">{t(T.offerTitle)}</h2>
+        </Reveal>
+
+        <div className="mt-12 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {NUMBERS.map((n, i) => {
+            const blue = i % 2 === 0;
+            return (
+              <Reveal
+                key={n.unit.ru}
+                as="article"
+                delay={i * 70}
+                className={`${blue ? "wh-blue" : "wh-tile"} flex min-h-[220px] flex-col p-6 sm:min-h-[300px] sm:p-7`}
+              >
+                <p
+                  className={cn(
+                    "wh-num",
+                    !blue && "text-[var(--wh-blue)]",
+                    // «10–18» вдвое длиннее одной цифры: тем же кеглем не влезает в строку.
+                    n.value.ru.length > 2 && "!text-[clamp(52px,5vw,84px)]",
+                  )}
+                >
+                  {t(n.value)}
+                </p>
+                <p className="mt-3 text-lg font-medium leading-snug">{t(n.unit)}</p>
+                <p
+                  className={`mt-auto pt-6 text-sm leading-relaxed ${blue ? "text-white/80" : "wh-muted"}`}
+                >
+                  {t(n.body)}
+                </p>
+              </Reveal>
+            );
+          })}
+        </div>
+
+        <div className="mt-3 grid gap-3 lg:grid-cols-3">
           {EXTRAS.map((x, i) => (
             <Reveal
               key={x.title.ru}
               as="article"
               delay={i * 70}
-              className="r-window flex flex-col border border-border bg-card p-5 sm:p-6"
+              className="wh-tile flex flex-col p-6 sm:p-7"
             >
-              <h3 className="font-display text-lg font-heading tracking-tight">{t(x.title)}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t(x.body)}</p>
+              <h3 className="wh-h3">{t(x.title)}</h3>
+              <p className="wh-muted mt-3 text-base leading-relaxed">{t(x.body)}</p>
               {x.link && (
                 <a
                   href={href("/roadmap")}
-                  className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-primary underline-offset-4 hover:underline"
+                  className="mt-5 inline-flex items-center gap-2 text-base font-medium text-[var(--wh-blue)] underline-offset-4 hover:underline"
                 >
                   {t(T.roadmapLink)}
                   <ArrowRight className="size-4" />
@@ -225,11 +230,12 @@ export function WarehousesPage() {
           ))}
         </div>
 
-        <Reveal className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-base leading-relaxed">{t(T.offerNote)}</p>
-          <CtaLink href="#connect" className="w-full shrink-0 sm:w-auto">
+        <Reveal className="mt-10 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+          <p className="wh-statement max-w-2xl">{t(T.offerNote)}</p>
+          <a href="#connect" className="wh-btn wh-btn--blue group shrink-0">
             {t(T.ctaConnect)}
-          </CtaLink>
+            <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+          </a>
         </Reveal>
       </section>
 
@@ -238,17 +244,15 @@ export function WarehousesPage() {
       <Tariffs />
       <Questions />
 
-      <section className="mx-auto mt-20 max-w-6xl px-4 sm:mt-24 sm:px-6">
-        <div className="r-window grid gap-8 border border-border bg-card p-5 sm:p-8 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1fr)] lg:gap-12">
+      <section className="wh-blue mx-2 mt-28 sm:mx-3 sm:mt-36">
+        <div className="mx-auto grid max-w-[1320px] gap-10 px-5 py-14 sm:px-10 sm:py-20 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1fr)] lg:gap-16">
           <div>
-            <h2 className="font-display text-2xl font-heading leading-title tracking-tight sm:text-3xl">
-              {t(T.endTitle)}
-            </h2>
-            <p className="mt-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
-              {t(T.endLead)}
-            </p>
+            <h2 className="wh-h2">{t(T.endTitle)}</h2>
+            <p className="mt-6 max-w-md text-lg leading-relaxed text-white/85">{t(T.endLead)}</p>
           </div>
-          <ConnectForm idPrefix="final" />
+          <div className="rounded-[22px] bg-background p-5 text-foreground sm:p-8">
+            <ConnectForm idPrefix="final" />
+          </div>
         </div>
       </section>
     </div>

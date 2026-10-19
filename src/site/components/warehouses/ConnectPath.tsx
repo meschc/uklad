@@ -1,11 +1,9 @@
 import type { ReactNode } from "react";
 import { Reveal } from "../Reveal";
-import { SectionHead } from "../SectionHead";
 import { ru, useT, type Copy } from "../../lib/copy";
 import { ConnectForm } from "./ConnectForm";
 
 const T = {
-  eyebrow: ru("Путь"),
   title: ru("Как проходит подключение"),
   schemeAddresses: ru("Настраиваем адреса"),
   schemeGoods: ru("Переносим товары"),
@@ -67,39 +65,43 @@ export function ConnectPath() {
   const t = useT();
 
   return (
-    <section id="connect" className="mx-auto mt-20 max-w-6xl scroll-mt-24 px-4 sm:mt-24 sm:px-6">
-      <SectionHead align="left" eyebrow={t(T.eyebrow)} title={t(T.title)} />
+    <section
+      id="connect"
+      className="mx-auto mt-28 max-w-[1320px] scroll-mt-24 px-5 sm:mt-36 sm:px-10"
+    >
+      <Reveal>
+        <h2 className="wh-h2">{t(T.title)}</h2>
+      </Reveal>
 
-      <ol className="mt-10">
+      <ol className="mt-12 max-w-4xl">
         {STEPS.map((step, i) => (
           <Reveal key={step.title.ru} as="li" delay={i * 60}>
             <div className="grid grid-cols-[36px_minmax(0,1fr)] gap-3 sm:grid-cols-[40px_minmax(0,1fr)] sm:gap-6">
               {/* Номер и линия к следующему шагу. У последнего линии нет:
                   путь кончается на нём. */}
               <div className="flex flex-col items-center">
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-full border border-primary/40 bg-primary/10 font-mono text-sm tabular-nums text-primary sm:size-10">
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[var(--wh-blue)] text-sm font-medium tabular-nums text-white sm:size-10">
                   {i + 1}
                 </span>
-                {i < STEPS.length - 1 && <span className="w-px flex-1 bg-border" aria-hidden />}
+                {i < STEPS.length - 1 && (
+                  <span
+                    className="my-1 w-0.5 flex-1 rounded-full bg-[var(--wh-blue)] opacity-25"
+                    aria-hidden
+                  />
+                )}
               </div>
 
               <div className="pb-10">
                 <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 pt-1.5">
-                  <h3 className="font-display text-xl font-heading tracking-tight">
-                    {t(step.title)}
-                  </h3>
-                  {step.time && (
-                    <span className="text-sm text-muted-foreground">{t(step.time)}</span>
-                  )}
+                  <h3 className="wh-h3">{t(step.title)}</h3>
+                  {step.time && <span className="wh-muted text-sm">{t(step.time)}</span>}
                 </div>
-                <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-                  {t(step.body)}
-                </p>
+                <p className="wh-muted mt-2 max-w-2xl text-base leading-relaxed">{t(step.body)}</p>
 
                 {/* На телефоне форма выходит на всю ширину поверх линии пути:
                     в колонке шага переключатель «как ведёте учёт» не влезает. */}
                 {i === 0 && (
-                  <div className="r-window relative -ml-12 mt-5 max-w-2xl border border-border bg-card p-4 sm:ml-0 sm:p-6">
+                  <div className="relative -ml-12 mt-5 max-w-2xl rounded-[22px] bg-background p-4 text-foreground sm:ml-0 sm:p-7">
                     <ConnectForm idPrefix="path" />
                   </div>
                 )}
@@ -128,8 +130,8 @@ export function ConnectPath() {
 
 function Scheme({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <figure className="r-window border border-border bg-card p-4">
-      <div className="text-muted-foreground">{children}</div>
+    <figure className="wh-tile p-5">
+      <div className="wh-muted">{children}</div>
       <figcaption className="mt-3 text-sm font-medium">{title}</figcaption>
     </figure>
   );
