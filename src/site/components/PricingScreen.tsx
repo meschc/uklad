@@ -190,7 +190,7 @@ function WarehouseBlock() {
         <PeriodSwitch yearly={yearly} onChange={setYearly} />
       </div>
 
-      <div className="mx-auto mt-8 grid max-w-4xl gap-5 sm:grid-cols-2">
+      <div className="mx-auto mt-8 grid max-w-5xl gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {PLANS.map((plan, i) => (
           <Reveal key={plan.id} delay={i * 90} className="h-full">
             <PlanCard plan={plan} yearly={yearly} />

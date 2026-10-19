@@ -29,8 +29,8 @@ const TITLES: Record<Page, Copy> = {
     "Uklad — a marketplace of warehouses and a WMS",
   ),
   warehouses: c(
-    "Складу — заявки от селлеров и WMS — Уклад",
-    "For warehouses — seller requests and a WMS — Uklad",
+    "Адаптивная система управления складом — Уклад",
+    "An adaptive warehouse management system — Uklad",
   ),
   sellers: c(
     "Селлеру — склад, который видно насквозь — Уклад",
@@ -58,8 +58,8 @@ const DESCRIPTIONS: Record<Page, Copy> = {
     "A WMS for a fulfilment warehouse and a marketplace where sellers find it. Intake, cell placement, picking and shipping in one system.",
   ),
   warehouses: c(
-    "Как склад попадает на витрину и что получает: заявки от селлеров без комиссии, WMS для смены, кабинет клиента. 14 дней бесплатно.",
-    "How a warehouse gets listed and what it gets: seller requests with no commission, a WMS for the shift, a client account. 14 days free.",
+    "Хранение и учёт товара, сотрудники и задачи, связь с селлерами в одной системе. Внедрим и адаптируем под ваши процессы. Три месяца бесплатно.",
+    "Stock and storage, staff and tasks, and seller communication in one system. We roll it out and adapt it to your processes. Three months free.",
   ),
   sellers: c(
     "Выбрать склад, согласовать условия и отправить товар — без переписки и звонков. Остатки, статусы приёмки и отгрузки видны в кабинете.",

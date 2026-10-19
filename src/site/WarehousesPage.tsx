@@ -1,179 +1,132 @@
-import { ArrowRight, ArrowRightLeft, BadgeCheck, Check, Inbox, LayoutGrid } from "lucide-react";
+import { ArrowRight, ClipboardList, MessageSquareText, Sheet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { CtaLink } from "./components/CtaLink";
 import { Reveal } from "./components/Reveal";
 import { SectionHead } from "./components/SectionHead";
-import { InboxBoard } from "./components/warehouses/InboxBoard";
-import { PLANS, YEARLY_DISCOUNT, yearlyPrice } from "./data/plans";
-import { money } from "./data/warehouses";
-import { warehousesRepository } from "./data/warehousesRepository";
-import { c, useT, type Copy } from "./lib/copy";
+import { PlanShowcase } from "./components/landing/PlanShowcase";
+import { ConnectForm } from "./components/warehouses/ConnectForm";
+import { ConnectPath } from "./components/warehouses/ConnectPath";
+import { Inside } from "./components/warehouses/Inside";
+import { Questions } from "./components/warehouses/Questions";
+import { Tariffs } from "./components/warehouses/Tariffs";
+import { ru, useT, type Copy } from "./lib/copy";
 import { href } from "./lib/route";
 
-/** Путь склада от письма до первой смены в системе. */
-const PATH: { title: Copy; body: Copy }[] = [
-  {
-    title: c("Пишете нам", "You write to us"),
-    body: c(
-      "Город, площадь, схемы работы, площадки и сколько мест свободно. Отвечаем в тот же день.",
-      "City, floor area, models, marketplaces and how many slots are free. We answer the same day.",
-    ),
-  },
-  {
-    title: c("Заполняете карточку", "You fill in the card"),
-    body: c(
-      "Услуги, режим хранения, минимальный объём. Прайс — по тем же строкам, что у всех: место в сутки, приёмка, сборка, маркировка.",
-      "Services, storage mode, minimum volume. The price list breaks down like everyone else's: slot per day, intake, picking, labelling.",
-    ),
-  },
-  {
-    title: c("Уклад проверяет склад", "Uklad checks the warehouse"),
-    body: c(
-      "Госрегистрацию и право пользования помещением. Значок «проверено» ставится только после этого и только нами.",
-      "State registration and the right to use the premises. The “checked” badge goes up only after that, and only from us.",
-    ),
-  },
-  {
-    title: c("Карточка встаёт в каталог", "The card goes into the catalogue"),
-    body: c(
-      "Склад попадает в фильтры по городу, схеме, площадкам и цене. Заявки от селлеров приходят в кабинет — без комиссии и платы за отклик.",
-      "The warehouse enters the filters by city, model, marketplace and price. Seller requests land in your account — no commission, no pay-per-reply.",
-    ),
-  },
-  {
-    title: c("Переносим остатки", "We move the stock over"),
-    body: c(
-      "XLSX, выгрузка из вашей системы или ввод по ячейкам. Дальше смена работает по листам сборки, а не по памяти кладовщика.",
-      "XLSX, an export from your system or entry cell by cell. From there the shift works from pick lists, not from memory.",
-    ),
-  },
-];
-
-/** Что склад получает вместе с системой. */
-const GAINS: { icon: typeof Inbox; title: Copy; body: Copy }[] = [
-  {
-    icon: Inbox,
-    title: c("Заявки без комиссии", "Requests with no commission"),
-    body: c(
-      "Селлер приходит с готовым запросом: товар, объём, площадки, город. Процента со сделки и платы за отклик нет — витрина зарабатывает на подписке.",
-      "The seller arrives with a ready brief: goods, volume, marketplaces, city. No cut of the deal and no pay-per-reply — the marketplace lives on subscriptions.",
-    ),
-  },
-  {
-    icon: BadgeCheck,
-    title: c("Значок проверенного склада", "A checked-warehouse badge"),
-    body: c(
-      "Проверенные собраны в отдельном фильтре, и селлеры смотрят их первыми. Самоописанием этот значок не получить.",
-      "Checked warehouses have their own filter, and sellers look there first. No amount of self-description earns that badge.",
-    ),
-  },
-  {
-    icon: LayoutGrid,
-    title: c("Кабинет клиента и план склада", "A client account and a floor plan"),
-    body: c(
-      "Селлер сам видит остатки, статусы и место хранения. Вопросов «а где мой товар» становится вдвое меньше, и задают их в чате у позиции.",
-      "The seller sees stock, statuses and bin locations themselves. Half the “where are my goods” messages disappear, and the rest arrive pinned to the item.",
-    ),
-  },
-  {
-    icon: ArrowRightLeft,
-    title: c("Перенос и обучение смены", "Migration and training"),
-    body: c(
-      "Остатки заводим вместе и не останавливая работу. Кладовщику хватает сканера и одного экрана — учиться неделю не нужно.",
-      "We load the stock together, without stopping the shift. A picker needs a scanner and one screen — no week of training.",
-    ),
-  },
-];
-
-/**
- * Подписка строками. Цифры берутся из `data/plans` — того же файла, на который
- * смотрит страница тарифов и оферта. Переписать их в вёрстку значит завести
- * второй прайс, который однажды разойдётся с первым.
- */
-const SUBSCRIPTION: { title: Copy; body: Copy }[] = [
-  {
-    title: c("14 дней бесплатно", "14 days free"),
-    body: c(
-      "Без карты и без счёта: заводим склад, переносим остатки, смотрите на своей смене.",
-      "No card, no invoice: we set the warehouse up, move the stock, and you watch it on a real shift.",
-    ),
-  },
-  ...PLANS.map((plan) => ({
-    title: plan.title,
-    body: {
-      ru: `${money(plan.monthly)} ₽ в месяц, за год — ${money(yearlyPrice(plan))} ₽, это −${YEARLY_DISCOUNT * 100} %. ${plan.who.ru}.`,
-      en: `${money(plan.monthly)} ₽ a month, or ${money(yearlyPrice(plan))} ₽ a year — ${YEARLY_DISCOUNT * 100} % off. ${plan.who.en}.`,
-    },
-  })),
-  {
-    title: c("Витрина остаётся бесплатной", "The listing stays free"),
-    body: c(
-      "Карточка и заявки работают без подписки. Платите за систему: учёт по ячейкам, документы и кабинет клиента.",
-      "The card and the requests work without a subscription. You pay for the system: bin-level stock, documents and the client account.",
-    ),
-  },
-];
-
 const T = {
-  eyebrow: c("Складу", "For warehouses"),
+  eyebrow: ru("Бесплатное подключение складов"),
   // Заголовок разрезан надвое: вторая половина набрана акцентным цветом.
-  // Разметка внутри перевода была бы ловушкой для того, кто переводит дальше.
-  titleTop: c("Клиенты приходят с витрины,", "Clients come from the marketplace,"),
-  titleAccent: c("смена работает в системе", "the shift runs in the system"),
-  lead: c(
-    "Уклад — учётная система для склада, а витрина идёт с ней в комплекте. Заявки от селлеров приходят в кабинет без комиссии, кабинет клиента и чат уже внутри.",
-    "Uklad is a stock system for the warehouse, and the marketplace comes with it. Seller requests land in your account with no commission; the client account and chat are already inside.",
+  titleTop: ru("Внедрим"),
+  titleAccent: ru("адаптивную систему управления складом"),
+  lead: ru(
+    "Хранение и учёт товара, сотрудники и задачи, связь с селлерами в одной системе. Адаптируем под ваши процессы. Три месяца бесплатно.",
   ),
-  ctaConnect: c("Подключить склад", "Add your warehouse"),
-  ctaPricing: c("Сколько это стоит", "What it costs"),
-  stats: c(
-    "{n} {w} на витрине · {u} уже работают на Укладе · 14 дней бесплатно",
-    "{n} {w} listed · {u} already run on Uklad · 14 days free",
+  ctaConnect: ru("Подключить склад"),
+  ctaInside: ru("Как устроена система"),
+  heroNote: ru("Три месяца бесплатно с момента загрузки первых товаров"),
+
+  painsEyebrow: ru("Знакомо?"),
+  painsTitle: ru("Склад работает, а учёт разбросан"),
+  bridge: ru(
+    "Типовые программы рассчитаны на средний склад: процессы приходится менять под программу. Уклад внедряется в ваши процессы и адаптируется под ваш склад.",
   ),
 
-  pathEyebrow: c("Как это идёт", "How it goes"),
-  pathTitle: c("От письма до первой смены", "From the first email to the first shift"),
-  pathLead: c(
-    "Проверка и перенос остатков — до того, как склад появится в каталоге. В витрину не попадает никто непроверенный.",
-    "The check and the stock migration happen before the warehouse appears in the catalogue. Nothing unchecked gets listed.",
-  ),
+  offerEyebrow: ru("Что вы получаете"),
+  offerTitle: ru("Систему, настроенную под ваш склад"),
+  offerNote: ru("От вас нужно только короткое знакомство: расскажете, как устроен склад."),
+  roadmapLink: ru("Дорожная карта"),
 
-  gainsEyebrow: c("Что получает склад", "What the warehouse gets"),
-  gainsTitle: c("Система и поток клиентов вместе", "The system and the client flow together"),
-  gainsLead: c(
-    "Каталог складов без учётной системы приводит заявку и уходит. Здесь заявка попадает туда же, где ведут остатки.",
-    "A catalogue without a stock system brings a request and leaves. Here the request lands where the stock is kept.",
+  endTitle: ru("Подключить склад"),
+  endLead: ru(
+    "Свяжемся в течение рабочего дня. Обсудим по телефону или в чате, как устроен ваш склад, и назовём дату подключения.",
   ),
-
-  planEyebrow: c("Подписка", "Subscription"),
-  planTitle: c("Платите за систему, а не за заявки", "You pay for the system, not for requests"),
-  planLead: c(
-    "Комиссия с заявок превратила бы витрину в аукцион позиций, где наверху не лучший склад, а тот, кто больше занёс.",
-    "A commission on requests would turn the listing into an auction where the top slot goes to the highest bidder, not the best warehouse.",
-  ),
-  planLink: c("Все тарифы и что входит", "All plans and what's included"),
-
-  endTitle: c("Расскажите про свой склад", "Tell us about your warehouse"),
-  endLeadBefore: c(
-    "Ответим в тот же день, остатки переносим вместе. У вас товар, а не склад? ",
-    "We answer the same day and move your stock together. Sell goods rather than store them? ",
-  ),
-  endLeadLink: c("Уклад для селлеров", "Uklad for sellers"),
-  endCta: c("Подключить склад", "Add your warehouse"),
 };
 
+const PAINS: { icon: typeof Sheet; title: Copy; body: Copy }[] = [
+  {
+    icon: Sheet,
+    title: ru("Учёт в Excel, чатах и разных программах"),
+    body: ru(
+      "Чтобы найти товар, проверить остаток, провести приёмку или отгрузку, приходится сверять несколько источников.",
+    ),
+  },
+  {
+    icon: ClipboardList,
+    title: ru("Задачи ставятся устно, часы считаются отдельно"),
+    body: ru(
+      "Кто что сделал, не фиксируется. Рабочее время ведётся в другой программе или не ведётся вовсе.",
+    ),
+  },
+  {
+    icon: MessageSquareText,
+    title: ru("Ответы клиентам ищут по чатам"),
+    body: ru(
+      "Чтобы ответить про остатки и отгрузки, сотрудник ищет переписку в мессенджерах или вспоминает звонки.",
+    ),
+  },
+];
+
+/** Плитки с крупным числом: условия, которые склад сравнивает первыми. */
+const NUMBERS: { value: Copy; label: Copy; body: Copy }[] = [
+  {
+    value: ru("3 месяца"),
+    label: ru("бесплатно"),
+    body: ru("Отсчёт идёт с момента загрузки первых товаров, а не с даты заявки."),
+  },
+  {
+    value: ru("4 функции"),
+    label: ru("под ваш склад"),
+    body: ru(
+      "Например, новое поле в карточке товара, отчёт в вашей форме или свой бланк накладной. Каждая становится частью системы для всех складов, а не отдельной версией под один.",
+    ),
+  },
+  {
+    value: ru("5 дней"),
+    label: ru("на одну функцию"),
+    body: ru("Рабочих. Критичные ошибки исправляем сразу."),
+  },
+  {
+    value: ru("10–18"),
+    label: ru("чат в рабочие дни"),
+    body: ru("Отвечаем в чате по московскому времени."),
+  },
+];
+
+/** Плитки без числа: то, что словом объясняется лучше, чем цифрой. */
+const EXTRAS: { title: Copy; body: Copy; link?: boolean }[] = [
+  {
+    title: ru("Помогаем перенести склад в систему"),
+    body: ru(
+      "Настроить адреса ячеек, перенести товары и остатки из Excel или другой программы учёта, добавить сотрудников. Всё это можно сделать и самостоятельно; мы подключаемся там, где нужна помощь.",
+    ),
+  },
+  {
+    title: ru("Размещаем склад на витрине Уклада"),
+    body: ru("У вас появляется ещё один источник клиентов."),
+  },
+  {
+    title: ru("Открытая дорожная карта"),
+    body: ru(
+      "Что уже работает, что в работе и что будет дальше, видно на одной странице. Ваши функции появляются там же.",
+    ),
+    link: true,
+  },
+];
+
 /**
- * Отдельная ветка для склада.
+ * Страница для складов — лендинг подключения (19 окт).
  *
- * Склад — основной покупатель Уклада, и до этой страницы весь его разговор
- * умещался в одну секцию лендинга и пару вопросов в FAQ: вторая половина
- * маркетплейса была рассказана вчетверо короче первой. Лендинг остаётся входом
- * для обоих, а разбор по шагам — здесь, зеркально `SellersPage`.
+ * Только по-русски, английской пары у текстов нет: клиентов начинаем со складов
+ * в России, и перевод, который никто не прочтёт, только задерживал бы правки.
+ * Порядок блоков: боль → что получаете → путь с формой → что внутри → тарифы →
+ * вопросы → форма. Тарифы стоят перед вопросами, потому что про цену
+ * спрашивают последним, когда остальное уже понятно.
+ *
+ * Все призывы ведут к форме в шаге «Заявка» (`#connect`), а не на страницу
+ * контактов: склад не уходит со страницы, чтобы оставить заявку.
  */
 export function WarehousesPage() {
   const t = useT();
-  const { total, withUklad } = warehousesRepository.stats();
 
   return (
     <div className="pb-24 pt-28 sm:pt-32">
@@ -188,136 +141,114 @@ export function WarehousesPage() {
           </p>
 
           <div className="mt-8 flex flex-wrap items-center gap-3">
-            <CtaLink href={href("/contacts")} className="w-full sm:w-auto">
+            <CtaLink href="#connect" className="w-full sm:w-auto">
               {t(T.ctaConnect)}
             </CtaLink>
             <Button asChild variant="outline" size="lg" shape="pill" className="w-full sm:w-auto">
-              <a href={href("/pricing")}>{t(T.ctaPricing)}</a>
+              <a href="#inside">{t(T.ctaInside)}</a>
             </Button>
           </div>
 
-          <p className="mt-8 text-sm leading-relaxed text-muted-foreground">
-            {t(T.stats, {
-              n: total,
-              w: t.plural(total, ["склад", "склада", "складов"], ["warehouse", "warehouses"]),
-              u: withUklad,
-            })}
-          </p>
+          <p className="mt-6 text-sm leading-relaxed text-muted-foreground">{t(T.heroNote)}</p>
         </Reveal>
 
-        <Reveal delay={120}>
-          <InboxBoard />
+        <Reveal delay={120} className="r-window border border-border bg-card p-4 sm:p-6">
+          <PlanShowcase />
         </Reveal>
       </div>
 
       <section className="mx-auto mt-20 max-w-6xl px-4 sm:mt-24 sm:px-6">
-        <SectionHead
-          align="left"
-          eyebrow={t(T.pathEyebrow)}
-          title={t(T.pathTitle)}
-          lead={t(T.pathLead)}
-        />
+        <SectionHead align="left" eyebrow={t(T.painsEyebrow)} title={t(T.painsTitle)} />
 
-        <ol className="mt-10 border-t border-border">
-          {PATH.map((s, i) => (
-            <Reveal key={s.title.ru} as="li" delay={i * 70}>
-              <div className="grid gap-2 border-b border-border py-6 sm:grid-cols-[64px_minmax(0,1fr)] sm:gap-6">
-                <span className="font-mono text-xs tabular-nums text-primary">0{i + 1}</span>
-                <div>
-                  <h3 className="font-display text-lg font-heading tracking-tight">{t(s.title)}</h3>
-                  <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-                    {t(s.body)}
-                  </p>
-                </div>
-              </div>
-            </Reveal>
-          ))}
-        </ol>
-      </section>
-
-      <section className="mx-auto mt-20 max-w-6xl px-4 sm:mt-24 sm:px-6">
-        <SectionHead
-          align="left"
-          eyebrow={t(T.gainsEyebrow)}
-          title={t(T.gainsTitle)}
-          lead={t(T.gainsLead)}
-        />
-
-        <div className="mt-10 grid gap-10 sm:grid-cols-2 sm:gap-x-12">
-          {GAINS.map((g, i) => (
-            <Reveal key={g.title.ru} as="article" delay={i * 80}>
-              <g.icon className="size-5 text-primary" strokeWidth={1.75} />
-              <h3 className="mt-4 font-display text-lg font-heading tracking-tight">
-                {t(g.title)}
-              </h3>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t(g.body)}</p>
-            </Reveal>
-          ))}
-        </div>
-      </section>
-
-      <section className="mx-auto mt-20 max-w-6xl px-4 sm:mt-24 sm:px-6">
-        <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1fr)] lg:gap-16">
-          <Reveal>
-            <SectionHead
-              align="left"
-              eyebrow={t(T.planEyebrow)}
-              title={t(T.planTitle)}
-              lead={t(T.planLead)}
-            />
-            <a
-              href={href("/pricing")}
-              className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-primary underline-offset-4 hover:underline"
+        <div className="mt-10 grid gap-4 md:grid-cols-3">
+          {PAINS.map((p, i) => (
+            <Reveal
+              key={p.title.ru}
+              as="article"
+              delay={i * 70}
+              className="r-window border border-border bg-card p-5 sm:p-6"
             >
-              {t(T.planLink)}
-              <ArrowRight className="size-4" />
-            </a>
-          </Reveal>
-
-          {/* Тарифы здесь перечислены строками, а не карточками: сетка тарифов
-              живёт на странице цен, и вторая такая же превратила бы страницу в
-              её дубль. Складу тут нужен ответ «во сколько это встанет», а не
-              выбор плана. */}
-          <ul className="divide-y divide-hairline border-y border-hairline">
-            {SUBSCRIPTION.map((s, i) => (
-              <Reveal key={s.title.ru} as="li" delay={i * 80}>
-                <div className="flex gap-4 py-6">
-                  <Check className="mt-1 size-4 shrink-0 text-primary" strokeWidth={2.5} />
-                  <div>
-                    <h3 className="font-display text-base font-heading tracking-tight">
-                      {t(s.title)}
-                    </h3>
-                    <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-                      {t(s.body)}
-                    </p>
-                  </div>
-                </div>
-              </Reveal>
-            ))}
-          </ul>
+              <p.icon className="size-5 text-primary" strokeWidth={1.75} />
+              <h3 className="mt-4 font-display text-lg font-heading tracking-tight">
+                {t(p.title)}
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t(p.body)}</p>
+            </Reveal>
+          ))}
         </div>
+
+        <Reveal className="mt-8 max-w-3xl border-l-2 border-primary pl-5">
+          <p className="text-base leading-relaxed sm:text-lg">{t(T.bridge)}</p>
+        </Reveal>
       </section>
 
       <section className="mx-auto mt-20 max-w-6xl px-4 sm:mt-24 sm:px-6">
-        <div className="border-t border-border pt-10 sm:flex sm:items-end sm:justify-between sm:gap-8">
+        <SectionHead align="left" eyebrow={t(T.offerEyebrow)} title={t(T.offerTitle)} />
+
+        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {NUMBERS.map((n, i) => (
+            <Reveal
+              key={n.value.ru}
+              as="article"
+              delay={i * 70}
+              className="r-window flex flex-col border border-border bg-card p-5 sm:p-6"
+            >
+              <p className="font-display text-3xl font-medium tabular-nums tracking-tight text-primary">
+                {t(n.value)}
+              </p>
+              <p className="mt-1 text-sm font-medium">{t(n.label)}</p>
+              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{t(n.body)}</p>
+            </Reveal>
+          ))}
+        </div>
+
+        <div className="mt-4 grid gap-4 lg:grid-cols-3">
+          {EXTRAS.map((x, i) => (
+            <Reveal
+              key={x.title.ru}
+              as="article"
+              delay={i * 70}
+              className="r-window flex flex-col border border-border bg-card p-5 sm:p-6"
+            >
+              <h3 className="font-display text-lg font-heading tracking-tight">{t(x.title)}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t(x.body)}</p>
+              {x.link && (
+                <a
+                  href={href("/roadmap")}
+                  className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-primary underline-offset-4 hover:underline"
+                >
+                  {t(T.roadmapLink)}
+                  <ArrowRight className="size-4" />
+                </a>
+              )}
+            </Reveal>
+          ))}
+        </div>
+
+        <Reveal className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-base leading-relaxed">{t(T.offerNote)}</p>
+          <CtaLink href="#connect" className="w-full shrink-0 sm:w-auto">
+            {t(T.ctaConnect)}
+          </CtaLink>
+        </Reveal>
+      </section>
+
+      <ConnectPath />
+      <Inside />
+      <Tariffs />
+      <Questions />
+
+      <section className="mx-auto mt-20 max-w-6xl px-4 sm:mt-24 sm:px-6">
+        <div className="r-window grid gap-8 border border-border bg-card p-5 sm:p-8 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1fr)] lg:gap-12">
           <div>
             <h2 className="font-display text-2xl font-heading leading-title tracking-tight sm:text-3xl">
               {t(T.endTitle)}
             </h2>
-            <p className="mt-2 max-w-lg text-sm leading-relaxed text-muted-foreground">
-              {t(T.endLeadBefore)}
-              <a
-                href={href("/sellers")}
-                className="text-primary underline-offset-4 hover:underline"
-              >
-                {t(T.endLeadLink)}
-              </a>
-              .
+            <p className="mt-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
+              {t(T.endLead)}
             </p>
           </div>
-          <CtaLink href={href("/contacts")} className="mt-6 w-full sm:mt-0 sm:w-auto">
-            {t(T.endCta)}
-          </CtaLink>
+          <ConnectForm idPrefix="final" />
         </div>
       </section>
     </div>
