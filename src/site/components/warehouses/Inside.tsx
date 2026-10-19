@@ -1,11 +1,13 @@
 import type { ReactNode } from "react";
 import { MapPin } from "lucide-react";
+import { LogoMark } from "../Logo";
 import { Reveal } from "../Reveal";
 import { ru, useT, type Copy } from "../../lib/copy";
 import { href } from "../../lib/route";
 
 const T = {
-  title: ru("Товар, сотрудники и селлеры в одном кабинете"),
+  title: ru("Товар, сотрудники и селлеры"),
+  titleTail: ru("в одном кабинете"),
   brand: ru("Уклад"),
   showcaseTitle: ru("Ваш склад на витрине Уклада"),
   showcaseBody: ru(
@@ -54,12 +56,14 @@ export function Inside() {
       className="mx-auto mt-24 max-w-[1280px] scroll-mt-24 px-5 sm:mt-32 sm:px-10"
     >
       <Reveal>
-        <h2 className="wh-h2 mx-auto max-w-[16ch] text-center">{t(T.title)}</h2>
+        <h2 className="wh-h2 mx-auto text-center">
+          <span className="sm:block">{t(T.title)}</span> {t(T.titleTail)}
+        </h2>
       </Reveal>
 
       <div className="mt-12 flex justify-center sm:mt-16">
         <div className="inline-flex h-14 items-center gap-2.5 rounded-2xl bg-[var(--wh-blue)] pl-3 pr-6 text-xl font-semibold tracking-tight text-white">
-          <span className="block size-8 rounded-lg bg-white" aria-hidden />
+          <LogoMark className="rounded-lg ring-1 ring-white/40" />
           {t(T.brand)}
         </div>
       </div>
