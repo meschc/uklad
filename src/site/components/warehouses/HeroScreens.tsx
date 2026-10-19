@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { ru, useT, type Copy } from "../../lib/copy";
 import { href } from "../../lib/route";
 import { Reveal } from "../Reveal";
+import { LogoMark } from "../Logo";
 import { AsciiField } from "./AsciiField";
 
 const T = {
@@ -68,8 +69,8 @@ export function HeroScreens() {
   const leadRef = useRef<HTMLDivElement>(null);
   const navRef = useRef<HTMLElement>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
-  // Один и тот же массив на все рендеры: иначе поле пересобиралось бы при
-  // каждой смене экрана и квадраты рассыпались бы на полуслове.
+  // Один и тот же массив на все рендеры: иначе поле перезапускалось бы при
+  // каждой смене экрана. Под этими блоками знаки прозрачнее.
   const quiet = useMemo(() => [navRef, titleRef, leadRef, tabsRef], []);
 
   useEffect(() => {
@@ -92,7 +93,10 @@ export function HeroScreens() {
               href={href("/")}
               className="flex items-center gap-2 text-xl font-semibold tracking-tight text-white"
             >
-              <span className="block size-8 rounded-lg bg-white" aria-hidden />
+              {/* Фирменный знак, а не заглушка (Кирилл 19 окт: «где логотип?»).
+                  Название белым: общий `Logo` красит его цветом текста темы,
+                  а на синем он должен быть белым в обеих темах. */}
+              <LogoMark className="rounded-lg ring-1 ring-white/40" />
               {t(T.brand)}
             </a>
             <nav className="flex items-center gap-8 text-sm">

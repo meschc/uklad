@@ -545,6 +545,24 @@ input[type="search"]::-webkit-search-cancel-button {
   color: var(--wh-ground);
   border-radius: 22px;
 }
+/*
+ * Карточка, инверсная странице (Кирилл 19 окт): тёмная на светлой, светлая на
+ * тёмной. Оттенки внутри считаются от её цвета текста, а не задаются белым,
+ * — тогда одна разметка работает в обеих темах.
+ */
+.wh-invert {
+  background: var(--wh-ink);
+  color: var(--wh-ground);
+}
+.wh-invert-muted {
+  color: color-mix(in srgb, currentColor 68%, transparent);
+}
+.wh-invert-chip {
+  background: color-mix(in srgb, currentColor 8%, transparent);
+}
+.wh-invert-dash {
+  border-color: color-mix(in srgb, currentColor 32%, transparent);
+}
 /* Заголовки: светлое начертание и плотный трекинг, как в референсах, —
    крупный размер работает сам, жирность ему не нужна. */
 .wh-h1 {
