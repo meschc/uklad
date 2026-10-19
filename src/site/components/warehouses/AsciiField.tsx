@@ -21,6 +21,8 @@ const FPS = 30;
 const REACH = 140;
 /** Насколько далеко курсор отталкивает знак у самого центра, px. */
 const PUSH = 18;
+/** Ширина плавного перехода тихой зоны под текстом, px. */
+const FEATHER = 90;
 
 /** Постоянный «шум» клетки: ломает ровные строки одинаковых знаков. */
 const grain = (x: number, y: number) => {
@@ -78,17 +80,34 @@ export function AsciiField({
       cols = Math.ceil(w / cw);
       rows = Math.ceil(h / ch);
 
+      // Под текстом поле тише, но без резкой границы: прозрачность плавно
+      // спадает на FEATHER px от края блока, иначе зона читается прямоугольником.
       mask = new Float32Array(cols * rows).fill(1);
       const box = canvas.getBoundingClientRect();
-      for (const q of quiet ?? []) {
-        const r = q.current?.getBoundingClientRect();
-        if (!r) continue;
-        const pad = 16;
-        const c0 = Math.max(0, Math.floor((r.left - box.left - pad) / cw));
-        const c1 = Math.min(cols, Math.ceil((r.right - box.left + pad) / cw));
-        const r0 = Math.max(0, Math.floor((r.top - box.top - pad) / ch));
-        const r1 = Math.min(rows, Math.ceil((r.bottom - box.top + pad) / ch));
-        for (let y = r0; y < r1; y++) for (let x = c0; x < c1; x++) mask[y * cols + x] = 0.35;
+      const rects = (quiet ?? [])
+        .map((q) => q.current?.getBoundingClientRect())
+        .filter((r): r is DOMRect => !!r)
+        .map((r) => ({
+          l: r.left - box.left,
+          r: r.right - box.left,
+          t: r.top - box.top,
+          b: r.bottom - box.top,
+        }));
+      if (rects.length) {
+        for (let y = 0; y < rows; y++) {
+          for (let x = 0; x < cols; x++) {
+            const cx = x * cw + cw / 2;
+            const cy = y * ch + ch / 2;
+            let k = 0;
+            for (const q of rects) {
+              const dx = Math.max(q.l - cx, 0, cx - q.r);
+              const dy = Math.max(q.t - cy, 0, cy - q.b);
+              const f = Math.max(0, 1 - Math.hypot(dx, dy) / FEATHER);
+              k = Math.max(k, f * f * (3 - 2 * f));
+            }
+            mask[y * cols + x] = 1 - k * 0.65;
+          }
+        }
       }
     };
 
