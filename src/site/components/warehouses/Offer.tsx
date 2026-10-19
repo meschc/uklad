@@ -70,9 +70,10 @@ export function Offer() {
           <p className="wh-muted mt-6 max-w-[26rem] text-[17px] leading-relaxed">{t(T.sub)}</p>
         </Reveal>
 
-        {/* Две равные колонки на любой ширине (Кирилл 19 окт: «одинаковую
-            ширину квадратов»): ширина ячейки не зависит от длины числа. */}
-        <div className="grid min-w-0 flex-1 grid-cols-2 border-t border-[var(--wh-line)]">
+        {/* Две равные колонки и равные строки на любой ширине (Кирилл 19 окт:
+            «квадраты одинаковой высоты»): размер ячейки не зависит ни от
+            длины числа, ни от длины пояснения. */}
+        <div className="grid min-w-0 flex-1 auto-rows-fr grid-cols-2 border-t border-[var(--wh-line)]">
           {NUMBERS.map((n, i) => (
             <Reveal
               key={n.unit.ru}
@@ -94,25 +95,26 @@ export function Offer() {
 
       <section className="mx-auto mt-16 max-w-[1280px] px-5 sm:px-10">
         {/* Колонки карты — по всей ширине блока (Кирилл 19 окт), текст строкой
-            над ними. */}
-        <Reveal className="flex flex-col gap-8 rounded-[28px] bg-[#0d0e11] p-6 text-white sm:p-10">
+            над ними. Карточка инверсна странице: тёмная на светлой, светлая
+            на тёмной, — иначе в тёмной теме она пропадает. */}
+        <Reveal className="wh-invert flex flex-col gap-8 rounded-[28px] p-6 sm:p-10">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between lg:gap-16">
             <div className="max-w-[560px]">
               <h3 className="text-[28px] font-normal tracking-[-0.03em]">{t(T.roadmapTitle)}</h3>
-              <p className="mt-3 text-base leading-relaxed text-white/70">{t(T.roadmapBody)}</p>
+              <p className="mt-3 wh-invert-muted text-base leading-relaxed">{t(T.roadmapBody)}</p>
             </div>
-            <a href={href("/roadmap")} className="shrink-0 font-medium text-white">
+            <a href={href("/roadmap")} className="shrink-0 font-medium">
               {t(T.roadmapLink)}
             </a>
           </div>
           <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-3 sm:gap-4">
             {ROADMAP.map((col, ci) => (
               <Reveal key={col.stage} delay={120 + ci * 90} className="flex flex-col gap-2">
-                <span className="flex items-center gap-2 text-white/60">
+                <span className="wh-invert-muted flex items-center gap-2">
                   <span
                     className={cn(
                       "block size-2 rounded-full",
-                      col.stage === "idea" && "border border-white/60",
+                      col.stage === "idea" && "border border-current",
                       col.stage === "doing" && "bg-[var(--wh-blue)]",
                       col.stage === "done" && "bg-[#3ecf8e]",
                     )}
@@ -124,11 +126,11 @@ export function Offer() {
                     key={item.ru}
                     className={cn(
                       "rounded-[10px] px-3 py-2.5",
-                      col.stage === "idea" && "border border-dashed border-white/30",
-                      col.stage === "doing" && i === 0 && "bg-[var(--wh-blue)]",
+                      col.stage === "idea" && "wh-invert-dash border border-dashed",
+                      col.stage === "doing" && i === 0 && "bg-[var(--wh-blue)] text-white",
                       col.stage !== "idea" &&
                         !(col.stage === "doing" && i === 0) &&
-                        "bg-white/[0.08]",
+                        "wh-invert-chip",
                     )}
                   >
                     {t(item)}

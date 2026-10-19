@@ -60,7 +60,9 @@ export function WarehousesFooter() {
   return (
     <footer className="overflow-hidden bg-[var(--wh-blue)] text-white">
       <div className="mx-auto max-w-[1280px] px-5 sm:px-10">
-        <div className="flex flex-wrap justify-between gap-8 border-t border-white/25 pt-10 text-sm">
+        {/* Отделён от финального блока воздухом, а не линией: тонкая черта под
+            карточкой заявки читалась как обрыв (Кирилл 19 окт). */}
+        <div className="flex flex-wrap justify-between gap-8 pt-20 text-sm sm:pt-28">
           <div className="flex min-w-[200px] flex-1 flex-col gap-2.5">
             <span className="text-white/60">{t(T.contactTitle)}</span>
             <span className="text-xl tracking-[-0.02em]">{t(T.mail)}</span>
