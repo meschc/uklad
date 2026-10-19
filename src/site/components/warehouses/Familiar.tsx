@@ -71,12 +71,14 @@ export function Familiar() {
         </div>
       </section>
 
-      <section className="mx-2 mt-24 rounded-[24px] bg-[var(--wh-soft)] sm:mx-3 sm:mt-32 sm:rounded-[32px]">
-        <Reveal className="mx-auto max-w-[1040px] px-5 py-16 text-center sm:px-10 sm:py-24">
-          <p className="text-[clamp(24px,2.8vw,40px)] leading-[1.2] tracking-[-0.025em] [text-wrap:balance]">
-            {t(T.statement)} <span className="text-[var(--wh-blue)]">{t(T.statementAccent)}</span>
-          </p>
-        </Reveal>
+      <section className="mx-auto mt-24 max-w-[1280px] px-5 sm:mt-32 sm:px-10">
+        <div className="rounded-[24px] bg-[var(--wh-soft)] sm:rounded-[32px]">
+          <Reveal className="mx-auto max-w-[1040px] px-5 py-16 text-center sm:px-10 sm:py-24">
+            <p className="text-[clamp(24px,2.8vw,40px)] leading-[1.2] tracking-[-0.025em] [text-wrap:balance]">
+              {t(T.statement)} <span className="text-[var(--wh-blue)]">{t(T.statementAccent)}</span>
+            </p>
+          </Reveal>
+        </div>
       </section>
     </>
   );
