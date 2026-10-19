@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { Reveal } from "../Reveal";
 import { ru, useT, type Copy } from "../../lib/copy";
-import { ConnectForm } from "./ConnectForm";
 
 const T = {
   title: ru("Как проходит подключение"),
@@ -12,8 +11,7 @@ const T = {
 
 interface Step {
   title: Copy;
-  /** Срок там, где он точный. «Несколько дней» хуже, чем ничего. */
-  time?: Copy;
+  time: Copy;
   body: Copy;
 }
 
@@ -21,116 +19,103 @@ const STEPS: Step[] = [
   {
     title: ru("Заявка"),
     time: ru("1 минута"),
-    body: ru("Имя, как с вами связаться, как сейчас ведёте учёт."),
+    body: ru("Имя, как связаться, как сейчас ведёте учёт."),
   },
   {
     title: ru("Знакомство"),
-    time: ru("20 минут по телефону или переписка в чате"),
-    body: ru(
-      "Расскажете, как устроены приёмка, хранение и отгрузка и кто что делает. Покажем, как ваши процессы лягут в систему, и предложим, что упростить.",
-    ),
+    time: ru("20 минут по телефону или в чате"),
+    body: ru("Как устроены приёмка, хранение и отгрузка, кто что делает."),
   },
   {
     title: ru("Внедрение"),
-    body: ru("Помогаем настроить адреса, перенести товары и добавить сотрудников."),
+    time: ru("вместе с вами"),
+    body: ru("Настраиваем адреса, переносим товары, добавляем сотрудников."),
   },
   {
     title: ru("Тестовый период"),
     time: ru("3 месяца"),
-    body: ru(
-      "Склад работает в обычном режиме, учёт ведётся в Укладе. Мы адаптируем систему под ваши запросы: до 4 новых функций, каждая до 5 рабочих дней.",
-    ),
+    body: ru("Учёт ведётся в Укладе, систему адаптируем под ваши запросы."),
   },
   {
     title: ru("Дальше"),
-    body: ru(
-      "Система остаётся настроенной под ваш склад, работа продолжается по выбранному тарифу.",
-    ),
+    time: ru("по тарифу"),
+    body: ru("Система остаётся настроенной под ваш склад."),
   },
 ];
 
 /**
- * Путь подключения: пять шагов на одной линии.
+ * Путь подключения: пять шагов на одной горизонтальной линии и под ними три
+ * схемы внедрения. Схемы нарисованы линиями, а не скриншотами: схема не
+ * устаревает, когда меняются экраны кабинета.
  *
- * Два шага несут не текст, а действие и картинку (решения 19 окт):
- * первый — это и есть заявка, поля стоят прямо в шаге, и склад заполняет её,
- * не уходя с пути; третий показан тремя схемами, нарисованными линиями, а не
- * скриншотами кабинета — схема не устаревает, когда меняются экраны.
- *
- * Линия вертикальная на любой ширине: форма и схемы в горизонтальную ленту из
- * пяти колонок не помещаются, а путь, разорванный на полпути, перестаёт быть
- * путём.
+ * На узком экране шаги встают в колонку, и линия-путь прячется: разорванная
+ * на переносе, она перестаёт быть путём.
  */
 export function ConnectPath() {
   const t = useT();
 
   return (
     <section
-      id="connect"
-      className="mx-auto mt-28 max-w-[1320px] scroll-mt-24 px-5 sm:mt-36 sm:px-10"
+      id="connect-path"
+      className="mx-auto mt-24 max-w-[1280px] scroll-mt-24 px-5 sm:mt-36 sm:px-10"
     >
       <Reveal>
-        <h2 className="wh-h2">{t(T.title)}</h2>
+        <h2 className="wh-h2 text-center">{t(T.title)}</h2>
       </Reveal>
 
-      <ol className="mt-12 max-w-4xl">
-        {STEPS.map((step, i) => (
-          <Reveal key={step.title.ru} as="li" delay={i * 60}>
-            <div className="grid grid-cols-[36px_minmax(0,1fr)] gap-3 sm:grid-cols-[40px_minmax(0,1fr)] sm:gap-6">
-              {/* Номер и линия к следующему шагу. У последнего линии нет:
-                  путь кончается на нём. */}
-              <div className="flex flex-col items-center">
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[var(--wh-blue)] text-sm font-medium tabular-nums text-white sm:size-10">
+      <div className="relative mt-12 sm:mt-[72px]">
+        <span
+          className="absolute inset-x-[10%] top-[19px] hidden h-0.5 bg-[var(--wh-blue)] opacity-25 lg:block"
+          aria-hidden
+        />
+        <ol className="relative grid grid-cols-1 gap-x-4 gap-y-10 text-center sm:grid-cols-2 lg:grid-cols-5">
+          {STEPS.map((step, i) => {
+            const last = i === STEPS.length - 1;
+            return (
+              <Reveal
+                key={step.title.ru}
+                as="li"
+                delay={i * 60}
+                className="flex flex-col items-center"
+              >
+                <span
+                  className={
+                    last
+                      ? "flex size-10 items-center justify-center rounded-full bg-[var(--wh-ground)] font-medium text-[var(--wh-blue)] shadow-[inset_0_0_0_2px_var(--wh-blue)]"
+                      : "flex size-10 items-center justify-center rounded-full bg-[var(--wh-blue)] font-medium text-white"
+                  }
+                >
                   {i + 1}
                 </span>
-                {i < STEPS.length - 1 && (
-                  <span
-                    className="my-1 w-0.5 flex-1 rounded-full bg-[var(--wh-blue)] opacity-25"
-                    aria-hidden
-                  />
-                )}
-              </div>
+                <h3 className="mt-5 text-xl font-medium">{t(step.title)}</h3>
+                <p className="mt-1 text-sm text-[var(--wh-blue)]">{t(step.time)}</p>
+                <p className="wh-muted mt-2 max-w-[260px] text-[15px] leading-relaxed">
+                  {t(step.body)}
+                </p>
+              </Reveal>
+            );
+          })}
+        </ol>
+      </div>
 
-              <div className="pb-10">
-                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 pt-1.5">
-                  <h3 className="wh-h3">{t(step.title)}</h3>
-                  {step.time && <span className="wh-muted text-sm">{t(step.time)}</span>}
-                </div>
-                <p className="wh-muted mt-2 max-w-2xl text-base leading-relaxed">{t(step.body)}</p>
-
-                {/* На телефоне форма выходит на всю ширину поверх линии пути:
-                    в колонке шага переключатель «как ведёте учёт» не влезает. */}
-                {i === 0 && (
-                  <div className="relative -ml-12 mt-5 max-w-2xl rounded-[22px] bg-background p-4 text-foreground sm:ml-0 sm:p-7">
-                    <ConnectForm idPrefix="path" />
-                  </div>
-                )}
-
-                {i === 2 && (
-                  <div className="mt-5 grid grid-cols-1 max-w-3xl gap-4 sm:grid-cols-3">
-                    <Scheme title={t(T.schemeAddresses)}>
-                      <AddressesScheme />
-                    </Scheme>
-                    <Scheme title={t(T.schemeGoods)}>
-                      <GoodsScheme />
-                    </Scheme>
-                    <Scheme title={t(T.schemeStaff)}>
-                      <StaffScheme />
-                    </Scheme>
-                  </div>
-                )}
-              </div>
-            </div>
-          </Reveal>
-        ))}
-      </ol>
+      <div className="mt-14 grid grid-cols-1 gap-4 md:grid-cols-3">
+        <Scheme title={t(T.schemeAddresses)}>
+          <AddressesScheme />
+        </Scheme>
+        <Scheme title={t(T.schemeGoods)}>
+          <GoodsScheme />
+        </Scheme>
+        <Scheme title={t(T.schemeStaff)}>
+          <StaffScheme />
+        </Scheme>
+      </div>
     </section>
   );
 }
 
 function Scheme({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <figure className="wh-tile p-5">
+    <figure className="rounded-[18px] bg-[var(--wh-soft)] p-5">
       <div className="wh-muted">{children}</div>
       <figcaption className="mt-3 text-sm font-medium">{title}</figcaption>
     </figure>
@@ -139,10 +124,10 @@ function Scheme({ title, children }: { title: string; children: ReactNode }) {
 
 /*
  * Схемы рисуются линиями в цветах темы: `currentColor` берёт приглушённый
- * цвет текста, акцент — `--primary`. Своих цветов у схем нет, иначе в тёмной
+ * цвет текста, акцент — `--wh-blue`. Своих цветов у схем нет, иначе в тёмной
  * теме они выпадали бы из страницы.
  */
-const PRIMARY = "hsl(var(--primary))";
+const PRIMARY = "var(--wh-blue)";
 const MONO = "var(--font-mono, monospace)";
 
 /** Склад сверху: два ряда стеллажей, у ячеек появляются адреса. */
@@ -163,7 +148,7 @@ function AddressesScheme() {
                   width={40}
                   height={30}
                   rx={4}
-                  fill={marked ? "hsl(var(--primary) / 0.12)" : "none"}
+                  fill={marked ? "var(--wh-soft)" : "none"}
                   stroke={marked ? PRIMARY : "currentColor"}
                   strokeOpacity={marked ? 1 : 0.5}
                 />
@@ -268,7 +253,7 @@ function StaffScheme() {
             width="56"
             height="74"
             rx="5"
-            fill={i === 0 ? "hsl(var(--primary) / 0.08)" : "none"}
+            fill={i === 0 ? "var(--wh-soft)" : "none"}
             stroke={i === 0 ? PRIMARY : "currentColor"}
             strokeOpacity={i === 0 ? 1 : 0.5}
           />

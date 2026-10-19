@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Segmented } from "@/components/ui/segmented";
 import { cn } from "@/lib/utils";
 import { ConsentChecks, type ConsentState } from "../ConsentChecks";
 import { LeadSubmit } from "../LeadSubmit";
@@ -13,29 +12,29 @@ const T = {
   contactPh: ru("Телефон или почта"),
   accounting: ru("Как сейчас ведёте учёт"),
   optional: ru("необязательно"),
-  excel: ru("Excel"),
+  excel: ru("Excel и таблицы"),
+  oneC: ru("1С"),
   other: ru("Другая программа"),
-  none: ru("Не ведём"),
-  send: ru("Подключить склад"),
+  none: ru("Пока никак"),
+  send: ru("Отправить заявку"),
   consentNote: ru("Отметьте согласие на обработку данных, без него заявку не отправить."),
   subject: ru("Подключение склада — {name}"),
 };
 
-type Accounting = "" | "excel" | "other" | "none";
+type Accounting = "" | "excel" | "1c" | "other" | "none";
 
 const EMPTY_CONSENT: ConsentState = { data: false, ads: false };
 
 /**
- * Заявка на подключение склада. Одна и та же форма стоит дважды: внутри
- * первого шага пути подключения и в конце страницы. Отправляют обе одно и то
- * же, поэтому и форма одна — две копии разошлись бы на первой правке полей.
+ * Заявка на подключение склада: стоит в финальном блоке страницы, в карточке
+ * в виде складского ярлыка.
  *
  * Полей минимум (решение 19 окт): имя и контакт. Название склада и город на
  * первом контакте не нужны, а каждое лишнее поле стоит заявок. Способ учёта —
  * необязательный выбор в один клик: к знакомству уже понятно, что переносить.
  *
- * `idPrefix` разводит `id` полей: на странице две формы, и одинаковые `id`
- * сломали бы связь подписи с полем во второй.
+ * `idPrefix` разводит `id` полей: если форма встанет на страницу второй
+ * раз, одинаковые `id` сломали бы связь подписи с полем.
  */
 export function ConnectForm({ idPrefix, className }: { idPrefix: string; className?: string }) {
   const t = useT();
@@ -46,6 +45,7 @@ export function ConnectForm({ idPrefix, className }: { idPrefix: string; classNa
   const accountingLabel = {
     "": "",
     excel: t(T.excel),
+    "1c": t(T.oneC),
     other: t(T.other),
     none: t(T.none),
   }[accounting];
@@ -68,38 +68,56 @@ export function ConnectForm({ idPrefix, className }: { idPrefix: string; classNa
     });
   };
 
+  const options: { value: Exclude<Accounting, "">; label: string }[] = [
+    { value: "excel", label: t(T.excel) },
+    { value: "1c", label: t(T.oneC) },
+    { value: "other", label: t(T.other) },
+    { value: "none", label: t(T.none) },
+  ];
+
   return (
     <form onSubmit={submit} className={cn("flex flex-col gap-4", className)}>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field id={`${idPrefix}-name`} name="name" label={t(T.name)} placeholder={t(T.namePh)} />
-        <Field
-          id={`${idPrefix}-contact`}
-          name="contact"
-          label={t(T.contact)}
-          placeholder={t(T.contactPh)}
-        />
-      </div>
+      <Field id={`${idPrefix}-name`} name="name" label={t(T.name)} placeholder={t(T.namePh)} />
+      <Field
+        id={`${idPrefix}-contact`}
+        name="contact"
+        label={t(T.contact)}
+        placeholder={t(T.contactPh)}
+      />
 
       <div>
-        <p className="text-sm font-medium">
+        <p id={`${idPrefix}-accounting`} className="text-sm font-medium">
           {t(T.accounting)}{" "}
           <span className="font-normal text-muted-foreground">· {t(T.optional)}</span>
         </p>
-        {/* Повторный клик снимает выбор: поле необязательное, и выбрать
-            «ничего» должно быть так же просто, как выбрать вариант. */}
-        <Segmented<Accounting>
-          size="md"
-          grow
-          value={accounting}
-          onChange={(v) => setAccounting(v === accounting ? "" : v)}
-          ariaLabel={t(T.accounting)}
-          className="mt-1.5"
-          options={[
-            { value: "excel", label: t(T.excel) },
-            { value: "other", label: t(T.other) },
-            { value: "none", label: t(T.none) },
-          ]}
-        />
+        {/* Чипы, а не переключатель: вариантов четыре, и на телефоне они
+            переносятся строкой. Повторный клик снимает выбор — поле
+            необязательное. */}
+        <div
+          role="group"
+          aria-labelledby={`${idPrefix}-accounting`}
+          className="mt-2 flex flex-wrap gap-2"
+        >
+          {options.map((o) => {
+            const on = accounting === o.value;
+            return (
+              <button
+                key={o.value}
+                type="button"
+                aria-pressed={on}
+                onClick={() => setAccounting(on ? "" : o.value)}
+                className={cn(
+                  "h-9 rounded-full px-3.5 text-sm transition-colors",
+                  on
+                    ? "bg-foreground text-background"
+                    : "bg-[var(--wh-soft,#fafafa)] shadow-[inset_0_0_0_1px_var(--wh-line,#e6e7eb)] hover:bg-[var(--wh-line,#e6e7eb)]",
+                )}
+              >
+                {o.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <ConsentChecks value={consent} onChange={setConsent} />
@@ -139,11 +157,8 @@ function Field({
         type={type}
         required
         placeholder={placeholder}
-        className="mt-1.5 h-10 w-full rounded-full border border-border bg-background px-4 text-sm outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary"
+        className="mt-1.5 h-12 w-full rounded-xl border border-border bg-background px-4 text-base outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary"
       />
     </div>
   );
 }
-
-/** То же поле нужно форме демо-доступа: одна высота и одна форма на странице. */
-export { Field as FormField };

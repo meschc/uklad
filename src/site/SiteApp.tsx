@@ -92,7 +92,8 @@ export function SiteApp() {
 
   return (
     <>
-      <SiteHeader route={route} />
+      {/* У страницы для складов своя шапка поверх синего первого экрана. */}
+      {route.page !== "warehouses" && <SiteHeader route={route} />}
       {route.page === "landing" ? (
         <LandingPage />
       ) : (

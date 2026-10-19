@@ -2,29 +2,46 @@ import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 
 /**
- * Фон первого экрана: поле ASCII-знаков, по которому медленно идут волны,
- * а сверху вниз проходит полоса «сканера» и на миг высвечивает знаки.
- * Попросил Кирилл 19 окт вместо белых полос — движение без картинки и без
- * градиента, в том же белом по синему.
+ * Живое поле квадратов: склад, на котором товар раскладывают по ячейкам.
  *
- * Canvas, а не DOM: несколько тысяч знаков 20 раз в секунду DOM не потянет.
- * Левая часть, где заголовок, гаснет маской — текст читается поверх поля.
- * Кадры не рисуются, пока экран вне поля зрения или вкладка скрыта; при
- * `prefers-reduced-motion` рисуется один неподвижный кадр.
+ * Квадраты стоят в узлах сетки, как коробки по адресам, и время от времени
+ * один из них переезжает в свободную ячейку. Курсор (или палец) расталкивает
+ * их, после чего они возвращаются на свои места. Попросил Кирилл 19 окт:
+ * интерактивное поле, где перемещаются квадраты, а не знаки и не круги.
+ *
+ * Два режима:
+ * - `field` заполняет первый экран. Слева, под заголовком, поле гаснет, чтобы
+ *   текст читался;
+ * - `frame` кладёт квадраты полосой вокруг окна кабинета и подсвечивает его,
+ *   не заходя внутрь: середину закрывает само окно.
+ *
+ * Canvas, а не DOM: сотни объектов 60 раз в секунду DOM не потянет. Кадры не
+ * рисуются, пока поле вне экрана или вкладка скрыта; при
+ * `prefers-reduced-motion` остаётся один неподвижный кадр без реакции на
+ * курсор.
  */
 
-const RAMP = "  .·:-=+*#%";
-const FONT_PX = 14;
-const LINE = 1.2;
+type Mode = "field" | "frame";
 
-/** Постоянный «шум» клетки: ломает ровные строки одинаковых знаков. */
-const grain = (x: number, y: number) => {
-  const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
-  return s - Math.floor(s);
-};
-const FPS = 20;
+interface Box {
+  /** Индекс ячейки, где квадрат стоит или куда едет. */
+  cell: number;
+  /** Откуда едет и когда выехал: переезд плавный, а не прыжком. */
+  from: number;
+  moveAt: number;
+  /** Смещение от курсора, затухает пружиной. */
+  dx: number;
+  dy: number;
+  size: number;
+  alpha: number;
+}
 
-export function AsciiField({ className }: { className?: string }) {
+const MOVE_MS = 900;
+const RADIUS = 120;
+
+const ease = (k: number) => (k < 0.5 ? 4 * k * k * k : 1 - (-2 * k + 2) ** 3 / 2);
+
+export function AsciiField({ mode = "field", className }: { mode?: Mode; className?: string }) {
   const ref = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -33,90 +50,182 @@ export function AsciiField({ className }: { className?: string }) {
     if (!canvas || !ctx) return;
 
     const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const step = mode === "field" ? 26 : 18;
     let w = 0;
     let h = 0;
-    let cw = 8;
-    const ch = FONT_PX * LINE;
-    let visible = true;
+    let cells: { x: number; y: number }[] = [];
+    let boxes: Box[] = [];
+    let taken = new Set<number>();
     let raf = 0;
-    let last = 0;
+    let visible = true;
+    let nextMove = 0;
+    const pointer = { x: -1e4, y: -1e4 };
+    let color = "#ffffff";
 
-    const resize = () => {
+    /** Ячейки режима `frame`: полоса шириной в три клетки вокруг окна. */
+    const inBand = (x: number, y: number) => {
+      const pad = step * 3;
+      const inner = x > pad && x < w - pad && y > pad && y < h - pad;
+      return !inner;
+    };
+
+    const build = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       w = canvas.clientWidth;
       h = canvas.clientHeight;
       canvas.width = Math.round(w * dpr);
       canvas.height = Math.round(h * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.font = `${FONT_PX}px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace`;
-      ctx.textBaseline = "top";
-      cw = ctx.measureText("M").width || 8;
-    };
+      color = getComputedStyle(canvas).color || color;
 
-    const draw = (t: number) => {
-      ctx.clearRect(0, 0, w, h);
-      const cols = Math.ceil(w / cw);
-      const rows = Math.ceil(h / ch);
-      const wide = w >= 1024;
-      // Полоса сканера: проходит экран за ~7 с и уходит за край перед повтором.
-      const scan = ((t / 7000) % 1.3) * rows;
-
-      for (let y = 0; y < rows; y++) {
-        const near = Math.max(0, 1 - Math.abs(y - scan) / 1.5);
-        for (let x = 0; x < cols; x++) {
-          const v =
-            Math.sin(x * 0.21 + t * 0.0007) +
-            Math.sin(y * 0.29 - t * 0.0005) +
-            Math.sin((x - y) * 0.13 + t * 0.0004) +
-            Math.sin(Math.hypot(x - cols * 0.72, (y - rows * 0.45) * 1.6) * 0.22 - t * 0.0015);
-          const n = (v + 4) / 8 + (grain(x, y) - 0.5) * 0.22;
-          // Маска: слева, под заголовком, поле почти гаснет.
-          const mask = wide ? Math.min(1, Math.max(0.1, (x / cols - 0.3) * 2.2)) : 0.38;
-          // Сканер светит только там, где поле видно, — не под текстом.
-          const lit = near > 0 && mask > 0.6 && grain(y, x) < near * 0.7;
-          const level = Math.min(1, Math.max(0, n * n * 1.5 * mask + (lit ? 0.45 : 0)));
-          const i = Math.floor(level * (RAMP.length - 1));
-          if (i < 2) continue;
-          ctx.fillStyle = `rgba(255,255,255,${(0.1 + level * 0.45).toFixed(3)})`;
-          ctx.fillText(RAMP[i], x * cw, y * ch);
+      cells = [];
+      for (let y = step / 2; y < h; y += step) {
+        for (let x = step / 2; x < w; x += step) {
+          if (mode === "frame" && !inBand(x, y)) continue;
+          cells.push({ x, y });
         }
       }
+
+      // Заняты не все ячейки: свободные нужны, чтобы было куда переезжать.
+      const share = mode === "field" ? 0.24 : 0.22;
+      taken = new Set();
+      boxes = [];
+      cells.forEach((_, i) => {
+        if (Math.random() > share) return;
+        taken.add(i);
+        boxes.push({
+          cell: i,
+          from: i,
+          moveAt: -MOVE_MS,
+          dx: 0,
+          dy: 0,
+          size:
+            mode === "field"
+              ? 4 + Math.round(Math.random() * 4)
+              : 3 + Math.round(Math.random() * 3),
+          alpha: mode === "field" ? 0.15 + Math.random() * 0.35 : 0.25 + Math.random() * 0.55,
+        });
+      });
     };
 
-    const loop = (now: number) => {
-      raf = requestAnimationFrame(loop);
-      if (!visible || document.hidden || now - last < 1000 / FPS) return;
-      last = now;
+    /** Один квадрат уезжает в соседнюю свободную ячейку. */
+    const relocate = (now: number) => {
+      if (!boxes.length) return;
+      const box = boxes[Math.floor(Math.random() * boxes.length)];
+      const here = cells[box.cell];
+      const near: number[] = [];
+      cells.forEach((c, i) => {
+        if (taken.has(i)) return;
+        const d = Math.abs(c.x - here.x) + Math.abs(c.y - here.y);
+        if (d > 0 && d <= step * 3) near.push(i);
+      });
+      if (!near.length) return;
+      const to = near[Math.floor(Math.random() * near.length)];
+      taken.delete(box.cell);
+      taken.add(to);
+      box.from = box.cell;
+      box.cell = to;
+      box.moveAt = now;
+    };
+
+    /** Гасит поле слева, где на широком экране стоит заголовок. */
+    const mask = (x: number) => {
+      if (mode !== "field" || w < 1024) return 1;
+      return Math.min(1, Math.max(0.12, (x / w - 0.25) * 2.4));
+    };
+
+    const draw = (now: number) => {
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = color;
+      for (const b of boxes) {
+        const a = cells[b.from];
+        const z = cells[b.cell];
+        const k = ease(Math.min(1, (now - b.moveAt) / MOVE_MS));
+        let x = a.x + (z.x - a.x) * k;
+        let y = a.y + (z.y - a.y) * k;
+
+        // Курсор расталкивает: чем ближе, тем дальше отлетает.
+        const px = x - pointer.x;
+        const py = y - pointer.y;
+        const d = Math.hypot(px, py);
+        if (d < RADIUS && d > 0.01) {
+          const push = (1 - d / RADIUS) ** 2 * 36;
+          b.dx += ((px / d) * push - b.dx) * 0.2;
+          b.dy += ((py / d) * push - b.dy) * 0.2;
+        } else {
+          b.dx *= 0.9;
+          b.dy *= 0.9;
+        }
+        x += b.dx;
+        y += b.dy;
+
+        const moving = k < 1;
+        ctx.globalAlpha = Math.min(1, (moving ? b.alpha + 0.3 : b.alpha) * mask(x));
+        const s = b.size;
+        ctx.fillRect(Math.round(x - s / 2), Math.round(y - s / 2), s, s);
+      }
+      ctx.globalAlpha = 1;
+    };
+
+    const tick = (now: number) => {
+      raf = 0;
+      if (!visible || document.hidden) return;
+      if (now >= nextMove) {
+        relocate(now);
+        nextMove = now + (mode === "field" ? 90 : 160);
+      }
       draw(now);
+      raf = requestAnimationFrame(tick);
+    };
+    const start = () => {
+      if (!raf && !still) raf = requestAnimationFrame(tick);
     };
 
-    resize();
-    draw(2400);
+    build();
+    draw(performance.now());
+    if (still) return;
 
-    const ro = new ResizeObserver(() => {
-      resize();
-      draw(last || 2400);
+    const onPointer = (e: PointerEvent) => {
+      const r = canvas.getBoundingClientRect();
+      pointer.x = e.clientX - r.left;
+      pointer.y = e.clientY - r.top;
+    };
+    const onLeave = () => {
+      pointer.x = -1e4;
+      pointer.y = -1e4;
+    };
+    const onResize = () => {
+      build();
+      draw(performance.now());
+    };
+    const io = new IntersectionObserver(([entry]) => {
+      visible = entry.isIntersecting;
+      if (visible) start();
     });
-    ro.observe(canvas);
+    const onVisibility = () => !document.hidden && start();
 
-    const io = new IntersectionObserver(([e]) => {
-      visible = e.isIntersecting;
-    });
     io.observe(canvas);
+    window.addEventListener("pointermove", onPointer, { passive: true });
+    document.addEventListener("pointerleave", onLeave);
+    window.addEventListener("resize", onResize);
+    document.addEventListener("visibilitychange", onVisibility);
+    start();
 
-    if (!still) raf = requestAnimationFrame(loop);
     return () => {
       cancelAnimationFrame(raf);
-      ro.disconnect();
       io.disconnect();
+      window.removeEventListener("pointermove", onPointer);
+      document.removeEventListener("pointerleave", onLeave);
+      window.removeEventListener("resize", onResize);
+      document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, []);
+  }, [mode]);
 
   return (
     <canvas
       ref={ref}
       aria-hidden
-      className={cn("pointer-events-none absolute inset-0 size-full", className)}
+      className={cn("pointer-events-none absolute inset-0 h-full w-full", className)}
     />
   );
 }

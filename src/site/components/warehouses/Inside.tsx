@@ -1,139 +1,189 @@
-import { useState } from "react";
-import { ArrowRight, FileText, MessagesSquare, Package, Store, Users } from "lucide-react";
-import { cn } from "@/lib/utils";
+import type { ReactNode } from "react";
+import { MapPin } from "lucide-react";
 import { Reveal } from "../Reveal";
 import { ru, useT, type Copy } from "../../lib/copy";
 import { href } from "../../lib/route";
-import { DemoForm } from "./DemoForm";
 
 const T = {
   title: ru("Товар, сотрудники и селлеры в одном кабинете"),
+  brand: ru("Уклад"),
   showcaseTitle: ru("Ваш склад на витрине Уклада"),
   showcaseBody: ru(
-    "Селлеры ищут склад в каталоге по городу, условиям и цене. Карточка вашего склада появляется там после подключения: это ещё один источник клиентов.",
+    "Селлеры ищут склад по городу, условиям и цене. Карточка вашего склада появляется в каталоге после подключения.",
   ),
-  showcaseLink: ru("Открыть каталог"),
-  demo: ru("Получить демо-доступ"),
-  demoNote: ru("Персональная ссылка придёт на почту"),
+  showcaseLink: ru("Открыть каталог →"),
 };
 
 /**
- * Четыре опоры системы в порядке подзаголовка первого экрана. Только то, что
- * в кабинете уже есть: учёта рабочих часов и раздачи задач «кто свободен, тот
- * берёт» здесь нет, пока нет функций (узлы `cab-hours`, `cab-task-pool`).
+ * Четыре ветки системы деревом от «Уклада» (решение 19 окт), у каждой —
+ * кусочек интерфейса вместо иконки. Только то, что в кабинете уже есть:
+ * учёта рабочих часов здесь нет, пока нет функции (узел `cab-hours`).
  */
-const PILLARS: { icon: typeof Package; title: Copy; body: Copy; key?: boolean }[] = [
+const BRANCHES: { title: Copy; body: Copy; ui: ReactNode }[] = [
   {
-    icon: Package,
     title: ru("Хранение и учёт товара"),
-    body: ru(
-      "У каждой ячейки адрес. Приёмка, размещение, сборка и отгрузка идут по нему, любой сотрудник находит товар и свободное место без вопросов начальнику склада. Если учёт сейчас в Excel или другой программе, поможем перенести остатки.",
-    ),
+    body: ru("У каждой ячейки адрес. Приёмка, размещение, сборка и отгрузка идут по нему."),
+    ui: <CellsUi />,
   },
   {
-    icon: Users,
     title: ru("Сотрудники и задачи"),
     body: ru("Задачи на приёмку и сборку, нагрузка по факту: кто сколько принял и отгрузил."),
+    ui: <StaffUi />,
   },
   {
-    icon: MessagesSquare,
     title: ru("Связь с селлерами"),
-    body: ru(
-      "Клиент сам заходит, видит остатки, оставляет заявку и пишет в чат. Вы видите заявку и отвечаете там же, а не по телефону.",
-    ),
-    key: true,
+    body: ru("Клиент сам видит остатки, оставляет заявку и пишет в чат. Вы отвечаете там же."),
+    ui: <ChatUi />,
   },
   {
-    icon: FileText,
     title: ru("Документооборот"),
-    body: ru(
-      "Лист приёмки, лист сборки и накладная формируются из данных системы. Документы не нужно заполнять вручную и сверять с таблицей.",
-    ),
+    body: ru("Лист приёмки, лист сборки и накладная формируются из данных системы."),
+    ui: <DocsUi />,
   },
 ];
 
-/**
- * «Что внутри»: четыре опоры и витрина отдельной полосой.
- *
- * Витрина — не пятая опора, а канал клиентов: опоры описывают работу внутри
- * склада, витрина приводит людей снаружи. Пятая карточка размыла бы ряд,
- * полоса показывает витрину заметно и не спорит с главной мыслью блока.
- *
- * Связь с селлерами выделена и шире остальных: это суть Уклада для склада —
- * меньше времени на ответы клиентам.
- */
+/** Центры колонок сетки из четырёх при ширине 1200 и зазоре 24 (в долях 1000). */
+const BRANCH_X = [117.5, 352.5, 647.5, 882.5];
+
 export function Inside() {
   const t = useT();
-  const [demoOpen, setDemoOpen] = useState(false);
 
   return (
     <section
       id="inside"
-      className="mx-auto mt-28 max-w-[1320px] scroll-mt-24 px-5 sm:mt-36 sm:px-10"
+      className="mx-auto mt-24 max-w-[1280px] scroll-mt-24 px-5 sm:mt-32 sm:px-10"
     >
       <Reveal>
-        <h2 className="wh-h2 max-w-[16ch]">{t(T.title)}</h2>
+        <h2 className="wh-h2 mx-auto max-w-[16ch] text-center">{t(T.title)}</h2>
       </Reveal>
 
-      <div className="mt-12 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1.4fr_1fr]">
-        {PILLARS.map((p, i) => (
-          <Reveal
-            key={p.title.ru}
-            as="article"
-            delay={i * 70}
-            className={cn(
-              "flex min-h-[280px] flex-col p-6 sm:p-7",
-              p.key ? "wh-blue sm:col-span-2 lg:col-span-1" : "wh-tile",
-            )}
-          >
-            <p.icon
-              className={cn("size-6", p.key ? "text-white" : "text-[var(--wh-blue)]")}
-              strokeWidth={1.5}
+      <div className="mt-12 flex justify-center sm:mt-16">
+        <div className="inline-flex h-14 items-center gap-2.5 rounded-2xl bg-[var(--wh-blue)] pl-3 pr-6 text-xl font-semibold tracking-tight text-white">
+          <span className="block size-8 rounded-lg bg-white" aria-hidden />
+          {t(T.brand)}
+        </div>
+      </div>
+
+      {/* Плавные ветки к четырём колонкам. На узком экране колонки встают
+          друг под друга, и ветки теряют смысл — их там нет. */}
+      <svg
+        viewBox="0 0 1000 140"
+        preserveAspectRatio="none"
+        className="hidden h-[120px] w-full overflow-visible lg:block"
+        aria-hidden
+      >
+        <g fill="none" stroke="var(--wh-blue)" strokeWidth="2" strokeLinecap="round">
+          {BRANCH_X.map((x) => (
+            <path
+              key={x}
+              d={`M500 0 C500 80, ${x} 60, ${x} 140`}
+              vectorEffect="non-scaling-stroke"
             />
-            <h3 className="wh-h3 mt-auto pt-10">{t(p.title)}</h3>
-            <p
-              className={cn("mt-3 text-base leading-relaxed", p.key ? "text-white/85" : "wh-muted")}
-            >
-              {t(p.body)}
-            </p>
+          ))}
+        </g>
+      </svg>
+
+      <div className="mt-12 grid grid-cols-1 gap-12 sm:grid-cols-2 lg:mt-0 lg:grid-cols-4 lg:gap-6">
+        {BRANCHES.map((b, i) => (
+          <Reveal
+            key={b.title.ru}
+            delay={i * 70}
+            className="flex flex-col items-center text-center"
+          >
+            <div className="w-full max-w-[260px] rounded-2xl border border-[var(--wh-line)] bg-[var(--wh-tile)] text-left">
+              {b.ui}
+            </div>
+            <h3 className="mt-6 text-xl font-medium tracking-[-0.02em]">{t(b.title)}</h3>
+            <p className="wh-muted mt-2 text-[15px] leading-relaxed">{t(b.body)}</p>
           </Reveal>
         ))}
       </div>
 
-      <Reveal className="wh-ink mt-3 flex flex-col gap-5 p-6 sm:flex-row sm:items-center sm:justify-between sm:gap-8 sm:p-8">
-        <div className="flex gap-4">
-          <Store className="mt-0.5 size-6 shrink-0" strokeWidth={1.5} />
+      <Reveal className="mt-16 flex flex-col gap-6 rounded-[22px] p-6 shadow-[inset_0_0_0_1.5px_var(--wh-blue)] sm:mt-[72px] sm:flex-row sm:items-center sm:justify-between sm:px-8 sm:py-7">
+        <div className="flex items-center gap-5">
+          <MapPin className="size-9 shrink-0 text-[var(--wh-blue)]" strokeWidth={1.6} />
           <div>
-            <h3 className="wh-h3">{t(T.showcaseTitle)}</h3>
-            <p className="mt-2 max-w-2xl text-base leading-relaxed opacity-75">
-              {t(T.showcaseBody)}
-            </p>
+            <h3 className="text-xl font-medium tracking-[-0.02em]">{t(T.showcaseTitle)}</h3>
+            <p className="wh-muted mt-1.5 text-[15px] leading-relaxed">{t(T.showcaseBody)}</p>
           </div>
         </div>
-        <a href={href("/market")} className="wh-btn wh-btn--white shrink-0">
+        <a
+          href={href("/market")}
+          className="shrink-0 text-[15px] font-medium text-[var(--wh-blue)] hover:underline"
+        >
           {t(T.showcaseLink)}
-          <ArrowRight className="size-4" />
         </a>
       </Reveal>
-
-      <div className="mt-8">
-        {demoOpen ? (
-          <div className="max-w-2xl rounded-[22px] bg-background p-5 text-foreground sm:p-7">
-            <DemoForm />
-          </div>
-        ) : (
-          <div className="flex flex-col items-start gap-2">
-            <button
-              type="button"
-              onClick={() => setDemoOpen(true)}
-              className="wh-btn wh-btn--ghost w-full sm:w-auto"
-            >
-              {t(T.demo)}
-            </button>
-            <p className="wh-muted text-sm">{t(T.demoNote)}</p>
-          </div>
-        )}
-      </div>
     </section>
+  );
+}
+
+/* Кусочки интерфейса: та же раскладка, что в кабинете, но без данных. */
+
+function CellsUi() {
+  return (
+    <div className="p-4">
+      <div className="grid grid-cols-5 gap-1" aria-hidden>
+        {Array.from({ length: 10 }, (_, i) => (
+          <span
+            key={i}
+            className={`block h-[18px] rounded-[3px] ${i === 2 ? "bg-[var(--wh-blue)]" : "bg-[var(--wh-soft)] shadow-[inset_0_0_0_1px_var(--wh-line)]"}`}
+          />
+        ))}
+      </div>
+      <p className="mt-3 font-mono text-[15px] font-medium text-[var(--wh-blue)]">B-01-02-03</p>
+    </div>
+  );
+}
+
+function StaffUi() {
+  const people = [
+    { name: "Алексей Ким", units: "339 ед.", share: 92 },
+    { name: "Дарья Кузьмина", units: "297 ед.", share: 80 },
+  ];
+  return (
+    <div className="flex flex-col gap-2.5 px-4 py-3.5 text-[13px]">
+      {people.map((p) => (
+        <div key={p.name}>
+          <div className="flex justify-between">
+            <span>{p.name}</span>
+            <span className="wh-muted">{p.units}</span>
+          </div>
+          <div className="mt-1 h-1 rounded-sm bg-[var(--wh-soft)] shadow-[inset_0_0_0_1px_var(--wh-line)]">
+            <div className="h-1 rounded-sm bg-[var(--wh-blue)]" style={{ width: `${p.share}%` }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ChatUi() {
+  return (
+    <div className="flex flex-col gap-1.5 px-4 py-3.5 text-[13px]">
+      <span className="self-start rounded-[12px_12px_12px_4px] bg-[var(--wh-soft)] px-2.5 py-1.5 shadow-[inset_0_0_0_1px_var(--wh-line)]">
+        Можно отгрузить частично?
+      </span>
+      <span className="self-end rounded-[12px_12px_4px_12px] bg-[var(--wh-blue)] px-2.5 py-1.5 text-white">
+        Да, машина ушла в 14:20
+      </span>
+    </div>
+  );
+}
+
+function DocsUi() {
+  const docs = ["Лист приёмки", "Лист сборки", "Накладная"];
+  return (
+    <div className="flex flex-col px-4 py-3 text-[13px]">
+      {docs.map((d, i) => (
+        <span
+          key={d}
+          className={`flex justify-between py-1.5 ${i < docs.length - 1 ? "border-b border-[var(--wh-line)]" : ""}`}
+        >
+          <span>{d}</span>
+          <span className="font-mono text-[var(--wh-blue)]">PDF</span>
+        </span>
+      ))}
+    </div>
   );
 }

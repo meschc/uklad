@@ -505,8 +505,11 @@ input[type="search"]::-webkit-search-cancel-button {
  * в `index.css` они переедут, когда стиль утвердят для всей витрины.
  */
 .wh {
-  --wh-ground: #ededeb;
+  --wh-ground: #ffffff;
   --wh-tile: #ffffff;
+  /* Светлая подложка — только серая (19 окт: бледно-синие «грязные»). */
+  --wh-soft: #fafafa;
+  --wh-line: #e6e7eb;
   --wh-ink: #0d0e11;
   --wh-muted: #5b5e66;
   --wh-blue: #2247ff;
@@ -518,6 +521,8 @@ input[type="search"]::-webkit-search-cancel-button {
 .dark .wh {
   --wh-ground: #0f1013;
   --wh-tile: #1a1b20;
+  --wh-soft: #17181c;
+  --wh-line: #2a2b31;
   --wh-ink: #f2f2f0;
   --wh-muted: #a1a4ab;
   --wh-blue: #3a5bff;
@@ -569,6 +574,21 @@ input[type="search"]::-webkit-search-cancel-button {
   letter-spacing: -0.05em;
   font-variant-numeric: tabular-nums;
 }
+/* Бегущая строка перед финальным блоком: две одинаковые половины, лента
+   уезжает на половину своей ширины и начинается заново без шва. */
+@keyframes wh-ticker {
+  to {
+    transform: translateX(-50%);
+  }
+}
+.wh-ticker {
+  animation: wh-ticker 40s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .wh-ticker {
+    animation: none;
+  }
+}
 .wh-statement {
   font-size: clamp(22px, 2.3vw, 34px);
   font-weight: 400;
@@ -605,11 +625,18 @@ input[type="search"]::-webkit-search-cancel-button {
   color: var(--wh-blue);
 }
 .wh-btn--white:hover {
-  background: #e9edff;
+  background: #f2f2f2;
 }
 .wh-btn--ghost {
   color: inherit;
-  box-shadow: inset 0 0 0 1.5px currentColor;
+  box-shadow: inset 0 0 0 1.5px rgb(255 255 255 / 0.7);
+}
+.wh-btn--soft {
+  background: var(--wh-soft);
+  color: var(--wh-blue);
+}
+.wh-btn--soft:hover {
+  background: var(--wh-line);
 }
 .wh-btn--ghost:hover {
   background: rgb(255 255 255 / 0.12);
