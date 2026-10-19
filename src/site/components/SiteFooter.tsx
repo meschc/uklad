@@ -164,10 +164,10 @@ export function SiteFooter() {
       <div className="border-t border-border">
         <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
           {/* Реквизиты не переводятся: имя предпринимателя, адрес и номера в
-              реестрах имеют силу ровно в том виде, в каком записаны в ЕГРИП —
+              реестрах имеют силу ровно в том виде, в каком записаны у налоговой —
               см. `data/org.ts`. Отсюда и пометка языка. */}
           <p lang="ru" className="text-xs leading-relaxed text-muted-foreground">
-            {ORG.legalName} · ИНН {ORG.inn} · ОГРНИП {ORG.ogrnip} · {ORG.address} ·{" "}
+            {ORG.legalName} · ИНН {ORG.inn} ·{" "}
             <a href={`mailto:${ORG.email}`} className="hover:text-primary">
               {ORG.email}
             </a>

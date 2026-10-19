@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { ru, useT, type Copy } from "../../lib/copy";
+import { Reveal } from "../Reveal";
 import { CELL_QR_PATH, CELL_QR_SIZE } from "./cellQr";
 import { ConnectForm } from "./ConnectForm";
 
@@ -95,7 +96,7 @@ export function FinalConnect() {
       >
         <div className="mx-auto max-w-[1280px] px-5 pt-16 sm:px-10 sm:pt-24">
           <div className="grid grid-cols-1 gap-14 lg:grid-cols-2 lg:gap-20">
-            <div>
+            <Reveal>
               <h2 className="text-[clamp(40px,5vw,72px)] font-normal leading-[0.98] tracking-[-0.045em]">
                 {t(T.title)}
               </h2>
@@ -120,9 +121,12 @@ export function FinalConnect() {
                   </li>
                 ))}
               </ol>
-            </div>
+            </Reveal>
 
-            <div className="min-w-0 overflow-hidden rounded-[22px] bg-background text-foreground">
+            <Reveal
+              delay={120}
+              className="min-w-0 overflow-hidden rounded-[22px] bg-background text-foreground"
+            >
               <div className="flex items-center justify-between gap-4 px-5 py-6 sm:px-8">
                 <div className="min-w-0">
                   <p className="text-xs font-semibold uppercase tracking-[0.06em] text-muted-foreground">
@@ -151,7 +155,7 @@ export function FinalConnect() {
                 <span className="absolute -right-8 -top-[13px] block size-6 rounded-full bg-[var(--wh-blue)]" />
               </div>
               <ConnectForm idPrefix="final" className="px-5 pb-8 pt-7 sm:px-8" />
-            </div>
+            </Reveal>
           </div>
         </div>
       </section>

@@ -151,10 +151,11 @@ test.describe("Правовая информация", () => {
       // подвалы, и общий селектор ловил бы их заодно.
       const footer = page.getByRole("contentinfo");
       // Формат, а не конкретные цифры: тест должен пережить подстановку
-      // настоящих реквизитов вместо заглушек в src/site/data/org.ts. Формат
-      // предпринимательский — ИНН из двенадцати цифр и ОГРНИП из пятнадцати.
+      // настоящих реквизитов вместо заглушек в src/site/data/org.ts. Владелец
+      // самозанятый: ИНН физлица из двенадцати цифр, ОГРНИП нет.
       await expect(footer).toContainText(/ИНН \d{12}\b/);
-      await expect(footer).toContainText(/ОГРНИП \d{15}\b/);
+      await expect(footer).toContainText("Самозанятый (плательщик НПД)");
+      await expect(footer).not.toContainText("ОГРНИП");
       await expect(footer).toContainText("Уклад");
     }
   });

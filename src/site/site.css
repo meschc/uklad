@@ -576,6 +576,48 @@ input[type="search"]::-webkit-search-cancel-button {
 }
 /* Бегущая строка перед финальным блоком: две одинаковые половины, лента
    уезжает на половину своей ширины и начинается заново без шва. */
+/*
+ * Появление на странице для складов (19 окт): короче и ближе, чем на
+ * остальной витрине, — блоков много, и длинный выезд начинает тормозить
+ * чтение.
+ */
+.wh .reveal {
+  transition-duration: 560ms;
+}
+
+.wh .reveal:not(.is-in) {
+  transform: translateY(14px);
+}
+
+/*
+ * Смена цены при переключении срока: новое значение мягко всплывает на месте
+ * старого. Высота строки не меняется — карточки не прыгают.
+ */
+@keyframes wh-swap {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.wh-swap {
+  animation: wh-swap 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wh-swap {
+    animation: none;
+  }
+
+  .wh .reveal:not(.is-in) {
+    transform: none;
+  }
+}
+
 @keyframes wh-ticker {
   to {
     transform: translateX(-50%);
