@@ -1,6 +1,7 @@
 import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Reveal } from "./components/Reveal";
+import { AsciiField } from "./components/warehouses/AsciiField";
 import { ConnectForm } from "./components/warehouses/ConnectForm";
 import { ConnectPath } from "./components/warehouses/ConnectPath";
 import { Inside } from "./components/warehouses/Inside";
@@ -118,14 +119,10 @@ export function WarehousesPage() {
   return (
     <div className="wh pb-3 pt-20 sm:pt-[72px]">
       {/* Первый экран — синее поле целиком, кабинет в рамке устройства.
-          Белые полосы за рамкой — из референса Roombox: они дают полю
-          глубину без градиента и тени. */}
+          За ними — живое поле ASCII-знаков: даёт глубину и движение без
+          градиента и тени. */}
       <section className="wh-blue relative mx-2 overflow-hidden sm:mx-3">
-        <div aria-hidden className="pointer-events-none absolute inset-0 opacity-[0.14]">
-          <span className="absolute -right-24 top-[18%] h-5 w-[70%] -rotate-[28deg] bg-white" />
-          <span className="absolute -right-10 top-[62%] h-5 w-[55%] -rotate-[28deg] bg-white" />
-          <span className="absolute right-[38%] top-0 h-full w-5 bg-white" />
-        </div>
+        <AsciiField />
 
         <div className="relative mx-auto grid grid-cols-1 max-w-[1320px] items-center gap-12 px-5 py-14 sm:px-10 sm:py-20 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-16 lg:py-24">
           <Reveal>
