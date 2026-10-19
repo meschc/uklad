@@ -127,7 +127,7 @@ export function WarehousesPage() {
           <span className="absolute right-[38%] top-0 h-full w-5 bg-white" />
         </div>
 
-        <div className="relative mx-auto grid max-w-[1320px] items-center gap-12 px-5 py-14 sm:px-10 sm:py-20 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-16 lg:py-24">
+        <div className="relative mx-auto grid grid-cols-1 max-w-[1320px] items-center gap-12 px-5 py-14 sm:px-10 sm:py-20 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-16 lg:py-24">
           <Reveal>
             <h1 className="wh-h1 max-w-[17ch]">{t(T.title)}</h1>
             <p className="mt-7 max-w-xl text-lg leading-relaxed text-white/85">{t(T.lead)}</p>
@@ -151,7 +151,7 @@ export function WarehousesPage() {
       </section>
 
       {/* Боль: тихая колонка, без иконок — три утверждения. */}
-      <section className="mx-auto mt-28 grid max-w-[1320px] gap-10 px-5 sm:mt-36 sm:px-10 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-20">
+      <section className="mx-auto mt-28 grid grid-cols-1 max-w-[1320px] gap-10 px-5 sm:mt-36 sm:px-10 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-20">
         <Reveal>
           <h2 className="wh-h2 max-w-[11ch] lg:sticky lg:top-28">{t(T.painsTitle)}</h2>
         </Reveal>
@@ -176,7 +176,7 @@ export function WarehousesPage() {
           <h2 className="wh-h2 max-w-[14ch]">{t(T.offerTitle)}</h2>
         </Reveal>
 
-        <div className="mt-12 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-12 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {NUMBERS.map((n, i) => {
             const blue = i % 2 === 0;
             return (
@@ -207,7 +207,7 @@ export function WarehousesPage() {
           })}
         </div>
 
-        <div className="mt-3 grid gap-3 lg:grid-cols-3">
+        <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-3">
           {EXTRAS.map((x, i) => (
             <Reveal
               key={x.title.ru}
@@ -245,12 +245,12 @@ export function WarehousesPage() {
       <Questions />
 
       <section className="wh-blue mx-2 mt-28 sm:mx-3 sm:mt-36">
-        <div className="mx-auto grid max-w-[1320px] gap-10 px-5 py-14 sm:px-10 sm:py-20 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1fr)] lg:gap-16">
+        <div className="mx-auto grid max-w-[1320px] grid-cols-1 gap-10 px-5 py-14 sm:px-10 sm:py-20 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1fr)] lg:gap-16">
           <div>
             <h2 className="wh-h2">{t(T.endTitle)}</h2>
             <p className="mt-6 max-w-md text-lg leading-relaxed text-white/85">{t(T.endLead)}</p>
           </div>
-          <div className="rounded-[22px] bg-background p-5 text-foreground sm:p-8">
+          <div className="-mx-3 min-w-0 rounded-[22px] bg-background p-4 text-foreground sm:mx-0 sm:p-8">
             <ConnectForm idPrefix="final" />
           </div>
         </div>

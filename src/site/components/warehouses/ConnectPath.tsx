@@ -107,7 +107,7 @@ export function ConnectPath() {
                 )}
 
                 {i === 2 && (
-                  <div className="mt-5 grid max-w-3xl gap-4 sm:grid-cols-3">
+                  <div className="mt-5 grid grid-cols-1 max-w-3xl gap-4 sm:grid-cols-3">
                     <Scheme title={t(T.schemeAddresses)}>
                       <AddressesScheme />
                     </Scheme>

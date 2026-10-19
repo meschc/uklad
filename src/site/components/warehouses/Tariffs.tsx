@@ -39,12 +39,12 @@ export function Tariffs() {
       id="tariffs"
       className="mx-auto mt-28 max-w-[1320px] scroll-mt-24 px-5 sm:mt-36 sm:px-10"
     >
-      <Reveal className="grid gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-end lg:gap-20">
+      <Reveal className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-end lg:gap-20">
         <h2 className="wh-h2">{t(T.title)}</h2>
         <p className="wh-statement">{t(T.special)}</p>
       </Reveal>
 
-      <div className="mt-12 grid gap-3 lg:grid-cols-3">
+      <div className="mt-12 grid grid-cols-1 gap-3 lg:grid-cols-3">
         {plans.map((plan, i) => {
           const blue = !!plan.featured;
           return (

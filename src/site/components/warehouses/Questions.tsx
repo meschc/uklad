@@ -52,7 +52,7 @@ export function Questions() {
   const [open, setOpen] = useState<number | null>(0);
 
   return (
-    <section className="mx-auto mt-28 grid max-w-[1320px] gap-10 px-5 sm:mt-36 sm:px-10 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-20">
+    <section className="mx-auto mt-28 grid grid-cols-1 max-w-[1320px] gap-10 px-5 sm:mt-36 sm:px-10 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-20">
       <Reveal>
         <h2 className="wh-h2 max-w-[10ch]">{t(T.title)}</h2>
       </Reveal>

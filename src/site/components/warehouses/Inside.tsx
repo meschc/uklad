@@ -75,7 +75,7 @@ export function Inside() {
         <h2 className="wh-h2 max-w-[16ch]">{t(T.title)}</h2>
       </Reveal>
 
-      <div className="mt-12 grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1.4fr_1fr]">
+      <div className="mt-12 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1.4fr_1fr]">
         {PILLARS.map((p, i) => (
           <Reveal
             key={p.title.ru}
