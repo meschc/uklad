@@ -23,6 +23,13 @@ import { pathToFileURL } from "node:url";
 import process from "node:process";
 import console from "node:console";
 
+/**
+ * До запуска витрина закрыта от поиска целиком (Кирилл, 20 окт): каждая
+ * страница получает `noindex, nofollow`, а robots.txt запрещает всё. На
+ * запуске — false и вернуть robots.txt (инструкция в нём самом).
+ */
+const SITE_HIDDEN = true;
+
 const DIST = "dist";
 const SSR_ENTRY = pathToFileURL(join(process.cwd(), "dist-ssr/entry-server.js")).href;
 
@@ -94,15 +101,18 @@ function page({ html, meta, jsonLd }, lang) {
   // настоящий адрес этой страницы», а её нет. Вместо них запрет индексации;
   // `follow` оставлен намеренно — ссылки в шапке и подвале настоящие, и робот,
   // забредший на битый адрес, должен уйти по ним дальше, а не в тупик.
-  const links = meta.noindex
-    ? ['<meta name="robots" content="noindex, follow" />']
-    : [
-        `<link rel="canonical" href="${SITE_ORIGIN}${lang === "en" ? meta.en : meta.ru}" />`,
-        `<link rel="alternate" hreflang="ru" href="${SITE_ORIGIN}${meta.ru}" />`,
-        `<link rel="alternate" hreflang="en" href="${SITE_ORIGIN}${meta.en}" />`,
-        `<link rel="alternate" hreflang="x-default" href="${SITE_ORIGIN}${meta.ru}" />`,
-        `<script type="application/ld+json">${jsonLd}</script>`,
-      ];
+  const links =
+    meta.noindex || SITE_HIDDEN
+      ? [
+          `<meta name="robots" content="${SITE_HIDDEN ? "noindex, nofollow" : "noindex, follow"}" />`,
+        ]
+      : [
+          `<link rel="canonical" href="${SITE_ORIGIN}${lang === "en" ? meta.en : meta.ru}" />`,
+          `<link rel="alternate" hreflang="ru" href="${SITE_ORIGIN}${meta.ru}" />`,
+          `<link rel="alternate" hreflang="en" href="${SITE_ORIGIN}${meta.en}" />`,
+          `<link rel="alternate" hreflang="x-default" href="${SITE_ORIGIN}${meta.ru}" />`,
+          `<script type="application/ld+json">${jsonLd}</script>`,
+        ];
   out = out.replace("</head>", `    ${links.join("\n    ")}\n  </head>`);
 
   return out.replace('<div id="root"></div>', `<div id="root">${html}</div>`);
