@@ -56,7 +56,7 @@ export function RoadmapScreen() {
 
   return (
     <div className="wh">
-      <div className="mx-auto max-w-[1440px] px-4 pb-24 pt-24 sm:px-6 sm:pt-28">
+      <div className="px-4 lg:px-8 pb-24 pt-24 sm:px-6 sm:pt-28">
         <nav
           aria-label={t(T.tabsLabel)}
           className="flex flex-wrap items-center gap-1 border-b border-[var(--wh-line)] pb-3"

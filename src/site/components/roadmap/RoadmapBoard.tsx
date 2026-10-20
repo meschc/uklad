@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Check, ChevronUp, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -17,6 +17,8 @@ import { groupByStatus, quarterLabel } from "../../lib/roadmapStats";
 import { MAX_VOTES, isVotable, toggleVote, useVotes } from "../../lib/roadmapVotes";
 import { c, useT } from "../../lib/copy";
 import { Reveal } from "../Reveal";
+import { RoadmapIdea } from "./RoadmapIdea";
+import { ORIGIN_TONE, STATUS_TONE, TRACK_TONE } from "./roadmapColors";
 
 const T = {
   all: c("Все идеи", "All ideas"),
@@ -80,6 +82,24 @@ export function RoadmapBoard() {
   );
   const groups = groupByStatus(visible);
 
+  // Открытая идея живёт в адресе (#idea-<id>), как у taptop своя ссылка у
+  // каждой идеи: её можно переслать, и «назад» в браузере закрывает окно.
+  const [openId, setOpenId] = useState<string | null>(null);
+  useEffect(() => {
+    const read = () => {
+      const match = /^#idea-(.+)$/.exec(window.location.hash);
+      setOpenId(match ? decodeURIComponent(match[1]) : null);
+    };
+    read();
+    window.addEventListener("hashchange", read);
+    return () => window.removeEventListener("hashchange", read);
+  }, []);
+  const openItem = ROADMAP_ITEMS.find((item) => item.id === openId);
+  const close = () => {
+    history.pushState(null, "", window.location.pathname + window.location.search);
+    setOpenId(null);
+  };
+
   // Отметки читаются один раз на всю доску и раздаются карточкам готовым
   // ответом, а не подпиской в каждой из полусотни карточек.
   const votes = useVotes();
@@ -103,6 +123,7 @@ export function RoadmapBoard() {
           {topics.map((item) => (
             <TopicChip
               key={`${item.kind}-${item.id}`}
+              tone={item.kind === "track" ? TRACK_TONE[item.id] : ORIGIN_TONE[item.id]}
               label={t(topicLabel(item))}
               on={sameTopic(topic, item)}
               onClick={() => setTopic(sameTopic(topic, item) ? null : item)}
@@ -134,6 +155,18 @@ export function RoadmapBoard() {
         <p className="mt-8 text-center text-sm text-muted-foreground">{t(T.empty)}</p>
       )}
 
+      {openItem && (
+        <RoadmapIdea
+          item={openItem}
+          onClose={close}
+          vote={
+            isVotable(openItem) ? (
+              <VoteButton item={openItem} voted={marked.has(openItem.id)} full={full} />
+            ) : null
+          }
+        />
+      )}
+
       {votes.length > 0 && (
         <p className="mt-8 text-center text-sm leading-relaxed text-muted-foreground">
           <span className="tabular-nums">
@@ -156,7 +189,18 @@ function topicLabel(topic: Topic) {
   return topic.kind === "track" ? TRACK_LABELS[topic.id] : ORIGIN_LABELS[topic.id];
 }
 
-function TopicChip({ label, on, onClick }: { label: string; on: boolean; onClick: () => void }) {
+function TopicChip({
+  label,
+  on,
+  onClick,
+  tone,
+}: {
+  label: string;
+  on: boolean;
+  onClick: () => void;
+  /** Цвет темы — тот же, что у тега на карточке. */
+  tone?: string;
+}) {
   return (
     <button
       type="button"
@@ -165,8 +209,8 @@ function TopicChip({ label, on, onClick }: { label: string; on: boolean; onClick
       className={cn(
         "inline-flex h-8 items-center rounded-full px-3 text-sm font-medium transition-colors",
         on
-          ? "bg-[var(--wh-blue)] text-[var(--wh-on-blue)]"
-          : "text-muted-foreground hover:bg-[var(--wh-soft)] hover:text-foreground",
+          ? "bg-[var(--wh-ink)] text-[var(--wh-ground)]"
+          : cn(tone ?? "text-[var(--wh-ink)]", "hover:bg-[var(--wh-soft)]"),
       )}
     >
       {label}
@@ -199,6 +243,7 @@ function Column({
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-baseline gap-2 border-b border-border pb-2">
+        <span className={cn("size-2.5 shrink-0 self-center rounded-full", STATUS_TONE[status])} />
         <h3 className="text-base font-heading tracking-tight">{t(STATUS_LABELS[status])}</h3>
         <span className="text-sm tabular-nums text-muted-foreground">{items.length}</span>
       </div>
@@ -238,18 +283,29 @@ function Card({ item, voted, full }: { item: RoadmapItem; voted: boolean; full: 
         : null;
 
   return (
-    <article className="r-window h-full border border-[var(--wh-line)] bg-[var(--wh-tile)] p-4 transition-shadow hover:shadow-sm">
+    <article className="r-window relative h-full border border-[var(--wh-line)] bg-[var(--wh-tile)] p-4 transition-shadow hover:shadow-sm">
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
         {isVotable(item) && <VoteButton item={item} voted={voted} full={full} />}
         {note && <span className="ml-auto tabular-nums">{note}</span>}
       </div>
-      <h4 className="mt-2 text-sm font-heading leading-snug">{t(item.title)}</h4>
+      <h4 className="mt-2 text-sm font-heading leading-snug">
+        {/* Вся карточка открывает идею: кнопка-заголовок растянута на неё
+            псевдоэлементом, голос лежит выше слоем и жмётся отдельно. */}
+        <a
+          href={`#idea-${encodeURIComponent(item.id)}`}
+          className="after:absolute after:inset-0 after:rounded-[inherit] hover:text-[var(--wh-blue)] focus-visible:outline-none"
+        >
+          {t(item.title)}
+        </a>
+      </h4>
       <p className="mt-1.5 line-clamp-3 text-sm leading-relaxed text-muted-foreground">
         {t(item.summary)}
       </p>
       <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs font-medium">
-        <span className="text-[var(--wh-blue)]">{t(TRACK_LABELS[item.track])}</span>
-        {item.origin && <span className="text-foreground/70">{t(ORIGIN_LABELS[item.origin])}</span>}
+        <span className={TRACK_TONE[item.track]}>{t(TRACK_LABELS[item.track])}</span>
+        {item.origin && (
+          <span className={ORIGIN_TONE[item.origin]}>{t(ORIGIN_LABELS[item.origin])}</span>
+        )}
       </div>
     </article>
   );
@@ -274,7 +330,7 @@ function VoteButton({ item, voted, full }: { item: RoadmapItem; voted: boolean; 
       aria-label={t(voted ? T.votedFor : T.voteFor, { title })}
       title={blocked ? t(T.voteFull, { max: MAX_VOTES }) : undefined}
       className={cn(
-        "r-chip inline-flex h-8 shrink-0 items-center gap-1 px-2.5 text-xs font-medium transition-colors",
+        "r-chip relative z-10 inline-flex h-8 shrink-0 items-center gap-1 px-2.5 text-xs font-medium transition-colors",
         voted
           ? "bg-[var(--wh-blue)] text-[var(--wh-on-blue)]"
           : "bg-[var(--wh-soft)] text-foreground enabled:hover:text-[var(--wh-blue)] disabled:opacity-40",
