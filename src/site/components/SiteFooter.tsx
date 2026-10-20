@@ -92,6 +92,11 @@ const T = {
   ),
 };
 
+/** Ссылка подвала: тихий цвет, на наведении — чуть темнее и тонкое
+    подчёркивание, без прыжка в акцентный цвет. */
+const FOOTER_LINK =
+  "w-fit text-sm text-muted-foreground underline decoration-transparent underline-offset-4 transition-[color,text-decoration-color] duration-150 hover:text-foreground hover:decoration-border focus-visible:text-foreground focus-visible:decoration-border";
+
 /**
  * Подвал.
  *
@@ -109,11 +114,6 @@ const T = {
  * Он был ещё в шапке, в финале лендинга и в блоке для складов, и всюду делил
  * внимание с действием, ради которого страница написана.
  */
-/** Ссылка подвала: тихий цвет, на наведении — чуть темнее и тонкое
-    подчёркивание, без прыжка в акцентный цвет. */
-const FOOTER_LINK =
-  "w-fit text-sm text-muted-foreground underline decoration-transparent underline-offset-4 transition-[color,text-decoration-color] duration-150 hover:text-foreground hover:decoration-border focus-visible:text-foreground focus-visible:decoration-border";
-
 export function SiteFooter() {
   const t = useT();
   const { total } = warehousesRepository.stats();
