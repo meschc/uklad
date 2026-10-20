@@ -207,8 +207,9 @@ export interface Plan {
   cta: Copy;
 }
 
-/** Скидка при оплате за год — 20 %, два месяца в подарок. */
-export const YEARLY_DISCOUNT = 0.2;
+/** Скидка при оплате за год — 25 %, за полгода — 15 % (Кирилл, 20 окт). */
+export const YEARLY_DISCOUNT = 0.25;
+export const HALF_DISCOUNT = 0.15;
 
 /**
  * Тарифы склада. Бесплатного тарифа здесь нет намеренно: две недели на пробу
@@ -223,15 +224,15 @@ export const PLANS: Plan[] = [
       "Небольшому складу, который переходит с таблиц на систему",
       "A small warehouse moving from spreadsheets to a system",
     ),
-    monthly: 3900,
+    monthly: 4900,
     cta: c("Начать 14 дней бесплатно", "Start 14 days free"),
     firstScreen: c(
       "Тот же мастер склада, что и в тарифе «Склад»: назвать склад, разметить стеллажи и залить остатки из XLSX. Когда позиций или людей станет больше, тариф меняется без переноса данных.",
       "The same warehouse wizard as on the Warehouse plan: name the warehouse, lay out the racks and import stock from XLSX. When you outgrow the limits, the plan changes with no data migration.",
     ),
     features: [
-      c("1 склад, до 1 000 позиций номенклатуры", "1 warehouse, up to 1,000 SKUs"),
-      c("До 2 пользователей", "Up to 2 users"),
+      c("1 склад, до 5 000 позиций номенклатуры", "1 warehouse, up to 5,000 SKUs"),
+      c("До 5 сотрудников", "Up to 5 staff"),
       c(
         "Печать этикеток и штрихкодов, работа со сканером",
         "Label and barcode printing, scanner support",
@@ -250,7 +251,7 @@ export const PLANS: Plan[] = [
       "Одному складу с собственным товаром или парой клиентов",
       "One warehouse with its own goods or a couple of clients",
     ),
-    monthly: 7900,
+    monthly: 9900,
     featured: true,
     cta: c("Начать 14 дней бесплатно", "Start 14 days free"),
     firstScreen: c(
@@ -258,8 +259,8 @@ export const PLANS: Plan[] = [
       "The first screen is the same on the two-week trial and after payment: the warehouse wizard — name the warehouse, lay out the racks (a ready-made layout will do) and import stock from XLSX. You can take deliveries the same day; the catalogue card appears once the data is verified.",
     ),
     features: [
-      c("1 склад, до 5 000 позиций номенклатуры", "1 warehouse, up to 5,000 SKUs"),
-      c("До 5 пользователей с разными ролями", "Up to 5 users with separate roles"),
+      c("1 склад, до 30 000 позиций номенклатуры", "1 warehouse, up to 30,000 SKUs"),
+      c("До 15 сотрудников с разными ролями", "Up to 15 staff with separate roles"),
       c(
         "Печать этикеток и штрихкодов, работа со сканером",
         "Label and barcode printing, scanner support",
@@ -282,17 +283,17 @@ export const PLANS: Plan[] = [
       "Фулфилмент-оператору, который ведёт склад для десятков селлеров",
       "A fulfilment operator running a warehouse for dozens of sellers",
     ),
-    monthly: 19900,
+    monthly: 24900,
     cta: c("Обсудить внедрение", "Discuss a rollout"),
     firstScreen: c(
       "Тариф включается не кнопкой, а после разговора и договора: к первому входу склады, клиенты и роли уже заведены, а остатки перенесены из вашей выгрузки. Первый экран — рабочий день смены, а не пустая система, которую ещё предстоит наполнить.",
       "This plan is not switched on by a button but after a conversation and a contract: by your first login the warehouses, clients and roles are already set up and stock has been migrated from your export. The first screen is a working shift, not an empty system waiting to be filled.",
     ),
     features: [
-      c("Неограниченная номенклатура, несколько складов", "Unlimited SKUs, several warehouses"),
+      c("Неограниченная номенклатура, до 3 складов", "Unlimited SKUs, up to 3 warehouses"),
       c(
-        "До 20 пользователей, права настраиваются по операциям",
-        "Up to 20 users, permissions set per operation",
+        "До 50 сотрудников, права настраиваются по операциям",
+        "Up to 50 staff, permissions set per operation",
       ),
       c(
         "Учёт по клиентам: остатки, отгрузки и биллинг раздельно",
@@ -316,7 +317,15 @@ export const PLANS: Plan[] = [
 
 /** Стоимость года со скидкой, округлённая до сотен рублей. */
 export function yearlyPrice(plan: Plan): number {
-  return Math.round((plan.monthly * 12 * (1 - YEARLY_DISCOUNT)) / 100) * 100;
+  return monthlyFor(plan.monthly, "year") * 12;
+}
+
+export type PayPeriod = "year" | "half" | "month";
+
+/** Цена месяца при оплате за срок, до сотен рублей: 9 900 → 8 400 → 7 400. */
+export function monthlyFor(monthly: number, period: PayPeriod): number {
+  const off = period === "year" ? YEARLY_DISCOUNT : period === "half" ? HALF_DISCOUNT : 0;
+  return Math.round((monthly * (1 - off)) / 100) * 100;
 }
 
 /**
