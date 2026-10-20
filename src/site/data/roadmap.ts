@@ -18,7 +18,14 @@ import { c, type Copy } from "../lib/copy";
 export type Status = "idea" | "planned" | "progress" | "done";
 
 /** Направление работы — по нему отбирают доску. */
-export type Track = "plan" | "fulfillment" | "integrations" | "platform" | "market";
+export type Track = "plan" | "fulfillment" | "staff" | "integrations" | "platform" | "market";
+
+/**
+ * Откуда пришёл пункт. Второй тег карточки рядом с направлением — как у
+ * taptop: «Запросы складов» отделяют то, что попросили клиенты, от того, что
+ * мы решили сами, а «Баги» — от новых функций. Без источника пункт наш.
+ */
+export type Origin = "warehouses" | "sellers" | "bug";
 
 export interface RoadmapItem {
   id: string;
@@ -27,6 +34,13 @@ export interface RoadmapItem {
   summary: Copy;
   status: Status;
   track: Track;
+  origin?: Origin;
+  /**
+   * Узел карты продукта (`nodes/<id>` в db артефакта), из которого пункт
+   * вырос. Шов под синхронизацию: когда карта начнёт отдавать публичные узлы
+   * сама, пункт найдёт свой узел по этому полю, а не по совпадению названий.
+   */
+  mapNode?: string;
   /** Веха, к которой относится пункт (`Milestone.id`). */
   milestone: string;
   /**
@@ -65,10 +79,10 @@ export interface Release {
 
 /** Подписи стадий. Порядок ключей = порядок колонок на доске. */
 export const STATUS_LABELS: Record<Status, Copy> = {
+  idea: c("Обсуждаем", "Discussing"),
+  planned: c("Запланировали", "Planned"),
+  progress: c("Делаем", "Building"),
   done: c("Готово", "Done"),
-  progress: c("В работе", "In progress"),
-  planned: c("Запланировано", "Planned"),
-  idea: c("Идеи", "Ideas"),
 };
 
 /** Пояснение к колонке: что стадия означает на практике. */
@@ -79,15 +93,25 @@ export const STATUS_HINTS: Record<Status, Copy> = {
   idea: c("Обсуждаем, сроков нет", "Under discussion, no dates"),
 };
 
-/** Порядок колонок на доске — от сделанного к необязательному. */
-export const STATUS_ORDER: readonly Status[] = ["done", "progress", "planned", "idea"];
+/**
+ * Порядок колонок слева направо — путь пункта от обсуждения к готовому, как
+ * на досках задач. Карточка движется вправо, и это читается без подписей.
+ */
+export const STATUS_ORDER: readonly Status[] = ["idea", "planned", "progress", "done"];
 
 export const TRACK_LABELS: Record<Track, Copy> = {
   plan: c("План склада", "Floor plan"),
-  fulfillment: c("Смена", "The shift"),
-  integrations: c("Обмен", "Exchange"),
+  fulfillment: c("Приёмка и отгрузка", "Intake and shipping"),
+  staff: c("Сотрудники", "Staff"),
+  integrations: c("Интеграции", "Integrations"),
   platform: c("Платформа", "Platform"),
   market: c("Витрина", "The site"),
+};
+
+export const ORIGIN_LABELS: Record<Origin, Copy> = {
+  warehouses: c("Запросы складов", "Warehouse requests"),
+  sellers: c("Запросы селлеров", "Seller requests"),
+  bug: c("Баги", "Bugs"),
 };
 
 export const MILESTONES: readonly Milestone[] = [

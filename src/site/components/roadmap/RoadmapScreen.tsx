@@ -1,146 +1,119 @@
-// Под псевдонимом: в `SectionLabel` ниже `eyebrow` — уже имя свойства с текстом.
-import { eyebrow as eyebrowClass } from "@/components/ui/eyebrow";
-import { RELEASES } from "../../data/roadmap";
-import { ROADMAP_ITEMS } from "../../data/roadmapItems";
-import { countByStatus } from "../../lib/roadmapStats";
-import { shortDate } from "../../lib/date";
+import { useState } from "react";
+import { Lightbulb } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { c, useT } from "../../lib/copy";
-import { RoadmapMilestones } from "./RoadmapMilestones";
 import { RoadmapBoard } from "./RoadmapBoard";
 import { RoadmapChangelog } from "./RoadmapChangelog";
 import { RoadmapAsk } from "./RoadmapAsk";
 
 const T = {
-  eyebrow: c("Дорожная карта", "Roadmap"),
-  title: c("Что уже работает и что будет дальше", "What works today and what comes next"),
+  tabBoard: c("Дорожная карта", "Roadmap"),
+  tabLog: c("Обновления", "Changelog"),
+  tabsLabel: c("Разделы", "Sections"),
+  suggest: c("Предложить идею", "Suggest an idea"),
+
+  title: c("Помогите решить, что Уклад сделает дальше", "Help decide what Uklad builds next"),
   lead: c(
-    "Уклад делается на виду: здесь полный список того, что сделано, что пишется прямо сейчас и что только решено делать. Сроки у запланированного — ориентир по кварталу, а не обещание к числу; у идей сроков нет вовсе, и это честнее, чем поставить их для вида.",
-    "Uklad is built in the open: here is the full list of what is done, what is being written right now and what has only been decided. Dates on planned work are a quarter-level guide, not a promise for a given day; ideas carry no dates at all, which is more honest than inventing them.",
+    "Здесь всё, что мы обсуждаем, планируем, делаем и уже сделали. Очерёдность решают голоса складов и селлеров.",
+    "Here is everything we discuss, plan, build and have shipped. The order is decided by warehouse and seller votes.",
   ),
-  updated: c("Последний выпуск — {date}", "Latest release — {date}"),
-
-  statDone: c("работает", "working"),
-  statProgress: c("в работе", "in progress"),
-  statAhead: c("впереди", "ahead"),
-
-  milestonesEyebrow: c("Этапы", "Milestones"),
-  milestonesTitle: c("Куда движемся", "Where this is heading"),
-  milestonesNote: c(
-    "Крупные этапы: каждый имеет смысл только целиком, отдельными пунктами они клиенту ничего не дают.",
-    "The big stages: each one only makes sense whole — taken apart, the items give the client nothing.",
-  ),
-
-  boardEyebrow: c("Все работы", "Everything"),
-  boardTitle: c("Доска по стадиям", "The board, by stage"),
-  boardNote: c(
-    "Отберите по направлению, если интересует что-то одно, и отметьте голосом то, что нужно вам раньше прочего.",
-    "Filter by area if you only care about one of them, and mark what you need before the rest.",
-  ),
-
-  logEyebrow: c("Журнал", "Changelog"),
-  logTitle: c("Что выходило", "What has shipped"),
-  logNote: c(
-    "Тот же список, что в CHANGELOG.md репозитория: один источник, чтобы страница не разошлась с кодом.",
-    "The same list as the repository's CHANGELOG.md: one source, so the page cannot drift from the code.",
+  howTitle: c("Как участвовать", "How to take part"),
+  how: [
+    c(
+      "Голосуйте за то, что нужно вам раньше прочего. До 10 голосов.",
+      "Vote for what you need first. Up to 10 votes.",
+    ),
+    c(
+      "Предлагайте своё в форме внизу: опишите задачу, а не готовое решение.",
+      "Suggest your own in the form below: describe the task, not a ready solution.",
+    ),
+    c(
+      "Оставьте почту или телефон, если хотите обсудить идею с нами.",
+      "Leave an email or phone if you want to discuss the idea with us.",
+    ),
+  ],
+  nextTitle: c("Что дальше", "What happens next"),
+  next: c(
+    "Раз в неделю разбираем голоса и новые идеи и переносим карточки между колонками. Срок у запланированного — квартал, а не число.",
+    "Once a week we go through votes and new ideas and move cards between columns. Planned work gets a quarter, not a date.",
   ),
 };
 
+type Tab = "board" | "log";
+
 /**
- * Дорожная карта — страница витрины, а не отдельное приложение.
+ * Дорожная карта по образцу taptop (решение 20 окт): описание слева, доска
+ * справа, сверху вкладки «Дорожная карта / Обновления» и «Предложить идею».
  *
- * Тем же путём, что и «Тарифы»: один адрес в реестре, пререндер и карта сайта
- * достаются даром, ссылка живёт в подвале, палитра берётся из `site.css`.
- * Отдельная сборка под одну страницу означала бы вторую систему, которую надо
- * собирать, выкладывать и держать в курсе изменений — и которую забудут
- * выложить первой же правкой.
- *
- * Порядок блоков: сводка → этапы → доска → журнал. Сверху ответ для того, кто
- * заглянул на минуту, ниже — для того, кто выбирает систему всерьёз.
+ * Страница живёт внутри обёртки `.wh` — в новом стиле витрины, токены
+ * `--wh-*` из `site.css`. Данные — `data/roadmapItems.ts`; позже их будет
+ * отдавать карта продукта (поле `mapNode` у пункта), и эта страница не
+ * изменится.
  */
 export function RoadmapScreen() {
   const t = useT();
-  const counts = countByStatus(ROADMAP_ITEMS);
-  const latest = RELEASES[0];
+  const [tab, setTab] = useState<Tab>("board");
 
   return (
-    <div className="mx-auto max-w-6xl px-4 pb-24 pt-28 sm:px-6 sm:pt-32">
-      <div className="text-center">
-        <p className={eyebrowClass({ tone: "primary", className: "mb-3" })}>{t(T.eyebrow)}</p>
-        <h1 className="font-display text-3xl font-heading leading-display tracking-tight sm:text-5xl">
-          {t(T.title)}
-        </h1>
-        <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-          {t(T.lead)}
-        </p>
+    <div className="wh">
+      <div className="mx-auto max-w-[1440px] px-4 pb-24 pt-24 sm:px-6 sm:pt-28">
+        <nav
+          aria-label={t(T.tabsLabel)}
+          className="flex flex-wrap items-center gap-1 border-b border-[var(--wh-line)] pb-3"
+        >
+          <TabButton on={tab === "board"} onClick={() => setTab("board")} label={t(T.tabBoard)} />
+          <TabButton on={tab === "log"} onClick={() => setTab("log")} label={t(T.tabLog)} />
+          <a
+            href="#ideas"
+            className="ml-auto inline-flex h-9 items-center gap-1.5 rounded-full bg-[var(--wh-blue)] px-4 text-sm font-medium text-[var(--wh-on-blue)] transition-colors hover:bg-[var(--wh-blue-deep)]"
+          >
+            <Lightbulb className="size-4" />
+            {t(T.suggest)}
+          </a>
+        </nav>
 
-        <div className="mt-8 flex flex-wrap justify-center gap-x-10 gap-y-5">
-          <Stat value={counts.done} label={t(T.statDone)} />
-          <Stat value={counts.progress} label={t(T.statProgress)} />
-          <Stat value={counts.planned + counts.idea} label={t(T.statAhead)} />
+        <div className="mt-8 grid gap-10 lg:grid-cols-[300px_1fr]">
+          <aside className="lg:sticky lg:top-24 lg:self-start">
+            <h1 className="text-2xl font-heading leading-tight tracking-tight">{t(T.title)}</h1>
+            <p className="mt-3 text-sm leading-relaxed text-[var(--wh-muted)]">{t(T.lead)}</p>
+
+            <h2 className="mt-6 text-sm font-heading">{t(T.howTitle)}</h2>
+            <ul className="mt-2 space-y-2 text-sm leading-relaxed text-[var(--wh-muted)]">
+              {T.how.map((line, index) => (
+                <li key={index} className="flex gap-2">
+                  <span className="tabular-nums text-[var(--wh-blue)]">{index + 1}</span>
+                  {t(line)}
+                </li>
+              ))}
+            </ul>
+
+            <h2 className="mt-6 text-sm font-heading">{t(T.nextTitle)}</h2>
+            <p className="mt-2 text-sm leading-relaxed text-[var(--wh-muted)]">{t(T.next)}</p>
+          </aside>
+
+          <div className="min-w-0">{tab === "board" ? <RoadmapBoard /> : <RoadmapChangelog />}</div>
         </div>
 
-        {latest && (
-          <p className="mt-6 text-xs tabular-nums text-muted-foreground">
-            {t(T.updated, {
-              date: shortDate(t.lang, Date.parse(`${latest.date}T12:00:00Z`)),
-            })}
-          </p>
-        )}
+        <RoadmapAsk />
       </div>
-
-      <section className="mt-16 sm:mt-20">
-        <SectionLabel
-          eyebrow={t(T.milestonesEyebrow)}
-          title={t(T.milestonesTitle)}
-          note={t(T.milestonesNote)}
-        />
-        <div className="mt-8">
-          <RoadmapMilestones />
-        </div>
-      </section>
-
-      <hr className="beam my-16 sm:my-20" />
-
-      <section>
-        <SectionLabel eyebrow={t(T.boardEyebrow)} title={t(T.boardTitle)} note={t(T.boardNote)} />
-        <div className="mt-8">
-          <RoadmapBoard />
-        </div>
-      </section>
-
-      <hr className="beam my-16 sm:my-20" />
-
-      <section>
-        <SectionLabel eyebrow={t(T.logEyebrow)} title={t(T.logTitle)} note={t(T.logNote)} />
-        <div className="mt-8">
-          <RoadmapChangelog />
-        </div>
-      </section>
-
-      <RoadmapAsk />
     </div>
   );
 }
 
-function Stat({ value, label }: { value: number; label: string }) {
+function TabButton({ on, onClick, label }: { on: boolean; onClick: () => void; label: string }) {
   return (
-    <p className="flex flex-col items-center">
-      <span className="font-display text-3xl font-medium tabular-nums leading-none tracking-tight">
-        {value}
-      </span>
-      <span className="mt-1.5 text-xs text-muted-foreground">{label}</span>
-    </p>
-  );
-}
-
-function SectionLabel({ eyebrow, title, note }: { eyebrow: string; title: string; note: string }) {
-  return (
-    <div className="mx-auto max-w-2xl text-center">
-      <p className={eyebrowClass({ tone: "primary" })}>{eyebrow}</p>
-      <h2 className="mt-2 font-display text-2xl font-heading tracking-tight sm:text-2xl">
-        {title}
-      </h2>
-      <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{note}</p>
-    </div>
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={on}
+      className={cn(
+        "inline-flex h-9 items-center rounded-full px-4 text-sm font-medium transition-colors",
+        on
+          ? "bg-[var(--wh-soft)] text-[var(--wh-ink)]"
+          : "text-[var(--wh-muted)] hover:text-[var(--wh-ink)]",
+      )}
+    >
+      {label}
+    </button>
   );
 }
