@@ -5,6 +5,8 @@ import { c, useT } from "../../lib/copy";
 import { RoadmapBoard } from "./RoadmapBoard";
 import { RoadmapChangelog } from "./RoadmapChangelog";
 import { RoadmapAsk } from "./RoadmapAsk";
+import { RoadmapHeader } from "./RoadmapHeader";
+import { WarehousesFooter } from "../warehouses/WarehousesFooter";
 
 const T = {
   tabBoard: c("Дорожная карта", "Roadmap"),
@@ -56,7 +58,8 @@ export function RoadmapScreen() {
 
   return (
     <div className="wh">
-      <div className="px-4 lg:px-8 pb-24 pt-24 sm:px-6 sm:pt-28">
+      <RoadmapHeader />
+      <main className="px-4 pt-8 lg:px-8">
         <nav
           aria-label={t(T.tabsLabel)}
           className="flex flex-wrap items-center gap-1 border-b border-[var(--wh-line)] pb-3"
@@ -93,9 +96,11 @@ export function RoadmapScreen() {
 
           <div className="min-w-0">{tab === "board" ? <RoadmapBoard /> : <RoadmapChangelog />}</div>
         </div>
-
-        <RoadmapAsk />
-      </div>
+      </main>
+      <RoadmapAsk />
+      {/* Подвал один, тот же, что у страницы для складов: синяя форма
+          перетекает в синий подвал без шва. */}
+      <WarehousesFooter />
     </div>
   );
 }

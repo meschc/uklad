@@ -93,12 +93,15 @@ export function SiteApp() {
   return (
     <>
       {/* У страницы для складов своя шапка поверх синего первого экрана. */}
-      {route.page !== "warehouses" && <SiteHeader route={route} />}
+      {route.page !== "warehouses" && route.page !== "roadmap" && <SiteHeader route={route} />}
       {route.page === "landing" ? (
         <LandingPage />
       ) : route.page === "warehouses" ? (
         // Своя разметка целиком: main внутри и свой подвал после него.
         <WarehousesPage />
+      ) : route.page === "roadmap" ? (
+        // Тоже в новом стиле целиком: своя шапка, main и подвал складов.
+        <RoadmapScreen />
       ) : (
         <main>
           {route.page === "sellers" && <SellersPage />}
@@ -106,7 +109,6 @@ export function SiteApp() {
           {route.page === "warehouse" && <WarehouseScreen id={route.id} />}
           {route.page === "legal" && <LegalScreen slug={route.id} />}
           {route.page === "pricing" && <PricingScreen />}
-          {route.page === "roadmap" && <RoadmapScreen />}
           {route.page === "contacts" && <ContactsScreen />}
           {route.page === "notfound" && (
             <NotFoundScreen caption={t(T.notFoundCaption)} title={t(T.notFoundTitle)}>
@@ -115,7 +117,7 @@ export function SiteApp() {
           )}
         </main>
       )}
-      {route.page !== "warehouses" && <SiteFooter />}
+      {route.page !== "warehouses" && route.page !== "roadmap" && <SiteFooter />}
       <CookieBar />
     </>
   );
