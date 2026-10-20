@@ -79,7 +79,7 @@ export function WarehousesFooter() {
                 <a
                   key={l.label.ru}
                   href={l.to.startsWith("#") ? l.to : href(l.to)}
-                  className="text-white hover:underline"
+                  className="w-fit text-white/85 transition-[color,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:translate-x-1 hover:text-white motion-reduce:transition-none"
                 >
                   {t(l.label)}
                 </a>
@@ -110,7 +110,7 @@ export function WarehousesFooter() {
               aria-expanded={docsOpen}
               aria-controls={docsId}
               onClick={() => setDocsOpen((v) => !v)}
-              className="inline-flex items-center gap-1 hover:text-white"
+              className="inline-flex items-center gap-1 transition-colors duration-200 hover:text-white"
             >
               {t(T.docs)}
               <ChevronDown
@@ -120,13 +120,20 @@ export function WarehousesFooter() {
                 )}
               />
             </button>
-            <button type="button" onClick={openCookieSettings} className="hover:text-white">
+            <button
+              type="button"
+              onClick={openCookieSettings}
+              className="transition-colors duration-200 hover:text-white"
+            >
               {t(T.cookies)}
             </button>
             {/* Реквизиты не переводятся: см. `data/org.ts` и общий подвал. */}
             <span lang="ru" className="sm:ml-auto">
               {ORG.legalName} · ИНН {ORG.inn} ·{" "}
-              <a href={`mailto:${ORG.email}`} className="hover:text-white">
+              <a
+                href={`mailto:${ORG.email}`}
+                className="transition-colors duration-200 hover:text-white"
+              >
                 {ORG.email}
               </a>
             </span>
@@ -141,7 +148,11 @@ export function WarehousesFooter() {
             )}
           >
             {LEGAL_DOCS.map((doc) => (
-              <a key={doc.slug} href={href(`/legal/${doc.slug}`)} className="hover:text-white">
+              <a
+                key={doc.slug}
+                href={href(`/legal/${doc.slug}`)}
+                className="transition-colors duration-200 hover:text-white"
+              >
                 {doc.short}
               </a>
             ))}
