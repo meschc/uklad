@@ -9,7 +9,7 @@ import { CALC, calcLines, calcMonthly, fittingPlan, type CalcInput } from "./tar
 
 const T = {
   title: ru("Свой тариф"),
-  lead: ru("Не подходит ни один тариф? Соберите свой под размер склада."),
+  lead: ru("Гибкий тариф: платите только за склады, позиции и сотрудников, которые нужны."),
   from: ru("от {sum} ₽ в месяц"),
   open: ru("Собрать тариф"),
   close: ru("Свернуть"),
@@ -147,11 +147,16 @@ export function TariffCalc({ period }: { period: PayPeriod }) {
             <div className="flex flex-col gap-4 rounded-[18px] bg-[var(--wh-soft)] p-6">
               <ul className="flex flex-col gap-2 text-[15px]">
                 {calcLines(v).map((line) => (
-                  <li key={line.label.ru} className="flex justify-between gap-4">
+                  <li
+                    key={line.label.ru}
+                    className="grid grid-cols-[minmax(0,1fr)_5.5rem] items-start gap-x-4"
+                  >
                     <span className="wh-muted">
                       {t(line.label, { n: line.count === undefined ? "" : money(line.count) })}
                     </span>
-                    <span className="whitespace-nowrap tabular-nums">{money(line.price)} ₽</span>
+                    <span className="whitespace-nowrap text-right tabular-nums">
+                      {money(line.price)} ₽
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -210,7 +215,7 @@ function Stepper(props: {
     "grid size-10 place-items-center rounded-full shadow-[inset_0_0_0_1px_var(--wh-line)] transition-colors hover:bg-[var(--wh-soft)] disabled:opacity-35 disabled:hover:bg-transparent";
 
   return (
-    <div className="flex items-center justify-between gap-4 border-b border-[var(--wh-line)] py-4">
+    <div className="flex flex-col gap-3 border-b border-[var(--wh-line)] py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
       <div>
         <p className="text-[17px]">{label}</p>
         <p className="wh-muted text-[13px]">{hint}</p>

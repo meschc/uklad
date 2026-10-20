@@ -13,10 +13,11 @@ const T = {
   lead2: ru(
     "Подключение бесплатное: склад загружает товары из Excel и начинает работать в тот же день. Сервер на складе и лицензии не нужны.",
   ),
-  example: ru("Пример: тариф «Склад», 9 900 ₽ в месяц"),
+  example: ru("Тариф «Склад», в месяц"),
   separately: ru("Отдельно на рынке"),
   total: ru("Итого"),
   marketTotal: ru("от 25 000 ₽"),
+  ours: ru("В Укладе"),
   close: ru("Закрыть"),
   compareTitle: ru("Уклад и другие решения"),
   head: [ru("Уклад"), ru("Облачная система"), ru("Коробочная система")],
@@ -25,6 +26,9 @@ const T = {
     "По открытым тарифам облачных и коробочных систем учёта склада для фулфилмента в России, октябрь 2026 года. Цены отдельных систем могут отличаться.",
   ),
 };
+
+const ROW =
+  "grid grid-cols-[minmax(0,1fr)_5.5rem_6.5rem] items-start gap-x-4 sm:grid-cols-[minmax(0,1fr)_6.5rem_8rem] sm:gap-x-6";
 
 /**
  * Обоснование цены и сравнение с рынком — в шторке (Кирилл, 20 окт): на
@@ -67,33 +71,38 @@ export function PriceSheet({ onClose }: { onClose: () => void }) {
           <p className="wh-muted text-base leading-relaxed">{t(T.lead)}</p>
           <p className="wh-muted mt-3 text-base leading-relaxed">{t(T.lead2)}</p>
 
-          <div className="mt-8 flex items-center justify-between gap-4 border-b border-[var(--wh-line)] pb-3 text-[13px]">
+          {/* Три колонки одной ширины во всех строках: цифры Уклада и рынка
+              стоят ровными столбцами (Кирилл, 20 окт). */}
+          <div className={cn(ROW, "mt-8 border-b border-[var(--wh-line)] pb-3 text-[13px]")}>
             <span className="wh-muted">{t(T.example)}</span>
-            <span className="wh-muted flex items-center gap-1.5">
+            <span className="wh-muted text-right">{t(T.ours)}</span>
+            <span className="wh-muted flex items-center justify-end gap-1.5 text-right">
               {t(T.separately)}
               <MarketNote />
             </span>
           </div>
           {BREAKDOWN.map((part) => (
-            <div
-              key={part.title.ru}
-              className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-6 gap-y-1 border-b border-[var(--wh-line)] py-4"
-            >
+            <div key={part.title.ru} className={cn(ROW, "border-b border-[var(--wh-line)] py-4")}>
               <p className="text-[17px] font-medium">{t(part.title)}</p>
-              <p className="whitespace-nowrap text-right text-[17px] tabular-nums">
+              <p className="whitespace-nowrap text-right text-[17px] tabular-nums sm:row-span-2">
                 {money(part.price)} ₽
               </p>
-              <p className="wh-muted text-[15px]">{t(part.body)}</p>
-              <p className="wh-muted text-right text-[13px]">{t(part.market)}</p>
+              <p className="wh-muted text-right text-[15px] tabular-nums sm:row-span-2">
+                {t(part.market)}
+              </p>
+              {/* На телефоне описание идёт под строкой во всю ширину, на
+                  компьютере — под названием, в первой колонке. */}
+              <p className="wh-muted col-span-3 mt-1 text-[15px] sm:col-span-1">{t(part.body)}</p>
             </div>
           ))}
-          <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-6 py-4 font-medium">
+          <div className={cn(ROW, "py-4 font-medium")}>
             <p className="text-[17px]">{t(T.total)}</p>
             <p className="whitespace-nowrap text-right text-[17px] tabular-nums">
               {money(total)} ₽
             </p>
-            <p className="wh-muted text-[13px] font-normal">{t(T.separately)}</p>
-            <p className="text-right text-[13px]">{t(T.marketTotal)}</p>
+            <p className="whitespace-nowrap text-right text-[15px] tabular-nums">
+              {t(T.marketTotal)}
+            </p>
           </div>
 
           <p className="mb-3 mt-8 flex items-center gap-1.5 text-lg font-medium">
