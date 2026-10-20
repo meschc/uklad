@@ -88,7 +88,14 @@ export function RoadmapBoard() {
   useEffect(() => {
     const read = () => {
       const match = /^#idea-(.+)$/.exec(window.location.hash);
-      setOpenId(match ? decodeURIComponent(match[1]) : null);
+      // Битый адрес (#idea-%E0) не должен ронять страницу: просто без окна.
+      let id: string | null = null;
+      try {
+        id = match ? decodeURIComponent(match[1]) : null;
+      } catch {
+        id = null;
+      }
+      setOpenId(id);
     };
     read();
     window.addEventListener("hashchange", read);
