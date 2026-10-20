@@ -1,3 +1,4 @@
+import { cn } from "@/lib/utils";
 import { warehousesRepository } from "../data/warehousesRepository";
 import { CITIES } from "../data/cities";
 import { LEGAL_DOCS } from "../data/legal";
@@ -91,6 +92,11 @@ const T = {
   ),
 };
 
+/** Ссылка подвала: тихий цвет, на наведении — чуть темнее и тонкое
+    подчёркивание, без прыжка в акцентный цвет. */
+const FOOTER_LINK =
+  "w-fit text-sm text-muted-foreground underline decoration-transparent underline-offset-4 transition-[color,text-decoration-color] duration-150 hover:text-foreground hover:decoration-border focus-visible:text-foreground focus-visible:decoration-border";
+
 /**
  * Подвал.
  *
@@ -142,7 +148,7 @@ export function SiteFooter() {
                   key={item.label.ru}
                   lang={item.ru ? "ru" : undefined}
                   onClick={item.action}
-                  className="text-left text-sm text-foreground/80 transition-colors hover:text-primary"
+                  className={cn(FOOTER_LINK, "text-left")}
                 >
                   {t(item.label)}
                 </button>
@@ -151,7 +157,7 @@ export function SiteFooter() {
                   key={item.label.ru}
                   lang={item.ru ? "ru" : undefined}
                   href={itemHref(item)}
-                  className="text-sm text-foreground/80 transition-colors hover:text-primary"
+                  className={FOOTER_LINK}
                 >
                   {t(item.label)}
                 </a>
@@ -168,7 +174,10 @@ export function SiteFooter() {
               см. `data/org.ts`. Отсюда и пометка языка. */}
           <p lang="ru" className="text-xs leading-relaxed text-muted-foreground">
             {ORG.legalName} · ИНН {ORG.inn} ·{" "}
-            <a href={`mailto:${ORG.email}`} className="hover:text-primary">
+            <a
+              href={`mailto:${ORG.email}`}
+              className="underline decoration-transparent underline-offset-4 transition-[color,text-decoration-color] duration-150 hover:text-foreground hover:decoration-border"
+            >
               {ORG.email}
             </a>
           </p>

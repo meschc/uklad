@@ -5,6 +5,7 @@ import { PLANS, monthlyFor, type PayPeriod } from "../../data/plans";
 import { money } from "../../data/warehouses";
 import { ru, useT, type Copy } from "../../lib/copy";
 import { Reveal } from "../Reveal";
+import { RollNumber } from "./RollNumber";
 import { CALC, calcLines, calcMonthly, fittingPlan, type CalcInput } from "./tariffsData";
 
 const T = {
@@ -115,7 +116,7 @@ export function TariffCalc({ period }: { period: PayPeriod }) {
       >
         <div className="overflow-hidden" {...(open ? {} : { inert: "" })}>
           <div className="grid grid-cols-1 gap-6 border-t border-[var(--wh-line)] p-5 sm:gap-8 sm:p-7 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:gap-12">
-            <div className="flex flex-col">
+            <div className="flex flex-col [&>*:first-child]:pt-0">
               {FIELDS.map((f) => (
                 <Stepper
                   key={f.key}
@@ -130,9 +131,12 @@ export function TariffCalc({ period }: { period: PayPeriod }) {
                   onChange={(n) => setV({ ...v, [f.key]: n })}
                 />
               ))}
-              <label
-                aria-label={t(T.billing)}
-                className="flex cursor-pointer items-center justify-between gap-4 py-3 sm:py-4"
+              <button
+                type="button"
+                role="switch"
+                aria-checked={v.billing}
+                onClick={() => setV({ ...v, billing: !v.billing })}
+                className="flex cursor-pointer items-center justify-between gap-4 py-3 text-left sm:py-4"
               >
                 <span>
                   <span className="block text-[15px] sm:text-[17px]">{t(T.billing)}</span>
@@ -140,35 +144,54 @@ export function TariffCalc({ period }: { period: PayPeriod }) {
                     {t(T.billingHint)}
                   </span>
                 </span>
-                <input
-                  type="checkbox"
-                  checked={v.billing}
-                  onChange={(e) => setV({ ...v, billing: e.target.checked })}
-                  className="size-5 shrink-0 accent-[var(--wh-blue)]"
-                />
-              </label>
+                {/* Переключатель вместо системной галочки: та грубая и разная
+                    в каждом браузере (Кирилл, 20 окт). */}
+                <span
+                  aria-hidden
+                  className={cn(
+                    "relative h-7 w-12 shrink-0 rounded-full transition-colors duration-300",
+                    v.billing ? "bg-[var(--wh-blue)]" : "bg-[var(--wh-line)]",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "absolute left-0.5 top-0.5 size-6 rounded-full bg-white shadow-sm transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
+                      v.billing && "translate-x-5",
+                    )}
+                  />
+                </span>
+              </button>
             </div>
 
             <div className="flex flex-col gap-4 rounded-[18px] bg-[var(--wh-soft)] p-5 sm:p-6">
-              <ul className="flex flex-col gap-2 text-[14px] sm:text-[15px]">
-                {calcLines(v).map((line) => (
-                  <li
-                    key={line.label.ru}
-                    className="grid grid-cols-[minmax(0,1fr)_5.5rem] items-start gap-x-4"
-                  >
-                    <span className="wh-muted">
-                      {t(line.label, { n: line.count === undefined ? "" : money(line.count) })}
-                    </span>
-                    <span className="whitespace-nowrap text-right tabular-nums">
-                      {money(line.price)} ₽
-                    </span>
-                  </li>
-                ))}
+              <ul className="flex flex-col text-[14px] sm:text-[15px] [&>li>span]:pb-2">
+                {calcLines(v).map((line, i) => {
+                  const on = i === 0 || line.price > 0;
+                  return (
+                    <li
+                      key={line.label.ru}
+                      aria-hidden={!on}
+                      className="grid transition-[grid-template-rows,opacity] duration-300 ease-out"
+                      style={{ gridTemplateRows: on ? "1fr" : "0fr", opacity: on ? 1 : 0 }}
+                    >
+                      <span className="grid min-h-0 grid-cols-[minmax(0,1fr)_5.5rem] items-start gap-x-4 overflow-hidden">
+                        <span className="wh-muted">
+                          {t(line.label, {
+                            n: line.count === undefined ? "" : money(line.count),
+                          })}
+                        </span>
+                        <span className="whitespace-nowrap text-right tabular-nums">
+                          <RollNumber value={line.price} format={money} /> ₽
+                        </span>
+                      </span>
+                    </li>
+                  );
+                })}
               </ul>
               <div className="border-t border-[var(--wh-line)] pt-4">
                 <p className="wh-muted text-[13px]">{t(T.total)}</p>
                 <p className="text-[32px] font-light sm:text-[40px] tracking-[-0.04em] tabular-nums">
-                  {money(price)}{" "}
+                  <RollNumber value={price} format={money} />{" "}
                   <span className="wh-muted text-[15px] tracking-normal">{t(T.perMonth)}</span>
                 </p>
                 <p className="wh-muted text-[13px]">
@@ -235,24 +258,39 @@ function Stepper(props: {
         >
           <Minus className="size-4" />
         </button>
-        <input
-          inputMode="numeric"
-          aria-label={label}
-          value={draft ?? money(value)}
-          onFocus={(e) => {
-            setDraft(String(value));
-            requestAnimationFrame(() => e.target.select());
-          }}
-          onChange={(e) => setDraft(e.target.value.replace(/\D/g, ""))}
-          onBlur={() => {
-            if (draft) onChange(snap(Number(draft)));
-            setDraft(null);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") e.currentTarget.blur();
-          }}
-          className="h-8 w-16 rounded-full bg-transparent text-center text-[15px] sm:h-10 sm:w-[5.5rem] sm:text-[17px] tabular-nums shadow-[inset_0_0_0_1px_var(--wh-line)] outline-none focus:shadow-[inset_0_0_0_1.5px_var(--wh-blue)]"
-        />
+        {/* Пока поле не в фокусе, число поверх него меняется с прокруткой;
+            в фокусе — обычный ввод. */}
+        <span className="relative">
+          <input
+            inputMode="numeric"
+            aria-label={label}
+            value={draft ?? money(value)}
+            onFocus={(e) => {
+              setDraft(String(value));
+              requestAnimationFrame(() => e.target.select());
+            }}
+            onChange={(e) => setDraft(e.target.value.replace(/\D/g, ""))}
+            onBlur={() => {
+              if (draft) onChange(snap(Number(draft)));
+              setDraft(null);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") e.currentTarget.blur();
+            }}
+            className={cn(
+              "h-8 w-16 rounded-full bg-transparent text-center text-[15px] sm:h-10 sm:w-[5.5rem] sm:text-[17px] tabular-nums shadow-[inset_0_0_0_1px_var(--wh-line)] outline-none focus:shadow-[inset_0_0_0_1.5px_var(--wh-blue)]",
+              draft === null && "text-transparent",
+            )}
+          />
+          {draft === null && (
+            <span
+              aria-hidden
+              className="pointer-events-none absolute inset-0 grid place-items-center text-[15px] sm:text-[17px]"
+            >
+              <RollNumber value={value} format={money} />
+            </span>
+          )}
+        </span>
         <button
           type="button"
           aria-label={props.moreLabel}

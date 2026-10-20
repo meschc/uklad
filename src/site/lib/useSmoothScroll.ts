@@ -94,6 +94,19 @@ export function scrollPageTop(immediate = true): void {
 }
 
 /**
+ * На заданную высоту страницы, плавно. Через Lenis, если он ведёт прокрутку:
+ * родной `window.scrollTo` он перебил бы своей целью.
+ */
+export function scrollPageTo(top: number): void {
+  if (lenis) {
+    lenis.resize();
+    lenis.scrollTo(top, { force: true });
+    return;
+  }
+  window.scrollTo({ top, behavior: "smooth" });
+}
+
+/**
  * К секции — с поправкой на липкую шапку.
  *
  * Своей поправки здесь нет намеренно. Высоту шапки знает CSS — это
