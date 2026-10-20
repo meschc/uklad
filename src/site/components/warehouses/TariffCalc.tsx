@@ -1,107 +1,258 @@
 import { useState } from "react";
+import { ChevronDown, Minus, Plus } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { PLANS, monthlyFor, type PayPeriod } from "../../data/plans";
 import { money } from "../../data/warehouses";
-import { ru, useT } from "../../lib/copy";
+import { ru, useT, type Copy } from "../../lib/copy";
 import { Reveal } from "../Reveal";
-import { calcMonthly, fittingPlan, type CalcInput } from "./tariffsData";
+import { CALC, calcLines, calcMonthly, fittingPlan, type CalcInput } from "./tariffsData";
 
 const T = {
   title: ru("Свой тариф"),
-  lead: ru("Соберите тариф под свой склад: укажите, сколько нужно, и цена посчитается сразу."),
-  warehouses: ru("Склады"),
-  skus: ru("Позиции номенклатуры"),
-  staff: ru("Сотрудники"),
-  sellers: ru("Кабинеты селлеров"),
+  lead: ru("Не подходит ни один тариф? Соберите свой под размер склада."),
+  from: ru("от {sum} ₽ в месяц"),
+  open: ru("Собрать тариф"),
+  close: ru("Свернуть"),
+  included: ru("В основе {n}"),
+  less: ru("Меньше: {what}"),
+  more: ru("Больше: {what}"),
   billing: ru("Учёт по клиентам: остатки, отгрузки, биллинг"),
+  billingHint: ru("Раздельные остатки и счета для каждого селлера"),
+  total: ru("Итого"),
   perMonth: ru("₽ в месяц"),
-  cheaper: ru("Тариф «{plan}» с такими лимитами дешевле на {sum} ₽ в месяц"),
+  monthNote: ru("при оплате помесячно"),
+  periodNote: ru("при оплате за {term}"),
+  half: ru("полгода"),
+  year: ru("год"),
+  cheaper: ru("С такими лимитами тариф «{plan}» дешевле на {sum} ₽ в месяц"),
+  bigger: ru("Больше {n} складов — напишите нам, предложим отдельные условия"),
   choose: ru("Подключить склад"),
 };
 
-type Field = {
-  key: "warehouses" | "skus" | "staff" | "sellers";
-  min: number;
-  max: number;
-  step: number;
-};
-
-const FIELDS: Field[] = [
-  { key: "warehouses", min: 1, max: 10, step: 1 },
-  { key: "skus", min: 1000, max: 100000, step: 1000 },
-  { key: "staff", min: 1, max: 100, step: 1 },
-  { key: "sellers", min: 0, max: 200, step: 5 },
-];
+type Key = "warehouses" | "skus" | "staff" | "sellers";
 
 /**
- * Калькулятор — отдельный, четвёртый тариф (Кирилл, 20 окт). Скидки за срок
- * те же, что у готовых тарифов. Если набранное помещается в готовый тариф и
- * тот дешевле, подсказываем его.
+ * Поля калькулятора. Минимум равен основе, шаг — ступени цены: число на
+ * экране всегда то, за которое склад платит, а не произвольное из ползунка.
+ */
+const FIELDS: { key: Key; label: Copy; unit: Copy; base: number; step: number; max: number }[] = [
+  { key: "warehouses", label: ru("Склады"), unit: ru("склад"), base: 1, step: 1, max: 10 },
+  {
+    key: "skus",
+    label: ru("Позиции номенклатуры"),
+    unit: ru("позиций"),
+    base: CALC.baseSkus,
+    step: CALC.perSkus.step,
+    max: 200000,
+  },
+  {
+    key: "staff",
+    label: ru("Сотрудники"),
+    unit: ru("сотрудников"),
+    base: CALC.baseStaff,
+    step: CALC.perStaff.step,
+    max: 200,
+  },
+  {
+    key: "sellers",
+    label: ru("Кабинеты селлеров"),
+    unit: ru("кабинетов"),
+    base: CALC.baseSellers,
+    step: CALC.perSellers.step,
+    max: 505,
+  },
+];
+
+const START: CalcInput = { warehouses: 1, skus: 10000, staff: 10, sellers: 15, billing: false };
+
+/**
+ * «Свой тариф» — свёрнутая карточка под готовыми тарифами (Кирилл, 20 окт).
+ * Раскрывается в калькулятор: слева поля со степперами, справа итог по
+ * строкам. Если набранное помещается в готовый тариф и тот дешевле — говорим.
  */
 export function TariffCalc({ period }: { period: PayPeriod }) {
   const t = useT();
-  const [v, setV] = useState<CalcInput>({
-    warehouses: 1,
-    skus: 10000,
-    staff: 10,
-    sellers: 15,
-    billing: false,
-  });
+  const [open, setOpen] = useState(false);
+  const [v, setV] = useState<CalcInput>(START);
+
   const price = monthlyFor(calcMonthly(v), period);
   const fit = fittingPlan(v);
   const fitPlan = fit ? PLANS.find((p) => p.id === fit) : undefined;
   const fitPrice = fitPlan ? monthlyFor(fitPlan.monthly, period) : 0;
+  const maxWh = FIELDS[0].max;
 
   return (
-    <Reveal
-      as="article"
-      className="mt-4 grid grid-cols-1 gap-8 rounded-[22px] p-7 shadow-[inset_0_0_0_1px_var(--wh-line)] lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:gap-12"
-    >
-      <div className="flex flex-col gap-4">
-        <h3 className="text-[22px] font-medium">{t(T.title)}</h3>
-        <p className="wh-muted text-[15px]">{t(T.lead)}</p>
-        <p className="text-[44px] font-light tracking-[-0.04em] tabular-nums">
-          {money(price)}{" "}
-          <span className="wh-muted text-[15px] tracking-normal">{t(T.perMonth)}</span>
-        </p>
-        {fitPlan && fitPrice < price && (
-          <p className="text-[13px] text-[var(--wh-blue)]">
-            {t(T.cheaper, { plan: t(fitPlan.title), sum: money(price - fitPrice) })}
-          </p>
-        )}
-        <a href="#connect" className="wh-btn wh-btn--soft mt-auto w-full">
-          {t(T.choose)}
-        </a>
-      </div>
-
-      <div className="flex flex-col gap-6">
-        {FIELDS.map((f) => (
-          <div key={f.key} className="flex flex-col gap-2">
-            <span className="flex items-baseline justify-between gap-4 text-[15px]">
-              <span className="wh-muted">{t(T[f.key])}</span>
-              <span className="font-medium tabular-nums">{money(v[f.key])}</span>
-            </span>
-            <input
-              type="range"
-              min={f.min}
-              max={f.max}
-              step={f.step}
-              value={v[f.key]}
-              aria-label={t(T[f.key])}
-              onChange={(e) => setV({ ...v, [f.key]: Number(e.target.value) })}
-              className="w-full accent-[var(--wh-blue)]"
+    <Reveal as="article" className="mt-4 rounded-[22px] shadow-[inset_0_0_0_1px_var(--wh-line)]">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+        className="flex w-full flex-col gap-4 p-7 text-left sm:flex-row sm:items-center sm:justify-between"
+      >
+        <span>
+          <span className="block text-[22px] font-medium">{t(T.title)}</span>
+          <span className="wh-muted mt-1 block text-[15px]">{t(T.lead)}</span>
+        </span>
+        <span className="flex items-center gap-4">
+          <span className="wh-muted text-[15px]">
+            {t(T.from, { sum: money(monthlyFor(CALC.base, period)) })}
+          </span>
+          <span className="wh-btn wh-btn--soft shrink-0">
+            {t(open ? T.close : T.open)}
+            <ChevronDown
+              className={cn("size-4 transition-transform duration-300", open && "rotate-180")}
             />
+          </span>
+        </span>
+      </button>
+
+      <div
+        className="grid transition-[grid-template-rows] duration-300 ease-out"
+        style={{ gridTemplateRows: open ? "1fr" : "0fr" }}
+      >
+        <div className="overflow-hidden" {...(open ? {} : { inert: "" })}>
+          <div className="grid grid-cols-1 gap-8 border-t border-[var(--wh-line)] p-7 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:gap-12">
+            <div className="flex flex-col">
+              {FIELDS.map((f) => (
+                <Stepper
+                  key={f.key}
+                  label={t(f.label)}
+                  hint={t(T.included, { n: `${money(f.base)} ${t(f.unit)}` })}
+                  value={v[f.key]}
+                  min={f.base}
+                  max={f.max}
+                  step={f.step}
+                  lessLabel={t(T.less, { what: t(f.label).toLowerCase() })}
+                  moreLabel={t(T.more, { what: t(f.label).toLowerCase() })}
+                  onChange={(n) => setV({ ...v, [f.key]: n })}
+                />
+              ))}
+              <label
+                aria-label={t(T.billing)}
+                className="flex cursor-pointer items-center justify-between gap-4 py-4"
+              >
+                <span>
+                  <span className="block text-[17px]">{t(T.billing)}</span>
+                  <span className="wh-muted block text-[13px]">{t(T.billingHint)}</span>
+                </span>
+                <input
+                  type="checkbox"
+                  checked={v.billing}
+                  onChange={(e) => setV({ ...v, billing: e.target.checked })}
+                  className="size-5 shrink-0 accent-[var(--wh-blue)]"
+                />
+              </label>
+            </div>
+
+            <div className="flex flex-col gap-4 rounded-[18px] bg-[var(--wh-soft)] p-6">
+              <ul className="flex flex-col gap-2 text-[15px]">
+                {calcLines(v).map((line) => (
+                  <li key={line.label.ru} className="flex justify-between gap-4">
+                    <span className="wh-muted">
+                      {t(line.label, { n: line.count === undefined ? "" : money(line.count) })}
+                    </span>
+                    <span className="whitespace-nowrap tabular-nums">{money(line.price)} ₽</span>
+                  </li>
+                ))}
+              </ul>
+              <div className="border-t border-[var(--wh-line)] pt-4">
+                <p className="wh-muted text-[13px]">{t(T.total)}</p>
+                <p className="text-[40px] font-light tracking-[-0.04em] tabular-nums">
+                  {money(price)}{" "}
+                  <span className="wh-muted text-[15px] tracking-normal">{t(T.perMonth)}</span>
+                </p>
+                <p className="wh-muted text-[13px]">
+                  {period === "month"
+                    ? t(T.monthNote)
+                    : t(T.periodNote, { term: t(period === "year" ? T.year : T.half) })}
+                </p>
+              </div>
+              {fitPlan && fitPrice < price && (
+                <p className="text-[13px] text-[var(--wh-blue)]">
+                  {t(T.cheaper, { plan: t(fitPlan.title), sum: money(price - fitPrice) })}
+                </p>
+              )}
+              {v.warehouses >= maxWh && (
+                <p className="text-[13px] text-[var(--wh-blue)]">{t(T.bigger, { n: maxWh })}</p>
+              )}
+              <a href="#connect" className="wh-btn wh-btn--blue mt-auto w-full">
+                {t(T.choose)}
+              </a>
+            </div>
           </div>
-        ))}
-        <label className="flex items-center gap-3 text-[15px]">
-          <input
-            type="checkbox"
-            checked={v.billing}
-            onChange={(e) => setV({ ...v, billing: e.target.checked })}
-            className="size-4 accent-[var(--wh-blue)]"
-          />
-          {t(T.billing)}
-        </label>
+        </div>
       </div>
     </Reveal>
+  );
+}
+
+/**
+ * Поле с кнопками «−» и «+» по ступеням цены и с ручным вводом. Введённое
+ * число выравнивается до ближайшей ступени вверх и в границы при уходе с поля:
+ * пока человек печатает, его не перебивают.
+ */
+function Stepper(props: {
+  label: string;
+  hint: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  lessLabel: string;
+  moreLabel: string;
+  onChange: (n: number) => void;
+}) {
+  const { label, hint, value, min, max, step, onChange } = props;
+  const [draft, setDraft] = useState<string | null>(null);
+  const snap = (n: number) =>
+    Math.min(max, Math.max(min, min + Math.ceil((n - min) / step) * step));
+  const btn =
+    "grid size-10 place-items-center rounded-full shadow-[inset_0_0_0_1px_var(--wh-line)] transition-colors hover:bg-[var(--wh-soft)] disabled:opacity-35 disabled:hover:bg-transparent";
+
+  return (
+    <div className="flex items-center justify-between gap-4 border-b border-[var(--wh-line)] py-4">
+      <div>
+        <p className="text-[17px]">{label}</p>
+        <p className="wh-muted text-[13px]">{hint}</p>
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
+        <button
+          type="button"
+          aria-label={props.lessLabel}
+          disabled={value <= min}
+          onClick={() => onChange(snap(value - step))}
+          className={btn}
+        >
+          <Minus className="size-4" />
+        </button>
+        <input
+          inputMode="numeric"
+          aria-label={label}
+          value={draft ?? money(value)}
+          onFocus={(e) => {
+            setDraft(String(value));
+            requestAnimationFrame(() => e.target.select());
+          }}
+          onChange={(e) => setDraft(e.target.value.replace(/\D/g, ""))}
+          onBlur={() => {
+            if (draft) onChange(snap(Number(draft)));
+            setDraft(null);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") e.currentTarget.blur();
+          }}
+          className="h-10 w-[5.5rem] rounded-full bg-transparent text-center text-[17px] tabular-nums shadow-[inset_0_0_0_1px_var(--wh-line)] outline-none focus:shadow-[inset_0_0_0_1.5px_var(--wh-blue)]"
+        />
+        <button
+          type="button"
+          aria-label={props.moreLabel}
+          disabled={value >= max}
+          onClick={() => onChange(snap(value + step))}
+          className={btn}
+        >
+          <Plus className="size-4" />
+        </button>
+      </div>
+    </div>
   );
 }

@@ -1,7 +1,8 @@
+import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { money } from "../../data/warehouses";
 import { ru, useT } from "../../lib/copy";
-import { Reveal } from "../Reveal";
+import { useOverlay } from "../../lib/useOverlay";
 import { BREAKDOWN, MARKET, NO, YES } from "./tariffsData";
 
 const T = {
@@ -15,28 +16,58 @@ const T = {
   example: ru("Пример: тариф «Склад», 9 900 ₽ в месяц"),
   separately: ru("Отдельно на рынке"),
   total: ru("Итого"),
+  marketTotal: ru("от 25 000 ₽"),
+  close: ru("Закрыть"),
   compareTitle: ru("Уклад и другие решения"),
-  head: [ru("Уклад, тариф «Склад»"), ru("Облачная система учёта склада"), ru("Коробочная система")],
+  head: [ru("Уклад"), ru("Облачная система"), ru("Коробочная система")],
   note: ru("Средние данные рынка"),
   noteBody: ru(
     "По открытым тарифам облачных и коробочных систем учёта склада для фулфилмента в России, октябрь 2026 года. Цены отдельных систем могут отличаться.",
   ),
 };
 
-/** Обоснование цены и сравнение с типами решений (Кирилл, 20 окт). */
-export function PriceWhy() {
+/**
+ * Обоснование цены и сравнение с рынком — в шторке (Кирилл, 20 окт): на
+ * странице это было полотном текста. На компьютере шторка выезжает справа, на
+ * телефоне — снизу, как системный лист. Закрывается крестиком, фоном и Esc.
+ */
+export function PriceSheet({ onClose }: { onClose: () => void }) {
   const t = useT();
-  return (
-    <div className="mt-20 grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:gap-20">
-      <Reveal className="flex flex-col gap-4">
-        <h3 className="wh-h3">{t(T.title)}</h3>
-        <p className="wh-muted text-base leading-relaxed">{t(T.lead)}</p>
-        <p className="wh-muted text-base leading-relaxed">{t(T.lead2)}</p>
-      </Reveal>
+  useOverlay(true, onClose);
+  const total = BREAKDOWN.reduce((s, p) => s + p.price, 0);
 
-      <Reveal className="flex flex-col gap-10">
-        <div>
-          <div className="flex items-center justify-between gap-4 border-b border-[var(--wh-line)] pb-3 text-[13px]">
+  return (
+    <div className="wh fixed inset-0 z-[90]">
+      <div aria-hidden className="absolute inset-0 animate-fade-in bg-black/40" onClick={onClose} />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="price-sheet-title"
+        className="absolute inset-x-0 bottom-0 flex max-h-[90vh] animate-slide-up flex-col rounded-t-[22px] bg-[var(--wh-ground)] text-[var(--wh-ink)] shadow-2xl sm:inset-y-0 sm:left-auto sm:right-0 sm:max-h-none sm:w-[min(600px,100vw)] sm:animate-slide-in-right sm:rounded-none sm:rounded-l-[22px]"
+      >
+        <span
+          aria-hidden
+          className="mx-auto mt-2.5 h-1 w-10 rounded-full bg-[var(--wh-line)] sm:hidden"
+        />
+        <header className="flex items-center justify-between gap-4 px-6 pb-2 pt-4 sm:px-8 sm:pt-7">
+          <h2 id="price-sheet-title" className="wh-h3">
+            {t(T.title)}
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={t(T.close)}
+            className="grid size-9 place-items-center rounded-full transition-colors hover:bg-[var(--wh-soft)]"
+          >
+            <X className="size-5" />
+          </button>
+        </header>
+
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 pb-8 sm:px-8">
+          <p className="wh-muted text-base leading-relaxed">{t(T.lead)}</p>
+          <p className="wh-muted mt-3 text-base leading-relaxed">{t(T.lead2)}</p>
+
+          <div className="mt-8 flex items-center justify-between gap-4 border-b border-[var(--wh-line)] pb-3 text-[13px]">
             <span className="wh-muted">{t(T.example)}</span>
             <span className="wh-muted flex items-center gap-1.5">
               {t(T.separately)}
@@ -46,76 +77,54 @@ export function PriceWhy() {
           {BREAKDOWN.map((part) => (
             <div
               key={part.title.ru}
-              className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-6 gap-y-1 border-b border-[var(--wh-line)] py-4 sm:grid-cols-[minmax(0,1fr)_7rem_9rem]"
+              className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-6 gap-y-1 border-b border-[var(--wh-line)] py-4"
             >
-              <div>
-                <p className="text-[17px] font-medium">{t(part.title)}</p>
-                <p className="wh-muted text-[15px]">{t(part.body)}</p>
-              </div>
-              <p className="text-[17px] tabular-nums sm:text-right">{money(part.price)} ₽</p>
-              <p className="wh-muted col-span-2 text-[15px] sm:col-span-1 sm:text-right">
-                {t(part.market)}
+              <p className="text-[17px] font-medium">{t(part.title)}</p>
+              <p className="whitespace-nowrap text-right text-[17px] tabular-nums">
+                {money(part.price)} ₽
               </p>
+              <p className="wh-muted text-[15px]">{t(part.body)}</p>
+              <p className="wh-muted text-right text-[13px]">{t(part.market)}</p>
             </div>
           ))}
-          <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-6 py-4 font-medium sm:grid-cols-[minmax(0,1fr)_7rem_9rem]">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-6 py-4 font-medium">
             <p className="text-[17px]">{t(T.total)}</p>
-            <p className="text-[17px] tabular-nums sm:text-right">
-              {money(BREAKDOWN.reduce((s, p) => s + p.price, 0))} ₽
+            <p className="whitespace-nowrap text-right text-[17px] tabular-nums">
+              {money(total)} ₽
             </p>
-            <p className="col-span-2 text-[15px] sm:col-span-1 sm:text-right">от 25 000 ₽</p>
+            <p className="wh-muted text-[13px] font-normal">{t(T.separately)}</p>
+            <p className="text-right text-[13px]">{t(T.marketTotal)}</p>
           </div>
-        </div>
 
-        <div>
-          <p className="mb-3 flex items-center gap-1.5 text-lg font-medium">
+          <p className="mb-3 mt-8 flex items-center gap-1.5 text-lg font-medium">
             {t(T.compareTitle)}
             <MarketNote />
           </p>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] border-collapse text-left text-[15px]">
-              <thead>
-                <tr className="border-y border-[var(--wh-line)]">
-                  <th className="px-4 py-3.5" />
-                  {T.head.map((h, i) => (
-                    <th
-                      key={h.ru}
-                      className={cn(
-                        "px-4 py-3.5 font-medium",
-                        i === 0 && "bg-[var(--wh-soft)] text-[var(--wh-blue)]",
-                      )}
-                    >
-                      {t(h)}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {MARKET.map((row) => (
-                  <tr key={row.label.ru} className="border-b border-[var(--wh-line)]">
-                    <th scope="row" className="wh-muted px-4 py-3.5 font-normal">
-                      {t(row.label)}
-                    </th>
-                    {row.cells.map((cell, i) => (
-                      <td
-                        key={i}
+          <div className="flex flex-col">
+            {MARKET.map((row) => (
+              <div key={row.label.ru} className="border-b border-[var(--wh-line)] py-3.5">
+                <p className="wh-muted mb-2 text-[13px]">{t(row.label)}</p>
+                <dl className="grid grid-cols-3 gap-3 text-[15px]">
+                  {row.cells.map((cell, i) => (
+                    <div key={i}>
+                      <dt className="wh-muted text-[12px]">{t(T.head[i])}</dt>
+                      <dd
                         className={cn(
-                          "px-4 py-3.5",
-                          i === 0 && "bg-[var(--wh-soft)]",
                           cell === YES && "text-[var(--wh-blue)]",
                           cell === NO && "wh-muted",
+                          i === 0 && "font-medium",
                         )}
                       >
                         {typeof cell === "string" ? cell : t(cell)}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            ))}
           </div>
         </div>
-      </Reveal>
+      </div>
     </div>
   );
 }

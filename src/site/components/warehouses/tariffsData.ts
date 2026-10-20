@@ -158,14 +158,36 @@ const steps = (value: number, base: number, step: number) =>
 
 /** Цена собранного тарифа за месяц при помесячной оплате. */
 export function calcMonthly(v: CalcInput): number {
-  return (
-    CALC.base +
-    Math.max(0, v.warehouses - 1) * CALC.perWarehouse +
-    steps(v.skus, CALC.baseSkus, CALC.perSkus.step) * CALC.perSkus.price +
-    steps(v.staff, CALC.baseStaff, CALC.perStaff.step) * CALC.perStaff.price +
-    steps(v.sellers, CALC.baseSellers, CALC.perSellers.step) * CALC.perSellers.price +
-    (v.billing ? CALC.clientBilling : 0)
-  );
+  return calcLines(v).reduce((s, l) => s + l.price, 0);
+}
+
+/** Строки итога калькулятора: основа и каждая доплата, только ненулевые. */
+export function calcLines(v: CalcInput): { label: Copy; count?: number; price: number }[] {
+  const lines = [
+    { label: ru("Основа: 1 склад, 5 000 позиций, 5 сотрудников, 5 селлеров"), price: CALC.base },
+    {
+      label: ru("Ещё склады: {n}"),
+      count: Math.max(0, v.warehouses - 1),
+      price: Math.max(0, v.warehouses - 1) * CALC.perWarehouse,
+    },
+    {
+      label: ru("Ещё позиции: {n}"),
+      count: Math.max(0, v.skus - CALC.baseSkus),
+      price: steps(v.skus, CALC.baseSkus, CALC.perSkus.step) * CALC.perSkus.price,
+    },
+    {
+      label: ru("Ещё сотрудники: {n}"),
+      count: Math.max(0, v.staff - CALC.baseStaff),
+      price: steps(v.staff, CALC.baseStaff, CALC.perStaff.step) * CALC.perStaff.price,
+    },
+    {
+      label: ru("Ещё кабинеты селлеров: {n}"),
+      count: Math.max(0, v.sellers - CALC.baseSellers),
+      price: steps(v.sellers, CALC.baseSellers, CALC.perSellers.step) * CALC.perSellers.price,
+    },
+    { label: ru("Учёт по клиентам"), price: v.billing ? CALC.clientBilling : 0 },
+  ];
+  return lines.filter((l, i) => i === 0 || l.price > 0);
 }
 
 /** Лимиты готовых тарифов — для подсказки «готовый выгоднее». */

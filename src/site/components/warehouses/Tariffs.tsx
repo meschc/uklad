@@ -1,12 +1,12 @@
 import { Fragment, useEffect, useRef, useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { ArrowRight, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Reveal } from "../Reveal";
 import { PLANS, monthlyFor, type PayPeriod, type Plan } from "../../data/plans";
 import { money } from "../../data/warehouses";
 import { ru, useT, type Copy } from "../../lib/copy";
 import { AsciiField } from "./AsciiField";
-import { PriceWhy } from "./PriceWhy";
+import { PriceSheet } from "./PriceWhy";
 import { TariffCalc } from "./TariffCalc";
 import { ALL_PLANS, COMPARE, NO, SHORT_COMPARE, YES, type Row } from "./tariffsData";
 
@@ -18,6 +18,7 @@ const T = {
   optimal: ru("Оптимальный"),
   choose: ru("Подключить склад"),
   allPlans: ru("Во всех тарифах"),
+  why: ru("Из чего складывается цена"),
   totalNote: ru("{sum} ₽ за {term}"),
   half: ru("полгода"),
   year: ru("год"),
@@ -55,6 +56,7 @@ export function Tariffs() {
   const t = useT();
   const [period, setPeriod] = useState<PayPeriod>("half");
   const [full, setFull] = useState(false);
+  const [why, setWhy] = useState(false);
   // Подложка выбранного срока ездит между кнопками (Кирилл 19 окт: «плавно»).
   // Пока её не измерили (предрендер, первый кадр), фон стоит на самой кнопке.
   const group = useRef<HTMLDivElement>(null);
@@ -148,6 +150,14 @@ export function Tariffs() {
             </li>
           ))}
         </ul>
+        <button
+          type="button"
+          onClick={() => setWhy(true)}
+          className="mt-2 inline-flex items-center gap-1.5 text-[15px] font-medium text-[var(--wh-blue)] hover:underline"
+        >
+          {t(T.why)}
+          <ArrowRight className="size-4" />
+        </button>
       </Reveal>
 
       <div className="mt-10 grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -294,7 +304,7 @@ export function Tariffs() {
         </a>
       </Reveal>
 
-      <PriceWhy />
+      {why && <PriceSheet onClose={() => setWhy(false)} />}
     </section>
   );
 }
