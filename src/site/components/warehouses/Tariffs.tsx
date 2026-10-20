@@ -1,10 +1,14 @@
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Reveal } from "../Reveal";
-import { PLANS, type Plan } from "../../data/plans";
+import { PLANS, monthlyFor, type PayPeriod, type Plan } from "../../data/plans";
 import { money } from "../../data/warehouses";
 import { ru, useT, type Copy } from "../../lib/copy";
 import { AsciiField } from "./AsciiField";
+import { PriceWhy } from "./PriceWhy";
+import { TariffCalc } from "./TariffCalc";
+import { ALL_PLANS, COMPARE, NO, SHORT_COMPARE, YES, type Row } from "./tariffsData";
 
 const T = {
   title: ru("Тарифы"),
@@ -13,23 +17,23 @@ const T = {
   perMonth: ru("₽ в месяц"),
   optimal: ru("Оптимальный"),
   choose: ru("Подключить склад"),
-  /** Цены на год и на месяц Кирилл ещё не назвал (19 окт). */
-  noPrice: ru("[цена]"),
-  halfNote: ru("{sum} ₽ за полгода"),
-  yearNote: ru("[сумма за год]"),
+  allPlans: ru("Во всех тарифах"),
+  totalNote: ru("{sum} ₽ за {term}"),
+  half: ru("полгода"),
+  year: ru("год"),
+  saving: ru(", выгода {sum} ₽"),
   monthNote: ru("оплата каждый месяц"),
-  startWho: ru("[Описание тарифа «Старт»]"),
   compareHead: ru("Что входит"),
+  showAll: ru("Показать все различия"),
+  hideAll: ru("Свернуть"),
   customTitle: ru("Нужны отдельные условия?"),
   customBody: ru(
-    "Несколько складов, своя схема оплаты или нестандартные процессы: обсудим и предложим тариф.",
+    "Больше трёх складов, своя схема оплаты или нестандартные процессы: обсудим и предложим тариф.",
   ),
   customCta: ru("Связаться с нами"),
 };
 
-type Period = "year" | "half" | "month";
-
-const PERIODS: { id: Period; label: Copy }[] = [
+const PERIODS: { id: PayPeriod; label: Copy }[] = [
   { id: "year", label: ru("На год") },
   { id: "half", label: ru("На полгода") },
   { id: "month", label: ru("На месяц") },
@@ -38,31 +42,19 @@ const PERIODS: { id: Period; label: Copy }[] = [
 /** Порядок от дорогого к дешёвому: дорогая карточка задаёт ориентир. */
 const ORDER = ["operator", "warehouse", "start"];
 
-const YES = "✓";
-const NO = "—";
-
-/** Строки сравнения: Оператор, Склад, Старт — в порядке карточек. */
-const COMPARE: { label: Copy; cells: (Copy | string)[] }[] = [
-  { label: ru("Склады"), cells: [ru("несколько"), ru("1"), ru("1")] },
-  {
-    label: ru("Позиции номенклатуры"),
-    cells: [ru("без ограничений"), ru("до 5 000"), ru("до 1 000")],
-  },
-  { label: ru("Пользователи"), cells: [ru("до 20"), ru("до 5"), ru("до 2")] },
-  { label: ru("Роли сотрудников"), cells: [YES, YES, NO] },
-  { label: ru("Импорт остатков из XLSX"), cells: [YES, YES, YES] },
-  { label: ru("Импорт поставок из XLSX"), cells: [YES, YES, NO] },
-  { label: ru("Учёт по клиентам: остатки, отгрузки, биллинг"), cells: [YES, NO, NO] },
-];
+/** Три главных лимита на карточке: остальное — в таблице. */
+const CARD_LIMITS = [COMPARE[0].rows[1], COMPARE[2].rows[0], COMPARE[1].rows[0]];
 
 /**
- * Тарифы с переключателем срока оплаты (19 окт): год, полгода, месяц слева
- * направо, у каждого срока своя иконка. Цены за полгода — из `data/plans`,
- * как и на странице цен; за год и за месяц пока заглушки.
+ * Тарифы с переключателем срока оплаты: год, полгода, месяц слева направо, у
+ * каждого срока своя иконка. Цена месяца — из `data/plans`, за полгода и год
+ * считается скидкой (20 окт). На карточке три главных лимита, таблица
+ * свёрнута до шести строк и раскрывается целиком по кнопке.
  */
 export function Tariffs() {
   const t = useT();
-  const [period, setPeriod] = useState<Period>("half");
+  const [period, setPeriod] = useState<PayPeriod>("half");
+  const [full, setFull] = useState(false);
   // Подложка выбранного срока ездит между кнопками (Кирилл 19 окт: «плавно»).
   // Пока её не измерили (предрендер, первый кадр), фон стоит на самой кнопке.
   const group = useRef<HTMLDivElement>(null);
@@ -82,11 +74,22 @@ export function Tariffs() {
   }, [period]);
   const plans = ORDER.map((id) => PLANS.find((p) => p.id === id)).filter((p): p is Plan => !!p);
 
-  const price = (p: Plan) => (period === "half" ? money(p.monthly) : t(T.noPrice));
-  const note = (p: Plan) =>
-    period === "half"
-      ? t(T.halfNote, { sum: money(p.monthly * 6) })
-      : t(period === "year" ? T.yearNote : T.monthNote);
+  const price = (p: Plan) => money(monthlyFor(p.monthly, period));
+  const note = (p: Plan) => {
+    if (period === "month") return t(T.monthNote);
+    const months = period === "year" ? 12 : 6;
+    const sum = monthlyFor(p.monthly, period) * months;
+    return (
+      t(T.totalNote, { sum: money(sum), term: t(period === "year" ? T.year : T.half) }) +
+      t(T.saving, { sum: money(p.monthly * months - sum) })
+    );
+  };
+  const rows: { title?: Copy; row: Row }[] = full
+    ? COMPARE.flatMap((g) => [
+        { title: g.title, row: g.rows[0] },
+        ...g.rows.slice(1).map((row) => ({ row })),
+      ])
+    : SHORT_COMPARE.map((row) => ({ row }));
 
   return (
     <section
@@ -133,7 +136,21 @@ export function Tariffs() {
         </div>
       </Reveal>
 
-      <div className="mt-12 grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <Reveal className="mt-10 flex flex-col items-center gap-3 text-center">
+        <p className="wh-muted text-[13px]">{t(T.allPlans)}</p>
+        <ul className="flex flex-wrap justify-center gap-2">
+          {ALL_PLANS.map((item) => (
+            <li
+              key={item.ru}
+              className="rounded-full px-3.5 py-1.5 text-[14px] shadow-[inset_0_0_0_1px_var(--wh-line)]"
+            >
+              {t(item)}
+            </li>
+          ))}
+        </ul>
+      </Reveal>
+
+      <div className="mt-10 grid grid-cols-1 gap-4 lg:grid-cols-3">
         {plans.map((plan, i) => {
           const blue = !!plan.featured;
           return (
@@ -160,8 +177,19 @@ export function Tariffs() {
                 )}
               </div>
               <p className={cn("flex-1 text-[15px]", blue ? "text-white/80" : "wh-muted")}>
-                {plan.id === "start" ? t(T.startWho) : t(plan.who)}
+                {t(plan.who)}
               </p>
+              <ul className={cn("flex flex-col gap-1 text-[15px]", blue ? "text-white" : "")}>
+                {CARD_LIMITS.map((r) => {
+                  const cell = r.cells[ORDER.indexOf(plan.id)];
+                  return (
+                    <li key={r.label.ru} className="flex justify-between gap-3">
+                      <span className={blue ? "text-white/75" : "wh-muted"}>{t(r.label)}</span>
+                      <span>{typeof cell === "string" ? cell : t(cell)}</span>
+                    </li>
+                  );
+                })}
+              </ul>
               <p key={`p-${period}`} className="wh-swap text-[44px] font-light tracking-[-0.04em]">
                 {price(plan)}{" "}
                 <span
@@ -188,6 +216,8 @@ export function Tariffs() {
         })}
       </div>
 
+      <TariffCalc period={period} />
+
       {/* Таблица шире телефона: прокручивается внутри себя, страница не едет. */}
       <Reveal className="mt-12 overflow-x-auto">
         <table className="w-full min-w-[760px] border-collapse text-left text-[15px]">
@@ -208,29 +238,51 @@ export function Tariffs() {
             </tr>
           </thead>
           <tbody>
-            {COMPARE.map((row) => (
-              <tr key={row.label.ru} className="border-b border-[var(--wh-line)]">
-                <th scope="row" className="wh-muted px-4 py-3.5 font-normal">
-                  {t(row.label)}
-                </th>
-                {row.cells.map((cell, i) => (
-                  <td
-                    key={i}
-                    className={cn(
-                      "px-4 py-3.5",
-                      plans[i]?.featured && "bg-[var(--wh-soft)]",
-                      cell === YES && "text-[var(--wh-blue)]",
-                      cell === NO && "wh-muted",
-                    )}
-                  >
-                    {typeof cell === "string" ? cell : t(cell)}
-                  </td>
-                ))}
-              </tr>
+            {rows.map(({ title, row }) => (
+              <Fragment key={row.label.ru}>
+                {title && (
+                  <tr className="border-b border-[var(--wh-line)]">
+                    <th colSpan={plans.length + 1} className="px-4 pb-2.5 pt-6 font-medium">
+                      {t(title)}
+                    </th>
+                  </tr>
+                )}
+                <tr className="border-b border-[var(--wh-line)]">
+                  <th scope="row" className="wh-muted px-4 py-3.5 font-normal">
+                    {t(row.label)}
+                  </th>
+                  {row.cells.map((cell, i) => (
+                    <td
+                      key={i}
+                      className={cn(
+                        "px-4 py-3.5",
+                        plans[i]?.featured && "bg-[var(--wh-soft)]",
+                        cell === YES && "text-[var(--wh-blue)]",
+                        cell === NO && "wh-muted",
+                      )}
+                    >
+                      {typeof cell === "string" ? cell : t(cell)}
+                    </td>
+                  ))}
+                </tr>
+              </Fragment>
             ))}
           </tbody>
         </table>
       </Reveal>
+      <div className="mt-5 flex justify-center">
+        <button
+          type="button"
+          aria-expanded={full}
+          onClick={() => setFull(!full)}
+          className="wh-btn wh-btn--soft"
+        >
+          {t(full ? T.hideAll : T.showAll)}
+          <ChevronDown
+            className={cn("size-4 transition-transform duration-300", full && "rotate-180")}
+          />
+        </button>
+      </div>
 
       <Reveal className="mt-8 flex flex-col gap-4 rounded-[22px] px-7 py-6 shadow-[inset_0_0_0_1px_var(--wh-line)] sm:flex-row sm:items-center sm:justify-between sm:gap-8">
         <div>
@@ -241,12 +293,14 @@ export function Tariffs() {
           {t(T.customCta)}
         </a>
       </Reveal>
+
+      <PriceWhy />
     </section>
   );
 }
 
 /** Год — полный круг, полгода — половина, месяц — календарь. */
-function PeriodIcon({ id }: { id: Period }) {
+function PeriodIcon({ id }: { id: PayPeriod }) {
   return (
     <svg
       viewBox="0 0 20 20"
