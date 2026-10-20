@@ -87,18 +87,21 @@ export function TariffCalc({ period }: { period: PayPeriod }) {
         type="button"
         aria-expanded={open}
         onClick={() => setOpen(!open)}
-        className="flex w-full flex-col gap-4 p-7 text-left sm:flex-row sm:items-center sm:justify-between"
+        className="flex w-full items-center justify-between gap-4 p-5 text-left sm:p-7"
       >
         <span>
-          <span className="block text-[22px] font-medium">{t(T.title)}</span>
-          <span className="wh-muted mt-1 block text-[15px]">{t(T.lead)}</span>
-        </span>
-        <span className="flex items-center gap-4">
-          <span className="wh-muted text-[15px]">
+          <span className="block text-[19px] font-medium sm:text-[22px]">{t(T.title)}</span>
+          <span className="wh-muted mt-1 block text-[14px] sm:text-[15px]">{t(T.lead)}</span>
+          <span className="mt-1.5 block text-[14px] font-medium sm:hidden">
             {t(T.from, { sum: money(monthlyFor(CALC.base, period)) })}
           </span>
-          <span className="wh-btn wh-btn--soft shrink-0">
-            {t(open ? T.close : T.open)}
+        </span>
+        <span className="flex shrink-0 items-center gap-4">
+          <span className="wh-muted hidden text-[15px] sm:inline">
+            {t(T.from, { sum: money(monthlyFor(CALC.base, period)) })}
+          </span>
+          <span className="wh-btn wh-btn--soft size-10 shrink-0 !px-0 sm:h-12 sm:w-auto sm:!px-5">
+            <span className="sr-only sm:not-sr-only">{t(open ? T.close : T.open)}</span>
             <ChevronDown
               className={cn("size-4 transition-transform duration-300", open && "rotate-180")}
             />
@@ -111,7 +114,7 @@ export function TariffCalc({ period }: { period: PayPeriod }) {
         style={{ gridTemplateRows: open ? "1fr" : "0fr" }}
       >
         <div className="overflow-hidden" {...(open ? {} : { inert: "" })}>
-          <div className="grid grid-cols-1 gap-8 border-t border-[var(--wh-line)] p-7 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:gap-12">
+          <div className="grid grid-cols-1 gap-6 border-t border-[var(--wh-line)] p-5 sm:gap-8 sm:p-7 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:gap-12">
             <div className="flex flex-col">
               {FIELDS.map((f) => (
                 <Stepper
@@ -129,11 +132,13 @@ export function TariffCalc({ period }: { period: PayPeriod }) {
               ))}
               <label
                 aria-label={t(T.billing)}
-                className="flex cursor-pointer items-center justify-between gap-4 py-4"
+                className="flex cursor-pointer items-center justify-between gap-4 py-3 sm:py-4"
               >
                 <span>
-                  <span className="block text-[17px]">{t(T.billing)}</span>
-                  <span className="wh-muted block text-[13px]">{t(T.billingHint)}</span>
+                  <span className="block text-[15px] sm:text-[17px]">{t(T.billing)}</span>
+                  <span className="wh-muted block text-[12px] sm:text-[13px]">
+                    {t(T.billingHint)}
+                  </span>
                 </span>
                 <input
                   type="checkbox"
@@ -144,8 +149,8 @@ export function TariffCalc({ period }: { period: PayPeriod }) {
               </label>
             </div>
 
-            <div className="flex flex-col gap-4 rounded-[18px] bg-[var(--wh-soft)] p-6">
-              <ul className="flex flex-col gap-2 text-[15px]">
+            <div className="flex flex-col gap-4 rounded-[18px] bg-[var(--wh-soft)] p-5 sm:p-6">
+              <ul className="flex flex-col gap-2 text-[14px] sm:text-[15px]">
                 {calcLines(v).map((line) => (
                   <li
                     key={line.label.ru}
@@ -162,7 +167,7 @@ export function TariffCalc({ period }: { period: PayPeriod }) {
               </ul>
               <div className="border-t border-[var(--wh-line)] pt-4">
                 <p className="wh-muted text-[13px]">{t(T.total)}</p>
-                <p className="text-[40px] font-light tracking-[-0.04em] tabular-nums">
+                <p className="text-[32px] font-light sm:text-[40px] tracking-[-0.04em] tabular-nums">
                   {money(price)}{" "}
                   <span className="wh-muted text-[15px] tracking-normal">{t(T.perMonth)}</span>
                 </p>
@@ -212,15 +217,15 @@ function Stepper(props: {
   const snap = (n: number) =>
     Math.min(max, Math.max(min, min + Math.ceil((n - min) / step) * step));
   const btn =
-    "grid size-10 place-items-center rounded-full shadow-[inset_0_0_0_1px_var(--wh-line)] transition-colors hover:bg-[var(--wh-soft)] disabled:opacity-35 disabled:hover:bg-transparent";
+    "grid size-8 place-items-center rounded-full sm:size-10 shadow-[inset_0_0_0_1px_var(--wh-line)] transition-colors hover:bg-[var(--wh-soft)] disabled:opacity-35 disabled:hover:bg-transparent";
 
   return (
-    <div className="flex flex-col gap-3 border-b border-[var(--wh-line)] py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+    <div className="flex items-center justify-between gap-3 border-b border-[var(--wh-line)] py-3 sm:gap-4 sm:py-4">
       <div>
-        <p className="text-[17px]">{label}</p>
-        <p className="wh-muted text-[13px]">{hint}</p>
+        <p className="text-[15px] sm:text-[17px]">{label}</p>
+        <p className="wh-muted text-[12px] sm:text-[13px]">{hint}</p>
       </div>
-      <div className="flex shrink-0 items-center gap-2">
+      <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
         <button
           type="button"
           aria-label={props.lessLabel}
@@ -246,7 +251,7 @@ function Stepper(props: {
           onKeyDown={(e) => {
             if (e.key === "Enter") e.currentTarget.blur();
           }}
-          className="h-10 w-[5.5rem] rounded-full bg-transparent text-center text-[17px] tabular-nums shadow-[inset_0_0_0_1px_var(--wh-line)] outline-none focus:shadow-[inset_0_0_0_1.5px_var(--wh-blue)]"
+          className="h-8 w-16 rounded-full bg-transparent text-center text-[15px] sm:h-10 sm:w-[5.5rem] sm:text-[17px] tabular-nums shadow-[inset_0_0_0_1px_var(--wh-line)] outline-none focus:shadow-[inset_0_0_0_1.5px_var(--wh-blue)]"
         />
         <button
           type="button"
