@@ -174,7 +174,10 @@ export function calcMonthly(v: CalcInput): number {
   return calcLines(v).reduce((s, l) => s + l.price, 0);
 }
 
-/** Строки итога калькулятора: основа и каждая доплата, только ненулевые. */
+/**
+ * Строки итога калькулятора: основа и каждая доплата, всегда в одном порядке.
+ * Нулевые не выбрасываются — экран сворачивает их плавно, без рывка вёрстки.
+ */
 export function calcLines(v: CalcInput): { label: Copy; count?: number; price: number }[] {
   const lines = [
     { label: ru("Основа: 1 склад, 5 000 позиций, 5 сотрудников, 5 селлеров"), price: CALC.base },
@@ -200,7 +203,7 @@ export function calcLines(v: CalcInput): { label: Copy; count?: number; price: n
     },
     { label: ru("Учёт по клиентам"), price: v.billing ? CALC.clientBilling : 0 },
   ];
-  return lines.filter((l, i) => i === 0 || l.price > 0);
+  return lines;
 }
 
 /** Лимиты готовых тарифов — для подсказки «готовый выгоднее». */

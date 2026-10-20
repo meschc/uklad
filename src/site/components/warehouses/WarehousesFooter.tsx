@@ -10,7 +10,7 @@ import { href } from "../../lib/route";
 const T = {
   contactTitle: ru("Связь"),
   mail: ru("[почта]"),
-  chat: ru("Чат в рабочие дни, 10–18 МСК"),
+  chat: ru("Чат в рабочие дни с 10:00 до 18:00 по московскому времени"),
   product: ru("Продукт"),
   uklad: ru("Уклад"),
   legal: ru("Правовая информация"),

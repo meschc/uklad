@@ -41,8 +41,12 @@ export function PriceSheet({ onClose }: { onClose: () => void }) {
   const total = BREAKDOWN.reduce((s, p) => s + p.price, 0);
 
   return (
-    <div className="wh fixed inset-0 z-[90]">
-      <div aria-hidden className="absolute inset-0 animate-fade-in bg-black/40" onClick={onClose} />
+    <div className="fixed inset-0 z-[90]">
+      <div
+        aria-hidden
+        className="absolute inset-0 animate-fade-in bg-black/15 dark:bg-white/10"
+        onClick={onClose}
+      />
       <div
         role="dialog"
         aria-modal="true"

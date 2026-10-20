@@ -1,5 +1,5 @@
-import { Fragment, useEffect, useRef, useState } from "react";
-import { ArrowRight, ChevronDown } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Reveal } from "../Reveal";
 import { PLANS, monthlyFor, type PayPeriod, type Plan } from "../../data/plans";
@@ -8,7 +8,8 @@ import { ru, useT, type Copy } from "../../lib/copy";
 import { AsciiField } from "./AsciiField";
 import { PriceSheet } from "./PriceWhy";
 import { TariffCalc } from "./TariffCalc";
-import { ALL_PLANS, COMPARE, NO, SHORT_COMPARE, YES, type Row } from "./tariffsData";
+import { CompareTable } from "./CompareTable";
+import { ALL_PLANS, COMPARE } from "./tariffsData";
 
 const T = {
   title: ru("Тарифы"),
@@ -26,9 +27,6 @@ const T = {
   year: ru("год"),
   saving: ru(", выгода {sum} ₽"),
   monthNote: ru("оплата каждый месяц"),
-  compareHead: ru("Что входит"),
-  showAll: ru("Показать все различия"),
-  hideAll: ru("Свернуть"),
   customTitle: ru("Нужны отдельные условия?"),
   customBody: ru(
     "Больше трёх складов, своя схема оплаты или нестандартные процессы: обсудим и предложим тариф.",
@@ -57,7 +55,6 @@ const CARD_LIMITS = [COMPARE[0].rows[1], COMPARE[2].rows[0], COMPARE[1].rows[0]]
 export function Tariffs() {
   const t = useT();
   const [period, setPeriod] = useState<PayPeriod>("half");
-  const [full, setFull] = useState(false);
   const [why, setWhy] = useState(false);
   // Подложка выбранного срока ездит между кнопками (Кирилл 19 окт: «плавно»).
   // Пока её не измерили (предрендер, первый кадр), фон стоит на самой кнопке.
@@ -88,13 +85,6 @@ export function Tariffs() {
       t(T.saving, { sum: money(p.monthly * months - sum) })
     );
   };
-  const rows: { title?: Copy; row: Row }[] = full
-    ? COMPARE.flatMap((g) => [
-        { title: g.title, row: g.rows[0] },
-        ...g.rows.slice(1).map((row) => ({ row })),
-      ])
-    : SHORT_COMPARE.map((row) => ({ row }));
-
   return (
     <section
       id="tariffs"
@@ -230,71 +220,7 @@ export function Tariffs() {
 
       <TariffCalc period={period} />
 
-      {/* Таблица шире телефона: прокручивается внутри себя, страница не едет. */}
-      <Reveal className="mt-12 overflow-x-auto">
-        <table className="w-full min-w-[760px] border-collapse text-left text-[15px]">
-          <thead>
-            <tr className="border-y border-[var(--wh-line)]">
-              <th className="px-4 py-3.5 font-medium">{t(T.compareHead)}</th>
-              {plans.map((p) => (
-                <th
-                  key={p.id}
-                  className={cn(
-                    "px-4 py-3.5 font-medium",
-                    p.featured && "bg-[var(--wh-soft)] text-[var(--wh-blue)]",
-                  )}
-                >
-                  {t(p.title)}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map(({ title, row }) => (
-              <Fragment key={row.label.ru}>
-                {title && (
-                  <tr className="border-b border-[var(--wh-line)]">
-                    <th colSpan={plans.length + 1} className="px-4 pb-2.5 pt-6 font-medium">
-                      {t(title)}
-                    </th>
-                  </tr>
-                )}
-                <tr className="border-b border-[var(--wh-line)]">
-                  <th scope="row" className="wh-muted px-4 py-3.5 font-normal">
-                    {t(row.label)}
-                  </th>
-                  {row.cells.map((cell, i) => (
-                    <td
-                      key={i}
-                      className={cn(
-                        "px-4 py-3.5",
-                        plans[i]?.featured && "bg-[var(--wh-soft)]",
-                        cell === YES && "text-[var(--wh-blue)]",
-                        cell === NO && "wh-muted",
-                      )}
-                    >
-                      {typeof cell === "string" ? cell : t(cell)}
-                    </td>
-                  ))}
-                </tr>
-              </Fragment>
-            ))}
-          </tbody>
-        </table>
-      </Reveal>
-      <div className="mt-5 flex justify-center">
-        <button
-          type="button"
-          aria-expanded={full}
-          onClick={() => setFull(!full)}
-          className="wh-btn wh-btn--soft"
-        >
-          {t(full ? T.hideAll : T.showAll)}
-          <ChevronDown
-            className={cn("size-4 transition-transform duration-300", full && "rotate-180")}
-          />
-        </button>
-      </div>
+      <CompareTable plans={plans} />
 
       <Reveal className="mt-8 flex flex-col gap-4 rounded-[22px] px-7 py-6 shadow-[inset_0_0_0_1px_var(--wh-line)] sm:flex-row sm:items-center sm:justify-between sm:gap-8">
         <div>
