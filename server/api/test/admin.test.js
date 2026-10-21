@@ -3,7 +3,7 @@
  * как «всё работает»: вход без кода, повтор кода, форма без CSRF, правка
  * журнала. Обычные экраны тут вторичны.
  */
-/* global require, fetch, Buffer, URLSearchParams */
+/* global require, fetch, Buffer, URLSearchParams, __dirname */
 /* eslint-disable @typescript-eslint/no-require-imports */
 const test = require("node:test");
 const assert = require("node:assert/strict");
@@ -136,7 +136,7 @@ test("форма без CSRF или с чужого адреса отбрасы�
   const csrf = await app.csrf(cookie);
   const foreign = await app.post("/accounts", { ...fields, csrf }, cookie, "https://evil.example");
   assert.equal(foreign.status, 403);
-  assert.equal(app.store.listAccounts().length, 0);
+  assert.equal(app.store.allAccounts().length, 0);
 });
 
 test("аккаунт: добавить, заблокировать, сбросить доступ — всё в журнале", async (t) => {
@@ -185,4 +185,170 @@ test("сессия гаснет после часа без действий", as
   assert.equal((await app.get("/", cookie)).status, 200);
   app.tick(61 * 60_000);
   assert.equal((await app.get("/", cookie)).status, 303);
+});
+
+test("цены тарифов совпадают с витриной", () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const plans = require("../src/admin/plans");
+  const src = fs.readFileSync(path.join(__dirname, "../../../src/site/data/plans.ts"), "utf8");
+  for (const id of ["start", "warehouse", "operator"]) {
+    const m = new RegExp(`id: "${id}"[\\s\\S]*?monthly: (\\d+)`).exec(src);
+    assert.ok(m, `тариф ${id} есть на витрине`);
+    assert.equal(plans.PLANS[id].price, Number(m[1]), id);
+  }
+});
+
+test("продление идёт от «оплачено до», оплата и журнал записаны", async (t) => {
+  const app = await start();
+  t.after(app.stop);
+  const { cookie } = await app.login();
+  const csrf = await app.csrf(cookie);
+  const made = await app.post(
+    "/accounts",
+    {
+      kind: "warehouse",
+      name: "Склад",
+      email: "w@example.ru",
+      tariff: "warehouse",
+      trial: "on",
+      csrf,
+    },
+    cookie,
+  );
+  const id = Number(made.headers.get("location").split("/").pop());
+  const a = app.store.account(id);
+  assert.equal(a.price, 9900);
+  assert.equal(a.trial_until.slice(0, 10), "2027-01-21", "3 месяца пробного");
+
+  await app.post(
+    `/accounts/${id}/tariff`,
+    {
+      tariff: "warehouse",
+      period: "month",
+      price: "",
+      manager_id: "",
+      trial_until: "2027-01-21",
+      paid_until: "2026-11-30",
+      csrf,
+    },
+    cookie,
+  );
+  await app.post(`/accounts/${id}/extend`, { months: "3", amount: "29700", csrf }, cookie);
+  const after = app.store.account(id);
+  assert.equal(after.paid_until.slice(0, 10), "2027-02-28", "от 30.11 плюс 3 месяца");
+  assert.equal(app.store.paymentsOf(id)[0].amount, 29700);
+  assert.ok(app.store.auditOf(`account:${id}`).some((r) => r.action === "account_extend"));
+});
+
+test("функции и лимиты сверх тарифа, архив только с подтверждением", async (t) => {
+  const app = await start();
+  t.after(app.stop);
+  const { cookie } = await app.login();
+  const csrf = await app.csrf(cookie);
+  const made = await app.post(
+    "/accounts",
+    { kind: "seller", name: "Селлер", email: "s@example.ru", csrf },
+    cookie,
+  );
+  const id = Number(made.headers.get("location").split("/").pop());
+  await app.post(
+    `/accounts/${id}/features`,
+    { f_heatmap: "on", f_roles: "plan", l_staff: "12", l_skus: "", csrf },
+    cookie,
+  );
+  const plans = require("../src/admin/plans");
+  const a = app.store.account(id);
+  assert.equal(plans.effectiveFeatures(a).heatmap.on, true);
+  assert.equal(plans.effectiveFeatures(a).roles.on, false, "у «Старта» ролей нет");
+  assert.equal(plans.effectiveLimits(a).staff.value, 12);
+  assert.equal(plans.effectiveLimits(a).skus.value, 5000);
+
+  assert.equal(
+    (await app.post(`/accounts/${id}/archive`, { confirm: "не то", csrf }, cookie)).status,
+    400,
+  );
+  assert.equal(app.store.account(id).archived_at, null);
+  await app.post(`/accounts/${id}/archive`, { confirm: "Селлер", csrf }, cookie);
+  assert.ok(app.store.account(id).archived_at);
+});
+
+test("смена пароля требует код и закрывает остальные входы", async (t) => {
+  const app = await start();
+  t.after(app.stop);
+  const first = await app.login();
+  app.tick(31_000);
+  const second = await app.login();
+  const csrf = await app.csrf(second.cookie);
+  const bad = await app.post(
+    "/settings/password",
+    {
+      current: PASSWORD,
+      next: "новый-пароль-длинный",
+      next2: "новый-пароль-длинный",
+      code: "000000",
+      csrf,
+    },
+    second.cookie,
+  );
+  assert.equal(bad.status, 400);
+  app.tick(31_000);
+  const code = totp.codeAt(
+    SECRET,
+    Math.floor(new Date("2026-10-21T10:01:02Z").getTime() / totp.STEP_MS),
+  );
+  const ok = await app.post(
+    "/settings/password",
+    { current: PASSWORD, next: "новый-пароль-длинный", next2: "новый-пароль-длинный", code, csrf },
+    second.cookie,
+  );
+  assert.equal(ok.status, 303);
+  assert.equal((await app.get("/", first.cookie)).status, 303, "первый вход закрыт");
+  assert.equal((await app.get("/", second.cookie)).status, 200, "текущий жив");
+});
+
+test("заявка становится аккаунтом с пробным периодом", async (t) => {
+  const app = await start();
+  t.after(app.stop);
+  app.db.addLead(
+    {
+      kind: "demo",
+      lang: "ru",
+      subject: "Демо",
+      message: "Имя: Ольга\nПочта: Olga@Test.ru",
+      consent: { ads: false },
+    },
+    new Date("2026-10-21T09:00:00Z"),
+  );
+  app.store = require("../src/admin/store").adminStore(app.db.raw);
+  const { cookie } = await app.login();
+  const csrf = await app.csrf(cookie);
+  const res = await app.post("/leads/1/convert", { csrf }, cookie);
+  assert.equal(res.status, 303);
+  const acc = app.store.accountByEmail("olga@test.ru");
+  assert.ok(acc, "аккаунт создан");
+  assert.equal(acc.contact_name, "Ольга");
+  assert.ok(acc.trial_until);
+  assert.equal(app.store.lead(1).status, "won");
+});
+
+test("все страницы открываются и экранируют ввод", async (t) => {
+  const app = await start();
+  t.after(app.stop);
+  const { cookie } = await app.login();
+  for (const p of [
+    "/",
+    "/accounts",
+    "/accounts/new",
+    "/leads",
+    "/demos",
+    "/managers",
+    "/audit",
+    "/settings",
+    "/accounts?q=%3Cscript%3E",
+  ]) {
+    const res = await app.get(p, cookie);
+    assert.equal(res.status, 200, p);
+    assert.ok(!(await res.text()).includes("<script>"), p);
+  }
 });

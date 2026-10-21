@@ -2,18 +2,25 @@
  * Админка Уклада — внутренняя панель владельца.
  *
  * Слушает свой порт (`ADMIN_PORT`), а Caddy пускает к нему только отдельный
- * адрес `admin.<домен>`: с сайта и из `/api/*` до админки не достучаться.
+ * адрес `admin.<домен>` и только с адресов из `ADMIN_ALLOW_IPS`: с сайта и из
+ * `/api/*` до админки не достучаться.
+ *
+ * Здесь — вход, сессия и проверка каждого запроса. Сами экраны — `routes.js`.
  *
  * Защита, по порядку:
  *  - регистрации нет: владельца создаёт `cli.js` на самом сервере;
  *  - вход одним шагом — почта, пароль и код из приложения вместе; ответ на
  *    любую ошибку одинаковый, чтобы не подсказывать, что именно неверно;
- *  - 5 неудач подряд закрывают вход на 15 минут, плюс лимит частоты по IP;
+ *  - 5 неудач с адреса закрывают вход с него на 15 минут, 20 подряд —
+ *    аккаунт целиком; плюс лимит частоты по IP;
  *  - сессия: 12 часов максимум и час без действий; кука `__Host-` с
  *    HttpOnly, Secure, SameSite=Strict, в базе — только хэш токена;
  *  - каждая форма несёт токен CSRF сессии, а POST с чужим Origin отбрасывается;
  *  - CSP запрещает любые скрипты и встраивание страницы в чужой фрейм;
  *  - каждое действие пишется в журнал, который нельзя править.
+ *
+ * Локальная копия (`dev.js`) работает по http://localhost: только там кука
+ * без `Secure` и без префикса `__Host-` — браузер иначе её не сохранит.
  */
 /* global require, module, Buffer, URL, URLSearchParams, console */
 /* eslint-disable @typescript-eslint/no-require-imports */
@@ -22,10 +29,10 @@ const { adminStore, sha256 } = require("./store");
 const { checkPassword } = require("./password");
 const totp = require("./totp");
 const views = require("./views");
+const { createRoutes } = require("./routes");
 const { createRateLimit, clientIp } = require("../rateLimit");
 
-const COOKIE = "__Host-uklad_admin";
-const MAX_FORM_BYTES = 8 * 1024;
+const MAX_FORM_BYTES = 16 * 1024;
 const SESSION_MS = 12 * 3_600_000;
 const IDLE_MS = 3_600_000;
 // Неудачи считаются в двух местах. С одного адреса — 5 за 15 минут: так
@@ -49,12 +56,14 @@ const SECURITY_HEADERS = {
     "default-src 'none'; style-src 'self'; img-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'",
   "X-Frame-Options": "DENY",
   "X-Content-Type-Options": "nosniff",
-  "Referrer-Policy": "no-referrer",
+  // same-origin, а не no-referrer: при no-referrer браузер шлёт форму с
+  // `Origin: null`, и проверка источника отбрасывает вход.
+  "Referrer-Policy": "same-origin",
   "Cache-Control": "no-store",
   "X-Robots-Tag": "noindex, nofollow",
 };
 
-const EMAIL = /^[^\s@<>]{1,100}@[^\s@<>]{1,100}\.[^\s@<>]{2,}$/;
+const LOCAL_ORIGIN = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
 
 function readForm(req) {
   return new Promise((resolve) => {
@@ -75,11 +84,11 @@ function readForm(req) {
   });
 }
 
-function cookieValue(req) {
+function cookieValue(req, name) {
   const raw = req.headers.cookie ?? "";
   for (const part of raw.split(";")) {
     const [k, ...v] = part.trim().split("=");
-    if (k === COOKIE) return v.join("=");
+    if (k === name) return v.join("=");
   }
   return "";
 }
@@ -91,8 +100,27 @@ const sameText = (a, b) => {
 };
 
 function createAdminApp({ cfg, db, now = () => new Date(), log = console }) {
+  const local = LOCAL_ORIGIN.test(cfg.adminOrigin);
+  if (!local && !cfg.adminOrigin.startsWith("https://")) {
+    throw new Error(
+      "ADMIN_ORIGIN должен быть https://… (или http://localhost для локальной копии)",
+    );
+  }
+  const COOKIE = local ? "uklad_admin_local" : "__Host-uklad_admin";
+  const cookieAttrs = `Path=/; HttpOnly;${local ? "" : " Secure;"} SameSite=Strict`;
+
   const store = adminStore(db);
   const limiter = createRateLimit({ capacity: 10, refillPerMinute: 5 });
+  const routes = createRoutes({
+    store,
+    cfg: {
+      issueReset(accountId, t) {
+        const token = randomBytes(32).toString("base64url");
+        store.addReset(accountId, sha256(token), t, new Date(t.getTime() + RESET_MS).toISOString());
+        return `${cfg.publicUrl}/app/reset/${token}`;
+      },
+    },
+  });
 
   const html = (res, status, body, headers = {}) => {
     res.writeHead(status, {
@@ -109,7 +137,7 @@ function createAdminApp({ cfg, db, now = () => new Date(), log = console }) {
 
   /** Живая сессия по куке или `null`. Просроченную стираем сразу. */
   function session(req) {
-    const token = cookieValue(req);
+    const token = cookieValue(req, COOKIE);
     if (!/^[A-Za-z0-9_-]{43}$/.test(token)) return null;
     const hash = sha256(token);
     const s = store.findSession(hash);
@@ -131,7 +159,7 @@ function createAdminApp({ cfg, db, now = () => new Date(), log = console }) {
     return Boolean(form && s && sameText(form.get("csrf") ?? "", s.csrf));
   }
 
-  /** Неудачи по адресу: ip → { n, until }. В памяти, как и лимит частоты. */
+  /** Неудачи по адресу: ip → { n, first, until }. В памяти, как и лимит частоты. */
   const ipFails = new Map();
   const ipLocked = (ip, t) => (ipFails.get(ip)?.until ?? 0) > t.getTime();
   function ipFail(ip, t) {
@@ -142,32 +170,30 @@ function createAdminApp({ cfg, db, now = () => new Date(), log = console }) {
     if (f.n >= IP_LOCK_AFTER) f.until = t.getTime() + LOCK_MS;
     ipFails.set(ip, f);
     if (ipFails.size > 10_000) {
-      for (const [k, v] of ipFails)
+      for (const [k, v] of ipFails) {
         if (v.until < t.getTime() && t.getTime() - v.first > LOCK_MS) ipFails.delete(k);
+      }
     }
   }
 
+  const loginPage = (res, status, error) =>
+    html(res, status, views.loginPage({ error, dev: local }));
+
   async function login(req, res) {
     const ip = clientIp(req, cfg.trustProxy);
-    if (!limiter.take(ip)) {
-      return html(res, 429, views.loginPage({ error: "Слишком много попыток. Подождите минуту." }));
-    }
+    if (!limiter.take(ip)) return loginPage(res, 429, "Слишком много попыток. Подождите минуту.");
     const origin = req.headers.origin;
-    if (origin && origin !== cfg.adminOrigin) return html(res, 403, views.loginPage());
+    if (origin && origin !== cfg.adminOrigin) return loginPage(res, 403);
     const form = await readForm(req);
-    if (!form) return html(res, 413, views.loginPage());
+    if (!form) return loginPage(res, 413);
 
     const email = (form.get("email") ?? "").trim().toLowerCase().slice(0, 200);
     const t = now();
     const admin = store.adminByEmail(email);
 
     if (ipLocked(ip, t) || (admin?.locked_until && admin.locked_until > t.toISOString())) {
-      store.log(t, admin.id, "login_locked", email);
-      return html(
-        res,
-        401,
-        views.loginPage({ error: "Вход временно закрыт. Попробуйте через 15 минут." }),
-      );
+      store.log(t, admin?.id, "login_locked", email);
+      return loginPage(res, 401, "Вход временно закрыт. Попробуйте через 15 минут.");
     }
     const passOk = checkPassword(form.get("password") ?? "", admin?.password_hash ?? DUMMY_HASH);
     const step =
@@ -186,11 +212,12 @@ function createAdminApp({ cfg, db, now = () => new Date(), log = console }) {
       // Почту в журнал пишем, пароль и код — никогда.
       store.log(t, admin?.id, "login_failed", email);
       log.error("[uklad-admin] неудачный вход");
-      return html(res, 401, views.loginPage({ error: "Почта, пароль или код не подошли." }));
+      return loginPage(res, 401, "Почта, пароль или код не подошли.");
     }
 
     store.passAdmin(admin.id, step);
     ipFails.delete(ip);
+    store.purgeSessions(t);
     const token = randomBytes(32).toString("base64url");
     store.addSession({
       tokenHash: sha256(token),
@@ -201,23 +228,13 @@ function createAdminApp({ cfg, db, now = () => new Date(), log = console }) {
     });
     store.log(t, admin.id, "login", email);
     return redirect(res, "/", {
-      "Set-Cookie": `${COOKIE}=${token}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${SESSION_MS / 1000}`,
+      "Set-Cookie": `${COOKIE}=${token}; ${cookieAttrs}; Max-Age=${SESSION_MS / 1000}`,
     });
-  }
-
-  function accountRoute(path) {
-    const m = /^\/accounts\/(\d{1,10})(?:\/(block|unblock|reset))?$/.exec(path);
-    return m ? { id: Number(m[1]), action: m[2] } : null;
-  }
-
-  function listPage(res, s, filter, status = 200, error) {
-    const accounts = store.listAccounts(filter);
-    return html(res, status, views.accountsPage({ session: s, accounts, filter, error }));
   }
 
   async function handle(req, res) {
     const url = new URL(req.url ?? "/", "http://local");
-    const path = url.pathname;
+    const path = url.pathname.length > 1 ? url.pathname.replace(/\/+$/, "") : "/";
 
     if (path === "/admin.css" && req.method === "GET") {
       res.writeHead(200, {
@@ -229,92 +246,40 @@ function createAdminApp({ cfg, db, now = () => new Date(), log = console }) {
     }
     if (path === "/login") {
       if (req.method === "POST") return login(req, res);
-      return html(res, 200, views.loginPage());
+      return loginPage(res, 200);
     }
 
-    const s = session(req);
-    if (!s) {
-      return req.method === "GET" ? redirect(res, "/login") : html(res, 401, views.loginPage());
-    }
+    const found = session(req);
+    if (!found) return req.method === "GET" ? redirect(res, "/login") : loginPage(res, 401);
+    const s = { ...found, badges: { "/leads": store.countNewLeads() || 0 } };
     const t = now();
+    const ctx = {
+      path,
+      url,
+      s,
+      t,
+      page: (body) => html(res, 200, body),
+      badRequest: (body) => html(res, 400, body),
+      redirect: (to) => redirect(res, to),
+      notFound: () => html(res, 404, "Не найдено"),
+    };
 
-    if (req.method === "GET") {
-      if (path === "/") {
-        const k = url.searchParams.get("kind");
-        const kind = k === "warehouse" || k === "seller" ? k : "";
-        const search = (url.searchParams.get("q") ?? "").trim().slice(0, 100);
-        return listPage(res, s, { kind, search });
-      }
-      if (path === "/audit") {
-        return html(res, 200, views.auditPage({ session: s, audit: store.audit(300) }));
-      }
-      const r = accountRoute(path);
-      const account = r && !r.action ? store.account(r.id) : null;
-      if (account) {
-        const audit = store.auditOf(`account:${account.id}`);
-        return html(res, 200, views.accountPage({ session: s, account, audit }));
-      }
-      return html(res, 404, "Не найдено");
-    }
-
+    if (req.method === "GET") return routes.get(ctx);
     if (req.method !== "POST") return html(res, 405, "");
+
     const form = await readForm(req);
     if (!trusted(req, form, s)) return html(res, 403, "Форма устарела, обновите страницу.");
-
     if (path === "/logout") {
       store.dropSession(s.tokenHash);
       store.log(t, s.admin_id, "logout");
       return redirect(res, "/login", {
-        "Set-Cookie": `${COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0`,
+        "Set-Cookie": `${COOKIE}=; ${cookieAttrs}; Max-Age=0`,
       });
     }
-
-    if (path === "/accounts") {
-      const kind = form.get("kind");
-      const name = (form.get("name") ?? "").trim().slice(0, 120);
-      const email = (form.get("email") ?? "").trim().toLowerCase();
-      const error =
-        kind !== "warehouse" && kind !== "seller"
-          ? "Выберите тип."
-          : !name
-            ? "Впишите название."
-            : !EMAIL.test(email)
-              ? "Почта выглядит неверно."
-              : store.accountByEmail(email)
-                ? "Аккаунт с этой почтой уже есть."
-                : "";
-      if (error) return listPage(res, s, { kind: "", search: "" }, 400, error);
-      const id = store.addAccount({ kind, name, email }, t);
-      store.log(t, s.admin_id, "account_create", `account:${id}`, { тип: kind, почта: email });
-      return redirect(res, `/accounts/${id}`);
-    }
-
-    const r = accountRoute(path);
-    const account = r?.action ? store.account(r.id) : null;
-    if (!account) return html(res, 404, "Не найдено");
-    const target = `account:${account.id}`;
-
-    if (r.action === "block") {
-      const note = (form.get("note") ?? "").trim().slice(0, 200);
-      store.setStatus(account.id, "blocked", note);
-      store.log(t, s.admin_id, "account_block", target, note ? { причина: note } : undefined);
-      return redirect(res, `/accounts/${account.id}`);
-    }
-    if (r.action === "unblock") {
-      store.setStatus(account.id, "active", null);
-      store.log(t, s.admin_id, "account_unblock", target);
-      return redirect(res, `/accounts/${account.id}`);
-    }
-    // Сброс: ссылку показываем один раз прямо в ответе, в базе — только хэш.
-    const token = randomBytes(32).toString("base64url");
-    store.addReset(account.id, sha256(token), t, new Date(t.getTime() + RESET_MS).toISOString());
-    store.log(t, s.admin_id, "access_reset", target);
-    const resetLink = `${cfg.publicUrl}/app/reset/${token}`;
-    const audit = store.auditOf(target);
-    return html(res, 200, views.accountPage({ session: s, account, audit, resetLink }));
+    return routes.post({ ...ctx, form });
   }
 
-  return async function handler(req, res) {
+  const handler = async function handler(req, res) {
     try {
       await handle(req, res);
     } catch (error) {
@@ -322,6 +287,8 @@ function createAdminApp({ cfg, db, now = () => new Date(), log = console }) {
       if (!res.headersSent) html(res, 500, "Ошибка сервера");
     }
   };
+  handler.cookieName = COOKIE;
+  return handler;
 }
 
-module.exports = { createAdminApp, COOKIE };
+module.exports = { createAdminApp, COOKIE: "__Host-uklad_admin" };
