@@ -29,6 +29,7 @@ import { createSessionSlice, makeSession } from "./session.slice";
 import { createChatSlice } from "./chat.slice";
 import { createStaffSlice } from "./staff.slice";
 import { createWorkstationSlice } from "./workstation.slice";
+import { createSubscriptionSlice } from "./subscription.slice";
 import { sanitizeDomains } from "../data/sanitize";
 
 /**
@@ -43,6 +44,58 @@ export type { GoodsConflict, EditorState } from "./state";
 
 /** Ключ автосохранения в localStorage (ТЗ: изменения сохраняются сами). */
 export const PERSIST_KEY = "uklad-store-v1";
+
+/** Версия персиста: её же пишет резервная копия (`lib/backup.ts`). */
+export const PERSIST_VERSION = 8;
+
+// Сохраняем только доменные данные. Транзиентное (инструмент, выделение,
+// буфер, зум/пан, диалоги, поиск, экран) — не персистим. Тот же набор уходит
+// в резервную копию: архив — это ровно то, что пережило бы перезагрузку.
+export function persistedState(s: EditorState) {
+  return {
+    warehouse: s.warehouse,
+    otherWarehouses: s.otherWarehouses,
+    activeFloorId: s.activeFloorId,
+    products: s.products,
+    placements: s.placements,
+    categories: s.categories,
+    categoryFields: s.categoryFields,
+    fieldValues: s.fieldValues,
+    templates: s.templates,
+    layoutTemplates: s.layoutTemplates,
+    account: s.account,
+    profile: s.profile,
+    seenHints: s.seenHints,
+    addressing: s.addressing,
+    // Фулфилмент-контур. Новое доменное поле нужно добавлять сюда явно —
+    // иначе оно просто не переживёт перезагрузку страницы.
+    expectedShipments: s.expectedShipments,
+    receivingEvents: s.receivingEvents,
+    boxes: s.boxes,
+    pallets: s.pallets,
+    boxSeq: s.boxSeq,
+    palletSeq: s.palletSeq,
+    // Незакрытая приёмка. Сохранённый ход сверяется с данными при возврате
+    // в мастер (`resumeReceiving`), поэтому устаревшие id здесь не страшны.
+    receiving: s.receiving,
+    requests: s.requests,
+    shipments: s.shipments,
+    session: s.session,
+    // Переписка сохраняется, открытый на экране тред — нет: какой чат был
+    // раскрыт вчера, к делу не относится, а вот сами сообщения потерять
+    // нельзя (п.3).
+    chats: s.chats,
+    integrations: s.integrations,
+    labelTemplates: s.labelTemplates,
+    // Тариф и настройки резервных копий: срок напоминания и дата последней
+    // копии должны пережить перезагрузку, иначе напоминание врёт.
+    subscription: s.subscription,
+    // Журнал сотрудников и вход по бейджу: вход живёт 12 часов и обязан
+    // пережить перезагрузку экрана посреди смены.
+    staffEvents: s.staffEvents,
+    stationSession: s.stationSession,
+  };
+}
 
 /** Форма персиста (см. partialize ниже) — минимум, нужный миграции. */
 type PersistedState = {
@@ -79,10 +132,11 @@ export const useEditor = create<EditorState>()(
       ...createChatSlice(...a),
       ...createStaffSlice(...a),
       ...createWorkstationSlice(...a),
+      ...createSubscriptionSlice(...a),
     }),
     {
       name: PERSIST_KEY,
-      version: 8,
+      version: PERSIST_VERSION,
       // v1 → v2: модель «проход как объект» заменена на «пол как проход».
       // Проходы больше нельзя ни создать, ни увидеть, но их прямоугольники
       // остаются в старых сохранениях — ловят наложение в overlap.ts и висят
@@ -210,48 +264,7 @@ export const useEditor = create<EditorState>()(
         ...current,
         ...sanitizeDomains(persisted as Record<string, unknown>),
       }),
-      // Сохраняем только доменные данные. Транзиентное (инструмент, выделение,
-      // буфер, зум/пан, диалоги, поиск, экран) — не персистим.
-      partialize: (s) => ({
-        warehouse: s.warehouse,
-        otherWarehouses: s.otherWarehouses,
-        activeFloorId: s.activeFloorId,
-        products: s.products,
-        placements: s.placements,
-        categories: s.categories,
-        categoryFields: s.categoryFields,
-        fieldValues: s.fieldValues,
-        templates: s.templates,
-        layoutTemplates: s.layoutTemplates,
-        account: s.account,
-        profile: s.profile,
-        seenHints: s.seenHints,
-        addressing: s.addressing,
-        // Фулфилмент-контур. Новое доменное поле нужно добавлять сюда явно —
-        // иначе оно просто не переживёт перезагрузку страницы.
-        expectedShipments: s.expectedShipments,
-        receivingEvents: s.receivingEvents,
-        boxes: s.boxes,
-        pallets: s.pallets,
-        boxSeq: s.boxSeq,
-        palletSeq: s.palletSeq,
-        // Незакрытая приёмка. Сохранённый ход сверяется с данными при возврате
-        // в мастер (`resumeReceiving`), поэтому устаревшие id здесь не страшны.
-        receiving: s.receiving,
-        requests: s.requests,
-        shipments: s.shipments,
-        session: s.session,
-        // Переписка сохраняется, открытый на экране тред — нет: какой чат был
-        // раскрыт вчера, к делу не относится, а вот сами сообщения потерять
-        // нельзя (п.3).
-        chats: s.chats,
-        integrations: s.integrations,
-        labelTemplates: s.labelTemplates,
-        // Журнал сотрудников и вход по бейджу: вход живёт 12 часов и обязан
-        // пережить перезагрузку экрана посреди смены.
-        staffEvents: s.staffEvents,
-        stationSession: s.stationSession,
-      }),
+      partialize: persistedState,
     },
   ),
 );
