@@ -24,9 +24,10 @@ const TITLES: Record<Page, Copy> = {
   // витрина. Здесь названы оба адресата продукта прямо: селлер ищет склад на
   // маркетплейсе, склад работает в WMS. Тот же текст стоит в шаблоне
   // `index.html` — он попадает в превью до того, как отработает предрендер.
+  // С 21 окт на главной открывается страница для складов — заголовок её же.
   landing: c(
-    "Уклад — маркетплейс складов и WMS для фулфилмента",
-    "Uklad — a marketplace of warehouses and a WMS",
+    "Адаптивная система управления складом — Уклад",
+    "An adaptive warehouse management system — Uklad",
   ),
   warehouses: c(
     "Адаптивная система управления складом — Уклад",
@@ -54,8 +55,8 @@ const TITLES: Record<Page, Copy> = {
  */
 const DESCRIPTIONS: Record<Page, Copy> = {
   landing: c(
-    "WMS для фулфилмент-склада и витрина, где его находят селлеры. Приёмка, размещение по ячейкам, сборка и отгрузка — в одной системе.",
-    "A WMS for a fulfilment warehouse and a marketplace where sellers find it. Intake, cell placement, picking and shipping in one system.",
+    "Хранение и учёт товара, сотрудники и задачи, связь с селлерами в одной системе. Внедрим и адаптируем под ваши процессы. Три месяца бесплатно.",
+    "Stock and storage, staff and tasks, and seller communication in one system. We roll it out and adapt it to your processes. Three months free.",
   ),
   warehouses: c(
     "Хранение и учёт товара, сотрудники и задачи, связь с селлерами в одной системе. Внедрим и адаптируем под ваши процессы. Три месяца бесплатно.",

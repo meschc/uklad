@@ -100,7 +100,7 @@ export function RoadmapScreen() {
       <RoadmapAsk />
       {/* Подвал один, тот же, что у страницы для складов: синяя форма
           перетекает в синий подвал без шва. */}
-      <WarehousesFooter />
+      <WarehousesFooter away />
     </div>
   );
 }

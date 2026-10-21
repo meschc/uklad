@@ -80,7 +80,10 @@ export function VolumeBar({
     // кнопок читает голос и какую нажимает тест, — а рядом, в колонке отбора,
     // стоит своя. Названный `section` становится отдельной областью страницы,
     // по которой можно перемещаться.
-    <section aria-labelledby="volume-title" className="r-window bg-muted p-4 sm:p-5">
+    <section
+      aria-labelledby="volume-title"
+      className="rounded-[22px] bg-[var(--wh-soft)] p-4 sm:p-5"
+    >
       <div className="flex flex-wrap items-start gap-x-6 gap-y-2">
         <div className="min-w-0 flex-1">
           <h2 id="volume-title" className="font-display text-base font-heading tracking-tight">
