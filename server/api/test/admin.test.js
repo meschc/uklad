@@ -105,7 +105,7 @@ test("тот же код второй раз не принимается", async
   assert.equal((await app.login()).res.status, 401);
 });
 
-test("пять неудач закрывают вход даже с верными данными", async (t) => {
+test("пять неудач с одного адреса закрывают вход с него на 15 минут", async (t) => {
   const app = await start();
   t.after(app.stop);
   for (let i = 0; i < 5; i++) await app.login({ password: "неверный-пароль-123" });
@@ -114,6 +114,17 @@ test("пять неудач закрывают вход даже с верным
   assert.match(await locked.res.text(), /временно закрыт/);
   app.tick(16 * 60_000);
   assert.equal((await app.login()).res.status, 303);
+});
+
+test("чужие неудачи не запирают аккаунт раньше двадцатой", async (t) => {
+  const app = await start();
+  t.after(app.stop);
+  const owner = app.store.adminByEmail("owner@u-klad.ru");
+  app.store.failAdmin(owner.id, 18, null);
+  await app.login({ password: "неверный-пароль-123" });
+  assert.equal(app.store.adminByEmail("owner@u-klad.ru").locked_until, null);
+  await app.login({ password: "неверный-пароль-123" });
+  assert.ok(app.store.adminByEmail("owner@u-klad.ru").locked_until, "двадцатая закрывает");
 });
 
 test("форма без CSRF или с чужого адреса отбрасывается", async (t) => {

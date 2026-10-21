@@ -19,6 +19,8 @@ services:
     environment:
       SITE_DOMAIN: ${SITE_DOMAIN:?заполните SITE_DOMAIN в .env}
       ACME_EMAIL: ${ACME_EMAIL:?заполните ACME_EMAIL в .env}
+      # Кому открыта админка. Пусто — никому (см. .env.example).
+      ADMIN_ALLOW_IPS: ${ADMIN_ALLOW_IPS:-127.0.0.1/32}
     volumes:
       # Сертификаты переживают пересборку: иначе Let's Encrypt быстро упрётся
       # в лимит выдачи.
@@ -35,6 +37,8 @@ services:
     # Наружу порт не открыт: к серверу ходит только Caddy по внутренней сети.
     # НЕ добавлять сюда `ports:` — Docker обходит ufw и откроет порт в
     # интернет. Для отладки — только "127.0.0.1:8080:8080".
+    # Только для SSH-туннеля к админке (deploy/README.md, «Админка»):
+    # ports: ["127.0.0.1:8081:8081"]
     env_file: .env
     environment:
       DB_FILE: /data/uklad.db

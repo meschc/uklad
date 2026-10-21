@@ -28,7 +28,11 @@ const COOKIE = "__Host-uklad_admin";
 const MAX_FORM_BYTES = 8 * 1024;
 const SESSION_MS = 12 * 3_600_000;
 const IDLE_MS = 3_600_000;
-const LOCK_AFTER = 5;
+// Неудачи считаются в двух местах. С одного адреса — 5 за 15 минут: так
+// чужой не переберёт пароль. Аккаунт целиком закрывается только после 20:
+// иначе любой запер бы владельца пятью нарочно неверными попытками.
+const IP_LOCK_AFTER = 5;
+const LOCK_AFTER = 20;
 const LOCK_MS = 15 * 60_000;
 const RESET_MS = 24 * 3_600_000;
 
@@ -124,8 +128,25 @@ function createAdminApp({ cfg, db, now = () => new Date(), log = console }) {
     return Boolean(form && s && sameText(form.get("csrf") ?? "", s.csrf));
   }
 
+  /** Неудачи по адресу: ip → { n, until }. В памяти, как и лимит частоты. */
+  const ipFails = new Map();
+  const ipLocked = (ip, t) => (ipFails.get(ip)?.until ?? 0) > t.getTime();
+  function ipFail(ip, t) {
+    const prev = ipFails.get(ip);
+    const fresh = !prev || t.getTime() - prev.first > LOCK_MS;
+    const f = fresh ? { n: 0, first: t.getTime(), until: 0 } : prev;
+    f.n += 1;
+    if (f.n >= IP_LOCK_AFTER) f.until = t.getTime() + LOCK_MS;
+    ipFails.set(ip, f);
+    if (ipFails.size > 10_000) {
+      for (const [k, v] of ipFails)
+        if (v.until < t.getTime() && t.getTime() - v.first > LOCK_MS) ipFails.delete(k);
+    }
+  }
+
   async function login(req, res) {
-    if (!limiter.take(clientIp(req, cfg.trustProxy))) {
+    const ip = clientIp(req, cfg.trustProxy);
+    if (!limiter.take(ip)) {
       return html(res, 429, views.loginPage({ error: "Слишком много попыток. Подождите минуту." }));
     }
     const origin = req.headers.origin;
@@ -137,7 +158,7 @@ function createAdminApp({ cfg, db, now = () => new Date(), log = console }) {
     const t = now();
     const admin = store.adminByEmail(email);
 
-    if (admin?.locked_until && admin.locked_until > t.toISOString()) {
+    if (ipLocked(ip, t) || (admin?.locked_until && admin.locked_until > t.toISOString())) {
       store.log(t, admin.id, "login_locked", email);
       return html(
         res,
@@ -152,6 +173,7 @@ function createAdminApp({ cfg, db, now = () => new Date(), log = console }) {
         : null;
 
     if (!admin || step === null) {
+      ipFail(ip, t);
       if (admin) {
         const failed = admin.failed + 1;
         const lockedUntil =
@@ -165,6 +187,7 @@ function createAdminApp({ cfg, db, now = () => new Date(), log = console }) {
     }
 
     store.passAdmin(admin.id, step);
+    ipFails.delete(ip);
     const token = randomBytes(32).toString("base64url");
     store.addSession({
       tokenHash: sha256(token),

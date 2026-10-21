@@ -3,6 +3,7 @@
  * самом сервере:
  *
  *   docker compose exec api node api/src/admin/cli.js create-owner почта@домен
+ *   docker compose exec api node api/src/admin/cli.js unlock почта@домен
  *
  * Команда придумывает пароль сама (24 символа) и печатает его вместе с
  * секретом для приложения кодов ОДИН раз. В базе остаются только хэш пароля
@@ -19,12 +20,26 @@ const { hashPassword } = require("./password");
 const totp = require("./totp");
 
 function main([cmd, email]) {
-  if (cmd !== "create-owner" || !email || !email.includes("@")) {
-    console.error("Использование: cli.js create-owner почта@домен");
+  if (!["create-owner", "unlock"].includes(cmd) || !email || !email.includes("@")) {
+    console.error("Использование: cli.js create-owner|unlock почта@домен");
     process.exit(2);
   }
   const db = openDb(path.resolve(process.env.DB_FILE ?? "/data/uklad.db"));
   const store = adminStore(db.raw);
+  if (cmd === "unlock") {
+    // Снять блокировку входа после 20 неудач. Блок по адресу живёт в памяти
+    // и снимается перезапуском контейнера.
+    const admin = store.adminByEmail(email.trim().toLowerCase());
+    if (!admin) {
+      console.error("Такого владельца нет.");
+      process.exit(1);
+    }
+    store.failAdmin(admin.id, 0, null);
+    store.log(new Date(), null, "owner_unlocked", email);
+    db.close();
+    console.log("Вход снова открыт.");
+    return;
+  }
   if (store.countAdmins() > 0) {
     console.error("Владелец уже есть. Второго не создаём.");
     process.exit(1);
