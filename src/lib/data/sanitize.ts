@@ -6,6 +6,7 @@ import {
   isReceivingEvent,
   isRequest,
   isStaffEvent,
+  isTask,
   keepValid,
   type Guard,
 } from "./guards";
@@ -29,6 +30,7 @@ const CHECKED: { key: string; guard: Guard<unknown> }[] = [
   { key: "receivingEvents", guard: isReceivingEvent as Guard<unknown> },
   { key: "requests", guard: isRequest as Guard<unknown> },
   { key: "staffEvents", guard: isStaffEvent as Guard<unknown> },
+  { key: "tasks", guard: isTask as Guard<unknown> },
 ];
 
 export function sanitizeDomains(
@@ -39,6 +41,16 @@ export function sanitizeDomains(
   for (const { key, guard } of CHECKED) {
     if (!(key in out)) continue;
     out[key] = keepValid(out[key], guard, key).items;
+  }
+  // Настройка услуг — не список, а один объект: битая форма заменяется
+  // пустой настройкой (значения по умолчанию), а не роняет экран операций.
+  if ("serviceSettings" in out) {
+    const v = out.serviceSettings as { enabled?: unknown; prices?: unknown } | null;
+    const isObj = (x: unknown) => typeof x === "object" && x !== null && !Array.isArray(x);
+    if (!isObj(v) || !isObj(v?.enabled) || !isObj(v?.prices)) {
+      console.warn("[sanitize] serviceSettings: неверная форма, сброшено");
+      delete out.serviceSettings;
+    }
   }
   return out;
 }

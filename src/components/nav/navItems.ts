@@ -4,6 +4,7 @@ import {
   ClipboardCheck,
   ClipboardList,
   FileText,
+  ListChecks,
   MessagesSquare,
   MonitorSmartphone,
   PackagePlus,
@@ -68,6 +69,7 @@ const WAREHOUSE_NAV: NavEntry[] = [
       { view: "picking", key: "nav.side.picking", icon: ScanLine },
       // Стол упаковщика и меню смены: открывается на весь экран, вход по бейджу.
       { view: "workstation", key: "nav.side.workstation", icon: MonitorSmartphone },
+      { view: "operations", key: "nav.side.operations", icon: ListChecks },
     ],
   },
   // Переписка с продавцами — сразу за конвейером и отдельным пунктом (п.3):

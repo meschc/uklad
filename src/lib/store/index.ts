@@ -27,6 +27,7 @@ import { createFulfillmentSlice } from "./fulfillment.slice";
 import { createRequestsSlice } from "./requests.slice";
 import { createSessionSlice, makeSession } from "./session.slice";
 import { createChatSlice } from "./chat.slice";
+import { createOperationsSlice } from "./operations.slice";
 import { createStaffSlice } from "./staff.slice";
 import { createWorkstationSlice } from "./workstation.slice";
 import { createSubscriptionSlice } from "./subscription.slice";
@@ -94,6 +95,8 @@ export function persistedState(s: EditorState) {
     // пережить перезагрузку экрана посреди смены.
     staffEvents: s.staffEvents,
     stationSession: s.stationSession,
+    tasks: s.tasks,
+    serviceSettings: s.serviceSettings,
   };
 }
 
@@ -133,6 +136,7 @@ export const useEditor = create<EditorState>()(
       ...createStaffSlice(...a),
       ...createWorkstationSlice(...a),
       ...createSubscriptionSlice(...a),
+      ...createOperationsSlice(...a),
     }),
     {
       name: PERSIST_KEY,

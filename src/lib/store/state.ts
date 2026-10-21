@@ -27,6 +27,10 @@ import type {
   Pallet,
   ReceivingEvent,
   ReceivingProgress,
+  ServiceKind,
+  ServiceSettings,
+  TaskStatus,
+  WarehouseTask,
   RequestStatus,
   Session,
   ShipmentSource,
@@ -469,6 +473,20 @@ export interface FulfillmentSlice {
   placeBox: (boxId: string, addr: CellAddress) => void;
   createPallet: () => Pallet;
   attachBoxToPallet: (boxId: string, palletId: string) => void;
+  /**
+   * Грузовая приёмка: завести принятые места поставки невскрытыми — паллеты
+   * и короба без паллеты, каждому свой ярлык. Возвращает их id.
+   */
+  acceptCargo: (input: {
+    shipmentId: string;
+    pallets: number;
+    boxes: number;
+    declaredPallets?: number;
+    declaredBoxes?: number;
+    staffId?: string;
+  }) => { palletIds: string[]; boxIds: string[] };
+  /** Вскрыть место (паллету или короб) — начало товарной приёмки по нему. */
+  openUnit: (id: string) => void;
   /** Снять единицы товара с коробки (сборка). Возвращает, сколько сняли. */
   removeFromBox: (boxId: string, productId: string, qty: number) => number;
 
@@ -661,9 +679,35 @@ export interface SubscriptionSlice {
   markBackupDone: (at: number) => void;
 }
 
+export interface OperationsSlice {
+  /** Задания на операции склада: маркировка, упаковка, возвраты… */
+  tasks: WarehouseTask[];
+  /** Какие операции склад оказывает и почём. */
+  serviceSettings: ServiceSettings;
+  /** Завести задание. Возвращает id. */
+  createTask: (
+    task: Pick<WarehouseTask, "kind" | "qty" | "partnerId" | "staffId" | "note">,
+  ) => string;
+  /**
+   * Перевести задание в статус. Время начала и закрытия ставит срез: дата
+   * закрытия — это дата услуги в счёте, и подставлять её руками нельзя.
+   */
+  setTaskStatus: (id: string, status: TaskStatus) => void;
+  updateTask: (
+    id: string,
+    patch: Partial<Pick<WarehouseTask, "qty" | "staffId" | "partnerId" | "note">>,
+  ) => void;
+  setServiceEnabled: (kind: ServiceKind, on: boolean) => void;
+  /** Приёмка в два этапа — режим склада. */
+  setTwoStageReceiving: (on: boolean) => void;
+  /** Цена за единицу; `null` стирает цену. */
+  setServicePrice: (kind: ServiceKind, price: number | null) => void;
+}
+
 export type EditorState = AccountSlice &
   WorkstationSlice &
   SubscriptionSlice &
+  OperationsSlice &
   SessionSlice &
   ChatSlice &
   IntegrationsSlice &
