@@ -74,7 +74,7 @@ export const createChatSlice: SliceCreator<ChatSlice> = (set, get) => ({
   // той, что сообщения и показывает.
   openChat: (partnerId) => set({ activeChatId: partnerId }),
 
-  sendChatMessage: (partnerId, text) => {
+  sendChatMessage: (partnerId, text, replyTo) => {
     const body = text.trim();
     if (!body) return;
     const message: ChatMessage = {
@@ -82,9 +82,40 @@ export const createChatSlice: SliceCreator<ChatSlice> = (set, get) => ({
       from: get().session.user.role,
       text: body,
       at: nowMs(),
+      ...(replyTo ? { replyTo } : {}),
     };
     set((s) => ({
       chats: { ...s.chats, [partnerId]: [...(s.chats[partnerId] ?? []), message] },
+    }));
+  },
+
+  editChatMessage: (partnerId, messageId, text) => {
+    const body = text.trim();
+    if (!body) return;
+    const role = get().session.user.role;
+    set((s) => ({
+      chats: {
+        ...s.chats,
+        [partnerId]: (s.chats[partnerId] ?? []).map((m) =>
+          m.id === messageId && m.from === role && !m.deletedAt && m.text !== body
+            ? { ...m, text: body, editedAt: nowMs() }
+            : m,
+        ),
+      },
+    }));
+  },
+
+  deleteChatMessage: (partnerId, messageId) => {
+    const role = get().session.user.role;
+    set((s) => ({
+      chats: {
+        ...s.chats,
+        [partnerId]: (s.chats[partnerId] ?? []).map((m) =>
+          m.id === messageId && m.from === role && !m.deletedAt
+            ? { ...m, text: "", deletedAt: nowMs() }
+            : m,
+        ),
+      },
     }));
   },
 
