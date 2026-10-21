@@ -89,8 +89,13 @@ export function RoadmapAsk() {
 
   const done = lead.state === "sent" || lead.state === "mailed";
 
+  const [tried, setTried] = useState(false);
+
   const send = () => {
-    if (blocker) return;
+    if (blocker) {
+      setTried(true);
+      return;
+    }
     lead.send({
       // Вид заявки — по тому, что в ней главное. Письмо с идеей читают отдельно
       // и отвечают на него; голоса складывают пачкой, когда решают очерёдность.
@@ -107,68 +112,74 @@ export function RoadmapAsk() {
   };
 
   return (
-    <Reveal
+    <section
       id="ideas"
-      as="section"
-      className="r-window mt-16 border border-border bg-card/60 p-6 sm:mt-20 sm:p-8"
+      className="mt-24 scroll-mt-20 rounded-t-[24px] bg-[var(--wh-blue)] text-white sm:rounded-t-[32px]"
     >
-      <div className="mx-auto max-w-2xl">
-        <h2 className="font-display text-xl font-heading tracking-tight">{t(T.title)}</h2>
-        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{t(T.note)}</p>
+      <div className="mx-auto max-w-[1280px] px-5 pb-16 pt-16 sm:px-10 sm:pt-24">
+        <div className="grid grid-cols-1 gap-14 lg:grid-cols-2 lg:gap-20">
+          <Reveal>
+            <h2 className="text-[clamp(40px,5vw,72px)] font-normal leading-[0.98] tracking-[-0.045em]">
+              {t(T.title)}
+            </h2>
+            <p className="mt-6 max-w-[34rem] text-[17px] leading-relaxed text-white/80">
+              {t(T.note)}
+            </p>
+          </Reveal>
 
-        {!done && (
-          <div className="mt-6 space-y-5">
-            <MarkedList items={marked} />
+          <Reveal
+            delay={120}
+            className="min-w-0 overflow-hidden rounded-[22px] bg-background px-5 py-7 text-foreground sm:px-8"
+          >
+            {!done && (
+              <div className="flex flex-col gap-4">
+                <MarkedList items={marked} />
 
-            <div>
-              <label
-                htmlFor="roadmap-idea"
-                className="block text-xs uppercase tracking-wide text-muted-foreground"
-              >
-                {t(T.idea)}
-              </label>
-              <textarea
-                id="roadmap-idea"
-                value={idea}
-                rows={4}
-                maxLength={MAX_IDEA}
-                placeholder={t(T.ideaPlaceholder)}
-                onChange={(e) => setIdea(e.target.value)}
-                className="mt-1.5 w-full resize-y rounded-2xl border border-border bg-background px-3.5 py-2.5 text-sm leading-relaxed outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-primary"
-              />
-            </div>
+                <div>
+                  <label htmlFor="roadmap-idea" className="text-sm font-medium">
+                    {t(T.idea)}
+                  </label>
+                  <textarea
+                    id="roadmap-idea"
+                    value={idea}
+                    rows={4}
+                    maxLength={MAX_IDEA}
+                    placeholder={t(T.ideaPlaceholder)}
+                    onChange={(e) => setIdea(e.target.value)}
+                    className="mt-1.5 w-full resize-y rounded-xl border border-border bg-background px-4 py-3 text-base leading-relaxed outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-[var(--wh-blue)]"
+                  />
+                </div>
 
-            <div>
-              <label
-                htmlFor="roadmap-contact"
-                className="block text-xs uppercase tracking-wide text-muted-foreground"
-              >
-                {t(T.contact)}
-              </label>
-              <input
-                id="roadmap-contact"
-                value={contact}
-                maxLength={MAX_CONTACT}
-                placeholder={t(T.contactPlaceholder)}
-                onChange={(e) => setContact(e.target.value)}
-                className="mt-1.5 h-10 w-full rounded-full border border-border bg-background px-3.5 text-sm outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-primary"
-              />
-            </div>
+                <div>
+                  <label htmlFor="roadmap-contact" className="text-sm font-medium">
+                    {t(T.contact)}
+                  </label>
+                  <input
+                    id="roadmap-contact"
+                    value={contact}
+                    maxLength={MAX_CONTACT}
+                    placeholder={t(T.contactPlaceholder)}
+                    onChange={(e) => setContact(e.target.value)}
+                    className="mt-1.5 h-12 w-full rounded-xl border border-border bg-background px-4 text-base outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-[var(--wh-blue)]"
+                  />
+                </div>
 
-            <ConsentChecks value={consent} onChange={setConsent} />
-          </div>
-        )}
+                <ConsentChecks value={consent} onChange={setConsent} />
+              </div>
+            )}
 
-        <LeadSubmit
-          lead={lead}
-          idle={t(T.submit)}
-          blocker={blocker ? t(blocker) : null}
-          onClick={send}
-          icon
-          className="mt-5"
-        />
+            <LeadSubmit lead={lead} idle={t(T.submit)} onClick={send} icon className="mt-5" />
+            {/* Подсказка — только после попытки отправить и под кнопкой, как
+                в заявке складов (Кирилл, 19 окт): заранее она читается упрёком. */}
+            {tried && blocker && (
+              <p role="alert" className="mt-2 text-xs leading-relaxed text-destructive">
+                {t(blocker)}
+              </p>
+            )}
+          </Reveal>
+        </div>
       </div>
-    </Reveal>
+    </section>
   );
 }
 
@@ -212,8 +223,8 @@ function MarkedList({ items }: { items: readonly { id: string; title: Copy }[] }
                 onClick={() => toggleVote(item.id)}
                 aria-label={t(T.unmark, { title })}
                 className={cn(
-                  "r-chip inline-flex h-8 items-center gap-1.5 border border-primary/40 bg-primary/10",
-                  "px-3 text-xs text-foreground transition-colors hover:border-primary",
+                  "r-chip inline-flex h-8 items-center gap-1.5 bg-[var(--wh-soft)] shadow-[inset_0_0_0_1px_var(--wh-line)]",
+                  "px-3 text-xs text-foreground transition-colors hover:bg-[var(--wh-line)]",
                 )}
               >
                 {title}
