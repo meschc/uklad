@@ -1,0 +1,176 @@
+import { useEffect, useState } from "react";
+import { Menu, X } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { c, useT, type Copy } from "../../lib/copy";
+import { href, routePath, switchLang, type Route } from "../../lib/route";
+import { LogoMark } from "../Logo";
+
+/**
+ * Пункты шапки страниц в новом стиле. Склад раньше селлера — тот же порядок,
+ * что в старой шапке и в карте сайта: покупатель Уклада — склад.
+ */
+const LINKS: { label: Copy; to: string }[] = [
+  { to: "/warehouses", label: c("Складам", "For warehouses") },
+  { to: "/market", label: c("Каталог складов", "Warehouses") },
+  { to: "/sellers", label: c("Селлерам", "For sellers") },
+  { to: "/pricing", label: c("Тарифы", "Pricing") },
+  { to: "/roadmap", label: c("Дорожная карта", "Roadmap") },
+];
+
+const T = {
+  brand: c("Уклад", "Uklad"),
+  menu: c("Меню", "Menu"),
+  connect: c("Подключить склад", "Connect a warehouse"),
+  // Подпись — на том языке, куда ведёт переключатель (как в старой шапке).
+  switchTo: c("Switch to English", "Показать по-русски"),
+};
+
+/** Высота закреплённой шапки. */
+export const SITE_NAV_H = 64;
+
+/**
+ * Шапка страниц витрины в новом стиле — по образцу страницы для складов.
+ *
+ * `tone="blue"` — белая шапка внутри синего первого экрана; `tone="sticky"` —
+ * закреплённая светлая, которая выезжает сверху, как только первый экран ушёл
+ * из вида (своя шапка синего блока закрепиться не может: блок обрезан
+ * `overflow-hidden` ради скругления).
+ */
+export function SiteNav({ route, tone }: { route: Route; tone: "blue" | "sticky" }) {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+  const other = t.lang === "ru" ? "en" : "ru";
+  const onBlue = tone === "blue";
+  const here = routePath(route).replace(/\/+$/, "");
+
+  const onSwitchLang = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setOpen(false);
+    switchLang(other);
+  };
+
+  const linkClass = onBlue
+    ? "text-white/85 hover:text-white"
+    : "text-[var(--wh-muted)] hover:text-[var(--wh-ink)]";
+
+  return (
+    <div className="relative">
+      <div className="flex items-center justify-between gap-6">
+        <a
+          href={href("/")}
+          className={cn(
+            "flex items-center gap-2 text-xl font-semibold tracking-tight",
+            onBlue && "text-white",
+          )}
+        >
+          <LogoMark className={cn("rounded-lg", onBlue && "ring-1 ring-white/40")} />
+          {t(T.brand)}
+        </a>
+        <nav className="flex items-center gap-7 text-sm">
+          {LINKS.map((l) => (
+            <a
+              key={l.to}
+              href={href(l.to)}
+              aria-current={here === l.to ? "page" : undefined}
+              className={cn(
+                "hidden transition-colors lg:inline",
+                linkClass,
+                here === l.to && (onBlue ? "text-white" : "text-[var(--wh-ink)]"),
+              )}
+            >
+              {t(l.label)}
+            </a>
+          ))}
+          <a
+            href={href(routePath(route), other)}
+            hrefLang={other}
+            onClick={onSwitchLang}
+            aria-label={t(T.switchTo)}
+            className={cn("hidden uppercase tracking-[0.08em] sm:inline", linkClass)}
+          >
+            {other}
+          </a>
+          <a
+            href={`${href("/warehouses")}#connect`}
+            className={cn(
+              "wh-btn !h-10 !px-[18px] !text-sm max-sm:!hidden",
+              onBlue ? "wh-btn--white" : "wh-btn--blue",
+            )}
+          >
+            {t(T.connect)}
+          </a>
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            aria-label={t(T.menu)}
+            aria-expanded={open}
+            className={cn(
+              "flex size-10 items-center justify-center rounded-full lg:hidden",
+              onBlue ? "bg-white/15 text-white" : "bg-[var(--wh-soft)] text-[var(--wh-ink)]",
+            )}
+          >
+            {open ? <X className="size-4" /> : <Menu className="size-4" />}
+          </button>
+        </nav>
+      </div>
+
+      {open && (
+        <nav className="wh-swap absolute inset-x-0 top-full z-10 mt-3 flex flex-col rounded-2xl bg-[var(--wh-ground)] p-2 text-[var(--wh-ink)] shadow-[0_24px_50px_-20px_rgba(0,0,0,0.3)] lg:hidden">
+          {LINKS.map((l) => (
+            <a
+              key={l.to}
+              href={href(l.to)}
+              onClick={() => setOpen(false)}
+              className="rounded-xl px-4 py-2.5 text-sm hover:bg-[var(--wh-soft)]"
+            >
+              {t(l.label)}
+            </a>
+          ))}
+          <a
+            href={`${href("/warehouses")}#connect`}
+            onClick={() => setOpen(false)}
+            className="rounded-xl px-4 py-2.5 text-sm text-[var(--wh-blue)] hover:bg-[var(--wh-soft)] sm:hidden"
+          >
+            {t(T.connect)}
+          </a>
+          <a
+            href={href(routePath(route), other)}
+            hrefLang={other}
+            onClick={onSwitchLang}
+            className="rounded-xl px-4 py-2.5 text-sm text-[var(--wh-muted)] hover:bg-[var(--wh-soft)] sm:hidden"
+          >
+            {t(T.switchTo)}
+          </a>
+        </nav>
+      )}
+    </div>
+  );
+}
+
+/** Закреплённая шапка: выезжает после первого экрана, прячется наверху. */
+export function StickySiteNav({ route }: { route: Route }) {
+  const [shown, setShown] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setShown(window.scrollY > 96);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  return (
+    <div
+      aria-hidden={!shown}
+      {...(shown ? {} : { inert: "" })}
+      style={{ height: SITE_NAV_H }}
+      className={cn(
+        "fixed inset-x-0 top-0 z-[60] border-b border-[var(--wh-line)] bg-[color-mix(in_srgb,var(--wh-ground)_88%,transparent)] backdrop-blur-md transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none",
+        shown ? "translate-y-0" : "-translate-y-full",
+      )}
+    >
+      <div className="mx-auto flex h-full max-w-[1280px] flex-col justify-center px-5 sm:px-10">
+        <SiteNav route={route} tone="sticky" />
+      </div>
+    </div>
+  );
+}

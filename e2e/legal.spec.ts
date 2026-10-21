@@ -57,9 +57,9 @@ test.describe("Правовая информация", () => {
     await page.goto("/");
     const footer = page.getByRole("contentinfo");
     await footer.scrollIntoViewIfNeeded();
-    // Ссылка, а не кнопка: подвал — карта сайта для робота, и всё, что ведёт
-    // на страницу, обязано быть настоящей ссылкой. Рядом стоит кнопка
-    // «Настройки cookie» — от неё спасает точное имя.
+    // Документы в подвале главной свёрнуты под «Документы» (Кирилл 19 окт),
+    // но остаются настоящими ссылками — для робота подвал всё ещё карта сайта.
+    await footer.getByRole("button", { name: "Документы" }).click();
     await footer.getByRole("link", { name: "Cookie", exact: true }).click();
 
     await expect(page).toHaveURL(/\/legal\/cookies\/$/);
@@ -201,7 +201,9 @@ test.describe("Правовая информация", () => {
     await footer.scrollIntoViewIfNeeded();
     await footer.getByRole("link", { name: "Вопросы" }).click();
 
-    await expect(page.getByRole("heading", { level: 1 })).toContainText("который видно насквозь");
+    await expect(page.getByRole("heading", { level: 1 })).toContainText(
+      "систему управления складом",
+    );
     await expect
       .poll(async () =>
         page.evaluate(() => document.getElementById("faq")!.getBoundingClientRect().top),
