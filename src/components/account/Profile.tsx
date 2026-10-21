@@ -14,7 +14,7 @@ import {
   Sun,
   User,
 } from "lucide-react";
-import { PERSIST_KEY, useEditor } from "@/lib/store";
+import { PERSIST_KEY, selectRole, useEditor } from "@/lib/store";
 import { removeLocal } from "@/lib/safeStorage";
 import { isValidInn, lookupCompany } from "@/lib/company";
 import type { Lang, Theme } from "@/lib/types";
@@ -25,6 +25,8 @@ import { Segmented } from "@/components/ui/segmented";
 import { Input } from "@/components/ui/input";
 import { card } from "@/components/ui/card";
 import { Row, ReadValue, RowEditor } from "./ProfileRow";
+import { TariffSection } from "./TariffSection";
+import { BackupSection } from "./BackupSection";
 
 /**
  * Настройки профиля (ТЗ, разд. 3.3 + п.4): имя, почта, реквизиты компании,
@@ -58,6 +60,7 @@ export function Profile() {
   const goToEditor = useEditor((s) => s.goToEditor);
   const goToLogin = useEditor((s) => s.goToLogin);
   const resetHints = useEditor((s) => s.resetHints);
+  const isSeller = useEditor((s) => selectRole(s) === "seller");
   const t = useT();
 
   const [edit, setEdit] = useState<FieldId | null>(null);
@@ -391,6 +394,12 @@ export function Profile() {
             />
           </Row>
         </div>
+
+        {/* Тариф, менеджер и резервные копии — обещания тарифов на сайте. */}
+        {/* Продавец смотрит те же данные в режиме чтения: тариф и архив — дело
+            склада. */}
+        {!isSeller && <TariffSection />}
+        {!isSeller && <BackupSection />}
 
         {/* Обучение: сброс подсказок + переход в редактор, где сразу
             показывается приветственная подсказка. */}

@@ -3,6 +3,9 @@ import type { StateCreator } from "zustand";
 // «словарь → хранилище → словарь» не возникает.
 import type { MsgKey } from "../i18n";
 import type {
+  BackupSettings,
+  Subscription,
+  TariffId,
   Account,
   AddressingConfig,
   AppView,
@@ -614,7 +617,18 @@ export interface StaffSlice {
   removePartner: (id: string) => void;
 }
 
+/** Тариф, менеджер и резервные копии (обещания тарифов на сайте). */
+export interface SubscriptionSlice {
+  subscription: Subscription;
+  /** Сменить тариф. Сегодня — переключатель в профиле, завтра — биллинг. */
+  setTariff: (tariff: TariffId) => void;
+  updateBackupSettings: (patch: Partial<BackupSettings>) => void;
+  /** Архив скачан: сбрасывает напоминание. */
+  markBackupDone: (at: number) => void;
+}
+
 export type EditorState = AccountSlice &
+  SubscriptionSlice &
   SessionSlice &
   ChatSlice &
   IntegrationsSlice &
