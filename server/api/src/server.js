@@ -52,6 +52,9 @@ function readEnv(env) {
     demoPerEmailPerDay: num("DEMO_PER_EMAIL_PER_DAY", 3),
     rateCapacity: num("RATE_LIMIT_BURST", 5),
     ratePerMinute: num("RATE_LIMIT_PER_MINUTE", 2),
+    // Админка — свой порт и свой адрес. Без ADMIN_ORIGIN не запускается.
+    adminPort: num("ADMIN_PORT", 8081),
+    adminOrigin: (env.ADMIN_ORIGIN ?? "").replace(/\/+$/, ""),
   };
 }
 
@@ -251,7 +254,23 @@ function main() {
   setInterval(purge, DAY_MS).unref();
 
   server.listen(cfg.port, () => console.log(`[uklad] сервер слушает порт ${cfg.port}`));
-  const stop = () => server.close(() => (db.close(), process.exit(0)));
+
+  // Админка на отдельном порту: Caddy пускает к нему только admin.<домен>.
+  let admin;
+  if (cfg.adminOrigin.startsWith("https://")) {
+    const { createAdminApp } = require("./admin/app");
+    admin = http.createServer(createAdminApp({ cfg, db: db.raw }));
+    admin.requestTimeout = 15_000;
+    admin.headersTimeout = 10_000;
+    admin.listen(cfg.adminPort, () => console.log(`[uklad] админка слушает порт ${cfg.adminPort}`));
+  } else {
+    console.log("[uklad] админка выключена: не задан ADMIN_ORIGIN (https://…)");
+  }
+
+  const stop = () => {
+    admin?.close();
+    server.close(() => (db.close(), process.exit(0)));
+  };
   process.on("SIGTERM", stop);
   process.on("SIGINT", stop);
 }

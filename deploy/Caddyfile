@@ -50,6 +50,25 @@
 	}
 }
 
+# Админка — свой адрес. На основном домене её нет: /api/* и /d/* туда не ведут.
+# Первая линия — список адресов ADMIN_ALLOW_IPS: всем остальным 404, будто
+# адреса нет. Пароль и код из приложения — вторая линия. По умолчанию список
+# пуст (только 127.0.0.1), то есть админка закрыта всем, пока его не заполнят.
+# CSP без скриптов ставит сам сервер админки, остальное дублируем здесь.
+admin.{$SITE_DOMAIN} {
+	@blocked not remote_ip {$ADMIN_ALLOW_IPS}
+	respond @blocked 404
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "same-origin"
+		-Server
+	}
+	reverse_proxy api:8081
+}
+
 # www → без www.
 www.{$SITE_DOMAIN} {
 	redir https://{$SITE_DOMAIN}{uri} permanent
