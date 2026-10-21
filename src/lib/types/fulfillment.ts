@@ -200,4 +200,54 @@ export interface FulfillmentRequest {
    * может не быть вовсе — он забронирован в строке `ExpectedShipmentLine`.
    */
   reservedShipmentId?: string;
+  /** Упакована на рабочем месте упаковщика: когда и кем (id сотрудника). */
+  packedAt?: number;
+  packedBy?: string;
+}
+
+// --- Рабочее место и смена сотрудника ------------------------------------------
+
+/**
+ * Вид рабочего места. Стационарный экран привязан к столу, а не к человеку:
+ * сотрудник подходит, прикладывает бейдж и работает. Сборка и размещение
+ * остаются на ТСД — там человек ходит по складу, а не стоит у стола.
+ */
+export type WorkstationKind = "pack" | "receiving" | "marking" | "returns" | "shipping";
+
+/**
+ * Отметка в журнале сотрудника. Журнал собирается из того, что человек и так
+ * делает: отметился на смене, отсканировал товар, закрыл заказ. Посекундной
+ * слежки нет — событие появляется только по действию самого человека.
+ */
+export type StaffEventType =
+  | "shift_start"
+  | "break_start"
+  | "break_end"
+  | "shift_end"
+  | "pack_scan"
+  | "pack_error"
+  | "pack_done";
+
+export interface StaffEvent {
+  id: string;
+  staffId: string;
+  type: StaffEventType;
+  at: number;
+  /** Рабочее место, с которого пришла отметка (нет — с телефона/ТСД). */
+  station?: WorkstationKind;
+  /** Номер заказа, к которому относится скан или упаковка. */
+  orderId?: string;
+  /** Отсканированный код — для разбора ошибки «не тот товар». */
+  code?: string;
+}
+
+/**
+ * Вход по QR-бейджу на рабочем месте или ТСД. Живёт 12 часов — одна смена с
+ * запасом: дольше держать открытым чужой вход на общем экране нельзя.
+ */
+export interface StationSession {
+  staffId: string;
+  station: WorkstationKind;
+  startedAt: number;
+  expiresAt: number;
 }
