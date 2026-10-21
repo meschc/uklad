@@ -40,5 +40,15 @@ export function sanitizeDomains(
     if (!(key in out)) continue;
     out[key] = keepValid(out[key], guard, key).items;
   }
+  // Настройка услуг — не список, а один объект: битая форма заменяется
+  // пустой настройкой (значения по умолчанию), а не роняет экран операций.
+  if ("serviceSettings" in out) {
+    const v = out.serviceSettings as { enabled?: unknown; prices?: unknown } | null;
+    const isObj = (x: unknown) => typeof x === "object" && x !== null && !Array.isArray(x);
+    if (!isObj(v) || !isObj(v?.enabled) || !isObj(v?.prices)) {
+      console.warn("[sanitize] serviceSettings: неверная форма, сброшено");
+      delete out.serviceSettings;
+    }
+  }
   return out;
 }

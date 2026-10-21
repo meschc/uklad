@@ -137,3 +137,12 @@ describe("настройка услуг", () => {
     expect(kinds).not.toContain("photo");
   });
 });
+
+describe("serviceSettings при загрузке", () => {
+  it("битая настройка выбрасывается, целая остаётся", async () => {
+    const { sanitizeDomains } = await import("../data/sanitize");
+    expect("serviceSettings" in sanitizeDomains({ serviceSettings: "x" })).toBe(false);
+    const ok = { enabled: { marking: true }, prices: {} };
+    expect(sanitizeDomains({ serviceSettings: ok }).serviceSettings).toEqual(ok);
+  });
+});
