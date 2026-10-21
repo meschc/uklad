@@ -1,0 +1,51 @@
+# Всё хозяйство Уклада на одном сервере: сайт с HTTPS и сервер заявок.
+#
+#   cd deploy && cp .env.example .env && nano .env   # заполнить
+#   docker compose up -d --build
+#
+# Подробно, по шагам — README.md рядом.
+name: uklad
+
+services:
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/web.Dockerfile
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN:?заполните SITE_DOMAIN в .env}
+      ACME_EMAIL: ${ACME_EMAIL:?заполните ACME_EMAIL в .env}
+    volumes:
+      # Сертификаты переживают пересборку: иначе Let's Encrypt быстро упрётся
+      # в лимит выдачи.
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+
+  api:
+    build:
+      context: ../server
+      dockerfile: api/Dockerfile
+    restart: unless-stopped
+    # Наружу порт не открыт: к серверу ходит только Caddy по внутренней сети.
+    env_file: .env
+    environment:
+      DB_FILE: /data/uklad.db
+      TRUST_PROXY: "1"
+      PUBLIC_URL: https://${SITE_DOMAIN}
+    volumes:
+      - ./data:/data
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  caddy_data:
+  caddy_config:
