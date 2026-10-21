@@ -40,6 +40,8 @@ services:
       DB_FILE: /data/uklad.db
       TRUST_PROXY: "1"
       PUBLIC_URL: https://${SITE_DOMAIN}
+      # Админка: Caddy проксирует admin.<домен> на порт 8081 внутри сети.
+      ADMIN_ORIGIN: https://admin.${SITE_DOMAIN}
     volumes:
       - ./data:/data
     read_only: true

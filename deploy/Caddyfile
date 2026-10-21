@@ -50,6 +50,16 @@
 	}
 }
 
+# Админка — свой адрес. На основном домене её нет: /api/* и /d/* туда не ведут.
+# Заголовки защиты ставит сам сервер админки (CSP без скриптов).
+admin.{$SITE_DOMAIN} {
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+	reverse_proxy api:8081
+}
+
 # www → без www.
 www.{$SITE_DOMAIN} {
 	redir https://{$SITE_DOMAIN}{uri} permanent
