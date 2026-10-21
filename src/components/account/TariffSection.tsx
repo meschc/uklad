@@ -1,16 +1,22 @@
-import { CreditCard, Headset } from "lucide-react";
+import { Check, Headset, Minus } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { TARIFF_FEATURES, TARIFF_IDS } from "@/lib/tariff";
-import type { TariffId } from "@/lib/types";
-import { useT } from "@/lib/i18n";
-import { Segmented } from "@/components/ui/segmented";
+import { useT, type MsgKey } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 import { card } from "@/components/ui/card";
 import { Row } from "./ProfileRow";
 
+/** Что показываем на плитке тарифа — то, чем тарифы различаются в кабинете. */
+const FEATURE_LABELS: { key: keyof (typeof TARIFF_FEATURES)["start"]; label: MsgKey }[] = [
+  { key: "fullAnalytics", label: "tariff.f.analytics" },
+  { key: "weeklyEmailBackup", label: "tariff.f.email" },
+  { key: "personalManager", label: "tariff.f.manager" },
+];
+
 /**
- * Тариф и персональный менеджер. Менеджера назначает Уклад, а не клиент,
- * поэтому строка только для чтения: до назначения честно пишем, когда он
- * появится.
+ * Тариф плитками и персональный менеджер. Плитки, а не переключатель: рядом с
+ * названием видно, чем тарифы отличаются. Менеджера назначает Уклад, поэтому
+ * строка только для чтения.
  */
 export function TariffSection() {
   const t = useT();
@@ -19,23 +25,56 @@ export function TariffSection() {
   const hasManager = TARIFF_FEATURES[sub.tariff].personalManager;
 
   return (
-    <div className="flex flex-col gap-2">
-      <div
-        className={card({
-          pad: "none",
-          className: "flex flex-col divide-y divide-border overflow-hidden",
+    <div className="flex flex-col gap-3">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+        {TARIFF_IDS.map((id) => {
+          const active = id === sub.tariff;
+          return (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={active}
+              onClick={() => setTariff(id)}
+              className={cn(
+                card({ pad: "none" }),
+                "flex cursor-pointer flex-col gap-2 p-3 text-left transition-colors",
+                active ? "ring-2 ring-primary" : "hover:border-foreground/20",
+              )}
+            >
+              <span className="flex items-center justify-between text-sm font-semibold">
+                {t(`tariff.${id}`)}
+                {active && <Check className="size-4 text-primary" />}
+              </span>
+              <ul className="flex flex-col gap-1">
+                {FEATURE_LABELS.map((f) => {
+                  const on = TARIFF_FEATURES[id][f.key];
+                  return (
+                    <li
+                      key={f.key}
+                      className={cn(
+                        "flex items-center gap-1.5 text-xs",
+                        on ? "text-foreground" : "text-muted-foreground",
+                      )}
+                    >
+                      {on ? (
+                        <Check className="size-3 shrink-0 text-primary" />
+                      ) : (
+                        <Minus className="size-3 shrink-0" />
+                      )}
+                      {t(f.label)}
+                    </li>
+                  );
+                })}
+              </ul>
+            </button>
+          );
         })}
-      >
-        <Row icon={<CreditCard className="size-4" />} label={t("tariff.label")}>
-          <Segmented<TariffId>
-            value={sub.tariff}
-            onChange={setTariff}
-            options={TARIFF_IDS.map((id) => ({ value: id, label: t(`tariff.${id}`) }))}
-          />
-        </Row>
+      </div>
+
+      <div className={card({ pad: "none", className: "overflow-hidden" })}>
         <Row icon={<Headset className="size-4" />} label={t("manager.label")}>
           {!hasManager ? (
-            <span className="text-sm text-muted-foreground">
+            <span className="text-right text-sm text-muted-foreground">
               {t("tariff.onlyIn", { plan: t("tariff.operator") })}
             </span>
           ) : sub.manager ? (

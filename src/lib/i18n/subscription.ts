@@ -4,18 +4,24 @@
  */
 
 export const ru = {
+  "profile.section.account": "Аккаунт",
+  "profile.section.look": "Оформление",
+  "profile.section.other": "Обучение и демо",
   "tariff.title": "Тариф",
   "tariff.label": "Тариф",
   "tariff.operator": "Оператор",
   "tariff.warehouse": "Склад",
   "tariff.start": "Старт",
+  "tariff.f.analytics": "Полная аналитика",
+  "tariff.f.email": "Копия на почту",
+  "tariff.f.manager": "Менеджер",
   "tariff.hint":
     "Оплаты в кабинете пока нет: тариф выбирается здесь, а после подключения придёт из договора.",
   "tariff.onlyIn": "Только в «{plan}е»",
   "tariff.onlyInMany": "В «Складе» и «Операторе»",
 
   "manager.label": "Менеджер",
-  "manager.pending": "Назначим при подключении",
+  "manager.pending": "Чат с менеджером — с подключением сервера",
 
   "backup.title": "Резервная копия",
   "backup.archive": "Архив",
@@ -59,18 +65,24 @@ export const ru = {
 };
 
 export const en: Record<keyof typeof ru, string> = {
+  "profile.section.account": "Account",
+  "profile.section.look": "Appearance",
+  "profile.section.other": "Onboarding and demo",
   "tariff.title": "Plan",
   "tariff.label": "Plan",
   "tariff.operator": "Operator",
   "tariff.warehouse": "Warehouse",
   "tariff.start": "Start",
+  "tariff.f.analytics": "Full analytics",
+  "tariff.f.email": "Email backup",
+  "tariff.f.manager": "Manager",
   "tariff.hint":
     "There is no billing in the app yet: the plan is chosen here and will come from the contract once connected.",
   "tariff.onlyIn": "Only in “{plan}”",
   "tariff.onlyInMany": "In Warehouse and Operator",
 
   "manager.label": "Manager",
-  "manager.pending": "Assigned when you connect",
+  "manager.pending": "Manager chat once the server is connected",
 
   "backup.title": "Backup",
   "backup.archive": "Archive",
