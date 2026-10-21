@@ -154,6 +154,8 @@ function createAdminApp({ cfg, db, now = () => new Date(), log = console }) {
 
   /** POST только со своего адреса и с токеном CSRF этой сессии. */
   function trusted(req, form, s) {
+    // Без заголовка Origin (старые клиенты) пропускаем намеренно: защиту
+    // держат CSRF-токен и кука SameSite=Strict. Чужой Origin — отказ.
     const origin = req.headers.origin;
     if (origin && origin !== cfg.adminOrigin) return false;
     return Boolean(form && s && sameText(form.get("csrf") ?? "", s.csrf));

@@ -298,6 +298,7 @@ function createRoutes({ store, cfg }) {
           store.log(t, by, "account_extend", target, {
             месяцев: months,
             сумма: amount ?? "—",
+            "было оплачено до": a.paid_until ? a.paid_until.slice(0, 10) : "—",
             "оплачено до": paidUntil.slice(0, 10),
           });
           return back();
@@ -356,7 +357,11 @@ function createRoutes({ store, cfg }) {
             return fail("Чтобы убрать в архив, впишите название аккаунта точно.");
           }
           store.setArchived(a.id, nowIso, t);
-          store.log(t, by, "account_archive", target);
+          store.log(t, by, "account_archive", target, {
+            было: plans.billingState(a, nowIso),
+            тариф: a.tariff ?? "—",
+            "оплачено до": a.paid_until ? a.paid_until.slice(0, 10) : "—",
+          });
           return back();
         case "restore":
           store.setArchived(a.id, null, t);
