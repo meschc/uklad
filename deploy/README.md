@@ -42,20 +42,30 @@ mkdir -p /home/kir/.ssh && cp ~/.ssh/authorized_keys /home/kir/.ssh/ && chown -R
 ```
 
 Проверьте в **новом окне**, что `ssh kir@ВАШ_IP` пускает по ключу. Только
-после этого:
+после этого закройте вход по паролю. Настройку кладём отдельным файлом, а не
+правим основной: на Ubuntu 22/24 файл `50-cloud-init.conf` часто включает
+пароль обратно и перекрывает правку основного конфига.
 
 ```sh
-sudo sed -i 's/^#\?PasswordAuthentication .*/PasswordAuthentication no/; s/^#\?PermitRootLogin .*/PermitRootLogin no/' /etc/ssh/sshd_config
+printf 'PasswordAuthentication no\nPermitRootLogin no\nKbdInteractiveAuthentication no\n' | sudo tee /etc/ssh/sshd_config.d/00-uklad.conf
+sudo sshd -T | grep -Ei 'passwordauth|permitroot'   # должно быть «no» в обеих строках
 sudo systemctl restart ssh
 ```
 
 Файрвол и защита от подбора паролей:
 
 ```sh
-sudo apt update && sudo apt install -y ufw fail2ban
+sudo apt update && sudo apt install -y ufw fail2ban unattended-upgrades
 sudo ufw allow OpenSSH && sudo ufw allow 80 && sudo ufw allow 443
 sudo ufw enable
 ```
+
+`unattended-upgrades` сам ставит обновления безопасности системы.
+
+**Важно: Docker обходит ufw.** Порт, опубликованный в `compose.yml`
+(`ports:`), открыт в интернет, даже если ufw его не разрешал. Наружу сейчас
+открыты только 80 и 443 у Caddy. Не добавляйте `ports:` к сервису `api`; если
+порт нужен для отладки, только так: `127.0.0.1:8080:8080`.
 
 ## Шаг 2. Поставить Docker
 
@@ -139,6 +149,12 @@ cd ~/uklad && git pull && cd deploy && docker compose up -d --build
 `BACKUP_REMOTE`) отправляет на другую машину. Копия на том же сервере от
 поломки сервера не спасает — задайте `BACKUP_REMOTE`.
 
+Если копии уходят на чужую или облачную машину, шифруйте их: поставьте
+`age` (`sudo apt install age`), на своём компьютере создайте ключ
+`age-keygen -o uklad-backup.key` и впишите его публичную часть (`age1…`) в
+`BACKUP_AGE_RECIPIENT` в `.env`. Закрытый ключ на сервере не храните: без
+него копию не прочитает никто, включая того, кто взломал сервер.
+
 Запустить руками: `./backup.sh`. Каждую ночь в 03:00:
 
 ```sh
@@ -169,6 +185,9 @@ sudo ./restore.sh /var/backups/uklad/uklad-2026-11-01-0300.db.gz
 | Демо-ссылки (почта, срок, открытия) | там же, `demo_links`                       | до конца срока ссылки                                               |
 | IP-адреса                           | нигде — только в памяти для лимита частоты | до перезапуска                                                      |
 | Копии базы                          | `BACKUP_DIR` и `BACKUP_REMOTE`             | `BACKUP_KEEP_DAYS`                                                  |
+
+Итого заявка живёт до 180 дней в базе и ещё до 30 дней в копиях — так и
+указать срок в политике конфиденциальности.
 
 Перед приёмом заявок нужно подать уведомление в Роскомнадзор об обработке
 персональных данных (pd.rkn.gov.ru).

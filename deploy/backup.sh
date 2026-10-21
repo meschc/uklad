@@ -27,13 +27,21 @@ docker compose exec -T api node -e "
 "
 mv "data/$NAME" "$BACKUP_DIR/$NAME"
 gzip -9 "$BACKUP_DIR/$NAME"
-chmod 600 "$BACKUP_DIR/$NAME.gz"
-echo "Копия: $BACKUP_DIR/$NAME.gz"
+FILE="$BACKUP_DIR/$NAME.gz"
+# В копии персональные данные: если задан ключ, шифруем, и открытый файл
+# не остаётся ни здесь, ни на удалённой машине.
+if [ -n "${BACKUP_AGE_RECIPIENT:-}" ]; then
+  age -r "$BACKUP_AGE_RECIPIENT" -o "$FILE.age" "$FILE"
+  rm -f "$FILE"
+  FILE="$FILE.age"
+fi
+chmod 600 "$FILE"
+echo "Копия: $FILE"
 
 if [ -n "${BACKUP_REMOTE:-}" ]; then
-  rsync -a "$BACKUP_DIR/$NAME.gz" "$BACKUP_REMOTE/"
+  rsync -a "$FILE" "$BACKUP_REMOTE/"
   echo "Отправлено: $BACKUP_REMOTE"
 fi
 
 # Старые копии — только свои, по имени, и только в папке копий.
-find "$BACKUP_DIR" -maxdepth 1 -name 'uklad-*.db.gz' -mtime +"$BACKUP_KEEP_DAYS" -delete
+find "$BACKUP_DIR" -maxdepth 1 -name 'uklad-*.db.gz*' -mtime +"$BACKUP_KEEP_DAYS" -delete
