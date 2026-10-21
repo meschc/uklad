@@ -7,6 +7,9 @@ import { RoadmapChangelog } from "./RoadmapChangelog";
 import { RoadmapAsk } from "./RoadmapAsk";
 import { RoadmapHeader } from "./RoadmapHeader";
 import { WarehousesFooter } from "../warehouses/WarehousesFooter";
+import { RoadmapDialogs } from "./RoadmapAccount";
+import { RoadmapMyIdeas } from "./RoadmapMyIdeas";
+import { openDialog } from "../../lib/roadmap/store";
 
 const T = {
   tabBoard: c("Дорожная карта", "Roadmap"),
@@ -22,16 +25,16 @@ const T = {
   howTitle: c("Как участвовать", "How to take part"),
   how: [
     c(
-      "Голосуйте за то, что нужно вам раньше прочего. До 10 голосов.",
-      "Vote for what you need first. Up to 10 votes.",
+      "Войдите по почте: пароль не нужен, придёт код.",
+      "Sign in with your email: no password, we send a code.",
     ),
     c(
-      "Предлагайте своё в форме внизу: опишите задачу, а не готовое решение.",
-      "Suggest your own in the form below: describe the task, not a ready solution.",
+      "Голосуйте стрелкой на карточке. Голос засчитывается сразу, повторное нажатие его снимает.",
+      "Vote with the arrow on a card. It counts at once; press again to take it back.",
     ),
     c(
-      "Оставьте почту или телефон, если хотите обсудить идею с нами.",
-      "Leave an email or phone if you want to discuss the idea with us.",
+      "Предлагайте своё кнопкой «Предложить идею»: опишите задачу, а не готовое решение.",
+      "Suggest your own with “Suggest an idea”: describe the task, not a ready solution.",
     ),
   ],
   nextTitle: c("Что дальше", "What happens next"),
@@ -66,13 +69,14 @@ export function RoadmapScreen() {
         >
           <TabButton on={tab === "board"} onClick={() => setTab("board")} label={t(T.tabBoard)} />
           <TabButton on={tab === "log"} onClick={() => setTab("log")} label={t(T.tabLog)} />
-          <a
-            href="#ideas"
+          <button
+            type="button"
+            onClick={() => openDialog({ kind: "idea" })}
             className="ml-auto inline-flex h-9 items-center gap-1.5 rounded-full bg-[var(--wh-blue)] px-4 text-sm font-medium text-[var(--wh-on-blue)] transition-colors hover:bg-[var(--wh-blue-deep)]"
           >
             <Lightbulb className="size-4" />
             {t(T.suggest)}
-          </a>
+          </button>
         </nav>
 
         <div className="mt-8 grid gap-10 lg:grid-cols-[300px_1fr]">
@@ -92,6 +96,7 @@ export function RoadmapScreen() {
 
             <h2 className="mt-6 text-sm font-heading">{t(T.nextTitle)}</h2>
             <p className="mt-2 text-sm leading-relaxed text-[var(--wh-muted)]">{t(T.next)}</p>
+            <RoadmapMyIdeas />
           </aside>
 
           <div className="min-w-0">{tab === "board" ? <RoadmapBoard /> : <RoadmapChangelog />}</div>
@@ -101,6 +106,7 @@ export function RoadmapScreen() {
       {/* Подвал один, тот же, что у страницы для складов: синяя форма
           перетекает в синий подвал без шва. */}
       <WarehousesFooter />
+      <RoadmapDialogs />
     </div>
   );
 }

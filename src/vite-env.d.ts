@@ -16,6 +16,8 @@ interface ImportMetaEnv {
   readonly VITE_SITE_ORIGIN?: string;
   /** Приёмник заявок с форм витрины (`src/site/lib/leads.ts`). */
   readonly VITE_LEADS_ENDPOINT?: string;
+  /** Адрес API дорожной карты (`docs/roadmap-api.md`). Пусто — работает локально. */
+  readonly VITE_ROADMAP_API?: string;
   /** Номер счётчика Яндекс.Метрики. Пусто — счётчик не подключается. */
   readonly VITE_METRIKA_ID?: string;
 }
