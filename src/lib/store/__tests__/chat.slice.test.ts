@@ -211,3 +211,31 @@ describe("receiveDemoReply", () => {
     expect(store.getState().chats.p1).toBeUndefined();
   });
 });
+
+describe("правка и удаление", () => {
+  it("правит только своё, а удалённое оставляет пометкой без текста", () => {
+    // Arrange
+    const own = msg("warehouse", { id: "own", text: "Привезём в 10" });
+    const theirs = msg("seller", { id: "theirs", text: "Ждём" });
+    const store = makeChatStore(base("warehouse", { p1: [own, theirs] }));
+
+    // Act
+    store.getState().editChatMessage("p1", "own", "Привезём в 11");
+    store.getState().editChatMessage("p1", "theirs", "Подменили");
+    store.getState().deleteChatMessage("p1", "theirs");
+    store.getState().deleteChatMessage("p1", "own");
+
+    // Assert
+    const [a, b] = store.getState().chats.p1;
+    expect(a.deletedAt).toBeTypeOf("number");
+    expect(a.text).toBe("");
+    expect(a.editedAt).toBeTypeOf("number");
+    expect(b).toEqual(theirs);
+  });
+
+  it("ответ запоминает, на что отвечали", () => {
+    const store = makeChatStore(base("seller", { p1: [msg("warehouse", { id: "q" })] }));
+    store.getState().sendChatMessage("p1", "Да", "q");
+    expect(store.getState().chats.p1.at(-1)?.replyTo).toBe("q");
+  });
+});
