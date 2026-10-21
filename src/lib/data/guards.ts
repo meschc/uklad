@@ -7,6 +7,7 @@ import type {
   Pallet,
   Product,
   ReceivingEvent,
+  StaffEvent,
   StaffMember,
 } from "../types";
 
@@ -62,6 +63,9 @@ export const isReceivingEvent: Guard<ReceivingEvent> = (v): v is ReceivingEvent 
 
 export const isRequest: Guard<FulfillmentRequest> = (v): v is FulfillmentRequest =>
   hasId(v) && isStr(v.productId) && isNum(v.qty) && isStr(v.status);
+
+export const isStaffEvent: Guard<StaffEvent> = (v): v is StaffEvent =>
+  hasId(v) && isStr(v.staffId) && isStr(v.type) && isNum(v.at);
 
 export const isStaffMember: Guard<StaffMember> = (v): v is StaffMember => hasId(v) && isStr(v.name);
 

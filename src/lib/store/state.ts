@@ -3,6 +3,10 @@ import type { StateCreator } from "zustand";
 // «словарь → хранилище → словарь» не возникает.
 import type { MsgKey } from "../i18n";
 import type {
+  StaffEvent,
+  StaffEventType,
+  StationSession,
+  WorkstationKind,
   Account,
   AddressingConfig,
   AppView,
@@ -614,7 +618,34 @@ export interface StaffSlice {
   removePartner: (id: string) => void;
 }
 
+// --- Рабочее место и смена сотрудника -----------------------------------------
+
+export interface WorkstationSlice {
+  /** Журнал сотрудников: отметки смены, сканы и упаковки (узел cab-staff-log). */
+  staffEvents: StaffEvent[];
+  /** Кто вошёл по бейджу на этом экране. Один на устройство — экран общий. */
+  stationSession: StationSession | null;
+  /**
+   * Вход по скану бейджа. Возвращает id сотрудника или null, если бейдж не
+   * принадлежит никому из персонала активного склада.
+   */
+  badgeLogin: (code: string, station: WorkstationKind) => string | null;
+  stationLogout: () => void;
+  /**
+   * Отметка смены вошедшего сотрудника. Недопустимый переход (перерыв без
+   * смены) игнорируется и возвращает false — кнопки меню и так его не дают.
+   */
+  markShift: (
+    type: Extract<StaffEventType, "shift_start" | "break_start" | "break_end" | "shift_end">,
+  ) => boolean;
+  /** Скан на упаковке: попал в заказ или нет — пишется в журнал как есть. */
+  logPackScan: (orderId: string, code: string, ok: boolean) => void;
+  /** Заказ упакован: заявки получают отметку, в журнал — «упаковал». */
+  packOrder: (orderId: string, requestIds: string[]) => void;
+}
+
 export type EditorState = AccountSlice &
+  WorkstationSlice &
   SessionSlice &
   ChatSlice &
   IntegrationsSlice &

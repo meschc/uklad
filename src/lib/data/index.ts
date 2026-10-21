@@ -13,6 +13,7 @@ export { fulfillmentRepository } from "./fulfillmentRepository";
 export { placementRepository } from "./placementRepository";
 export { requestsRepository } from "./requestsRepository";
 export { staffRepository } from "./staffRepository";
+export { workstationRepository } from "./workstationRepository";
 export { sanitizeDomains } from "./sanitize";
 export type { Repository, StorePort } from "./repository";
 export { attempt, fail, ok } from "./result";
