@@ -3,7 +3,11 @@ import { makeBackup, parseBackup } from "../../backup";
 import { PERSIST_KEY, PERSIST_VERSION } from "../../store";
 import type { EditorState } from "../../store/state";
 import type { StorePort } from "../repository";
-import { createBackupRepository, type PersistTarget } from "../backupRepository";
+import {
+  BEFORE_RESTORE_KEY,
+  createBackupRepository,
+  type PersistTarget,
+} from "../backupRepository";
 
 /**
  * Резервная копия через подменённый порт и подменённое хранилище. Главное, что
@@ -52,9 +56,9 @@ describe("createBackupRepository", () => {
     const res = await repo.restoreArchive(exported.data.text);
 
     expect(res.ok).toBe(true);
-    expect(writes).toHaveLength(1);
-    expect(writes[0][0]).toBe(PERSIST_KEY);
-    expect(JSON.parse(writes[0][1])).toMatchObject({
+    // Сначала откладываются текущие данные, потом пишется архив.
+    expect(writes.map(([k]) => k)).toEqual([BEFORE_RESTORE_KEY, PERSIST_KEY]);
+    expect(JSON.parse(writes[1][1])).toMatchObject({
       version: PERSIST_VERSION,
       state: { warehouse: { id: "w1" } },
     });

@@ -30,6 +30,9 @@ export interface PersistTarget {
   write: (key: string, value: string) => void;
 }
 
+/** Где лежат данные, бывшие до последнего восстановления. */
+export const BEFORE_RESTORE_KEY = `${PERSIST_KEY}.before-restore`;
+
 const localTarget: PersistTarget = {
   // Не `writeLocal`: тот молчит при сбое, а здесь отказ записи — это
   // несостоявшееся восстановление, о котором человек должен узнать.
@@ -53,10 +56,14 @@ export function createBackupRepository(
       const parsed = parseBackup(text, PERSIST_VERSION);
       if (!parsed.ok) return fail(parsed.error);
       const { state, version } = parsed.file;
-      return attempt(
-        () => target.write(PERSIST_KEY, JSON.stringify({ state, version })),
-        "backup.err.write",
-      );
+      return attempt(() => {
+        // Сначала откладываем текущие данные: восстановленный по ошибке чужой
+        // или старый архив иначе стёр бы склад безвозвратно. Не вышло отложить —
+        // не восстанавливаем вовсе.
+        const current = { state: persistedState(port.get()), version: PERSIST_VERSION };
+        target.write(BEFORE_RESTORE_KEY, JSON.stringify(current));
+        target.write(PERSIST_KEY, JSON.stringify({ state, version }));
+      }, "backup.err.write");
     },
 
     setWeeklyEmail: async (on) => {

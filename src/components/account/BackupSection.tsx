@@ -17,6 +17,9 @@ import { downloadBackup } from "./backupDownload";
  * копия на почту. Восстановление стирает текущие данные, поэтому в два шага:
  * сначала файл разбирается и показывается его дата, потом подтверждение.
  */
+/** Предел размера архива: больше — не читаем. */
+const MAX_BACKUP_BYTES = 20 * 1024 * 1024;
+
 export function BackupSection() {
   const t = useT();
   const backup = useEditor((s) => s.subscription.backup);
@@ -38,6 +41,13 @@ export function BackupSection() {
 
   const pick = async (file: File) => {
     restore.reset();
+    // Проверка размера до чтения: огромный файл подвесил бы вкладку и всё
+    // равно не влез бы в хранилище браузера.
+    if (file.size > MAX_BACKUP_BYTES) {
+      setPending(null);
+      setPickError("backup.err.tooBig");
+      return;
+    }
     const text = await file.text();
     const parsed = parseBackup(text, PERSIST_VERSION);
     if (!parsed.ok) {
