@@ -20,6 +20,10 @@ import type {
   Pallet,
   ReceivingEvent,
   ReceivingProgress,
+  ServiceKind,
+  ServiceSettings,
+  TaskStatus,
+  WarehouseTask,
   RequestStatus,
   Session,
   ShipmentSource,
@@ -614,7 +618,31 @@ export interface StaffSlice {
   removePartner: (id: string) => void;
 }
 
+export interface OperationsSlice {
+  /** Задания на операции склада: маркировка, упаковка, возвраты… */
+  tasks: WarehouseTask[];
+  /** Какие операции склад оказывает и почём. */
+  serviceSettings: ServiceSettings;
+  /** Завести задание. Возвращает id. */
+  createTask: (
+    task: Pick<WarehouseTask, "kind" | "qty" | "partnerId" | "staffId" | "note">,
+  ) => string;
+  /**
+   * Перевести задание в статус. Время начала и закрытия ставит срез: дата
+   * закрытия — это дата услуги в счёте, и подставлять её руками нельзя.
+   */
+  setTaskStatus: (id: string, status: TaskStatus) => void;
+  updateTask: (
+    id: string,
+    patch: Partial<Pick<WarehouseTask, "qty" | "staffId" | "partnerId" | "note">>,
+  ) => void;
+  setServiceEnabled: (kind: ServiceKind, on: boolean) => void;
+  /** Цена за единицу; `null` стирает цену. */
+  setServicePrice: (kind: ServiceKind, price: number | null) => void;
+}
+
 export type EditorState = AccountSlice &
+  OperationsSlice &
   SessionSlice &
   ChatSlice &
   IntegrationsSlice &

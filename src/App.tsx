@@ -57,6 +57,11 @@ const TasksScreen = lazy(() =>
 const PickingScreen = lazy(() =>
   import("@/components/fulfillment/PickingScreen").then((m) => ({ default: m.PickingScreen })),
 );
+const OperationsScreen = lazy(() =>
+  import("@/components/fulfillment/OperationsScreen").then((m) => ({
+    default: m.OperationsScreen,
+  })),
+);
 const SellerScreen = lazy(() =>
   import("@/components/fulfillment/SellerScreen").then((m) => ({ default: m.SellerScreen })),
 );
@@ -214,6 +219,8 @@ function renderView(view: string) {
       return <TasksScreen />;
     case "picking":
       return <PickingScreen />;
+    case "operations":
+      return <OperationsScreen />;
     case "staff":
       return <StaffScreen />;
     case "analytics":
