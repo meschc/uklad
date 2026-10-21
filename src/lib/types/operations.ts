@@ -70,6 +70,11 @@ export interface ServiceSettings {
   enabled: Partial<Record<ServiceKind, boolean>>;
   /** Цена за единицу, ₽. Пусто — цена не задана, сумма в отчёте не считается. */
   prices: Partial<Record<ServiceKind, number>>;
+  /**
+   * Приёмка в два этапа: сначала места (паллеты и короба при водителе), потом
+   * пересчёт штук. Выключено — один проход, как раньше.
+   */
+  twoStageReceiving?: boolean;
 }
 
 /**

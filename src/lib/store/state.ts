@@ -466,6 +466,20 @@ export interface FulfillmentSlice {
   placeBox: (boxId: string, addr: CellAddress) => void;
   createPallet: () => Pallet;
   attachBoxToPallet: (boxId: string, palletId: string) => void;
+  /**
+   * Грузовая приёмка: завести принятые места поставки невскрытыми — паллеты
+   * и короба без паллеты, каждому свой ярлык. Возвращает их id.
+   */
+  acceptCargo: (input: {
+    shipmentId: string;
+    pallets: number;
+    boxes: number;
+    declaredPallets?: number;
+    declaredBoxes?: number;
+    staffId?: string;
+  }) => { palletIds: string[]; boxIds: string[] };
+  /** Вскрыть место (паллету или короб) — начало товарной приёмки по нему. */
+  openUnit: (id: string) => void;
   /** Снять единицы товара с коробки (сборка). Возвращает, сколько сняли. */
   removeFromBox: (boxId: string, productId: string, qty: number) => number;
 
@@ -637,6 +651,8 @@ export interface OperationsSlice {
     patch: Partial<Pick<WarehouseTask, "qty" | "staffId" | "partnerId" | "note">>,
   ) => void;
   setServiceEnabled: (kind: ServiceKind, on: boolean) => void;
+  /** Приёмка в два этапа — режим склада. */
+  setTwoStageReceiving: (on: boolean) => void;
   /** Цена за единицу; `null` стирает цену. */
   setServicePrice: (kind: ServiceKind, price: number | null) => void;
 }

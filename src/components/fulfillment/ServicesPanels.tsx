@@ -26,9 +26,25 @@ export function ServicesPanel() {
   const settings = useEditor((s) => s.serviceSettings);
   const setEnabled = useEditor((s) => s.setServiceEnabled);
   const setPrice = useEditor((s) => s.setServicePrice);
+  const setTwoStage = useEditor((s) => s.setTwoStageReceiving);
 
   return (
     <div className="flex flex-col gap-3">
+      {/* eslint-disable-next-line jsx-a11y/label-has-associated-control -- флажок внутри подписи */}
+      <label className={cn(card({ pad: "md" }), "flex cursor-pointer items-start gap-2.5")}>
+        <input
+          type="checkbox"
+          checked={!!settings.twoStageReceiving}
+          onChange={(e) => setTwoStage(e.target.checked)}
+          className="mt-0.5 size-4 accent-primary"
+        />
+        <span>
+          <span className="block text-sm font-medium">{t("ops.services.twoStage")}</span>
+          <span className="block text-xs text-muted-foreground">
+            {t("ops.services.twoStageHint")}
+          </span>
+        </span>
+      </label>
       <p className="text-sm text-muted-foreground">{t("ops.services.hint")}</p>
       <ul className={cn(card({ pad: "none" }), "divide-y divide-border")}>
         {SERVICES.map((s) => {

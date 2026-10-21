@@ -64,6 +64,11 @@ export const createOperationsSlice: SliceCreator<OperationsSlice> = (set) => ({
       },
     })),
 
+  setTwoStageReceiving: (on) =>
+    set((s) => ({
+      serviceSettings: { ...s.serviceSettings, twoStageReceiving: on || undefined },
+    })),
+
   setServicePrice: (kind, price) =>
     set((s) => {
       const prices = { ...s.serviceSettings.prices };

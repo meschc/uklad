@@ -79,6 +79,27 @@ export const ru = {
   "ops.report.unpriced":
     "У части услуг не задана цена — итог без них. Цены задаются на вкладке «Услуги».",
   "ops.report.empty": "За этот период услуг не было",
+  "ops.services.twoStage": "Приёмка в два этапа",
+  "ops.services.twoStageHint":
+    "Сначала места при водителе: сколько паллет и коробов по накладной и сколько приехало. Потом, когда удобно, — вскрыть и пересчитать штуки.",
+
+  "cargo.stage.cargo": "Грузовая",
+  "cargo.stage.items": "Товарная",
+  "cargo.empty": "Нет открытых поставок — заведите поставку на вкладке «Товарная»",
+  "cargo.shipment": "Поставка",
+  "cargo.declared": "По накладной",
+  "cargo.fact": "Приехало",
+  "cargo.pallets": "Паллет",
+  "cargo.boxes": "Коробов",
+  "cargo.boxesLoose": "Коробов без паллеты",
+  "cargo.accept": "Принять места",
+  "cargo.total": "Принято мест: паллет {p}, коробов без паллеты {b}",
+  "cargo.diff": "Расхождение с накладной: {list} — составьте акт при водителе",
+  "cargo.match": "Места сходятся с накладной",
+  "cargo.waiting": "Ждут вскрытия: паллет {p}, коробов {b}",
+  "cargo.labels": "Ярлыки принятых мест — наклейте до того, как места уедут с рампы:",
+  "recv.sealed.title": "Ждут вскрытия по этой поставке",
+  "recv.sealed.opened": "Вскрыто: {code}",
 } as const;
 
 export const en: Record<keyof typeof ru, string> = {
@@ -156,4 +177,25 @@ export const en: Record<keyof typeof ru, string> = {
   "ops.report.unpriced":
     "Some services have no price — the total leaves them out. Set prices in Services.",
   "ops.report.empty": "No services in this period",
+  "ops.services.twoStage": "Two-stage receiving",
+  "ops.services.twoStageHint":
+    "First the places, with the driver present: pallets and boxes per waybill versus arrived. Then, when convenient, open them and count the items.",
+
+  "cargo.stage.cargo": "Cargo",
+  "cargo.stage.items": "Items",
+  "cargo.empty": "No open shipments — create one on the Items tab",
+  "cargo.shipment": "Shipment",
+  "cargo.declared": "Per waybill",
+  "cargo.fact": "Arrived",
+  "cargo.pallets": "Pallets",
+  "cargo.boxes": "Boxes",
+  "cargo.boxesLoose": "Boxes without a pallet",
+  "cargo.accept": "Accept places",
+  "cargo.total": "Places accepted: {p} pallets, {b} loose boxes",
+  "cargo.diff": "Waybill mismatch: {list} — draw up a report with the driver",
+  "cargo.match": "Places match the waybill",
+  "cargo.waiting": "Waiting to be opened: {p} pallets, {b} boxes",
+  "cargo.labels": "Labels for the accepted places — stick them on before they leave the dock:",
+  "recv.sealed.title": "Waiting to be opened for this shipment",
+  "recv.sealed.opened": "Opened: {code}",
 };
