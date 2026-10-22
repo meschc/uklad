@@ -16,6 +16,8 @@ export const ru = {
   "nav.mode.3d": "3D",
   "nav.backToDashboard": "В личный кабинет",
   "nav.theme": "Переключить тему",
+  "nav.collapse": "Свернуть меню",
+  "nav.expand": "Развернуть меню",
 
   // Личный кабинет (§3.2)
   "dash.title": "Личный кабинет",
@@ -198,6 +200,8 @@ export const en: Record<keyof typeof ru, string> = {
   "nav.mode.3d": "3D",
   "nav.backToDashboard": "Back to dashboard",
   "nav.theme": "Toggle theme",
+  "nav.collapse": "Collapse menu",
+  "nav.expand": "Expand menu",
 
   // Dashboard (§3.2)
   "dash.title": "Dashboard",
