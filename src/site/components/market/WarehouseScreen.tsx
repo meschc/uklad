@@ -23,6 +23,7 @@ import { money, monthlyPerPlace, occupancy } from "../../data/warehouses";
 import { warehousesRepository } from "../../data/warehousesRepository";
 import { PAGE_NOW, shortDate } from "../../lib/date";
 import { freshness } from "../../lib/freshness";
+import { warehouseSeoText } from "../../lib/warehouseSeoText";
 import { href } from "../../lib/route";
 import { Reveal } from "../Reveal";
 import { c, useT, type Copy, type TFunc } from "../../lib/copy";
@@ -528,6 +529,16 @@ export function WarehouseScreen({ id }: { id?: string }) {
             />
           </aside>
         </div>
+
+        {/* Текст для поиска: собран из карточки, серый и мелкий — читают его
+            поисковики, а не люди (Кирилл 22 окт, как у Циана). */}
+        <section className="mt-20 max-w-4xl border-t border-[var(--wh-line)] pt-6">
+          {warehouseSeoText(t, w).map((line, i) => (
+            <p key={i} className="mt-2 text-xs leading-relaxed text-[var(--wh-muted)] opacity-80">
+              {line}
+            </p>
+          ))}
+        </section>
       </div>
     </>
   );
