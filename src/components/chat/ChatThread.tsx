@@ -200,9 +200,7 @@ export function ChatThread({
         </span>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold tracking-tight">{partner.name}</p>
-          <p className="truncate text-xs text-muted-foreground">
-            {partner.contact || t("chat.subtitle")}
-          </p>
+          <p className="truncate text-xs text-muted-foreground">{partner.contact}</p>
         </div>
         <Button
           variant="ghost"
