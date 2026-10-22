@@ -113,4 +113,10 @@ async function open(page: Page, button: Locator, label: string): Promise<void> {
   // кусок доедет и попробует отрисоваться.
   await page.waitForLoadState("networkidle");
   await expect(page.getByText(CRASH), `экран «${label}» упал`).toHaveCount(0);
+  // Рабочее место открывается на весь экран, без рельса: возвращаемся из него
+  // его же кнопкой, иначе обход потерял бы рельс на середине.
+  if (label.endsWith("Рабочее место")) {
+    await page.getByRole("button", { name: "В кабинет" }).click();
+    await expect(page.getByRole("navigation", { name: "Разделы" })).toBeVisible();
+  }
 }

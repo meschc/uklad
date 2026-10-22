@@ -59,6 +59,7 @@ export function ToteStart() {
           placeholder="UK-BOX-…"
           status={status}
           hint={hint ?? t("ws.tote.step1Hint")}
+          actionLabel={t("ws.act.open")}
           onSubmit={pickSource}
         />
       ) : (
@@ -79,6 +80,7 @@ export function ToteStart() {
             placeholder={`${TARGET_PREFIX}…`}
             status={status}
             hint={start.error ? t(start.error) : t("ws.tote.step2Hint")}
+            actionLabel={t("ws.act.target")}
             onSubmit={(c) => void pickTarget(c)}
           />
           <Button

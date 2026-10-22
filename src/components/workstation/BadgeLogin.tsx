@@ -44,6 +44,7 @@ export function BadgeLogin() {
         status={status}
         placeholder="UK-STF-…"
         hint={login.error ? t(login.error) : undefined}
+        actionLabel={t("ws.act.login")}
         onSubmit={(code) => void submit(code)}
       />
 

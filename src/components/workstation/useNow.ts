@@ -13,10 +13,11 @@ export function useNow(stepMs = 30_000): number {
   return now;
 }
 
-export function formatTime(at: number, lang: string): string {
+export function formatTime(at: number, lang: string, seconds = false): string {
   return new Date(at).toLocaleTimeString(lang === "en" ? "en-GB" : "ru-RU", {
     hour: "2-digit",
     minute: "2-digit",
+    ...(seconds && { second: "2-digit" }),
   });
 }
 

@@ -1,5 +1,15 @@
 import { useState } from "react";
-import { ArrowLeft, Camera, LogOut, Printer, ScanLine, Scale } from "lucide-react";
+import {
+  ArrowLeft,
+  Camera,
+  Clock,
+  ListChecks,
+  LogOut,
+  Package,
+  Printer,
+  ScanLine,
+  Scale,
+} from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { workstationRepository } from "@/lib/data";
 import { isSessionLive } from "@/lib/workstation";
@@ -95,9 +105,9 @@ export function WorkstationScreen() {
               size="md"
               ariaLabel={t("ws.title")}
               options={[
-                { value: "shift", label: t("ws.tab.shift") },
-                { value: "pack", label: t("ws.tab.pack") },
-                { value: "log", label: t("ws.tab.log") },
+                { value: "shift", label: t("ws.tab.shift"), icon: <Clock /> },
+                { value: "pack", label: t("ws.tab.pack"), icon: <Package /> },
+                { value: "log", label: t("ws.tab.log"), icon: <ListChecks /> },
               ]}
             />
             {tab === "shift" && <ShiftMenu member={member} now={now} />}

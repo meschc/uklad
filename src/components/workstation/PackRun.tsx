@@ -88,6 +88,7 @@ export function PackRun({
           label={t("ws.run.scan")}
           status={feedback?.status ?? "idle"}
           hint={feedback ? t(feedback.key, { name: feedback.name ?? "" }) : t("ws.run.nextHint")}
+          actionLabel={t(label ? "ws.act.confirm" : "ws.act.pack")}
           onSubmit={(c) => void onScan(c)}
         />
 
@@ -113,11 +114,11 @@ export function PackRun({
                 <p className="mt-2 text-xl font-semibold tabular-nums">
                   {t("ws.run.unitOf", { i: doneOfProduct, n: contents.get(product.id) ?? 0 })}
                 </p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {order
-                    ? t("ws.run.forOrder", { id: shortId(order.id), target: order.target ?? "—" })
-                    : t("ws.run.noOrder")}
-                </p>
+                {order && (
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {t("ws.run.forOrder", { id: shortId(order.id), target: order.target ?? "—" })}
+                  </p>
+                )}
               </div>
             </div>
             <LabelBlock
@@ -127,7 +128,7 @@ export function PackRun({
             />
             <Button
               variant="outline"
-              className="self-start"
+              className="self-start hover:border-destructive hover:bg-destructive hover:text-destructive-foreground"
               onClick={() => void workstationRepository.packReject()}
             >
               <Ban />
@@ -233,6 +234,9 @@ export function PackRun({
         <Button
           size="lg"
           variant={summary.shortage > 0 ? "outline" : "default"}
+          className={cn(
+            summary.shortage > 0 && "hover:border-amber-500 hover:bg-amber-500 hover:text-white",
+          )}
           disabled={!!label}
           onClick={() => void finish()}
         >
