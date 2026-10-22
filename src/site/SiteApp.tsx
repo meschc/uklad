@@ -12,7 +12,7 @@ import { WarehousesPage } from "./WarehousesPage";
 import { LegalScreen } from "./components/legal/LegalScreen";
 import { NotFoundScreen } from "./components/NotFoundScreen";
 import { consumePendingAnchor, useRoute, type Page } from "./lib/route";
-import { StickySiteNav } from "./components/frame/SiteNav";
+import { SiteBar } from "./components/frame/SiteNav";
 import { WarehousesFooter } from "./components/warehouses/WarehousesFooter";
 import { pageMeta } from "./lib/pageMeta";
 import { setCanonical, setDescription, setLocale, setNoIndex, setTitle } from "./lib/meta";
@@ -23,7 +23,7 @@ import { scrollPageTop, scrollToSection, useSmoothScroll } from "./lib/useSmooth
 import { c, useT } from "./lib/copy";
 
 /** Страницы, уже переведённые в новый стиль витрины (образец — /warehouses). */
-const NEW_STYLE = new Set<Page>(["market", "warehouse"]);
+const NEW_STYLE = new Set<Page>(["market", "warehouse", "notfound"]);
 
 const T = {
   notFoundCaption: c("Ошибка 404", "Error 404"),
@@ -96,8 +96,7 @@ export function SiteApp() {
 
   return (
     <>
-      {/* Страницы в новом стиле целиком: своя шапка на синем первом экране,
-          своя закреплённая и синий подвал. Главная с 21 окт — страница для
+      {/* Страницы в новом стиле целиком: своя шапка и синий подвал. Главная с 21 окт — страница для
           складов (Кирилл: «главная сейчас это то, что для складов»); прежняя
           главная для селлеров (`LandingPage`) на паузе вместе с /sellers. */}
       {route.page === "landing" || route.page === "warehouses" ? (
@@ -108,10 +107,15 @@ export function SiteApp() {
         <RoadmapScreen />
       ) : NEW_STYLE.has(route.page) ? (
         <div className="wh">
-          <StickySiteNav route={route} />
+          <SiteBar route={route} />
           <main>
             {route.page === "market" && <MarketScreen />}
             {route.page === "warehouse" && <WarehouseScreen id={route.id} />}
+            {route.page === "notfound" && (
+              <NotFoundScreen caption={t(T.notFoundCaption)} title={t(T.notFoundTitle)}>
+                {t(T.notFoundBody)}
+              </NotFoundScreen>
+            )}
           </main>
           <WarehousesFooter away />
         </div>
@@ -123,11 +127,6 @@ export function SiteApp() {
             {route.page === "legal" && <LegalScreen slug={route.id} />}
             {route.page === "pricing" && <PricingScreen />}
             {route.page === "contacts" && <ContactsScreen />}
-            {route.page === "notfound" && (
-              <NotFoundScreen caption={t(T.notFoundCaption)} title={t(T.notFoundTitle)}>
-                {t(T.notFoundBody)}
-              </NotFoundScreen>
-            )}
           </main>
           <SiteFooter />
         </>

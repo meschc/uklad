@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { c, useT, type Copy } from "../../lib/copy";
@@ -31,10 +31,9 @@ export const SITE_NAV_H = 64;
 /**
  * Шапка страниц витрины в новом стиле — по образцу страницы для складов.
  *
- * `tone="blue"` — белая шапка внутри синего первого экрана; `tone="sticky"` —
- * закреплённая светлая, которая выезжает сверху, как только первый экран ушёл
- * из вида (своя шапка синего блока закрепиться не может: блок обрезан
- * `overflow-hidden` ради скругления).
+ * `tone="blue"` — белая шапка на синем; `tone="sticky"` — светлая
+ * закреплённая (`SiteBar`). У каждой страницы своя композиция первого экрана
+ * (Кирилл 22 окт), шапка у всех одна.
  */
 export function SiteNav({ route, tone }: { route: Route; tone: "blue" | "sticky" }) {
   const t = useT();
@@ -147,30 +146,19 @@ export function SiteNav({ route, tone }: { route: Route; tone: "blue" | "sticky"
   );
 }
 
-/** Закреплённая шапка: выезжает после первого экрана, прячется наверху. */
-export function StickySiteNav({ route }: { route: Route }) {
-  const [shown, setShown] = useState(false);
-
-  useEffect(() => {
-    const onScroll = () => setShown(window.scrollY > 96);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
+/**
+ * Шапка страниц без синего первого экрана: закреплена с самого верха, та же
+ * светлая, что выезжает на остальных.
+ */
+export function SiteBar({ route }: { route: Route }) {
   return (
-    <div
-      aria-hidden={!shown}
-      {...(shown ? {} : { inert: "" })}
+    <header
       style={{ height: SITE_NAV_H }}
-      className={cn(
-        "fixed inset-x-0 top-0 z-[60] border-b border-[var(--wh-line)] bg-[color-mix(in_srgb,var(--wh-ground)_88%,transparent)] backdrop-blur-md transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none",
-        shown ? "translate-y-0" : "-translate-y-full",
-      )}
+      className="sticky top-0 z-[60] border-b border-[var(--wh-line)] bg-[color-mix(in_srgb,var(--wh-ground)_88%,transparent)] backdrop-blur-md"
     >
       <div className="mx-auto flex h-full max-w-[1280px] flex-col justify-center px-5 sm:px-10">
         <SiteNav route={route} tone="sticky" />
       </div>
-    </div>
+    </header>
   );
 }

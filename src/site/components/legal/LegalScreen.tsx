@@ -63,14 +63,17 @@ export function LegalScreen({ slug }: { slug?: string }) {
   // по ссылке из своей переписки и должен понять, что ссылка устарела, а не
   // гадать, тот ли документ перед ним.
   if (slug && !doc) {
+    // Отступ под старую закреплённую шапку правового раздела.
     return (
-      <NotFoundScreen
-        caption={t(T.notFoundCaption)}
-        title={t(T.notFoundTitle)}
-        action={{ label: t(T.allDocs), to: "/legal" }}
-      >
-        {t(T.notFoundBody)}
-      </NotFoundScreen>
+      <div className="pt-16">
+        <NotFoundScreen
+          caption={t(T.notFoundCaption)}
+          title={t(T.notFoundTitle)}
+          action={{ label: t(T.allDocs), to: "/legal" }}
+        >
+          {t(T.notFoundBody)}
+        </NotFoundScreen>
+      </div>
     );
   }
 

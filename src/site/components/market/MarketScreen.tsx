@@ -13,8 +13,8 @@ import { EMPTY_VOLUME, estimateRange, type SellerVolume } from "../../lib/estima
 import { DEFAULT_FILTERS, SORTS, activeCount, type SortId } from "../../lib/filters";
 import { filtersQuery } from "../../lib/marketQuery";
 import { c, useT } from "../../lib/copy";
-import { goWarehouse, useRoute } from "../../lib/route";
-import { PageHero } from "../frame/PageHero";
+import { goWarehouse } from "../../lib/route";
+import { MarketIntro } from "./MarketIntro";
 import { useMarketFilters } from "../../lib/useMarketFilters";
 import { useOverlay } from "../../lib/useOverlay";
 
@@ -28,15 +28,6 @@ interface Paging {
 }
 
 const T = {
-  title: c("Склады для фулфилмента", "Fulfilment warehouses"),
-  lead: c(
-    "Одинаковые карточки и прайс, свободные места по каждому складу. Заявка бесплатна: витрина не берёт комиссию с селлера.",
-    "The same card and the same price list for everyone, free slots per warehouse. Requests are free: we take no seller commission.",
-  ),
-  badge: c(
-    "Галочка на карточке значит ровно одно: Уклад сверил регистрацию компании и право на помещение. Как склад работает, она не оценивает — про это отзывы.",
-    "A check mark on a card means exactly one thing: Uklad verified the company registration and the right to use the premises. It says nothing about how the warehouse works — that is what reviews are for.",
-  ),
   found: c("по вашим условиям", "match your filters"),
   filters: c("Фильтры", "Filters"),
   list: c("Списком", "List"),
@@ -74,7 +65,6 @@ const MarketMap = lazy(() => import("./MarketMap").then((m) => ({ default: m.Mar
  */
 export function MarketScreen() {
   const t = useT();
-  const route = useRoute();
   const [filters, setFilters] = useMarketFilters();
   const [volume, setVolume] = useState<SellerVolume>(EMPTY_VOLUME);
   const [view, setView] = useState<"list" | "map">("list");
@@ -152,16 +142,10 @@ export function MarketScreen() {
 
   return (
     <>
-      {/* Синий первый экран — как у страницы для складов. Что значит галочка
-          на карточке, сказано здесь один раз на весь список, а не подписью
-          под каждой: селлер видит только значок, который сам по себе читается
-          как «ручаемся за качество». */}
-      <PageHero route={route} title={t(T.title)} lead={t(T.lead)}>
-        <p className="text-sm leading-relaxed text-white/70">{t(T.badge)}</p>
-      </PageHero>
+      <MarketIntro found={found} filters={filters} onFilters={setFilters} />
       <div
         className={cn(
-          "mx-auto max-w-[1280px] px-5 pt-12 sm:px-10 sm:pt-16",
+          "mx-auto max-w-[1280px] px-5 pt-10 sm:px-10 sm:pt-14",
           // Полоса сравнения висит над страницей и накрывает её низ — вместе с
           // кнопкой «Показать ещё». Пока полосы нет, лишний отступ не нужен.
           selected.length > 0 ? "pb-44 sm:pb-32" : "pb-24",
@@ -169,7 +153,7 @@ export function MarketScreen() {
       >
         <div className="grid gap-8 lg:grid-cols-[264px_minmax(0,1fr)] lg:gap-10">
           <aside className="hidden lg:block">
-            <div className="sticky top-24 max-h-[calc(100vh-8rem)] overflow-y-auto pb-6 pr-1">
+            <div className="sticky top-24 max-h-[calc(100vh-8rem)] overflow-y-auto rounded-[22px] bg-[var(--wh-soft)] p-5">
               <Filters value={filters} onChange={setFilters} />
             </div>
           </aside>

@@ -23,8 +23,8 @@ import { money, monthlyPerPlace, occupancy } from "../../data/warehouses";
 import { warehousesRepository } from "../../data/warehousesRepository";
 import { PAGE_NOW, shortDate } from "../../lib/date";
 import { freshness } from "../../lib/freshness";
-import { href, useRoute } from "../../lib/route";
-import { PageHero } from "../frame/PageHero";
+import { href } from "../../lib/route";
+import { Reveal } from "../Reveal";
 import { c, useT, type Copy, type TFunc } from "../../lib/copy";
 import type { Warehouse } from "../../data/warehouses";
 
@@ -207,7 +207,6 @@ const FORMS = {
  */
 export function WarehouseScreen({ id }: { id?: string }) {
   const t = useT();
-  const route = useRoute();
   const w = id ? warehousesRepository.get(id) : undefined;
 
   if (!w) return <NotFound />;
@@ -227,38 +226,70 @@ export function WarehouseScreen({ id }: { id?: string }) {
 
   return (
     <>
-      <PageHero
-        route={route}
-        eyebrow={
-          <a
-            href={href("/market")}
-            className="group inline-flex items-center gap-1.5 text-white/75 transition-colors hover:text-white"
-          >
-            <ArrowLeft className="size-3.5 transition-transform group-hover:-translate-x-0.5" />
-            {t(T.back)}
-          </a>
-        }
-        title={
-          <span className="flex items-center gap-4">
-            <WarehouseAvatar warehouse={w} className="size-14 shrink-0 ring-1 ring-white/40" />
-            <span className="min-w-0">
+      {/* Паспорт склада (22 окт): без синего первого экрана — синим здесь
+          только плитка цены, единственное, что сравнивают между складами
+          с первого взгляда. Слева кто это и чем отличается, справа — сколько
+          стоит место и сколько их свободно. */}
+      <section className="mx-auto max-w-[1280px] px-5 pt-8 sm:px-10 sm:pt-12">
+        <a
+          href={href("/market")}
+          className="group inline-flex items-center gap-1.5 text-sm text-[var(--wh-muted)] transition-colors hover:text-[var(--wh-ink)]"
+        >
+          <ArrowLeft className="size-3.5 transition-transform group-hover:-translate-x-0.5" />
+          {t(T.back)}
+        </a>
+
+        <Reveal className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_400px] lg:items-stretch lg:gap-14">
+          <div className="flex flex-col">
+            <div className="flex items-center gap-4">
+              <WarehouseAvatar warehouse={w} className="size-16 shrink-0" />
+              <p className="text-sm leading-relaxed text-[var(--wh-muted)]">
+                {t(T.meta, { legal: t(w.legal), y: w.since, place: place(t, w) })}
+              </p>
+            </div>
+            <h1 className="mt-6 text-[clamp(40px,4.8vw,72px)] font-normal leading-[0.98] tracking-[-0.045em] [text-wrap:balance]">
               {t(w.name)}
               {w.verified && (
                 <BadgeCheck
-                  className="ml-2 inline size-6 align-baseline text-white"
+                  className="ml-3 inline size-[0.6em] align-[0.05em] text-[var(--wh-blue)]"
                   aria-label={t(T.verified)}
                 />
               )}
-            </span>
-          </span>
-        }
-        lead={t(T.meta, { legal: t(w.legal), y: w.since, place: place(t, w) })}
-      />
+            </h1>
+            <p className="wh-statement mt-6 max-w-[28ch] text-[var(--wh-muted)] lg:mt-auto lg:pt-8">
+              {t(w.pitch)}
+            </p>
+          </div>
+
+          <div className="flex flex-col justify-between gap-8 rounded-[22px] bg-[var(--wh-blue)] p-7 text-[var(--wh-on-blue)]">
+            <div>
+              <p className="text-sm text-white/75">{t(T.perMonth)}</p>
+              <p className="mt-2 whitespace-nowrap text-[clamp(48px,5vw,72px)] font-light leading-none tracking-[-0.05em] tabular-nums">
+                ≈ {money(monthlyPerPlace(w))} ₽
+              </p>
+            </div>
+            <div>
+              <div className="flex items-baseline justify-between gap-4 text-sm">
+                <span className="text-white/75">{t(T.free, { n: money(w.cellsTotal) })}</span>
+                <span className="text-2xl tabular-nums tracking-[-0.03em]">
+                  {money(w.cellsFree)}
+                </span>
+              </div>
+              {/* Полоса свободного: белая часть — свободно, тёмная — занято. */}
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/20">
+                <div
+                  className="wh-grow h-full rounded-full bg-white"
+                  style={{ width: `${100 - busy}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        </Reveal>
+      </section>
+
       <div className="mx-auto max-w-[1280px] px-5 pb-24 pt-10 sm:px-10 sm:pt-14">
-        {/* Обложка — только у складов, чью площадку мы подключали; плиту с
-          буквой здесь не рисуем: знак склада уже стоит в первом экране. */}
         {w.photo && (
-          <figure className="mb-10">
+          <figure className="mb-12">
             <WarehouseCover
               warehouse={w}
               className="aspect-[16/5] overflow-hidden rounded-[22px]"
@@ -271,9 +302,7 @@ export function WarehouseScreen({ id }: { id?: string }) {
 
         <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_360px]">
           <div className="min-w-0">
-            <p className="max-w-2xl text-base leading-relaxed">{t(w.pitch)}</p>
-
-            <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {/* У склада без отзывов в этой клетке стоит прочерк, а не ноль:
                 нолём в ряду с площадью и временем ответа читается «оценка
                 нулевая», хотя оценки просто нет. Что это значит, объяснено
