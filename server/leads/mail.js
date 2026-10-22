@@ -108,4 +108,17 @@ async function sendLetter({ subject, text, fields }) {
   });
 }
 
-module.exports = { sendLetter };
+/**
+ * Письмо человеку, оставившему заявку (персональная демо-ссылка).
+ *
+ * Отдельная функция, а не `sendLetter` с другим адресатом: у заявки адресат
+ * один и зашит в окружение, а здесь он приходит из формы — и проверяется той
+ * же грубой маской, чтобы в заголовок `To` не попала подстановка получателей.
+ */
+async function sendTo({ to, subject, text }) {
+  if (!EMAIL.test(to)) throw new Error("адрес получателя не похож на почту");
+  const mailer = ensureTransport();
+  await mailer.sendMail({ from: config.from, to, subject, text });
+}
+
+module.exports = { sendLetter, sendTo, replyTo };
