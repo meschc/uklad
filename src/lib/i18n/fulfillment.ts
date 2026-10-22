@@ -45,6 +45,11 @@ export const ru = {
   "lookup.openInTable": "Открыть в номенклатуре",
   "integr.title": "Интеграции",
   "integr.subtitle": "Внешние системы учёта: что нужно для подключения",
+  "integr.error.noServer": "Подключение заработает после запуска сервера Уклада",
+  "integr.error.notConfigured": "Подключение не настроено: нет ключа",
+  "integr.error.rejected": "Сервис отказал в доступе: проверьте ключ",
+  "integr.error.rateLimit": "Сервис просит подождать: слишком много запросов",
+  "integr.error.unsupported": "Этот сервис такую операцию не поддерживает",
   "integr.securityNote":
     "Ключи и пароли хранятся только в этом браузере и никуда не отправляются: обмена с внешними системами в прототипе ещё нет.",
   "integr.setup": "Настроить",
@@ -366,6 +371,11 @@ export const en: Record<keyof typeof ru, string> = {
   "lookup.openInTable": "Open in the product table",
   "integr.title": "Integrations",
   "integr.subtitle": "External accounting systems: what a connection needs",
+  "integr.error.noServer": "The connection will work once the Uklad server is up",
+  "integr.error.notConfigured": "Connection is not set up: no key",
+  "integr.error.rejected": "The service denied access: check the key",
+  "integr.error.rateLimit": "The service asks to wait: too many requests",
+  "integr.error.unsupported": "This service does not support this operation",
   "integr.securityNote":
     "Keys and passwords stay in this browser and are never sent anywhere: the prototype has no exchange with external systems yet.",
   "integr.setup": "Set up",
