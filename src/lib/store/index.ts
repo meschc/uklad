@@ -251,6 +251,7 @@ export const useEditor = create<EditorState>()(
         // пережить перезагрузку экрана посреди смены.
         staffEvents: s.staffEvents,
         stationSession: s.stationSession,
+        packSession: s.packSession,
       }),
     },
   ),

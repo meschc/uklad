@@ -1,14 +1,11 @@
-import { groupRequestsByTarget } from "./fulfillment";
-import { matchesProductCode, normalizeCode } from "./barcode";
-import type { FulfillmentRequest, Product, StaffEvent, StationSession } from "./types";
+import type { StaffEvent, StationSession } from "./types";
 
 /**
  * Рабочее место и смена сотрудника — чистые правила, о хранилище не знают.
  *
- * Здесь три вещи, которые ошибаются молча: в каком состоянии смена, сколько
- * часов отработано (и значит, сколько заработано) и совпал ли отсканированный
- * товар с заказом. Неверный ответ в любой из них выглядит как обычный — его
- * заметят только в день зарплаты или по возврату от покупателя.
+ * Здесь две вещи, которые ошибаются молча: в каком состоянии смена и сколько
+ * часов отработано (а значит, сколько заработано). Неверный ответ выглядит как
+ * обычный — его заметят только в день зарплаты. Правила упаковки — в `packing.ts`.
  */
 
 /** Префикс бейджа сотрудника. Латиницей, как и номера тары: так его читает любой сканер. */
@@ -129,84 +126,4 @@ export function startOfMonth(at: number): number {
   d.setHours(0, 0, 0, 0);
   d.setDate(1);
   return d.getTime();
-}
-
-// --- Упаковка -------------------------------------------------------------------
-
-/** Заказ на упаковку: собранные заявки одного назначения — одна посылка. */
-export interface PackOrder {
-  /** Номер заказа: id первой заявки — стабилен, пока заказ не упакован. */
-  id: string;
-  target: string | null;
-  requests: FulfillmentRequest[];
-  /** Сколько единиц должно лечь в коробку всего. */
-  units: number;
-}
-
-/**
- * Очередь упаковщика: собранные («done»), ещё не упакованные и не уехавшие
- * заявки, сложенные по назначению. Назначение, а не дата — по той же причине,
- * что и в «Заданиях»: в одну коробку едет то, что едет одному получателю.
- * Собранное частично пакуется тем, что собрали, а не тем, что просили.
- */
-export function packQueue(requests: readonly FulfillmentRequest[]): PackOrder[] {
-  const ready = requests.filter((r) => r.status === "done" && !r.packedAt);
-  return groupRequestsByTarget(ready).map((g) => ({
-    id: g.items[0].id,
-    target: g.target,
-    requests: g.items,
-    units: g.items.reduce((n, r) => n + packQty(r), 0),
-  }));
-}
-
-/** Сколько единиц этой заявки кладут в коробку. */
-export function packQty(r: FulfillmentRequest): number {
-  return r.partial ? (r.pickedQty ?? 0) : r.qty;
-}
-
-/** Сколько единиц каждого товара должно оказаться в коробке. */
-export function packPlan(order: PackOrder): Map<string, number> {
-  const plan = new Map<string, number>();
-  for (const r of order.requests) plan.set(r.productId, (plan.get(r.productId) ?? 0) + packQty(r));
-  return plan;
-}
-
-export type PackScanResult =
-  | { kind: "ok"; productId: string }
-  /** Товар есть в заказе, но его уже положили столько, сколько нужно. */
-  | { kind: "extra"; productId: string }
-  /** Товар склада, но в этом заказе его нет — самая дорогая ошибка упаковки. */
-  | { kind: "wrong"; productId: string }
-  | { kind: "unknown" };
-
-/**
- * Проверить скан против заказа. Каждая единица сканируется отдельно — как на
- * сборке: «пересчитал глазами» здесь и есть место, где в коробку уезжает
- * соседний артикул.
- */
-export function checkPackScan(
-  order: PackOrder,
-  packed: ReadonlyMap<string, number>,
-  products: readonly Product[],
-  raw: string,
-): PackScanResult {
-  if (!normalizeCode(raw)) return { kind: "unknown" };
-  const plan = packPlan(order);
-  // Сначала ищем среди товаров заказа: совпадение артикула чужого товара со
-  // штрихкодом нашего не должно уводить скан в «не тот товар».
-  const inOrder = products.filter((p) => plan.has(p.id));
-  const product =
-    inOrder.find((p) => matchesProductCode(p, raw)) ??
-    products.find((p) => matchesProductCode(p, raw));
-  if (!product) return { kind: "unknown" };
-  const need = plan.get(product.id);
-  if (need == null) return { kind: "wrong", productId: product.id };
-  if ((packed.get(product.id) ?? 0) >= need) return { kind: "extra", productId: product.id };
-  return { kind: "ok", productId: product.id };
-}
-
-/** Всё ли положено: каждая позиция ровно в нужном количестве. */
-export function isPackComplete(order: PackOrder, packed: ReadonlyMap<string, number>): boolean {
-  for (const [id, need] of packPlan(order)) if ((packed.get(id) ?? 0) < need) return false;
-  return true;
 }

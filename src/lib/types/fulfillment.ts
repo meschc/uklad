@@ -226,6 +226,8 @@ export type StaffEventType =
   | "shift_end"
   | "pack_scan"
   | "pack_error"
+  | "pack_reject"
+  | "pack_label"
   | "pack_done";
 
 export interface StaffEvent {
@@ -239,6 +241,9 @@ export interface StaffEvent {
   orderId?: string;
   /** Отсканированный код — для разбора ошибки «не тот товар». */
   code?: string;
+  productId?: string;
+  /** Сколько заняла упаковка единицы, мс (от скана товара до скана этикетки). */
+  ms?: number;
 }
 
 /**
@@ -250,4 +255,52 @@ export interface StationSession {
   station: WorkstationKind;
   startedAt: number;
   expiresAt: number;
+}
+
+// --- Упаковка от тары -----------------------------------------------------------
+
+/**
+ * Единица, прошедшая стол упаковки. Цикл на каждую штуку один: скан товара →
+ * этикетка печатается сама → упаковщик клеит её и сканирует → единица
+ * упакована. Время между первым и последним сканом и есть время упаковки.
+ */
+export interface PackedUnit {
+  productId: string;
+  /** Заказ, под который ушла единица; нет — тара без заказов (поставка FBO). */
+  orderId?: string;
+  /** Код этикетки единицы: её сканируют после того, как наклеили. */
+  labelCode: string;
+  scannedAt: number;
+  /** Этикетку отсканировали — единица упакована. Нет — ждём скан этикетки. */
+  confirmedAt?: number;
+}
+
+/** Что пошло не так со штукой: брак, её нет в таре, она лишняя. */
+export type PackRejectReason = "defect" | "not_in_tote" | "extra";
+
+export interface PackReject {
+  productId: string;
+  reason: PackRejectReason;
+  at: number;
+  code: string;
+}
+
+/**
+ * Открытая упаковка: тара с товаром (короб с приёмки или со сборки) пакуется в
+ * короб отгрузки. Живёт в сторе, а не в экране: перезагрузка посреди тары не
+ * должна терять уже упакованное.
+ */
+export interface PackSession {
+  id: string;
+  staffId: string;
+  /** Тара, из которой берут товар (`Box`). */
+  sourceBoxId: string;
+  /** Короб отгрузки, куда кладут упакованное: его код сканируют вторым. */
+  targetCode: string;
+  startedAt: number;
+  units: PackedUnit[];
+  rejects: PackReject[];
+  /** Этикетки заказов, ждущие скана: заказ из нескольких штук закрывается своей. */
+  orderLabels: { orderId: string; labelCode: string; confirmedAt?: number }[];
+  labelSeq: number;
 }

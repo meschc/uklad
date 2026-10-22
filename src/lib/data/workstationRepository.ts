@@ -1,3 +1,4 @@
+import type { ItemScan } from "../packing";
 import type { StaffEvent, StaffEventType, WorkstationKind } from "../types";
 import { isStaffEvent } from "./guards";
 import { readList, storePort, type StorePort } from "./repository";
@@ -17,8 +18,13 @@ export interface WorkstationRepository {
   login: (code: string, station: WorkstationKind) => Promise<Result<string>>;
   logout: () => Promise<Result<void>>;
   mark: (type: ShiftMark) => Promise<Result<void>>;
-  logScan: (orderId: string, code: string, ok: boolean) => Promise<Result<void>>;
-  pack: (orderId: string, requestIds: string[]) => Promise<Result<void>>;
+  /** Начать тару: скан тары с товаром и короба отгрузки. */
+  packStart: (sourceCode: string, targetCode: string) => Promise<Result<void>>;
+  packItem: (code: string) => Promise<Result<ItemScan>>;
+  /** Скан наклеенной этикетки. Не та этикетка — отказ `ws.label.wrong`. */
+  packLabel: (code: string) => Promise<Result<void>>;
+  packReject: () => Promise<Result<void>>;
+  packFinish: () => Promise<Result<void>>;
 }
 
 export function createWorkstationRepository(port: StorePort = storePort): WorkstationRepository {
@@ -38,8 +44,19 @@ export function createWorkstationRepository(port: StorePort = storePort): Workst
       if (!res.ok) return res;
       return res.data ? ok(undefined) : fail("ws.markRejected");
     },
-    logScan: (orderId, code, isOk) => attempt(() => port.get().logPackScan(orderId, code, isOk)),
-    pack: (orderId, requestIds) => attempt(() => port.get().packOrder(orderId, requestIds)),
+    packStart: async (source, target) => {
+      const res = await attempt(() => port.get().packStart(source, target));
+      if (!res.ok) return res;
+      return res.data ? fail(res.data) : ok(undefined);
+    },
+    packItem: (code) => attempt(() => port.get().packScanItem(code)),
+    packLabel: async (code) => {
+      const res = await attempt(() => port.get().packScanLabel(code));
+      if (!res.ok) return res;
+      return res.data ? ok(undefined) : fail("ws.label.wrong");
+    },
+    packReject: () => attempt(() => port.get().packRejectPending()),
+    packFinish: () => attempt(() => port.get().packFinish()),
   };
 }
 

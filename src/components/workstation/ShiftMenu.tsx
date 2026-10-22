@@ -48,7 +48,11 @@ export function ShiftMenu({ member, now }: { member: StaffMember; now: number })
   const earnedToday = earnings(today, member.hourlyRate);
   const earnedMonth = earnings(month, member.hourlyRate);
   const packedToday = events.filter(
-    (e) => e.staffId === member.id && e.type === "pack_done" && e.at >= startOfDay(now),
+    (e) =>
+      e.staffId === member.id &&
+      e.type === "pack_label" &&
+      !!e.productId &&
+      e.at >= startOfDay(now),
   ).length;
 
   return (

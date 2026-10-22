@@ -2,7 +2,9 @@ import type { StateCreator } from "zustand";
 // Только тип: `import type` стирается при сборке, поэтому кольца
 // «словарь → хранилище → словарь» не возникает.
 import type { MsgKey } from "../i18n";
+import type { ItemScan } from "../packing";
 import type {
+  PackSession,
   StaffEvent,
   StaffEventType,
   StationSession,
@@ -638,10 +640,23 @@ export interface WorkstationSlice {
   markShift: (
     type: Extract<StaffEventType, "shift_start" | "break_start" | "break_end" | "shift_end">,
   ) => boolean;
-  /** Скан на упаковке: попал в заказ или нет — пишется в журнал как есть. */
-  logPackScan: (orderId: string, code: string, ok: boolean) => void;
-  /** Заказ упакован: заявки получают отметку, в журнал — «упаковал». */
-  packOrder: (orderId: string, requestIds: string[]) => void;
+  /** Открытая упаковка тары. Одна на устройство, как и вход по бейджу. */
+  packSession: PackSession | null;
+  /**
+   * Начать тару: скан тары с товаром и короба отгрузки. Возвращает ключ ошибки
+   * или null при успехе.
+   */
+  packStart: (sourceCode: string, targetCode: string) => MsgKey | null;
+  /** Скан товара: этикетка единицы появляется сама, брак и лишнее — в отказы. */
+  packScanItem: (code: string) => ItemScan;
+  /** Скан наклеенной этикетки. false — это не та этикетка, которую ждём. */
+  packScanLabel: (code: string) => boolean;
+  /** Отсканированная, но ещё не упакованная штука оказалась браком. */
+  packRejectPending: () => void;
+  /** Закрыть тару: списать из неё ушедшее, отметить закрытые заказы. */
+  packFinish: () => void;
+  /** Демо: тара из собранных заказов — пока сборка не пишет, что положила в тару. */
+  prepareDemoTote: () => string | null;
 }
 
 export type EditorState = AccountSlice &

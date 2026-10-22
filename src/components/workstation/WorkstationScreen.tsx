@@ -82,7 +82,12 @@ export function WorkstationScreen() {
         {!member ? (
           <BadgeLogin />
         ) : (
-          <div className="mx-auto flex max-w-3xl flex-col gap-5 px-4 py-6">
+          <div
+            className={cn(
+              "mx-auto flex flex-col gap-5 px-4 py-6",
+              tab === "pack" ? "max-w-5xl" : "max-w-3xl",
+            )}
+          >
             <Segmented<Tab>
               value={tab}
               onChange={setTab}

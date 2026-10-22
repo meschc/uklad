@@ -3,7 +3,7 @@ import { startOfDay } from "@/lib/workstation";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { card } from "@/components/ui/card";
-import { formatTime, shortId } from "./useNow";
+import { formatTime } from "./useNow";
 
 /**
  * Свой журнал за сегодня (узел cab-staff-log). Сотрудник видит ровно то же,
@@ -12,6 +12,8 @@ import { formatTime, shortId } from "./useNow";
 export function StaffLog({ staffId, now }: { staffId: string; now: number }) {
   const t = useT();
   const events = useEditor((s) => s.staffEvents);
+  const productList = useEditor((s) => s.products);
+  const products = new Map(productList.map((p) => [p.id, p.name]));
   const from = startOfDay(now);
   const today = events.filter((e) => e.staffId === staffId && e.at >= from).reverse();
 
@@ -32,7 +34,13 @@ export function StaffLog({ staffId, now }: { staffId: string; now: number }) {
             >
               <span className="tabular-nums text-muted-foreground">{formatTime(e.at, t.lang)}</span>
               <span className={cn(e.type === "pack_error" && "text-destructive")}>
-                {t(`ws.ev.${e.type}` as MsgKey, { id: shortId(e.orderId) })}
+                {t(`ws.ev.${e.type}` as MsgKey)}
+                {e.productId && products.get(e.productId) && ` · ${products.get(e.productId)}`}
+                {e.ms != null && (
+                  <span className="ml-2 tabular-nums text-muted-foreground">
+                    {t("ws.run.sec", { n: Math.round(e.ms / 1000) })}
+                  </span>
+                )}
                 {e.code && (
                   <span className="ml-2 font-mono text-xs text-muted-foreground">{e.code}</span>
                 )}
