@@ -65,6 +65,8 @@ function openDb(file) {
   };
 
   return {
+    /** Сама база — для таблиц админки (`admin/store.js`), они живут рядом. */
+    raw: db,
     addLead(lead, now) {
       const r = q.insertLead.run(
         now.toISOString(),
