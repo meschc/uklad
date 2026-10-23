@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Ban, Package, Printer, Tag } from "lucide-react";
+import { Ban, Package, Printer, Tag, UserRound } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { workstationRepository } from "@/lib/data";
 import {
+  boxesHolding,
   packSummary,
   pendingLabel,
   toteContents,
@@ -22,7 +23,7 @@ import { shortId } from "./useNow";
 
 export type PackResult = ReturnType<typeof packSummary> & { source: string; target: string };
 
-type Feedback = { status: ScanStatus; key: MsgKey; name?: string } | null;
+type Feedback = { status: ScanStatus; key: MsgKey; name?: string; box?: string } | null;
 
 /**
  * Поштучный цикл упаковки. Поле скана одно и всегда в фокусе: сканер сам
@@ -66,6 +67,15 @@ export function PackRun({
     }
     const res = await workstationRepository.packItem(code);
     if (!res.ok) return setFeedback({ status: "error", key: res.error });
+    if (res.data.kind === "not_in_tote") {
+      const where = boxesHolding(useEditor.getState().boxes, res.data.productId, box.id);
+      return setFeedback({
+        status: "error",
+        key: where.length ? "ws.run.not_in_tote" : "ws.run.not_in_toteNowhere",
+        name: nameOf(res.data.productId),
+        box: where.slice(0, 3).join(", ") + (where.length > 3 ? " …" : ""),
+      });
+    }
     setFeedback(feedbackFor(res.data, nameOf));
   };
 
@@ -87,10 +97,28 @@ export function PackRun({
         <ScanField
           label={t("ws.run.scan")}
           status={feedback?.status ?? "idle"}
-          hint={feedback ? t(feedback.key, { name: feedback.name ?? "" }) : t("ws.run.nextHint")}
+          hint={
+            feedback?.key.startsWith("ws.run.not_in_tote")
+              ? undefined
+              : feedback
+                ? t(feedback.key, { name: feedback.name ?? "", box: feedback.box ?? "" })
+                : t("ws.run.nextHint")
+          }
           actionLabel={t(label ? "ws.act.confirm" : "ws.act.pack")}
           onSubmit={(c) => void onScan(c)}
         />
+
+        {feedback?.key.startsWith("ws.run.not_in_tote") && (
+          <div
+            role="alert"
+            className="flex items-start gap-3 rounded-xl border-2 border-destructive bg-destructive/10 p-4"
+          >
+            <UserRound className="mt-0.5 size-6 shrink-0 text-destructive" />
+            <p className="text-lg font-semibold leading-snug">
+              {t(feedback.key, { name: feedback.name ?? "", box: feedback.box ?? "" })}
+            </p>
+          </div>
+        )}
 
         {unit && product ? (
           <div className={card({ className: "flex flex-col gap-4" })}>

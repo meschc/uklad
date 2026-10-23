@@ -3,7 +3,7 @@ import { create, type StateCreator } from "zustand";
 import { createWorkstationSlice } from "../store/workstation.slice";
 import type { EditorState, WorkstationSlice } from "../store/state";
 import { badgeCode } from "../workstation";
-import { toteOrders } from "../packing";
+import { boxesHolding, toteOrders } from "../packing";
 import type { Box, FulfillmentRequest, Product } from "../types";
 
 const slice = createWorkstationSlice as unknown as StateCreator<
@@ -112,5 +112,17 @@ describe("стол упаковки от тары", () => {
     const requests = [req({ id: "r1", note: "Тула", productId: "p1", qty: 5 })];
     const { s } = stand([{ productId: "p1", qty: 2 }], requests);
     expect(toteOrders(requests, s().boxes[0])).toEqual([]);
+  });
+});
+
+describe("товар не из этой тары", () => {
+  it("упаковщик видит, в какой таре товар числится по учёту", () => {
+    const boxes: Box[] = [
+      { id: "b1", barcode: "UK-BOX-000001", createdAt: 0, lines: [{ productId: "p1", qty: 1 }] },
+      { id: "b2", barcode: "UK-BOX-000002", createdAt: 0, lines: [{ productId: "p2", qty: 3 }] },
+      { id: "b3", barcode: "UK-BOX-000003", createdAt: 0, lines: [{ productId: "p2", qty: 0 }] },
+    ];
+    expect(boxesHolding(boxes, "p2", "b1")).toEqual(["UK-BOX-000002"]);
+    expect(boxesHolding(boxes, "p3", "b1")).toEqual([]);
   });
 });

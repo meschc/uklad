@@ -85,7 +85,10 @@ export const ru = {
   "ws.run.defect": "Брак",
   "ws.run.orderLabel": "Заказ {id} собран полностью",
   "ws.run.orderLabelHint": "Закройте упаковку заказа, наклейте этикетку заказа и отсканируйте её.",
-  "ws.run.not_in_tote": "{name} — этого товара нет в таре. Отложите его в сторону.",
+  "ws.run.not_in_tote":
+    "{name} — этого товара не должно быть в таре. Отнесите его старшему смены. По учёту товар числится в таре {box}.",
+  "ws.run.not_in_toteNowhere":
+    "{name} — этого товара не должно быть в таре. Отнесите его старшему смены. По учёту товар не числится ни в одной таре.",
   "ws.run.extra": "{name} — все штуки из тары уже прошли. Лишняя, отложите.",
   "ws.run.label_pending": "Сначала наклейте и отсканируйте напечатанную этикетку",
   "ws.run.unknown": "Код не найден среди товаров склада",
@@ -202,7 +205,10 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.run.defect": "Defect",
   "ws.run.orderLabel": "Order {id} is complete",
   "ws.run.orderLabelHint": "Close the order's package, stick the order label on and scan it.",
-  "ws.run.not_in_tote": "{name} — not in this tote. Set it aside.",
+  "ws.run.not_in_tote":
+    "{name} — should not be in this tote. Take it to the shift lead. By the records it belongs to tote {box}.",
+  "ws.run.not_in_toteNowhere":
+    "{name} — should not be in this tote. Take it to the shift lead. By the records it is not in any tote.",
   "ws.run.extra": "{name} — every unit from the tote is done. Extra, set it aside.",
   "ws.run.label_pending": "Stick on and scan the printed label first",
   "ws.run.unknown": "Code not found among warehouse items",

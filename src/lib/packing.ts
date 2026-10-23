@@ -184,3 +184,20 @@ export function packSummary(session: PackSession, box: Box) {
     avgMs: average(unitTimes(session)),
   };
 }
+
+/**
+ * Где товар числится по учёту, кроме этой тары. Нужен упаковщику, когда
+ * штука оказалась не в той таре: её несут старшему смены, и тот сразу видит,
+ * откуда она пропала.
+ */
+export function boxesHolding(
+  boxes: readonly Box[],
+  productId: string,
+  exceptBoxId: string,
+): string[] {
+  return boxes
+    .filter(
+      (b) => b.id !== exceptBoxId && b.lines.some((l) => l.productId === productId && l.qty > 0),
+    )
+    .map((b) => b.barcode);
+}
