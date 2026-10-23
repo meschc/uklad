@@ -133,6 +133,9 @@ export const ru = {
   "wh.showMap": "Указать точку на карте",
   "wh.hideMap": "Скрыть карту",
   "wh.delete.confirm": "Удалить склад «{name}»?",
+  "wh.delete.work":
+    "Вместе со складом безвозвратно удалятся: поставок {shipments}, заявок {requests}, тары {boxes}, рейсов {trips}.",
+  "wh.delete.typeName": "Введите «{name}», чтобы подтвердить",
   "wh.delete.note": "Товары останутся в номенклатуре, но потеряют свои места на этом складе.",
 
   // Общее
@@ -315,6 +318,9 @@ export const en: Record<keyof typeof ru, string> = {
   "wh.showMap": "Set a point on the map",
   "wh.hideMap": "Hide map",
   "wh.delete.confirm": "Delete warehouse “{name}”?",
+  "wh.delete.work":
+    "Deleted for good with the warehouse: {shipments} shipments, {requests} requests, {boxes} containers, {trips} trips.",
+  "wh.delete.typeName": "Type “{name}” to confirm",
   "wh.delete.note": "Products stay in the catalog but lose their spots in this warehouse.",
 
   // Common

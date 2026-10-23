@@ -119,6 +119,12 @@ export type WarehouseClass = "A+" | "A" | "B+" | "B" | "C" | "D";
 
 export interface Warehouse {
   id: string;
+  /**
+   * Свой каталог: склад видит только товары со своим `warehouseId`. Ставится
+   * складам, созданным пользователем, — иначе новый склад показывал бы
+   * демо-номенклатуру, которой у него нет.
+   */
+  ownCatalog?: boolean;
   name: string;
   kind: WarehouseKind;
   /** Физический адрес склада (ТЗ, разд. 3.2 — важно для пользователя). */

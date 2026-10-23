@@ -396,6 +396,7 @@ export function blankWarehouse(
     lat: coords?.lat,
     lng: coords?.lng,
     floors: [{ id: uid("floor"), name: "Этаж 1", modules: [] }],
+    ownCatalog: true,
   };
 }
 

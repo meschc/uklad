@@ -96,6 +96,11 @@ export interface AccountSlice {
   warehouse: Warehouse;
   /** Неактивные склады. Активный — `warehouse`; всегда активен ровно один. */
   otherWarehouses: Warehouse[];
+  /**
+   * Работа неактивных складов по id склада (см. `warehouseData.ts`): плоские
+   * списки поставок, заявок и т.п. в сторе — всегда активного склада.
+   */
+  warehouseData: Record<string, import("./warehouseData").WarehouseData>;
 
   /** Все склады аккаунта, активный первым (для списка в кабинете). */
   allWarehouses: () => Warehouse[];

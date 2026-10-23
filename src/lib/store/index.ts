@@ -217,6 +217,7 @@ export const useEditor = create<EditorState>()(
       partialize: (s) => ({
         warehouse: s.warehouse,
         otherWarehouses: s.otherWarehouses,
+        warehouseData: s.warehouseData,
         activeFloorId: s.activeFloorId,
         products: s.products,
         placements: s.placements,
@@ -319,6 +320,16 @@ if (!HAD_PERSISTED)
 // тара, заявки и рейсы за последние два месяца (п.8). Без неё аналитика,
 // задания и документы открываются пустыми, и оценить их невозможно.
 if (!HAD_PERSISTED) {
+  // Демо-номенклатура раздаётся партнёрам склада по кругу — так, как это
+  // сделал бы склад в таблице. Без владельца продавец не видит товар вовсе.
+  const partners = useEditor.getState().warehouse.partners ?? [];
+  if (partners.length) {
+    useEditor.setState((st) => ({
+      products: st.products.map((p, i) =>
+        p.partnerId ? p : { ...p, partnerId: partners[i % partners.length].id },
+      ),
+    }));
+  }
   const s = useEditor.getState();
   useEditor.setState(seedHistory(s.warehouse, s.products, s.placements));
   // История правок не должна начинаться со снимка «до посева»: демо-данные —
