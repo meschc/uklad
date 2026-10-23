@@ -8,7 +8,7 @@
  * токен, оказавшийся в этом адресе, был бы опубликован вместе с сайтом.
  */
 // Про CommonJS и объявления ниже — см. шапку `index.js`.
-/* global require, module, process */
+/* global require, module, process, setTimeout */
 /* eslint-disable @typescript-eslint/no-require-imports */
 const nodemailer = require("nodemailer");
 
@@ -80,6 +80,11 @@ function ensureTransport() {
       port: config.port,
       secure: config.secure,
       auth: { user: config.user, pass: config.pass },
+      // Без пределов зависший SMTP держит запрос формы вечно. Сумма двух
+      // попыток укладывается в 15 с, которые витрина ждёт ответа.
+      connectionTimeout: 4_000,
+      greetingTimeout: 4_000,
+      socketTimeout: 6_000,
     });
   }
   return transport;
@@ -97,15 +102,42 @@ function replyTo(fields) {
   return found ? found.value : undefined;
 }
 
+/** Ошибки сети и временные отказы сервера (4xx SMTP) — их стоит повторить. */
+function isTransient(error) {
+  const code = error && error.code;
+  if (["ETIMEDOUT", "ECONNECTION", "ECONNRESET", "ESOCKET", "EDNS"].includes(code)) return true;
+  const smtp = error && error.responseCode;
+  return typeof smtp === "number" && smtp >= 400 && smtp < 500;
+}
+
+/**
+ * Повтор с растущей паузой и разбросом. Разброс нужен, чтобы после сбоя
+ * почты все ждущие заявки не ударили в неё в одну и ту же миллисекунду.
+ * Неверный пароль (5xx) не повторяем: он не исправится сам.
+ */
+async function withRetry(fn, { attempts = 2, baseMs = 400 } = {}) {
+  for (let i = 1; ; i++) {
+    try {
+      return await fn();
+    } catch (error) {
+      if (i >= attempts || !isTransient(error)) throw error;
+      const pause = baseMs * 2 ** (i - 1) * (0.5 + Math.random());
+      await new Promise((r) => setTimeout(r, pause));
+    }
+  }
+}
+
 async function sendLetter({ subject, text, fields }) {
   const mailer = ensureTransport();
-  await mailer.sendMail({
-    from: config.from,
-    to: config.to,
-    replyTo: replyTo(fields),
-    subject,
-    text,
-  });
+  await withRetry(() =>
+    mailer.sendMail({
+      from: config.from,
+      to: config.to,
+      replyTo: replyTo(fields),
+      subject,
+      text,
+    }),
+  );
 }
 
 /**
@@ -118,7 +150,7 @@ async function sendLetter({ subject, text, fields }) {
 async function sendTo({ to, subject, text }) {
   if (!EMAIL.test(to)) throw new Error("адрес получателя не похож на почту");
   const mailer = ensureTransport();
-  await mailer.sendMail({ from: config.from, to, subject, text });
+  await withRetry(() => mailer.sendMail({ from: config.from, to, subject, text }));
 }
 
-module.exports = { sendLetter, sendTo, replyTo };
+module.exports = { sendLetter, sendTo, replyTo, withRetry };

@@ -37,3 +37,5 @@ docs/drafts/
 
 # Сервер: база и настройки живут только на машине, где он запущен
 deploy/data
+deploy/.deploy-tags
+deploy/.watchdog-state
