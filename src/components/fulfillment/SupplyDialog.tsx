@@ -1,6 +1,6 @@
+import { useWarehouseProducts } from "@/lib/warehouseProducts";
 import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
-import { useEditor } from "@/lib/store";
 import { fulfillmentRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
 import { useT } from "@/lib/i18n";
@@ -31,7 +31,7 @@ interface Line {
 }
 
 export function SupplyDialog({ onClose }: { onClose: () => void }) {
-  const products = useEditor((s) => s.products);
+  const products = useWarehouseProducts();
   const t = useT();
 
   const newLine = (): Line => ({ id: uid("line"), productId: products[0]?.id ?? "", qty: "1" });

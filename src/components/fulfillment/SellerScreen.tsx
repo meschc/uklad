@@ -1,3 +1,4 @@
+import { useWarehouseProducts } from "@/lib/warehouseProducts";
 import { useMemo, useState } from "react";
 import {
   CalendarClock,
@@ -78,7 +79,7 @@ export function SellerScreen() {
 
 function RequestsTab({ t }: { t: TFunc }) {
   const requests = useEditor((s) => s.requests);
-  const products = useEditor((s) => s.products);
+  const products = useWarehouseProducts();
   const shipments = useEditor((s) => s.shipments);
   const shipmentOf = (id?: string) => (id ? shipments.find((sh) => sh.id === id) : undefined);
   const groups = useMemo(() => groupRequestsByTarget(requests), [requests]);
@@ -219,7 +220,7 @@ function RequestsTab({ t }: { t: TFunc }) {
  * механизма импорта в проекте быть не должно.
  */
 function BulkRequestDialog({ onClose, t }: { onClose: () => void; t: TFunc }) {
-  const products = useEditor((s) => s.products);
+  const products = useWarehouseProducts();
   const showToast = useEditor((s) => s.showToast);
   const [text, setText] = useState("");
   const [truck, setTruck] = useState("");
