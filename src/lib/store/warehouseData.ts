@@ -57,6 +57,25 @@ export function swapWarehouseData(
   const stash = { ...s.warehouseData, [s.warehouse.id]: pickWarehouseData(s) };
   const saved = stash[targetId];
   delete stash[targetId];
-  const next = saved ?? (targetOwnCatalog ? emptyWarehouseData() : pickWarehouseData(s));
+  // Сохранённая работа дополняется пустыми списками: запись прошлой версии
+  // без нового домена не должна оставить в сторе undefined.
+  const next = saved
+    ? { ...emptyWarehouseData(), ...saved }
+    : targetOwnCatalog
+      ? emptyWarehouseData()
+      : pickWarehouseData(s);
   return { ...next, warehouseData: stash };
+}
+
+/** Сколько работы у склада — для предупреждения перед удалением. */
+export function warehouseWorkCount(s: EditorState, id: string) {
+  const d = s.warehouse.id === id ? pickWarehouseData(s) : s.warehouseData[id];
+  if (!d) return null;
+  const n = {
+    shipments: d.expectedShipments.length,
+    requests: d.requests.length,
+    boxes: d.boxes.length,
+    trips: d.shipments.length,
+  };
+  return { ...n, total: n.shipments + n.requests + n.boxes + n.trips };
 }

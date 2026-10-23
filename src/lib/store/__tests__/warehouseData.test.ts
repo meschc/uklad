@@ -43,3 +43,23 @@ describe("swapWarehouseData", () => {
     expect(next.requests).toEqual([{ id: "r1" }]);
   });
 });
+
+describe("sanitizeDomains для warehouseData", () => {
+  it("битая запись спящего склада теряется одна, а старый архив без поля проходит", async () => {
+    const { sanitizeDomains } = await import("../../data/sanitize");
+    const out = sanitizeDomains({
+      warehouseData: { w1: { requests: [{ nope: 1 }], boxes: "битое" } },
+    });
+    const w1 = (out.warehouseData as Record<string, Record<string, unknown>>).w1;
+    expect(w1.requests).toEqual([]);
+    expect(w1.boxes).toEqual([]);
+    expect(sanitizeDomains({ products: [] }).warehouseData).toBeUndefined();
+  });
+
+  it("неполная сохранённая работа дополняется пустыми списками", () => {
+    const s = state("demo", {
+      warehouseData: { old: { requests: [] } } as unknown as EditorState["warehouseData"],
+    });
+    expect(swapWarehouseData(s, "old", true).tasks).toEqual([]);
+  });
+});
