@@ -23,7 +23,14 @@ import { scrollPageTop, scrollToSection, useSmoothScroll } from "./lib/useSmooth
 import { c, useT } from "./lib/copy";
 
 /** Страницы, уже переведённые в новый стиль витрины (образец — /warehouses). */
-const NEW_STYLE = new Set<Page>(["market", "warehouse", "notfound"]);
+const NEW_STYLE = new Set<Page>([
+  "market",
+  "warehouse",
+  "notfound",
+  "pricing",
+  "legal",
+  "contacts",
+]);
 
 const T = {
   notFoundCaption: c("Ошибка 404", "Error 404"),
@@ -111,6 +118,9 @@ export function SiteApp() {
           <main>
             {route.page === "market" && <MarketScreen />}
             {route.page === "warehouse" && <WarehouseScreen id={route.id} />}
+            {route.page === "pricing" && <PricingScreen />}
+            {route.page === "legal" && <LegalScreen slug={route.id} />}
+            {route.page === "contacts" && <ContactsScreen />}
             {route.page === "notfound" && (
               <NotFoundScreen caption={t(T.notFoundCaption)} title={t(T.notFoundTitle)}>
                 {t(T.notFoundBody)}
@@ -122,12 +132,7 @@ export function SiteApp() {
       ) : (
         <>
           <SiteHeader route={route} />
-          <main>
-            {route.page === "sellers" && <SellersPage />}
-            {route.page === "legal" && <LegalScreen slug={route.id} />}
-            {route.page === "pricing" && <PricingScreen />}
-            {route.page === "contacts" && <ContactsScreen />}
-          </main>
+          <main>{route.page === "sellers" && <SellersPage />}</main>
           <SiteFooter />
         </>
       )}

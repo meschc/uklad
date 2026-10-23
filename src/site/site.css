@@ -817,3 +817,43 @@ input[type="search"]::-webkit-search-cancel-button {
     animation: none;
   }
 }
+
+/* Плашка cookie: выезд снизу с лёгкой пружиной и одно покачивание печенья. */
+@keyframes cookie-in {
+  0% {
+    opacity: 0;
+    transform: translateY(24px) scale(0.96);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(-4px) scale(1.01);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes cookie-bite {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  30% {
+    transform: rotate(-14deg) scale(1.08);
+  }
+  60% {
+    transform: rotate(8deg);
+  }
+}
+.cookie-in {
+  animation: cookie-in 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.cookie-bite {
+  animation: cookie-bite 0.7s 0.45s ease-in-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cookie-in,
+  .cookie-bite {
+    animation: none;
+  }
+}

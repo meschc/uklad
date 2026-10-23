@@ -1,4 +1,6 @@
 import { BRAND } from "../data/brand";
+import { freeMonthsTitle, num } from "../data/offer";
+import { PLANS } from "../data/plans";
 import { LEGAL_BY_SLUG } from "../data/legal";
 import { warehousesRepository } from "../data/warehousesRepository";
 import { c, pick, type Copy } from "./copy";
@@ -55,11 +57,11 @@ const TITLES: Record<Page, Copy> = {
  */
 const DESCRIPTIONS: Record<Page, Copy> = {
   landing: c(
-    "Хранение и учёт товара, сотрудники и задачи, связь с селлерами в одной системе. Внедрим и адаптируем под ваши процессы. Три месяца бесплатно.",
+    `Хранение и учёт товара, сотрудники и задачи, связь с селлерами в одной системе. Внедрим и адаптируем под ваши процессы. ${freeMonthsTitle()}.`,
     "Stock and storage, staff and tasks, and seller communication in one system. We roll it out and adapt it to your processes. Three months free.",
   ),
   warehouses: c(
-    "Хранение и учёт товара, сотрудники и задачи, связь с селлерами в одной системе. Внедрим и адаптируем под ваши процессы. Три месяца бесплатно.",
+    `Хранение и учёт товара, сотрудники и задачи, связь с селлерами в одной системе. Внедрим и адаптируем под ваши процессы. ${freeMonthsTitle()}.`,
     "Stock and storage, staff and tasks, and seller communication in one system. We roll it out and adapt it to your processes. Three months free.",
   ),
   sellers: c(
@@ -79,7 +81,7 @@ const DESCRIPTIONS: Record<Page, Copy> = {
     "The offer, the terms of use, the personal data policy and the disclosure about the owner of the site and the aggregator.",
   ),
   pricing: c(
-    "Поиск склада и заявки — бесплатно и без комиссии. Платно — план склада, остатки по ячейкам и расчёт хранения. Тарифы WMS для складов.",
+    `Тарифы системы управления складом: Старт, Склад, Оператор и свой. От ${num(PLANS[0].monthly)} ₽ в месяц, ${freeMonthsTitle().toLowerCase()}, оплата помесячно, на полгода или год.`,
     "Search and requests are free, with no commission. You pay for the floor plan, stock by cell and storage estimates. WMS plans for warehouses.",
   ),
   contacts: c(

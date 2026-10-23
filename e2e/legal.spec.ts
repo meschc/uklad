@@ -199,14 +199,14 @@ test.describe("Правовая информация", () => {
     await page.goto("/legal/terms/");
     const footer = page.getByRole("contentinfo");
     await footer.scrollIntoViewIfNeeded();
-    await footer.getByRole("link", { name: "Вопросы" }).click();
+    await footer.getByRole("link", { name: "Тарифы" }).click();
 
     await expect(page.getByRole("heading", { level: 1 })).toContainText(
       "систему управления складом",
     );
     await expect
       .poll(async () =>
-        page.evaluate(() => document.getElementById("faq")!.getBoundingClientRect().top),
+        page.evaluate(() => document.getElementById("tariffs")!.getBoundingClientRect().top),
       )
       .toBeLessThan(200);
   });

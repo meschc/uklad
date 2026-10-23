@@ -3,6 +3,7 @@ import { ArrowUp, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LEGAL_DOCS } from "../../data/legal";
 import { ORG } from "../../data/org";
+import { chatHours } from "../../data/offer";
 import { openCookieSettings } from "../../lib/cookieConsent";
 import { c, useT, type Copy } from "../../lib/copy";
 import { href } from "../../lib/route";
@@ -10,7 +11,7 @@ import { href } from "../../lib/route";
 const T = {
   contactTitle: c("Связь", "Contact"),
   mail: c("[почта]", "[email]"),
-  chat: c("Чат в рабочие дни, 10…18 МСК", "Chat on weekdays, 10…18 Moscow time"),
+  chat: c(`Чат в рабочие дни, ${chatHours} МСК`, `Chat on weekdays, ${chatHours} Moscow time`),
   product: c("Продукт", "Product"),
   uklad: c("Уклад", "Uklad"),
   legal: c("Правовая информация", "Legal"),

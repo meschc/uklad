@@ -35,12 +35,22 @@ export const SITE_NAV_H = 64;
  * закреплённая (`SiteBar`). У каждой страницы своя композиция первого экрана
  * (Кирилл 22 окт), шапка у всех одна.
  */
+/** Английскую версию отложили (Кирилл 23 окт): переключатель скрыт, страницы /en/ остаются. */
+const SHOW_LANG = false;
+
 export function SiteNav({ route, tone }: { route: Route; tone: "blue" | "sticky" }) {
   const t = useT();
   const [open, setOpen] = useState(false);
   const other = t.lang === "ru" ? "en" : "ru";
   const onBlue = tone === "blue";
   const here = routePath(route).replace(/\/+$/, "");
+  // Шапка не пересоздаётся при переходе между страницами витрины: меню
+  // закрываем сами, иначе оно накрывает страницу, на которую перешли.
+  const [openedOn, setOpenedOn] = useState(here);
+  if (openedOn !== here) {
+    setOpenedOn(here);
+    setOpen(false);
+  }
 
   const onSwitchLang = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -80,15 +90,17 @@ export function SiteNav({ route, tone }: { route: Route; tone: "blue" | "sticky"
               {t(l.label)}
             </a>
           ))}
-          <a
-            href={href(routePath(route), other)}
-            hrefLang={other}
-            onClick={onSwitchLang}
-            aria-label={t(T.switchTo)}
-            className={cn("hidden uppercase tracking-[0.08em] sm:inline", linkClass)}
-          >
-            {other}
-          </a>
+          {SHOW_LANG && (
+            <a
+              href={href(routePath(route), other)}
+              hrefLang={other}
+              onClick={onSwitchLang}
+              aria-label={t(T.switchTo)}
+              className={cn("hidden uppercase tracking-[0.08em] sm:inline", linkClass)}
+            >
+              {other}
+            </a>
+          )}
           <a
             href={`${href("/warehouses")}#connect`}
             className={cn(
@@ -132,14 +144,16 @@ export function SiteNav({ route, tone }: { route: Route; tone: "blue" | "sticky"
           >
             {t(T.connect)}
           </a>
-          <a
-            href={href(routePath(route), other)}
-            hrefLang={other}
-            onClick={onSwitchLang}
-            className="rounded-xl px-4 py-2.5 text-sm text-[var(--wh-muted)] hover:bg-[var(--wh-soft)] sm:hidden"
-          >
-            {t(T.switchTo)}
-          </a>
+          {SHOW_LANG && (
+            <a
+              href={href(routePath(route), other)}
+              hrefLang={other}
+              onClick={onSwitchLang}
+              className="rounded-xl px-4 py-2.5 text-sm text-[var(--wh-muted)] hover:bg-[var(--wh-soft)] sm:hidden"
+            >
+              {t(T.switchTo)}
+            </a>
+          )}
         </nav>
       )}
     </div>

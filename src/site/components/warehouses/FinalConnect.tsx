@@ -3,13 +3,18 @@ import { ru, useT, type Copy } from "../../lib/copy";
 import { Reveal } from "../Reveal";
 import { CELL_QR_PATH, CELL_QR_SIZE } from "./cellQr";
 import { ConnectForm } from "./ConnectForm";
+import { CHAT_HOURS, OFFER, freeMonthsTitle, monthsWordsRu } from "../../data/offer";
 
 const T = {
-  ticker: [ru("Подключить склад"), ru("Три месяца бесплатно"), ru("До 4 новых функций")],
+  ticker: [
+    ru("Подключить склад"),
+    ru(freeMonthsTitle()),
+    ru(`До ${OFFER.newFeatures} новых функций`),
+  ],
   title: ru("Подключить склад"),
   now: ru("Сейчас в Москве {time} · {status}"),
-  open: ru("на связи до 18:00"),
-  closed: ru("ответим в рабочее время с 10:00"),
+  open: ru(`на связи до ${CHAT_HOURS.to}:00`),
+  closed: ru(`ответим в рабочее время с ${CHAT_HOURS.from}:00`),
   label: ru("Заявка на подключение"),
   cell: ru("A-01-01-01"),
   cellNote: ru("Первая ячейка вашего склада в Укладе"),
@@ -26,7 +31,7 @@ const STEPS: { title: Copy; body: Copy }[] = [
     body: ru("Настроим адреса ячеек, перенесём товар, добавим сотрудников."),
   },
   {
-    title: ru("Работаете три месяца бесплатно"),
+    title: ru(`Работаете ${monthsWordsRu(OFFER.freeMonths)} бесплатно`),
     body: ru("Срок идёт с загрузки первых товаров."),
   },
 ];
@@ -39,7 +44,7 @@ function moscowNow() {
   const day = d.getUTCDay();
   return {
     time: `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`,
-    open: day >= 1 && day <= 5 && h >= 10 && h < 18,
+    open: day >= 1 && day <= 5 && h >= CHAT_HOURS.from && h < CHAT_HOURS.to,
   };
 }
 

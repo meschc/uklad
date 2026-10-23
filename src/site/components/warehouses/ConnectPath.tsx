@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { OFFER, monthsRu } from "../../data/offer";
 import { cn } from "@/lib/utils";
 import { Reveal } from "../Reveal";
 import { ru, useT, type Copy } from "../../lib/copy";
@@ -34,7 +35,7 @@ const STEPS: Step[] = [
   },
   {
     title: ru("Тестовый период"),
-    time: ru("3 месяца"),
+    time: ru(monthsRu(OFFER.freeMonths)),
     body: ru("Учёт ведётся в Укладе, систему адаптируем под ваши запросы."),
   },
   {
