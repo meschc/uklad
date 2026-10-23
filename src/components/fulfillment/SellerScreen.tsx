@@ -25,6 +25,7 @@ import { eyebrow } from "@/components/ui/eyebrow";
 import { EmptyState } from "./ScreenShell";
 import { Modal, Field } from "./Modal";
 import { SupplyDialog } from "./SupplyDialog";
+import { AllGoodsTab } from "./AllGoodsTab";
 import { RequestDialog } from "./RequestDialog";
 import { StatusBadge } from "./TasksScreen";
 
@@ -39,7 +40,7 @@ import { StatusBadge } from "./TasksScreen";
  * ни габаритов, ни выделения диапазона.
  */
 
-type Tab = "stock" | "requests";
+type Tab = "stock" | "all" | "requests";
 
 export function SellerScreen() {
   const t = useT();
@@ -57,6 +58,7 @@ export function SellerScreen() {
           onChange={setTab}
           options={[
             { value: "stock" as Tab, label: t("seller.tab.stock") },
+            { value: "all" as Tab, label: t("seller.tab.all") },
             { value: "requests" as Tab, label: t("seller.tab.requests") },
           ]}
         />
@@ -64,6 +66,8 @@ export function SellerScreen() {
 
       {tab === "stock" ? (
         <TableScreen />
+      ) : tab === "all" ? (
+        <AllGoodsTab />
       ) : (
         <div className="min-h-0 flex-1 overflow-y-auto">
           <div className="mx-auto flex max-w-5xl flex-col gap-4 px-6 py-6">

@@ -215,6 +215,7 @@ export const useEditor = create<EditorState>()(
       partialize: (s) => ({
         warehouse: s.warehouse,
         otherWarehouses: s.otherWarehouses,
+        warehouseData: s.warehouseData,
         activeFloorId: s.activeFloorId,
         products: s.products,
         placements: s.placements,
