@@ -63,3 +63,15 @@ describe("sanitizeDomains для warehouseData", () => {
     expect(swapWarehouseData(s, "old", true).tasks).toEqual([]);
   });
 });
+
+describe("цены услуг у каждого склада свои", () => {
+  it("новый склад берёт копию цен текущего, правка не задевает старый", () => {
+    const settings = { enabled: { pick: true }, prices: { pick: 15 } };
+    const s = state("demo", { serviceSettings: settings } as unknown as Partial<EditorState>);
+    const next = swapWarehouseData(s, "new", true);
+    expect(next.serviceSettings).toEqual(settings);
+    expect(next.serviceSettings).not.toBe(settings);
+    (next.serviceSettings!.prices as Record<string, number>).pick = 99;
+    expect(next.warehouseData?.demo?.serviceSettings.prices).toEqual({ pick: 15 });
+  });
+});

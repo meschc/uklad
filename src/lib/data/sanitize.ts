@@ -38,6 +38,16 @@ function checkLists(obj: Record<string, unknown>, prefix: string) {
   }
 }
 
+function checkServiceSettings(obj: Record<string, unknown>, prefix: string) {
+  if (!("serviceSettings" in obj)) return;
+  const v = obj.serviceSettings as { enabled?: unknown; prices?: unknown } | null;
+  const isObj = (x: unknown) => typeof x === "object" && x !== null && !Array.isArray(x);
+  if (!isObj(v) || !isObj(v?.enabled) || !isObj(v?.prices)) {
+    console.warn(`[sanitize] ${prefix}serviceSettings: неверная форма, сброшено`);
+    delete obj.serviceSettings;
+  }
+}
+
 export function sanitizeDomains(
   persisted: Record<string, unknown> | undefined | null,
 ): Record<string, unknown> {
@@ -57,6 +67,7 @@ export function sanitizeDomains(
         if (typeof bundle !== "object" || bundle === null) continue;
         const b = { ...(bundle as Record<string, unknown>) };
         checkLists(b, `warehouseData.${id}.`);
+        checkServiceSettings(b, `warehouseData.${id}.`);
         clean[id] = b;
       }
       out.warehouseData = clean;
@@ -64,13 +75,6 @@ export function sanitizeDomains(
   }
   // Настройка услуг — не список, а один объект: битая форма заменяется
   // пустой настройкой (значения по умолчанию), а не роняет экран операций.
-  if ("serviceSettings" in out) {
-    const v = out.serviceSettings as { enabled?: unknown; prices?: unknown } | null;
-    const isObj = (x: unknown) => typeof x === "object" && x !== null && !Array.isArray(x);
-    if (!isObj(v) || !isObj(v?.enabled) || !isObj(v?.prices)) {
-      console.warn("[sanitize] serviceSettings: неверная форма, сброшено");
-      delete out.serviceSettings;
-    }
-  }
+  checkServiceSettings(out, "");
   return out;
 }

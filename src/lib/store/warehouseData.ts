@@ -19,13 +19,22 @@ export const WAREHOUSE_DOMAINS = [
   "requests",
   "shipments",
   "tasks",
+  // Какие услуги склад оказывает и почём — у каждого склада свои.
+  "serviceSettings",
 ] as const;
 
 export type WarehouseData = Pick<EditorState, (typeof WAREHOUSE_DOMAINS)[number]>;
 
-/** Пустая работа — с неё начинается созданный пользователем склад. */
-export function emptyWarehouseData(): WarehouseData {
+/**
+ * Пустая работа — с неё начинается созданный пользователем склад. Настройку
+ * услуг новый склад берёт копией с того, откуда его открыли: так цены не
+ * приходится вбивать с нуля, а правка на новом складе не трогает старый.
+ */
+export function emptyWarehouseData(
+  serviceSettings: EditorState["serviceSettings"] = { enabled: {}, prices: {} },
+): WarehouseData {
   return {
+    serviceSettings: structuredClone(serviceSettings),
     expectedShipments: [],
     receivingEvents: [],
     boxes: [],
@@ -60,9 +69,9 @@ export function swapWarehouseData(
   // Сохранённая работа дополняется пустыми списками: запись прошлой версии
   // без нового домена не должна оставить в сторе undefined.
   const next = saved
-    ? { ...emptyWarehouseData(), ...saved }
+    ? { ...emptyWarehouseData(s.serviceSettings), ...saved }
     : targetOwnCatalog
-      ? emptyWarehouseData()
+      ? emptyWarehouseData(s.serviceSettings)
       : pickWarehouseData(s);
   return { ...next, warehouseData: stash };
 }
