@@ -4,6 +4,7 @@ import {
   badgeCode,
   earnings,
   isSessionLive,
+  nextBreak,
   parseBadge,
   shiftState,
   workedMs,
@@ -66,5 +67,38 @@ describe("смена и часы", () => {
   it("без ставки заработок не ноль, а «не задан»", () => {
     expect(earnings(7.5 * H, 400)).toBe(3000);
     expect(earnings(H, undefined)).toBeNull();
+  });
+});
+
+describe("ближайший перерыв", () => {
+  const policy = { everyMin: 60, shortMin: 10, lunchFrom: 13 * 60, lunchMin: 45 };
+  const day = new Date(2026, 9, 23).getTime();
+  const at = (h: number, m = 0) => day + (h * 60 + m) * 60_000;
+
+  it("короткий — через час работы после начала смены или конца перерыва", () => {
+    const events = [ev("shift_start", at(9))];
+    expect(nextBreak(events, "s1", policy, at(9, 5))).toMatchObject({ kind: "short", at: at(10) });
+    events.push(ev("break_start", at(10, 2)), ev("break_end", at(10, 12)));
+    expect(nextBreak(events, "s1", policy, at(10, 20))).toMatchObject({
+      kind: "short",
+      at: at(11, 12),
+    });
+  });
+
+  it("обед с 13:00 раньше короткого и один раз за смену", () => {
+    const events = [ev("shift_start", at(12, 30))];
+    expect(nextBreak(events, "s1", policy, at(12, 40))).toMatchObject({
+      kind: "lunch",
+      at: at(13),
+    });
+    events.push(ev("break_start", at(13, 5)), ev("break_end", at(13, 50)));
+    expect(nextBreak(events, "s1", policy, at(14))).toMatchObject({
+      kind: "short",
+      at: at(14, 50),
+    });
+  });
+
+  it("не на смене — перерыва нет", () => {
+    expect(nextBreak([], "s1", policy, at(10))).toBeNull();
   });
 });

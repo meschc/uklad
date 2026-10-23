@@ -1,5 +1,6 @@
 import { nowMs, uid } from "../utils";
 import {
+  DEFAULT_BREAK_POLICY,
   SESSION_TTL_MS,
   allowedMarks,
   isSessionLive,
@@ -80,6 +81,24 @@ export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get)
   },
 
   packSession: null,
+  breakPolicy: DEFAULT_BREAK_POLICY,
+
+  setBreakPolicy: (patch) =>
+    set((s) => {
+      const clamp = (v: number | undefined, min: number, max: number, fallback: number) =>
+        typeof v === "number" && Number.isFinite(v)
+          ? Math.min(max, Math.max(min, Math.round(v)))
+          : fallback;
+      const p = s.breakPolicy;
+      return {
+        breakPolicy: {
+          everyMin: clamp(patch.everyMin, 15, 480, p.everyMin),
+          shortMin: clamp(patch.shortMin, 1, 60, p.shortMin),
+          lunchFrom: clamp(patch.lunchFrom, 0, 24 * 60 - 1, p.lunchFrom),
+          lunchMin: clamp(patch.lunchMin, 10, 120, p.lunchMin),
+        },
+      };
+    }),
 
   prepareDemoTote: () => {
     // Сборка в тару ещё не пишет, что положила, поэтому для демо тару собираем

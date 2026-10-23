@@ -252,6 +252,7 @@ export const useEditor = create<EditorState>()(
         staffEvents: s.staffEvents,
         stationSession: s.stationSession,
         packSession: s.packSession,
+        breakPolicy: s.breakPolicy,
       }),
     },
   ),

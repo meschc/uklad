@@ -304,3 +304,15 @@ export interface PackSession {
   orderLabels: { orderId: string; labelCode: string; confirmedAt?: number }[];
   labelSeq: number;
 }
+
+/**
+ * Расписание перерывов склада: его задаёт руководитель. Короткий перерыв
+ * доступен каждые `everyMin` минут работы, обед — с `lunchFrom` (минуты от
+ * полуночи), один раз за смену. Обед — тот же перерыв, только длиннее.
+ */
+export interface BreakPolicy {
+  everyMin: number;
+  shortMin: number;
+  lunchFrom: number;
+  lunchMin: number;
+}

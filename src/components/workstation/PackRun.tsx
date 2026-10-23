@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Ban, Package, Printer, Tag, UserRound } from "lucide-react";
+import { Ban, History, Package, Printer, Tag, UserRound } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { workstationRepository } from "@/lib/data";
 import {
@@ -42,6 +42,7 @@ export function PackRun({
   const requests = useEditor((s) => s.requests);
   const box = useEditor((s) => s.boxes.find((b) => b.id === session.sourceBoxId));
   const [feedback, setFeedback] = useState<Feedback>(null);
+  const [showLast, setShowLast] = useState(false);
 
   if (!box) return null;
   const contents = toteContents(box);
@@ -119,6 +120,8 @@ export function PackRun({
             </p>
           </div>
         )}
+
+        <LastItem session={session} open={showLast} onToggle={() => setShowLast((v) => !v)} />
 
         {unit && product ? (
           <div className={card({ className: "flex flex-col gap-4" })}>
@@ -327,6 +330,59 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: boo
       <dd className={cn("mt-0.5 text-lg font-semibold tabular-nums", tone && "text-destructive")}>
         {value}
       </dd>
+    </div>
+  );
+}
+
+/**
+ * Последняя упакованная штука: упаковщик отвлёкся или не расслышал сигнал —
+ * открыл и увидел, что именно и с какой этикеткой ушло в короб.
+ */
+function LastItem({
+  session,
+  open,
+  onToggle,
+}: {
+  session: PackSession;
+  open: boolean;
+  onToggle: () => void;
+}) {
+  const t = useT();
+  const products = useEditor((s) => s.products);
+  const last = session.units.filter((u) => u.confirmedAt).at(-1);
+  const product = last && products.find((p) => p.id === last.productId);
+  return (
+    <div className="flex flex-col gap-2">
+      <Button variant="ghost" size="sm" className="self-start" onClick={onToggle}>
+        <History />
+        {open ? t("ws.run.lastHide") : t("ws.run.last")}
+      </Button>
+      {open &&
+        (last && product ? (
+          <div className={card({ pad: "sm", className: "flex items-center gap-4" })}>
+            {product.imageUrl ? (
+              <img
+                src={product.imageUrl}
+                alt=""
+                className="size-16 shrink-0 rounded-lg object-cover"
+              />
+            ) : (
+              <span className="flex size-16 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                <Package className="size-7" />
+              </span>
+            )}
+            <div className="min-w-0 flex-1">
+              <p className="text-lg font-semibold leading-tight">{product.name}</p>
+              <p className="font-mono text-sm text-muted-foreground">{product.sku}</p>
+              <p className="font-mono text-xs text-muted-foreground">{last.labelCode}</p>
+            </div>
+            <div className="rounded bg-white p-1.5">
+              <QrSvg code={last.labelCode} size={56} showCode={false} />
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">{t("ws.run.lastNone")}</p>
+        ))}
     </div>
   );
 }

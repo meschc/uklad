@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/segmented";
 import { BadgeLogin } from "./BadgeLogin";
 import { ShiftMenu } from "./ShiftMenu";
+import { ShiftBar } from "./ShiftBar";
 import { PackStation } from "./PackStation";
 import { StaffLog } from "./StaffLog";
 import { formatTime, useNow } from "./useNow";
@@ -98,6 +99,7 @@ export function WorkstationScreen() {
               tab === "pack" ? "max-w-5xl" : "max-w-3xl",
             )}
           >
+            <ShiftBar staffId={member.id} />
             <Segmented<Tab>
               value={tab}
               onChange={setTab}

@@ -4,6 +4,7 @@ import type { StateCreator } from "zustand";
 import type { MsgKey } from "../i18n";
 import type { ItemScan } from "../packing";
 import type {
+  BreakPolicy,
   PackSession,
   StaffEvent,
   StaffEventType,
@@ -640,6 +641,9 @@ export interface WorkstationSlice {
   markShift: (
     type: Extract<StaffEventType, "shift_start" | "break_start" | "break_end" | "shift_end">,
   ) => boolean;
+  /** Расписание перерывов склада, его задаёт руководитель. */
+  breakPolicy: BreakPolicy;
+  setBreakPolicy: (patch: Partial<BreakPolicy>) => void;
   /** Открытая упаковка тары. Одна на устройство, как и вход по бейджу. */
   packSession: PackSession | null;
   /**
