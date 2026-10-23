@@ -50,7 +50,7 @@ export const ru = {
   "profile.legalAddress": "Юридический адрес",
   "profile.emailConfirmTitle": "Подтвердите новый адрес: {email}",
   "profile.emailConfirmBody":
-    "До подтверждения работает старая почта. Введите код из {n} цифр — писем прототип не отправляет, подойдёт любой код.",
+    "До подтверждения работает старая почта. Введите код из {n} цифр из письма.",
   "profile.emailConfirmApply": "Подтвердить",
   "profile.title": "Настройки профиля",
   "profile.subtitle": "Имя, тема оформления и язык интерфейса",
@@ -231,7 +231,7 @@ export const en: Record<keyof typeof ru, string> = {
   "profile.legalAddress": "Legal address",
   "profile.emailConfirmTitle": "Confirm the new address: {email}",
   "profile.emailConfirmBody":
-    "The old address keeps working until you confirm. Enter the {n}-digit code — the prototype sends no mail, any code works.",
+    "The old address keeps working until you confirm. Enter the {n}-digit code from the email.",
   "profile.emailConfirmApply": "Confirm",
   "profile.title": "Profile settings",
   "profile.subtitle": "Name, theme and interface language",

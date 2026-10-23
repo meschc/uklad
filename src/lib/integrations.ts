@@ -133,7 +133,6 @@ export const INTEGRATIONS: IntegrationSpec[] = [
   },
   {
     id: "yandex-market",
-    soon: true,
     category: "market",
     title: "Яндекс Маркет",
     brand: {
@@ -155,7 +154,6 @@ export const INTEGRATIONS: IntegrationSpec[] = [
   },
   {
     id: "megamarket",
-    soon: true,
     category: "market",
     title: "Мегамаркет",
     // Зелёный остался от «СберМегаМаркета»: после ребрендинга знак фиолетовый.
@@ -167,7 +165,6 @@ export const INTEGRATIONS: IntegrationSpec[] = [
   },
   {
     id: "avito",
-    soon: true,
     category: "market",
     title: "Авито",
     brand: { short: "АВ", bg: "#00AAFF", logo: "avito.svg" },
@@ -229,7 +226,6 @@ export const INTEGRATIONS: IntegrationSpec[] = [
   },
   {
     id: "moysklad",
-    soon: true,
     category: "erp",
     title: "МойСклад",
     brand: { short: "МС", bg: "#1B75BB", logo: "moysklad.svg" },
