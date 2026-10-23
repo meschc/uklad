@@ -4,6 +4,7 @@ import {
   ClipboardCheck,
   ClipboardList,
   FileText,
+  ListChecks,
   MessagesSquare,
   PackagePlus,
   Plug,
@@ -65,6 +66,7 @@ const WAREHOUSE_NAV: NavEntry[] = [
       { view: "receiving", key: "nav.side.receiving", icon: PackagePlus },
       { view: "tasks", key: "nav.side.tasks", icon: ClipboardList },
       { view: "picking", key: "nav.side.picking", icon: ScanLine },
+      { view: "operations", key: "nav.side.operations", icon: ListChecks },
     ],
   },
   // Переписка с продавцами — сразу за конвейером и отдельным пунктом (п.3):

@@ -61,6 +61,40 @@ jobs:
       - name: Сборка кабинета
         run: npm run build:app
 
+      # Сервер заявок (`server/api`) — свои тесты на встроенном `node:test`,
+      # без зависимостей: почта в них подменена, база — в памяти.
+      - name: Тесты сервера
+        run: node --test server/api/test/*.test.js
+
+  # Образы для своего сервера (deploy/). Пока сервер не подключён, их никто не
+  # собирает — без проверки здесь они сломались бы молча к дню запуска.
+  docker:
+    name: Образы сервера
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Конфиг compose
+        working-directory: deploy
+        run: cp .env.example .env && docker compose config --quiet
+
+      - name: Образ сервера заявок
+        run: docker build -f server/api/Dockerfile -t uklad-api server
+
+      - name: Образ сайта
+        run: docker build -f deploy/web.Dockerfile -t uklad-web .
+
+      - name: Конфиг Caddy
+        run: >-
+          docker run --rm -e SITE_DOMAIN=example.ru -e ACME_EMAIL=a@example.ru
+          uklad-web caddy validate --config /etc/caddy/Caddyfile
+
+      - name: Сервер заявок отвечает
+        run: |
+          docker run -d --name api -p 8080:8080 -e SMTP_USER=x -e SMTP_PASSWORD=x -e MAIL_TO=x@example.ru uklad-api
+          for i in $(seq 1 20); do curl -fs http://127.0.0.1:8080/api/health && exit 0; sleep 1; done
+          docker logs api; exit 1
+
   e2e:
     name: Сквозные тесты
     runs-on: ubuntu-latest
