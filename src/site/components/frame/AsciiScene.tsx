@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
  * неподвижный кадр.
  */
 
-export type SceneKind = "docs" | "contacts";
+export type SceneKind = "docs" | "contacts" | "racks";
 
 const FPS = 30;
 /** Радиус, в котором курсор расталкивает фигуры, px. */
@@ -56,11 +56,19 @@ const CONTACT_SPRITES: string[][] = [
   ["╭───╮", "│ @ │", "╰───╯"],
 ];
 
+/** Каталог: стеллажи с коробками, паллеты, коробка, метка места. */
+const RACK_SPRITES: string[][] = [
+  ["┌──┬──┬──┐", "│▪▪│ ▪│▪▪│", "├──┼──┼──┤", "│▪ │▪▪│  │", "┴──┴──┴──┴"],
+  ["╔═══╗", "║ ▣ ║", "╚═══╝"],
+  ["▤▤▤▤▤▤", "▔▔▔▔▔▔"],
+  ["[▪▪]", "[▪ ]"],
+  ["A-03-2"],
+  ["┌────┐", "│ ▪▪ │", "└────┘"],
+];
+
 function makeSprite(kind: SceneKind, w: number, h: number): Sprite {
-  const rows =
-    kind === "docs"
-      ? docSheet()
-      : CONTACT_SPRITES[Math.floor(Math.random() * CONTACT_SPRITES.length)];
+  const set = kind === "racks" ? RACK_SPRITES : CONTACT_SPRITES;
+  const rows = kind === "docs" ? docSheet() : set[Math.floor(Math.random() * set.length)];
   const total = rows.reduce((s, r) => s + r.length, 0);
   return {
     x: rnd(0, w),
@@ -84,9 +92,12 @@ function typedRow(row: string, k: number): string {
 export function AsciiScene({
   kind,
   density = 1,
+  ink = "255,255,255",
   className,
 }: {
   kind: SceneKind;
+  /** Цвет знаков, «r,g,b»: белый на синем, тёмный на белом. */
+  ink?: string;
   /** Множитель числа фигур. */
   density?: number;
   className?: string;
@@ -159,7 +170,7 @@ export function AsciiScene({
         const pulse = 0.85 + 0.15 * Math.sin(time / 900 + s.phase);
         const alpha = Math.min(1, (0.14 + 0.2 * s.depth + near * 0.5) * pulse);
         ctx.font = `${size}px ui-monospace, SFMono-Regular, Menlo, monospace`;
-        ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+        ctx.fillStyle = `rgba(${ink},${alpha})`;
 
         let left = still ? s.total : Math.floor(s.typed);
         s.rows.forEach((row, r) => {
@@ -216,7 +227,7 @@ export function AsciiScene({
       host.removeEventListener("pointermove", onMove);
       host.removeEventListener("pointerleave", onLeave);
     };
-  }, [kind, density]);
+  }, [kind, density, ink]);
 
   return (
     <canvas

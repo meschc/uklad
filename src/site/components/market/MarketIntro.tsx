@@ -1,3 +1,4 @@
+import { AsciiScene } from "../frame/AsciiScene";
 import { useMemo } from "react";
 import { BadgeCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -68,65 +69,75 @@ export function MarketIntro({
   const setCity = (city: string) => onFilters({ ...filters, city });
 
   return (
-    <section className="mx-auto max-w-[1280px] px-5 pt-12 sm:px-10 sm:pt-20">
-      <Reveal className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-end lg:gap-16">
-        <div>
-          <h1 className="max-w-[12ch] text-[clamp(44px,5vw,76px)] font-normal leading-[0.98] tracking-[-0.045em] [text-wrap:balance]">
-            {t(T.title)}
-          </h1>
-          <p className="mt-6 max-w-[46ch] text-[17px] leading-[1.55] text-[var(--wh-muted)]">
-            {t(T.lead)}
-          </p>
-        </div>
+    <div className="relative">
+      {/* Стеллажи из знаков в шапке каталога (Кирилл 23 окт): бледные и
+          прижаты к правому краю, чтобы не спорить с отбором. */}
+      <div
+        aria-hidden
+        className="absolute inset-0 [mask-image:linear-gradient(90deg,transparent_15%,#000_70%)]"
+      >
+        <AsciiScene kind="racks" ink="17,17,17" density={0.8} className="opacity-45" />
+      </div>
+      <section className="relative mx-auto max-w-[1280px] px-5 pt-12 sm:px-10 sm:pt-20">
+        <Reveal className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-end lg:gap-16">
+          <div>
+            <h1 className="max-w-[12ch] text-[clamp(44px,5vw,76px)] font-normal leading-[0.98] tracking-[-0.045em] [text-wrap:balance]">
+              {t(T.title)}
+            </h1>
+            <p className="mt-6 max-w-[46ch] text-[17px] leading-[1.55] text-[var(--wh-muted)]">
+              {t(T.lead)}
+            </p>
+          </div>
 
-        {/* Числа — сеткой с одинаковыми колонками, а не строкой через
+          {/* Числа — сеткой с одинаковыми колонками, а не строкой через
             пробелы: так разряды стоят друг под другом (Кирилл 20 окт). */}
-        <dl className="grid grid-cols-2 gap-x-6 gap-y-8 border-t border-[var(--wh-line)] pt-6">
-          {stats.map((s) => (
-            <div key={s.label} className="min-w-0">
-              <dt className="sr-only">{s.label}</dt>
-              <dd>
-                <span
-                  key={s.n}
-                  className="wh-swap block text-[clamp(40px,4.4vw,64px)] font-light leading-none tracking-[-0.05em] tabular-nums"
-                >
-                  {money(s.n)}
-                </span>
-                <span aria-hidden className="mt-2 block text-sm text-[var(--wh-muted)]">
-                  {s.label}
-                </span>
-              </dd>
-            </div>
-          ))}
-        </dl>
-      </Reveal>
+          <dl className="grid grid-cols-2 gap-x-6 gap-y-8 border-t border-[var(--wh-line)] pt-6">
+            {stats.map((s) => (
+              <div key={s.label} className="min-w-0">
+                <dt className="sr-only">{s.label}</dt>
+                <dd>
+                  <span
+                    key={s.n}
+                    className="wh-swap block text-[clamp(40px,4.4vw,64px)] font-light leading-none tracking-[-0.05em] tabular-nums"
+                  >
+                    {money(s.n)}
+                  </span>
+                  <span aria-hidden className="mt-2 block text-sm text-[var(--wh-muted)]">
+                    {s.label}
+                  </span>
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </Reveal>
 
-      <Reveal delay={120} className="mt-12 flex flex-col gap-5">
-        <div
-          role="group"
-          aria-label={t(T.citiesLabel)}
-          className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
-        >
-          <CityChip on={!filters.city} onClick={() => setCity("")}>
-            {t(T.allCities)}
-          </CityChip>
-          {cities.map((city) => (
-            <CityChip
-              key={city.id}
-              on={filters.city === city.id}
-              onClick={() => setCity(filters.city === city.id ? "" : city.id)}
-            >
-              {t(city.title)}
-              <span className="tabular-nums opacity-60">{city.n}</span>
+        <Reveal delay={120} className="mt-12 flex flex-col gap-5">
+          <div
+            role="group"
+            aria-label={t(T.citiesLabel)}
+            className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
+          >
+            <CityChip on={!filters.city} onClick={() => setCity("")}>
+              {t(T.allCities)}
             </CityChip>
-          ))}
-        </div>
-        <p className="flex max-w-3xl items-start gap-2 text-sm leading-relaxed text-[var(--wh-muted)]">
-          <BadgeCheck className="mt-0.5 size-4 shrink-0 text-[var(--wh-blue)]" />
-          {t(T.badge)}
-        </p>
-      </Reveal>
-    </section>
+            {cities.map((city) => (
+              <CityChip
+                key={city.id}
+                on={filters.city === city.id}
+                onClick={() => setCity(filters.city === city.id ? "" : city.id)}
+              >
+                {t(city.title)}
+                <span className="tabular-nums opacity-60">{city.n}</span>
+              </CityChip>
+            ))}
+          </div>
+          <p className="flex max-w-3xl items-start gap-2 text-sm leading-relaxed text-[var(--wh-muted)]">
+            <BadgeCheck className="mt-0.5 size-4 shrink-0 text-[var(--wh-blue)]" />
+            {t(T.badge)}
+          </p>
+        </Reveal>
+      </section>
+    </div>
   );
 }
 
