@@ -4,6 +4,7 @@ import { useEditor } from "@/lib/store";
 import { workstationRepository } from "@/lib/data";
 import {
   boxesHolding,
+  explainScan,
   packSummary,
   pendingLabel,
   toteContents,
@@ -43,6 +44,7 @@ export function PackRun({
   const box = useEditor((s) => s.boxes.find((b) => b.id === session.sourceBoxId));
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [showLast, setShowLast] = useState(false);
+  const [closing, setClosing] = useState(false);
 
   if (!box) return null;
   const contents = toteContents(box);
@@ -55,6 +57,13 @@ export function PackRun({
   const nameOf = (id: string) => products.find((p) => p.id === id)?.name ?? id;
 
   const onScan = async (code: string) => {
+    if (closing) {
+      // Закрытие подтверждается сканом короба: упакованное не уедет в чужой.
+      if (code.trim().toUpperCase() === session.targetCode.toUpperCase()) return void finish();
+      return setFeedback({ status: "error", key: "ws.chk.closeWrong", box: session.targetCode });
+    }
+    const mistake = explainScan(session, box, products, code);
+    if (mistake) return setFeedback({ status: "error", key: `ws.chk.${mistake}` });
     if (label) {
       const res = await workstationRepository.packLabel(code);
       if (res.ok) return setFeedback(null);
@@ -269,12 +278,26 @@ export function PackRun({
             summary.shortage > 0 && "hover:border-amber-500 hover:bg-amber-500 hover:text-white",
           )}
           disabled={!!label}
-          onClick={() => void finish()}
+          onClick={() => {
+            setClosing(true);
+            setFeedback({ status: "idle", key: "ws.chk.closeBody", box: session.targetCode });
+          }}
         >
           {summary.shortage > 0
             ? t("ws.run.finishShort", { n: summary.shortage })
             : t("ws.run.finish")}
         </Button>
+        {closing && (
+          <Button
+            variant="ghost"
+            onClick={() => {
+              setClosing(false);
+              setFeedback(null);
+            }}
+          >
+            {t("ws.chk.closeCancel")}
+          </Button>
+        )}
         <p className="font-mono text-xs text-muted-foreground">→ {session.targetCode}</p>
       </aside>
     </div>

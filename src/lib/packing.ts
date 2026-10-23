@@ -201,3 +201,43 @@ export function boxesHolding(
     )
     .map((b) => b.barcode);
 }
+
+/**
+ * Почему скан не подошёл — «защита от дурака». Не «не та этикетка» на всё
+ * подряд, а что именно перепутано: этикетку от другой штуки, этикетку заказа
+ * вместо этикетки товара, код тары вместо этикетки. По сообщению человек
+ * сразу понимает, что исправить, и не клеит этикетку не туда.
+ */
+export type ScanMistake =
+  | "label_used"
+  | "label_other"
+  | "label_foreign"
+  | "label_not_item"
+  | "tote_code"
+  | "product_not_label";
+
+export function explainScan(
+  session: PackSession,
+  box: Box,
+  products: readonly Product[],
+  raw: string,
+): ScanMistake | null {
+  const code = normalizeCode(raw);
+  if (!code) return null;
+  const want = pendingLabel(session);
+  if (code === normalizeCode(box.barcode) || code === normalizeCode(session.targetCode))
+    return "tote_code";
+  const isLabel = code.startsWith(UNIT_LABEL_PREFIX) || code.startsWith(ORDER_LABEL_PREFIX);
+  if (!want) return isLabel ? "label_not_item" : null;
+  if (code === normalizeCode(want)) return null;
+  if (session.units.some((u) => u.confirmedAt && normalizeCode(u.labelCode) === code))
+    return "label_used";
+  if (
+    session.orderLabels.some((l) => normalizeCode(l.labelCode) === code) ||
+    session.units.some((u) => normalizeCode(u.labelCode) === code)
+  )
+    return "label_other";
+  if (isLabel) return "label_foreign";
+  if (products.some((p) => matchesProductCode(p, raw))) return "product_not_label";
+  return null;
+}

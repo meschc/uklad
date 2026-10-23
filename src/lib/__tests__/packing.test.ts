@@ -3,7 +3,7 @@ import { create, type StateCreator } from "zustand";
 import { createWorkstationSlice } from "../store/workstation.slice";
 import type { EditorState, WorkstationSlice } from "../store/state";
 import { badgeCode } from "../workstation";
-import { boxesHolding, toteOrders } from "../packing";
+import { boxesHolding, explainScan, toteOrders } from "../packing";
 import type { Box, FulfillmentRequest, Product } from "../types";
 
 const slice = createWorkstationSlice as unknown as StateCreator<
@@ -124,5 +124,29 @@ describe("товар не из этой тары", () => {
     ];
     expect(boxesHolding(boxes, "p2", "b1")).toEqual(["UK-BOX-000002"]);
     expect(boxesHolding(boxes, "p3", "b1")).toEqual([]);
+  });
+});
+
+describe("защита от ошибок упаковщика", () => {
+  it("называет, что именно перепутано вместо напечатанной этикетки", () => {
+    const { s, packOne } = stand([{ productId: "p1", qty: 3 }]);
+    packOne("4600000000017");
+    const used = s().packSession!.units[0].labelCode;
+    s().packScanItem("4600000000017");
+    const why = (code: string) => explainScan(s().packSession!, s().boxes[0], s().products, code);
+    expect(why(used)).toBe("label_used");
+    expect(why("UK-LBL-ЧУЖАЯ-001")).toBe("label_foreign");
+    expect(why("UK-BOX-000001")).toBe("tote_code");
+    expect(why("UK-OUT-1")).toBe("tote_code");
+    expect(why("4600000000017")).toBe("product_not_label");
+    expect(why(s().packSession!.units.at(-1)!.labelCode)).toBeNull();
+  });
+
+  it("этикетка, отсканированная вместо товара, — не товар", () => {
+    const { s, packOne } = stand([{ productId: "p1", qty: 2 }]);
+    packOne("4600000000017");
+    const used = s().packSession!.units[0].labelCode;
+    expect(explainScan(s().packSession!, s().boxes[0], s().products, used)).toBe("label_not_item");
+    expect(explainScan(s().packSession!, s().boxes[0], s().products, "4600000000017")).toBeNull();
   });
 });
