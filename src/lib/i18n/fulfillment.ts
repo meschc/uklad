@@ -51,7 +51,7 @@ export const ru = {
   "integr.error.rateLimit": "Сервис просит подождать: слишком много запросов",
   "integr.error.unsupported": "Этот сервис такую операцию не поддерживает",
   "integr.securityNote":
-    "Ключи хранятся на сервере Уклада в зашифрованном виде и не показываются после сохранения.",
+    "Пока ключ хранится только в этом браузере. На защищённый сервер Уклада он переедет при запуске — боевые ключи до этого не вводите.",
   "integr.setup": "Настроить",
   "integr.hide": "Свернуть",
   "integr.enable": "Включить обмен",
@@ -379,7 +379,7 @@ export const en: Record<keyof typeof ru, string> = {
   "integr.error.rateLimit": "The service asks to wait: too many requests",
   "integr.error.unsupported": "This service does not support this operation",
   "integr.securityNote":
-    "Keys are stored encrypted on the Uklad server and are not shown again after saving.",
+    "For now the key stays in this browser only. It moves to the secure Uklad server at launch — do not enter production keys before that.",
   "integr.setup": "Set up",
   "integr.hide": "Collapse",
   "integr.enable": "Enable exchange",
