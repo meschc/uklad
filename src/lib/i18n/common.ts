@@ -43,8 +43,7 @@ export const ru = {
   "profile.inn": "ИНН",
   "profile.innErr": "ИНН не проходит проверку контрольной суммы",
   "profile.innHint": "По ИНН реквизиты компании заполнятся сами.",
-  "profile.innFetched":
-    "Реквизиты получены из ФНС — пока заготовкой: справочник подключается вместе с backend.",
+  "profile.innFetched": "Реквизиты получены из ФНС по ИНН.",
   "profile.companyDetails": "Реквизиты",
   "profile.kpp": "КПП",
   "profile.ogrn": "ОГРН",
@@ -225,8 +224,7 @@ export const en: Record<keyof typeof ru, string> = {
   "profile.inn": "Tax id",
   "profile.innErr": "The tax id fails its checksum",
   "profile.innHint": "Company details fill in automatically from the tax id.",
-  "profile.innFetched":
-    "Details received from the tax registry — a placeholder for now: the real registry connects with the backend.",
+  "profile.innFetched": "Details received from the tax registry by INN.",
   "profile.companyDetails": "Registration details",
   "profile.kpp": "KPP",
   "profile.ogrn": "Registration number",
