@@ -32,7 +32,8 @@ export type AppView =
   | "analytics"
   | "spec"
   | "seller"
-  | "chat";
+  | "chat"
+  | "workstation";
 
 /**
  * Аккаунт (ТЗ, разд. 3.2): личный или компании. От типа зависит, что

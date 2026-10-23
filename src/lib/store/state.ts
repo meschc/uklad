@@ -2,7 +2,14 @@ import type { StateCreator } from "zustand";
 // Только тип: `import type` стирается при сборке, поэтому кольца
 // «словарь → хранилище → словарь» не возникает.
 import type { MsgKey } from "../i18n";
+import type { ItemScan } from "../packing";
 import type {
+  BreakPolicy,
+  PackSession,
+  StaffEvent,
+  StaffEventType,
+  StationSession,
+  WorkstationKind,
   Account,
   AddressingConfig,
   AppView,
@@ -632,6 +639,54 @@ export interface StaffSlice {
   removePartner: (id: string) => void;
 }
 
+// --- Рабочее место и смена сотрудника -----------------------------------------
+
+export interface WorkstationSlice {
+  /**
+   * Журнал сотрудников: отметки смены, сканы и упаковки (узел cab-staff-log).
+   * Время упаковки каждой штуки по сотруднику — это контроль выработки, то есть
+   * персональные данные работника. На сервере: срок хранения (например, 12
+   * месяцев), доступ только у самого сотрудника и руководителя, а склад
+   * предупреждает сотрудников, что журнал ведётся.
+   */
+  staffEvents: StaffEvent[];
+  /** Кто вошёл по бейджу на этом экране. Один на устройство — экран общий. */
+  stationSession: StationSession | null;
+  /**
+   * Вход по скану бейджа. Возвращает id сотрудника или null, если бейдж не
+   * принадлежит никому из персонала активного склада.
+   */
+  badgeLogin: (code: string, station: WorkstationKind) => string | null;
+  stationLogout: () => void;
+  /**
+   * Отметка смены вошедшего сотрудника. Недопустимый переход (перерыв без
+   * смены) игнорируется и возвращает false — кнопки меню и так его не дают.
+   */
+  markShift: (
+    type: Extract<StaffEventType, "shift_start" | "break_start" | "break_end" | "shift_end">,
+  ) => boolean;
+  /** Расписание перерывов склада, его задаёт руководитель. */
+  breakPolicy: BreakPolicy;
+  setBreakPolicy: (patch: Partial<BreakPolicy>) => void;
+  /** Открытая упаковка тары. Одна на устройство, как и вход по бейджу. */
+  packSession: PackSession | null;
+  /**
+   * Начать тару: скан тары с товаром и короба отгрузки. Возвращает ключ ошибки
+   * или null при успехе.
+   */
+  packStart: (sourceCode: string, targetCode: string) => MsgKey | null;
+  /** Скан товара: этикетка единицы появляется сама, брак и лишнее — в отказы. */
+  packScanItem: (code: string) => ItemScan;
+  /** Скан наклеенной этикетки. false — это не та этикетка, которую ждём. */
+  packScanLabel: (code: string) => boolean;
+  /** Отсканированная, но ещё не упакованная штука оказалась браком. */
+  packRejectPending: () => void;
+  /** Закрыть тару: списать из неё ушедшее, отметить закрытые заказы. */
+  packFinish: () => void;
+  /** Демо: тара из собранных заказов — пока сборка не пишет, что положила в тару. */
+  prepareDemoTote: () => string | null;
+}
+
 export interface OperationsSlice {
   /** Задания на операции склада: маркировка, упаковка, возвраты… */
   tasks: WarehouseTask[];
@@ -658,6 +713,7 @@ export interface OperationsSlice {
 }
 
 export type EditorState = AccountSlice &
+  WorkstationSlice &
   OperationsSlice &
   SessionSlice &
   ChatSlice &

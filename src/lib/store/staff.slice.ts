@@ -31,6 +31,10 @@ function makeMember(member: Omit<StaffMember, "id">): StaffMember {
     phone: member.phone?.trim() || undefined,
     email: member.email?.trim() || undefined,
     photoUrl: member.photoUrl?.trim() || undefined,
+    hourlyRate:
+      typeof member.hourlyRate === "number" && member.hourlyRate > 0
+        ? member.hourlyRate
+        : undefined,
   };
 }
 

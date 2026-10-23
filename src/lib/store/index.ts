@@ -29,6 +29,7 @@ import { createSessionSlice, makeSession } from "./session.slice";
 import { createChatSlice } from "./chat.slice";
 import { createOperationsSlice } from "./operations.slice";
 import { createStaffSlice } from "./staff.slice";
+import { createWorkstationSlice } from "./workstation.slice";
 import { sanitizeDomains } from "../data/sanitize";
 
 /**
@@ -78,6 +79,7 @@ export const useEditor = create<EditorState>()(
       ...createSessionSlice(...a),
       ...createChatSlice(...a),
       ...createStaffSlice(...a),
+      ...createWorkstationSlice(...a),
       ...createOperationsSlice(...a),
     }),
     {
@@ -247,6 +249,12 @@ export const useEditor = create<EditorState>()(
         chats: s.chats,
         integrations: s.integrations,
         labelTemplates: s.labelTemplates,
+        // Журнал сотрудников и вход по бейджу: вход живёт 12 часов и обязан
+        // пережить перезагрузку экрана посреди смены.
+        staffEvents: s.staffEvents,
+        stationSession: s.stationSession,
+        packSession: s.packSession,
+        breakPolicy: s.breakPolicy,
         tasks: s.tasks,
         serviceSettings: s.serviceSettings,
       }),

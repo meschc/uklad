@@ -82,6 +82,11 @@ const IntegrationsScreen = lazy(() =>
     default: m.IntegrationsScreen,
   })),
 );
+const WorkstationScreen = lazy(() =>
+  import("@/components/workstation/WorkstationScreen").then((m) => ({
+    default: m.WorkstationScreen,
+  })),
+);
 const ChatScreen = lazy(() =>
   import("@/components/chat/ChatScreen").then((m) => ({ default: m.ChatScreen })),
 );
@@ -136,7 +141,9 @@ export default function App() {
   // уровня аккаунта его нет: на списке складов склад ещё не выбран, а в
   // профиле и на входе рельсу нечего показывать. Появляется он ровно тогда,
   // когда склад открыт.
-  const showNav = !ACCOUNT_VIEWS.has(view);
+  // Рабочее место — тоже без рельса: это общий экран у стола, за ним стоит
+  // сотрудник по бейджу, и уводить его в настройки склада одним кликом незачем.
+  const showNav = !ACCOUNT_VIEWS.has(view) && view !== "workstation";
 
   // Каждый экран — под своей границей ошибки: падение одного не должно ронять
   // приложение целиком и мешать уйти в соседний пункт меню. Ключ по виду
@@ -239,6 +246,8 @@ function renderView(view: string) {
       return <SellerScreen />;
     case "chat":
       return <ChatScreen />;
+    case "workstation":
+      return <WorkstationScreen />;
     case "login":
       return <LoginScreen />;
     default:

@@ -5,6 +5,7 @@ import {
   isProduct,
   isReceivingEvent,
   isRequest,
+  isStaffEvent,
   isTask,
   keepValid,
   type Guard,
@@ -28,6 +29,7 @@ const CHECKED: { key: string; guard: Guard<unknown> }[] = [
   { key: "expectedShipments", guard: isExpectedShipment as Guard<unknown> },
   { key: "receivingEvents", guard: isReceivingEvent as Guard<unknown> },
   { key: "requests", guard: isRequest as Guard<unknown> },
+  { key: "staffEvents", guard: isStaffEvent as Guard<unknown> },
   { key: "tasks", guard: isTask as Guard<unknown> },
 ];
 
