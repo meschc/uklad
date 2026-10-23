@@ -28,6 +28,7 @@ export function ScanField({
   minLength,
   disabled,
   autoFocus = true,
+  actionLabel,
   onSubmit,
 }: {
   label: string;
@@ -37,6 +38,8 @@ export function ScanField({
   minLength?: number;
   disabled?: boolean;
   autoFocus?: boolean;
+  /** Подпись кнопки: по умолчанию «Принять», у упаковки — своё действие. */
+  actionLabel?: string;
   onSubmit: (code: string) => void;
 }) {
   const t = useT();
@@ -118,7 +121,7 @@ export function ScanField({
           disabled={disabled || !value.trim()}
           onClick={() => submit(value)}
         >
-          {t("scan.apply")}
+          {actionLabel ?? t("scan.apply")}
         </Button>
       </div>
       {hint && <p className="text-xs text-muted-foreground">{hint}</p>}

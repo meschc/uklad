@@ -1,3 +1,4 @@
+import { useWarehouseProducts } from "@/lib/warehouseProducts";
 import { useMemo, useState } from "react";
 import {
   CalendarClock,
@@ -77,15 +78,29 @@ export function SellerScreen() {
 // --- 7.2 заявки продавца ------------------------------------------------------
 
 function RequestsTab({ t }: { t: TFunc }) {
-  const requests = useEditor((s) => s.requests);
-  const products = useEditor((s) => s.products);
+  const allRequests = useEditor((s) => s.requests);
+  const products = useWarehouseProducts();
+  // Заявки и поставки продавца — только по его товару: чужие заявки того же
+  // склада ему видеть нельзя.
+  const mine = useMemo(() => new Set(products.map((p) => p.id)), [products]);
+  const requests = useMemo(
+    () => allRequests.filter((r) => mine.has(r.productId)),
+    [allRequests, mine],
+  );
   const shipments = useEditor((s) => s.shipments);
   const shipmentOf = (id?: string) => (id ? shipments.find((sh) => sh.id === id) : undefined);
   const groups = useMemo(() => groupRequestsByTarget(requests), [requests]);
   const [creating, setCreating] = useState(false);
   const [importing, setImporting] = useState(false);
   const [supplying, setSupplying] = useState(false);
-  const openSupplies = useEditor((s) => s.expectedShipments.filter((sh) => sh.status !== "closed"));
+  const expected = useEditor((s) => s.expectedShipments);
+  const openSupplies = useMemo(
+    () =>
+      expected.filter(
+        (sh) => sh.status !== "closed" && sh.lines.some((l) => mine.has(l.productId)),
+      ),
+    [expected, mine],
+  );
 
   return (
     <div className="flex flex-col gap-3">
@@ -219,7 +234,7 @@ function RequestsTab({ t }: { t: TFunc }) {
  * механизма импорта в проекте быть не должно.
  */
 function BulkRequestDialog({ onClose, t }: { onClose: () => void; t: TFunc }) {
-  const products = useEditor((s) => s.products);
+  const products = useWarehouseProducts();
   const showToast = useEditor((s) => s.showToast);
   const [text, setText] = useState("");
   const [truck, setTruck] = useState("");

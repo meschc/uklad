@@ -11,7 +11,8 @@
 import type { Result } from "../data/result";
 
 /** Система, с которой идёт обмен. Совпадает с `IntegrationSpec.id`. */
-export type ExternalSystem = "wildberries" | "ozon" | "yandex-market" | "honest-sign" | "moysklad";
+export type ExternalSystem =
+  "wildberries" | "ozon" | "yandex-market" | "avito" | "megamarket" | "honest-sign" | "moysklad";
 
 /** Что подключение умеет. Экран прячет действие, которого нет в списке. */
 export type ConnectorCapability =
