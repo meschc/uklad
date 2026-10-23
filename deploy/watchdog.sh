@@ -33,8 +33,11 @@ echo "$now" > "$STATE"
 
 text=$([ "$now" = bad ] && printf "Уклад: проблема\n%b" "$problems" || echo "Уклад: снова в порядке")
 if [ -n "${TG_BOT_TOKEN:-}" ] && [ -n "${TG_CHAT_ID:-}" ]; then
-  curl -fsS -m 10 "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage" \
-    --data-urlencode "chat_id=${TG_CHAT_ID}" --data-urlencode "text=${text}" >/dev/null
+  # Адрес с токеном идёт через stdin (`-K -`), а не аргументом: аргументы
+  # видны всем пользователям сервера в `ps`.
+  printf 'url = "https://api.telegram.org/bot%s/sendMessage"\n' "$TG_BOT_TOKEN" |
+    curl -fsS -m 10 -K - --data-urlencode "chat_id=${TG_CHAT_ID}" \
+      --data-urlencode "text=${text}" >/dev/null
 else
   echo "$text"
 fi
