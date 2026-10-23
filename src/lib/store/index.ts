@@ -27,6 +27,7 @@ import { createFulfillmentSlice } from "./fulfillment.slice";
 import { createRequestsSlice } from "./requests.slice";
 import { createSessionSlice, makeSession } from "./session.slice";
 import { createChatSlice } from "./chat.slice";
+import { createOperationsSlice } from "./operations.slice";
 import { createStaffSlice } from "./staff.slice";
 import { createWorkstationSlice } from "./workstation.slice";
 import { sanitizeDomains } from "../data/sanitize";
@@ -79,6 +80,7 @@ export const useEditor = create<EditorState>()(
       ...createChatSlice(...a),
       ...createStaffSlice(...a),
       ...createWorkstationSlice(...a),
+      ...createOperationsSlice(...a),
     }),
     {
       name: PERSIST_KEY,
@@ -253,6 +255,8 @@ export const useEditor = create<EditorState>()(
         stationSession: s.stationSession,
         packSession: s.packSession,
         breakPolicy: s.breakPolicy,
+        tasks: s.tasks,
+        serviceSettings: s.serviceSettings,
       }),
     },
   ),

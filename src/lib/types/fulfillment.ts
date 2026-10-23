@@ -19,6 +19,13 @@ export interface Box {
   createdAt: number;
   lines: BoxLine[];
   palletId?: string;
+  /**
+   * Грузовая приёмка: короб принят местом и ещё не вскрыт. Товара в нём по
+   * учёту нет — он появится, когда короб откроют на товарной приёмке.
+   */
+  sealed?: boolean;
+  /** Поставка, с которой короб приехал. */
+  shipmentId?: string;
   /** Где физически стоит коробка. Пока не размещена — undefined. */
   address?: CellAddress;
 }
@@ -29,7 +36,27 @@ export interface Pallet {
   barcode: string; // формат УК-PLT-000045
   createdAt: number;
   boxIds: string[];
+  /** Принята местом на грузовой приёмке и ещё не вскрыта. */
+  sealed?: boolean;
+  /** Поставка, с которой паллета приехала. */
+  shipmentId?: string;
   address?: CellAddress;
+}
+
+/**
+ * Грузовая приёмка поставки: сколько мест заявлено по накладной и сколько
+ * приехало. Пересчёт штук — второй этап, он идёт по вскрытым местам.
+ * Машин у поставки может быть несколько — факт копится.
+ */
+export interface CargoIntake {
+  /** По накладной. Пусто — накладной с местами не было, сверять не с чем. */
+  declaredPallets?: number;
+  declaredBoxes?: number;
+  /** Приехало: паллет и коробов без паллеты. */
+  pallets: number;
+  boxes: number;
+  at: number;
+  staffId?: string;
 }
 
 /**
@@ -81,6 +108,8 @@ export interface ExpectedShipment {
    * не потому что мы забыли его учесть, а потому что он физически не хранится.
    */
   crossDock?: boolean;
+  /** Грузовая приёмка — если склад принимает в два этапа. */
+  cargo?: CargoIntake;
 }
 
 /** Расхождение план/факт, зафиксированное оператором осознанно. */

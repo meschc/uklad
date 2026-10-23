@@ -27,6 +27,7 @@ export type AppView =
   | "integrations"
   | "tasks"
   | "picking"
+  | "operations"
   | "staff"
   | "analytics"
   | "spec"
