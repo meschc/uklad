@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import type { Product, Warehouse } from "./types";
+import type { Product, User, Warehouse } from "./types";
 import { useEditor } from "./store";
 
 /**
@@ -13,9 +13,29 @@ export function productsOfWarehouse(products: Product[], warehouse: Warehouse): 
   );
 }
 
-/** Товары активного склада — стабильны по ссылке, пока не сменились входы. */
+/**
+ * Что из номенклатуры склада видит пользователь. Склад — всё. Продавец —
+ * только товар, который склад закрепил за его партнёром; без привязки —
+ * ничего, а не всё.
+ */
+export function visibleProducts(
+  products: Product[],
+  warehouse: Warehouse,
+  user: Pick<User, "role" | "partnerId">,
+): Product[] {
+  const own = productsOfWarehouse(products, warehouse);
+  if (user.role !== "seller") return own;
+  return user.partnerId ? own.filter((p) => p.partnerId === user.partnerId) : [];
+}
+
+/** Товары активного склада для текущего пользователя, стабильны по ссылке. */
 export function useWarehouseProducts(): Product[] {
   const products = useEditor((s) => s.products);
   const warehouse = useEditor((s) => s.warehouse);
-  return useMemo(() => productsOfWarehouse(products, warehouse), [products, warehouse]);
+  const role = useEditor((s) => s.session.user.role);
+  const partnerId = useEditor((s) => s.session.user.partnerId);
+  return useMemo(
+    () => visibleProducts(products, warehouse, { role, partnerId }),
+    [products, warehouse, role, partnerId],
+  );
 }

@@ -25,7 +25,6 @@ import { eyebrow } from "@/components/ui/eyebrow";
 import { EmptyState } from "./ScreenShell";
 import { Modal, Field } from "./Modal";
 import { SupplyDialog } from "./SupplyDialog";
-import { AllGoodsTab } from "./AllGoodsTab";
 import { RequestDialog } from "./RequestDialog";
 import { StatusBadge } from "./TasksScreen";
 
@@ -40,7 +39,7 @@ import { StatusBadge } from "./TasksScreen";
  * ни габаритов, ни выделения диапазона.
  */
 
-type Tab = "stock" | "all" | "requests";
+type Tab = "stock" | "requests";
 
 export function SellerScreen() {
   const t = useT();
@@ -58,7 +57,6 @@ export function SellerScreen() {
           onChange={setTab}
           options={[
             { value: "stock" as Tab, label: t("seller.tab.stock") },
-            { value: "all" as Tab, label: t("seller.tab.all") },
             { value: "requests" as Tab, label: t("seller.tab.requests") },
           ]}
         />
@@ -66,8 +64,6 @@ export function SellerScreen() {
 
       {tab === "stock" ? (
         <TableScreen />
-      ) : tab === "all" ? (
-        <AllGoodsTab />
       ) : (
         <div className="min-h-0 flex-1 overflow-y-auto">
           <div className="mx-auto flex max-w-5xl flex-col gap-4 px-6 py-6">
@@ -82,15 +78,29 @@ export function SellerScreen() {
 // --- 7.2 заявки продавца ------------------------------------------------------
 
 function RequestsTab({ t }: { t: TFunc }) {
-  const requests = useEditor((s) => s.requests);
+  const allRequests = useEditor((s) => s.requests);
   const products = useWarehouseProducts();
+  // Заявки и поставки продавца — только по его товару: чужие заявки того же
+  // склада ему видеть нельзя.
+  const mine = useMemo(() => new Set(products.map((p) => p.id)), [products]);
+  const requests = useMemo(
+    () => allRequests.filter((r) => mine.has(r.productId)),
+    [allRequests, mine],
+  );
   const shipments = useEditor((s) => s.shipments);
   const shipmentOf = (id?: string) => (id ? shipments.find((sh) => sh.id === id) : undefined);
   const groups = useMemo(() => groupRequestsByTarget(requests), [requests]);
   const [creating, setCreating] = useState(false);
   const [importing, setImporting] = useState(false);
   const [supplying, setSupplying] = useState(false);
-  const openSupplies = useEditor((s) => s.expectedShipments.filter((sh) => sh.status !== "closed"));
+  const expected = useEditor((s) => s.expectedShipments);
+  const openSupplies = useMemo(
+    () =>
+      expected.filter(
+        (sh) => sh.status !== "closed" && sh.lines.some((l) => mine.has(l.productId)),
+      ),
+    [expected, mine],
+  );
 
   return (
     <div className="flex flex-col gap-3">
