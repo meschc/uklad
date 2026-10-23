@@ -1,6 +1,7 @@
 import { ru, useT } from "../../lib/copy";
 import { href } from "../../lib/route";
 import { LogoMark } from "../Logo";
+import { RoadmapAccount } from "./RoadmapAccount";
 
 const T = {
   brand: ru("Уклад"),
@@ -31,7 +32,7 @@ export function RoadmapHeader() {
             · {t(T.roadmap)}
           </span>
         </a>
-        <nav className="flex items-center gap-8 text-sm">
+        <nav className="flex items-center gap-4 text-sm sm:gap-8">
           <a
             href={href("/warehouses/")}
             className="wh-muted hidden hover:text-[var(--wh-ink)] md:inline"
@@ -50,6 +51,7 @@ export function RoadmapHeader() {
           >
             {t(T.connect)}
           </a>
+          <RoadmapAccount />
         </nav>
       </div>
     </header>
