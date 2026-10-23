@@ -7,6 +7,9 @@ import { mapOzonPostings } from "../ozon";
 import type { ConnectorRequest, ConnectorTransport } from "../transport";
 import { createServerTransport, offlineTransport } from "../transport";
 import { mapWbOrders } from "../wildberries";
+import { mapYmOrders } from "../yandexMarket";
+import { mapAvitoOrders } from "../avito";
+import { mapMoyskladOrders } from "../moysklad";
 
 // GTIN с верной контрольной цифрой (контрольная цифра 8).
 const GTIN = "04600000000008";
@@ -178,5 +181,75 @@ describe("адаптеры и транспорт", () => {
     const req: ConnectorRequest = { system: "ozon", account: "a", method: "POST", path: "/x" };
     expect(await mk(401).request(req)).toEqual(fail("integr.error.rejected"));
     expect(await mk(429).request(req)).toEqual(fail("integr.error.rateLimit"));
+  });
+});
+
+describe("адаптеры Маркета, Авито, Мегамаркета и МоегоСклада", () => {
+  it("Маркет: заказы, даты и признак маркировки", () => {
+    const [o] = mapYmOrders({
+      orders: [
+        {
+          id: 42,
+          creationDate: "23-10-2026 10:15:00",
+          items: [{ offerId: "SKU-1", count: 2, requiredInstanceTypes: ["CIS"] }],
+          delivery: { shipments: [{ shipmentDate: "25-10-2026" }] },
+        },
+      ],
+    });
+    expect(o.externalId).toBe("42");
+    expect(o.createdAt).toBe("2026-10-23T10:15:00+03:00");
+    expect(o.shipBy).toBe("2026-10-25T00:00:00+03:00");
+    expect(o.lines[0]).toMatchObject({ externalSku: "SKU-1", qty: 2, requiresMarks: true });
+  });
+
+  it("Маркет: остатки уходят по SKU с кампанией из сервера", async () => {
+    const t = stub(() => ({}));
+    await getConnector("yandex-market", "acc", t)!.pushStocks!("", [
+      { externalSku: "SKU-1", qty: -3 },
+    ]);
+    expect(t.calls[0].path).toBe("/v2/campaigns/{campaignId}/offers/stocks");
+    expect(t.calls[0].body).toMatchObject({ skus: [{ sku: "SKU-1", items: [{ count: 0 }] }] });
+  });
+
+  it("Авито: заказ с маркировкой и остатки пачками по 200", async () => {
+    const [o] = mapAvitoOrders({
+      orders: [
+        {
+          id: "5",
+          createdAt: "2026-10-23T10:00:00Z",
+          items: [{ avitoId: "777", id: "A-1", count: 1 }],
+          availableActions: [{ name: "setMarkings" }],
+        },
+      ],
+    });
+    expect(o.lines[0]).toMatchObject({
+      externalSku: "777",
+      vendorCode: "A-1",
+      requiresMarks: true,
+    });
+    const t = stub(() => ({}));
+    const many = Array.from({ length: 201 }, (_, i) => ({ externalSku: String(i + 1), qty: 1 }));
+    await getConnector("avito", "acc", t)!.pushStocks!("", many);
+    expect(t.calls).toHaveLength(2);
+  });
+
+  it("Мегамаркет: остатки по offerId", async () => {
+    const t = stub(() => ({}));
+    await getConnector("megamarket", "acc", t)!.pushStocks!("", [{ externalSku: "O-1", qty: 4 }]);
+    expect(t.calls[0].body).toMatchObject({ data: { stocks: [{ offerId: "O-1", quantity: 4 }] } });
+  });
+
+  it("МойСклад: заказ покупателя → задание", () => {
+    const [o] = mapMoyskladOrders({
+      rows: [
+        {
+          name: "00012",
+          moment: "2026-10-23 09:00:00.000",
+          positions: { rows: [{ quantity: 3, assortment: { id: "u1", article: "ART" } }] },
+        },
+      ],
+    });
+    expect(o).toMatchObject({ externalId: "00012", createdAt: "2026-10-23T09:00:00+03:00" });
+    expect(o.lines[0]).toMatchObject({ externalSku: "u1", vendorCode: "ART", qty: 3 });
   });
 });
