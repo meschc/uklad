@@ -483,3 +483,58 @@ test(
     assert.equal((await login("s@sklad.ru", ip, NEW)).status, 200);
   },
 );
+
+test(
+  "чужая неподтверждённая регистрация не достаётся владельцу почты",
+  { skip: SKIP },
+  async () => {
+    const ip = "10.16.0.1";
+    // Злоумышленник записал чужую почту со своим паролем и своей компанией.
+    await call("/api/auth/register", { body: owner("victim@sklad.ru"), ip });
+    // Владелец почты сбрасывает пароль кодом.
+    await call("/api/auth/reset/request", { body: { email: "victim@sklad.ru" }, ip });
+    const code = await codeFor("victim@sklad.ru", "нового пароля");
+    const NEW = "мой-собственный-пароль";
+    const r = await call("/api/auth/reset", {
+      body: { email: "victim@sklad.ru", code, password: NEW },
+      ip,
+    });
+    assert.equal(r.status, 200);
+    const me = await call("/api/auth/me", { cookie: r.token });
+    assert.deepEqual(me.json.orgs, []);
+  },
+);
+
+test("регистрация без подтверждения за 7 дней освобождает почту", { skip: SKIP }, async () => {
+  const ip = "10.17.0.1";
+  await call("/api/auth/register", { body: owner("late@sklad.ru"), ip });
+  await db.root.query(
+    `UPDATE auth.accounts SET created_at = now() - interval '8 days' WHERE email = 'late@sklad.ru'`,
+  );
+  await db.root.query(`SELECT auth.purge()`);
+  const { rows } = await db.root.query(
+    `SELECT count(*)::int AS n FROM auth.accounts WHERE email = 'late@sklad.ru'`,
+  );
+  assert.equal(rows[0].n, 0);
+  // Почта свободна: регистрация с кодом проходит заново.
+  assert.equal((await signup(owner("late@sklad.ru"), ip)).status, 200);
+});
+
+test("20 неудачных кодов за сутки закрывают и верный код", { skip: SKIP }, async () => {
+  const ip = "10.18.0.1";
+  await call("/api/auth/register", { body: owner("brute@sklad.ru"), ip });
+  await db.root.query(
+    `UPDATE auth.email_codes SET attempts = 4 WHERE account_id =
+       (SELECT id FROM auth.accounts WHERE email = 'brute@sklad.ru')`,
+  );
+  // Ещё четыре старых кода с попытками за сутки — всего 20.
+  await db.root.query(
+    `INSERT INTO auth.email_codes (account_id, purpose, code_hash, attempts, expires_at, used_at)
+     SELECT id, 'verify', '\\x00', 4, now(), now()
+     FROM auth.accounts, generate_series(1, 4) WHERE email = 'brute@sklad.ru'`,
+  );
+  await call("/api/auth/resend", { body: { email: "brute@sklad.ru" }, ip });
+  const code = await codeFor("brute@sklad.ru");
+  const r = await call("/api/auth/verify", { body: { email: "brute@sklad.ru", code }, ip });
+  assert.equal(r.status, 400);
+});

@@ -43,10 +43,11 @@ const FAIL_PAIR = 5;
 const FAIL_IP = 50;
 const FAIL_EMAIL = 20;
 
-// Код из письма: 15 минут, пять попыток (считает база), не больше пяти
-// писем одного назначения в час.
+// Код из письма: 15 минут, пять попыток и 20 неудач в сутки (считает база),
+// не больше пяти писем одного назначения в час и десяти в сутки.
 const CODE_TTL_MS = 15 * 60_000;
 const CODES_PER_HOUR = 5;
+const CODES_PER_DAY = 10;
 
 const BADGE_PREFIX = "UKB-";
 const EMAIL_RE = /^[^\s@]{1,64}@[^\s@]{1,255}\.[^\s@]{2,}$/;
@@ -228,8 +229,8 @@ function createAuth({ pool, cfg, send, readBody, log, mail }) {
   }
 
   async function sendCode(accountId, email, purpose, target = null) {
-    const t = target ?? { sent_last_hour: 0 };
-    if (t.sent_last_hour >= CODES_PER_HOUR) return;
+    const t = target ?? { sent_last_hour: 0, sent_last_day: 0 };
+    if (t.sent_last_hour >= CODES_PER_HOUR || t.sent_last_day >= CODES_PER_DAY) return;
     const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
     await pool.query(`SELECT auth.issue_code($1, $2, $3, $4::interval)`, [
       accountId,

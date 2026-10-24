@@ -22,15 +22,19 @@ CREATE TABLE auth.email_codes (
 CREATE INDEX email_codes_account ON auth.email_codes (account_id, purpose, created_at);
 
 -- Учётная запись для письма с кодом: id, подтверждена ли почта и сколько
--- кодов этого назначения выдано за час (сервер не шлёт больше пяти).
--- Отключённой учётной записи нет — письмо ей не уходит.
+-- кодов этого назначения выдано за час и за сутки (сервер не шлёт больше
+-- пяти в час и десяти в сутки). Отключённой учётной записи нет — письмо ей
+-- не уходит.
 CREATE FUNCTION auth.code_target(p_email text, p_purpose text)
-RETURNS TABLE (account_id uuid, verified boolean, sent_last_hour integer)
+RETURNS TABLE (account_id uuid, verified boolean, sent_last_hour integer, sent_last_day integer)
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path = auth, pg_temp AS $$
   SELECT a.id, a.email_verified_at IS NOT NULL,
          (SELECT count(*)::int FROM auth.email_codes c
           WHERE c.account_id = a.id AND c.purpose = p_purpose
-            AND c.created_at > now() - interval '1 hour')
+            AND c.created_at > now() - interval '1 hour'),
+         (SELECT count(*)::int FROM auth.email_codes c
+          WHERE c.account_id = a.id AND c.purpose = p_purpose
+            AND c.created_at > now() - interval '1 day')
   FROM auth.accounts a
   WHERE a.email = lower(trim(p_email)) AND a.disabled_at IS NULL
 $$;
@@ -47,6 +51,10 @@ $$;
 -- Проверить код: верный гасится и возвращает true; неверный тратит одну из
 -- пяти попыток. Блокировка строки — чтобы параллельные запросы не прошли
 -- оба и не потратили одну попытку дважды.
+--
+-- Сверх попыток на код — 20 неудач на учётную запись за сутки по всем её
+-- кодам: иначе пять попыток × десять писем растягивают перебор миллиона
+-- вариантов во времени. Исчерпано — до конца суток не подходит и верный.
 CREATE FUNCTION auth.use_code(p_account uuid, p_purpose text, p_hash bytea)
 RETURNS boolean
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = auth, pg_temp AS $$
@@ -59,6 +67,10 @@ BEGIN
   ORDER BY created_at DESC LIMIT 1
   FOR UPDATE;
   IF NOT FOUND THEN RETURN false; END IF;
+  IF (SELECT coalesce(sum(c.attempts), 0) FROM auth.email_codes c
+      WHERE c.account_id = p_account AND c.created_at > now() - interval '1 day') >= 20 THEN
+    RETURN false;
+  END IF;
   IF v.code_hash <> p_hash THEN
     UPDATE auth.email_codes SET attempts = attempts + 1 WHERE id = v.id;
     RETURN false;
@@ -75,6 +87,7 @@ DECLARE v_org uuid;
 BEGIN
   UPDATE auth.accounts SET email_verified_at = coalesce(email_verified_at, now())
   WHERE id = p_account AND disabled_at IS NULL;
+  IF NOT FOUND THEN RETURN NULL; END IF;
   PERFORM set_config('app.account_id', p_account::text, true);
   SELECT m.org_id INTO v_org FROM uklad.members m
   WHERE m.account_id = p_account AND auth.can_enter(m.status, m.deleted_at)
@@ -83,14 +96,44 @@ BEGIN
   RETURN v_org;
 END $$;
 
+-- Регистрация, которую так и не подтвердили, могла быть чужой: кто угодно
+-- может записать на чужую почту свой пароль и свою компанию. Такие
+-- компании и членства гасятся (deleted_at): владелец почты не должен
+-- унаследовать то, что завёл не он.
+CREATE FUNCTION auth.drop_unverified(p_account uuid) RETURNS void
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = auth, uklad, pg_temp AS $$
+DECLARE v_org uuid;
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM auth.accounts
+                 WHERE id = p_account AND email_verified_at IS NULL) THEN
+    RETURN;
+  END IF;
+  PERFORM set_config('app.account_id', p_account::text, true);
+  FOR v_org IN SELECT m.org_id FROM uklad.members m WHERE m.account_id = p_account LOOP
+    PERFORM set_config('app.org_id', v_org::text, true);
+    UPDATE uklad.members SET deleted_at = coalesce(deleted_at, now()), status = 'disabled'
+    WHERE org_id = v_org AND account_id = p_account;
+    -- Компания гаснет, только если в ней не осталось живых людей.
+    UPDATE uklad.orgs o SET deleted_at = coalesce(o.deleted_at, now())
+    WHERE o.id = v_org AND NOT EXISTS (
+      SELECT 1 FROM uklad.members m WHERE m.org_id = v_org AND m.deleted_at IS NULL);
+  END LOOP;
+  PERFORM set_config('app.org_id', '', true);
+  PERFORM set_config('app.account_id', '', true);
+END $$;
+
 -- Новый пароль после кода сброса. Триггер на accounts гасит все прежние
--- сессии; код пришёл на почту — значит, и почта подтверждена.
+-- сессии; код пришёл на почту — значит, и почта подтверждена. Если её
+-- подтверждают сбросом, а не кодом регистрации, — всё, что заведено до
+-- подтверждения, гасится.
 CREATE FUNCTION auth.set_password(p_account uuid, p_hash text) RETURNS void
-LANGUAGE sql SECURITY DEFINER SET search_path = auth, pg_temp AS $$
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = auth, pg_temp AS $$
+BEGIN
+  PERFORM auth.drop_unverified(p_account);
   UPDATE auth.accounts
   SET password_hash = p_hash, email_verified_at = coalesce(email_verified_at, now())
   WHERE id = p_account AND disabled_at IS NULL;
-$$;
+END $$;
 
 -- Вход по паролю проверяет подтверждение: вместе с хэшем отдаём и его.
 DROP FUNCTION auth.password_hash(text);
@@ -128,14 +171,32 @@ BEGIN
   RETURN QUERY SELECT v_account, v_org, v_member;
 END $$;
 
--- Уборка: коды старше суток не нужны ни для чего.
+-- Уборка: коды старше суток не нужны ни для чего. Регистрация без
+-- подтверждения за 7 дней гасится вместе со своей компанией, а почта
+-- освобождается: её настоящий владелец сможет зарегистрироваться заново.
 CREATE OR REPLACE FUNCTION auth.purge() RETURNS void
-LANGUAGE sql SECURITY DEFINER SET search_path = auth, pg_temp AS $$
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = auth, uklad, pg_temp AS $$
+DECLARE v_account uuid; v_org uuid;
+BEGIN
   DELETE FROM auth.sessions WHERE kind = 'password' AND expires_at < now() - interval '30 days';
   DELETE FROM auth.sessions WHERE kind = 'badge' AND expires_at < now() - interval '90 days';
   DELETE FROM auth.login_failures WHERE at < now() - interval '1 day';
   DELETE FROM auth.email_codes WHERE created_at < now() - interval '1 day';
-$$;
+  FOR v_account IN SELECT a.id FROM auth.accounts a
+                   WHERE a.email_verified_at IS NULL AND a.created_at < now() - interval '7 days' LOOP
+    PERFORM auth.drop_unverified(v_account);
+    PERFORM set_config('app.account_id', v_account::text, true);
+    FOR v_org IN SELECT m.org_id FROM uklad.members m WHERE m.account_id = v_account LOOP
+      PERFORM set_config('app.org_id', v_org::text, true);
+      UPDATE uklad.members SET account_id = NULL WHERE org_id = v_org AND account_id = v_account;
+    END LOOP;
+    PERFORM set_config('app.org_id', '', true);
+    PERFORM set_config('app.account_id', '', true);
+    DELETE FROM auth.sessions WHERE account_id = v_account;
+    DELETE FROM auth.email_codes WHERE account_id = v_account;
+    DELETE FROM auth.accounts WHERE id = v_account;
+  END LOOP;
+END $$;
 
 REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA auth FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION
