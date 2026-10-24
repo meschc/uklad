@@ -1,6 +1,7 @@
 import { nowMs, uid } from "../utils";
 import {
   DEFAULT_BREAK_POLICY,
+  MARK_UNDO_MS,
   SESSION_TTL_MS,
   allowedMarks,
   isSessionLive,
@@ -83,6 +84,19 @@ export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get)
         }),
       ],
     });
+    return true;
+  },
+
+  undoShiftMark: () => {
+    const s = get();
+    const now = nowMs();
+    const staffId = liveStaffId(s, now);
+    if (!staffId) return false;
+    const last = [...s.staffEvents]
+      .reverse()
+      .find((e) => e.staffId === staffId && /^(shift|break|idle)_/.test(e.type));
+    if (!last || now - last.at > MARK_UNDO_MS) return false;
+    set({ staffEvents: s.staffEvents.filter((e) => e !== last) });
     return true;
   },
 
