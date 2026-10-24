@@ -1,16 +1,15 @@
-import { Coffee, Hourglass, Timer, UtensilsCrossed } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { workstationRepository } from "@/lib/data";
-import { nextBreak, shiftStartedAt, shiftState } from "@/lib/workstation";
+import { nextBreak, shiftStartedAt, shiftState, stateSince } from "@/lib/workstation";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-import { formatTime, useNow } from "./useNow";
+import { useNow } from "./useNow";
 
 /**
- * Смена и перерыв — в шапке рабочего места, двумя строками. Главное на экране
- * товар, поэтому смена ужата до таймера: нажатие открывает панель смены, а
- * нажатие на перерыв сразу его начинает (или заканчивает). Тикает раз в
- * секунду отдельно от остального экрана.
+ * Смена и перерыв — в шапке рабочего места, двумя столбиками: сверху слово,
+ * под ним таймер. Смена считает, сколько идёт смена; перерыв — сколько до него
+ * осталось, а на перерыве или в простое — сколько он уже длится. Нажатие на смену открывает
+ * панель смены, на перерыв — сразу начинает (или заканчивает) его.
  */
 export function ShiftBar({ staffId, onOpen }: { staffId: string; onOpen: () => void }) {
   const t = useT();
@@ -18,75 +17,86 @@ export function ShiftBar({ staffId, onOpen }: { staffId: string; onOpen: () => v
   const events = useEditor((s) => s.staffEvents);
   const policy = useEditor((s) => s.breakPolicy);
   const start = shiftStartedAt(events, staffId);
-  const row = "flex items-center gap-1.5 rounded px-1 text-left hover:bg-muted";
 
   if (start == null)
-    return (
-      <button type="button" className={cn(row, "text-sm text-muted-foreground")} onClick={onOpen}>
-        <Timer className="size-4" />
-        {t("ws.shift.off")}
-      </button>
-    );
+    return <Cell label={t("ws.bar.shift")} value={t("ws.shift.off")} muted onClick={onOpen} />;
 
   const state = shiftState(events, staffId);
   const onBreak = state === "break";
-  if (state === "idle")
-    return (
-      <div className="flex flex-col items-start text-sm leading-tight">
-        <button type="button" className={row} onClick={onOpen}>
-          <Timer className="size-4 text-muted-foreground" />
-          {t("ws.bar.shift")}
-          <span className="font-semibold tabular-nums">{clock(now - start)}</span>
-        </button>
-        <button
-          type="button"
-          className={cn(row, "text-xs text-amber-600")}
-          onClick={() => void workstationRepository.mark("idle_end")}
-        >
-          <Hourglass className="size-3.5" />
-          {t("ws.shift.idle")} · {t("ws.mark.idle_end")}
-        </button>
-      </div>
-    );
   const next = onBreak ? null : nextBreak(events, staffId, policy, now);
   const ready = !!next && now >= next.at;
-  const Icon = next?.kind === "lunch" ? UtensilsCrossed : Coffee;
+  const since = stateSince(events, staffId) ?? now;
+
+  if (state === "idle")
+    return (
+      <div className="flex items-start gap-1">
+        <Cell label={t("ws.bar.shift")} value={clock(now - start)} onClick={onOpen} />
+        <Cell
+          label={t("ws.shift.idle")}
+          value={clock(now - since)}
+          tone="amber"
+          title={t("ws.mark.idle_end")}
+          onClick={() => void workstationRepository.mark("idle_end")}
+        />
+      </div>
+    );
 
   return (
-    <div className="flex flex-col items-start text-sm leading-tight">
-      <button type="button" className={row} onClick={onOpen}>
-        <Timer className="size-4 text-muted-foreground" />
-        {t("ws.bar.shift")}
-        <span className="font-semibold tabular-nums">{clock(now - start)}</span>
-      </button>
-      <button
-        type="button"
-        className={cn(
-          row,
-          "text-xs",
+    <div className="flex items-start gap-1">
+      <Cell label={t("ws.bar.shift")} value={clock(now - start)} onClick={onOpen} />
+      <Cell
+        label={t(next?.kind === "lunch" ? "ws.bar.lunch" : "ws.bar.break")}
+        value={
           onBreak
-            ? "text-amber-600"
-            : ready
-              ? "font-medium text-emerald-600"
-              : "text-muted-foreground",
-        )}
+            ? clock(now - since)
+            : !next
+              ? "—"
+              : ready
+                ? t("ws.bar.now")
+                : clock(next.at - now)
+        }
+        tone={onBreak ? "amber" : ready ? "green" : undefined}
         title={t(onBreak ? "ws.mark.break_end" : "ws.mark.break_start")}
         onClick={() => void workstationRepository.mark(onBreak ? "break_end" : "break_start")}
-      >
-        {onBreak ? <Coffee className="size-3.5" /> : <Icon className="size-3.5" />}
-        {onBreak
-          ? t("ws.mark.break_end")
-          : next &&
-            (ready
-              ? t(next.kind === "lunch" ? "ws.bar.lunchNow" : "ws.bar.breakNow", {
-                  m: next.minutes,
-                })
-              : t(next.kind === "lunch" ? "ws.bar.lunchAt" : "ws.bar.breakAt", {
-                  t: formatTime(next.at, t.lang),
-                  m: next.minutes,
-                }))}
-      </button>
+      />
     </div>
+  );
+}
+
+function Cell({
+  label,
+  value,
+  tone,
+  muted,
+  title,
+  onClick,
+}: {
+  label: string;
+  value: string;
+  tone?: "amber" | "green";
+  muted?: boolean;
+  title?: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      title={title}
+      onClick={onClick}
+      className="flex flex-col items-start rounded px-2 py-0.5 text-left leading-tight hover:bg-muted"
+    >
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <span
+        className={cn(
+          "text-sm font-semibold tabular-nums",
+          muted && "font-normal text-muted-foreground",
+          tone === "amber" && "text-amber-600",
+          tone === "green" && "text-emerald-600",
+        )}
+      >
+        {value}
+      </span>
+    </button>
   );
 }
 
