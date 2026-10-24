@@ -6,12 +6,27 @@
 # Подробно, по шагам — README.md рядом.
 name: uklad
 
+# Журналы контейнеров по умолчанию растут без предела и однажды съедают диск.
+# Держим по три файла на 10 МБ на сервис.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   web:
     build:
       context: ..
       dockerfile: deploy/web.Dockerfile
+    # Тег = коммит. Прошлый образ остаётся на диске, и `./rollback.sh`
+    # возвращает его без пересборки (README, «Откат»).
+    image: uklad-web:${UKLAD_TAG:-latest}
     restart: unless-stopped
+    logging: *logging
+    # Пределы: утечка памяти в одном сервисе не роняет весь сервер.
+    mem_limit: 256m
+    cpus: 0.5
     ports:
       - "80:80"
       - "443:443"
@@ -33,7 +48,11 @@ services:
     build:
       context: ../server
       dockerfile: api/Dockerfile
+    image: uklad-api:${UKLAD_TAG:-latest}
     restart: unless-stopped
+    logging: *logging
+    mem_limit: 384m
+    cpus: 1.0
     # Наружу порт не открыт: к серверу ходит только Caddy по внутренней сети.
     # НЕ добавлять сюда `ports:` — Docker обходит ufw и откроет порт в
     # интернет. Для отладки — только "127.0.0.1:8080:8080".
