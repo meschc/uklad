@@ -108,10 +108,10 @@ jobs:
       - name: Нет set_config в коде сервера
         run: "! grep -rnEi \"set_config|\\bSET +(LOCAL +)?app\\.\" server/api/src"
 
-      - name: Тесты входа в кабинет
+      - name: Тесты входа в кабинет и чата
         env:
           PG_ADMIN_URL: postgres://postgres:postgres@localhost:5432/postgres
-        run: node --test server/api/test/auth.pg.test.mjs
+        run: node --test server/api/test/auth.pg.test.mjs server/api/test/chat.pg.test.mjs
 
   # Образы для своего сервера (deploy/). Пока сервер не подключён, их никто не
   # собирает — без проверки здесь они сломались бы молча к дню запуска.

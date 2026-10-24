@@ -229,7 +229,7 @@ function createApp({ cfg, db, mail, cabinet = null, now = () => new Date(), log 
       if (demo && req.method === "GET") return handleDemo(req, res, demo[1]);
       if (cabinet && (await cabinet.handle(req, res, url))) return;
       // Кабинет без базы не работает: честный 503, а не «нет такого адреса».
-      if (!cabinet && /^\/api\/(auth|staff)\//.test(url.pathname)) {
+      if (!cabinet && /^\/api\/(auth|staff|chat)\//.test(url.pathname)) {
         return send(res, 503, { ok: false });
       }
       return send(res, 404, { ok: false });
@@ -259,9 +259,23 @@ function main() {
     pool = new pg.Pool({ connectionString: process.env.DATABASE_URL, max: 10 });
     // Обрыв простаивающего соединения не должен ронять процесс.
     pool.on("error", (e) => console.error("[uklad] база:", e.message));
-    cabinet = createAuth({ pool, cfg, send, readBody, log: console });
-    cabinet.purge();
-    setInterval(cabinet.purge, DAY_MS).unref();
+    const auth = createAuth({ pool, cfg, send, readBody, log: console });
+    auth.purge();
+    setInterval(auth.purge, DAY_MS).unref();
+    // Чат: без CENTRIFUGO_* работает, только кабинет сам перечитывает ленту.
+    const { createChat } = require("./cabinet/chat");
+    const { createRealtime } = require("./cabinet/realtime");
+    const realtime = createRealtime({
+      apiUrl: process.env.CENTRIFUGO_API_URL,
+      apiKey: process.env.CENTRIFUGO_API_KEY,
+      tokenSecret: process.env.CENTRIFUGO_TOKEN_SECRET,
+      log: console,
+    });
+    const chat = createChat({ auth, realtime, send, log: console });
+    cabinet = {
+      handle: async (req, res, url) =>
+        (await auth.handle(req, res, url)) || (await chat.handle(req, res, url)),
+    };
   } else {
     console.log("[uklad] кабинет выключен: не задан DATABASE_URL");
   }
