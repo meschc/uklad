@@ -1,14 +1,5 @@
 import { useState } from "react";
-import {
-  ArrowLeft,
-  Clock,
-  ListChecks,
-  LogOut,
-  Package,
-  Printer,
-  ScanLine,
-  Scale,
-} from "lucide-react";
+import { ArrowLeft, ListChecks, LogOut, X, Package, Printer, ScanLine, Scale } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { workstationRepository } from "@/lib/data";
 import { isSessionLive } from "@/lib/workstation";
@@ -34,7 +25,7 @@ import { formatTime, useNow } from "./useNow";
  * бейдж, смена и журнал у них общие, меняется только средняя вкладка.
  */
 
-type Tab = "shift" | "pack" | "log";
+type Tab = "pack" | "log";
 
 const STATIONS: WorkstationKind[] = ["pack", "receiving", "marking", "returns", "shipping"];
 
@@ -44,6 +35,7 @@ export function WorkstationScreen() {
   const session = useEditor((s) => s.stationSession);
   const staff = useEditor((s) => s.warehouse.staff);
   const [tab, setTab] = useState<Tab>("pack");
+  const [shiftOpen, setShiftOpen] = useState(false);
 
   const live = isSessionLive(session, now);
   const member = live ? (staff ?? []).find((m) => m.id === session!.staffId) : undefined;
@@ -74,7 +66,7 @@ export function WorkstationScreen() {
         <Equipment />
         {member && (
           <div className="ml-auto flex items-center gap-4">
-            <ShiftBar staffId={member.id} />
+            <ShiftBar staffId={member.id} onOpen={() => setShiftOpen(true)} />
             <div className="text-right">
               <p className="text-sm font-medium leading-tight">{member.name}</p>
               <p className="text-xs text-muted-foreground">
@@ -103,19 +95,44 @@ export function WorkstationScreen() {
               size="md"
               ariaLabel={t("ws.title")}
               options={[
-                { value: "shift", label: t("ws.tab.shift"), icon: <Clock /> },
                 { value: "pack", label: t("ws.tab.pack"), icon: <Package /> },
                 { value: "log", label: t("ws.tab.log"), icon: <ListChecks /> },
               ]}
             />
-            {tab === "shift" && <ShiftMenu member={member} now={now} />}
             {tab === "pack" && (
-              <PackStation staffId={member.id} onNeedShift={() => setTab("shift")} />
+              <PackStation staffId={member.id} onNeedShift={() => setShiftOpen(true)} />
             )}
             {tab === "log" && <StaffLog staffId={member.id} now={now} />}
           </div>
         )}
       </main>
+
+      {member && shiftOpen && (
+        // Смена — боковой панелью справа, а не вкладкой: она нужна пару раз за
+        // смену, а основной экран отдан товару.
+        <div className="fixed inset-0 z-40 flex justify-end">
+          <button
+            type="button"
+            aria-label={t("ws.panel.close")}
+            className="absolute inset-0 cursor-default bg-black/30"
+            onClick={() => setShiftOpen(false)}
+          />
+          <aside className="relative flex h-full w-full max-w-md animate-slide-in-right flex-col gap-4 overflow-y-auto bg-background p-5 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold">{t("ws.tab.shift")}</h2>
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-label={t("ws.panel.close")}
+                onClick={() => setShiftOpen(false)}
+              >
+                <X />
+              </Button>
+            </div>
+            <ShiftMenu member={member} now={now} />
+          </aside>
+        </div>
+      )}
     </div>
   );
 }

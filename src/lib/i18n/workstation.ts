@@ -36,6 +36,7 @@ export const ru = {
   "ws.tab.shift": "Смена",
   "ws.tab.pack": "Упаковка",
   "ws.tab.log": "Журнал",
+  "ws.panel.close": "Закрыть",
 
   "ws.shift.off": "Не на смене",
   "ws.shift.on": "На смене",
@@ -185,6 +186,7 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.tab.shift": "Shift",
   "ws.tab.pack": "Packing",
   "ws.tab.log": "Log",
+  "ws.panel.close": "Close",
 
   "ws.shift.off": "Off shift",
   "ws.shift.on": "On shift",
