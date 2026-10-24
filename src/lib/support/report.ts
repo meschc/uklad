@@ -55,6 +55,32 @@ export function readEnv(view: string): ReportEnv {
   };
 }
 
+/**
+ * Только склад, на котором случилась проблема: открытый сейчас. Остальные
+ * склады человека к ошибке не относятся, а их данные — лишнее, что ушло бы
+ * наружу. Убираем список других складов, их спящую работу (`warehouseData`)
+ * и товары с чужим `warehouseId` вместе с их местами на полках.
+ */
+export function activeWarehouseOnly(state: unknown): unknown {
+  if (!state || typeof state !== "object") return state;
+  const s = state as Record<string, unknown>;
+  const active = (s.warehouse as { id?: unknown } | undefined)?.id;
+  const products = Array.isArray(s.products)
+    ? s.products.filter(
+        (p: { warehouseId?: unknown }) => !p?.warehouseId || p.warehouseId === active,
+      )
+    : s.products;
+  const kept = new Set(Array.isArray(products) ? products.map((p: { id?: unknown }) => p?.id) : []);
+  const placements =
+    s.placements && typeof s.placements === "object"
+      ? Object.fromEntries(Object.entries(s.placements).filter(([id]) => kept.has(id)))
+      : s.placements;
+  const rest: Record<string, unknown> = { ...s, products, placements };
+  delete rest.otherWarehouses;
+  delete rest.warehouseData;
+  return rest;
+}
+
 export function buildReport(input: {
   message: string;
   env: ReportEnv;
@@ -72,7 +98,7 @@ export function buildReport(input: {
     env: input.env,
     journal: input.entries ?? journal.read(),
   };
-  if (input.state != null) report.snapshot = anonymizeSnapshot(input.state);
+  if (input.state != null) report.snapshot = anonymizeSnapshot(activeWarehouseOnly(input.state));
   return report;
 }
 
@@ -96,20 +122,17 @@ export interface SummaryLine {
 }
 
 /**
- * Сводка обезличенной копии для окна: склады, сотрудники (уже метками) и
- * записи по разделам. Пустые разделы не показываем — строка «0 рейсов»
+ * Сводка обезличенной копии для окна: сотрудники (уже метками) и записи по
+ * разделам. Пустые разделы не показываем — строка «0 рейсов»
  * ничего не говорит человеку о том, что он отдаёт.
  */
 export function snapshotSummary(data: unknown): SummaryLine[] {
   if (!data || typeof data !== "object") return [];
   const d = data as Record<string, unknown>;
   const list = (v: unknown) => (Array.isArray(v) ? v : []);
-  const warehouses = [d.warehouse, ...list(d.otherWarehouses)].filter(
-    (w): w is Record<string, unknown> => Boolean(w) && typeof w === "object",
-  );
+  const warehouse = d.warehouse as { staff?: unknown } | undefined;
   const lines: SummaryLine[] = [
-    { label: "support.sum.warehouses", n: warehouses.length },
-    { label: "support.sum.staff", n: warehouses.reduce((n, w) => n + list(w.staff).length, 0) },
+    { label: "support.sum.staff", n: list(warehouse?.staff).length },
     ...SUMMARY.map(([key, label]) => ({ label, n: list(d[key]).length })),
   ];
   return lines.filter((l) => l.n > 0);

@@ -1,7 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 import { anonymizeSnapshot } from "../anonymize";
 import { createJournal, JOURNAL_KEY, MAX_AGE_MS, MAX_ENTRIES, scrubText } from "../journal";
-import { buildReport, MAX_REPORT_BYTES, sendReport, snapshotSummary } from "../report";
+import {
+  activeWarehouseOnly,
+  buildReport,
+  MAX_REPORT_BYTES,
+  sendReport,
+  snapshotSummary,
+} from "../report";
 
 function memoryStorage() {
   const data = new Map<string, string>();
@@ -260,18 +266,33 @@ describe("отправка обращения", () => {
 });
 
 describe("сводка копии для окна", () => {
-  it("считает склады, сотрудников и записи, пустое не показывает", () => {
+  it("считает сотрудников и записи, пустое не показывает", () => {
     const data = {
       warehouse: { staff: [{ id: "s1" }, { id: "s2" }] },
-      otherWarehouses: [{ staff: [{ id: "s3" }] }],
       products: [{}, {}, {}],
       shipments: [],
     };
     expect(snapshotSummary(data)).toEqual([
-      { label: "support.sum.warehouses", n: 2 },
-      { label: "support.sum.staff", n: 3 },
+      { label: "support.sum.staff", n: 2 },
       { label: "support.sum.products", n: 3 },
     ]);
     expect(snapshotSummary(undefined)).toEqual([]);
+  });
+});
+
+describe("копия только открытого склада", () => {
+  it("убирает другие склады, их работу и чужие товары с местами", () => {
+    const state = {
+      warehouse: { id: "w1" },
+      otherWarehouses: [{ id: "w2", name: "Склад на Кольцевой" }],
+      warehouseData: { w2: { requests: [{ id: "r9" }] } },
+      products: [{ id: "g1", warehouseId: "w1" }, { id: "g2", warehouseId: "w2" }, { id: "g3" }],
+      placements: { g1: "A-1", g2: "B-2" },
+    };
+    expect(activeWarehouseOnly(state)).toEqual({
+      warehouse: { id: "w1" },
+      products: [{ id: "g1", warehouseId: "w1" }, { id: "g3" }],
+      placements: { g1: "A-1" },
+    });
   });
 });

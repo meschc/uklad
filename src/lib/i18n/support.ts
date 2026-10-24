@@ -12,9 +12,9 @@ export const ru = {
   "support.journal": "Журнал событий за 7 дней: {n}",
   "support.journal.hint":
     "Какие экраны открывались, какие действия и ошибки были. Без имён, телефонов и почт.",
-  "support.snapshot": "Прислать копию данных склада",
+  "support.snapshot": "Прислать копию данных этого склада",
   "support.snapshot.hint":
-    "Товары, ячейки и операции останутся: по ним видно ошибку. Имена людей заменятся метками вроде «Сотрудник 3», а контакты, реквизиты и ключи подключений в копию не попадут.",
+    "Только открытый сейчас склад: товары, ячейки и операции, по ним видно ошибку. Других ваших складов в копии не будет. Имена людей заменятся метками вроде «Сотрудник 3», а контакты, реквизиты и ключи подключений будут удалены.",
   "support.snapshot.stats":
     "Заменено имён: {names} · удалено полей: {dropped} · скрыто текстов: {texts}",
   "support.preview.show": "Показать, что уйдёт",
@@ -26,7 +26,6 @@ export const ru = {
   "support.preview.rawHide": "Скрыть файл",
   "support.preview.noSnapshot":
     "Копия данных склада не прикладывается: уйдут только текст обращения, журнал событий и сведения о браузере.",
-  "support.sum.warehouses": "Склады",
   "support.sum.staff": "Сотрудники (метками, без имён)",
   "support.sum.products": "Товары",
   "support.sum.placements": "Размещения на полках",
@@ -58,9 +57,9 @@ export const en: Record<keyof typeof ru, string> = {
   "support.journal": "Event log for 7 days: {n}",
   "support.journal.hint":
     "Which screens were opened, which actions and errors happened. No names, phones or emails.",
-  "support.snapshot": "Send a copy of warehouse data",
+  "support.snapshot": "Send a copy of this warehouse's data",
   "support.snapshot.hint":
-    "Goods, cells and operations stay — they show the error. People's names become labels like “Staff 3”; contacts, company details and integration keys are removed.",
+    "Only the warehouse open now: goods, cells and operations, which show the error. Your other warehouses are not included. People's names become labels like “Staff 3”; contacts, company details and integration keys are removed.",
   "support.snapshot.stats":
     "Names replaced: {names} · fields removed: {dropped} · texts hidden: {texts}",
   "support.preview.show": "Show what will be sent",
@@ -72,7 +71,6 @@ export const en: Record<keyof typeof ru, string> = {
   "support.preview.rawHide": "Hide the file",
   "support.preview.noSnapshot":
     "No warehouse data copy is attached: only your message, the event log and browser details will be sent.",
-  "support.sum.warehouses": "Warehouses",
   "support.sum.staff": "Staff (labels, no names)",
   "support.sum.products": "Products",
   "support.sum.placements": "Shelf placements",
