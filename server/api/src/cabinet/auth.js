@@ -17,6 +17,7 @@
  *   POST /api/auth/logout
  *   GET  /api/auth/me       — кто вошёл, его компании, права в текущей
  *   POST /api/staff/badge   — выпустить бейдж сотруднику на склад (staff.manage)
+ *   POST /api/staff/badge/revoke — погасить потерянный бейдж (staff.manage)
  */
 /* global require, module */
 /* eslint-disable @typescript-eslint/no-require-imports */
@@ -330,6 +331,24 @@ function createAuth({ pool, cfg, send, readBody, log }) {
     return send(res, 200, { ok: true, code: BADGE_PREFIX + secret });
   }
 
+  async function revokeBadge(req, res) {
+    const b = await readJson(req, res);
+    if (!b) return;
+    if (!UUID_RE.test(String(b.memberId ?? ""))) return send(res, 404, { ok: false });
+    const result = await withSession(req, async (c, ctx) => {
+      if (!ctx.can("staff.manage")) return 403;
+      try {
+        await c.query(`SELECT auth.revoke_badge($1)`, [b.memberId]);
+      } catch (err) {
+        if (err.code === "P0002") return 404;
+        throw err;
+      }
+      return 200;
+    });
+    if (!result) return send(res, 401, { ok: false });
+    return send(res, result, { ok: result === 200 });
+  }
+
   const routes = {
     "POST /api/auth/register": register,
     "POST /api/auth/login": login,
@@ -337,6 +356,7 @@ function createAuth({ pool, cfg, send, readBody, log }) {
     "POST /api/auth/logout": logout,
     "GET /api/auth/me": me,
     "POST /api/staff/badge": issueBadge,
+    "POST /api/staff/badge/revoke": revokeBadge,
   };
 
   /** Обработчик маршрутов кабинета. `false` — маршрут не наш. */

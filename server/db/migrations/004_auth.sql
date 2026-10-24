@@ -23,6 +23,8 @@ CREATE TABLE auth.sessions (
   member_id uuid,
   -- Бейдж открывает один склад компании, а не все (Кирилл, 24.10).
   warehouse_id uuid,
+  -- Каким бейджем открыта: отозвали бейдж — сессия гаснет на следующем запросе.
+  badge_id uuid,
   created_at timestamptz NOT NULL DEFAULT now(),
   last_seen_at timestamptz NOT NULL DEFAULT now(),
   expires_at timestamptz NOT NULL,
@@ -50,6 +52,21 @@ CREATE TABLE auth.badges (
   FOREIGN KEY (org_id, warehouse_id) REFERENCES uklad.warehouses (org_id, id)
 );
 CREATE UNIQUE INDEX badges_one_active ON auth.badges (member_id) WHERE revoked_at IS NULL;
+ALTER TABLE auth.sessions ADD FOREIGN KEY (badge_id) REFERENCES auth.badges (id);
+
+-- Отключили человека или сменили пароль — все его сессии гаснут сразу,
+-- а не когда истекут.
+CREATE FUNCTION auth.revoke_account_sessions() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = auth, pg_temp AS $$
+BEGIN
+  UPDATE auth.sessions SET revoked_at = now()
+  WHERE account_id = NEW.id AND revoked_at IS NULL;
+  RETURN NEW;
+END $$;
+CREATE TRIGGER accounts_revoke_sessions AFTER UPDATE OF disabled_at, password_hash ON auth.accounts
+  FOR EACH ROW WHEN (NEW.disabled_at IS DISTINCT FROM OLD.disabled_at
+                     OR NEW.password_hash IS DISTINCT FROM OLD.password_hash)
+  EXECUTE FUNCTION auth.revoke_account_sessions();
 
 -- Неудачные входы по паролю. Считаются по связке «почта + адрес»: весь
 -- склад ходит в интернет с одного IP, и опечатки одного человека не должны
@@ -175,6 +192,22 @@ BEGIN
   RETURN v_id;
 END $$;
 
+-- Потерянный бейдж: гасится вместе со своими сессиями, без выпуска нового.
+CREATE FUNCTION auth.revoke_badge(p_member uuid) RETURNS integer
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = auth, uklad, pg_temp AS $$
+DECLARE n integer;
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM uklad.members m
+                 WHERE m.id = p_member AND m.org_id = uklad.current_org()) THEN
+    RAISE EXCEPTION 'member not found' USING ERRCODE = 'no_data_found';
+  END IF;
+  UPDATE auth.badges SET revoked_at = now() WHERE member_id = p_member AND revoked_at IS NULL;
+  GET DIAGNOSTICS n = ROW_COUNT;
+  UPDATE auth.sessions SET revoked_at = now()
+  WHERE kind = 'badge' AND member_id = p_member AND revoked_at IS NULL;
+  RETURN n;
+END $$;
+
 -- Вход по бейджу: сессия сотрудника одной компании. Нет бейджа или
 -- сотрудник отключён — пустой ответ.
 CREATE FUNCTION auth.open_badge_session(p_secret bytea, p_token bytea, p_ttl interval)
@@ -186,14 +219,16 @@ BEGIN
   IF NOT FOUND THEN RETURN; END IF;
   PERFORM set_config('app.org_id', b.org_id::text, true);
   IF NOT EXISTS (SELECT 1 FROM uklad.members m
-                 WHERE m.id = b.member_id AND auth.can_enter(m.status, m.deleted_at)) THEN
+                 WHERE m.id = b.member_id AND auth.can_enter(m.status, m.deleted_at))
+     OR NOT EXISTS (SELECT 1 FROM uklad.warehouses w
+                    WHERE w.id = b.warehouse_id AND w.deleted_at IS NULL) THEN
     PERFORM set_config('app.org_id', '', true);
     RETURN;
   END IF;
   UPDATE uklad.members SET status = 'active', last_seen_at = now() WHERE id = b.member_id;
   RETURN QUERY
-  INSERT INTO auth.sessions AS s (token_hash, kind, org_id, member_id, warehouse_id, expires_at)
-  VALUES (p_token, 'badge', b.org_id, b.member_id, b.warehouse_id, now() + p_ttl)
+  INSERT INTO auth.sessions AS s (token_hash, kind, org_id, member_id, warehouse_id, badge_id, expires_at)
+  VALUES (p_token, 'badge', b.org_id, b.member_id, b.warehouse_id, b.id, now() + p_ttl)
   RETURNING s.org_id, s.member_id, s.warehouse_id, s.expires_at;
 END $$;
 
@@ -217,9 +252,15 @@ BEGIN
   PERFORM set_config('app.org_id', '', true);
   PERFORM set_config('app.member_id', '', true);
   PERFORM set_config('app.warehouse_id', '', true);
-  SELECT * INTO s FROM auth.sessions x
+  -- Сессия жива, пока жив её источник: учётная запись не отключена, бейдж
+  -- не отозван.
+  SELECT x.* INTO s FROM auth.sessions x
+  LEFT JOIN auth.accounts a ON a.id = x.account_id
+  LEFT JOIN auth.badges b ON b.id = x.badge_id
   WHERE x.token_hash = p_token AND x.revoked_at IS NULL
-    AND x.expires_at > now() AND x.last_seen_at > now() - p_idle;
+    AND x.expires_at > now() AND x.last_seen_at > now() - p_idle
+    AND (x.kind <> 'password' OR a.disabled_at IS NULL)
+    AND (x.kind <> 'badge' OR b.revoked_at IS NULL);
   IF NOT FOUND THEN RETURN; END IF;
 
   -- Отмечать каждый запрос незачем: раз в минуту хватает для «без действий».
@@ -233,7 +274,8 @@ BEGIN
       PERFORM set_config('app.org_id', s.org_id::text, true);
       SELECT m.id, r.permissions INTO v_member, v_perms
       FROM uklad.members m JOIN uklad.roles r ON r.org_id = m.org_id AND r.id = m.role_id
-      WHERE m.id = s.member_id AND auth.can_enter(m.status, m.deleted_at);
+      WHERE m.id = s.member_id AND auth.can_enter(m.status, m.deleted_at)
+        AND EXISTS (SELECT 1 FROM uklad.warehouses w WHERE w.id = s.warehouse_id AND w.deleted_at IS NULL);
     END IF;
   ELSIF p_org IS NOT NULL THEN
     PERFORM set_config('app.account_id', s.account_id::text, true);
@@ -266,6 +308,7 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path = auth, uklad, pg_temp AS $$
 DECLARE v_account uuid;
 BEGIN
   SELECT x.account_id INTO v_account FROM auth.sessions x
+  JOIN auth.accounts a ON a.id = x.account_id AND a.disabled_at IS NULL
   WHERE x.token_hash = p_token AND x.kind = 'password' AND x.revoked_at IS NULL
     AND x.expires_at > now();
   IF v_account IS NULL THEN RETURN; END IF;
@@ -285,10 +328,13 @@ LANGUAGE sql SECURITY DEFINER SET search_path = auth, pg_temp AS $$
   UPDATE auth.sessions SET revoked_at = now() WHERE token_hash = p_token AND revoked_at IS NULL
 $$;
 
--- Ежесуточная уборка: истёкшие сессии и старые неудачи.
+-- Ежесуточная уборка: истёкшие сессии и старые неудачи. Сессии по бейджу
+-- — это и журнал входов на смену (кто, на какой склад, когда), поэтому
+-- они живут дольше: 90 дней.
 CREATE FUNCTION auth.purge() RETURNS void
 LANGUAGE sql SECURITY DEFINER SET search_path = auth, pg_temp AS $$
-  DELETE FROM auth.sessions WHERE expires_at < now() - interval '30 days';
+  DELETE FROM auth.sessions WHERE kind = 'password' AND expires_at < now() - interval '30 days';
+  DELETE FROM auth.sessions WHERE kind = 'badge' AND expires_at < now() - interval '90 days';
   DELETE FROM auth.login_failures WHERE at < now() - interval '1 day';
 $$;
 
@@ -305,6 +351,7 @@ GRANT EXECUTE ON FUNCTION
   auth.failures(text, text, timestamptz),
   auth.open_session(uuid, bytea, interval),
   auth.issue_badge(uuid, uuid, bytea),
+  auth.revoke_badge(uuid),
   auth.open_badge_session(bytea, bytea, interval),
   auth.resolve(bytea, uuid, uuid, interval),
   auth.my_orgs(bytea),

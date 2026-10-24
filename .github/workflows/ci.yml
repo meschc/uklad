@@ -103,6 +103,11 @@ jobs:
       - run: npm ci
         working-directory: server/api
 
+      # Компанию, склад и человека в транзакции ставят только функции auth
+      # (ADR 0009). Код сервера, который делает это сам, обходит проверку входа.
+      - name: Нет set_config в коде сервера
+        run: "! grep -rnEi \"set_config|\\bSET +(LOCAL +)?app\\.\" server/api/src"
+
       - name: Тесты входа в кабинет
         env:
           PG_ADMIN_URL: postgres://postgres:postgres@localhost:5432/postgres

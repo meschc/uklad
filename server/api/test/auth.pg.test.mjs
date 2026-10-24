@@ -4,9 +4,10 @@
 //
 //   PG_ADMIN_URL=postgres://postgres:postgres@localhost:5432/postgres \
 //     node --test server/api/test/auth.pg.test.mjs
-/* global process, fetch */
+/* global process, fetch, Buffer */
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
 import http from "node:http";
 
@@ -293,4 +294,70 @@ test("выход гасит сессию на сервере, а не тольк
 test("без сессии и с мусорной кукой — 401", { skip: SKIP }, async () => {
   assert.equal((await call("/api/auth/me")).status, 401);
   assert.equal((await call("/api/auth/me", { cookie: "x".repeat(43) })).status, 401);
+});
+
+test("отключённая учётная запись и смена пароля гасят сессии сразу", { skip: SKIP }, async () => {
+  const r = await call("/api/auth/register", { body: owner("k@sklad.ru"), ip: "10.9.0.1" });
+  const second = await login("k@sklad.ru", "10.9.0.1");
+  await db.root.query(
+    `UPDATE auth.accounts SET password_hash = password_hash || 'x' WHERE email = 'k@sklad.ru'`,
+  );
+  assert.equal((await call("/api/auth/me", { cookie: r.token })).status, 401);
+  assert.equal((await call("/api/auth/me", { cookie: second.token })).status, 401);
+
+  const r2 = await call("/api/auth/register", { body: owner("l@sklad.ru"), ip: "10.9.0.2" });
+  await db.root.query(`UPDATE auth.accounts SET disabled_at = now() WHERE email = 'l@sklad.ru'`);
+  assert.equal((await call("/api/auth/me", { cookie: r2.token })).status, 401);
+  assert.equal((await login("l@sklad.ru", "10.9.0.2")).status, 401);
+});
+
+test(
+  "потерянный бейдж гасится без перевыпуска, удалённый склад не пускает",
+  { skip: SKIP },
+  async () => {
+    const w = await warehouseWithWorker("m@sklad.ru", "10.10.0.1");
+    const code = (await issue(w)).json.code;
+    const s = await shift(code);
+    const off = await call("/api/staff/badge/revoke", {
+      body: { memberId: w.memberId },
+      cookie: w.token,
+      org: w.orgId,
+    });
+    assert.equal(off.status, 200);
+    assert.equal((await call("/api/auth/me", { cookie: s.token })).status, 401);
+    assert.equal((await shift(code)).status, 401);
+
+    const code2 = (await issue(w)).json.code;
+    const s2 = await shift(code2);
+    await helpers.asOrg(db.pool, w.orgId, (c) =>
+      c.query(`UPDATE uklad.warehouses SET deleted_at = now() WHERE id = $1`, [w.wh1]),
+    );
+    assert.equal((await call("/api/auth/me", { cookie: s2.token })).json.current, null);
+    assert.equal((await shift(code2)).status, 401);
+  },
+);
+
+test("склад не найден — app.warehouse_id пуст, а не «все склады»", { skip: SKIP }, async () => {
+  const w = await warehouseWithWorker("n@sklad.ru", "10.11.0.1");
+  const bogus = "00000000-0000-7000-8000-000000000000";
+  const me = await call(`/api/auth/me?org=${w.orgId}&warehouse=${bogus}`, { cookie: w.token });
+  assert.equal(me.json.current.orgId, w.orgId);
+  assert.equal(me.json.current.warehouseId, null);
+  // В самой транзакции значение пустое: политика, сравнивающая склад с ним,
+  // не совпадёт ни с одной строкой.
+  const c = await db.pool.connect();
+  try {
+    await c.query("BEGIN");
+    const { rows } = await c.query(
+      `SELECT current_setting('app.warehouse_id', true) AS wh,
+              (SELECT count(*)::int FROM uklad.warehouses
+               WHERE id = nullif(current_setting('app.warehouse_id', true), '')::uuid) AS n
+       FROM auth.resolve($1, $2, $3, '7 days'::interval)`,
+      [Buffer.from(createHash("sha256").update(w.token).digest()), w.orgId, bogus],
+    );
+    assert.deepEqual(rows[0], { wh: "", n: 0 });
+  } finally {
+    await c.query("ROLLBACK");
+    c.release();
+  }
 });
