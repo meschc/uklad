@@ -46,9 +46,16 @@ export function isSessionLive(session: StationSession | null, now: number): bool
 
 // --- Смена ----------------------------------------------------------------------
 
-export type ShiftState = "off" | "on" | "break";
+export type ShiftState = "off" | "on" | "break" | "idle";
 
-const SHIFT_TYPES = new Set(["shift_start", "break_start", "break_end", "shift_end"]);
+const SHIFT_TYPES = new Set([
+  "shift_start",
+  "break_start",
+  "break_end",
+  "idle_start",
+  "idle_end",
+  "shift_end",
+]);
 
 /** Отметки смены одного сотрудника по времени. Сканы и упаковки в счёт часов не входят. */
 function shiftMarks(events: readonly StaffEvent[], staffId: string): StaffEvent[] {
@@ -69,14 +76,16 @@ export function stateSince(events: readonly StaffEvent[], staffId: string): numb
 export function shiftState(events: readonly StaffEvent[], staffId: string): ShiftState {
   const last = shiftMarks(events, staffId).at(-1);
   if (!last || last.type === "shift_end") return "off";
-  return last.type === "break_start" ? "break" : "on";
+  if (last.type === "break_start") return "break";
+  return last.type === "idle_start" ? "idle" : "on";
 }
 
 /** Какие отметки допустимы из состояния — кнопки меню и проверка команды одни. */
 export function allowedMarks(state: ShiftState): StaffEvent["type"][] {
   if (state === "off") return ["shift_start"];
   if (state === "break") return ["break_end", "shift_end"];
-  return ["break_start", "shift_end"];
+  if (state === "idle") return ["idle_end", "break_start", "shift_end"];
+  return ["break_start", "idle_start", "shift_end"];
 }
 
 /**
@@ -94,11 +103,34 @@ export function workedMs(
   from: number,
   to: number,
 ): number {
+  return stateMs(events, staffId, from, to, "on");
+}
+
+/**
+ * Время в простое за окно — отдельной строкой, а не вычетом из часов:
+ * простой «нет работы» оплачивается, решает это склад, а не экран.
+ */
+export function idleMs(
+  events: readonly StaffEvent[],
+  staffId: string,
+  from: number,
+  to: number,
+): number {
+  return stateMs(events, staffId, from, to, "idle");
+}
+
+function stateMs(
+  events: readonly StaffEvent[],
+  staffId: string,
+  from: number,
+  to: number,
+  want: ShiftState,
+): number {
   let total = 0;
   let state: ShiftState = "off";
   let since = 0;
   const add = (end: number) => {
-    if (state !== "on") return;
+    if (state !== want) return;
     const a = Math.max(since, from);
     const b = Math.min(end, to);
     if (b > a) total += b - a;
@@ -106,8 +138,9 @@ export function workedMs(
   for (const e of shiftMarks(events, staffId)) {
     if (e.at >= to) break;
     add(e.at);
-    if (e.type === "shift_start" || e.type === "break_end") state = "on";
+    if (e.type === "shift_start" || e.type === "break_end" || e.type === "idle_end") state = "on";
     else if (e.type === "break_start") state = "break";
+    else if (e.type === "idle_start") state = "idle";
     else state = "off";
     since = e.at;
   }
@@ -143,7 +176,25 @@ export const DEFAULT_BREAK_POLICY: BreakPolicy = {
   shortMin: 10,
   lunchFrom: 13 * 60,
   lunchMin: 45,
+  autoIdleMin: 15,
 };
+
+/**
+ * Автопростой: сотрудник на смене, но дольше `autoIdleMin` минут не было ни
+ * одного его действия. Возвращает момент последнего действия (с него и
+ * считается простой) или null. Ничего не пишет — это вывод, а не отметка.
+ */
+export function autoIdleSince(
+  events: readonly StaffEvent[],
+  staffId: string,
+  policy: BreakPolicy,
+  now: number,
+): number | null {
+  if (!policy.autoIdleMin || shiftState(events, staffId) !== "on") return null;
+  let last = 0;
+  for (const e of events) if (e.staffId === staffId && e.at > last) last = e.at;
+  return now - last >= policy.autoIdleMin * 60_000 ? last : null;
+}
 
 /** Начало текущей смены (последняя отметка «начал смену»), если смена открыта. */
 export function shiftStartedAt(events: readonly StaffEvent[], staffId: string): number | null {

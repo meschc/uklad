@@ -1,16 +1,18 @@
-import { Clock, Coffee, LogIn, LogOut, Wallet } from "lucide-react";
+import { Clock, Coffee, Hourglass, LogIn, LogOut, Play, Wallet } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { workstationRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
 import {
   allowedMarks,
+  autoIdleSince,
   earnings,
+  idleMs,
   shiftState,
   startOfDay,
   startOfMonth,
   workedMs,
 } from "@/lib/workstation";
-import type { StaffMember, StaffEventType } from "@/lib/types";
+import type { IdleReason, ShiftMark, StaffMember } from "@/lib/types";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -25,19 +27,23 @@ import { formatTime } from "./useNow";
  * «перерыв без смены» в журнал не попадёт.
  */
 
-type Mark = Extract<StaffEventType, "shift_start" | "break_start" | "break_end" | "shift_end">;
-
-const ICONS: Record<Mark, typeof Clock> = {
+const ICONS: Record<ShiftMark, typeof Clock> = {
   shift_start: LogIn,
   break_start: Coffee,
   break_end: Clock,
+  idle_start: Hourglass,
+  idle_end: Play,
   shift_end: LogOut,
 };
+
+const IDLE_REASONS: IdleReason[] = ["no_work", "other"];
 
 export function ShiftMenu({ member, now }: { member: StaffMember; now: number }) {
   const t = useT();
   const events = useEditor((s) => s.staffEvents);
   const mark = useCommand(workstationRepository.mark);
+  const policy = useEditor((s) => s.breakPolicy);
+  const autoIdle = autoIdleSince(events, member.id, policy, now);
 
   const state = shiftState(events, member.id);
   const lastMark = events
@@ -45,6 +51,7 @@ export function ShiftMenu({ member, now }: { member: StaffMember; now: number })
     .at(-1);
   const today = workedMs(events, member.id, startOfDay(now), now);
   const month = workedMs(events, member.id, startOfMonth(now), now);
+  const idleToday = idleMs(events, member.id, startOfDay(now), now);
   const earnedToday = earnings(today, member.hourlyRate);
   const earnedMonth = earnings(month, member.hourlyRate);
   const packedToday = events.filter(
@@ -72,36 +79,67 @@ export function ShiftMenu({ member, now }: { member: StaffMember; now: number })
             "size-3 rounded-full",
             state === "on"
               ? "bg-emerald-500"
-              : state === "break"
+              : state === "break" || state === "idle"
                 ? "bg-amber-500"
                 : "bg-muted-foreground/40",
           )}
         />
       </div>
 
+      {autoIdle != null && (
+        <p className="rounded-lg bg-amber-500/10 px-3 py-2 text-sm text-amber-700">
+          {t("ws.idle.auto", { t: formatTime(autoIdle, t.lang) })}
+        </p>
+      )}
+
       <div className="grid gap-2 sm:grid-cols-2">
-        {allowedMarks(state).map((type) => {
-          const Icon = ICONS[type as Mark];
-          return (
-            <Button
-              key={type}
-              size="lg"
-              variant={type === "shift_end" ? "outline" : "default"}
-              disabled={mark.pending}
-              className="h-14 text-base"
-              onClick={() => void mark.run(type as Mark)}
-            >
-              <Icon />
-              {t(`ws.mark.${type}` as MsgKey)}
-            </Button>
-          );
-        })}
+        {allowedMarks(state)
+          .filter((type) => type !== "idle_start")
+          .map((type, i) => {
+            const Icon = ICONS[type as ShiftMark];
+            return (
+              <Button
+                key={type}
+                size="lg"
+                // Главная кнопка одна — первая допустимая: «вернуться», «перерыв»…
+                variant={i === 0 ? "default" : "outline"}
+                disabled={mark.pending}
+                className="h-14 text-base"
+                onClick={() => void mark.run(type as ShiftMark)}
+              >
+                <Icon />
+                {t(`ws.mark.${type}` as MsgKey)}
+              </Button>
+            );
+          })}
       </div>
+      {allowedMarks(state).includes("idle_start") && (
+        // Простой — с причиной: «нет работы» оплачивается, и складу важно
+        // видеть его отдельно от «отошёл по своим делам».
+        <div className="flex flex-col gap-2">
+          <p className={eyebrow({ tone: "muted" })}>{t("ws.idle.title")}</p>
+          <div className="grid grid-cols-2 gap-2">
+            {IDLE_REASONS.map((r) => (
+              <Button
+                key={r}
+                variant="outline"
+                disabled={mark.pending}
+                className="h-12"
+                onClick={() => void mark.run("idle_start", r)}
+              >
+                <Hourglass />
+                {t(`ws.idle.${r}` as MsgKey)}
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
       {mark.error && <p className="text-sm text-destructive">{t(mark.error)}</p>}
 
-      <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+      <dl className="grid grid-cols-2 gap-2">
         <Stat label={t("ws.hours.today")} value={hours(t, today)} />
         <Stat label={t("ws.hours.month")} value={hours(t, month)} />
+        <Stat label={t("ws.idle.today")} value={hours(t, idleToday)} />
         <Stat label={t("ws.packedToday")} value={String(packedToday)} />
       </dl>
 

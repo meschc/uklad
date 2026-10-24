@@ -1,4 +1,4 @@
-import { Coffee, Timer, UtensilsCrossed, type LucideIcon } from "lucide-react";
+import { Coffee, Hourglass, Timer, UtensilsCrossed, type LucideIcon } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { workstationRepository } from "@/lib/data";
 import { MARK_UNDO_MS, nextBreak, shiftStartedAt, shiftState, stateSince } from "@/lib/workstation";
@@ -9,7 +9,7 @@ import { useNow } from "./useNow";
 /**
  * Смена и перерыв — в шапке рабочего места, двумя столбиками: сверху слово,
  * под ним таймер. Смена считает, сколько идёт смена; перерыв — сколько до него
- * осталось, а на перерыве — сколько он уже длится. Нажатие на смену открывает
+ * осталось, а на перерыве или в простое — сколько он уже длится. Нажатие на смену открывает
  * панель смены, на перерыв — сразу начинает (или заканчивает) его. Первые
  * секунды перерыв можно отменить: общий сенсорный экран задевают локтем.
  * Перерыв, доступный дольше `OVERDUE_MS`, обведён рамкой — человек без
@@ -35,12 +35,28 @@ export function ShiftBar({ staffId, onOpen }: { staffId: string; onOpen: () => v
       />
     );
 
-  const onBreak = shiftState(events, staffId) === "break";
+  const state = shiftState(events, staffId);
+  const onBreak = state === "break";
   const next = onBreak ? null : nextBreak(events, staffId, policy, now);
   const ready = !!next && now >= next.at;
   const since = stateSince(events, staffId) ?? now;
   const overdue = ready && now - next.at > OVERDUE_MS;
   const undoable = onBreak && now - since < MARK_UNDO_MS;
+
+  if (state === "idle")
+    return (
+      <div className="flex items-start gap-1">
+        <Cell icon={Timer} label={t("ws.bar.shift")} value={clock(now - start)} onClick={onOpen} />
+        <Cell
+          icon={Hourglass}
+          label={t("ws.shift.idle")}
+          value={clock(now - since)}
+          tone="amber"
+          title={t("ws.mark.idle_end")}
+          onClick={() => void workstationRepository.mark("idle_end")}
+        />
+      </div>
+    );
 
   return (
     <div className="flex items-start gap-1">

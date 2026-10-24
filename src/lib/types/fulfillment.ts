@@ -253,11 +253,19 @@ export type StaffEventType =
   | "break_start"
   | "break_end"
   | "shift_end"
+  | "idle_start"
+  | "idle_end"
   | "pack_scan"
   | "pack_error"
   | "pack_reject"
   | "pack_label"
   | "pack_done";
+
+/** Отметки, которые ставит сам сотрудник: смена, перерыв, простой. */
+export type ShiftMark = Extract<
+  StaffEventType,
+  "shift_start" | "break_start" | "break_end" | "idle_start" | "idle_end" | "shift_end"
+>;
 
 export interface StaffEvent {
   id: string;
@@ -273,7 +281,12 @@ export interface StaffEvent {
   productId?: string;
   /** Сколько заняла упаковка единицы, мс (от скана товара до скана этикетки). */
   ms?: number;
+  /** Причина простоя — у отметки `idle_start`. */
+  reason?: IdleReason;
 }
+
+/** «Нет работы» — простой по вине склада, он оплачивается (ТК РФ ст. 157). */
+export type IdleReason = "no_work" | "other";
 
 /**
  * Вход по QR-бейджу на рабочем месте или ТСД. Живёт 12 часов — одна смена с
@@ -344,4 +357,10 @@ export interface BreakPolicy {
   shortMin: number;
   lunchFrom: number;
   lunchMin: number;
+  /**
+   * Через сколько минут без единого скана сотрудник считается в простое.
+   * 0 — автопростой выключен. Считается на лету и в журнал не пишется:
+   * журнал — только действия человека.
+   */
+  autoIdleMin: number;
 }

@@ -10,7 +10,8 @@ import type {
   BreakPolicy,
   PackSession,
   StaffEvent,
-  StaffEventType,
+  ShiftMark,
+  IdleReason,
   StationSession,
   WorkstationKind,
   Account,
@@ -684,9 +685,7 @@ export interface WorkstationSlice {
    * Отметка смены вошедшего сотрудника. Недопустимый переход (перерыв без
    * смены) игнорируется и возвращает false — кнопки меню и так его не дают.
    */
-  markShift: (
-    type: Extract<StaffEventType, "shift_start" | "break_start" | "break_end" | "shift_end">,
-  ) => boolean;
+  markShift: (type: ShiftMark, reason?: IdleReason) => boolean;
   /**
    * Отменить последнюю отметку смены вошедшего сотрудника, если ей меньше
    * `MARK_UNDO_MS`. Случайное касание не оставляет следа в журнале.

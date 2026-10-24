@@ -1,3 +1,4 @@
+import { workstationRepository } from "@/lib/data";
 import { useState } from "react";
 import { Package } from "lucide-react";
 import { useEditor } from "@/lib/store";
@@ -29,7 +30,18 @@ export function PackStation({
   if (session && session.staffId === staffId)
     return <PackRun session={session} onDone={setResult} />;
 
-  if (shiftState(events, staffId) !== "on") {
+  const state = shiftState(events, staffId);
+  if (state === "idle") {
+    return (
+      <div className={card({ pad: "sm", className: "flex items-center justify-between gap-3" })}>
+        <p className="text-sm text-muted-foreground">{t("ws.idle.blocked")}</p>
+        <Button size="sm" onClick={() => void workstationRepository.mark("idle_end")}>
+          {t("ws.mark.idle_end")}
+        </Button>
+      </div>
+    );
+  }
+  if (state !== "on") {
     return (
       <div className={card({ pad: "sm", className: "flex items-center justify-between gap-3" })}>
         <p className="text-sm text-muted-foreground">{t("ws.shiftFirst")}</p>
