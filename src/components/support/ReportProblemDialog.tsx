@@ -3,7 +3,13 @@ import { CheckCircle2, LifeBuoy, X } from "lucide-react";
 import { PERSIST_KEY, useEditor } from "@/lib/store";
 import { useT } from "@/lib/i18n";
 import { useCommand } from "@/lib/useCommand";
-import { buildReport, readEnv, reportSize, sendReport } from "@/lib/support/report";
+import {
+  buildReport,
+  readEnv,
+  reportSize,
+  sendReport,
+  snapshotSummary,
+} from "@/lib/support/report";
 import { journal } from "@/lib/support/journal";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -45,6 +51,7 @@ export function ReportProblemDialog({ onClose }: { onClose: () => void }) {
   const [message, setMessage] = useState("");
   const [withSnapshot, setWithSnapshot] = useState(true);
   const [preview, setPreview] = useState(false);
+  const [raw, setRaw] = useState(false);
   const [sentId, setSentId] = useState<number | null>(null);
   const [website, setWebsite] = useState("");
   const [openedAt] = useState(now);
@@ -65,6 +72,7 @@ export function ReportProblemDialog({ onClose }: { onClose: () => void }) {
   };
   const kb = Math.max(1, Math.round(reportSize(report) / 1024));
   const stats = snapshotReport.snapshot?.stats;
+  const summary = useMemo(() => snapshotSummary(snapshotReport.snapshot?.data), [snapshotReport]);
 
   const submit = async () => {
     const res = await send.run({ ...report, website, elapsedMs: msSince(openedAt) });
@@ -163,9 +171,36 @@ export function ReportProblemDialog({ onClose }: { onClose: () => void }) {
               <span className="tabular-nums">{t("support.size", { kb })}</span>
             </div>
             {preview && (
-              <pre className="max-h-64 overflow-auto rounded-md border border-border bg-muted/30 p-3 text-2xs leading-relaxed">
-                {JSON.stringify(report, null, 2)}
-              </pre>
+              <div className="flex flex-col gap-2 rounded-md border border-border px-3 py-2.5 text-sm">
+                {report.snapshot ? (
+                  <>
+                    <p className="font-medium">{t("support.preview.title")}</p>
+                    <dl className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1">
+                      {summary.map((line) => (
+                        <div key={line.label} className="contents">
+                          <dt className="text-muted-foreground">{t(line.label)}</dt>
+                          <dd className="text-right tabular-nums">{line.n}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                    <p className="text-xs text-muted-foreground">{t("support.preview.names")}</p>
+                  </>
+                ) : (
+                  <p className="text-muted-foreground">{t("support.preview.noSnapshot")}</p>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setRaw((v) => !v)}
+                  className="self-start text-xs text-primary underline-offset-4 hover:underline"
+                >
+                  {raw ? t("support.preview.rawHide") : t("support.preview.raw")}
+                </button>
+                {raw && (
+                  <pre className="max-h-64 overflow-auto rounded-md bg-muted/30 p-3 text-2xs leading-relaxed">
+                    {JSON.stringify(report, null, 2)}
+                  </pre>
+                )}
+              </div>
             )}
 
             {send.error && (

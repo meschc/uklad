@@ -261,7 +261,7 @@ test("серверная чистка не трогает коды: штрихк
   assert.ok(!app.store.report(id2).payload.includes("503600000123"));
 });
 
-test("копия обращения уходит на почту: суть в тексте, тело файлом", async (t) => {
+test("письмо об обращении: суть и ссылка, без копии данных склада", async (t) => {
   const app = await start();
   t.after(app.stop);
   const { id } = await (await app.send(report())).json();
@@ -271,5 +271,6 @@ test("копия обращения уходит на почту: суть в т
   assert.match(letter.subject, new RegExp(`№ ${id}`));
   assert.ok(letter.text.includes(`${ADMIN}/support/${id}`));
   assert.ok(!letter.text.includes("ivan@example.ru"));
-  assert.equal(letter.attachments[0].content, app.store.report(id).payload);
+  assert.equal(letter.attachments, undefined);
+  assert.ok(!JSON.stringify(letter).includes('"snapshot"'));
 });

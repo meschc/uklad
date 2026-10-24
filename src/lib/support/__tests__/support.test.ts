@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { anonymizeSnapshot } from "../anonymize";
 import { createJournal, JOURNAL_KEY, MAX_AGE_MS, MAX_ENTRIES, scrubText } from "../journal";
-import { buildReport, MAX_REPORT_BYTES, sendReport } from "../report";
+import { buildReport, MAX_REPORT_BYTES, sendReport, snapshotSummary } from "../report";
 
 function memoryStorage() {
   const data = new Map<string, string>();
@@ -256,5 +256,22 @@ describe("отправка обращения", () => {
       entries: [],
     });
     expect(report.message).toBe("звоните [телефон]");
+  });
+});
+
+describe("сводка копии для окна", () => {
+  it("считает склады, сотрудников и записи, пустое не показывает", () => {
+    const data = {
+      warehouse: { staff: [{ id: "s1" }, { id: "s2" }] },
+      otherWarehouses: [{ staff: [{ id: "s3" }] }],
+      products: [{}, {}, {}],
+      shipments: [],
+    };
+    expect(snapshotSummary(data)).toEqual([
+      { label: "support.sum.warehouses", n: 2 },
+      { label: "support.sum.staff", n: 3 },
+      { label: "support.sum.products", n: 3 },
+    ]);
+    expect(snapshotSummary(undefined)).toEqual([]);
   });
 });

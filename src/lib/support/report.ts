@@ -76,6 +76,45 @@ export function buildReport(input: {
   return report;
 }
 
+/** Что войдёт в копию — по-человечески: сколько чего, а не сырой файл. */
+const SUMMARY: [key: string, label: MsgKey][] = [
+  ["products", "support.sum.products"],
+  ["placements", "support.sum.placements"],
+  ["expectedShipments", "support.sum.shipments"],
+  ["receivingEvents", "support.sum.receiving"],
+  ["boxes", "support.sum.boxes"],
+  ["pallets", "support.sum.pallets"],
+  ["requests", "support.sum.requests"],
+  ["shipments", "support.sum.trips"],
+  ["tasks", "support.sum.tasks"],
+  ["chats", "support.sum.chats"],
+];
+
+export interface SummaryLine {
+  label: MsgKey;
+  n: number;
+}
+
+/**
+ * Сводка обезличенной копии для окна: склады, сотрудники (уже метками) и
+ * записи по разделам. Пустые разделы не показываем — строка «0 рейсов»
+ * ничего не говорит человеку о том, что он отдаёт.
+ */
+export function snapshotSummary(data: unknown): SummaryLine[] {
+  if (!data || typeof data !== "object") return [];
+  const d = data as Record<string, unknown>;
+  const list = (v: unknown) => (Array.isArray(v) ? v : []);
+  const warehouses = [d.warehouse, ...list(d.otherWarehouses)].filter(
+    (w): w is Record<string, unknown> => Boolean(w) && typeof w === "object",
+  );
+  const lines: SummaryLine[] = [
+    { label: "support.sum.warehouses", n: warehouses.length },
+    { label: "support.sum.staff", n: warehouses.reduce((n, w) => n + list(w.staff).length, 0) },
+    ...SUMMARY.map(([key, label]) => ({ label, n: list(d[key]).length })),
+  ];
+  return lines.filter((l) => l.n > 0);
+}
+
 export function reportSize(report: SupportReport): number {
   return new TextEncoder().encode(JSON.stringify(report)).length;
 }
