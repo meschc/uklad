@@ -1,3 +1,4 @@
+import { useWarehouseProducts } from "@/lib/warehouseProducts";
 import { useState } from "react";
 import { Plus, Store, Trash2 } from "lucide-react";
 import { useEditor } from "@/lib/store";
@@ -17,7 +18,7 @@ export function PartnersSection() {
   const addPartner = useEditor((s) => s.addPartner);
   const updatePartner = useEditor((s) => s.updatePartner);
   const removePartner = useEditor((s) => s.removePartner);
-  const products = useEditor((s) => s.products);
+  const products = useWarehouseProducts();
   const t = useT();
   const [draft, setDraft] = useState<{ name: string; contact: string } | null>(null);
 

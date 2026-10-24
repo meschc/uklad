@@ -7,7 +7,9 @@ import type {
   Pallet,
   Product,
   ReceivingEvent,
+  StaffEvent,
   StaffMember,
+  WarehouseTask,
 } from "../types";
 
 /**
@@ -62,6 +64,12 @@ export const isReceivingEvent: Guard<ReceivingEvent> = (v): v is ReceivingEvent 
 
 export const isRequest: Guard<FulfillmentRequest> = (v): v is FulfillmentRequest =>
   hasId(v) && isStr(v.productId) && isNum(v.qty) && isStr(v.status);
+
+export const isStaffEvent: Guard<StaffEvent> = (v): v is StaffEvent =>
+  hasId(v) && isStr(v.staffId) && isStr(v.type) && isNum(v.at);
+/** Задание на операцию: вид, объём, статус и дата заведения. */
+export const isTask: Guard<WarehouseTask> = (v): v is WarehouseTask =>
+  hasId(v) && isStr(v.kind) && isNum(v.qty) && isStr(v.status) && isNum(v.createdAt);
 
 export const isStaffMember: Guard<StaffMember> = (v): v is StaffMember => hasId(v) && isStr(v.name);
 

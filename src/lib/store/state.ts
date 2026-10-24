@@ -2,10 +2,17 @@ import type { StateCreator } from "zustand";
 // Только тип: `import type` стирается при сборке, поэтому кольца
 // «словарь → хранилище → словарь» не возникает.
 import type { MsgKey } from "../i18n";
+import type { ItemScan } from "../packing";
 import type {
   BackupSettings,
   Subscription,
   TariffId,
+  BreakPolicy,
+  PackSession,
+  StaffEvent,
+  StaffEventType,
+  StationSession,
+  WorkstationKind,
   Account,
   AddressingConfig,
   AppView,
@@ -23,6 +30,10 @@ import type {
   Pallet,
   ReceivingEvent,
   ReceivingProgress,
+  ServiceKind,
+  ServiceSettings,
+  TaskStatus,
+  WarehouseTask,
   RequestStatus,
   Session,
   ShipmentSource,
@@ -88,6 +99,11 @@ export interface AccountSlice {
   warehouse: Warehouse;
   /** Неактивные склады. Активный — `warehouse`; всегда активен ровно один. */
   otherWarehouses: Warehouse[];
+  /**
+   * Работа неактивных складов по id склада (см. `warehouseData.ts`): плоские
+   * списки поставок, заявок и т.п. в сторе — всегда активного склада.
+   */
+  warehouseData: Record<string, import("./warehouseData").WarehouseData>;
 
   /** Все склады аккаунта, активный первым (для списка в кабинете). */
   allWarehouses: () => Warehouse[];
@@ -465,6 +481,20 @@ export interface FulfillmentSlice {
   placeBox: (boxId: string, addr: CellAddress) => void;
   createPallet: () => Pallet;
   attachBoxToPallet: (boxId: string, palletId: string) => void;
+  /**
+   * Грузовая приёмка: завести принятые места поставки невскрытыми — паллеты
+   * и короба без паллеты, каждому свой ярлык. Возвращает их id.
+   */
+  acceptCargo: (input: {
+    shipmentId: string;
+    pallets: number;
+    boxes: number;
+    declaredPallets?: number;
+    declaredBoxes?: number;
+    staffId?: string;
+  }) => { palletIds: string[]; boxIds: string[] };
+  /** Вскрыть место (паллету или короб) — начало товарной приёмки по нему. */
+  openUnit: (id: string) => void;
   /** Снять единицы товара с коробки (сборка). Возвращает, сколько сняли. */
   removeFromBox: (boxId: string, productId: string, qty: number) => number;
 
@@ -627,8 +657,83 @@ export interface SubscriptionSlice {
   markBackupDone: (at: number) => void;
 }
 
+// --- Рабочее место и смена сотрудника -----------------------------------------
+
+export interface WorkstationSlice {
+  /**
+   * Журнал сотрудников: отметки смены, сканы и упаковки (узел cab-staff-log).
+   * Время упаковки каждой штуки по сотруднику — это контроль выработки, то есть
+   * персональные данные работника. На сервере: срок хранения (например, 12
+   * месяцев), доступ только у самого сотрудника и руководителя, а склад
+   * предупреждает сотрудников, что журнал ведётся.
+   */
+  staffEvents: StaffEvent[];
+  /** Кто вошёл по бейджу на этом экране. Один на устройство — экран общий. */
+  stationSession: StationSession | null;
+  /**
+   * Вход по скану бейджа. Возвращает id сотрудника или null, если бейдж не
+   * принадлежит никому из персонала активного склада.
+   */
+  badgeLogin: (code: string, station: WorkstationKind) => string | null;
+  stationLogout: () => void;
+  /**
+   * Отметка смены вошедшего сотрудника. Недопустимый переход (перерыв без
+   * смены) игнорируется и возвращает false — кнопки меню и так его не дают.
+   */
+  markShift: (
+    type: Extract<StaffEventType, "shift_start" | "break_start" | "break_end" | "shift_end">,
+  ) => boolean;
+  /** Расписание перерывов склада, его задаёт руководитель. */
+  breakPolicy: BreakPolicy;
+  setBreakPolicy: (patch: Partial<BreakPolicy>) => void;
+  /** Открытая упаковка тары. Одна на устройство, как и вход по бейджу. */
+  packSession: PackSession | null;
+  /**
+   * Начать тару: скан тары с товаром и короба отгрузки. Возвращает ключ ошибки
+   * или null при успехе.
+   */
+  packStart: (sourceCode: string, targetCode: string) => MsgKey | null;
+  /** Скан товара: этикетка единицы появляется сама, брак и лишнее — в отказы. */
+  packScanItem: (code: string) => ItemScan;
+  /** Скан наклеенной этикетки. false — это не та этикетка, которую ждём. */
+  packScanLabel: (code: string) => boolean;
+  /** Отсканированная, но ещё не упакованная штука оказалась браком. */
+  packRejectPending: () => void;
+  /** Закрыть тару: списать из неё ушедшее, отметить закрытые заказы. */
+  packFinish: () => void;
+  /** Демо: тара из собранных заказов — пока сборка не пишет, что положила в тару. */
+  prepareDemoTote: () => string | null;
+}
+
+export interface OperationsSlice {
+  /** Задания на операции склада: маркировка, упаковка, возвраты… */
+  tasks: WarehouseTask[];
+  /** Какие операции склад оказывает и почём. */
+  serviceSettings: ServiceSettings;
+  /** Завести задание. Возвращает id. */
+  createTask: (
+    task: Pick<WarehouseTask, "kind" | "qty" | "partnerId" | "staffId" | "note">,
+  ) => string;
+  /**
+   * Перевести задание в статус. Время начала и закрытия ставит срез: дата
+   * закрытия — это дата услуги в счёте, и подставлять её руками нельзя.
+   */
+  setTaskStatus: (id: string, status: TaskStatus) => void;
+  updateTask: (
+    id: string,
+    patch: Partial<Pick<WarehouseTask, "qty" | "staffId" | "partnerId" | "note">>,
+  ) => void;
+  setServiceEnabled: (kind: ServiceKind, on: boolean) => void;
+  /** Приёмка в два этапа — режим склада. */
+  setTwoStageReceiving: (on: boolean) => void;
+  /** Цена за единицу; `null` стирает цену. */
+  setServicePrice: (kind: ServiceKind, price: number | null) => void;
+}
+
 export type EditorState = AccountSlice &
   SubscriptionSlice &
+  WorkstationSlice &
+  OperationsSlice &
   SessionSlice &
   ChatSlice &
   IntegrationsSlice &

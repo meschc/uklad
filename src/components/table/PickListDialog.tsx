@@ -1,3 +1,4 @@
+import { useWarehouseProducts } from "@/lib/warehouseProducts";
 import { useMemo } from "react";
 import { useEditor } from "@/lib/store";
 import { buildPickDocFromProducts } from "@/lib/documents";
@@ -22,7 +23,7 @@ const PREVIEW_SCALE = 0.52;
 export function PickListDialog({ ids, onClose }: { ids: string[]; onClose: () => void }) {
   const t = useT();
   const warehouse = useEditor((s) => s.warehouse);
-  const products = useEditor((s) => s.products);
+  const products = useWarehouseProducts();
   const placements = useEditor((s) => s.placements);
   const boxes = useEditor((s) => s.boxes);
 

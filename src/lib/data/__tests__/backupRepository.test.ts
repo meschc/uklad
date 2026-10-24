@@ -20,6 +20,7 @@ function setup(tariff: "operator" | "warehouse" | "start" = "warehouse") {
   const updateBackupSettings = vi.fn();
   const state = {
     warehouse: { id: "w1", name: "Склад", floors: [] },
+    warehouseData: { w2: { requests: [{ id: "r1" }] } },
     subscription: { tariff, backup: { remindEveryDays: 7, emailWeekly: false } },
     markBackupDone,
     updateBackupSettings,
@@ -60,7 +61,8 @@ describe("createBackupRepository", () => {
     expect(writes.map(([k]) => k)).toEqual([BEFORE_RESTORE_KEY, PERSIST_KEY]);
     expect(JSON.parse(writes[1][1])).toMatchObject({
       version: PERSIST_VERSION,
-      state: { warehouse: { id: "w1" } },
+      // Работа неактивных складов едет в архиве вместе с активным.
+      state: { warehouse: { id: "w1" }, warehouseData: { w2: { requests: [{ id: "r1" }] } } },
     });
   });
 

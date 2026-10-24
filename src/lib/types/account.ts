@@ -27,11 +27,13 @@ export type AppView =
   | "integrations"
   | "tasks"
   | "picking"
+  | "operations"
   | "staff"
   | "analytics"
   | "spec"
   | "seller"
-  | "chat";
+  | "chat"
+  | "workstation";
 
 /**
  * Аккаунт (ТЗ, разд. 3.2): личный или компании. От типа зависит, что
@@ -76,6 +78,12 @@ export interface User {
   role: UserRole;
   /** Склад, к которому привязан пользователь. */
   warehouseId: string;
+  /**
+   * Продавец — какой он партнёр склада (`Partner.id`). Продавец видит ТОЛЬКО
+   * товар, который склад за этим партнёром закрепил. Нет поля — не видит
+   * ничего: чужой товар показывать нельзя ни при каких настройках.
+   */
+  partnerId?: string;
   name?: string;
 }
 

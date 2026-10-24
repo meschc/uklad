@@ -1,6 +1,7 @@
 import type { Warehouse } from "../types";
 import { systemTheme } from "../theme";
-import type { AccountSlice, SliceCreator } from "./state";
+import type { AccountSlice, EditorState, SliceCreator } from "./state";
+import { swapWarehouseData } from "./warehouseData";
 import {
   blankWarehouse,
   seedAccount,
@@ -18,6 +19,7 @@ export const createAccountSlice: SliceCreator<AccountSlice> = (set, get) => ({
   // Три склада разного качества (п.8): активный — средний, класс B+, на нём
   // считается вся демо-история; рядом убитый класса C и образцовый A+.
   otherWarehouses: [seedWarehousePoor(), seedWarehousePremium()],
+  warehouseData: {},
   appView: "dashboard",
   account: seedAccount(),
   profile: {
@@ -52,6 +54,7 @@ export const createAccountSlice: SliceCreator<AccountSlice> = (set, get) => ({
       const target = s.otherWarehouses.find((w) => w.id === id);
       if (!target) return { appView: "editor" };
       return {
+        ...swapWarehouseData(s as EditorState, id, target.ownCatalog),
         warehouse: target,
         otherWarehouses: s.otherWarehouses.filter((w) => w.id !== id).concat(s.warehouse),
         activeFloorId: target.floors[0]?.id ?? "",
@@ -121,7 +124,12 @@ export const createAccountSlice: SliceCreator<AccountSlice> = (set, get) => ({
       if (s.warehouse.id === id) {
         // Удалили активный — активным делаем первый из оставшихся.
         const [next, ...rest] = s.otherWarehouses;
+        const swap = swapWarehouseData(s as EditorState, next.id, next.ownCatalog);
+        const warehouseData = { ...(swap.warehouseData ?? {}) };
+        delete warehouseData[id];
         return {
+          ...swap,
+          warehouseData,
           warehouse: next,
           otherWarehouses: rest,
           activeFloorId: next.floors[0]?.id ?? "",
@@ -131,8 +139,11 @@ export const createAccountSlice: SliceCreator<AccountSlice> = (set, get) => ({
           clipboard: [],
         };
       }
+      const warehouseData = { ...s.warehouseData };
+      delete warehouseData[id];
       return {
         otherWarehouses: s.otherWarehouses.filter((w) => w.id !== id),
+        warehouseData,
         placements,
       };
     }),
