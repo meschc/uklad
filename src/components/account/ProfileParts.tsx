@@ -1,7 +1,13 @@
-import { Check } from "lucide-react";
+import { useState } from "react";
+import { Bell, Check, MessageSquareText } from "lucide-react";
 import type { Theme } from "@/lib/types";
+import { useEditor } from "@/lib/store";
+import { askNotifyPermission, notifyPermission, type NotifyPermission } from "@/lib/chatNotify";
+import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { card } from "@/components/ui/card";
+import { Segmented } from "@/components/ui/segmented";
+import { Row } from "./ProfileRow";
 
 /**
  * Части экрана профиля, которые разбивают его на разделы. Раньше профиль был
@@ -95,5 +101,67 @@ export function ThemeTile({
         {active && <Check className="size-4 text-primary" />}
       </div>
     </button>
+  );
+}
+
+type OnOff = "on" | "off";
+
+/**
+ * Уведомления о сообщениях: включить системные и решить, виден ли в них текст.
+ *
+ * Включение спрашивает разрешение у браузера — отсюда, по нажатию, иначе
+ * браузер вопрос не покажет. Отказ не включает настройку молча: под строкой
+ * сказано, где его снять. Показ текста настраивается и без разрешения: на
+ * сервере та же галочка решает и для Телеграма, и для писем.
+ */
+export function NotifySection() {
+  const t = useT();
+  const profile = useEditor((s) => s.profile);
+  const updateProfile = useEditor((s) => s.updateProfile);
+  const [permission, setPermission] = useState<NotifyPermission>(notifyPermission);
+  const on = profile.chatNotify === true && permission === "granted";
+
+  const toggle = async (next: OnOff) => {
+    if (next === "off") return updateProfile({ chatNotify: false });
+    const got = permission === "granted" ? permission : await askNotifyPermission();
+    setPermission(got);
+    updateProfile({ chatNotify: got === "granted" });
+  };
+
+  const hint =
+    permission === "denied"
+      ? t("profile.notify.denied")
+      : permission === "unsupported"
+        ? t("profile.notify.unsupported")
+        : null;
+  const onOff = [
+    { value: "on" as const, label: t("profile.notify.on") },
+    { value: "off" as const, label: t("profile.notify.off") },
+  ];
+
+  return (
+    <div
+      className={card({
+        pad: "none",
+        className: "flex flex-col divide-y divide-border overflow-hidden",
+      })}
+    >
+      <div>
+        <Row icon={<Bell className="size-4" />} label={t("profile.notify.browser")}>
+          <Segmented<OnOff> value={on ? "on" : "off"} onChange={toggle} options={onOff} />
+        </Row>
+        {hint && <p className="px-4 pb-3 text-xs text-muted-foreground">{hint}</p>}
+      </div>
+      <div>
+        <Row icon={<MessageSquareText className="size-4" />} label={t("profile.notify.preview")}>
+          <Segmented<OnOff>
+            value={profile.chatNotifyPreview === false ? "off" : "on"}
+            onChange={(v) => updateProfile({ chatNotifyPreview: v === "on" })}
+            options={onOff}
+          />
+        </Row>
+        <p className="px-4 pb-3 text-xs text-muted-foreground">{t("profile.notify.previewHint")}</p>
+      </div>
+    </div>
   );
 }

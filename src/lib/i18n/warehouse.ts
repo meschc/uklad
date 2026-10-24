@@ -111,6 +111,18 @@ export const ru = {
   "chat.toBottom": "К последним сообщениям",
   "chat.actions": "Действия с сообщением",
   "chat.toast": "{name}: новое сообщение",
+  "chat.notifyHidden": "Новое сообщение",
+  "profile.section.notify": "Уведомления",
+  "profile.notify.browser": "Уведомления браузера",
+  "profile.notify.preview": "Текст сообщения",
+  "profile.notify.on": "Вкл.",
+  "profile.notify.off": "Выкл.",
+  "profile.notify.previewHint":
+    "Выключите, если экран видят другие: в уведомлении останется только имя.",
+  "profile.notify.denied":
+    "Браузер запретил уведомления. Разрешите их в настройках сайта, рядом с адресной строкой.",
+  "profile.notify.unsupported":
+    "Этот браузер не показывает уведомления. Новые сообщения видно по числу на вкладке.",
   "chat.demo": "Демо-режим",
   "chat.demoHint":
     "Переписка придумана, а ответ приходит сам через несколько секунд. В работе на том конце живой человек, и отвечает он когда отвечает.",
@@ -337,6 +349,18 @@ export const en: Record<keyof typeof ru, string> = {
   "chat.toBottom": "To latest messages",
   "chat.actions": "Message actions",
   "chat.toast": "{name}: new message",
+  "chat.notifyHidden": "New message",
+  "profile.section.notify": "Notifications",
+  "profile.notify.browser": "Browser notifications",
+  "profile.notify.preview": "Message text",
+  "profile.notify.on": "On",
+  "profile.notify.off": "Off",
+  "profile.notify.previewHint":
+    "Turn off if others can see your screen: the notification will show only the name.",
+  "profile.notify.denied":
+    "The browser blocked notifications. Allow them in site settings next to the address bar.",
+  "profile.notify.unsupported":
+    "This browser does not show notifications. New messages show up as a count on the tab.",
   "chat.demo": "Demo mode",
   "chat.demoHint":
     "The conversation is made up, and the reply arrives on its own after a few seconds. In real work there is a person on the other end, and they answer when they answer.",
