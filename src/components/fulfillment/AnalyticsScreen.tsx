@@ -1,5 +1,13 @@
 import { useMemo } from "react";
-import { AlertTriangle, ClipboardList, Gauge, PackagePlus, Timer, Truck } from "lucide-react";
+import {
+  AlertTriangle,
+  ChartColumn,
+  ClipboardList,
+  Gauge,
+  PackagePlus,
+  Timer,
+  Truck,
+} from "lucide-react";
 import { useEditor } from "@/lib/store";
 import {
   formatDuration,
@@ -8,7 +16,9 @@ import {
   requestStats,
   storageCost,
 } from "@/lib/fulfillment";
+import { TARIFF_FEATURES } from "@/lib/tariff";
 import { useT } from "@/lib/i18n";
+import { Button } from "@/components/ui/button";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { card } from "@/components/ui/card";
 import { ScreenShell } from "./ScreenShell";
@@ -33,6 +43,10 @@ export function AnalyticsScreen() {
   const shipments = useEditor((s) => s.expectedShipments);
   // Рейсы = сколько раз машина уехала со склада.
   const trips = useEditor((s) => s.shipments).length;
+  // «Старт» на сайте — «основные показатели»: верхний ряд чисел без графиков
+  // и разбивок. Расчёт тот же, режется только показ.
+  const full = useEditor((s) => TARIFF_FEATURES[s.subscription.tariff].fullAnalytics);
+  const goToProfile = useEditor((s) => s.goToProfile);
 
   const occ = useMemo(
     () => occupancyStats(warehouse, placements, boxes),
@@ -95,114 +109,135 @@ export function AnalyticsScreen() {
         />
       </div>
 
-      {/* Приёмка за период */}
-      <section className={card({ className: "flex flex-col gap-3" })}>
-        <div className="flex items-baseline justify-between gap-3">
-          <h2 className="text-sm font-semibold">{t("an.receivingTitle")}</h2>
-          <p className="text-xs text-muted-foreground">{t("an.receivingSubtitle")}</p>
-        </div>
-        <BarChart data={recv.byDay} emptyLabel={t("an.noReceiving")} />
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <MiniStat label={t("an.events")} value={recv.events} />
-          <MiniStat label={t("an.units")} value={recv.units} />
-          <MiniStat
-            label={t("an.shortage")}
-            value={recv.shortage}
-            tone={recv.shortage ? "warn" : undefined}
-          />
-          <MiniStat
-            label={t("an.overage")}
-            value={recv.overage}
-            tone={recv.overage ? "warn" : undefined}
-          />
-        </div>
-      </section>
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {/* Заявки продавца */}
-        <section className={card({ className: "flex flex-col gap-3" })}>
-          <h2 className="flex items-center gap-1.5 text-sm font-semibold">
-            <ClipboardList className="size-3.5 text-muted-foreground" />
-            {t("an.requestsTitle")}
-          </h2>
-          <Donut
-            centerValue={requests.length}
-            centerLabel={t("an.total")}
-            segments={[
-              {
-                label: t("req.status.new"),
-                value: req.new,
-                color: "hsl(38 92% 55%)",
-              },
-              {
-                label: t("req.status.in_progress"),
-                value: req.inProgress,
-                color: "hsl(var(--primary))",
-              },
-              {
-                label: t("req.status.done"),
-                value: req.done,
-                color: "hsl(152 60% 45%)",
-              },
-              {
-                label: t("req.status.shipped"),
-                value: req.shipped,
-                color: "hsl(200 80% 50%)",
-              },
-              {
-                label: t("req.status.cancelled"),
-                value: req.cancelled,
-                color: "hsl(var(--muted-foreground))",
-              },
-            ]}
-          />
-          <dl className="flex flex-col gap-1.5 border-t border-border pt-3 text-xs">
-            <Row label={t("an.leadTime")} value={formatDuration(req.avgLeadMs, t.lang)} />
-            <Row label={t("an.pickTimeShort")} value={formatDuration(req.avgPickMs, t.lang)} />
-            <Row label={t("an.partialShare")} value={`${partialPct}% (${req.partial})`} />
-            <Row label={t("an.openShipments")} value={openShipments} />
-          </dl>
-        </section>
-
-        {/* Занятость по этажам */}
-        <section className={card({ className: "flex flex-col gap-3" })}>
-          <h2 className="flex items-center gap-1.5 text-sm font-semibold">
-            <Gauge className="size-3.5 text-muted-foreground" />
-            {t("an.occupancyTitle")}
-          </h2>
-          <div className="flex flex-col gap-2.5">
-            {occ.byFloor.map((f) => (
-              <FillBar key={f.floorId} label={f.name} value={f.occupied} total={f.cells} />
-            ))}
-          </div>
-          {/* Стоимость хранения (п.10.5): занятые ячейки × тариф × дни.
-              Сознательно узкая метрика — не бухгалтерия. */}
-          <dl className="flex flex-col gap-1.5 border-t border-border pt-3 text-xs">
-            <div className="flex items-baseline justify-between gap-3">
-              <dt className="text-muted-foreground">
-                {t("an.storageCost", { d: STORAGE_PERIOD_DAYS })}
-              </dt>
-              <dd className="font-medium tabular-nums">
-                {cost == null
-                  ? t("an.storageNoRate")
-                  : t("an.money", { n: Math.round(cost).toLocaleString(t.lang) })}
-              </dd>
+      {!full && (
+        <section
+          className={card({ className: "flex flex-wrap items-center justify-between gap-3" })}
+        >
+          <div className="flex min-w-0 items-start gap-3">
+            <ChartColumn className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+            <div className="min-w-0">
+              <h2 className="text-sm font-semibold">{t("an.basic.title")}</h2>
+              <p className="text-xs text-muted-foreground">{t("an.basic.body")}</p>
             </div>
-            {cost != null && (
-              <div className="flex items-baseline justify-between gap-3">
-                <dt className="text-muted-foreground">{t("an.storageRate")}</dt>
-                <dd className="tabular-nums text-muted-foreground">
-                  {t("an.storageRateValue", { n: warehouse.storageRatePerCell ?? 0 })}
-                </dd>
-              </div>
-            )}
-          </dl>
-          <p className="border-t border-border pt-3 text-xs text-muted-foreground">
-            {t("an.occupancyNote")}
-            {cost == null ? ` ${t("an.storageHint")}` : ""}
-          </p>
+          </div>
+          <Button size="sm" variant="outline" onClick={goToProfile}>
+            {t("an.basic.cta")}
+          </Button>
         </section>
-      </div>
+      )}
+
+      {full && (
+        <>
+          {/* Приёмка за период */}
+          <section className={card({ className: "flex flex-col gap-3" })}>
+            <div className="flex items-baseline justify-between gap-3">
+              <h2 className="text-sm font-semibold">{t("an.receivingTitle")}</h2>
+              <p className="text-xs text-muted-foreground">{t("an.receivingSubtitle")}</p>
+            </div>
+            <BarChart data={recv.byDay} emptyLabel={t("an.noReceiving")} />
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <MiniStat label={t("an.events")} value={recv.events} />
+              <MiniStat label={t("an.units")} value={recv.units} />
+              <MiniStat
+                label={t("an.shortage")}
+                value={recv.shortage}
+                tone={recv.shortage ? "warn" : undefined}
+              />
+              <MiniStat
+                label={t("an.overage")}
+                value={recv.overage}
+                tone={recv.overage ? "warn" : undefined}
+              />
+            </div>
+          </section>
+
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            {/* Заявки продавца */}
+            <section className={card({ className: "flex flex-col gap-3" })}>
+              <h2 className="flex items-center gap-1.5 text-sm font-semibold">
+                <ClipboardList className="size-3.5 text-muted-foreground" />
+                {t("an.requestsTitle")}
+              </h2>
+              <Donut
+                centerValue={requests.length}
+                centerLabel={t("an.total")}
+                segments={[
+                  {
+                    label: t("req.status.new"),
+                    value: req.new,
+                    color: "hsl(38 92% 55%)",
+                  },
+                  {
+                    label: t("req.status.in_progress"),
+                    value: req.inProgress,
+                    color: "hsl(var(--primary))",
+                  },
+                  {
+                    label: t("req.status.done"),
+                    value: req.done,
+                    color: "hsl(152 60% 45%)",
+                  },
+                  {
+                    label: t("req.status.shipped"),
+                    value: req.shipped,
+                    color: "hsl(200 80% 50%)",
+                  },
+                  {
+                    label: t("req.status.cancelled"),
+                    value: req.cancelled,
+                    color: "hsl(var(--muted-foreground))",
+                  },
+                ]}
+              />
+              <dl className="flex flex-col gap-1.5 border-t border-border pt-3 text-xs">
+                <Row label={t("an.leadTime")} value={formatDuration(req.avgLeadMs, t.lang)} />
+                <Row label={t("an.pickTimeShort")} value={formatDuration(req.avgPickMs, t.lang)} />
+                <Row label={t("an.partialShare")} value={`${partialPct}% (${req.partial})`} />
+                <Row label={t("an.openShipments")} value={openShipments} />
+              </dl>
+            </section>
+
+            {/* Занятость по этажам */}
+            <section className={card({ className: "flex flex-col gap-3" })}>
+              <h2 className="flex items-center gap-1.5 text-sm font-semibold">
+                <Gauge className="size-3.5 text-muted-foreground" />
+                {t("an.occupancyTitle")}
+              </h2>
+              <div className="flex flex-col gap-2.5">
+                {occ.byFloor.map((f) => (
+                  <FillBar key={f.floorId} label={f.name} value={f.occupied} total={f.cells} />
+                ))}
+              </div>
+              {/* Стоимость хранения (п.10.5): занятые ячейки × тариф × дни.
+              Сознательно узкая метрика — не бухгалтерия. */}
+              <dl className="flex flex-col gap-1.5 border-t border-border pt-3 text-xs">
+                <div className="flex items-baseline justify-between gap-3">
+                  <dt className="text-muted-foreground">
+                    {t("an.storageCost", { d: STORAGE_PERIOD_DAYS })}
+                  </dt>
+                  <dd className="font-medium tabular-nums">
+                    {cost == null
+                      ? t("an.storageNoRate")
+                      : t("an.money", { n: Math.round(cost).toLocaleString(t.lang) })}
+                  </dd>
+                </div>
+                {cost != null && (
+                  <div className="flex items-baseline justify-between gap-3">
+                    <dt className="text-muted-foreground">{t("an.storageRate")}</dt>
+                    <dd className="tabular-nums text-muted-foreground">
+                      {t("an.storageRateValue", { n: warehouse.storageRatePerCell ?? 0 })}
+                    </dd>
+                  </div>
+                )}
+              </dl>
+              <p className="border-t border-border pt-3 text-xs text-muted-foreground">
+                {t("an.occupancyNote")}
+                {cost == null ? ` ${t("an.storageHint")}` : ""}
+              </p>
+            </section>
+          </div>
+        </>
+      )}
     </ScreenShell>
   );
 }

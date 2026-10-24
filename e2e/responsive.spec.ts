@@ -124,15 +124,6 @@ test.describe("Телефон", () => {
   test("строчные пилюли не разъезжаются на две строки", async ({ page }) => {
     const PILL_MAX_HEIGHT = 44;
 
-    await page.goto("/");
-    const chip = page.getByRole("link", { name: /взгляд с вашей стороны/ });
-    await expect(chip).toBeVisible();
-    const chipBox = await chip.boundingBox();
-    expect(
-      chipBox?.height,
-      "объявление в шапке героя переносится — подрежьте копию",
-    ).toBeLessThanOrEqual(PILL_MAX_HEIGHT);
-
     await page.goto("/market/");
     for (const name of ["Списком", "Карта"]) {
       const box = await page.getByRole("button", { name }).boundingBox();

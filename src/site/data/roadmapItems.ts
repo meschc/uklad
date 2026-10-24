@@ -330,8 +330,8 @@ export const ROADMAP_ITEMS: readonly RoadmapItem[] = [
     id: "data-layer",
     title: c("Слой репозиториев под сервер", "A repository layer ready for a server"),
     summary: c(
-      "Экраны уже ходят за данными через репозитории: когда появится база, меняется репозиторий, а не экраны",
-      "Screens already fetch through repositories: when a database arrives, the repository changes, not the screens",
+      "Экраны ходят за данными через репозитории: база подключается без переделки экранов",
+      "Screens fetch through repositories: the database plugs in without reworking the screens",
     ),
     status: "done",
     track: "platform",
@@ -522,8 +522,8 @@ export const ROADMAP_ITEMS: readonly RoadmapItem[] = [
     id: "markirovka",
     title: c("Честный знак по-настоящему", "Chestny Znak for real"),
     summary: c(
-      "Сейчас коды маркировки в демо ненастоящие. Нужен живой обмен с ГИС МТ",
-      "The marking codes in the demo are not real. What is needed is a live exchange with the state system",
+      "Агрегация и документы в ГИС МТ прямо из Уклада, с подписью селлера",
+      "Aggregation and documents in the state system straight from Uklad, signed by the seller",
     ),
     status: "idea",
     track: "integrations",

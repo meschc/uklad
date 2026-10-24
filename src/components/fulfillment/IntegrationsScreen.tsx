@@ -17,10 +17,9 @@ import { card } from "@/components/ui/card";
 import { ScreenShell } from "./ScreenShell";
 
 /**
- * Интеграции с внешними системами (п.22, п.9). Обмена данными в прототипе нет —
- * есть подготовленная площадка: по каждой системе указано, какой это API, какая
- * авторизация и какие поля она требует. Владелец склада заполняет их заранее, а
- * подключение включается вместе с backend.
+ * Интеграции с внешними системами (п.22, п.9). По каждой системе указано, какой
+ * это API, какая авторизация и какие поля она требует. Системы без готового
+ * адаптера (`soon`) видны, но не настраиваются: обещать их к запуску нельзя.
  *
  * Список разбит по разделам: продавцу важно увидеть «мой маркетплейс здесь
  * есть» за секунду, а сплошной перечень из двадцати карточек этого не даёт.
@@ -31,13 +30,15 @@ export function IntegrationsScreen() {
   const updateIntegration = useEditor((s) => s.updateIntegration);
 
   const connected = INTEGRATIONS.filter((s) => integrations[s.id]?.enabled).length;
+  const soon = INTEGRATIONS.filter((s) => s.soon).length;
 
   return (
     <ScreenShell
       title={t("integr.title")}
       subtitle={t("integr.subtitleN", {
-        total: INTEGRATIONS.length,
+        total: INTEGRATIONS.length - soon,
         n: connected,
+        soon,
       })}
       wide
     >
@@ -47,7 +48,10 @@ export function IntegrationsScreen() {
       </div>
 
       {INTEGRATION_CATEGORIES.map((cat) => {
-        const items = INTEGRATIONS.filter((s) => s.category === cat.id);
+        // Готовые к подключению — выше: «позже» не должно заслонять рабочее.
+        const items = INTEGRATIONS.filter((s) => s.category === cat.id).sort(
+          (a, b) => Number(!!a.soon) - Number(!!b.soon),
+        );
         if (!items.length) return null;
         return (
           <section key={cat.id} className="flex flex-col gap-2">
@@ -155,29 +159,35 @@ function IntegrationCard({
             {t(spec.descriptionKey)}
           </p>
         </div>
-        <span
-          className={eyebrow({
-            size: "xs",
-            weight: "medium",
-            className: "shrink-0 rounded bg-muted px-2 py-0.5",
-          })}
-        >
-          {t(`integr.auth.${spec.auth}`)}
-        </span>
-        <span
-          className={cn(
-            "shrink-0 text-xs tabular-nums",
-            ready ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground",
-          )}
-        >
-          {t("integr.filled", { n: filled, total: spec.fields.length })}
-        </span>
-        <Button size="sm" variant="outline" onClick={() => setOpen((v) => !v)}>
-          {t(open ? "integr.hide" : "integr.setup")}
-        </Button>
+        {spec.soon ? (
+          <span className="shrink-0 text-xs text-muted-foreground">{t("integr.soon")}</span>
+        ) : (
+          <>
+            <span
+              className={eyebrow({
+                size: "xs",
+                weight: "medium",
+                className: "shrink-0 rounded bg-muted px-2 py-0.5",
+              })}
+            >
+              {t(`integr.auth.${spec.auth}`)}
+            </span>
+            <span
+              className={cn(
+                "shrink-0 text-xs tabular-nums",
+                ready ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground",
+              )}
+            >
+              {t("integr.filled", { n: filled, total: spec.fields.length })}
+            </span>
+            <Button size="sm" variant="outline" onClick={() => setOpen((v) => !v)}>
+              {t(open ? "integr.hide" : "integr.setup")}
+            </Button>
+          </>
+        )}
       </div>
 
-      {open && (
+      {open && !spec.soon && (
         <div className="flex flex-col gap-3 border-t border-border bg-muted/20 px-4 py-3">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {spec.fields.map((f) => (

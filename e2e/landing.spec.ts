@@ -2,10 +2,11 @@ import { expect, test } from "@playwright/test";
 import { acceptCookies, expectNoOverflow, phrase, scrollTo } from "./helpers";
 
 /**
- * Лендинг глазами селлера, который пришёл первый раз: понял, куда попал, дошёл
- * до витрины и, если захотел, — до демо.
+ * Главная глазами склада, который пришёл первый раз. С 21 окт на главной
+ * открывается страница для складов (Кирилл: «главная сейчас это то, что для
+ * складов»); прежняя главная для селлеров на паузе.
  */
-test.describe("Лендинг", () => {
+test.describe("Главная", () => {
   test.beforeEach(async ({ page }) => {
     await acceptCookies(page);
     await page.goto("/");
@@ -13,123 +14,55 @@ test.describe("Лендинг", () => {
 
   test("первый экран объясняет, что это", async ({ page }) => {
     await expect(page).toHaveTitle(/Уклад/);
-    await expect(page.getByRole("heading", { level: 1 })).toContainText("который видно насквозь");
-    // Обещание бесплатного входа — часть оффера, а не украшение. Формулировка
-    // именно такая: платные дополнения на витрине есть, и «бесплатно для
-    // селлера» вообще было бы обещанием, которого страница «Тарифы» не держит.
-    await expect(page.getByText(phrase("заявка ничего не стоит"))).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1 })).toContainText(
+      "систему управления складом",
+    );
   });
 
-  test("все секции лендинга на месте", async ({ page }) => {
-    for (const id of ["how", "product", "warehouses", "operators", "faq"]) {
+  test("все секции страницы на месте", async ({ page }) => {
+    for (const id of ["inside", "tariffs", "faq", "connect"]) {
       await expect(page.locator(`#${id}`)).toBeAttached();
     }
   });
 
-  test("логотипы площадок загрузились, а не отвалились в монограмму", async ({ page, request }) => {
-    const caption = page.getByText("Отгрузка на площадки");
-    await caption.scrollIntoViewIfNeeded();
-    await expect(caption).toBeVisible();
-
-    // Битый файл рисуется молча: onError в BrandMark подменяет картинку
-    // монограммой, и на глаз пропажа не видна. Знаки висят на loading="lazy",
-    // поэтому сначала ждём, пока лента догрузится в кадре.
-    await expect
-      .poll(
-        async () =>
-          page.evaluate(
-            () =>
-              [...document.querySelectorAll<HTMLImageElement>('img[src*="/brands/"]')].filter(
-                (img) => img.complete && img.naturalWidth > 0,
-              ).length,
-          ),
-        { message: "ни один знак площадки не загрузился" },
-      )
-      // Сколько именно знаков успеет догрузиться — зависит от ширины экрана:
-      // на телефоне в кадр ленты помещается втрое меньше, чем на десктопе.
-      // Проверка не про количество, а про то, что файлы живые, — ниже.
-      .toBeGreaterThanOrEqual(3);
-
-    const broken = await page.evaluate(() =>
-      [...document.querySelectorAll<HTMLImageElement>('img[src*="/brands/"]')]
-        .filter((img) => img.complete && img.naturalWidth === 0)
-        .map((img) => img.getAttribute("src")!),
-    );
-    expect(broken).toEqual([]);
-
-    // Остальные знаки до экрана могут не доехать — но файл, на который они
-    // ссылаются, обязан существовать в сборке.
-    const srcs = await page.evaluate(() => [
-      ...new Set(
-        [...document.querySelectorAll<HTMLImageElement>('img[src*="/brands/"]')].map((img) =>
-          img.getAttribute("src")!,
-        ),
-      ),
-    ]);
-    for (const src of srcs) {
-      const res = await request.get(src);
-      expect(res.status(), `${src} не отдаётся`).toBe(200);
-    }
-  });
-
-  test("«Подобрать склад» ведёт на витрину и с самого верха", async ({ page }) => {
-    // Прокручиваем вниз: действие в шапке работает из любого места страницы, и
-    // именно оттуда его обычно и нажимают. Ищем в шапке по роли, а не первое
-    // совпадение на странице: та же надпись стоит в герое и в финале лендинга.
-    await scrollTo(page, 2000);
-    // Ссылка, а не кнопка: у витрины свой адрес, и единственное действие
-    // лендинга обязано открываться в новой вкладке и попадать в индекс.
-    await page.getByRole("banner").getByRole("link", { name: "Подобрать склад" }).click();
+  test("каталог складов открывается из подвала и с самого верха", async ({ page }) => {
+    const footer = page.getByRole("contentinfo");
+    await footer.scrollIntoViewIfNeeded();
+    await footer.getByRole("link", { name: "Каталог складов" }).click();
 
     await expect(page).toHaveURL(/\/market\/$/);
     await expect(page.getByRole("heading", { name: "Склады для фулфилмента" })).toBeVisible();
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBeLessThan(50);
   });
 
-  test("якорь «Как это работает» доводит до секции", async ({ page }) => {
-    // Тот, что в герое: в шапке он же, но на узком экране спрятан в меню, а в
-    // подвале под этой надписью лежит страница селлера — совсем другой адрес.
-    await page.getByRole("main").getByRole("link", { name: "Как это работает" }).click();
+  test("якорь «Тарифы» доводит до секции и не уводит со страницы", async ({ page }) => {
+    const footer = page.getByRole("contentinfo");
+    await footer.scrollIntoViewIfNeeded();
+    await footer.getByRole("link", { name: "Тарифы" }).click();
     await expect
       .poll(async () =>
-        page.evaluate(() => document.getElementById("how")!.getBoundingClientRect().top),
+        page.evaluate(() => document.getElementById("tariffs")!.getBoundingClientRect().top),
       )
       .toBeLessThan(200);
-    // Роутер не должен принять якорь за адрес страницы и увести на витрину.
-    await expect(page.getByRole("heading", { level: 1 })).toContainText("который видно насквозь");
-  });
-
-  test("вход в демо WMS остался ровно один — в подвале", async ({ page }) => {
-    // Их было четыре: шапка, финал лендинга, блок для складов и подвал. Демо
-    // — не то, за чем на сайт приходит селлер, и четыре двери в него делили
-    // внимание с единственным нужным действием.
-    const links = page.getByRole("link", { name: /Демо WMS/ });
-    await expect(links).toHaveCount(1);
-    await expect(links.first()).toHaveAttribute("href", /\/app\/$/);
-    await expect(
-      page.getByRole("contentinfo").getByRole("link", { name: /Демо WMS/ }),
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1 })).toContainText(
+      "систему управления складом",
+    );
   });
 
   test("подвал раскрывает владельца сайта и природу данных", async ({ page }) => {
-    // По роли, а не по тегу: у карточек складов свои `<footer>`, и `locator`
-    // по тегу ловит их вместе с подвалом страницы.
+    // По роли, а не по тегу: у карточек свои `<footer>`.
     const footer = page.getByRole("contentinfo");
     await footer.scrollIntoViewIfNeeded();
-    // Владелец — самозанятый, а не общество: ИНН физлица двенадцатизначный,
-    // ОГРНИП у самозанятого нет (см. `src/site/data/org.ts`). Длина
-    // проверяется точно: `\d{10}` совпал бы и с началом ИНН юрлица, и подмена
-    // формы собственности прошла бы мимо теста.
+    // Владелец — самозанятый: ИНН физлица двенадцатизначный, ОГРНИП нет
+    // (см. `src/site/data/org.ts`).
     await expect(footer).toContainText(/ИНН \d{12}\b/);
     await expect(footer).toContainText("Самозанятый (плательщик НПД)");
     await expect(footer).not.toContainText("ОГРНИП");
-    // Оговорка о характере данных на сайте ровно одна и живёт в подвале —
-    // проверяем, что она не потерялась при правках копирайта.
-    await expect(footer).toContainText(phrase("остатки на витрине — демонстрационные"));
+    await expect(footer).toContainText(phrase("остатки на витрине демонстрационные"));
   });
 
   test("страница не едет вбок", async ({ page }) => {
     await scrollTo(page, 100_000);
-    await expectNoOverflow(page, "лендинг");
+    await expectNoOverflow(page, "главная");
   });
 });

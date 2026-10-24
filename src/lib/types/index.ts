@@ -20,3 +20,4 @@ export * from "./catalog";
 export * from "./labels";
 export * from "./fulfillment";
 export * from "./account";
+export * from "./operations";

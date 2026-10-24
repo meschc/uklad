@@ -1,7 +1,15 @@
 import { create, type StateCreator } from "zustand";
 import { createRequestsSlice } from "../requests.slice";
 import { createChatSlice } from "../chat.slice";
-import type { ChatSlice, EditorState, RequestsSlice } from "../state";
+import { createOperationsSlice } from "../operations.slice";
+import { createFulfillmentSlice } from "../fulfillment.slice";
+import type {
+  ChatSlice,
+  EditorState,
+  FulfillmentSlice,
+  OperationsSlice,
+  RequestsSlice,
+} from "../state";
 
 /**
  * Стенд для среза заявок.
@@ -36,4 +44,39 @@ const chatSlice = createChatSlice as unknown as StateCreator<EditorState, [], []
  */
 export function makeChatStore(initial: Partial<EditorState> = {}) {
   return create<EditorState>()((...a) => ({ ...chatSlice(...a), ...initial }) as EditorState);
+}
+
+const operationsSlice = createOperationsSlice as unknown as StateCreator<
+  EditorState,
+  [],
+  [],
+  OperationsSlice
+>;
+
+/** Стенд заданий и настройки услуг: срез ни от кого не зависит. */
+export function makeOperationsStore(initial: Partial<EditorState> = {}) {
+  return create<EditorState>()((...a) => ({ ...operationsSlice(...a), ...initial }) as EditorState);
+}
+
+const fulfillmentSlice = createFulfillmentSlice as unknown as StateCreator<
+  EditorState,
+  [],
+  [],
+  FulfillmentSlice
+>;
+
+/**
+ * Стенд сквозного сценария склада: приёмка, заявки и операции вместе. Нужен
+ * там, где проверяется не один срез, а путь товара от ворот до машины.
+ */
+export function makeFlowStore(initial: Partial<EditorState> = {}) {
+  return create<EditorState>()(
+    (...a) =>
+      ({
+        ...fulfillmentSlice(...a),
+        ...requestsSlice(...a),
+        ...operationsSlice(...a),
+        ...initial,
+      }) as EditorState,
+  );
 }

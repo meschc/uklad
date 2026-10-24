@@ -12,6 +12,7 @@ import { useT, type TFunc } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScreenShell, EmptyState } from "@/components/fulfillment/ScreenShell";
+import { BreakPolicyCard } from "./BreakPolicyCard";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { card } from "@/components/ui/card";
 import { PartnersSection } from "./PartnersSection";
@@ -144,6 +145,7 @@ export function StaffScreen() {
       {/* Нагрузка: кто сколько сделал. Начальнику это нужно для распределения
           работы, сотруднику — чтобы видеть свой вклад. Считаем по фактам
           приёмки и отгрузки; сборка персонально не подписывается. */}
+      <BreakPolicyCard />
       {staff.length > 0 && (
         <section className={card({ className: "flex flex-col gap-2" })}>
           <h2 className="flex items-center gap-1.5 text-sm font-semibold">

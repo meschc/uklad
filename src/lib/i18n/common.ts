@@ -45,15 +45,14 @@ export const ru = {
   "profile.inn": "ИНН",
   "profile.innErr": "ИНН не проходит проверку контрольной суммы",
   "profile.innHint": "По ИНН реквизиты компании заполнятся сами.",
-  "profile.innFetched":
-    "Реквизиты получены из ФНС — пока заготовкой: справочник подключается вместе с backend.",
+  "profile.innFetched": "Реквизиты получены из ФНС по ИНН.",
   "profile.companyDetails": "Реквизиты",
   "profile.kpp": "КПП",
   "profile.ogrn": "ОГРН",
   "profile.legalAddress": "Юридический адрес",
   "profile.emailConfirmTitle": "Подтвердите новый адрес: {email}",
   "profile.emailConfirmBody":
-    "До подтверждения работает старая почта. Введите код из {n} цифр — писем прототип не отправляет, подойдёт любой код.",
+    "До подтверждения работает старая почта. Введите код из {n} цифр из письма.",
   "profile.emailConfirmApply": "Подтвердить",
   "profile.title": "Настройки профиля",
   "profile.subtitle": "Имя, тема оформления и язык интерфейса",
@@ -136,6 +135,9 @@ export const ru = {
   "wh.showMap": "Указать точку на карте",
   "wh.hideMap": "Скрыть карту",
   "wh.delete.confirm": "Удалить склад «{name}»?",
+  "wh.delete.work":
+    "Вместе со складом безвозвратно удалятся: поставок {shipments}, заявок {requests}, тары {boxes}, рейсов {trips}.",
+  "wh.delete.typeName": "Введите «{name}», чтобы подтвердить",
   "wh.delete.note": "Товары останутся в номенклатуре, но потеряют свои места на этом складе.",
 
   // Общее
@@ -229,15 +231,14 @@ export const en: Record<keyof typeof ru, string> = {
   "profile.inn": "Tax id",
   "profile.innErr": "The tax id fails its checksum",
   "profile.innHint": "Company details fill in automatically from the tax id.",
-  "profile.innFetched":
-    "Details received from the tax registry — a placeholder for now: the real registry connects with the backend.",
+  "profile.innFetched": "Details received from the tax registry by INN.",
   "profile.companyDetails": "Registration details",
   "profile.kpp": "KPP",
   "profile.ogrn": "Registration number",
   "profile.legalAddress": "Legal address",
   "profile.emailConfirmTitle": "Confirm the new address: {email}",
   "profile.emailConfirmBody":
-    "The old address keeps working until you confirm. Enter the {n}-digit code — the prototype sends no mail, any code works.",
+    "The old address keeps working until you confirm. Enter the {n}-digit code from the email.",
   "profile.emailConfirmApply": "Confirm",
   "profile.title": "Profile settings",
   "profile.subtitle": "Name, theme and interface language",
@@ -321,6 +322,9 @@ export const en: Record<keyof typeof ru, string> = {
   "wh.showMap": "Set a point on the map",
   "wh.hideMap": "Hide map",
   "wh.delete.confirm": "Delete warehouse “{name}”?",
+  "wh.delete.work":
+    "Deleted for good with the warehouse: {shipments} shipments, {requests} requests, {boxes} containers, {trips} trips.",
+  "wh.delete.typeName": "Type “{name}” to confirm",
   "wh.delete.note": "Products stay in the catalog but lose their spots in this warehouse.",
 
   // Common

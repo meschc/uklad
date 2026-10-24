@@ -52,7 +52,8 @@ const CARD_LIMITS = [COMPARE[0].rows[1], COMPARE[2].rows[0], COMPARE[1].rows[0]]
  * считается скидкой (20 окт). На карточке три главных лимита, таблица
  * свёрнута до шести строк и раскрывается целиком по кнопке.
  */
-export function Tariffs() {
+/** `page` — блок стоит первым на странице /pricing: заголовок главный, отступ меньше. */
+export function Tariffs({ page = false }: { page?: boolean }) {
   const t = useT();
   const [period, setPeriod] = useState<PayPeriod>("half");
   const [why, setWhy] = useState(false);
@@ -88,10 +89,13 @@ export function Tariffs() {
   return (
     <section
       id="tariffs"
-      className="mx-auto mt-24 max-w-[1280px] scroll-mt-24 px-5 sm:mt-36 sm:px-10"
+      className={cn(
+        "mx-auto max-w-[1280px] scroll-mt-24 px-5 sm:px-10",
+        page ? "mt-12 sm:mt-20" : "mt-24 sm:mt-36",
+      )}
     >
       <Reveal className="flex flex-col items-center gap-5 text-center">
-        <h2 className="wh-h2">{t(T.title)}</h2>
+        {page ? <h1 className="wh-h1">{t(T.title)}</h1> : <h2 className="wh-h2">{t(T.title)}</h2>}
         <p className="wh-muted max-w-[34rem] text-[17px] leading-relaxed">{t(T.lead)}</p>
         <div
           ref={group}
