@@ -109,6 +109,9 @@ export const ru = {
   "ws.done.next": "Следующая тара",
 
   "ws.bar.shift": "Смена",
+  "ws.bar.break": "Перерыв",
+  "ws.bar.lunch": "Обед",
+  "ws.bar.now": "можно",
   "ws.bar.breakAt": "Перерыв с {t} · {m} мин",
   "ws.bar.lunchAt": "Обед с {t} · {m} мин",
   "ws.bar.breakNow": "Перерыв доступен · {m} мин",
@@ -260,6 +263,9 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.done.next": "Next tote",
 
   "ws.bar.shift": "Shift",
+  "ws.bar.break": "Break",
+  "ws.bar.lunch": "Lunch",
+  "ws.bar.now": "now",
   "ws.bar.breakAt": "Break from {t} · {m} min",
   "ws.bar.lunchAt": "Lunch from {t} · {m} min",
   "ws.bar.breakNow": "Break available · {m} min",
