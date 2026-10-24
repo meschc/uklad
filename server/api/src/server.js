@@ -16,6 +16,7 @@
  * Маршруты:
  *   GET  /api/health      — жив ли сервер и база (для мониторинга)
  *   POST /api/leads       — заявка с формы (тело — `Lead` из `src/site/lib/leads.ts`)
+ *   POST /api/support/reports — «Сообщить о проблеме» из кабинета (`src/lib/support/report.ts`)
  *   GET  /d/<токен>       — персональная демо-ссылка → кабинет
  *
  * Все настройки — переменными окружения, образец в `deploy/.env.example`.
@@ -28,8 +29,12 @@ const { parseLead, letterSubject, letterText } = require("../../leads/lead");
 const { openDb } = require("./db");
 const { createRateLimit, clientIp } = require("./rateLimit");
 const { newToken, isToken, demoLetter } = require("./demo");
+const { parseReport } = require("./support");
 
 const MAX_BODY_BYTES = 32 * 1024;
+// Обращение несёт журнал и обезличенную копию склада — оно крупнее заявки.
+// Предел тот же, что держит кабинет (`MAX_REPORT_BYTES`).
+const MAX_REPORT_BYTES = 512 * 1024;
 const DAY_MS = 86_400_000;
 
 function readEnv(env) {
@@ -48,6 +53,7 @@ function readEnv(env) {
       .filter(Boolean),
     trustProxy: env.TRUST_PROXY === "1",
     retentionDays: num("LEADS_RETENTION_DAYS", 180),
+    reportRetentionDays: num("REPORTS_RETENTION_DAYS", 90),
     demoDays: num("DEMO_LINK_DAYS", 14),
     demoPerEmailPerDay: num("DEMO_PER_EMAIL_PER_DAY", 3),
     rateCapacity: num("RATE_LIMIT_BURST", 5),
@@ -79,7 +85,7 @@ function corsHeaders(origin) {
 }
 
 /** Тело с пределом в байтах: длинное обрываем, не дочитывая. */
-function readBody(req) {
+function readBody(req, max = MAX_BODY_BYTES) {
   return new Promise((resolve) => {
     const chunks = [];
     let size = 0;
@@ -91,7 +97,7 @@ function readBody(req) {
     };
     req.on("data", (chunk) => {
       size += chunk.length;
-      if (size > MAX_BODY_BYTES) {
+      if (size > max) {
         // Дочитываем вхолостую, не копя: оборванный приём клиент принял бы за
         // сбой сети, а не за отказ.
         chunks.length = 0;
@@ -206,6 +212,47 @@ function createApp({ cfg, db, mail, now = () => new Date(), log = console }) {
     }
   }
 
+  /**
+   * Обращение из кабинета. Кабинет живёт на том же домене, поэтому источник
+   * проверяется тем же списком, что у заявок. Сессий пользователей на сервере
+   * ещё нет: пока держимся на проверке источника, лимите частоты и пределе
+   * размера. Когда появится вход, обращение привяжется к компании по сессии,
+   * а не по тому, что пришло в теле.
+   */
+  async function handleReport(req, res) {
+    const origin = (req.headers.origin ?? "").replace(/\/+$/, "");
+    const allowed = cfg.allowedOrigins.includes(origin) ? origin : "";
+    const cors = allowed ? corsHeaders(allowed) : {};
+
+    if (req.method === "OPTIONS") return send(res, allowed ? 204 : 403, undefined, cors);
+    if (req.method !== "POST") return send(res, 405, { ok: false }, cors);
+    if (!allowed) {
+      log.error("[uklad] обращение с чужого источника:", origin || "(пусто)");
+      return send(res, 403, { ok: false });
+    }
+    if (!limiter.take(clientIp(req, cfg.trustProxy))) {
+      return send(res, 429, { ok: false }, { ...cors, "Retry-After": "60" });
+    }
+    const body = await readBody(req, MAX_REPORT_BYTES);
+    if (!body.ok) return send(res, 413, { ok: false }, { ...cors, Connection: "close" });
+
+    let raw;
+    try {
+      raw = JSON.parse(body.text);
+    } catch {
+      return send(res, 400, { ok: false }, cors);
+    }
+    const parsed = parseReport(raw);
+    if (!parsed.ok) {
+      log.error("[uklad] обращение не принято:", parsed.error);
+      return send(res, 400, { ok: false }, cors);
+    }
+    // Храним с сообщением после второй чистки, а не как пришло.
+    const payload = JSON.stringify({ ...raw, message: parsed.report.message });
+    const id = db.addReport(parsed.report, payload, now());
+    return send(res, 200, { ok: true, id }, cors);
+  }
+
   function handleDemo(req, res, token) {
     const row = isToken(token) ? db.findDemo(token) : undefined;
     const t = now();
@@ -223,6 +270,7 @@ function createApp({ cfg, db, mail, now = () => new Date(), log = console }) {
         return send(res, 200, { ok: true });
       }
       if (url.pathname === "/api/leads") return await handleLead(req, res);
+      if (url.pathname === "/api/support/reports") return await handleReport(req, res);
       const demo = /^\/d\/([^/]+)\/?$/.exec(url.pathname);
       if (demo && req.method === "GET") return handleDemo(req, res, demo[1]);
       return send(res, 404, { ok: false });
@@ -247,8 +295,8 @@ function main() {
   server.headersTimeout = 10_000;
 
   const purge = () => {
-    const gone = db.purge(new Date(), cfg.retentionDays);
-    if (gone.leads || gone.demos) console.log("[uklad] чистка:", gone);
+    const gone = db.purge(new Date(), cfg.retentionDays, cfg.reportRetentionDays);
+    if (gone.leads || gone.demos || gone.reports) console.log("[uklad] чистка:", gone);
   };
   purge();
   setInterval(purge, DAY_MS).unref();

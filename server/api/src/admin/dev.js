@@ -164,6 +164,64 @@ function seed(db, store) {
   db.prepare(
     `INSERT INTO demo_links (token, email, lead_id, created_at, expires_at, opens) VALUES (?, ?, ?, ?, ?, 0)`,
   ).run(randomBytes(16).toString("base64url"), "petr@test.ru", 4, ago(6).toISOString(), ahead(8));
+
+  // Обращения из кабинета — в том виде, в каком их шлёт «Сообщить о проблеме».
+  const report = (message, view, journal, snapshot) =>
+    JSON.stringify({
+      version: 1,
+      createdAt: ago(0.1).toISOString(),
+      message,
+      env: {
+        userAgent: "Mozilla/5.0 (Macintosh) Chrome/130",
+        language: "ru-RU",
+        screen: "1512x982",
+        timezone: "Europe/Moscow",
+        view,
+      },
+      journal,
+      ...(snapshot ? { snapshot } : {}),
+    });
+  const at = (h) => Date.now() - h * 3_600_000;
+  const addReport = db.prepare(
+    `INSERT INTO support_reports (created_at, message, view, errors, has_snapshot, payload, status) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+  );
+  const j1 = [
+    { at: at(1.2), kind: "view", name: "dashboard" },
+    { at: at(1.1), kind: "view", name: "receiving" },
+    {
+      at: at(1.0),
+      kind: "error",
+      name: "command:data.failed",
+      detail:
+        "TypeError: Cannot read properties of undefined (reading 'lines')\n    at acceptLine (receiving.ts:212)",
+    },
+    { at: at(0.9), kind: "view", name: "receiving" },
+  ];
+  addReport.run(
+    ago(0.04).toISOString(),
+    "После сканирования коробки пропала строка приёмки, пришлось начинать заново.",
+    "receiving",
+    1,
+    1,
+    report(
+      "После сканирования коробки пропала строка приёмки, пришлось начинать заново.",
+      "receiving",
+      j1,
+      { data: { products: [] }, stats: { names: 9, dropped: 14, texts: 3 } },
+    ),
+    "new",
+  );
+  addReport.run(
+    ago(2).toISOString(),
+    "Как напечатать ярлыки сразу на весь ряд?",
+    "labels",
+    0,
+    0,
+    report("Как напечатать ярлыки сразу на весь ряд?", "labels", [
+      { at: at(48), kind: "view", name: "labels" },
+    ]),
+    "done",
+  );
 }
 
 function main() {

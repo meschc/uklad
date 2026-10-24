@@ -11,6 +11,7 @@ import * as orders from "./orders";
 import * as documents from "./documents";
 import * as workstation from "./workstation";
 import * as operations from "./operations";
+import * as support from "./support";
 
 /**
  * Мини-i18n без внешних зависимостей (ТЗ, разд. 3.3 — язык системы).
@@ -180,6 +181,7 @@ const ru = {
   ...documents.ru,
   ...workstation.ru,
   ...operations.ru,
+  ...support.ru,
 };
 
 // А здесь аннотация нужна: она требует от английского словаря ровно тот же
@@ -195,6 +197,7 @@ const en: Record<MsgKey, string> = {
   ...documents.en,
   ...workstation.en,
   ...operations.en,
+  ...support.en,
 };
 
 export const messages: Record<Lang, Record<MsgKey, string>> = { ru, en };
@@ -213,4 +216,5 @@ export const dictionaryParts = [
   documents,
   workstation,
   operations,
+  support,
 ] as const;

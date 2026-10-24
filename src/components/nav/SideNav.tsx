@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Boxes, Moon, Sun, type LucideIcon } from "lucide-react";
+import { ArrowLeft, Boxes, LifeBuoy, Moon, Sun, type LucideIcon } from "lucide-react";
 import { countUnread, selectRole, useEditor, visibleChatPartners } from "@/lib/store";
 import { entriesFor, isGroup } from "./navItems";
 import type { AppView } from "@/lib/types";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { eyebrow } from "@/components/ui/eyebrow";
+import { ReportProblemDialog } from "@/components/support/ReportProblemDialog";
 
 /**
  * Боковой рельс навигации по экранам приложения. Именно боковой, а не пункты в
@@ -38,6 +39,7 @@ export function SideNav() {
   const dark = theme === "dark";
 
   const [openGroup, setOpenGroup] = useState<string | null>(null);
+  const [reporting, setReporting] = useState(false);
   const navRef = useRef<HTMLElement>(null);
 
   // Подменю закрывается кликом мимо и Escape: раскрытая группа перекрывает
@@ -172,6 +174,14 @@ export function SideNav() {
           навигация по экранам склада (п.5). */}
       <div className="mt-auto flex flex-col items-center gap-2 pt-2">
         <button
+          onClick={() => setReporting(true)}
+          aria-label={t("support.nav")}
+          title={t("support.nav")}
+          className="flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        >
+          <LifeBuoy className="size-4" />
+        </button>
+        <button
           onClick={() => updateProfile({ theme: dark ? "light" : "dark" })}
           aria-label={t("nav.theme")}
           className="flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
@@ -179,6 +189,7 @@ export function SideNav() {
           {dark ? <Sun className="size-4" /> : <Moon className="size-4" />}
         </button>
       </div>
+      {reporting && <ReportProblemDialog onClose={() => setReporting(false)} />}
     </nav>
   );
 }

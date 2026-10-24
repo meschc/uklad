@@ -1,4 +1,5 @@
 import type { MsgKey } from "../i18n";
+import { describeError, journal } from "../support/journal";
 
 /**
  * Один конверт ответа для всего слоя данных (п.3.2.2).
@@ -37,6 +38,8 @@ export async function attempt<T>(
     return ok(await run());
   } catch (e) {
     console.error("[uklad] операция не выполнена:", e);
+    // Отказ команды — главное, что поддержка ищет в журнале обращения.
+    journal.record("error", `command:${error}`, describeError(e));
     return fail(error);
   }
 }
