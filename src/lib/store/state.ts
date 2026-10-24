@@ -4,6 +4,9 @@ import type { StateCreator } from "zustand";
 import type { MsgKey } from "../i18n";
 import type { ItemScan } from "../packing";
 import type {
+  BackupSettings,
+  Subscription,
+  TariffId,
   BreakPolicy,
   PackSession,
   StaffEvent,
@@ -644,6 +647,16 @@ export interface StaffSlice {
   removePartner: (id: string) => void;
 }
 
+/** Тариф, менеджер и резервные копии (обещания тарифов на сайте). */
+export interface SubscriptionSlice {
+  subscription: Subscription;
+  /** Сменить тариф. Сегодня — переключатель в профиле, завтра — биллинг. */
+  setTariff: (tariff: TariffId) => void;
+  updateBackupSettings: (patch: Partial<BackupSettings>) => void;
+  /** Архив скачан: сбрасывает напоминание. */
+  markBackupDone: (at: number) => void;
+}
+
 // --- Рабочее место и смена сотрудника -----------------------------------------
 
 export interface WorkstationSlice {
@@ -718,6 +731,7 @@ export interface OperationsSlice {
 }
 
 export type EditorState = AccountSlice &
+  SubscriptionSlice &
   WorkstationSlice &
   OperationsSlice &
   SessionSlice &
