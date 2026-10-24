@@ -53,6 +53,10 @@ DATABASE_URL=postgres://uklad_owner:…@localhost/uklad npm run migrate
 PG_ADMIN_URL=postgres://postgres:postgres@localhost:5432/postgres npm test
 ```
 
+Три пароля — три разных случайных строки по 32+ символа (`openssl rand -base64 32`).
+Одинаковые пароли у `uklad_app` и `uklad_notifier` сводят на нет разделение ролей:
+укравший доступ приложения получил бы и рассылку поверх компаний.
+
 Тесты создают свою базу `uklad_test_*` на каждый файл и удаляют её в конце.
 В CI это отдельное задание «Изоляция компаний (Postgres)».
 
