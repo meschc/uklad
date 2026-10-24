@@ -18,9 +18,14 @@ import { ScanField, type ScanStatus } from "@/components/fulfillment/ScanField";
  * Демо-бейджи — вход за любого сотрудника одним кликом. В рабочем кабинете с
  * сервером их быть не должно: показывать только в демо-режиме.
  */
+const MANAGER_ROLE = /управля|заместител|руковод|директор|manager/i;
+
 export function BadgeLogin() {
   const t = useT();
-  const staff = useEditor((s) => s.warehouse.staff) ?? [];
+  const allStaff = useEditor((s) => s.warehouse.staff) ?? [];
+  // Руководство в процессах не работает — его бейджей среди демо нет. Войти
+  // по скану оно может (подменить упаковщика), просто не из подсказки.
+  const staff = allStaff.filter((m) => !MANAGER_ROLE.test(m.role));
   const login = useCommand(workstationRepository.login);
   const [status, setStatus] = useState<ScanStatus>("idle");
 

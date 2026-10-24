@@ -55,7 +55,7 @@ export function WorkstationScreen() {
           <ArrowLeft />
           {t("ws.exit")}
         </Button>
-        <div className="hidden min-w-0 flex-wrap items-center gap-1.5 md:flex">
+        <div className="hidden min-w-0 flex-wrap items-center gap-1.5 2xl:flex">
           {STATIONS.map((st) => (
             <span
               key={st}
@@ -73,7 +73,8 @@ export function WorkstationScreen() {
         </div>
         <Equipment />
         {member && (
-          <div className="ml-auto flex items-center gap-3">
+          <div className="ml-auto flex items-center gap-4">
+            <ShiftBar staffId={member.id} />
             <div className="text-right">
               <p className="text-sm font-medium leading-tight">{member.name}</p>
               <p className="text-xs text-muted-foreground">
@@ -92,13 +93,9 @@ export function WorkstationScreen() {
         {!member ? (
           <BadgeLogin />
         ) : (
-          <div
-            className={cn(
-              "mx-auto flex flex-col gap-5 px-4 py-6",
-              tab === "pack" ? "max-w-5xl" : "max-w-3xl",
-            )}
-          >
-            <ShiftBar staffId={member.id} />
+          // Ширина одна на все вкладки: иначе полоса вкладок прыгает при
+          // переключении. Смена ушла в шапку — главное на экране товар.
+          <div className="mx-auto flex max-w-5xl flex-col gap-5 px-4 py-6">
             <Segmented<Tab>
               value={tab}
               onChange={setTab}
