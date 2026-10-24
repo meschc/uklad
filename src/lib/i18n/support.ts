@@ -12,9 +12,9 @@ export const ru = {
   "support.journal": "Журнал событий за 7 дней: {n}",
   "support.journal.hint":
     "Какие экраны открывались, какие действия и ошибки были. Без имён, телефонов и почт.",
-  "support.snapshot": "Приложить копию данных склада без имён",
+  "support.snapshot": "Прислать копию данных склада",
   "support.snapshot.hint":
-    "Товары, ячейки и операции останутся — по ним видно ошибку. Имена людей заменятся метками вроде «Сотрудник 3», контакты, реквизиты и ключи подключений будут удалены.",
+    "Товары, ячейки и операции останутся: по ним видно ошибку. Имена людей заменятся метками вроде «Сотрудник 3», а контакты, реквизиты и ключи подключений в копию не попадут.",
   "support.snapshot.stats":
     "Заменено имён: {names} · удалено полей: {dropped} · скрыто текстов: {texts}",
   "support.preview.show": "Показать, что уйдёт",
@@ -39,7 +39,7 @@ export const en: Record<keyof typeof ru, string> = {
   "support.journal": "Event log for 7 days: {n}",
   "support.journal.hint":
     "Which screens were opened, which actions and errors happened. No names, phones or emails.",
-  "support.snapshot": "Attach a copy of warehouse data without names",
+  "support.snapshot": "Send a copy of warehouse data",
   "support.snapshot.hint":
     "Goods, cells and operations stay — they show the error. People's names become labels like “Staff 3”; contacts, company details and integration keys are removed.",
   "support.snapshot.stats":

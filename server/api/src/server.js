@@ -116,6 +116,25 @@ function readBody(req, max = MAX_BODY_BYTES) {
   });
 }
 
+/** Письмо-копия обращения: что случилось, где, сколько ошибок, ссылка в админку. */
+function reportLetter(id, report, payload, adminOrigin) {
+  const lines = [
+    report.message,
+    "",
+    `Экран: ${report.view || "—"}`,
+    `Ошибок в журнале: ${report.errors}`,
+    `Копия данных склада: ${report.hasSnapshot ? "есть, во вложении" : "нет"}`,
+  ];
+  if (adminOrigin) lines.push("", `В админке: ${adminOrigin}/support/${id}`);
+  return {
+    subject: `Обращение № ${id}${report.view ? ` · ${report.view}` : ""}`,
+    text: lines.join("\n"),
+    attachments: [
+      { filename: `obrashchenie-${id}.json`, content: payload, contentType: "application/json" },
+    ],
+  };
+}
+
 const isObj = (v) => Boolean(v) && typeof v === "object" && !Array.isArray(v);
 const filled = (v) => typeof v === "string" && v.trim() !== "";
 /** Человек не напишет, что случилось, быстрее чем за 2 секунды. */
@@ -281,6 +300,11 @@ function createApp({ cfg, db, mail, now = () => new Date(), log = console }) {
     delete rest.elapsedMs;
     const payload = JSON.stringify({ ...scrubDeep(rest), message: parsed.report.message });
     const id = db.addReport(parsed.report, payload, now());
+    // Копия на почту — вторая линия: обращение уже в базе, и сбой письма
+    // человеку не показываем. Тело — файлом, в тексте только суть и ссылка.
+    mail
+      .sendLetter(reportLetter(id, parsed.report, payload, cfg.adminOrigin))
+      .catch((error) => log.error(`[uklad] письмо по обращению #${id} не ушло:`, error));
     return send(res, 200, { ok: true, id }, cors);
   }
 

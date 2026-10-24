@@ -127,7 +127,11 @@ async function withRetry(fn, { attempts = 2, baseMs = 400 } = {}) {
   }
 }
 
-async function sendLetter({ subject, text, fields }) {
+/**
+ * Письмо на ящик Уклада. `attachments` — для копии обращения в поддержку
+ * (`server/api`): тело обращения уходит файлом, а не текстом письма.
+ */
+async function sendLetter({ subject, text, fields = [], attachments }) {
   const mailer = ensureTransport();
   await withRetry(() =>
     mailer.sendMail({
@@ -136,6 +140,7 @@ async function sendLetter({ subject, text, fields }) {
       replyTo: replyTo(fields),
       subject,
       text,
+      ...(attachments ? { attachments } : {}),
     }),
   );
 }

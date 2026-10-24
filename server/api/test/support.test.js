@@ -4,7 +4,7 @@
  * лечь в базу, почта из текста — стереться и на сервере, скачивание копии —
  * попасть в журнал админки.
  */
-/* global require, fetch, URLSearchParams */
+/* global require, fetch, URLSearchParams, setImmediate */
 /* eslint-disable @typescript-eslint/no-require-imports */
 const test = require("node:test");
 const assert = require("node:assert/strict");
@@ -41,9 +41,20 @@ async function start(env = {}) {
   const clock = new Date("2026-10-24T05:00:00Z");
   const db = openDb(":memory:");
   const log = { error() {}, log() {} };
-  const mail = { sendLetter: async () => {}, sendTo: async () => {}, replyTo: () => undefined };
+  const letters = [];
+  const mail = {
+    sendLetter: async (l) => void letters.push(l),
+    sendTo: async () => {},
+    replyTo: () => undefined,
+  };
   const site = http.createServer(
-    createApp({ cfg: readEnv({ PUBLIC_URL: SITE, ...env }), db, mail, now: () => clock, log }),
+    createApp({
+      cfg: readEnv({ PUBLIC_URL: SITE, ADMIN_ORIGIN: ADMIN, ...env }),
+      db,
+      mail,
+      now: () => clock,
+      log,
+    }),
   );
   const store = adminStore(db.raw);
   store.addAdmin(
@@ -63,6 +74,7 @@ async function start(env = {}) {
   return {
     db,
     store,
+    letters,
     health: async () => (await fetch(`${url(site)}/api/health`)).json(),
     send: (body, origin = SITE) =>
       fetch(`${url(site)}/api/support/reports`, {
@@ -247,4 +259,17 @@ test("серверная чистка не трогает коды: штрихк
     await app.send(report({ snapshot: { data: { title: "ИНН 503600000123" }, stats: {} } }))
   ).json();
   assert.ok(!app.store.report(id2).payload.includes("503600000123"));
+});
+
+test("копия обращения уходит на почту: суть в тексте, тело файлом", async (t) => {
+  const app = await start();
+  t.after(app.stop);
+  const { id } = await (await app.send(report())).json();
+  await new Promise((r) => setImmediate(r));
+  assert.equal(app.letters.length, 1);
+  const [letter] = app.letters;
+  assert.match(letter.subject, new RegExp(`№ ${id}`));
+  assert.ok(letter.text.includes(`${ADMIN}/support/${id}`));
+  assert.ok(!letter.text.includes("ivan@example.ru"));
+  assert.equal(letter.attachments[0].content, app.store.report(id).payload);
 });
