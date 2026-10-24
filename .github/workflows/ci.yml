@@ -99,6 +99,15 @@ jobs:
           PG_ADMIN_URL: postgres://postgres:postgres@localhost:5432/postgres
         run: npm test
 
+      # Вход в кабинет — HTTP-сервер поверх той же схемы.
+      - run: npm ci
+        working-directory: server/api
+
+      - name: Тесты входа в кабинет
+        env:
+          PG_ADMIN_URL: postgres://postgres:postgres@localhost:5432/postgres
+        run: node --test server/api/test/auth.pg.test.mjs
+
   # Образы для своего сервера (deploy/). Пока сервер не подключён, их никто не
   # собирает — без проверки здесь они сломались бы молча к дню запуска.
   docker:

@@ -261,8 +261,8 @@ test("функции в политиках только читают: STABLE, б
   // бы изоляцию изнутри. STABLE-функция менять настройки не может.
   const { rows } = await db.root.query(`
     SELECT proname, provolatile, prosecdef FROM pg_proc
-    WHERE pronamespace = 'uklad'::regnamespace
-      AND proname IN ('current_org', 'current_member', 'has_active_contract')`);
-  assert.equal(rows.length, 3);
+    WHERE pronamespace IN ('uklad'::regnamespace, 'auth'::regnamespace)
+      AND proname IN ('current_org', 'current_member', 'has_active_contract', 'current_account')`);
+  assert.equal(rows.length, 4);
   for (const f of rows) assert.deepEqual([f.provolatile, f.prosecdef], ["s", false], f.proname);
 });
