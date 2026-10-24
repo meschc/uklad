@@ -9,6 +9,7 @@ import * as warehouse from "./warehouse";
 import * as fulfillment from "./fulfillment";
 import * as orders from "./orders";
 import * as documents from "./documents";
+import * as subscription from "./subscription";
 import * as workstation from "./workstation";
 import * as operations from "./operations";
 import * as support from "./support";
@@ -179,6 +180,7 @@ const ru = {
   ...fulfillment.ru,
   ...orders.ru,
   ...documents.ru,
+  ...subscription.ru,
   ...workstation.ru,
   ...operations.ru,
   ...support.ru,
@@ -195,6 +197,7 @@ const en: Record<MsgKey, string> = {
   ...fulfillment.en,
   ...orders.en,
   ...documents.en,
+  ...subscription.en,
   ...workstation.en,
   ...operations.en,
   ...support.en,
@@ -214,6 +217,7 @@ export const dictionaryParts = [
   fulfillment,
   orders,
   documents,
+  subscription,
   workstation,
   operations,
   support,

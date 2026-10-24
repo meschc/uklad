@@ -97,3 +97,35 @@ export interface Session {
   token: string;
   startedAt: number;
 }
+
+/**
+ * Тариф аккаунта — те же три готовых тарифа, что на сайте (`site/data/plans`,
+ * таблица отличий в `warehouses/tariffsData.ts`). Оплаты в прототипе нет:
+ * тариф пока выбирается в профиле, а придёт из биллинга сервера.
+ */
+export type TariffId = "operator" | "warehouse" | "start";
+
+/** Персональный менеджер тарифа «Оператор». Назначает его Уклад, не клиент. */
+export interface Manager {
+  name: string;
+  phone?: string;
+  email?: string;
+}
+
+/** Настройки резервных копий (тарифы на сайте, группа «Данные»). */
+export interface BackupSettings {
+  /** Напоминать сделать копию раз в N дней; 0 — не напоминать. */
+  remindEveryDays: number;
+  /** Когда последний раз скачан архив (мс). Нет — копию ещё не делали. */
+  lastBackupAt?: number;
+  /** «Напомнить позже» откладывает напоминание до этого момента (мс). */
+  snoozedUntil?: number;
+  /** Еженедельная копия на почту — только «Склад» и «Оператор». */
+  emailWeekly: boolean;
+}
+
+export interface Subscription {
+  tariff: TariffId;
+  manager?: Manager;
+  backup: BackupSettings;
+}
