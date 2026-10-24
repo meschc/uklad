@@ -76,7 +76,7 @@ describe("Реквизиты владельца сайта", () => {
 
     test("код телефона в плане нумерации не выделен", () => {
       // ABC-коды начинаются с 3, 4, 8; DEF-коды — с 9. Коды 2xx свободны.
-      const code = ORG.phone.match(/\((\d{3})\)/)?.[1];
+      const code = ORG.phone?.match(/\((\d{3})\)/)?.[1];
       expect(code).toBeDefined();
       expect(["3", "4", "8", "9"]).not.toContain(code![0]);
     });

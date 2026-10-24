@@ -29,6 +29,7 @@ const T = {
     "Processing requests, withdrawal of consent, deletion. Answered within ten business days.",
   ),
   phone: c("Телефон", "Phone"),
+  hours: c("Часы работы", "Working hours"),
   requisites: c("Реквизиты", "Legal details"),
   fullDisclosure: c("Полное раскрытие", "Full disclosure"),
 
@@ -70,12 +71,14 @@ export function ContactsScreen() {
           <a href={`mailto:${ORG.email}`} className="w-fit transition-opacity hover:opacity-75">
             {ORG.email}
           </a>
-          <a
-            href={telHref(ORG.phone)}
-            className="w-fit tabular-nums transition-opacity hover:opacity-75"
-          >
-            {ORG.phone}
-          </a>
+          {ORG.phone && (
+            <a
+              href={telHref(ORG.phone)}
+              className="w-fit tabular-nums transition-opacity hover:opacity-75"
+            >
+              {ORG.phone}
+            </a>
+          )}
         </div>
       </AsciiBanner>
       <div className="mx-auto max-w-[1280px] px-5 pb-24 pt-12 sm:px-10 sm:pt-16">
@@ -105,15 +108,17 @@ export function ContactsScreen() {
               <p className="mt-1 text-sm text-muted-foreground">{t(T.privacyNote)}</p>
             </Card>
 
-            <Card icon={Phone} title={t(T.phone)}>
+            <Card icon={ORG.phone ? Phone : Clock} title={t(ORG.phone ? T.phone : T.hours)}>
               {/* Ссылкой, а не текстом: с телефона по нему звонят в один тап,
                 а `useLinkNavigation` пропускает `tel:` мимо роутера витрины. */}
-              <a
-                href={telHref(ORG.phone)}
-                className="font-medium tabular-nums text-primary transition-opacity hover:opacity-75"
-              >
-                {ORG.phone}
-              </a>
+              {ORG.phone && (
+                <a
+                  href={telHref(ORG.phone)}
+                  className="font-medium tabular-nums text-primary transition-opacity hover:opacity-75"
+                >
+                  {ORG.phone}
+                </a>
+              )}
               <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
                 <Clock className="size-3.5" />
                 {t(ORG.hours)}
