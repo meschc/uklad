@@ -6,6 +6,7 @@ import { href } from "../lib/route";
 import { ConsentChecks, type ConsentState } from "./ConsentChecks";
 import { LeadSubmit } from "./LeadSubmit";
 import { Reveal } from "./Reveal";
+import { AsciiBanner } from "./frame/AsciiBanner";
 import { c, useT, type Copy } from "../lib/copy";
 import type { LeadField } from "../lib/leads";
 import { useLeadSend } from "../lib/useLeadSend";
@@ -61,71 +62,83 @@ export function ContactsScreen() {
   const t = useT();
 
   return (
-    <div className="mx-auto max-w-5xl px-4 pb-24 pt-28 sm:px-6 sm:pt-32">
-      <h1 className="font-display text-3xl font-heading leading-display tracking-tight sm:text-5xl">
-        {t(T.title)}
-      </h1>
-      <p className="mt-3 max-w-2xl text-base leading-relaxed text-muted-foreground">{t(T.lead)}</p>
+    <>
+      {/* Сцена из трубок, конвертов и «@» (Кирилл 23 окт); главное — почта и
+          телефон — прямо в баннере крупно, их ищут первыми. */}
+      <AsciiBanner scene="contacts" title={t(T.title)} lead={t(T.lead)}>
+        <div className="flex flex-col gap-3 text-[clamp(20px,2.2vw,28px)] tracking-[-0.02em] sm:flex-row sm:gap-10">
+          <a href={`mailto:${ORG.email}`} className="w-fit transition-opacity hover:opacity-75">
+            {ORG.email}
+          </a>
+          <a
+            href={telHref(ORG.phone)}
+            className="w-fit tabular-nums transition-opacity hover:opacity-75"
+          >
+            {ORG.phone}
+          </a>
+        </div>
+      </AsciiBanner>
+      <div className="mx-auto max-w-[1280px] px-5 pb-24 pt-12 sm:px-10 sm:pt-16">
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_380px]">
+          <Reveal>
+            <ContactForm />
+          </Reveal>
 
-      <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <Reveal>
-          <ContactForm />
-        </Reveal>
+          <Reveal delay={90} className="flex flex-col gap-4">
+            <Card icon={AtSign} title={t(T.mail)}>
+              <a
+                href={`mailto:${ORG.email}`}
+                className="font-medium text-primary transition-opacity hover:opacity-75"
+              >
+                {ORG.email}
+              </a>
+              <p className="mt-1 text-sm text-muted-foreground">{t(T.mailNote)}</p>
+            </Card>
 
-        <Reveal delay={90} className="flex flex-col gap-4">
-          <Card icon={AtSign} title={t(T.mail)}>
-            <a
-              href={`mailto:${ORG.email}`}
-              className="font-medium text-primary underline-offset-4 hover:underline"
-            >
-              {ORG.email}
-            </a>
-            <p className="mt-1 text-sm text-muted-foreground">{t(T.mailNote)}</p>
-          </Card>
+            <Card icon={ShieldCheck} title={t(T.privacy)}>
+              <a
+                href={`mailto:${ORG.privacyEmail}`}
+                className="font-medium text-primary transition-opacity hover:opacity-75"
+              >
+                {ORG.privacyEmail}
+              </a>
+              <p className="mt-1 text-sm text-muted-foreground">{t(T.privacyNote)}</p>
+            </Card>
 
-          <Card icon={ShieldCheck} title={t(T.privacy)}>
-            <a
-              href={`mailto:${ORG.privacyEmail}`}
-              className="font-medium text-primary underline-offset-4 hover:underline"
-            >
-              {ORG.privacyEmail}
-            </a>
-            <p className="mt-1 text-sm text-muted-foreground">{t(T.privacyNote)}</p>
-          </Card>
-
-          <Card icon={Phone} title={t(T.phone)}>
-            {/* Ссылкой, а не текстом: с телефона по нему звонят в один тап,
+            <Card icon={Phone} title={t(T.phone)}>
+              {/* Ссылкой, а не текстом: с телефона по нему звонят в один тап,
                 а `useLinkNavigation` пропускает `tel:` мимо роутера витрины. */}
-            <a
-              href={telHref(ORG.phone)}
-              className="font-medium tabular-nums text-primary underline-offset-4 hover:underline"
-            >
-              {ORG.phone}
-            </a>
-            <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
-              <Clock className="size-3.5" />
-              {t(ORG.hours)}
-            </p>
-          </Card>
+              <a
+                href={telHref(ORG.phone)}
+                className="font-medium tabular-nums text-primary transition-opacity hover:opacity-75"
+              >
+                {ORG.phone}
+              </a>
+              <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
+                <Clock className="size-3.5" />
+                {t(ORG.hours)}
+              </p>
+            </Card>
 
-          <Card icon={Building2} title={t(T.requisites)}>
-            {/* Реквизиты не переводятся — они имеют силу в том виде, в каком
+            <Card icon={Building2} title={t(T.requisites)}>
+              {/* Реквизиты не переводятся — они имеют силу в том виде, в каком
                 записаны у налоговой (см. `data/org.ts`), поэтому здесь помечен язык. */}
-            <p lang="ru" className="text-sm leading-relaxed text-muted-foreground">
-              {ORG.legalName}
-              <br />
-              ИНН {ORG.inn}
-            </p>
-            <a
-              href={href("/legal/requisites")}
-              className="mt-2 inline-block text-sm font-medium text-primary underline-offset-4 hover:underline"
-            >
-              {t(T.fullDisclosure)}
-            </a>
-          </Card>
-        </Reveal>
+              <p lang="ru" className="text-sm leading-relaxed text-muted-foreground">
+                {ORG.legalName}
+                <br />
+                ИНН {ORG.inn}
+              </p>
+              <a
+                href={href("/legal/requisites")}
+                className="mt-2 inline-block text-sm font-medium text-primary transition-opacity hover:opacity-75"
+              >
+                {t(T.fullDisclosure)}
+              </a>
+            </Card>
+          </Reveal>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -139,9 +152,9 @@ function Card({
   children: React.ReactNode;
 }) {
   return (
-    <div className="r-window border border-border bg-card p-5">
-      <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        <Icon className="size-3.5" />
+    <div className="rounded-[22px] bg-[var(--wh-soft)] p-5 sm:p-6">
+      <p className="flex items-center gap-2 text-sm text-[var(--wh-muted)]">
+        <Icon className="size-4 text-[var(--wh-blue)]" />
         {title}
       </p>
       <div className="mt-2">{children}</div>

@@ -1,4 +1,12 @@
 import { ru, type Copy } from "../../lib/copy";
+import { PLAN_LIMITS, num, upTo } from "../../data/offer";
+import { PLANS } from "../../data/plans";
+
+const L = PLAN_LIMITS;
+/** Ячейка лимита: «1», «до 3», «без ограничений». */
+const lim = (n: number) => (n === 1 ? "1" : ru(upTo(n)));
+const rub = (n: number) => `${num(n)}\u00a0₽`;
+const planPrice = (id: string) => PLANS.find((p) => p.id === id)?.monthly ?? 0;
 
 /**
  * Данные блока «Тарифы» лендинга для складов (Кирилл, 20 окт): таблица
@@ -17,10 +25,13 @@ export const COMPARE: Group[] = [
   {
     title: ru("Склад"),
     rows: [
-      { label: ru("Склады"), cells: [ru("до 3"), "1", "1"] },
+      {
+        label: ru("Склады"),
+        cells: [lim(L.operator.warehouses), lim(L.warehouse.warehouses), lim(L.start.warehouses)],
+      },
       {
         label: ru("Позиции номенклатуры"),
-        cells: [ru("без ограничений"), ru("до 30 000"), ru("до 5 000")],
+        cells: [lim(L.operator.skus), lim(L.warehouse.skus), lim(L.start.skus)],
       },
       { label: ru("План склада и адресное хранение"), cells: [YES, YES, YES] },
       { label: ru("Приёмка, сборка и отгрузка со сканером"), cells: [YES, YES, YES] },
@@ -40,7 +51,7 @@ export const COMPARE: Group[] = [
     rows: [
       {
         label: ru("Кабинеты селлеров"),
-        cells: [ru("без ограничений"), ru("до 30"), ru("до 5")],
+        cells: [lim(L.operator.sellers), lim(L.warehouse.sellers), lim(L.start.sellers)],
       },
       { label: ru("Заявки и поставки от селлера"), cells: [YES, YES, YES] },
       { label: ru("Чат с селлером"), cells: [YES, YES, YES] },
@@ -51,7 +62,10 @@ export const COMPARE: Group[] = [
   {
     title: ru("Сотрудники"),
     rows: [
-      { label: ru("Сотрудники"), cells: [ru("до 50"), ru("до 15"), ru("до 5")] },
+      {
+        label: ru("Сотрудники"),
+        cells: [lim(L.operator.staff), lim(L.warehouse.staff), lim(L.start.staff)],
+      },
       { label: ru("Задачи и нагрузка по фактам работы"), cells: [YES, YES, YES] },
       { label: ru("Роли и права"), cells: [YES, YES, NO] },
     ],
@@ -127,7 +141,7 @@ export const BREAKDOWN: { title: Copy; body: Copy; price: number; market: Copy }
 export const MARKET: Row[] = [
   {
     label: ru("Цена в месяц"),
-    cells: [ru("9 900 ₽"), ru("20 000–70 000 ₽"), ru("лицензия от 1,5 млн ₽")],
+    cells: [rub(planPrice("warehouse")), ru("20 000–70 000 ₽"), ru("лицензия от 1,5 млн ₽")],
   },
   {
     label: ru("Подключение"),
@@ -147,10 +161,10 @@ export const MARKET: Row[] = [
  * складам, которые в них не помещаются.
  */
 export const CALC = {
-  base: 4900,
-  baseSkus: 5000,
-  baseStaff: 5,
-  baseSellers: 5,
+  base: planPrice("start"),
+  baseSkus: L.start.skus,
+  baseStaff: L.start.staff,
+  baseSellers: L.start.sellers,
   perWarehouse: 4900,
   perSkus: { step: 5000, price: 900 },
   perStaff: { step: 5, price: 1500 },
@@ -180,7 +194,12 @@ export function calcMonthly(v: CalcInput): number {
  */
 export function calcLines(v: CalcInput): { label: Copy; count?: number; price: number }[] {
   const lines = [
-    { label: ru("Основа: 1 склад, 5 000 позиций, 5 сотрудников, 5 селлеров"), price: CALC.base },
+    {
+      label: ru(
+        `Основа: 1 склад, ${num(CALC.baseSkus)} позиций, ${CALC.baseStaff} сотрудников, ${CALC.baseSellers} селлеров`,
+      ),
+      price: CALC.base,
+    },
     {
       label: ru("Ещё склады: {n}"),
       count: Math.max(0, v.warehouses - 1),
@@ -207,11 +226,7 @@ export function calcLines(v: CalcInput): { label: Copy; count?: number; price: n
 }
 
 /** Лимиты готовых тарифов — для подсказки «готовый выгоднее». */
-export const LIMITS: Record<string, CalcInput> = {
-  start: { warehouses: 1, skus: 5000, staff: 5, sellers: 5, billing: false },
-  warehouse: { warehouses: 1, skus: 30000, staff: 15, sellers: 30, billing: false },
-  operator: { warehouses: 3, skus: Infinity, staff: 50, sellers: Infinity, billing: true },
-};
+export const LIMITS: Record<string, CalcInput> = PLAN_LIMITS;
 
 /** Самый дешёвый готовый тариф, в который помещается набранное, или null. */
 export function fittingPlan(v: CalcInput): string | null {
