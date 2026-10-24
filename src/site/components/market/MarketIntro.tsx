@@ -74,7 +74,7 @@ export function MarketIntro({
           прижаты к правому краю, чтобы не спорить с отбором. */}
       <div
         aria-hidden
-        className="absolute inset-0 [mask-image:linear-gradient(90deg,transparent_15%,#000_70%)]"
+        className="absolute inset-0 [mask-image:linear-gradient(90deg,transparent_50%,#000_85%)]"
       >
         <AsciiScene kind="racks" ink="17,17,17" density={0.8} className="opacity-45" />
       </div>
