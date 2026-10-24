@@ -3,7 +3,7 @@
 //
 //   PG_ADMIN_URL=postgres://postgres:postgres@localhost:5432/postgres \
 //     node --test server/api/test/chat.pg.test.mjs
-/* global process, fetch */
+/* global process, fetch, URL */
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
@@ -14,9 +14,13 @@ const SKIP = !process.env.PG_ADMIN_URL && "нет PG_ADMIN_URL";
 
 const ORIGIN = "https://u-klad.ru";
 const PW = "очень-длинный-пароль";
-let db, helpers, server, base, cookieName;
+let db, helpers, server, base, cookieName, notifier;
 // Что ушло бы в Centrifugo: кому и о чём.
 const rings = [];
+// Что ушло бы в Телеграм и на почту.
+const tg = [];
+const letters = [];
+const SECRET = "s".repeat(40);
 
 before(async () => {
   if (SKIP) return;
@@ -24,16 +28,45 @@ before(async () => {
   const { createApp, send, readBody } = require("../src/server.js");
   const { createAuth } = require("../src/cabinet/auth.js");
   const { createChat } = require("../src/cabinet/chat.js");
+  const { createTelegram } = require("../src/cabinet/telegram.js");
+  const { createNotifier } = require("../src/cabinet/notify.js");
   db = await helpers.setupDb();
   const cfg = { publicUrl: ORIGIN, allowedOrigins: [ORIGIN], trustProxy: true };
   const quiet = { error() {} };
   const auth = createAuth({ pool: db.pool, cfg, send, readBody, log: quiet });
   const realtime = { notify: async (to, data) => rings.push({ to, data }) };
   const chat = createChat({ auth, realtime, send, log: quiet });
+  const tgApi = {
+    enabled: true,
+    sendMessage: async (chatId, text) => {
+      tg.push({ chatId: String(chatId), text });
+      return { ok: true, blocked: false };
+    },
+  };
+  const telegram = createTelegram({
+    pool: db.pool,
+    auth,
+    api: tgApi,
+    botName: "uklad_test_bot",
+    webhookSecret: SECRET,
+    send,
+    readBody,
+    log: quiet,
+  });
+  const mail = { sendTo: async (letter) => letters.push(letter) };
+  notifier = createNotifier({
+    pool: db.pool,
+    telegram: tgApi,
+    mail,
+    appUrl: `${ORIGIN}/app/`,
+    log: quiet,
+  });
   cookieName = auth.cookieName;
   const cabinet = {
     handle: async (req, res, url) =>
-      (await auth.handle(req, res, url)) || (await chat.handle(req, res, url)),
+      (await auth.handle(req, res, url)) ||
+      (await chat.handle(req, res, url)) ||
+      (await telegram.handle(req, res, url)),
   };
   server = http.createServer(
     createApp({
@@ -83,7 +116,7 @@ async function signUp(email, kind) {
   return { ...who, memberId: me.json.current.memberId };
 }
 
-let wh, seller, stranger, contractId;
+let wh, seller, stranger, contractId, convId;
 
 async function seed() {
   wh = await signUp("wh@chat.ru", "warehouse");
@@ -111,6 +144,7 @@ test(
     const conv = await post("/api/chat/conversations", { contractId, title: "Поставки" }, wh);
     assert.equal(conv.status, 201);
     const id = conv.json.id;
+    convId = id;
 
     // Селлер видит диалог как «можно войти», а переписку — только после входа.
     const list = await call("/api/chat/conversations", { who: seller });
@@ -197,3 +231,114 @@ test("без входа и с чужого сайта чат закрыт", { sk
   });
   assert.equal(res.status, 403);
 });
+
+/**
+ * Перевести часы чата назад: сообщения, прочтения и отметки рассылки
+ * становятся старше на `interval`. Триггеры неизменяемости обходятся только
+ * здесь, суперпользователем тестовой базы.
+ */
+async function travel(interval) {
+  const r = db.root;
+  await r.query("BEGIN");
+  await r.query("SET LOCAL session_replication_role = replica");
+  await r.query(`UPDATE uklad.messages SET created_at = created_at - $1::interval`, [interval]);
+  await r.query(
+    `UPDATE uklad.conversation_members
+     SET joined_at = joined_at - $1::interval, last_read_at = last_read_at - $1::interval`,
+    [interval],
+  );
+  await r.query(
+    `UPDATE auth.chat_notified
+     SET notified_upto = notified_upto - $1::interval, notified_at = notified_at - $1::interval`,
+    [interval],
+  );
+  await r.query("COMMIT");
+}
+
+const update = (text, chatId = 777, secret = SECRET) =>
+  fetch(`${base}/api/telegram/webhook`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Telegram-Bot-Api-Secret-Token": secret },
+    body: JSON.stringify({ message: { chat: { id: chatId, type: "private" }, text } }),
+  });
+
+test(
+  "Телеграм: привязка по одноразовой ссылке и уведомление о непрочитанном",
+  { skip: SKIP },
+  async () => {
+    const before = await call("/api/chat/telegram", { who: seller });
+    assert.deepEqual([before.json.available, before.json.linked], [true, false]);
+
+    const link = await post("/api/chat/telegram/link", {}, seller);
+    assert.equal(link.status, 200);
+    const code = new URL(link.json.url).searchParams.get("start");
+    assert.match(link.json.url, /^https:\/\/t\.me\/uklad_test_bot\?start=/);
+
+    // Без секрета вебхук закрыт: чужой «/start» не привяжет ничего.
+    assert.equal((await update(`/start ${code}`, 777, "x".repeat(40))).status, 403);
+    assert.equal((await update(`/start ${code}`)).status, 200);
+    assert.match(tg.at(-1).text, /^Готово/);
+    assert.equal((await call("/api/chat/telegram", { who: seller })).json.linked, true);
+    // Второй раз та же ссылка не работает — даже из другого Телеграма.
+    await update(`/start ${code}`, 888);
+    assert.match(tg.at(-1).text, /устарела/);
+
+    tg.length = 0;
+    await post("/api/chat/messages", { conversationId: convId, body: "Машина в 14:00" }, wh);
+    // Минуты ещё не прошло — человек, может быть, читает в кабинете.
+    assert.equal(await notifier.tickTelegram(), 0);
+    await travel("2 minutes");
+    assert.equal(await notifier.tickTelegram(), 1);
+    assert.equal(tg[0].chatId, "777");
+    assert.match(tg[0].text, /wh@chat\.ru — Поставки/);
+    assert.match(tg[0].text, /Машина в 14:00/);
+    // Повторно о том же не говорим.
+    assert.equal(await notifier.tickTelegram(), 0);
+
+    // Показ текста выключен — в Телеграм уходит только «кто».
+    await post("/api/chat/settings", { notifyPreview: false }, seller);
+    await post("/api/chat/messages", { conversationId: convId, body: "Код ворот 4512" }, wh);
+    await travel("2 minutes");
+    assert.equal(await notifier.tickTelegram(), 1);
+    assert.match(tg[1].text, /Новое сообщение/);
+    assert.equal(tg[1].text.includes("4512"), false);
+
+    // Прочитал в кабинете — уведомлять не о чем.
+    await post("/api/chat/messages", { conversationId: convId, body: "Ещё одно" }, wh);
+    await post("/api/chat/read", { conversationId: convId }, seller);
+    await travel("2 minutes");
+    assert.equal(await notifier.tickTelegram(), 0);
+
+    // /stop — и бот замолкает.
+    await update("/stop");
+    await post("/api/chat/messages", { conversationId: convId, body: "Вы тут?" }, wh);
+    await travel("2 minutes");
+    assert.equal(await notifier.tickTelegram(), 0);
+    assert.equal((await call("/api/chat/telegram", { who: seller })).json.linked, false);
+  },
+);
+
+test(
+  "письмо о непрочитанном — только на подтверждённую почту и не чаще раза в 6 часов",
+  { skip: SKIP },
+  async () => {
+    letters.length = 0;
+    await post("/api/chat/messages", { conversationId: convId, body: "Акт подписали?" }, wh);
+    await travel("2 hours");
+    // Почта не подтверждена — не пишем: адрес мог вписать кто угодно.
+    assert.equal(await notifier.tickEmail(), 0);
+
+    await db.root.query(
+      `UPDATE auth.accounts SET email_verified_at = now() WHERE email = 'seller@chat.ru'`,
+    );
+    assert.equal(await notifier.tickEmail(), 1);
+    assert.equal(letters[0].to, "seller@chat.ru");
+    assert.match(letters[0].text, /wh@chat\.ru — Поставки/);
+
+    await post("/api/chat/messages", { conversationId: convId, body: "Ау" }, wh);
+    await travel("2 hours");
+    assert.equal(await notifier.tickEmail(), 0);
+    await travel("5 hours");
+    assert.equal(await notifier.tickEmail(), 1);
+  },
+);

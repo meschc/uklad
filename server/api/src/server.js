@@ -23,6 +23,8 @@
  *   GET  /d/<токен>       — персональная демо-ссылка → кабинет
  *   /api/auth/*, /api/staff/* — вход в кабинет (`cabinet/auth.js`), если
  *                           задан DATABASE_URL (Postgres, `server/db`)
+ *   /api/chat/*           — чат кабинета (`cabinet/chat.js`, `cabinet/telegram.js`)
+ *   POST /api/telegram/webhook — обновления Телеграм-бота уведомлений
  *
  * Все настройки — переменными окружения, образец в `deploy/.env.example`.
  */
@@ -332,7 +334,7 @@ function createApp({ cfg, db, mail, cabinet = null, now = () => new Date(), log 
       if (demo && req.method === "GET") return handleDemo(req, res, demo[1]);
       if (cabinet && (await cabinet.handle(req, res, url))) return;
       // Кабинет без базы не работает: честный 503, а не «нет такого адреса».
-      if (!cabinet && /^\/api\/(auth|staff|chat)\//.test(url.pathname)) {
+      if (!cabinet && /^\/api\/(auth|staff|chat|telegram)\//.test(url.pathname)) {
         return send(res, 503, { ok: false });
       }
       return send(res, 404, { ok: false });
@@ -375,9 +377,37 @@ function main() {
       log: console,
     });
     const chat = createChat({ auth, realtime, send, log: console });
+    // Телеграм-бот и письма о непрочитанном. Без TELEGRAM_* бот молчит,
+    // письма работают на той же почте, что и заявки.
+    const { createTelegram, createTelegramApi } = require("./cabinet/telegram");
+    const { createNotifier } = require("./cabinet/notify");
+    const tgApi = createTelegramApi({ token: process.env.TELEGRAM_BOT_TOKEN, log: console });
+    const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
+    const telegram = createTelegram({
+      pool,
+      auth,
+      api: tgApi,
+      botName: process.env.TELEGRAM_BOT_NAME,
+      webhookSecret,
+      send,
+      readBody,
+      log: console,
+    });
+    if (tgApi.enabled && webhookSecret) {
+      tgApi.setWebhook(`${cfg.publicUrl}/api/telegram/webhook`, webhookSecret);
+    }
+    createNotifier({
+      pool,
+      telegram: tgApi,
+      mail,
+      appUrl: `${cfg.publicUrl}/app/`,
+      log: console,
+    }).start();
     cabinet = {
       handle: async (req, res, url) =>
-        (await auth.handle(req, res, url)) || (await chat.handle(req, res, url)),
+        (await auth.handle(req, res, url)) ||
+        (await chat.handle(req, res, url)) ||
+        (await telegram.handle(req, res, url)),
     };
   } else {
     console.log("[uklad] кабинет выключен: не задан DATABASE_URL");

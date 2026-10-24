@@ -264,3 +264,19 @@ test("участника и сообщение нельзя перенести �
     /immutable/,
   );
 });
+
+test("флаг рассылки не открывает переписку приложению", async () => {
+  const conv = await contractChat();
+  // Даже если код приложения поставит флаг сам, правило рассылки — только
+  // для владельца таблиц: чужая компания по-прежнему не видит ничего.
+  await as(w.S2, people.s2, async (c) => {
+    await c.query(`SELECT set_config('app.notifier', 'on', true)`);
+    for (const table of ["messages", "conversation_members"]) {
+      const found = await rows(c, `SELECT 1 FROM uklad.${table} WHERE conversation_id = $1`, [
+        conv,
+      ]);
+      assert.equal(found.length, 0, table);
+    }
+    assert.equal((await rows(c, `SELECT 1 FROM uklad.members WHERE org_id = $1`, [w.A])).length, 0);
+  });
+});
