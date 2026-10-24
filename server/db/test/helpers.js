@@ -48,6 +48,11 @@ export async function setupDb() {
   const root = new pg.Client({ connectionString: urlFor(name) });
   await root.connect();
 
+  // DROP … WITH (FORCE) обрывает соединения, которые сервер ещё не успел
+  // закрыть после pool.end(). Обрыв в уборке — не ошибка теста.
+  pool.on("error", () => {});
+  root.on("error", () => {});
+
   async function teardown() {
     await pool.end();
     await root.end();

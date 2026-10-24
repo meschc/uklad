@@ -179,7 +179,8 @@ CREATE POLICY warehouses_own ON uklad.warehouses
 CREATE POLICY warehouses_seller_read ON uklad.warehouses FOR SELECT USING (
   EXISTS (SELECT 1 FROM uklad.contracts c
           WHERE c.warehouse_id = warehouses.id AND c.seller_org_id = uklad.current_org()
-            AND c.status = 'active' AND c.deleted_at IS NULL));
+            AND c.status = 'active' AND c.deleted_at IS NULL)
+  AND deleted_at IS NULL);
 
 ALTER TABLE uklad.contracts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE uklad.contracts FORCE ROW LEVEL SECURITY;
@@ -198,7 +199,8 @@ CREATE POLICY products_read ON uklad.products FOR SELECT USING (
   (org_id = uklad.current_org()
     AND (seller_org_id IS NULL OR seller_org_id = org_id
          OR uklad.has_active_contract(org_id, seller_org_id)))
-  OR (seller_org_id = uklad.current_org()
+  -- Корзину склад видит свою, а селлеру удалённый товар не виден.
+  OR (seller_org_id = uklad.current_org() AND deleted_at IS NULL
     AND uklad.has_active_contract(org_id, seller_org_id)));
 -- Писать — только склад, и назначить владельцем можно только селлера с
 -- активным договором.
@@ -226,7 +228,10 @@ CREATE POLICY stock_insert ON uklad.stock FOR INSERT WITH CHECK (
 CREATE POLICY stock_update ON uklad.stock FOR UPDATE
   USING (org_id = uklad.current_org()
     AND EXISTS (SELECT 1 FROM uklad.products p WHERE p.org_id = stock.org_id AND p.id = stock.product_id))
-  WITH CHECK (org_id = uklad.current_org());
+  -- И после правки: иначе UPDATE перевесил бы остаток на товар, который
+  -- складу уже не виден (селлер с закрытым договором).
+  WITH CHECK (org_id = uklad.current_org()
+    AND EXISTS (SELECT 1 FROM uklad.products p WHERE p.org_id = stock.org_id AND p.id = stock.product_id));
 
 ALTER TABLE uklad.reservations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE uklad.reservations FORCE ROW LEVEL SECURITY;

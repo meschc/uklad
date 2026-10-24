@@ -213,3 +213,56 @@ test("новая компания получает роли по умолчан�
     );
   });
 });
+
+test("остаток не перевесить на товар, который складу не виден", async () => {
+  // p1 скрыт от склада после закрытия договора с S1 — закрываем второй раз
+  // на время теста и возвращаем.
+  const { rows } = await db.root.query(
+    `SELECT id FROM uklad.contracts WHERE seller_org_id = $1 AND status = 'active'`,
+    [w.S1],
+  );
+  const close = (id) =>
+    asOrg(db.pool, w.A, (c) =>
+      c.query(`UPDATE uklad.contracts SET status = 'closed', closed_at = now() WHERE id = $1`, [
+        id,
+      ]),
+    );
+  await close(rows[0].id);
+  await assert.rejects(
+    asOrg(db.pool, w.A, (c) =>
+      c.query(`UPDATE uklad.stock SET product_id = $1 WHERE id = $2`, [w.a.p1, w.a.st3]),
+    ),
+    /row-level security/,
+  );
+  await asOrg(db.pool, w.A, (c) =>
+    c.query(
+      `INSERT INTO uklad.contracts (org_id, warehouse_id, seller_org_id) VALUES ($1, $2, $3)`,
+      [w.A, w.a.wh, w.S1],
+    ),
+  );
+});
+
+test("удалённый товар селлеру не виден, склад видит его в корзине", async () => {
+  await asOrg(db.pool, w.A, (c) =>
+    c.query(`UPDATE uklad.products SET deleted_at = now() WHERE id = $1`, [w.a.p2]),
+  );
+  await asOrg(db.pool, w.S2, async (c) => {
+    assert.deepEqual(await ids(c, "products"), []);
+    assert.deepEqual(await ids(c, "stock"), []);
+  });
+  await asOrg(db.pool, w.A, async (c) => {
+    assert.ok((await ids(c, "products")).includes(w.a.p2));
+    await c.query(`UPDATE uklad.products SET deleted_at = NULL WHERE id = $1`, [w.a.p2]);
+  });
+});
+
+test("функции в политиках только читают: STABLE, без SECURITY DEFINER", async () => {
+  // Политика или функция, которая могла бы сама поменять app.org_id, сломала
+  // бы изоляцию изнутри. STABLE-функция менять настройки не может.
+  const { rows } = await db.root.query(`
+    SELECT proname, provolatile, prosecdef FROM pg_proc
+    WHERE pronamespace = 'uklad'::regnamespace
+      AND proname IN ('current_org', 'current_member', 'has_active_contract')`);
+  assert.equal(rows.length, 3);
+  for (const f of rows) assert.deepEqual([f.provolatile, f.prosecdef], ["s", false], f.proname);
+});
