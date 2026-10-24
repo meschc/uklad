@@ -22,6 +22,7 @@ export const ru = {
   "ws.equip.printer": "Принтер этикеток",
   "ws.equip.scales": "Весы",
   "ws.equip.ready": "готов",
+  "ws.equip.later": "позже",
   "ws.equip.off": "не подключено",
 
   "ws.login.title": "Приложите бейдж",
@@ -170,6 +171,7 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.equip.scanner": "Scanner",
   "ws.equip.camera": "Desk camera",
   "ws.equip.printer": "Label printer",
+  "ws.equip.later": "later",
   "ws.equip.scales": "Scales",
   "ws.equip.ready": "ready",
   "ws.equip.off": "not connected",

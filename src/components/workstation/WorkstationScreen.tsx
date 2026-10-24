@@ -131,15 +131,15 @@ export function WorkstationScreen() {
  */
 function Equipment() {
   const t = useT();
-  const items: { key: MsgKey; icon: typeof ScanLine; ready: boolean }[] = [
+  const items: { key: MsgKey; icon: typeof ScanLine; ready: boolean; later?: boolean }[] = [
     { key: "ws.equip.scanner", icon: ScanLine, ready: true },
-    { key: "ws.equip.camera", icon: Camera, ready: false },
+    { key: "ws.equip.camera", icon: Camera, ready: false, later: true },
     { key: "ws.equip.printer", icon: Printer, ready: false },
     { key: "ws.equip.scales", icon: Scale, ready: false },
   ];
   return (
     <ul className="hidden flex-wrap items-center gap-3 text-xs text-muted-foreground md:flex">
-      {items.map(({ key, icon: Icon, ready }) => (
+      {items.map(({ key, icon: Icon, ready, later }) => (
         <li
           key={key}
           className="flex items-center gap-1"
@@ -147,6 +147,11 @@ function Equipment() {
         >
           <Icon className="size-3.5" />
           {t(key)}
+          {later && (
+            <span className="rounded bg-muted px-1 text-[10px] uppercase tracking-wide">
+              {t("ws.equip.later")}
+            </span>
+          )}
           <span
             className={cn(
               "size-1.5 rounded-full",
