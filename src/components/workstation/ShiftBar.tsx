@@ -10,8 +10,9 @@ import { useNow } from "./useNow";
  * Смена и перерыв — в шапке рабочего места, двумя столбиками: сверху слово,
  * под ним таймер. Смена считает, сколько идёт смена; перерыв — сколько до него
  * осталось, а на перерыве или в простое — сколько он уже длится. Нажатие на смену открывает
- * панель смены, на перерыв — сразу начинает (или заканчивает) его. Первые
- * секунды перерыв можно отменить: общий сенсорный экран задевают локтем.
+ * панель смены, на перерыв — сразу начинает (или заканчивает) его. Повторное
+ * нажатие в первые секунды отменяет перерыв: общий экран задевают локтем.
+ * Что сделает нажатие, подсказывает надпись под блоком при наведении.
  * Перерыв, доступный дольше `OVERDUE_MS`, обведён рамкой — человек без
  * перерыва устаёт и ошибается.
  */
@@ -31,6 +32,7 @@ export function ShiftBar({ staffId, onOpen }: { staffId: string; onOpen: () => v
         label={t("ws.bar.shift")}
         value={t("ws.shift.off")}
         muted
+        hint={t("ws.bar.openShift")}
         onClick={onOpen}
       />
     );
@@ -45,22 +47,34 @@ export function ShiftBar({ staffId, onOpen }: { staffId: string; onOpen: () => v
 
   if (state === "idle")
     return (
-      <div className="flex items-start gap-1">
-        <Cell icon={Timer} label={t("ws.bar.shift")} value={clock(now - start)} onClick={onOpen} />
+      <div className="grid grid-cols-2 gap-1">
+        <Cell
+          icon={Timer}
+          label={t("ws.bar.shift")}
+          value={clock(now - start)}
+          hint={t("ws.bar.openShift")}
+          onClick={onOpen}
+        />
         <Cell
           icon={Hourglass}
           label={t("ws.shift.idle")}
           value={clock(now - since)}
           tone="amber"
-          title={t("ws.mark.idle_end")}
+          hint={t("ws.mark.idle_end")}
           onClick={() => void workstationRepository.mark("idle_end")}
         />
       </div>
     );
 
   return (
-    <div className="flex items-start gap-1">
-      <Cell icon={Timer} label={t("ws.bar.shift")} value={clock(now - start)} onClick={onOpen} />
+    <div className="grid grid-cols-2 gap-1">
+      <Cell
+        icon={Timer}
+        label={t("ws.bar.shift")}
+        value={clock(now - start)}
+        hint={t("ws.bar.openShift")}
+        onClick={onOpen}
+      />
       <Cell
         icon={next?.kind === "lunch" ? UtensilsCrossed : Coffee}
         label={t(next?.kind === "lunch" ? "ws.bar.lunch" : "ws.bar.break")}
@@ -77,18 +91,17 @@ export function ShiftBar({ staffId, onOpen }: { staffId: string; onOpen: () => v
         }
         tone={onBreak ? "amber" : ready ? "green" : undefined}
         ring={overdue}
-        title={t(onBreak ? "ws.mark.break_end" : "ws.mark.break_start")}
-        onClick={() => void workstationRepository.mark(onBreak ? "break_end" : "break_start")}
+        hint={t(
+          undoable ? "ws.bar.undoBreak" : onBreak ? "ws.mark.break_end" : "ws.mark.break_start",
+        )}
+        onClick={() =>
+          // Повторное нажатие в первые секунды — отмена случайного перерыва,
+          // а не возврат с него: в журнале не остаётся трёхсекундного перерыва.
+          void (undoable
+            ? workstationRepository.undoMark()
+            : workstationRepository.mark(onBreak ? "break_end" : "break_start"))
+        }
       />
-      {undoable && (
-        <button
-          type="button"
-          className="self-center rounded-full bg-foreground px-3 py-1 text-xs text-background"
-          onClick={() => void workstationRepository.undoMark()}
-        >
-          {t("ws.bar.breakStarted")} · <span className="font-semibold">{t("ws.bar.undo")}</span>
-        </button>
-      )}
     </div>
   );
 }
@@ -100,7 +113,7 @@ function Cell({
   tone,
   muted,
   ring,
-  title,
+  hint,
   onClick,
 }: {
   icon: LucideIcon;
@@ -109,16 +122,17 @@ function Cell({
   tone?: "amber" | "green";
   muted?: boolean;
   ring?: boolean;
-  title?: string;
+  /** Что сделает нажатие — всплывает под блоком при наведении. */
+  hint: string;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
-      title={title}
+      aria-label={`${label} ${value}. ${hint}`}
       onClick={onClick}
       className={cn(
-        "flex min-w-[5.5rem] flex-col items-center rounded px-2 py-0.5 text-center leading-tight hover:bg-muted",
+        "group relative flex flex-col items-center rounded px-3 py-0.5 text-center leading-tight hover:bg-muted",
         ring && "ring-2 ring-emerald-500",
       )}
     >
@@ -135,6 +149,12 @@ function Cell({
         )}
       >
         {value}
+      </span>
+      <span
+        role="tooltip"
+        className="pointer-events-none absolute left-1/2 top-full z-50 mt-1.5 -translate-x-1/2 whitespace-nowrap rounded bg-foreground px-2 py-1 text-xs text-background opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+      >
+        {hint}
       </span>
     </button>
   );
