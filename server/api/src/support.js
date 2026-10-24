@@ -1,11 +1,12 @@
 /**
  * Разбор обращения «Сообщить о проблеме» (кабинет: `src/lib/support/report.ts`).
  *
- * Кабинет обезличивает журнал и снимок сам, до отправки. Сервер это не
- * переделывает — он не знает модель склада лучше кабинета, — но и вслепую не
- * верит: проверяет форму, режет длину и ещё раз стирает почты и телефоны из
- * текста, который человек написал руками. Тело хранится как пришло, рядом —
- * поля для списка в админке.
+ * Кабинет обезличивает журнал и снимок сам, до отправки. Сервер этому не
+ * верит: браузер может быть старым, а запрос — собранным руками. Поэтому тело
+ * целиком, каждая строка на любой глубине, ещё раз проходит `scrubText` —
+ * почты, телефоны, ИНН и ФИО с инициалами стираются и здесь (`scrubDeep`).
+ * Карточки людей сервер не разбирает — их модель знает кабинет, — но то, по
+ * чему человека находят, в базу не ложится ни при каком клиенте.
  */
 /* global module */
 
@@ -22,7 +23,11 @@ const PHONE = /\+?\d[\d\s()-]{8,20}\d/g;
 const INITIALS =
   /[А-ЯЁ][а-яё]{1,30}(?:-[А-ЯЁ][а-яё]{1,30})?\s[А-ЯЁ]\.\s?(?:[А-ЯЁ]\.)?|[А-ЯЁ]\.\s?(?:[А-ЯЁ]\.\s?)?[А-ЯЁ][а-яё]{1,30}/g;
 
-/** То же правило, что `scrubText` в кабинете: вторая линия, а не первая. */
+/**
+ * То же правило, что `scrubText` в кабинете: вторая линия, а не первая.
+ * Правило про телефон ловит любые 10–15 цифр подряд, а значит и ИНН (10 или
+ * 12 цифр), и расчётный счёт стираются им же.
+ */
 function scrubText(text) {
   return text
     .replace(EMAIL, "[почта]")
@@ -31,6 +36,23 @@ function scrubText(text) {
       const digits = m.replace(/\D/g, "");
       return digits.length >= 10 && digits.length <= 15 ? "[телефон]" : m;
     });
+}
+
+// Коды товаров и тары: EAN-13 — тринадцать цифр, и без исключения правило про
+// телефон стёрло бы штрихкод. То же исключение, что в кабинете (`anonymize.ts`).
+const CODE_KEY = /^(barcode|ean|gtin|sku|code)$|(Code|Barcode)$/;
+const PLAIN_CODE = /^[\w-]{1,64}$/;
+
+/** Каждая строка на любой глубине — через `scrubText`, кроме чистых кодов. */
+function scrubDeep(value, key = "") {
+  if (typeof value === "string") {
+    return CODE_KEY.test(key) && PLAIN_CODE.test(value) ? value : scrubText(value);
+  }
+  if (Array.isArray(value)) return value.map((v) => scrubDeep(v, key));
+  if (!value || typeof value !== "object") return value;
+  const out = {};
+  for (const [k, v] of Object.entries(value)) out[k] = scrubDeep(v, k);
+  return out;
 }
 
 const isObj = (v) => Boolean(v) && typeof v === "object" && !Array.isArray(v);
@@ -65,4 +87,4 @@ function parseReport(raw) {
   };
 }
 
-module.exports = { parseReport, scrubText };
+module.exports = { parseReport, scrubText, scrubDeep };

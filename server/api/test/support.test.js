@@ -37,13 +37,13 @@ function report(over = {}) {
   };
 }
 
-async function start() {
+async function start(env = {}) {
   const clock = new Date("2026-10-24T05:00:00Z");
   const db = openDb(":memory:");
   const log = { error() {}, log() {} };
   const mail = { sendLetter: async () => {}, sendTo: async () => {}, replyTo: () => undefined };
   const site = http.createServer(
-    createApp({ cfg: readEnv({ PUBLIC_URL: SITE }), db, mail, now: () => clock, log }),
+    createApp({ cfg: readEnv({ PUBLIC_URL: SITE, ...env }), db, mail, now: () => clock, log }),
   );
   const store = adminStore(db.raw);
   store.addAdmin(
@@ -63,6 +63,7 @@ async function start() {
   return {
     db,
     store,
+    health: async () => (await fetch(`${url(site)}/api/health`)).json(),
     send: (body, origin = SITE) =>
       fetch(`${url(site)}/api/support/reports`, {
         method: "POST",
@@ -179,4 +180,47 @@ test("старые обращения стираются через 90 дней"
   await app.send(report());
   const gone = app.db.purge(new Date("2027-02-01T00:00:00Z"), 180, 90);
   assert.equal(gone.reports, 1);
+});
+
+test("сервер не верит обезличиванию в браузере: чистит всё тело", async (t) => {
+  const app = await start();
+  t.after(app.stop);
+  const dirty = report({
+    snapshot: {
+      data: {
+        staff: [{ id: "s1", name: "Мамедова Л. Р.", phone: "+7 999 123-45-67" }],
+        account: { inn: "503600000123", mail: "boss@example.ru" },
+        products: [{ id: "g1", barcode: "4600000000017" }],
+      },
+      stats: {},
+    },
+  });
+  const { id } = await (await app.send(dirty)).json();
+  const payload = app.store.report(id).payload;
+  for (const leak of ["Мамедова", "999 123", "503600000123", "example.ru"]) {
+    assert.ok(!payload.includes(leak), `утекло: ${leak}`);
+  }
+  assert.ok(payload.includes("4600000000017"), "штрихкод остаётся");
+});
+
+test("ловушка и слишком быстрая отправка: «принято», но в базу не ложится", async (t) => {
+  const app = await start();
+  t.after(app.stop);
+  const bot = await app.send(report({ website: "http://spam" }));
+  assert.equal(bot.status, 200);
+  assert.equal((await app.send(report({ elapsedMs: 300 }))).status, 200);
+  assert.equal(app.store.reports().length, 0);
+  await app.send(report({ elapsedMs: 15000, website: "" }));
+  const [row] = app.store.reports();
+  assert.ok(!app.store.report(row.id).payload.includes("elapsedMs"));
+});
+
+test("общий суточный потолок: сверх него 429, и health говорит об этом", async (t) => {
+  const app = await start({ REPORTS_PER_DAY: "2", RATE_LIMIT_BURST: "10" });
+  t.after(app.stop);
+  assert.equal((await app.health()).reportsCapped, false);
+  assert.equal((await app.send(report())).status, 200);
+  assert.equal((await app.send(report())).status, 200);
+  assert.equal((await app.send(report())).status, 429);
+  assert.equal((await app.health()).reportsCapped, true);
 });

@@ -80,6 +80,10 @@ function openDb(file) {
        VALUES (?, ?, ?, ?, ?, ?)`,
     ),
     purgeReports: db.prepare(`DELETE FROM support_reports WHERE created_at < ?`),
+    reportsSince: db.prepare(
+      `SELECT COUNT(*) AS n, COALESCE(SUM(LENGTH(CAST(payload AS BLOB))), 0) AS bytes
+         FROM support_reports WHERE created_at >= ?`,
+    ),
   };
 
   return {
@@ -112,6 +116,11 @@ function openDb(file) {
         payload,
       );
       return Number(r.lastInsertRowid);
+    },
+    /** Сколько обращений и байт легло за сутки до `now` — для общего потолка. */
+    reportsLastDay(now) {
+      const r = q.reportsSince.get(new Date(now.getTime() - 86_400_000).toISOString());
+      return { count: Number(r.n), bytes: Number(r.bytes) };
     },
     /** Стереть просроченное. Возвращает, сколько строк ушло, — для журнала. */
     purge(now, retentionDays, reportRetentionDays = 90) {

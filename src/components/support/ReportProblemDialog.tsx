@@ -32,6 +32,9 @@ function savedState(): unknown | null {
   }
 }
 
+const now = () => Date.now();
+const msSince = (t: number) => Date.now() - t;
+
 export function ReportProblemDialog({ onClose }: { onClose: () => void }) {
   const t = useT();
   const view = useEditor((s) => s.appView);
@@ -39,6 +42,8 @@ export function ReportProblemDialog({ onClose }: { onClose: () => void }) {
   const [withSnapshot, setWithSnapshot] = useState(true);
   const [preview, setPreview] = useState(false);
   const [sentId, setSentId] = useState<number | null>(null);
+  const [website, setWebsite] = useState("");
+  const [openedAt] = useState(now);
   const send = useCommand(sendReport);
 
   // Журнал и копия читаются один раз на открытие окна: пока человек пишет,
@@ -58,7 +63,7 @@ export function ReportProblemDialog({ onClose }: { onClose: () => void }) {
   const stats = snapshotReport.snapshot?.stats;
 
   const submit = async () => {
-    const res = await send.run(report);
+    const res = await send.run({ ...report, website, elapsedMs: msSince(openedAt) });
     if (res.ok) setSentId(res.data.id);
   };
 
@@ -103,7 +108,18 @@ export function ReportProblemDialog({ onClose }: { onClose: () => void }) {
             <p className="text-xs text-muted-foreground">{t("support.journal.hint")}</p>
           </div>
 
-          {}
+          {/* Ловушка для ботов: человек это поле не видит и не заполняет. */}
+          <input
+            type="text"
+            name="website"
+            tabIndex={-1}
+            autoComplete="off"
+            aria-hidden="true"
+            value={website}
+            onChange={(e) => setWebsite(e.target.value)}
+            className="sr-only"
+          />
+
           <label className="flex cursor-pointer items-start gap-2.5">
             <input
               type="checkbox"

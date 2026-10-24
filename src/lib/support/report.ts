@@ -34,6 +34,13 @@ export interface SupportReport {
   env: ReportEnv;
   journal: JournalEntry[];
   snapshot?: { data: unknown; stats: AnonymizeStats };
+  /**
+   * Ловушка для ботов, как у заявок с витрины: скрытое поле, которое человек
+   * не видит, и сколько окно было открыто до отправки. Сервер отбрасывает
+   * заполненную ловушку и отправку быстрее двух секунд.
+   */
+  website?: string;
+  elapsedMs?: number;
 }
 
 export function readEnv(view: string): ReportEnv {

@@ -135,6 +135,75 @@ describe("обезличивание снимка", () => {
   });
 });
 
+describe("обезличивание: ловушка на поля, которых в правилах нет", () => {
+  // Завтра в карточку сотрудника добавят «ФИО полностью» или СНИЛС, а в товар —
+  // описание с контактом. Ни одно из этих имён поля правило не знает заранее.
+  const state = {
+    warehouse: {
+      id: "w1",
+      staff: [
+        {
+          id: "s1",
+          name: "Иванов Иван",
+          fio: "Иванов Иван Иванович",
+          fullName: "Иванов Иван Иванович",
+          snils: "112-233-445 95",
+          passport: "4510 123456",
+          nickname: "Ваня-кладовщик",
+          role: "Кладовщик",
+          hourlyRate: 300,
+          createdAt: 1,
+        },
+      ],
+      partners: [{ id: "p1", name: "ИП Сидоров", bik: "044525225", rs: "40802810900000000001" }],
+    },
+    account: { type: "company", name: "Иван", org: "ООО Ромашка", inn: "503600000123" },
+    products: [
+      {
+        id: "g1",
+        name: "Кружка",
+        barcode: "4600000000017",
+        description: "Иванов Иван +7 999 123-45-67, ivan@example.ru",
+      },
+    ],
+    lat: 55.75,
+  };
+  const { data } = anonymizeSnapshot(state);
+  const json = JSON.stringify(data);
+
+  it("ни почты, ни телефона, ни ИНН, ни ФИО, ни документов", () => {
+    for (const leak of [
+      "Иванов",
+      "Иван",
+      "Ваня",
+      "Сидоров",
+      "Ромашка",
+      "503600000123",
+      "044525225",
+      "40802810900000000001",
+      "112-233-445",
+      "4510 123456",
+      "999 123",
+      "example.ru",
+      "55.75",
+    ]) {
+      expect(json).not.toContain(leak);
+    }
+  });
+
+  it("у карточки человека остаются роль, числа и даты, у товара — штрихкод", () => {
+    const s = (data as { warehouse: { staff: Record<string, unknown>[] } }).warehouse.staff[0];
+    expect(s).toEqual({
+      id: "s1",
+      name: "Сотрудник 1",
+      role: "Кладовщик",
+      hourlyRate: 300,
+      createdAt: 1,
+    });
+    expect(json).toContain("4600000000017");
+  });
+});
+
 describe("отправка обращения", () => {
   it("уходит на /api/support/reports и возвращает номер", async () => {
     const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ ok: true, id: 7 })));
