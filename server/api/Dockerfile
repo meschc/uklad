@@ -15,7 +15,9 @@ COPY leads/package.json leads/
 RUN cd leads && npm install --omit=dev --no-audit --no-fund && npm cache clean --force
 
 COPY leads/lead.js leads/mail.js leads/
-COPY api/package.json api/
+# pg — для кабинета (Postgres). Ставится строго по package-lock.
+COPY api/package.json api/package-lock.json api/
+RUN cd api && npm ci --omit=dev --no-audit --no-fund && npm cache clean --force
 COPY api/src api/src
 
 # Не от root: взломанный процесс не должен получить контейнер целиком.

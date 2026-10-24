@@ -51,7 +51,7 @@ test("у роли приложения нет DELETE ни на одной таб
 test("SECURITY DEFINER функции с жёстким search_path", async () => {
   const { rows } = await db.root.query(`
     SELECT p.proname, p.proconfig FROM pg_proc p
-    JOIN pg_namespace n ON n.oid = p.pronamespace AND n.nspname = 'uklad'
+    JOIN pg_namespace n ON n.oid = p.pronamespace AND n.nspname IN ('uklad', 'auth')
     WHERE p.prosecdef`);
   for (const f of rows) {
     assert.ok(
