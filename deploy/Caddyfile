@@ -18,7 +18,7 @@
 		X-Content-Type-Options "nosniff"
 		X-Frame-Options "DENY"
 		Referrer-Policy "strict-origin-when-cross-origin"
-		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		Permissions-Policy "camera=(self), microphone=(), geolocation=()"
 		# Сначала только отчёт: строгая политика, включённая вслепую, может
 		# сломать карту или шрифты. Неделю смотрим консоль браузера, затем
 		# меняем имя заголовка на `Content-Security-Policy`.
