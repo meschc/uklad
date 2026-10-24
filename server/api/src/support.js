@@ -40,7 +40,9 @@ function scrubText(text) {
 
 // Коды товаров и тары: EAN-13 — тринадцать цифр, и без исключения правило про
 // телефон стёрло бы штрихкод. То же исключение, что в кабинете (`anonymize.ts`).
-const CODE_KEY = /^(barcode|ean|gtin|sku|code)$|(Code|Barcode)$/;
+// Номера записей (`id`, `orderId`, `boxIds`) — тоже коды: номер заказа
+// маркетплейса бывает десятью цифрами и иначе ушёл бы как «[телефон]».
+const CODE_KEY = /^(id|barcode|ean|gtin|sku|article|code)$|(Id|Ids|Code|Barcode)$/;
 const PLAIN_CODE = /^[\w-]{1,64}$/;
 
 /** Каждая строка на любой глубине — через `scrubText`, кроме чистых кодов. */

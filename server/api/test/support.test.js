@@ -224,3 +224,27 @@ test("общий суточный потолок: сверх него 429, и he
   assert.equal((await app.send(report())).status, 429);
   assert.equal((await app.health()).reportsCapped, true);
 });
+
+test("серверная чистка не трогает коды: штрихкод, артикул, номера заказов и тары", async (t) => {
+  const app = await start();
+  t.after(app.stop);
+  const codes = {
+    id: "1234567890",
+    barcode: "4600000000017",
+    sku: "MUG-300-1234567890",
+    article: "123456789012",
+    orderId: "9876543210",
+    boxIds: ["000123456789", "000123456790"],
+    labelCode: "UK-BOX-0001234567",
+  };
+  const { id } = await (
+    await app.send(report({ snapshot: { data: { products: [codes] }, stats: {} } }))
+  ).json();
+  const saved = JSON.parse(app.store.report(id).payload).snapshot.data.products[0];
+  assert.deepEqual(saved, codes);
+  // А тот же номер в свободном поле — уже не код, а возможный телефон или ИНН.
+  const { id: id2 } = await (
+    await app.send(report({ snapshot: { data: { title: "ИНН 503600000123" }, stats: {} } }))
+  ).json();
+  assert.ok(!app.store.report(id2).payload.includes("503600000123"));
+});

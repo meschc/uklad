@@ -96,7 +96,9 @@ const PERSON_KEEP =
  * про телефон стёрло бы его, а без кода не разобрать ошибку сканирования.
  * Код оставляем, если в нём нет ничего, кроме букв, цифр и дефиса.
  */
-const CODE_KEY = /^(barcode|ean|gtin|sku|code)$|(Code|Barcode)$/;
+// Номера записей (`id`, `orderId`, `boxIds`) — тоже коды: номер заказа
+// маркетплейса бывает десятью цифрами и иначе ушёл бы как «[телефон]».
+const CODE_KEY = /^(id|barcode|ean|gtin|sku|article|code)$|(Id|Ids|Code|Barcode)$/;
 const PLAIN_CODE = /^[\w-]{1,64}$/;
 
 export interface AnonymizeStats {
