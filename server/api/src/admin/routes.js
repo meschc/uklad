@@ -96,7 +96,7 @@ function createRoutes({ store, cfg }) {
     });
   }
 
-  async function get({ path, url, s, t, page, notFound }) {
+  async function get({ path, url, s, t, page, notFound, download }) {
     const nowIso = t.toISOString();
 
     if (path === "/") {
@@ -164,6 +164,30 @@ function createRoutes({ store, cfg }) {
       if (!l) return notFound();
       const account = l.account_id ? store.account(l.account_id) : null;
       return page(views.leadPage({ session: s, lead: l, fields: leadFields(l), account }));
+    }
+
+    if (path === "/support") {
+      const st = url.searchParams.get("status");
+      const status = views.SUPPORT_STATUSES.includes(st) ? st : "";
+      return page(views.supportList({ session: s, reports: store.reports(status), status }));
+    }
+    const rep = /^\/support\/(\d{1,10})(\.json)?$/.exec(path);
+    if (rep) {
+      const r = store.report(Number(rep[1]));
+      if (!r) return notFound();
+      if (rep[2]) {
+        // Скачивание копии — доступ к данным клиента, пусть и обезличенным:
+        // в журнал (план поддержки, «Защита»).
+        store.log(t, s.admin_id, "support_download", `support:${r.id}`);
+        return download(`uklad-support-${r.id}.json`, r.payload);
+      }
+      let payload = {};
+      try {
+        payload = JSON.parse(r.payload);
+      } catch {
+        /* показываем то, что есть в колонках */
+      }
+      return page(views.supportPage({ session: s, report: r, payload }));
     }
 
     if (path === "/demos") {
@@ -376,6 +400,17 @@ function createRoutes({ store, cfg }) {
         default:
           return notFound();
       }
+    }
+
+    const rep = /^\/support\/(\d{1,10})$/.exec(path);
+    if (rep) {
+      const r = store.report(Number(rep[1]));
+      if (!r) return notFound();
+      const status = form.get("status");
+      if (!views.SUPPORT_STATUSES.includes(status)) return notFound();
+      store.setReport(r.id, status, text(form, "note", 2000));
+      store.log(t, by, "support_update", `support:${r.id}`, { было: r.status, стало: status });
+      return redirect(`/support/${r.id}`);
     }
 
     const lead = /^\/leads\/(\d{1,10})(\/convert)?$/.exec(path);

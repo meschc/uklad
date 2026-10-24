@@ -1,6 +1,7 @@
 import { nowMs, uid } from "../utils";
 import {
   DEFAULT_BREAK_POLICY,
+  MARK_UNDO_MS,
   SESSION_TTL_MS,
   allowedMarks,
   isSessionLive,
@@ -65,7 +66,7 @@ export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get)
 
   stationLogout: () => set({ stationSession: null }),
 
-  markShift: (type) => {
+  markShift: (type, reason) => {
     const s = get();
     const now = nowMs();
     const staffId = liveStaffId(s, now);
@@ -74,9 +75,28 @@ export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get)
     set({
       staffEvents: [
         ...s.staffEvents,
-        event({ staffId, type, at: now, station: s.stationSession?.station }),
+        event({
+          staffId,
+          type,
+          at: now,
+          station: s.stationSession?.station,
+          ...(type === "idle_start" ? { reason: reason ?? "other" } : {}),
+        }),
       ],
     });
+    return true;
+  },
+
+  undoShiftMark: () => {
+    const s = get();
+    const now = nowMs();
+    const staffId = liveStaffId(s, now);
+    if (!staffId) return false;
+    const last = [...s.staffEvents]
+      .reverse()
+      .find((e) => e.staffId === staffId && /^(shift|break|idle)_/.test(e.type));
+    if (!last || now - last.at > MARK_UNDO_MS) return false;
+    set({ staffEvents: s.staffEvents.filter((e) => e !== last) });
     return true;
   },
 
@@ -96,6 +116,7 @@ export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get)
           shortMin: clamp(patch.shortMin, 1, 60, p.shortMin),
           lunchFrom: clamp(patch.lunchFrom, 0, 24 * 60 - 1, p.lunchFrom),
           lunchMin: clamp(patch.lunchMin, 10, 120, p.lunchMin),
+          autoIdleMin: clamp(patch.autoIdleMin, 0, 240, p.autoIdleMin ?? 15),
         },
       };
     }),

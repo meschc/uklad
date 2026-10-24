@@ -1,10 +1,8 @@
 import type { ItemScan } from "../packing";
-import type { StaffEvent, StaffEventType, WorkstationKind } from "../types";
+import type { IdleReason, ShiftMark, StaffEvent, WorkstationKind } from "../types";
 import { isStaffEvent } from "./guards";
 import { readList, storePort, type StorePort } from "./repository";
 import { attempt, fail, ok, type Result } from "./result";
-
-type ShiftMark = Extract<StaffEventType, "shift_start" | "break_start" | "break_end" | "shift_end">;
 
 /**
  * Рабочее место и журнал сотрудника (п.0.4). Здесь появится сеть: вход по
@@ -17,7 +15,9 @@ export interface WorkstationRepository {
   /** Вход по скану бейджа. Чужой или битый бейдж — отказ `ws.badgeUnknown`. */
   login: (code: string, station: WorkstationKind) => Promise<Result<string>>;
   logout: () => Promise<Result<void>>;
-  mark: (type: ShiftMark) => Promise<Result<void>>;
+  mark: (type: ShiftMark, reason?: IdleReason) => Promise<Result<void>>;
+  /** Отменить случайную отметку в первые секунды. */
+  undoMark: () => Promise<Result<void>>;
   /** Начать тару: скан тары с товаром и короба отгрузки. */
   packStart: (sourceCode: string, targetCode: string) => Promise<Result<void>>;
   packItem: (code: string) => Promise<Result<ItemScan>>;
@@ -39,8 +39,13 @@ export function createWorkstationRepository(port: StorePort = storePort): Workst
       return res.data ? ok(res.data) : fail("ws.badgeUnknown");
     },
     logout: () => attempt(() => port.get().stationLogout()),
-    mark: async (type) => {
-      const res = await attempt(() => port.get().markShift(type));
+    mark: async (type, reason) => {
+      const res = await attempt(() => port.get().markShift(type, reason));
+      if (!res.ok) return res;
+      return res.data ? ok(undefined) : fail("ws.markRejected");
+    },
+    undoMark: async () => {
+      const res = await attempt(() => port.get().undoShiftMark());
       if (!res.ok) return res;
       return res.data ? ok(undefined) : fail("ws.markRejected");
     },

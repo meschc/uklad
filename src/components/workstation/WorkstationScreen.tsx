@@ -1,15 +1,5 @@
 import { useState } from "react";
-import {
-  ArrowLeft,
-  Camera,
-  Clock,
-  ListChecks,
-  LogOut,
-  Package,
-  Printer,
-  ScanLine,
-  Scale,
-} from "lucide-react";
+import { ArrowLeft, ListChecks, LogOut, X, Package, Printer, ScanLine, Scale } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { workstationRepository } from "@/lib/data";
 import { isSessionLive } from "@/lib/workstation";
@@ -35,7 +25,7 @@ import { formatTime, useNow } from "./useNow";
  * бейдж, смена и журнал у них общие, меняется только средняя вкладка.
  */
 
-type Tab = "shift" | "pack" | "log";
+type Tab = "pack" | "log";
 
 const STATIONS: WorkstationKind[] = ["pack", "receiving", "marking", "returns", "shipping"];
 
@@ -45,6 +35,7 @@ export function WorkstationScreen() {
   const session = useEditor((s) => s.stationSession);
   const staff = useEditor((s) => s.warehouse.staff);
   const [tab, setTab] = useState<Tab>("pack");
+  const [shiftOpen, setShiftOpen] = useState(false);
 
   const live = isSessionLive(session, now);
   const member = live ? (staff ?? []).find((m) => m.id === session!.staffId) : undefined;
@@ -56,7 +47,7 @@ export function WorkstationScreen() {
           <ArrowLeft />
           {t("ws.exit")}
         </Button>
-        <div className="hidden min-w-0 flex-wrap items-center gap-1.5 md:flex">
+        <div className="hidden min-w-0 flex-wrap items-center gap-1.5 2xl:flex">
           {STATIONS.map((st) => (
             <span
               key={st}
@@ -74,7 +65,8 @@ export function WorkstationScreen() {
         </div>
         <Equipment />
         {member && (
-          <div className="ml-auto flex items-center gap-3">
+          <div className="ml-auto flex items-center gap-4">
+            <ShiftBar staffId={member.id} onOpen={() => setShiftOpen(true)} />
             <div className="text-right">
               <p className="text-sm font-medium leading-tight">{member.name}</p>
               <p className="text-xs text-muted-foreground">
@@ -93,13 +85,9 @@ export function WorkstationScreen() {
         {!member ? (
           <BadgeLogin />
         ) : (
-          <div
-            className={cn(
-              "mx-auto flex flex-col gap-5 px-4 py-6",
-              tab === "pack" ? "max-w-5xl" : "max-w-3xl",
-            )}
-          >
-            <ShiftBar staffId={member.id} />
+          // Ширина одна на все вкладки: иначе полоса вкладок прыгает при
+          // переключении. Смена ушла в шапку — главное на экране товар.
+          <div className="mx-auto flex max-w-5xl flex-col gap-5 px-4 py-6">
             <Segmented<Tab>
               value={tab}
               onChange={setTab}
@@ -107,33 +95,57 @@ export function WorkstationScreen() {
               size="md"
               ariaLabel={t("ws.title")}
               options={[
-                { value: "shift", label: t("ws.tab.shift"), icon: <Clock /> },
                 { value: "pack", label: t("ws.tab.pack"), icon: <Package /> },
                 { value: "log", label: t("ws.tab.log"), icon: <ListChecks /> },
               ]}
             />
-            {tab === "shift" && <ShiftMenu member={member} now={now} />}
             {tab === "pack" && (
-              <PackStation staffId={member.id} onNeedShift={() => setTab("shift")} />
+              <PackStation staffId={member.id} onNeedShift={() => setShiftOpen(true)} />
             )}
             {tab === "log" && <StaffLog staffId={member.id} now={now} />}
           </div>
         )}
       </main>
+
+      {member && shiftOpen && (
+        // Смена — боковой панелью справа, а не вкладкой: она нужна пару раз за
+        // смену, а основной экран отдан товару.
+        <div className="fixed inset-0 z-40 flex justify-end">
+          <button
+            type="button"
+            aria-label={t("ws.panel.close")}
+            className="absolute inset-0 cursor-default bg-black/30"
+            onClick={() => setShiftOpen(false)}
+          />
+          <aside className="relative flex h-full w-full max-w-md animate-slide-in-right flex-col gap-4 overflow-y-auto bg-background p-5 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold">{t("ws.tab.shift")}</h2>
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-label={t("ws.panel.close")}
+                onClick={() => setShiftOpen(false)}
+              >
+                <X />
+              </Button>
+            </div>
+            <ShiftMenu member={member} now={now} />
+          </aside>
+        </div>
+      )}
     </div>
   );
 }
 
 /**
  * Оборудование стола. Сканер работает всегда — он «печатает» в поле, как
- * клавиатура. Камера, принтер и весы честно помечены «не подключено»: драйверов
- * и сервера для записи видео ещё нет, а рисовать зелёные лампочки впрок нельзя.
+ * клавиатура. Принтер и весы честно помечены «не подключено», а рисовать
+ * зелёные лампочки впрок нельзя. Камеру стола не показываем, пока её нет.
  */
 function Equipment() {
   const t = useT();
   const items: { key: MsgKey; icon: typeof ScanLine; ready: boolean }[] = [
     { key: "ws.equip.scanner", icon: ScanLine, ready: true },
-    { key: "ws.equip.camera", icon: Camera, ready: false },
     { key: "ws.equip.printer", icon: Printer, ready: false },
     { key: "ws.equip.scales", icon: Scale, ready: false },
   ];

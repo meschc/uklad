@@ -4,10 +4,14 @@ import type { StateCreator } from "zustand";
 import type { MsgKey } from "../i18n";
 import type { ItemScan } from "../packing";
 import type {
+  BackupSettings,
+  Subscription,
+  TariffId,
   BreakPolicy,
   PackSession,
   StaffEvent,
-  StaffEventType,
+  ShiftMark,
+  IdleReason,
   StationSession,
   WorkstationKind,
   Account,
@@ -590,7 +594,11 @@ export interface ChatSlice {
   seedChatsOnce: () => void;
   openChat: (partnerId: string) => void;
   /** Отправить сообщение от лица текущей роли. Пустые строки игнорируются. */
-  sendChatMessage: (partnerId: string, text: string) => void;
+  sendChatMessage: (partnerId: string, text: string, replyTo?: string) => void;
+  /** Поправить своё сообщение. Чужое и удалённое не правятся. */
+  editChatMessage: (partnerId: string, messageId: string, text: string) => void;
+  /** Удалить своё сообщение: текст стирается, пометка остаётся в ленте. */
+  deleteChatMessage: (partnerId: string, messageId: string) => void;
   /**
    * Ответ собеседника в демо. Бэкенда нет и второго человека за экраном тоже:
    * без этого чат в прототипе не покажет ни одного входящего сообщения, а
@@ -644,6 +652,16 @@ export interface StaffSlice {
   removePartner: (id: string) => void;
 }
 
+/** Тариф, менеджер и резервные копии (обещания тарифов на сайте). */
+export interface SubscriptionSlice {
+  subscription: Subscription;
+  /** Сменить тариф. Сегодня — переключатель в профиле, завтра — биллинг. */
+  setTariff: (tariff: TariffId) => void;
+  updateBackupSettings: (patch: Partial<BackupSettings>) => void;
+  /** Архив скачан: сбрасывает напоминание. */
+  markBackupDone: (at: number) => void;
+}
+
 // --- Рабочее место и смена сотрудника -----------------------------------------
 
 export interface WorkstationSlice {
@@ -667,9 +685,12 @@ export interface WorkstationSlice {
    * Отметка смены вошедшего сотрудника. Недопустимый переход (перерыв без
    * смены) игнорируется и возвращает false — кнопки меню и так его не дают.
    */
-  markShift: (
-    type: Extract<StaffEventType, "shift_start" | "break_start" | "break_end" | "shift_end">,
-  ) => boolean;
+  markShift: (type: ShiftMark, reason?: IdleReason) => boolean;
+  /**
+   * Отменить последнюю отметку смены вошедшего сотрудника, если ей меньше
+   * `MARK_UNDO_MS`. Случайное касание не оставляет следа в журнале.
+   */
+  undoShiftMark: () => boolean;
   /** Расписание перерывов склада, его задаёт руководитель. */
   breakPolicy: BreakPolicy;
   setBreakPolicy: (patch: Partial<BreakPolicy>) => void;
@@ -718,6 +739,7 @@ export interface OperationsSlice {
 }
 
 export type EditorState = AccountSlice &
+  SubscriptionSlice &
   WorkstationSlice &
   OperationsSlice &
   SessionSlice &

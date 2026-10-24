@@ -25,18 +25,19 @@ function urlFor(database, user, password) {
   return u.toString();
 }
 
-/** Поднимает чистую базу со схемой. Вернёт пул приложения, суперпользователя и уборку. */
+/** Поднимает чистую базу со схемой. Вернёт пулы приложения и рассылки, суперпользователя и уборку. */
 export async function setupDb() {
   const name = `uklad_test_${randomBytes(4).toString("hex")}`;
   const admin = new pg.Client({ connectionString: ADMIN_URL });
   await admin.connect();
-  for (const role of ["uklad_owner", "uklad_app"]) {
+  for (const role of ["uklad_owner", "uklad_app", "uklad_notifier"]) {
     const { rowCount } = await admin.query(`SELECT 1 FROM pg_roles WHERE rolname = $1`, [role]);
     if (!rowCount) await admin.query(`CREATE ROLE ${role}`);
     await admin.query(`ALTER ROLE ${role} LOGIN NOBYPASSRLS PASSWORD '${TEST_PW}'`);
   }
   await admin.query(`CREATE DATABASE ${name} OWNER uklad_owner`);
   await admin.query(`GRANT CONNECT ON DATABASE ${name} TO uklad_app`);
+  await admin.query(`GRANT CONNECT ON DATABASE ${name} TO uklad_notifier`);
 
   const owner = new pg.Client({ connectionString: urlFor(name, "uklad_owner", TEST_PW) });
   await owner.connect();
@@ -44,6 +45,12 @@ export async function setupDb() {
   await owner.end();
 
   const pool = new pg.Pool({ connectionString: urlFor(name, "uklad_app", TEST_PW), max: 25 });
+  // Рассылка и вебхук бота (007) — своей ролью, как в бою.
+  const notifier = new pg.Pool({
+    connectionString: urlFor(name, "uklad_notifier", TEST_PW),
+    max: 5,
+  });
+  notifier.on("error", () => {});
   // Видит всё мимо RLS — только чтобы сверить, что данные целы.
   const root = new pg.Client({ connectionString: urlFor(name) });
   await root.connect();
@@ -55,11 +62,12 @@ export async function setupDb() {
 
   async function teardown() {
     await pool.end();
+    await notifier.end();
     await root.end();
     await admin.query(`DROP DATABASE ${name} WITH (FORCE)`);
     await admin.end();
   }
-  return { pool, root, teardown };
+  return { pool, notifier, root, teardown };
 }
 
 /**

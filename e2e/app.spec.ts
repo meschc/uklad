@@ -72,8 +72,13 @@ test.describe("Демо WMS", () => {
 
     await rail.getByRole("button", { name: "Интеграции" }).click();
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Интеграции");
-    // Подменю обязано закрыться: раскрытым оно перекрывает половину экрана.
-    await expect(group).toHaveAttribute("aria-expanded", "false");
+    // Группа раскрывается внутри меню и ничего не перекрывает, поэтому после
+    // перехода остаётся открытой — видно, в каком разделе находишься.
+    await expect(group).toHaveAttribute("aria-expanded", "true");
+    await expect(rail.getByRole("button", { name: "Интеграции" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
   });
 
   test("знаки внешних систем на месте, а не отвалились в монограммы", async ({ page, request }) => {

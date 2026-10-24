@@ -132,3 +132,31 @@ export function entriesFor(role: UserRole): NavEntry[] {
 export function navFor(role: UserRole): NavLeaf[] {
   return entriesFor(role).flatMap((e) => (isGroup(e) ? e.items : [e]));
 }
+
+/** Ключ записи меню для сохранённого порядка: у группы — id, у экрана — вид. */
+export const entryKey = (e: NavEntry): string => (isGroup(e) ? e.id : e.view);
+
+/**
+ * Разложить записи в порядке, который человек сам выставил перетаскиванием.
+ *
+ * Сохранённый порядок — подсказка, а не закон: записи, которых в нём нет
+ * (новый экран после обновления), встают в конец в своём исходном порядке, а
+ * ключи исчезнувших экранов молча пропускаются. Иначе обновление продукта
+ * прятало бы новые пункты у всех, кто однажды переставил меню.
+ */
+export function applyOrder<T>(list: T[], order: string[] | undefined, key: (x: T) => string): T[] {
+  if (!order?.length) return list;
+  const rank = new Map(order.map((k, i) => [k, i]));
+  return list
+    .map((x, i) => ({ x, i, r: rank.get(key(x)) }))
+    .sort((a, b) => (a.r ?? order.length + a.i) - (b.r ?? order.length + b.i))
+    .map((e) => e.x);
+}
+
+/** Перенести элемент с позиции `from` на позицию `to`. */
+export function moveItem<T>(list: T[], from: number, to: number): T[] {
+  const next = [...list];
+  const [x] = next.splice(from, 1);
+  next.splice(to, 0, x);
+  return next;
+}

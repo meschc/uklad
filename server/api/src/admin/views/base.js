@@ -47,6 +47,7 @@ const NAV = [
   ["/", "Обзор"],
   ["/accounts", "Пользователи"],
   ["/leads", "Заявки"],
+  ["/support", "Поддержка"],
   ["/demos", "Демо-ссылки"],
   ["/managers", "Менеджеры"],
   ["/audit", "Журнал"],
@@ -124,7 +125,7 @@ dl{margin:0;display:grid;grid-template-columns:150px 1fr;gap:8px 12px}dt{color:v
 .notice{border:1px solid var(--primary)}.notice code{word-break:break-all;display:block;margin-top:8px;padding:8px;background:var(--bg);border-radius:8px}
 .feat{display:grid;grid-template-columns:1fr auto;gap:8px 12px;align-items:center}.feat select{width:auto;height:32px}
 .danger-zone{border:1px solid var(--line);background:transparent}
-.pre{white-space:pre-wrap;font:inherit;margin:0}
+.pre{white-space:pre-wrap;font:inherit;margin:0}.gap-top{margin-top:24px}
 @media (max-width:900px){body.app{grid-template-columns:1fr}.side{position:static;height:auto;flex-direction:row;flex-wrap:wrap;align-items:center;border-right:0;border-bottom:1px solid var(--line);padding:12px}.side nav{display:flex;flex-wrap:wrap;flex:1 1 100%;order:3}.tiles{grid-template-columns:1fr 1fr}.cols,.form .row,.form .row3{grid-template-columns:1fr}main{padding:20px 16px 48px}table{display:block;overflow-x:auto}}
 `;
 

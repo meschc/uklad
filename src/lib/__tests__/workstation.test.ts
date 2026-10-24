@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   SESSION_TTL_MS,
+  allowedMarks,
+  autoIdleSince,
   badgeCode,
   earnings,
+  idleMs,
   isSessionLive,
   nextBreak,
   parseBadge,
@@ -71,7 +74,7 @@ describe("смена и часы", () => {
 });
 
 describe("ближайший перерыв", () => {
-  const policy = { everyMin: 60, shortMin: 10, lunchFrom: 13 * 60, lunchMin: 45 };
+  const policy = { everyMin: 60, shortMin: 10, lunchFrom: 13 * 60, lunchMin: 45, autoIdleMin: 0 };
   const day = new Date(2026, 9, 23).getTime();
   const at = (h: number, m = 0) => day + (h * 60 + m) * 60_000;
 
@@ -100,5 +103,31 @@ describe("ближайший перерыв", () => {
 
   it("не на смене — перерыва нет", () => {
     expect(nextBreak([], "s1", policy, at(10))).toBeNull();
+  });
+});
+
+describe("простой", () => {
+  it("простой не считается работой и копится отдельно", () => {
+    const events = [ev("shift_start", 0), ev("idle_start", 2 * H), ev("idle_end", 3 * H)];
+    expect(workedMs(events, "s1", 0, 5 * H)).toBe(4 * H);
+    expect(idleMs(events, "s1", 0, 5 * H)).toBe(H);
+    expect(shiftState(events.slice(0, 2), "s1")).toBe("idle");
+    expect(allowedMarks("idle")).toContain("idle_end");
+  });
+
+  it("автопростой — после N минут без действий, только на смене", () => {
+    const policy = {
+      everyMin: 60,
+      shortMin: 10,
+      lunchFrom: 13 * 60,
+      lunchMin: 45,
+      autoIdleMin: 15,
+    };
+    const events = [ev("shift_start", 0), ev("pack_label", 10 * 60_000)];
+    expect(autoIdleSince(events, "s1", policy, 20 * 60_000)).toBeNull();
+    expect(autoIdleSince(events, "s1", policy, 25 * 60_000)).toBe(10 * 60_000);
+    expect(autoIdleSince(events, "s1", { ...policy, autoIdleMin: 0 }, 99 * 60_000)).toBeNull();
+    const onBreak = [...events, ev("break_start", 11 * 60_000)];
+    expect(autoIdleSince(onBreak, "s1", policy, 60 * 60_000)).toBeNull();
   });
 });

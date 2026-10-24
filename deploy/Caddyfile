@@ -33,6 +33,11 @@
 	handle /d/* {
 		reverse_proxy api:8080
 	}
+	# Чат в реальном времени: только подключение браузера, API Centrifugo
+	# наружу не выходит.
+	handle /connection/websocket {
+		reverse_proxy centrifugo:8000
+	}
 
 	# Статика. Хэшированные файлы сборки кэшируются надолго, страницы — нет.
 	handle {

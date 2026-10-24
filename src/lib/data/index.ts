@@ -12,6 +12,7 @@ export { chatRepository } from "./chatRepository";
 export { fulfillmentRepository } from "./fulfillmentRepository";
 export { placementRepository } from "./placementRepository";
 export { requestsRepository } from "./requestsRepository";
+export { backupRepository } from "./backupRepository";
 export { staffRepository } from "./staffRepository";
 export { workstationRepository } from "./workstationRepository";
 export { sanitizeDomains } from "./sanitize";

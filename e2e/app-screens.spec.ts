@@ -15,8 +15,17 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 
 const CRASH = "Этот экран сломался";
 
-/** Не экраны: логотип уводит из склада, тема ничего не открывает. */
-const NOT_SCREENS = new Set(["На главную", "Переключить тему"]);
+/**
+ * Не экраны: логотип уводит из склада, тема и сворачивание меню ничего не
+ * открывают, «Сообщить о проблеме» — панель поверх экрана, а не экран.
+ */
+const NOT_SCREENS = new Set([
+  "На главную",
+  "Переключить тему",
+  "Свернуть меню",
+  "Развернуть меню",
+  "Сообщить о проблеме",
+]);
 
 test.describe("Обход экранов кабинета", () => {
   test.skip(({ isMobile }) => !!isMobile, "Редактор плана рассчитан на десктоп");
@@ -68,9 +77,9 @@ async function railButtons(rail: Locator): Promise<{ name: string; group: boolea
 /**
  * Пройти все экраны рельса.
  *
- * Пункты группы появляются в рельсе, только пока она раскрыта, а после
- * перехода подменю закрывается — поэтому перед каждым пунктом группу
- * раскрываем заново.
+ * Пункты группы видны, только пока она раскрыта. Группа с текущим экраном
+ * открыта сразу, поэтому не «щёлкаем» её вслепую, а раскрываем, если она
+ * закрыта, — и перед каждым пунктом проверяем это заново.
  */
 async function visitAll(page: Page, rail: Locator): Promise<string[]> {
   const top = await railButtons(rail);
@@ -87,9 +96,11 @@ async function visitAll(page: Page, rail: Locator): Promise<string[]> {
       continue;
     }
 
-    await button.click();
-    const items = (await railButtons(rail)).map((b) => b.name).filter((n) => !topNames.has(n));
-    await button.click();
+    if ((await button.getAttribute("aria-expanded")) !== "true") await button.click();
+    // Пункты — только этой группы: раскрытыми бывают сразу несколько.
+    const items = (await railButtons(button.locator("xpath=..").getByRole("list")))
+      .map((b) => b.name)
+      .filter((n) => !topNames.has(n));
 
     for (const item of items) {
       if ((await button.getAttribute("aria-expanded")) !== "true") await button.click();

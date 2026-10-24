@@ -497,7 +497,8 @@ function createAuth({ pool, cfg, send, readBody, log, mail }) {
   // Уборка раз в сутки: истёкшие сессии и старые неудачи.
   const purge = () => pool.query(`SELECT auth.purge()`).catch((e) => log.error(e.message));
 
-  return { handle, withSession, purge, cookieName: COOKIE };
+  // `readJson` нужен соседним модулям кабинета (чат): та же защита от CSRF.
+  return { handle, withSession, readJson, purge, cookieName: COOKIE };
 }
 
 module.exports = { createAuth, BADGE_PREFIX };

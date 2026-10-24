@@ -11,7 +11,7 @@
  * Хранится минимум (152-ФЗ, ст. 5 ч. 7): заявка живёт `LEADS_RETENTION_DAYS`
  * и стирается — письмо в почте и есть рабочая копия. IP не пишем вовсе.
  */
-/* global require, module */
+/* global require, module, Buffer */
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { DatabaseSync } = require("node:sqlite");
 
@@ -40,6 +40,23 @@ function openDb(file) {
       opens      INTEGER NOT NULL DEFAULT 0
     );
     CREATE INDEX IF NOT EXISTS demo_links_email ON demo_links(email, created_at);
+    -- Обращения «Сообщить о проблеме». Тело — как пришло (обезличено ещё в
+    -- кабинете), рядом — то, по чему ищут и сортируют в админке.
+    CREATE TABLE IF NOT EXISTS support_reports (
+      id          INTEGER PRIMARY KEY,
+      created_at  TEXT NOT NULL,
+      message     TEXT NOT NULL,
+      view        TEXT NOT NULL,
+      errors      INTEGER NOT NULL,
+      has_snapshot INTEGER NOT NULL,
+      payload     TEXT NOT NULL,
+      bytes       INTEGER NOT NULL DEFAULT 0,
+      status      TEXT NOT NULL DEFAULT 'new',
+      note        TEXT NOT NULL DEFAULT ''
+    );
+    -- Суточный потолок считается на каждом обращении и в /api/health:
+    -- по индексу и готовому размеру, а не чтением сотен мегабайт тел.
+    CREATE INDEX IF NOT EXISTS support_reports_created ON support_reports (created_at);
   `);
 
   const q = {
@@ -62,6 +79,15 @@ function openDb(file) {
     ),
     purgeLeads: db.prepare(`DELETE FROM leads WHERE created_at < ?`),
     purgeDemos: db.prepare(`DELETE FROM demo_links WHERE expires_at < ?`),
+    insertReport: db.prepare(
+      `INSERT INTO support_reports (created_at, message, view, errors, has_snapshot, payload, bytes)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    ),
+    purgeReports: db.prepare(`DELETE FROM support_reports WHERE created_at < ?`),
+    reportsSince: db.prepare(
+      `SELECT COUNT(*) AS n, COALESCE(SUM(bytes), 0) AS bytes
+         FROM support_reports WHERE created_at >= ?`,
+    ),
   };
 
   return {
@@ -84,12 +110,31 @@ function openDb(file) {
     demosSince: (email, since) => q.demosSince.get(email, since).n,
     findDemo: (token) => q.findDemo.get(token),
     openDemo: (token, now) => q.openDemo.run(now.toISOString(), token),
+    addReport(report, payload, now) {
+      const r = q.insertReport.run(
+        now.toISOString(),
+        report.message,
+        report.view,
+        report.errors,
+        report.hasSnapshot ? 1 : 0,
+        payload,
+        Buffer.byteLength(payload),
+      );
+      return Number(r.lastInsertRowid);
+    },
+    /** Сколько обращений и байт легло за сутки до `now` — для общего потолка. */
+    reportsLastDay(now) {
+      const r = q.reportsSince.get(new Date(now.getTime() - 86_400_000).toISOString());
+      return { count: Number(r.n), bytes: Number(r.bytes) };
+    },
     /** Стереть просроченное. Возвращает, сколько строк ушло, — для журнала. */
-    purge(now, retentionDays) {
+    purge(now, retentionDays, reportRetentionDays = 90) {
       const edge = new Date(now.getTime() - retentionDays * 86_400_000).toISOString();
       const leads = Number(q.purgeLeads.run(edge).changes);
       const demos = Number(q.purgeDemos.run(now.toISOString()).changes);
-      return { leads, demos };
+      const reportEdge = new Date(now.getTime() - reportRetentionDays * 86_400_000).toISOString();
+      const reports = Number(q.purgeReports.run(reportEdge).changes);
+      return { leads, demos, reports };
     },
     close: () => db.close(),
   };
