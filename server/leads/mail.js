@@ -127,7 +127,8 @@ async function withRetry(fn, { attempts = 2, baseMs = 400 } = {}) {
   }
 }
 
-async function sendLetter({ subject, text, fields }) {
+/** Письмо на ящик Уклада: заявка с витрины или уведомление об обращении. */
+async function sendLetter({ subject, text, fields = [] }) {
   const mailer = ensureTransport();
   await withRetry(() =>
     mailer.sendMail({

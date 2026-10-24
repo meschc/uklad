@@ -253,7 +253,13 @@ function createAdminApp({ cfg, db, now = () => new Date(), log = console }) {
 
     const found = session(req);
     if (!found) return req.method === "GET" ? redirect(res, "/login") : loginPage(res, 401);
-    const s = { ...found, badges: { "/leads": store.countNewLeads() || 0 } };
+    const s = {
+      ...found,
+      badges: {
+        "/leads": store.countNewLeads() || 0,
+        "/support": store.countNewReports() || 0,
+      },
+    };
     const t = now();
     const ctx = {
       path,
@@ -264,6 +270,15 @@ function createAdminApp({ cfg, db, now = () => new Date(), log = console }) {
       badRequest: (body) => html(res, 400, body),
       redirect: (to) => redirect(res, to),
       notFound: () => html(res, 404, "Не найдено"),
+      // Файл на скачивание: только JSON и только с именем, которое задал код.
+      download: (name, body) => {
+        res.writeHead(200, {
+          ...SECURITY_HEADERS,
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Disposition": `attachment; filename="${name}"`,
+        });
+        res.end(body);
+      },
     };
 
     if (req.method === "GET") return routes.get(ctx);
