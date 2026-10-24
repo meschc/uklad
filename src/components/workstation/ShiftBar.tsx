@@ -1,4 +1,4 @@
-import { Coffee, Timer, UtensilsCrossed, type LucideIcon } from "lucide-react";
+import { Coffee, Hourglass, Timer, UtensilsCrossed, type LucideIcon } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { workstationRepository } from "@/lib/data";
 import { nextBreak, shiftStartedAt, shiftState, stateSince } from "@/lib/workstation";
@@ -41,6 +41,7 @@ export function ShiftBar({ staffId, onOpen }: { staffId: string; onOpen: () => v
       <div className="flex items-start gap-1">
         <Cell label={t("ws.bar.shift")} value={clock(now - start)} onClick={onOpen} />
         <Cell
+          icon={Hourglass}
           label={t("ws.shift.idle")}
           value={clock(now - since)}
           tone="amber"
