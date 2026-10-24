@@ -1,4 +1,4 @@
-import { Coffee, Timer, UtensilsCrossed } from "lucide-react";
+import { Coffee, Hourglass, Timer, UtensilsCrossed } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { workstationRepository } from "@/lib/data";
 import { nextBreak, shiftStartedAt, shiftState } from "@/lib/workstation";
@@ -28,7 +28,26 @@ export function ShiftBar({ staffId, onOpen }: { staffId: string; onOpen: () => v
       </button>
     );
 
-  const onBreak = shiftState(events, staffId) === "break";
+  const state = shiftState(events, staffId);
+  const onBreak = state === "break";
+  if (state === "idle")
+    return (
+      <div className="flex flex-col items-start text-sm leading-tight">
+        <button type="button" className={row} onClick={onOpen}>
+          <Timer className="size-4 text-muted-foreground" />
+          {t("ws.bar.shift")}
+          <span className="font-semibold tabular-nums">{clock(now - start)}</span>
+        </button>
+        <button
+          type="button"
+          className={cn(row, "text-xs text-amber-600")}
+          onClick={() => void workstationRepository.mark("idle_end")}
+        >
+          <Hourglass className="size-3.5" />
+          {t("ws.shift.idle")} · {t("ws.mark.idle_end")}
+        </button>
+      </div>
+    );
   const next = onBreak ? null : nextBreak(events, staffId, policy, now);
   const ready = !!next && now >= next.at;
   const Icon = next?.kind === "lunch" ? UtensilsCrossed : Coffee;

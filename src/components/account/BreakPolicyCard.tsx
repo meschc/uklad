@@ -34,7 +34,7 @@ export function BreakPolicyCard() {
         {t("ws.policy.title")}
       </h2>
       <p className="text-xs text-muted-foreground">{t("ws.policy.body")}</p>
-      <div className="grid gap-3 sm:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-5">
         {num("everyMin", "ws.policy.every")}
         {num("shortMin", "ws.policy.short")}
         <label className="flex flex-col gap-1 text-xs text-muted-foreground">
@@ -49,6 +49,7 @@ export function BreakPolicyCard() {
           />
         </label>
         {num("lunchMin", "ws.policy.lunchMin")}
+        {num("autoIdleMin", "ws.policy.autoIdle")}
       </div>
     </section>
   );
