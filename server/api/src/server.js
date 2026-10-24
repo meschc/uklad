@@ -11,11 +11,15 @@
  *    не пропала, её видно в базе (`mailed = 0`);
  *  - лимит частоты по IP и ловушка для ботов (аудит 21.10, п.4);
  *  - заявка вида `demo` с почтой получает в ответ персональную ссылку;
- *  - ежесуточная чистка: заявки старше `LEADS_RETENTION_DAYS` стираются.
+ *  - ежесуточная чистка: заявки старше `LEADS_RETENTION_DAYS` стираются;
+ *  - у обращений в поддержку общий суточный потолок по числу и объёму:
+ *    входа в кабинете на сервере пока нет, и лимит по IP не спасает от
+ *    тысячи адресов. Упёрлись — `/api/health` говорит об этом сторожу.
  *
  * Маршруты:
  *   GET  /api/health      — жив ли сервер и база (для мониторинга)
  *   POST /api/leads       — заявка с формы (тело — `Lead` из `src/site/lib/leads.ts`)
+ *   POST /api/support/reports — «Сообщить о проблеме» из кабинета (`src/lib/support/report.ts`)
  *   GET  /d/<токен>       — персональная демо-ссылка → кабинет
  *   /api/auth/*, /api/staff/* — вход в кабинет (`cabinet/auth.js`), если
  *                           задан DATABASE_URL (Postgres, `server/db`)
@@ -30,8 +34,12 @@ const { parseLead, letterSubject, letterText } = require("../../leads/lead");
 const { openDb } = require("./db");
 const { createRateLimit, clientIp } = require("./rateLimit");
 const { newToken, isToken, demoLetter } = require("./demo");
+const { parseReport, scrubDeep } = require("./support");
 
 const MAX_BODY_BYTES = 32 * 1024;
+// Обращение несёт журнал и обезличенную копию склада — оно крупнее заявки.
+// Предел тот же, что держит кабинет (`MAX_REPORT_BYTES`).
+const MAX_REPORT_BYTES = 512 * 1024;
 const DAY_MS = 86_400_000;
 
 function readEnv(env) {
@@ -50,6 +58,9 @@ function readEnv(env) {
       .filter(Boolean),
     trustProxy: env.TRUST_PROXY === "1",
     retentionDays: num("LEADS_RETENTION_DAYS", 180),
+    reportRetentionDays: num("REPORTS_RETENTION_DAYS", 90),
+    reportsPerDay: num("REPORTS_PER_DAY", 500),
+    reportsMbPerDay: num("REPORTS_MB_PER_DAY", 200),
     demoDays: num("DEMO_LINK_DAYS", 14),
     demoPerEmailPerDay: num("DEMO_PER_EMAIL_PER_DAY", 3),
     rateCapacity: num("RATE_LIMIT_BURST", 5),
@@ -81,7 +92,7 @@ function corsHeaders(origin) {
 }
 
 /** Тело с пределом в байтах: длинное обрываем, не дочитывая. */
-function readBody(req) {
+function readBody(req, max = MAX_BODY_BYTES) {
   return new Promise((resolve) => {
     const chunks = [];
     let size = 0;
@@ -93,7 +104,7 @@ function readBody(req) {
     };
     req.on("data", (chunk) => {
       size += chunk.length;
-      if (size > MAX_BODY_BYTES) {
+      if (size > max) {
         // Дочитываем вхолостую, не копя: оборванный приём клиент принял бы за
         // сбой сети, а не за отказ.
         chunks.length = 0;
@@ -106,6 +117,28 @@ function readBody(req) {
     req.on("error", () => finish({ ok: false, error: "aborted" }));
   });
 }
+
+/** Письмо-копия обращения: что случилось, где, сколько ошибок, ссылка в админку. */
+function reportLetter(id, report, adminOrigin) {
+  const lines = [
+    report.message,
+    "",
+    `Экран: ${report.view || "—"}`,
+    `Ошибок в журнале: ${report.errors}`,
+    `Копия данных склада: ${report.hasSnapshot ? "есть, в админке" : "нет"}`,
+  ];
+  if (adminOrigin) lines.push("", `В админке: ${adminOrigin}/support/${id}`);
+  return {
+    subject: `Обращение № ${id}${report.view ? ` · ${report.view}` : ""}`,
+    text: lines.join("\n"),
+  };
+}
+
+const isObj = (v) => Boolean(v) && typeof v === "object" && !Array.isArray(v);
+const filled = (v) => typeof v === "string" && v.trim() !== "";
+/** Человек не напишет, что случилось, быстрее чем за 2 секунды. */
+const MIN_REPORT_MS = 2000;
+const tooFast = (ms) => typeof ms === "number" && ms < MIN_REPORT_MS;
 
 /**
  * Приложение без сети и почты внутри: их подают снаружи, чтобы тест мог
@@ -208,6 +241,74 @@ function createApp({ cfg, db, mail, cabinet = null, now = () => new Date(), log 
     }
   }
 
+  /**
+   * Обращение из кабинета. Кабинет живёт на том же домене, поэтому источник
+   * проверяется тем же списком, что у заявок. Сессий пользователей на сервере
+   * ещё нет: пока держимся на проверке источника, лимите частоты и пределе
+   * размера. Когда появится вход, обращение привяжется к компании по сессии,
+   * а не по тому, что пришло в теле.
+   */
+  /** Общий потолок обращений за сутки — поверх лимита по IP. */
+  function reportsCapped() {
+    const day = db.reportsLastDay(now());
+    return day.count >= cfg.reportsPerDay || day.bytes >= cfg.reportsMbPerDay * 1024 * 1024;
+  }
+
+  async function handleReport(req, res) {
+    const origin = (req.headers.origin ?? "").replace(/\/+$/, "");
+    const allowed = cfg.allowedOrigins.includes(origin) ? origin : "";
+    const cors = allowed ? corsHeaders(allowed) : {};
+
+    if (req.method === "OPTIONS") return send(res, allowed ? 204 : 403, undefined, cors);
+    if (req.method !== "POST") return send(res, 405, { ok: false }, cors);
+    if (!allowed) {
+      log.error("[uklad] обращение с чужого источника:", origin || "(пусто)");
+      return send(res, 403, { ok: false });
+    }
+    if (!limiter.take(clientIp(req, cfg.trustProxy))) {
+      return send(res, 429, { ok: false }, { ...cors, "Retry-After": "60" });
+    }
+    if (reportsCapped()) {
+      log.error("[uklad] суточный потолок обращений достигнут");
+      return send(res, 429, { ok: false }, { ...cors, "Retry-After": "3600" });
+    }
+    const body = await readBody(req, MAX_REPORT_BYTES);
+    if (!body.ok) return send(res, 413, { ok: false }, { ...cors, Connection: "close" });
+
+    let raw;
+    try {
+      raw = JSON.parse(body.text);
+    } catch {
+      return send(res, 400, { ok: false }, cors);
+    }
+    // Та же ловушка, что у заявок: скрытое поле и слишком быстрая отправка.
+    // Боту отвечаем «принято» с выдуманным номером, чтобы он не учился обходить.
+    if (isObj(raw) && (filled(raw.website) || tooFast(raw.elapsedMs))) {
+      log.error("[uklad] обращение-ловушка отброшено");
+      return send(res, 200, { ok: true, id: 0 }, cors);
+    }
+    const parsed = parseReport(raw);
+    if (!parsed.ok) {
+      log.error("[uklad] обращение не принято:", parsed.error);
+      return send(res, 400, { ok: false }, cors);
+    }
+    // В базу ложится тело после второй чистки — целиком, а не только
+    // сообщение: обезличиванию в браузере сервер не верит.
+    const rest = { ...raw };
+    delete rest.website;
+    delete rest.elapsedMs;
+    const payload = JSON.stringify({ ...scrubDeep(rest), message: parsed.report.message });
+    const id = db.addReport(parsed.report, payload, now());
+    // Копия на почту — уведомление, а не второе хранилище: суть и ссылка в
+    // админку. Копия данных склада остаётся только в базе и стирается там
+    // сама через 90 дней; из почтового ящика её пришлось бы удалять руками.
+    // Сбой письма человеку не показываем — обращение уже в базе.
+    mail
+      .sendLetter(reportLetter(id, parsed.report, cfg.adminOrigin))
+      .catch((error) => log.error(`[uklad] письмо по обращению #${id} не ушло:`, error));
+    return send(res, 200, { ok: true, id }, cors);
+  }
+
   function handleDemo(req, res, token) {
     const row = isToken(token) ? db.findDemo(token) : undefined;
     const t = now();
@@ -222,9 +323,11 @@ function createApp({ cfg, db, mail, cabinet = null, now = () => new Date(), log 
     try {
       const url = new URL(req.url ?? "/", "http://local");
       if (url.pathname === "/api/health" && req.method === "GET") {
-        return send(res, 200, { ok: true });
+        // Флаг читает сторож (`deploy/watchdog.sh`) и пишет в Telegram.
+        return send(res, 200, { ok: true, reportsCapped: reportsCapped() });
       }
       if (url.pathname === "/api/leads") return await handleLead(req, res);
+      if (url.pathname === "/api/support/reports") return await handleReport(req, res);
       const demo = /^\/d\/([^/]+)\/?$/.exec(url.pathname);
       if (demo && req.method === "GET") return handleDemo(req, res, demo[1]);
       if (cabinet && (await cabinet.handle(req, res, url))) return;
@@ -284,8 +387,8 @@ function main() {
   server.headersTimeout = 10_000;
 
   const purge = () => {
-    const gone = db.purge(new Date(), cfg.retentionDays);
-    if (gone.leads || gone.demos) console.log("[uklad] чистка:", gone);
+    const gone = db.purge(new Date(), cfg.retentionDays, cfg.reportRetentionDays);
+    if (gone.leads || gone.demos || gone.reports) console.log("[uklad] чистка:", gone);
   };
   purge();
   setInterval(purge, DAY_MS).unref();

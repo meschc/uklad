@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   Boxes,
   ChevronDown,
+  LifeBuoy,
   Moon,
   PanelLeftClose,
   PanelLeftOpen,
@@ -13,6 +14,7 @@ import { applyOrder, entriesFor, entryKey, isGroup, moveItem, type NavLeaf } fro
 import type { AppView } from "@/lib/types";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { ReportProblemDialog } from "@/components/support/ReportProblemDialog";
 
 /** Свёрнуто ли меню — удобство одного человека, поэтому в localStorage, а не в сторе. */
 const COLLAPSED_KEY = "uklad-nav-collapsed";
@@ -79,6 +81,7 @@ export function SideNav() {
   const dark = theme === "dark";
   const [order, setOrder] = useState<NavOrder>(readOrder);
   const [drag, setDrag] = useState<Drag | null>(null);
+  const [reporting, setReporting] = useState(false);
   const [over, setOver] = useState<Drag | null>(null);
   const topKey = `${role}:top`;
   const entries = applyOrder(entriesFor(role), order[topKey], entryKey);
@@ -269,6 +272,14 @@ export function SideNav() {
 
       <div className="mt-auto flex flex-col gap-0.5 pt-2">
         <NavRow
+          icon={LifeBuoy}
+          label={t("support.nav")}
+          collapsed={collapsed}
+          active={false}
+          badge={0}
+          onClick={() => setReporting(true)}
+        />
+        <NavRow
           icon={dark ? Sun : Moon}
           label={t("nav.theme")}
           collapsed={collapsed}
@@ -285,6 +296,7 @@ export function SideNav() {
           onClick={toggleCollapsed}
         />
       </div>
+      {reporting && <ReportProblemDialog onClose={() => setReporting(false)} />}
     </nav>
   );
 }

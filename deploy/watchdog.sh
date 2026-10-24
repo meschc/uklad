@@ -15,8 +15,12 @@ DISK_LIMIT=${DISK_ALERT_PERCENT:-80}
 STATE=.watchdog-state
 problems=""
 
-if ! curl -fsS -m 10 "https://${SITE_DOMAIN}/api/health" >/dev/null 2>&1; then
+if ! health=$(curl -fsS -m 10 "https://${SITE_DOMAIN}/api/health" 2>/dev/null); then
   problems="${problems}Сайт не отвечает: https://${SITE_DOMAIN}/api/health\n"
+elif echo "$health" | grep -q '"reportsCapped":true'; then
+  # Сервер упёрся в суточный потолок обращений (REPORTS_PER_DAY /
+  # REPORTS_MB_PER_DAY): это или наплыв ошибок, или кто-то льёт мусор.
+  problems="${problems}Обращения в поддержку не принимаются: суточный потолок\n"
 fi
 
 used=$(df -P / | awk 'NR==2 { gsub("%", "", $5); print $5 }')

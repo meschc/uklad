@@ -3,6 +3,7 @@ import { AlertTriangle, RotateCcw } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { useT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
+import { describeError, journal } from "@/lib/support/journal";
 
 /**
  * Изоляция сбоя по экранам — та самая «модульность», которая проекту нужна
@@ -33,6 +34,11 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error(`[uklad] экран «${this.props.label ?? "?"}» упал:`, error, info);
+    journal.record(
+      "error",
+      `screen:${this.props.label ?? "?"}`,
+      `${describeError(error)}\n${info.componentStack ?? ""}`,
+    );
   }
 
   render() {

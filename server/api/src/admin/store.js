@@ -229,7 +229,26 @@ function adminStore(db) {
       }
     : null;
 
+  // Обращения живут в той же базе, что и заявки: таблицу заводит `db.js`.
+  const hasReports = db.prepare(`SELECT 1 FROM sqlite_master WHERE name = 'support_reports'`).get();
+  const repQ = hasReports
+    ? {
+        reports: db.prepare(
+          `SELECT id, created_at, message, view, errors, has_snapshot, status, note
+           FROM support_reports WHERE (?1 = '' OR status = ?1) ORDER BY id DESC LIMIT 500`,
+        ),
+        report: db.prepare(`SELECT * FROM support_reports WHERE id = ?`),
+        setReport: db.prepare(`UPDATE support_reports SET status = ?, note = ? WHERE id = ?`),
+        countNew: db.prepare(`SELECT COUNT(*) AS n FROM support_reports WHERE status = 'new'`),
+      }
+    : null;
+
   return {
+    hasReports: Boolean(repQ),
+    reports: (status = "") => (repQ ? repQ.reports.all(status) : []),
+    report: (id) => repQ?.report.get(id),
+    setReport: (id, status, note) => repQ?.setReport.run(status, note, id),
+    countNewReports: () => (repQ ? repQ.countNew.get().n : 0),
     countAdmins: () => q.countAdmins.get().n,
     addAdmin: (a, now) =>
       q.insertAdmin.run(a.email, a.passwordHash, a.totpSecret, now.toISOString()),

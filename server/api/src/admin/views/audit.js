@@ -27,6 +27,8 @@ const ACTION = {
   account_restore: "Из архива",
   access_reset: "Сброс доступа",
   lead_update: "Заявка обновлена",
+  support_update: "Обращение обновлено",
+  support_download: "Обращение скачано",
   manager_create: "Добавлен менеджер",
   manager_edit: "Изменён менеджер",
 };
