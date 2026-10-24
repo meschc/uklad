@@ -170,6 +170,11 @@ export const ru = {
   // --- Поле скана -----------------------------------------------------------
   "scan.placeholder": "Отсканируйте или введите код",
   "scan.apply": "Принять",
+  "scan.camera": "Сканировать камерой",
+  "scan.cameraHint": "Наведите камеру на код",
+  "scan.cameraClose": "Закрыть",
+  "scan.cameraError":
+    "Камера недоступна. Разрешите доступ к камере в настройках браузера или введите код вручную.",
 
   // --- Приёмка (§5) ---------------------------------------------------------
   "recv.title": "Приёмка",
@@ -496,6 +501,11 @@ export const en: Record<keyof typeof ru, string> = {
   // --- Scan field ------------------------------------------------------------
   "scan.placeholder": "Scan or type a code",
   "scan.apply": "Accept",
+  "scan.camera": "Scan with camera",
+  "scan.cameraHint": "Point the camera at the code",
+  "scan.cameraClose": "Close",
+  "scan.cameraError":
+    "Camera unavailable. Allow camera access in browser settings or type the code.",
 
   // --- Receiving (§5) --------------------------------------------------------
   "recv.title": "Receiving",
