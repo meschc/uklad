@@ -223,6 +223,11 @@ LANGUAGE sql SECURITY DEFINER SET search_path = auth, pg_temp AS $$
   DELETE FROM auth.telegram_codes WHERE expires_at < now() - interval '1 day'
 $$;
 
+-- Права. Привязку из кабинета (код, «привязан ли», отвязать) зовёт
+-- приложение под сессией. Всё, что работает без сессии и поверх компаний, —
+-- рассылка и вебхук бота — только у роли `uklad_notifier` (init.sql): у
+-- приложения этих функций нет, и SQL-инъекция в маршруте кабинета не
+-- выгрузит чужую переписку, почты и чаты Телеграма.
 REVOKE EXECUTE ON FUNCTION
   auth.notifier_on(),
   auth.telegram_code(bytea, interval),
@@ -236,11 +241,14 @@ REVOKE EXECUTE ON FUNCTION
 FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION
   auth.telegram_code(bytea, interval),
-  auth.telegram_bind(bytea, bigint),
   auth.telegram_linked(),
-  auth.telegram_unbind(),
+  auth.telegram_unbind()
+TO uklad_app;
+GRANT USAGE ON SCHEMA auth TO uklad_notifier;
+GRANT EXECUTE ON FUNCTION
+  auth.telegram_bind(bytea, bigint),
   auth.telegram_forget(bigint),
   auth.chat_due(text, interval, interval, integer),
   auth.chat_noticed(text, uuid, uuid, uuid, timestamptz),
   auth.chat_purge()
-TO uklad_app;
+TO uklad_notifier;

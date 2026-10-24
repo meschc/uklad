@@ -133,7 +133,10 @@ CREATE POLICY conversations_insert ON uklad.conversations FOR INSERT WITH CHECK 
       SELECT 1 FROM uklad.contracts k
       WHERE k.id = contract_id AND k.status = 'active' AND k.deleted_at IS NULL
         AND uklad.current_org() IN (k.org_id, k.seller_org_id)
-        AND org_ids @> ARRAY[k.org_id, k.seller_org_id])));
+        -- Ровно две стороны договора, без третьих: «содержит» и «содержится».
+        AND org_ids @> ARRAY[k.org_id, k.seller_org_id]
+        AND org_ids <@ ARRAY[k.org_id, k.seller_org_id]
+        AND cardinality(org_ids) = 2)));
 CREATE POLICY conversations_update ON uklad.conversations FOR UPDATE
   USING (org_id = uklad.current_org())
   WITH CHECK (org_id = uklad.current_org());

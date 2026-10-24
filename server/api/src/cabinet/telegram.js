@@ -93,9 +93,13 @@ function sameSecret(got, want) {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-function createTelegram({ pool, auth, api, botName, webhookSecret, send, readBody, log }) {
+/**
+ * `notifierPool` — подключение под ролью `uklad_notifier` (init.sql): вебхук
+ * работает без сессии, и привязка чата идёт не от роли приложения.
+ */
+function createTelegram({ notifierPool, auth, api, botName, webhookSecret, send, readBody, log }) {
   const { withSession, readJson } = auth;
-  const ready = api.enabled && Boolean(botName && webhookSecret);
+  const ready = api.enabled && Boolean(botName && webhookSecret && notifierPool);
 
   /** От имени вошедшего с правом на чат. */
   async function run(req, res, fn) {
@@ -158,7 +162,7 @@ function createTelegram({ pool, auth, api, botName, webhookSecret, send, readBod
     const text = typeof msg.text === "string" ? msg.text.trim() : "";
     const start = /^\/start(?:@\w+)?\s+([A-Za-z0-9_-]{16,64})$/.exec(text);
     if (start) {
-      const { rows } = await pool.query(`SELECT * FROM auth.telegram_bind($1, $2)`, [
+      const { rows } = await notifierPool.query(`SELECT * FROM auth.telegram_bind($1, $2)`, [
         sha256(start[1]),
         chatId,
       ]);
@@ -170,7 +174,7 @@ function createTelegram({ pool, auth, api, botName, webhookSecret, send, readBod
           : "Ссылка устарела или уже использована. Откройте в кабинете «Профиль → Уведомления» и подключите Телеграм ещё раз.",
       );
     } else if (/^\/stop(?:@\w+)?$/.test(text)) {
-      await pool.query(`SELECT auth.telegram_forget($1)`, [chatId]);
+      await notifierPool.query(`SELECT auth.telegram_forget($1)`, [chatId]);
       await reply(chatId, "Уведомления отключены. Подключить снова можно в профиле кабинета.");
     } else {
       await reply(

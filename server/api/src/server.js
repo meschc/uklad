@@ -358,6 +358,7 @@ function main() {
   // BYPASSRLS, без DELETE (server/db/README.md).
   let cabinet = null;
   let pool = null;
+  let notifierPool = null;
   if (process.env.DATABASE_URL) {
     const pg = require("pg");
     const { createAuth } = require("./cabinet/auth");
@@ -383,8 +384,16 @@ function main() {
     const { createNotifier } = require("./cabinet/notify");
     const tgApi = createTelegramApi({ token: process.env.TELEGRAM_BOT_TOKEN, log: console });
     const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
+    // Рассылка и вебхук бота — своим подключением под ролью uklad_notifier:
+    // у роли приложения их функций нет (init.sql, 007).
+    if (process.env.NOTIFIER_DATABASE_URL) {
+      notifierPool = new pg.Pool({ connectionString: process.env.NOTIFIER_DATABASE_URL, max: 2 });
+      notifierPool.on("error", (e) => console.error("[uklad] база рассылки:", e.message));
+    } else {
+      console.log("[uklad] рассылка выключена: не задан NOTIFIER_DATABASE_URL");
+    }
     const telegram = createTelegram({
-      pool,
+      notifierPool,
       auth,
       api: tgApi,
       botName: process.env.TELEGRAM_BOT_NAME,
@@ -393,16 +402,18 @@ function main() {
       readBody,
       log: console,
     });
-    if (tgApi.enabled && webhookSecret) {
-      tgApi.setWebhook(`${cfg.publicUrl}/api/telegram/webhook`, webhookSecret);
+    if (notifierPool) {
+      if (tgApi.enabled && webhookSecret) {
+        tgApi.setWebhook(`${cfg.publicUrl}/api/telegram/webhook`, webhookSecret);
+      }
+      createNotifier({
+        pool: notifierPool,
+        telegram: tgApi,
+        mail,
+        appUrl: `${cfg.publicUrl}/app/`,
+        log: console,
+      }).start();
     }
-    createNotifier({
-      pool,
-      telegram: tgApi,
-      mail,
-      appUrl: `${cfg.publicUrl}/app/`,
-      log: console,
-    }).start();
     cabinet = {
       handle: async (req, res, url) =>
         (await auth.handle(req, res, url)) ||
@@ -439,7 +450,7 @@ function main() {
 
   const stop = () => {
     admin?.close();
-    server.close(() => (db.close(), pool?.end(), process.exit(0)));
+    server.close(() => (db.close(), pool?.end(), notifierPool?.end(), process.exit(0)));
   };
   process.on("SIGTERM", stop);
   process.on("SIGINT", stop);

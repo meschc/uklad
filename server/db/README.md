@@ -46,7 +46,7 @@
 ```sh
 npm ci
 # Разово на новом сервере, под суперпользователем (пароли — из .env):
-psql -v owner_pw="…" -v app_pw="…" -f init.sql
+psql -v owner_pw="…" -v app_pw="…" -v notifier_pw="…" -f init.sql
 # Каждая выкладка, под uklad_owner:
 DATABASE_URL=postgres://uklad_owner:…@localhost/uklad npm run migrate
 # Тесты: нужен любой Postgres 16 и суперпользователь для подготовки базы.
@@ -87,7 +87,10 @@ PG_ADMIN_URL=postgres://postgres:postgres@localhost:5432/postgres npm test
 Рассылка одна на сервер и читает поверх компаний, поэтому правило
 `notifier_read` открывает чтение только роли владельца и только пока функция
 рассылки сама поставила `app.notifier`. Приложению флаг ничего не даёт — это
-проверяет тест в `chat.test.js`.
+проверяет тест в `chat.test.js`. Сами функции рассылки и вебхука бота
+выданы только третьей роли, `uklad_notifier` (init.sql), со своим
+подключением `NOTIFIER_DATABASE_URL`: SQL-инъекция в маршруте кабинета не
+дотянется до чужой переписки.
 
 ## Чего ещё нет
 

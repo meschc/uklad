@@ -280,3 +280,35 @@ test("флаг рассылки не открывает переписку пр�
     assert.equal((await rows(c, `SELECT 1 FROM uklad.members WHERE org_id = $1`, [w.A])).length, 0);
   });
 });
+
+test("диалог по договору — ровно две стороны, третью компанию не вписать", async () => {
+  await assert.rejects(
+    as(w.A, people.boss, (c) =>
+      c.query(
+        `INSERT INTO uklad.conversations (org_id, org_ids, contract_id) VALUES ($1, $2, $3)`,
+        [w.A, [w.A, w.S1, w.S2], w.a.c1],
+      ),
+    ),
+  );
+  await assert.rejects(
+    as(w.A, people.boss, (c) =>
+      c.query(
+        `INSERT INTO uklad.conversations (org_id, org_ids, contract_id) VALUES ($1, $2, $3)`,
+        [w.A, [w.A, w.S2], w.a.c1],
+      ),
+    ),
+    /row-level security/,
+  );
+});
+
+test("рассылка поверх компаний закрыта роли приложения", async () => {
+  for (const sql of [
+    `SELECT * FROM auth.chat_due('telegram', '0 seconds', '0 seconds', 10)`,
+    `SELECT auth.telegram_forget(1)`,
+    `SELECT * FROM auth.telegram_bind('\\x00', 1)`,
+  ]) {
+    await assert.rejects(db.pool.query(sql), /permission denied/, sql);
+  }
+  // У роли рассылки — есть.
+  await db.notifier.query(`SELECT * FROM auth.chat_due('email', '1 hour', '0 seconds', 1)`);
+});

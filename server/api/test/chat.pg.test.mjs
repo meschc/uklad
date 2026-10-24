@@ -44,7 +44,7 @@ before(async () => {
     },
   };
   const telegram = createTelegram({
-    pool: db.pool,
+    notifierPool: db.notifier,
     auth,
     api: tgApi,
     botName: "uklad_test_bot",
@@ -55,7 +55,7 @@ before(async () => {
   });
   const mail = { sendTo: async (letter) => letters.push(letter) };
   notifier = createNotifier({
-    pool: db.pool,
+    pool: db.notifier,
     telegram: tgApi,
     mail,
     appUrl: `${ORIGIN}/app/`,
