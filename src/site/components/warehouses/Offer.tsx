@@ -2,6 +2,7 @@ import { cn } from "@/lib/utils";
 import { Reveal } from "../Reveal";
 import { ru, useT, type Copy } from "../../lib/copy";
 import { href } from "../../lib/route";
+import { OFFER, chatHours, monthsRu } from "../../data/offer";
 
 const T = {
   title: ru("Система, настроенная под ваш склад"),
@@ -16,24 +17,24 @@ const T = {
 /** Условия, которые склад сравнивает первыми, — крупным числом. */
 const NUMBERS: { value: string; unit: Copy; body: Copy }[] = [
   {
-    value: "3",
-    unit: ru("месяца бесплатно"),
+    value: String(OFFER.freeMonths),
+    unit: ru(`${monthsRu(OFFER.freeMonths).split("\u00a0")[1]} бесплатно`),
     body: ru("Отсчёт идёт с момента загрузки первых товаров, а не с даты заявки."),
   },
   {
-    value: "4",
+    value: String(OFFER.newFeatures),
     unit: ru("новые функции под ваш склад"),
     body: ru(
       "Новое поле в карточке товара, отчёт в вашей форме или свой бланк накладной. Каждая становится частью системы для всех.",
     ),
   },
   {
-    value: "5",
+    value: String(OFFER.featureDays),
     unit: ru("рабочих дней на функцию"),
     body: ru("Критичные ошибки исправляем сразу."),
   },
   {
-    value: "10…18",
+    value: chatHours,
     unit: ru("чат в рабочие дни"),
     body: ru("Отвечаем по московскому времени."),
   },

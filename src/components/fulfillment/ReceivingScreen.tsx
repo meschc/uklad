@@ -7,13 +7,17 @@ import { buildOccupancy, occupantsAt } from "@/lib/placement";
 import { findByCode, findProduct, honestSignToEan13, parseHonestSignMock } from "@/lib/barcode";
 import type { CellAddress, Discrepancy, ExpectedShipment, ReceivingProgress } from "@/lib/types";
 import { useT, type MsgKey } from "@/lib/i18n";
+import { sealedUnits } from "@/lib/cargo";
 import { Button } from "@/components/ui/button";
+import { Segmented } from "@/components/ui/segmented";
 import { ProductDialog } from "@/components/table/ProductDialog";
 import { ScreenShell } from "./ScreenShell";
 import { type ScanStatus } from "./ScanField";
 import { ShipmentPicker } from "./ShipmentPicker";
 import { DiscrepancyAlert } from "./DiscrepancyAlert";
 import { BoxStep } from "./receiving/BoxStep";
+import { CargoStep } from "./receiving/CargoStep";
+import { SealedList } from "./receiving/SealedList";
 import { PalletStep } from "./receiving/PalletStep";
 import { PlaceStep } from "./receiving/PlaceStep";
 import { ProductStep } from "./receiving/ProductStep";
@@ -50,6 +54,8 @@ export function ReceivingScreen() {
   const pallets = useEditor((s) => s.pallets);
   const shipments = useEditor((s) => s.expectedShipments);
   const staff = useEditor((s) => s.warehouse.staff ?? []);
+  const twoStage = useEditor((s) => !!s.serviceSettings.twoStageReceiving);
+  const [stage, setStage] = useState<"cargo" | "items">("cargo");
 
   // Открытые тара и паллета держатся по id, а объекты берутся из стора: снимок
   // устаревал сразу после первой же записи товара, и плашка показывала «позиций
@@ -197,9 +203,14 @@ export function ReceivingScreen() {
       fail("recv.pallet.unknown");
       return;
     }
+    if (found.sealed) void fulfillmentRepository.openUnit(found.id);
     go({ palletId: found.id, step: "box" });
-    ok("recv.pallet.opened", { code: found.barcode });
+    ok(found.sealed ? "recv.sealed.opened" : "recv.pallet.opened", { code: found.barcode });
   };
+
+  /** Со списка невскрытых мест на шаге тары: паллету открываем как паллету. */
+  const onScanAny = (code: string) =>
+    findByCode(pallets, code) ? onScanPallet(code) : onScanBox(code);
 
   const onNewPallet = async () => {
     const res = await run(() => fulfillmentRepository.createPallet());
@@ -222,8 +233,9 @@ export function ReceivingScreen() {
       fail("recv.box.placed", { addr: formatAddress(warehouse, found.address) ?? "" });
       return;
     }
+    if (found.sealed) void fulfillmentRepository.openUnit(found.id);
     go({ boxId: found.id, step: "product" });
-    ok("recv.box.opened", { code: found.barcode });
+    ok(found.sealed ? "recv.sealed.opened" : "recv.box.opened", { code: found.barcode });
   };
 
   const onNewBox = async () => {
@@ -400,16 +412,33 @@ export function ReceivingScreen() {
 
       {step === "shipment" && (
         <div className="flex flex-col gap-4">
+          {twoStage && (
+            <div>
+              <Segmented
+                size="md"
+                value={stage}
+                onChange={setStage}
+                options={[
+                  { value: "cargo", label: t("cargo.stage.cargo") },
+                  { value: "items", label: t("cargo.stage.items") },
+                ]}
+              />
+            </div>
+          )}
           <StaffPicker
             staff={staff}
             value={staffId}
             onChange={(id) => setReceiving({ staffId: id })}
             t={t}
           />
-          <ShipmentPicker
-            onPick={(id) => go({ shipmentId: id, received: 0, step: "pallet" })}
-            onFreeform={() => go({ shipmentId: null, received: 0, step: "pallet" })}
-          />
+          {twoStage && stage === "cargo" ? (
+            <CargoStep staffId={staffId} t={t} />
+          ) : (
+            <ShipmentPicker
+              onPick={(id) => go({ shipmentId: id, received: 0, step: "pallet" })}
+              onFreeform={() => go({ shipmentId: null, received: 0, step: "pallet" })}
+            />
+          )}
         </div>
       )}
 
@@ -422,6 +451,10 @@ export function ReceivingScreen() {
           onSkip={() => go({ step: "box" })}
           t={t}
         />
+      )}
+
+      {(step === "pallet" || step === "box") && !pallet && (
+        <SealedList units={sealedUnits(shipmentId, pallets, boxes)} onOpen={onScanAny} t={t} />
       )}
 
       {step === "box" && (

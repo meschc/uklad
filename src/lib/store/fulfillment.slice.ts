@@ -1,6 +1,7 @@
 import { nowMs, uid } from "../utils";
 import { generateBoxBarcode, generatePalletBarcode } from "../barcode";
 import { EMPTY_RECEIVING, resumeProgress } from "../receiving";
+import { mergeCargo } from "../cargo";
 import type { Box, ExpectedShipment, Pallet, ReceivingEvent } from "../types";
 import type { FulfillmentSlice, SliceCreator } from "./state";
 
@@ -135,6 +136,65 @@ export const createFulfillmentSlice: SliceCreator<FulfillmentSlice> = (set, get)
     set((s) => ({ pallets: [...s.pallets, pallet], palletSeq: seq }));
     return pallet;
   },
+
+  /**
+   * Места заводятся одним `set`: паллеты, короба и отметка в поставке. По
+   * частям отмена оставила бы поставку с принятыми местами, которых нет.
+   */
+  acceptCargo: ({ shipmentId, pallets, boxes, declaredPallets, declaredBoxes, staffId }) => {
+    const now = nowMs();
+    const nP = Math.max(0, Math.round(pallets) || 0);
+    const nB = Math.max(0, Math.round(boxes) || 0);
+    let pSeq = get().palletSeq;
+    let bSeq = get().boxSeq;
+    const newPallets: Pallet[] = Array.from({ length: nP }, () => ({
+      id: uid("plt"),
+      barcode: generatePalletBarcode(++pSeq),
+      createdAt: now,
+      boxIds: [],
+      sealed: true,
+      shipmentId,
+    }));
+    const newBoxes: Box[] = Array.from({ length: nB }, () => ({
+      id: uid("box"),
+      barcode: generateBoxBarcode(++bSeq),
+      createdAt: now,
+      lines: [],
+      sealed: true,
+      shipmentId,
+    }));
+    const intake = {
+      declaredPallets:
+        declaredPallets == null ? undefined : Math.max(0, Math.round(declaredPallets)),
+      declaredBoxes: declaredBoxes == null ? undefined : Math.max(0, Math.round(declaredBoxes)),
+      pallets: nP,
+      boxes: nB,
+      at: now,
+      staffId: staffId || undefined,
+    };
+    set((s) => ({
+      pallets: [...s.pallets, ...newPallets],
+      boxes: [...s.boxes, ...newBoxes],
+      palletSeq: pSeq,
+      boxSeq: bSeq,
+      expectedShipments: s.expectedShipments.map((sh) =>
+        sh.id === shipmentId
+          ? {
+              ...sh,
+              status: sh.status === "pending" ? "receiving" : sh.status,
+              cargo: mergeCargo(sh.cargo, intake),
+            }
+          : sh,
+      ),
+    }));
+    return { palletIds: newPallets.map((p) => p.id), boxIds: newBoxes.map((b) => b.id) };
+  },
+
+  openUnit: (id) =>
+    set((s) => ({
+      pallets: s.pallets.map((p) => (p.id === id && p.sealed ? { ...p, sealed: undefined } : p)),
+      boxes: s.boxes.map((b) => (b.id === id && b.sealed ? { ...b, sealed: undefined } : b)),
+    })),
 
   attachBoxToPallet: (boxId, palletId) =>
     set((s) => ({

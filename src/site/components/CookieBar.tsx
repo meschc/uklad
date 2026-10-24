@@ -62,36 +62,40 @@ export function CookieBar() {
   // Компактная плашка в углу (Кирилл 19 окт: большая карточка внизу
   // закрывала полэкрана). Что и зачем собираем, подробно — на странице
   // политики по ссылке «Подробнее».
+  // Плашка в стиле страниц витрины (Кирилл 23 окт): белая карточка с мягкой
+  // тенью, выезжает снизу с пружиной, печенье «откусывается» один раз.
   return (
     <div
       data-print="hide"
-      className="fixed inset-x-3 bottom-3 z-[80] sm:inset-x-auto sm:bottom-4 sm:left-4 sm:w-[360px]"
+      className="fixed inset-x-3 bottom-3 z-[80] sm:inset-x-auto sm:bottom-5 sm:left-5 sm:w-[380px]"
     >
-      <div className="r-window flex animate-slide-up flex-col gap-2.5 border border-border bg-card/95 px-3.5 py-3 shadow-lg backdrop-blur-xl">
-        <p className="flex items-center gap-2 text-[13px] leading-snug text-muted-foreground">
-          <Cookie className="size-4 shrink-0 text-primary" />
-          <span>
+      <div className="cookie-in flex flex-col gap-4 rounded-[20px] bg-white p-5 shadow-[0_18px_50px_-12px_rgba(16,24,40,0.25),0_0_0_1px_rgba(16,24,40,0.06)]">
+        <div className="flex items-start gap-3">
+          <span className="cookie-bite grid size-10 shrink-0 place-items-center rounded-full bg-[hsl(var(--primary))] text-white">
+            <Cookie className="size-5" />
+          </span>
+          <p className="pt-0.5 text-[15px] leading-snug text-[#111]">
             {t(T.text)}{" "}
             {/* Баннер остаётся на экране: человек ушёл читать политику именно
                 затем, чтобы решить, и кнопки выбора должны ждать его там же. */}
             <a
               href={href("/legal/cookies")}
-              className="font-medium text-primary underline underline-offset-2"
+              className="text-[hsl(var(--primary))] transition-opacity hover:opacity-75"
             >
               {t(T.more)}
             </a>
-          </span>
-        </p>
+          </p>
+        </div>
 
         <div className="flex gap-2">
           {/* Обе кнопки одного размера и стоят рядом: выбор здесь
               равноправный, а не «согласиться и мелким шрифтом отказаться». */}
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
             shape="pill"
             onClick={() => decide("necessary")}
-            className="flex-1"
+            className="flex-1 bg-[#FAFAFA] hover:bg-[#F0F0F0]"
           >
             {t(T.necessary)}
           </Button>

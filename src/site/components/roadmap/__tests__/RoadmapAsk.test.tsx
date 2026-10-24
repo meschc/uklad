@@ -10,9 +10,9 @@ import { clearVotes, readVotes, toggleVote } from "../../../lib/roadmapVotes";
  *
  * Проверяется не оформление, а два обещания, данные человеку на этой странице.
  * Первое: отправить пустоту нельзя — либо отметка, либо идея, иначе письмо
- * приходит ни о чём. Второе: без согласия на обработку данных кнопка не
- * работает, и рядом с ней написано почему (приёмник такую заявку всё равно
- * отклонит — см. `server/leads/lead.js`).
+ * приходит ни о чём. Второе: без согласия на обработку данных заявка не
+ * уходит (приёмник её всё равно отклонит — см. `server/leads/lead.js`).
+ * Почему — говорится под кнопкой после попытки отправить, а не заранее.
  *
  * Тексты в проверках английские: страница без явного языка в адресе берёт его
  * из `navigator.languages`, а в тестовом браузере там английский.
@@ -36,13 +36,17 @@ beforeEach(() => {
 });
 
 describe("RoadmapAsk", () => {
-  test("без отметок и без идеи отправлять нечего — и это сказано словами", () => {
-    // Arrange · Act
+  test("без отметок и без идеи отправлять нечего — и это сказано после попытки", async () => {
+    // Arrange
+    const user = userEvent.setup();
     render(<RoadmapAsk />);
+    expect(screen.queryByText(/Mark at least one item/)).not.toBeInTheDocument();
+
+    // Act
+    await user.click(submit());
 
     // Assert
-    expect(submit()).toBeDisabled();
-    expect(screen.getByText(/Mark at least one item/)).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent(/Mark at least one item/);
   });
 
   test("идея без согласия на обработку данных не отправляется", async () => {
@@ -52,10 +56,10 @@ describe("RoadmapAsk", () => {
 
     // Act
     await user.type(screen.getByLabelText("Your idea"), "We need a 1C export");
+    await user.click(submit());
 
-    // Assert — подсказка сменилась с «нечего отправлять» на согласие
-    expect(submit()).toBeDisabled();
-    expect(screen.getByText(/Tick the consent/)).toBeInTheDocument();
+    // Assert — подсказка про согласие, а не «нечего отправлять»
+    expect(screen.getByRole("alert")).toHaveTextContent(/Tick the consent/);
   });
 
   test("идея и согласие вместе открывают отправку", async () => {
@@ -110,6 +114,6 @@ describe("RoadmapAsk", () => {
 
     // Assert
     expect(readVotes()).toEqual([]);
-    expect(submit()).toBeDisabled();
+    expect(screen.getByText(/Nothing marked yet/)).toBeInTheDocument();
   });
 });

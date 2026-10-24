@@ -60,6 +60,12 @@ export interface IntegrationSpec {
   /** Базовый адрес API по умолчанию (можно переопределить). */
   defaultBaseUrl?: string;
   fields: IntegrationField[];
+  /**
+   * Подключение не обещаем к запуску: адаптера нет или доступ к API зависит
+   * не от ключа селлера (договор с площадкой, своё приложение, УКЭП). Карточка
+   * видна, но настроить её нельзя — объявленное должно работать.
+   */
+  soon?: true;
 }
 
 /** Значения подключения. Все поля необязательны: заполняются по мере готовности. */
@@ -174,6 +180,7 @@ export const INTEGRATIONS: IntegrationSpec[] = [
   },
   {
     id: "lamoda",
+    soon: true,
     category: "market",
     title: "Lamoda",
     brand: { short: "LA", bg: "#0F0F0F", logo: "lamoda.svg" },
@@ -184,6 +191,7 @@ export const INTEGRATIONS: IntegrationSpec[] = [
   },
   {
     id: "aliexpress",
+    soon: true,
     category: "market",
     title: "AliExpress",
     brand: { short: "AE", bg: "#FF2751", logo: "aliexpress.png" },
@@ -200,6 +208,7 @@ export const INTEGRATIONS: IntegrationSpec[] = [
   // --- Учётные системы и CRM ------------------------------------------------
   {
     id: "1c",
+    soon: true,
     category: "erp",
     title: "1С:Предприятие 8",
     brand: { short: "1С", bg: "#FFCC00", fg: "#111111", logo: "1c.svg" },
@@ -228,6 +237,7 @@ export const INTEGRATIONS: IntegrationSpec[] = [
   },
   {
     id: "bitrix24",
+    soon: true,
     category: "erp",
     title: "Битрикс24",
     brand: { short: "Б24", bg: "#2FC7F7", fg: "#0B2740", logo: "bitrix24.svg" },
@@ -242,6 +252,7 @@ export const INTEGRATIONS: IntegrationSpec[] = [
   },
   {
     id: "retailcrm",
+    soon: true,
     category: "erp",
     title: "RetailCRM",
     brand: { short: "RC", bg: "#0068FF", logo: "retailcrm.svg" },
@@ -252,6 +263,7 @@ export const INTEGRATIONS: IntegrationSpec[] = [
   },
   {
     id: "insales",
+    soon: true,
     category: "erp",
     title: "InSales",
     brand: { short: "IS", bg: "#FF6B00", logo: "insales.svg" },
@@ -268,6 +280,7 @@ export const INTEGRATIONS: IntegrationSpec[] = [
   // --- Доставка -------------------------------------------------------------
   {
     id: "cdek",
+    soon: true,
     category: "delivery",
     title: "СДЭК",
     brand: { short: "СД", bg: "#1AB248", logo: "cdek.svg" },
@@ -283,6 +296,7 @@ export const INTEGRATIONS: IntegrationSpec[] = [
   },
   {
     id: "boxberry",
+    soon: true,
     category: "delivery",
     title: "Boxberry",
     brand: { short: "BB", bg: "#ED1C24", logo: "boxberry.png" },
@@ -293,6 +307,7 @@ export const INTEGRATIONS: IntegrationSpec[] = [
   },
   {
     id: "pochta",
+    soon: true,
     category: "delivery",
     title: "Почта России",
     brand: { short: "ПР", bg: "#0060A9", logo: "pochta.png" },
@@ -304,6 +319,7 @@ export const INTEGRATIONS: IntegrationSpec[] = [
   },
   {
     id: "dellin",
+    soon: true,
     category: "delivery",
     title: "Деловые линии",
     brand: { short: "ДЛ", bg: "#D6001C", logo: "dellin.svg" },
@@ -315,6 +331,7 @@ export const INTEGRATIONS: IntegrationSpec[] = [
   },
   {
     id: "pek",
+    soon: true,
     category: "delivery",
     title: "ПЭК",
     brand: { short: "ПЭК", bg: "#E30613", logo: "pek.png" },
@@ -325,6 +342,7 @@ export const INTEGRATIONS: IntegrationSpec[] = [
   },
   {
     id: "yandex-delivery",
+    soon: true,
     category: "delivery",
     title: "Яндекс Доставка",
     brand: { short: "ЯД", bg: "#FC3F1D", logo: "yandex-delivery.svg" },
@@ -352,6 +370,7 @@ export const INTEGRATIONS: IntegrationSpec[] = [
   },
   {
     id: "diadoc",
+    soon: true,
     category: "gov",
     title: "Диадок",
     brand: { short: "ДД", bg: "#00CBA6", logo: "diadoc.png" },

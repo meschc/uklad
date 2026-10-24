@@ -12,6 +12,7 @@ import {
   User,
 } from "lucide-react";
 import { selectRole, useEditor } from "@/lib/store";
+import { BackupReminder } from "./BackupReminder";
 import { allCells } from "@/lib/placement";
 import { addressKey } from "@/lib/address";
 import { planBounds } from "@/lib/planGeometry";
@@ -117,6 +118,8 @@ export function Dashboard() {
             </Button>
           </div>
         </header>
+
+        {!readOnly && <BackupReminder />}
 
         {/* Список складов — карточки в стиле проектов Figma */}
         <section>
