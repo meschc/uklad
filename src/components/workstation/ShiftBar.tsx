@@ -1,3 +1,4 @@
+import { Coffee, Timer, UtensilsCrossed, type LucideIcon } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { workstationRepository } from "@/lib/data";
 import { nextBreak, shiftStartedAt, shiftState, stateSince } from "@/lib/workstation";
@@ -19,7 +20,15 @@ export function ShiftBar({ staffId, onOpen }: { staffId: string; onOpen: () => v
   const start = shiftStartedAt(events, staffId);
 
   if (start == null)
-    return <Cell label={t("ws.bar.shift")} value={t("ws.shift.off")} muted onClick={onOpen} />;
+    return (
+      <Cell
+        icon={Timer}
+        label={t("ws.bar.shift")}
+        value={t("ws.shift.off")}
+        muted
+        onClick={onOpen}
+      />
+    );
 
   const onBreak = shiftState(events, staffId) === "break";
   const next = onBreak ? null : nextBreak(events, staffId, policy, now);
@@ -28,8 +37,9 @@ export function ShiftBar({ staffId, onOpen }: { staffId: string; onOpen: () => v
 
   return (
     <div className="flex items-start gap-1">
-      <Cell label={t("ws.bar.shift")} value={clock(now - start)} onClick={onOpen} />
+      <Cell icon={Timer} label={t("ws.bar.shift")} value={clock(now - start)} onClick={onOpen} />
       <Cell
+        icon={next?.kind === "lunch" ? UtensilsCrossed : Coffee}
         label={t(next?.kind === "lunch" ? "ws.bar.lunch" : "ws.bar.break")}
         value={
           onBreak
@@ -49,6 +59,7 @@ export function ShiftBar({ staffId, onOpen }: { staffId: string; onOpen: () => v
 }
 
 function Cell({
+  icon: Icon,
   label,
   value,
   tone,
@@ -56,6 +67,7 @@ function Cell({
   title,
   onClick,
 }: {
+  icon: LucideIcon;
   label: string;
   value: string;
   tone?: "amber" | "green";
@@ -68,9 +80,12 @@ function Cell({
       type="button"
       title={title}
       onClick={onClick}
-      className="flex flex-col items-start rounded px-2 py-0.5 text-left leading-tight hover:bg-muted"
+      className="flex min-w-[5.5rem] flex-col items-center rounded px-2 py-0.5 text-center leading-tight hover:bg-muted"
     >
-      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className="flex items-center gap-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+        <Icon className="size-3" />
+        {label}
+      </span>
       <span
         className={cn(
           "text-sm font-semibold tabular-nums",
