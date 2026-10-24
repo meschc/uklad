@@ -259,7 +259,7 @@ function main() {
     pool = new pg.Pool({ connectionString: process.env.DATABASE_URL, max: 10 });
     // Обрыв простаивающего соединения не должен ронять процесс.
     pool.on("error", (e) => console.error("[uklad] база:", e.message));
-    cabinet = createAuth({ pool, cfg, send, readBody, log: console });
+    cabinet = createAuth({ pool, cfg, send, readBody, log: console, mail });
     cabinet.purge();
     setInterval(cabinet.purge, DAY_MS).unref();
   } else {

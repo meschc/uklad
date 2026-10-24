@@ -11,8 +11,13 @@
  * просьба, её проверяет база. Бейдж открывает ровно один склад.
  *
  * Маршруты:
- *   POST /api/auth/register — почта, пароль, компания, склад или селлер
- *   POST /api/auth/login    — почта и пароль
+ *   POST /api/auth/register — почта, пароль, компания, склад или селлер;
+ *                             сессии не даёт, шлёт код на почту
+ *   POST /api/auth/verify   — почта и код из письма → вход
+ *   POST /api/auth/resend   — прислать код подтверждения ещё раз
+ *   POST /api/auth/reset/request — прислать код для нового пароля
+ *   POST /api/auth/reset    — почта, код и новый пароль → вход
+ *   POST /api/auth/login    — почта и пароль (почта должна быть подтверждена)
  *   POST /api/auth/badge    — код с QR-бейджа сотрудника
  *   POST /api/auth/logout
  *   GET  /api/auth/me       — кто вошёл, его компании, права в текущей
@@ -21,9 +26,10 @@
  */
 /* global require, module */
 /* eslint-disable @typescript-eslint/no-require-imports */
-const { randomBytes, createHash } = require("node:crypto");
+const { randomBytes, randomInt, createHash } = require("node:crypto");
 const { hashPassword, checkPassword, isAcceptable } = require("./password");
 const { createRateLimit, clientIp } = require("../rateLimit");
+const { codeLetter, alreadyLetter } = require("./letters");
 
 // По паролю — 30 дней, но 7 дней без входа закрывают сессию. По бейджу —
 // одна смена: 12 часов.
@@ -36,6 +42,12 @@ const FAIL_WINDOW_MS = 15 * 60_000;
 const FAIL_PAIR = 5;
 const FAIL_IP = 50;
 const FAIL_EMAIL = 20;
+
+// Код из письма: 15 минут, пять попыток и 20 неудач в сутки (считает база),
+// не больше пяти писем одного назначения в час и десяти в сутки.
+const CODE_TTL_MS = 15 * 60_000;
+const CODES_PER_HOUR = 5;
+const CODES_PER_DAY = 10;
 
 const BADGE_PREFIX = "UKB-";
 const EMAIL_RE = /^[^\s@]{1,64}@[^\s@]{1,255}\.[^\s@]{2,}$/;
@@ -53,7 +65,7 @@ function cookieValue(req, name) {
   return "";
 }
 
-function createAuth({ pool, cfg, send, readBody, log }) {
+function createAuth({ pool, cfg, send, readBody, log, mail }) {
   // Локально по http браузер не сохранит куку с `Secure` и `__Host-`.
   const local = !cfg.publicUrl.startsWith("https://");
   const COOKIE = local ? "uklad_session" : "__Host-uklad_session";
@@ -61,6 +73,7 @@ function createAuth({ pool, cfg, send, readBody, log }) {
   const attrs = `Path=/; HttpOnly;${local ? "" : " Secure;"} SameSite=Lax`;
   const loginLimiter = createRateLimit({ capacity: 20, refillPerMinute: 10 });
   const badgeLimiter = createRateLimit({ capacity: 30, refillPerMinute: 30 });
+  const codeLimiter = createRateLimit({ capacity: 10, refillPerMinute: 5 });
 
   const sessionCookie = (token, ttlMs) => `${COOKIE}=${token}; ${attrs}; Max-Age=${ttlMs / 1000}`;
   const clearCookie = `${COOKIE}=; ${attrs}; Max-Age=0`;
@@ -178,26 +191,128 @@ function createAuth({ pool, cfg, send, readBody, log }) {
       return send(res, 429, { ok: false }, { "Retry-After": "60" });
     }
     const hash = await hashPassword(b.password);
-    try {
-      const out = await tx(async (c) => {
-        const { rows } = await c.query(
-          `SELECT account_id, org_id FROM auth.register($1, $2, $3, $4, $5, $6)`,
-          [
-            email,
-            hash,
-            company,
-            b.kind === "warehouse",
-            b.kind === "seller",
-            String(b.name ?? "").slice(0, 200),
-          ],
-        );
-        return { orgId: rows[0].org_id, cookie: await startPasswordSession(c, rows[0].account_id) };
-      });
-      return send(res, 201, { ok: true, orgId: out.orgId }, { "Set-Cookie": out.cookie });
-    } catch (err) {
-      if (err.code === "23505") return send(res, 409, { ok: false, error: "email_taken" });
-      throw err;
+    const { rows } = await tx((c) =>
+      c.query(`SELECT account_id FROM auth.register($1, $2, $3, $4, $5, $6)`, [
+        email,
+        hash,
+        company,
+        b.kind === "warehouse",
+        b.kind === "seller",
+        String(b.name ?? "").slice(0, 200),
+      ]),
+    );
+    // Новая почта — код. Занятая и неподтверждённая — тоже код (человек
+    // потерял письмо). Занятая и подтверждённая — письмо «вы уже с нами».
+    // Ответ сайта во всех трёх случаях один.
+    if (rows[0]) {
+      await sendCode(rows[0].account_id, email, "verify");
+    } else {
+      const t = await codeTarget(email, "verify");
+      if (t && !t.verified) await sendCode(t.account_id, email, "verify", t);
+      else if (t) deliver(email, alreadyLetter(cfg.publicUrl));
     }
+    return send(res, 202, { ok: true });
+  }
+
+  // ---- Код из письма ----
+
+  const codeHash = (accountId, code) => sha256(`${accountId}:${code}`);
+  const codeTarget = async (email, purpose) =>
+    (await pool.query(`SELECT * FROM auth.code_target($1, $2)`, [email, purpose])).rows[0] ?? null;
+
+  // Письмо уходит в фоне: ответ сайта не должен зависеть ни от почтового
+  // сервера, ни от того, было ли кому писать.
+  function deliver(to, letter) {
+    Promise.resolve()
+      .then(() => mail.sendTo({ to, ...letter }))
+      .catch((e) => log.error("[uklad] письмо входа не ушло:", e.message));
+  }
+
+  async function sendCode(accountId, email, purpose, target = null) {
+    const t = target ?? { sent_last_hour: 0, sent_last_day: 0 };
+    if (t.sent_last_hour >= CODES_PER_HOUR || t.sent_last_day >= CODES_PER_DAY) return;
+    const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
+    await pool.query(`SELECT auth.issue_code($1, $2, $3, $4::interval)`, [
+      accountId,
+      purpose,
+      codeHash(accountId, code),
+      ms(CODE_TTL_MS),
+    ]);
+    deliver(email, codeLetter(purpose, code));
+  }
+
+  const readEmail = (b) =>
+    String(b.email ?? "")
+      .trim()
+      .toLowerCase()
+      .slice(0, 320);
+  const readCode = (b) => String(b.code ?? "").trim();
+
+  /** Проверить код и, если верный, выполнить `then(client, accountId)`. */
+  async function withCode(req, res, purpose, then, check = () => null) {
+    const b = await readJson(req, res);
+    if (!b) return;
+    if (!codeLimiter.take(clientIp(req, cfg.trustProxy))) {
+      return send(res, 429, { ok: false }, { "Retry-After": "60" });
+    }
+    const email = readEmail(b);
+    const code = readCode(b);
+    if (!/^\d{6}$/.test(code)) return send(res, 400, { ok: false, error: "bad_code" });
+    const bad = check(b);
+    if (bad) return send(res, 400, { ok: false, error: bad });
+    const t = await codeTarget(email, purpose);
+    if (!t) return send(res, 400, { ok: false, error: "bad_code" });
+    const out = await tx(async (c) => {
+      const { rows } = await c.query(`SELECT auth.use_code($1, $2, $3) AS ok`, [
+        t.account_id,
+        purpose,
+        codeHash(t.account_id, code),
+      ]);
+      if (!rows[0].ok) return null;
+      return then(c, t.account_id, b);
+    });
+    // Неверный код тратит попытку и коммитится; ответ — один на «нет такой
+    // почты», «не тот код» и «код истёк».
+    if (!out) return send(res, 400, { ok: false, error: "bad_code" });
+    return send(res, 200, { ok: true, orgId: out.orgId ?? null }, { "Set-Cookie": out.cookie });
+  }
+
+  const verify = (req, res) =>
+    withCode(req, res, "verify", async (c, accountId) => {
+      const { rows } = await c.query(`SELECT auth.confirm_email($1) AS org_id`, [accountId]);
+      return { orgId: rows[0].org_id, cookie: await startPasswordSession(c, accountId) };
+    });
+
+  // Новый пароль проверяется до кода: слабый пароль не должен сжигать код.
+  const reset = (req, res) =>
+    withCode(
+      req,
+      res,
+      "reset",
+      async (c, accountId, b) => {
+        await c.query(`SELECT auth.set_password($1, $2)`, [
+          accountId,
+          await hashPassword(b.password),
+        ]);
+        return { cookie: await startPasswordSession(c, accountId) };
+      },
+      (b) => (isAcceptable(b.password) ? null : "weak_password"),
+    );
+
+  /** Прислать код. Ответ один, есть такая почта или нет. */
+  async function requestCode(req, res, purpose) {
+    const b = await readJson(req, res);
+    if (!b) return;
+    if (!codeLimiter.take(clientIp(req, cfg.trustProxy))) {
+      return send(res, 429, { ok: false }, { "Retry-After": "60" });
+    }
+    const email = readEmail(b);
+    if (EMAIL_RE.test(email)) {
+      const t = await codeTarget(email, purpose);
+      if (t && (purpose === "reset" || !t.verified))
+        await sendCode(t.account_id, email, purpose, t);
+    }
+    return send(res, 202, { ok: true });
   }
 
   async function login(req, res) {
@@ -225,6 +340,9 @@ function createAuth({ pool, cfg, send, readBody, log }) {
       // Один ответ на «нет почты» и «не тот пароль».
       return send(res, 401, { ok: false, error: "bad_credentials" });
     }
+    // Пароль верный, но почта не подтверждена: это знает уже только тот,
+    // кто знает пароль, — значит, можно сказать прямо.
+    if (!rows[0].verified) return send(res, 403, { ok: false, error: "email_unverified" });
     const cookie = await tx((c) => startPasswordSession(c, rows[0].account_id));
     return send(res, 200, { ok: true }, { "Set-Cookie": cookie });
   }
@@ -351,6 +469,10 @@ function createAuth({ pool, cfg, send, readBody, log }) {
 
   const routes = {
     "POST /api/auth/register": register,
+    "POST /api/auth/verify": verify,
+    "POST /api/auth/resend": (req, res) => requestCode(req, res, "verify"),
+    "POST /api/auth/reset/request": (req, res) => requestCode(req, res, "reset"),
+    "POST /api/auth/reset": reset,
     "POST /api/auth/login": login,
     "POST /api/auth/badge": badge,
     "POST /api/auth/logout": logout,
