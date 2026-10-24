@@ -687,6 +687,11 @@ export interface WorkstationSlice {
   markShift: (
     type: Extract<StaffEventType, "shift_start" | "break_start" | "break_end" | "shift_end">,
   ) => boolean;
+  /**
+   * Отменить последнюю отметку смены вошедшего сотрудника, если ей меньше
+   * `MARK_UNDO_MS`. Случайное касание не оставляет следа в журнале.
+   */
+  undoShiftMark: () => boolean;
   /** Расписание перерывов склада, его задаёт руководитель. */
   breakPolicy: BreakPolicy;
   setBreakPolicy: (patch: Partial<BreakPolicy>) => void;

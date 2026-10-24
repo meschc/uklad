@@ -18,7 +18,6 @@ export const ru = {
   "ws.sessionUntil": "вход до {t}",
 
   "ws.equip.scanner": "Сканер",
-  "ws.equip.camera": "Камера стола",
   "ws.equip.printer": "Принтер этикеток",
   "ws.equip.scales": "Весы",
   "ws.equip.ready": "готов",
@@ -37,6 +36,7 @@ export const ru = {
   "ws.tab.shift": "Смена",
   "ws.tab.pack": "Упаковка",
   "ws.tab.log": "Журнал",
+  "ws.panel.close": "Закрыть",
 
   "ws.shift.off": "Не на смене",
   "ws.shift.on": "На смене",
@@ -109,6 +109,12 @@ export const ru = {
   "ws.done.next": "Следующая тара",
 
   "ws.bar.shift": "Смена",
+  "ws.bar.break": "Перерыв",
+  "ws.bar.lunch": "Обед",
+  "ws.bar.now": "доступен",
+  "ws.bar.overdue": "доступен {t}",
+  "ws.bar.breakStarted": "Перерыв начат",
+  "ws.bar.undo": "Отменить",
   "ws.bar.breakAt": "Перерыв с {t} · {m} мин",
   "ws.bar.lunchAt": "Обед с {t} · {m} мин",
   "ws.bar.breakNow": "Перерыв доступен · {m} мин",
@@ -168,7 +174,6 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.sessionUntil": "signed in until {t}",
 
   "ws.equip.scanner": "Scanner",
-  "ws.equip.camera": "Desk camera",
   "ws.equip.printer": "Label printer",
   "ws.equip.scales": "Scales",
   "ws.equip.ready": "ready",
@@ -187,6 +192,7 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.tab.shift": "Shift",
   "ws.tab.pack": "Packing",
   "ws.tab.log": "Log",
+  "ws.panel.close": "Close",
 
   "ws.shift.off": "Off shift",
   "ws.shift.on": "On shift",
@@ -260,6 +266,12 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.done.next": "Next tote",
 
   "ws.bar.shift": "Shift",
+  "ws.bar.break": "Break",
+  "ws.bar.lunch": "Lunch",
+  "ws.bar.now": "available",
+  "ws.bar.overdue": "available {t}",
+  "ws.bar.breakStarted": "Break started",
+  "ws.bar.undo": "Undo",
   "ws.bar.breakAt": "Break from {t} · {m} min",
   "ws.bar.lunchAt": "Lunch from {t} · {m} min",
   "ws.bar.breakNow": "Break available · {m} min",
