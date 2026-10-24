@@ -15,6 +15,9 @@ const TABLES = [
   "stock",
   "reservations",
   "stock_log",
+  "conversations",
+  "conversation_members",
+  "messages",
 ];
 
 let db, w;

@@ -23,6 +23,8 @@
  *   GET  /d/<токен>       — персональная демо-ссылка → кабинет
  *   /api/auth/*, /api/staff/* — вход в кабинет (`cabinet/auth.js`), если
  *                           задан DATABASE_URL (Postgres, `server/db`)
+ *   /api/chat/*           — чат кабинета (`cabinet/chat.js`, `cabinet/telegram.js`)
+ *   POST /api/telegram/webhook — обновления Телеграм-бота уведомлений
  *
  * Все настройки — переменными окружения, образец в `deploy/.env.example`.
  */
@@ -332,7 +334,7 @@ function createApp({ cfg, db, mail, cabinet = null, now = () => new Date(), log 
       if (demo && req.method === "GET") return handleDemo(req, res, demo[1]);
       if (cabinet && (await cabinet.handle(req, res, url))) return;
       // Кабинет без базы не работает: честный 503, а не «нет такого адреса».
-      if (!cabinet && /^\/api\/(auth|staff)\//.test(url.pathname)) {
+      if (!cabinet && /^\/api\/(auth|staff|chat|telegram)\//.test(url.pathname)) {
         return send(res, 503, { ok: false });
       }
       return send(res, 404, { ok: false });
@@ -356,15 +358,68 @@ function main() {
   // BYPASSRLS, без DELETE (server/db/README.md).
   let cabinet = null;
   let pool = null;
+  let notifierPool = null;
   if (process.env.DATABASE_URL) {
     const pg = require("pg");
     const { createAuth } = require("./cabinet/auth");
     pool = new pg.Pool({ connectionString: process.env.DATABASE_URL, max: 10 });
     // Обрыв простаивающего соединения не должен ронять процесс.
     pool.on("error", (e) => console.error("[uklad] база:", e.message));
-    cabinet = createAuth({ pool, cfg, send, readBody, log: console });
-    cabinet.purge();
-    setInterval(cabinet.purge, DAY_MS).unref();
+    const auth = createAuth({ pool, cfg, send, readBody, log: console });
+    auth.purge();
+    setInterval(auth.purge, DAY_MS).unref();
+    // Чат: без CENTRIFUGO_* работает, только кабинет сам перечитывает ленту.
+    const { createChat } = require("./cabinet/chat");
+    const { createRealtime } = require("./cabinet/realtime");
+    const realtime = createRealtime({
+      apiUrl: process.env.CENTRIFUGO_API_URL,
+      apiKey: process.env.CENTRIFUGO_API_KEY,
+      tokenSecret: process.env.CENTRIFUGO_TOKEN_SECRET,
+      log: console,
+    });
+    const chat = createChat({ auth, realtime, send, log: console });
+    // Телеграм-бот и письма о непрочитанном. Без TELEGRAM_* бот молчит,
+    // письма работают на той же почте, что и заявки.
+    const { createTelegram, createTelegramApi } = require("./cabinet/telegram");
+    const { createNotifier } = require("./cabinet/notify");
+    const tgApi = createTelegramApi({ token: process.env.TELEGRAM_BOT_TOKEN, log: console });
+    const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
+    // Рассылка и вебхук бота — своим подключением под ролью uklad_notifier:
+    // у роли приложения их функций нет (init.sql, 007).
+    if (process.env.NOTIFIER_DATABASE_URL) {
+      notifierPool = new pg.Pool({ connectionString: process.env.NOTIFIER_DATABASE_URL, max: 2 });
+      notifierPool.on("error", (e) => console.error("[uklad] база рассылки:", e.message));
+    } else {
+      console.log("[uklad] рассылка выключена: не задан NOTIFIER_DATABASE_URL");
+    }
+    const telegram = createTelegram({
+      notifierPool,
+      auth,
+      api: tgApi,
+      botName: process.env.TELEGRAM_BOT_NAME,
+      webhookSecret,
+      send,
+      readBody,
+      log: console,
+    });
+    if (notifierPool) {
+      if (tgApi.enabled && webhookSecret) {
+        tgApi.setWebhook(`${cfg.publicUrl}/api/telegram/webhook`, webhookSecret);
+      }
+      createNotifier({
+        pool: notifierPool,
+        telegram: tgApi,
+        mail,
+        appUrl: `${cfg.publicUrl}/app/`,
+        log: console,
+      }).start();
+    }
+    cabinet = {
+      handle: async (req, res, url) =>
+        (await auth.handle(req, res, url)) ||
+        (await chat.handle(req, res, url)) ||
+        (await telegram.handle(req, res, url)),
+    };
   } else {
     console.log("[uklad] кабинет выключен: не задан DATABASE_URL");
   }
@@ -395,7 +450,7 @@ function main() {
 
   const stop = () => {
     admin?.close();
-    server.close(() => (db.close(), pool?.end(), process.exit(0)));
+    server.close(() => (db.close(), pool?.end(), notifierPool?.end(), process.exit(0)));
   };
   process.on("SIGTERM", stop);
   process.on("SIGINT", stop);

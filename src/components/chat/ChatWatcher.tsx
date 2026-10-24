@@ -2,6 +2,8 @@ import { useEffect, useRef } from "react";
 import type { ChatMessage } from "@/lib/types";
 import { countUnread, useEditor, visibleChatPartners } from "@/lib/store";
 import { useTabBadge } from "@/lib/tabBadge";
+import { chatNotice, showChatNotice } from "@/lib/chatNotify";
+import { useT } from "@/lib/i18n";
 import { useChatDemoReply } from "./useChatDemoReply";
 
 /**
@@ -18,7 +20,9 @@ import { useChatDemoReply } from "./useChatDemoReply";
  *
  * Тост живёт секунды и виден только тому, кто смотрит на вкладку. Поэтому то же
  * число уходит в корешок вкладки и на иконку (`lib/tabBadge`): ушедший в почту
- * или к стеллажу увидит, что его ждут, не открывая кабинет.
+ * или к стеллажу увидит, что его ждут, не открывая кабинет. А если человек
+ * включил в профиле уведомления браузера, на скрытой вкладке вместо тоста
+ * приходит системное: кто написал и, если не выключено, что (`lib/chatNotify`).
  */
 export function ChatWatcher() {
   const showToast = useEditor((s) => s.showToast);
@@ -28,6 +32,7 @@ export function ChatWatcher() {
     countUnread(s.chats, s.session.user.role, visibleChatPartners(s)),
   );
   const prevUnread = useRef(unread);
+  const t = useT();
 
   useChatDemoReply();
   useTabBadge(unread);
@@ -48,12 +53,31 @@ export function ChatWatcher() {
         partners.map((p) => p.id),
       );
       const name = partners.find((p) => p.id === newest)?.name;
-      if (name) showToast("chat.toast", { name });
+      if (newest && name && !notifySystem(newest, name, t("chat.notifyHidden"))) {
+        showToast("chat.toast", { name });
+      }
     }
     prevUnread.current = unread;
-  }, [unread, showToast]);
+  }, [unread, showToast, t]);
 
   return null;
+}
+
+/** Системное уведомление вместо тоста. Вернёт false, если показать нельзя. */
+function notifySystem(partnerId: string, name: string, hidden: string): boolean {
+  const s = useEditor.getState();
+  if (!s.profile.chatNotify) return false;
+  const last = s.chats[partnerId]?.at(-1);
+  const notice = chatNotice(
+    name,
+    last?.deletedAt ? "" : (last?.text ?? ""),
+    s.profile.chatNotifyPreview !== false,
+    hidden,
+  );
+  return showChatNotice(notice, partnerId, () => {
+    s.goToView("chat");
+    s.openChat(partnerId);
+  });
 }
 
 /** Переписка с самым свежим сообщением из видимых — про неё и уведомляем. */

@@ -73,6 +73,29 @@ services:
     security_opt:
       - no-new-privileges:true
 
+  # Доставка сообщений чата в реальном времени (решение 21.10, MIT). Сам
+  # переписку не хранит: в канал уходит только «что изменилось», текст кабинет
+  # читает через api (server/api/src/cabinet/realtime.js). Без настроек
+  # CENTRIFUGO_* в .env api о нём не знает, и чат работает опросом.
+  centrifugo:
+    image: centrifugo/centrifugo:v6.10.2
+    command: centrifugo
+    restart: unless-stopped
+    logging: *logging
+    mem_limit: 128m
+    cpus: 0.5
+    # Наружу порт не открыт: браузер ходит через Caddy (/connection/websocket),
+    # api — по внутренней сети на :8000/api.
+    environment:
+      CENTRIFUGO_CLIENT_TOKEN_HMAC_SECRET_KEY: ${CENTRIFUGO_TOKEN_SECRET:-}
+      CENTRIFUGO_HTTP_API_KEY: ${CENTRIFUGO_API_KEY:-}
+      CENTRIFUGO_CLIENT_ALLOWED_ORIGINS: https://${SITE_DOMAIN}
+      # personal:#<id> — подписаться может только сам сотрудник из токена.
+      CENTRIFUGO_CHANNEL_NAMESPACES: '[{"name":"personal","allow_user_limited_channels":true}]'
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+
 volumes:
   caddy_data:
   caddy_config:

@@ -593,7 +593,11 @@ export interface ChatSlice {
   seedChatsOnce: () => void;
   openChat: (partnerId: string) => void;
   /** Отправить сообщение от лица текущей роли. Пустые строки игнорируются. */
-  sendChatMessage: (partnerId: string, text: string) => void;
+  sendChatMessage: (partnerId: string, text: string, replyTo?: string) => void;
+  /** Поправить своё сообщение. Чужое и удалённое не правятся. */
+  editChatMessage: (partnerId: string, messageId: string, text: string) => void;
+  /** Удалить своё сообщение: текст стирается, пометка остаётся в ленте. */
+  deleteChatMessage: (partnerId: string, messageId: string) => void;
   /**
    * Ответ собеседника в демо. Бэкенда нет и второго человека за экраном тоже:
    * без этого чат в прототипе не покажет ни одного входящего сообщения, а

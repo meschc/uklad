@@ -39,7 +39,6 @@ export function ChatThreadList({
     <aside className="flex w-72 shrink-0 flex-col border-r border-border bg-card">
       <div className="border-b border-border p-3">
         <h1 className="text-sm font-semibold tracking-tight">{t("chat.title")}</h1>
-        <p className="mt-0.5 text-xs text-muted-foreground">{t("chat.subtitle")}</p>
         <div className="relative mt-2.5">
           <Search className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
           <input

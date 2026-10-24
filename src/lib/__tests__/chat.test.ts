@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { groupMessagesByDay, lastMessage, unreadIn } from "../chat";
+import { groupMessagesByDay, lastEditable, lastMessage, searchMessages, unreadIn } from "../chat";
 import type { ChatMessage } from "../types";
 
 /**
@@ -92,5 +92,25 @@ describe("lastMessage", () => {
 
   it("возвращает null на пустой ленте", () => {
     expect(lastMessage([])).toBeNull();
+  });
+});
+
+describe("searchMessages / lastEditable", () => {
+  const m = (id: string, from: "seller" | "warehouse", text: string, deletedAt?: number) =>
+    ({ id, from, text, at: 0, deletedAt }) as ChatMessage;
+  const feed = [
+    m("1", "seller", "Когда приёмка?"),
+    m("2", "warehouse", "ПРИЕМКА с 9"),
+    m("3", "warehouse", "приёмка", 5),
+  ];
+
+  it("ищет без учёта регистра и «ё», от новых к старым, мимо удалённых", () => {
+    expect(searchMessages(feed, "приемка")).toEqual(["2", "1"]);
+    expect(searchMessages(feed, "  ")).toEqual([]);
+  });
+
+  it("последнее своё — не удалённое", () => {
+    expect(lastEditable(feed, "warehouse")?.id).toBe("2");
+    expect(lastEditable(feed, "seller")?.id).toBe("1");
   });
 });

@@ -23,7 +23,7 @@ import { Input } from "@/components/ui/input";
 import { card } from "@/components/ui/card";
 import { Row, ReadValue, RowEditor } from "./ProfileRow";
 import { TariffSection } from "./TariffSection";
-import { ProfileHero, Section, ThemeTile } from "./ProfileParts";
+import { NotifySection, ProfileHero, Section, ThemeTile } from "./ProfileParts";
 import { BackupSection } from "./BackupSection";
 
 /**
@@ -425,6 +425,10 @@ export function Profile() {
                   />
                 </Row>
               </div>
+            </Section>
+
+            <Section title={t("profile.section.notify")}>
+              <NotifySection />
             </Section>
 
             <Section title={t("profile.section.other")}>
