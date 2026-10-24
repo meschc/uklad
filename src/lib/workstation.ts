@@ -57,6 +57,9 @@ function shiftMarks(events: readonly StaffEvent[], staffId: string): StaffEvent[
     .sort((a, b) => a.at - b.at);
 }
 
+/** Сколько живёт отмена случайной отметки (нажал перерыв локтем). */
+export const MARK_UNDO_MS = 5_000;
+
 /** Когда началось текущее состояние смены — для таймера перерыва в шапке. */
 export function stateSince(events: readonly StaffEvent[], staffId: string): number | null {
   return shiftMarks(events, staffId).at(-1)?.at ?? null;

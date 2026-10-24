@@ -18,6 +18,8 @@ export interface WorkstationRepository {
   login: (code: string, station: WorkstationKind) => Promise<Result<string>>;
   logout: () => Promise<Result<void>>;
   mark: (type: ShiftMark) => Promise<Result<void>>;
+  /** Отменить случайную отметку в первые секунды. */
+  undoMark: () => Promise<Result<void>>;
   /** Начать тару: скан тары с товаром и короба отгрузки. */
   packStart: (sourceCode: string, targetCode: string) => Promise<Result<void>>;
   packItem: (code: string) => Promise<Result<ItemScan>>;
@@ -41,6 +43,11 @@ export function createWorkstationRepository(port: StorePort = storePort): Workst
     logout: () => attempt(() => port.get().stationLogout()),
     mark: async (type) => {
       const res = await attempt(() => port.get().markShift(type));
+      if (!res.ok) return res;
+      return res.data ? ok(undefined) : fail("ws.markRejected");
+    },
+    undoMark: async () => {
+      const res = await attempt(() => port.get().undoShiftMark());
       if (!res.ok) return res;
       return res.data ? ok(undefined) : fail("ws.markRejected");
     },

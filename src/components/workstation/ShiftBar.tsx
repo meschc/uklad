@@ -1,7 +1,7 @@
 import { Coffee, Timer, UtensilsCrossed, type LucideIcon } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { workstationRepository } from "@/lib/data";
-import { nextBreak, shiftStartedAt, shiftState, stateSince } from "@/lib/workstation";
+import { MARK_UNDO_MS, nextBreak, shiftStartedAt, shiftState, stateSince } from "@/lib/workstation";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { useNow } from "./useNow";
@@ -10,8 +10,13 @@ import { useNow } from "./useNow";
  * Смена и перерыв — в шапке рабочего места, двумя столбиками: сверху слово,
  * под ним таймер. Смена считает, сколько идёт смена; перерыв — сколько до него
  * осталось, а на перерыве — сколько он уже длится. Нажатие на смену открывает
- * панель смены, на перерыв — сразу начинает (или заканчивает) его.
+ * панель смены, на перерыв — сразу начинает (или заканчивает) его. Первые
+ * секунды перерыв можно отменить: общий сенсорный экран задевают локтем.
+ * Перерыв, доступный дольше `OVERDUE_MS`, обведён рамкой — человек без
+ * перерыва устаёт и ошибается.
  */
+const OVERDUE_MS = 15 * 60_000;
+
 export function ShiftBar({ staffId, onOpen }: { staffId: string; onOpen: () => void }) {
   const t = useT();
   const now = useNow(1000);
@@ -34,6 +39,8 @@ export function ShiftBar({ staffId, onOpen }: { staffId: string; onOpen: () => v
   const next = onBreak ? null : nextBreak(events, staffId, policy, now);
   const ready = !!next && now >= next.at;
   const since = stateSince(events, staffId) ?? now;
+  const overdue = ready && now - next.at > OVERDUE_MS;
+  const undoable = onBreak && now - since < MARK_UNDO_MS;
 
   return (
     <div className="flex items-start gap-1">
@@ -46,14 +53,26 @@ export function ShiftBar({ staffId, onOpen }: { staffId: string; onOpen: () => v
             ? clock(now - since)
             : !next
               ? "—"
-              : ready
-                ? t("ws.bar.now")
-                : clock(next.at - now)
+              : overdue
+                ? t("ws.bar.overdue", { t: clock(now - next.at) })
+                : ready
+                  ? t("ws.bar.now")
+                  : clock(next.at - now)
         }
         tone={onBreak ? "amber" : ready ? "green" : undefined}
+        ring={overdue}
         title={t(onBreak ? "ws.mark.break_end" : "ws.mark.break_start")}
         onClick={() => void workstationRepository.mark(onBreak ? "break_end" : "break_start")}
       />
+      {undoable && (
+        <button
+          type="button"
+          className="self-center rounded-full bg-foreground px-3 py-1 text-xs text-background"
+          onClick={() => void workstationRepository.undoMark()}
+        >
+          {t("ws.bar.breakStarted")} · <span className="font-semibold">{t("ws.bar.undo")}</span>
+        </button>
+      )}
     </div>
   );
 }
@@ -64,6 +83,7 @@ function Cell({
   value,
   tone,
   muted,
+  ring,
   title,
   onClick,
 }: {
@@ -72,6 +92,7 @@ function Cell({
   value: string;
   tone?: "amber" | "green";
   muted?: boolean;
+  ring?: boolean;
   title?: string;
   onClick: () => void;
 }) {
@@ -80,9 +101,12 @@ function Cell({
       type="button"
       title={title}
       onClick={onClick}
-      className="flex min-w-[5.5rem] flex-col items-center rounded px-2 py-0.5 text-center leading-tight hover:bg-muted"
+      className={cn(
+        "flex min-w-[5.5rem] flex-col items-center rounded px-2 py-0.5 text-center leading-tight hover:bg-muted",
+        ring && "ring-2 ring-emerald-500",
+      )}
     >
-      <span className="flex items-center gap-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+      <span className="flex items-center gap-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
         <Icon className="size-3" />
         {label}
       </span>
