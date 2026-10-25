@@ -92,7 +92,10 @@ export function ShiftMenu({ member, now }: { member: StaffMember; now: number })
         </p>
       )}
 
-      <div className="grid gap-2 sm:grid-cols-2">
+      {/* Одна кнопка в строку: панель смены узкая, и в две колонки длинное
+          «Вернуться с перерыва» не помещается, а одна «Начать смену»
+          оставляла пустую половину. */}
+      <div className="grid gap-2">
         {allowedMarks(state)
           .filter((type) => type !== "idle_start")
           .map((type, i) => {
