@@ -14,19 +14,19 @@ export const ru = {
     "Какие экраны открывались, какие действия и ошибки были. Без имён, телефонов и почт.",
   "support.snapshot": "Прислать копию данных этого склада",
   "support.snapshot.hint":
-    "Только открытый сейчас склад: товары, ячейки и операции, по ним видно ошибку. Других ваших складов в копии не будет. Имена людей заменятся метками вроде «Сотрудник 3», а контакты, реквизиты и ключи подключений будут удалены.",
+    "Только открытый сейчас склад: товары, ячейки и операции, по ним видно ошибку. Других ваших складов в копии не будет. Имён людей в копии не будет, только их номера в Укладе. Контакты, реквизиты и ключи подключений тоже будут удалены.",
   "support.snapshot.stats":
     "Заменено имён: {names} · удалено полей: {dropped} · скрыто текстов: {texts}",
   "support.preview.show": "Показать, что уйдёт",
   "support.preview.hide": "Скрыть",
   "support.preview.title": "Что уйдёт в копии",
   "support.preview.names":
-    "Имена людей заменены метками «Сотрудник 1», «Продавец 2». Телефоны, почты, реквизиты и ключи подключений удалены.",
+    "Имена людей убраны, остались только их номера в Укладе. Телефоны, почты, реквизиты и ключи подключений удалены.",
   "support.preview.raw": "Показать как файл",
   "support.preview.rawHide": "Скрыть файл",
   "support.preview.noSnapshot":
     "Копия данных склада не прикладывается: уйдут только текст обращения, журнал событий и сведения о браузере.",
-  "support.sum.staff": "Сотрудники (метками, без имён)",
+  "support.sum.staff": "Сотрудники (номерами, без имён)",
   "support.sum.products": "Товары",
   "support.sum.placements": "Размещения на полках",
   "support.sum.shipments": "Поставки",
@@ -59,19 +59,19 @@ export const en: Record<keyof typeof ru, string> = {
     "Which screens were opened, which actions and errors happened. No names, phones or emails.",
   "support.snapshot": "Send a copy of this warehouse's data",
   "support.snapshot.hint":
-    "Only the warehouse open now: goods, cells and operations, which show the error. Your other warehouses are not included. People's names become labels like “Staff 3”; contacts, company details and integration keys are removed.",
+    "Only the warehouse open now: goods, cells and operations, which show the error. Your other warehouses are not included. People's names are left out, only their Uklad numbers remain. Contacts, company details and integration keys are removed too.",
   "support.snapshot.stats":
     "Names replaced: {names} · fields removed: {dropped} · texts hidden: {texts}",
   "support.preview.show": "Show what will be sent",
   "support.preview.hide": "Hide",
   "support.preview.title": "What the copy contains",
   "support.preview.names":
-    "People's names are replaced with labels like “Staff 1”, “Seller 2”. Phones, emails, company details and integration keys are removed.",
+    "People's names are removed, only their Uklad numbers remain. Phones, emails, company details and integration keys are removed.",
   "support.preview.raw": "Show as a file",
   "support.preview.rawHide": "Hide the file",
   "support.preview.noSnapshot":
     "No warehouse data copy is attached: only your message, the event log and browser details will be sent.",
-  "support.sum.staff": "Staff (labels, no names)",
+  "support.sum.staff": "Staff (numbers, no names)",
   "support.sum.products": "Products",
   "support.sum.placements": "Shelf placements",
   "support.sum.shipments": "Inbound shipments",
