@@ -102,7 +102,7 @@ const CODE_KEY = /^(id|barcode|ean|gtin|sku|article|code)$|(Id|Ids|Code|Barcode)
 const PLAIN_CODE = /^[\w-]{1,64}$/;
 
 export interface AnonymizeStats {
-  /** Сколько имён заменено метками. */
+  /** Сколько имён людей и компаний убрано (человек остаётся своим id). */
   names: number;
   /** Сколько полей с контактами, реквизитами и ключами вырезано. */
   dropped: number;
@@ -112,8 +112,8 @@ export interface AnonymizeStats {
 
 export function anonymizeSnapshot(state: unknown): { data: unknown; stats: AnonymizeStats } {
   const stats: AnonymizeStats = { names: 0, dropped: 0, texts: 0 };
-  // Одна и та же запись получает одну и ту же метку во всём снимке: сотрудник
-  // в списке персонала и он же ответственный склада — «Сотрудник 2» оба раза.
+  // Метки — только для адресов: у адреса нет своего id, а одинаковые ли это
+  // места, по метке видно («Адрес 2» оба раза).
   const labels = new Map<string, string>();
   const counters = new Map<string, number>();
 
@@ -167,8 +167,10 @@ export function anonymizeSnapshot(state: unknown): { data: unknown; stats: Anony
     const out: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(obj)) {
       if (k === "name" && typeof v === "string") {
-        out[k] = label(kind, obj.id);
-        stats.names += 1;
+        // Имя не уходит вовсе: человека в обращении узнают по его id — тому же
+        // номеру, что в журнале смены, рейсах и приёмке (решение Кирилла
+        // 25.10). Метка «Сотрудник 3» связи с остальными данными не давала.
+        if (v) stats.names += 1;
       } else if (v === null || typeof v === "number" || typeof v === "boolean") {
         out[k] = v;
       } else if (PERSON_KEEP.test(k) && !SECRET.test(k)) {

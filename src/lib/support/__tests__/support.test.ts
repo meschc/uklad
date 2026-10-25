@@ -132,12 +132,12 @@ describe("обезличивание снимка", () => {
     expect(json).toContain('"enabled":true');
   });
 
-  it("одному человеку — одна метка во всём снимке", () => {
+  it("человек остаётся своим id, без имени — тем же во всём снимке", () => {
     const wh = (data as { warehouse: { staff: { name: string }[]; manager: { name: string } } })
       .warehouse;
-    expect(wh.staff[0].name).toBe("Сотрудник 1");
-    expect(wh.staff[1].name).toBe("Сотрудник 2");
-    expect(wh.manager.name).toBe("Сотрудник 1");
+    expect(wh.staff[0]).not.toHaveProperty("name");
+    expect(wh.staff.map((s) => (s as { id?: string }).id)).toEqual(["s1", "s2"]);
+    expect(wh.manager).toEqual({ id: "s1", role: "Управляющий" });
   });
 });
 
@@ -201,7 +201,6 @@ describe("обезличивание: ловушка на поля, которы
     const s = (data as { warehouse: { staff: Record<string, unknown>[] } }).warehouse.staff[0];
     expect(s).toEqual({
       id: "s1",
-      name: "Сотрудник 1",
       role: "Кладовщик",
       hourlyRate: 300,
       createdAt: 1,
