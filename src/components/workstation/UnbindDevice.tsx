@@ -3,7 +3,7 @@ import { MonitorX } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { workstationRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
-import { MANAGER_ROLE, badgeCode } from "@/lib/workstation";
+import { DEMO_BADGES, MANAGER_ROLE, badgeCode } from "@/lib/workstation";
 import { useT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { eyebrow } from "@/components/ui/eyebrow";
@@ -49,7 +49,7 @@ export function UnbindDevice({ onDone }: { onDone: () => void }) {
         onSubmit={(code) => void submit(code)}
       />
 
-      {managers.length > 0 && (
+      {DEMO_BADGES && managers.length > 0 && (
         <section className="flex flex-col gap-2">
           <h2 className={eyebrow({ tone: "muted" })}>{t("ws.login.demo")}</h2>
           <div className="flex flex-wrap gap-2">

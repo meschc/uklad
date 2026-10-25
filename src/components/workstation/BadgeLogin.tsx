@@ -3,7 +3,7 @@ import { BadgeCheck } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { workstationRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
-import { MANAGER_ROLE, badgeCode } from "@/lib/workstation";
+import { DEMO_BADGES, MANAGER_ROLE, badgeCode } from "@/lib/workstation";
 import { useT } from "@/lib/i18n";
 import { card } from "@/components/ui/card";
 import { eyebrow } from "@/components/ui/eyebrow";
@@ -51,33 +51,35 @@ export function BadgeLogin() {
         onSubmit={(code) => void submit(code)}
       />
 
-      <section className="flex flex-col gap-2">
-        <h2 className={eyebrow({ tone: "muted" })}>{t("ws.login.demo")}</h2>
-        <p className="text-xs text-muted-foreground">{t("ws.login.demoHint")}</p>
-        {staff.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("ws.login.noStaff")}</p>
-        ) : (
-          <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {staff.map((m) => (
-              <li key={m.id}>
-                <button
-                  type="button"
-                  className={card({
-                    pad: "sm",
-                    className:
-                      "flex h-full w-full cursor-pointer flex-col items-center gap-2 text-center transition-colors hover:border-primary",
-                  })}
-                  onClick={() => void submit(badgeCode(m.id))}
-                >
-                  <QrSvg code={badgeCode(m.id)} size={72} showCode={false} />
-                  <span className="text-sm font-medium leading-tight">{m.name}</span>
-                  <span className="text-xs text-muted-foreground">{m.role}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      {DEMO_BADGES && (
+        <section className="flex flex-col gap-2">
+          <h2 className={eyebrow({ tone: "muted" })}>{t("ws.login.demo")}</h2>
+          <p className="text-xs text-muted-foreground">{t("ws.login.demoHint")}</p>
+          {staff.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t("ws.login.noStaff")}</p>
+          ) : (
+            <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {staff.map((m) => (
+                <li key={m.id}>
+                  <button
+                    type="button"
+                    className={card({
+                      pad: "sm",
+                      className:
+                        "flex h-full w-full cursor-pointer flex-col items-center gap-2 text-center transition-colors hover:border-primary",
+                    })}
+                    onClick={() => void submit(badgeCode(m.id))}
+                  >
+                    <QrSvg code={badgeCode(m.id)} size={72} showCode={false} />
+                    <span className="text-sm font-medium leading-tight">{m.name}</span>
+                    <span className="text-xs text-muted-foreground">{m.role}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
     </div>
   );
 }
