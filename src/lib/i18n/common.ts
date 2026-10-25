@@ -169,7 +169,7 @@ export const ru = {
   // Группы рельса (п.10): экранов стало много, близкие собраны в подменю.
   "nav.group.flow": "Работа",
   "nav.group.print": "Печать",
-  "nav.group.setup": "Склад",
+  "nav.group.setup": "О складе",
   "nav.side.lookup": "Что это?",
   "nav.side.integrations": "Интеграции",
 
@@ -355,7 +355,7 @@ export const en: Record<keyof typeof ru, string> = {
   "nav.side.documents": "Documents",
   "nav.group.flow": "Operations",
   "nav.group.print": "Printing",
-  "nav.group.setup": "Warehouse",
+  "nav.group.setup": "About warehouse",
   "nav.side.lookup": "What is it?",
   "nav.side.integrations": "Integrations",
 
