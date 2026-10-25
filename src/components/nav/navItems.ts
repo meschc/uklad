@@ -69,7 +69,6 @@ const WAREHOUSE_NAV: NavEntry[] = [
       { view: "picking", key: "nav.side.picking", icon: ScanLine },
       // Стол упаковщика и меню смены: открывается на весь экран, вход по бейджу.
       { view: "workstation", key: "nav.side.workstation", icon: MonitorSmartphone },
-      { view: "operations", key: "nav.side.operations", icon: ListChecks },
     ],
   },
   // Переписка с продавцами — сразу за конвейером и отдельным пунктом (п.3):
@@ -88,13 +87,16 @@ const WAREHOUSE_NAV: NavEntry[] = [
     ],
   },
   {
-    // Настройка самого склада: какой он, кто на нём работает, с чем связан.
+    // Всё о самом складе: какой он, кто на нём работает, какие услуги и по
+    // какой цене оказывает, с чем связан. «Операции» здесь, а не в «Работе»:
+    // это прайс и отчёт по услугам склада, а не шаг ежедневного конвейера.
     id: "setup",
     key: "nav.group.setup",
     icon: ClipboardCheck,
     items: [
       { view: "spec", key: "nav.side.spec", icon: ClipboardCheck },
       { view: "staff", key: "nav.side.staff", icon: Users },
+      { view: "operations", key: "nav.side.operations", icon: ListChecks },
       { view: "integrations", key: "nav.side.integrations", icon: Plug },
     ],
   },
