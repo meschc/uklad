@@ -64,6 +64,8 @@ const COUNTED: (keyof WarehouseSpec)[] = [
   "rackType",
   "palletCapacity",
   "hours",
+  "receivingHours",
+  "shippingHours",
   "round0Clock",
   "docks",
   "dockType",
@@ -98,6 +100,7 @@ const COUNTED: (keyof WarehouseSpec)[] = [
 export function WarehouseSpecScreen() {
   const warehouse = useEditor((s) => s.warehouse);
   const updateSpec = useEditor((s) => s.updateWarehouseSpec);
+  const updateWarehouse = useEditor((s) => s.updateWarehouse);
   const readOnly = useEditor((s) => selectRole(s) === "seller");
   const t = useT();
 
@@ -129,8 +132,27 @@ export function WarehouseSpecScreen() {
         <div className="flex flex-wrap items-center gap-4">
           <ClassBadge value={spec.warehouseClass} />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-base font-semibold">{warehouse.name}</p>
-            {warehouse.address && (
+            {/* Название и адрес правятся здесь же, как любое поле паспорта:
+                искать их в другом месте кабинета склад не должен. */}
+            {!ro ? (
+              <div className="flex flex-col gap-1">
+                <TextValue
+                  value={warehouse.name}
+                  readOnly={false}
+                  placeholder={t("spec.name")}
+                  onCommit={(v) => v && updateWarehouse(warehouse.id, { name: v })}
+                />
+                <TextValue
+                  value={warehouse.address}
+                  readOnly={false}
+                  placeholder={t("spec.addressPlaceholder")}
+                  onCommit={(v) => updateWarehouse(warehouse.id, { address: v ?? "" })}
+                />
+              </div>
+            ) : (
+              <p className="truncate text-base font-semibold">{warehouse.name}</p>
+            )}
+            {ro && warehouse.address && (
               <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
                 <MapPin className="size-3 shrink-0" />
                 <span className="truncate">{warehouse.address}</span>
@@ -250,6 +272,22 @@ export function WarehouseSpecScreen() {
                 readOnly={ro}
                 placeholder={t("spec.hoursPlaceholder")}
                 onCommit={(v) => patch({ hours: v })}
+              />
+            </Tile>
+            <Tile label={t("spec.receivingHours")} wide>
+              <TextValue
+                value={spec.receivingHours}
+                readOnly={ro}
+                placeholder={t("spec.hoursPlaceholder")}
+                onCommit={(v) => patch({ receivingHours: v })}
+              />
+            </Tile>
+            <Tile label={t("spec.shippingHours")} wide>
+              <TextValue
+                value={spec.shippingHours}
+                readOnly={ro}
+                placeholder={t("spec.hoursPlaceholder")}
+                onCommit={(v) => patch({ shippingHours: v })}
               />
             </Tile>
             <Tile label={t("spec.round0Clock")}>
