@@ -4,7 +4,7 @@
 //
 //   PG_ADMIN_URL=postgres://postgres:postgres@localhost:5432/postgres \
 //     node --test server/api/test/auth.pg.test.mjs
-/* global process, fetch, Buffer */
+/* global process, fetch, Buffer, setTimeout */
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
@@ -17,6 +17,8 @@ const SKIP = !process.env.PG_ADMIN_URL && "нет PG_ADMIN_URL";
 const ORIGIN = "https://u-klad.ru";
 const PW = "очень-длинный-пароль";
 let db, helpers, server, base, cookieName;
+// Письма входа не уходят наружу, а копятся здесь.
+const sent = [];
 
 before(async () => {
   if (SKIP) return;
@@ -26,7 +28,8 @@ before(async () => {
   db = await helpers.setupDb();
   const cfg = { publicUrl: ORIGIN, allowedOrigins: [ORIGIN], trustProxy: true };
   const quiet = { error() {} };
-  const cabinet = createAuth({ pool: db.pool, cfg, send, readBody, log: quiet });
+  const mail = { sendTo: async (m) => void sent.push(m) };
+  const cabinet = createAuth({ pool: db.pool, cfg, send, readBody, log: quiet, mail });
   cookieName = cabinet.cookieName;
   server = http.createServer(
     createApp({
@@ -76,12 +79,32 @@ const owner = (email, kind = "warehouse") => ({
   name: "Кирилл",
   consent: true,
 });
+/** Последний код из письма на эту почту (письмо уходит в фоне — ждём). */
+async function codeFor(email, kind = "подтверждения") {
+  for (let i = 0; i < 50; i++) {
+    const m = sent.findLast((x) => x.to === email && x.subject.includes(kind));
+    if (m) return /^(\d{6})/.exec(m.subject)[1];
+    await new Promise((r) => setTimeout(r, 10));
+  }
+  throw new Error(`нет письма с кодом на ${email}`);
+}
+const letterCount = (email) => sent.filter((x) => x.to === email).length;
+const settle = () => new Promise((r) => setTimeout(r, 30));
+
+/** Регистрация целиком: форма → код из письма → вход. */
+async function signup(body, ip = "10.0.0.1") {
+  const r = await call("/api/auth/register", { body, ip });
+  assert.equal(r.status, 202);
+  const code = await codeFor(body.email);
+  return call("/api/auth/verify", { body: { email: body.email, code }, ip });
+}
+
 const login = (email, ip, password = PW) =>
   call("/api/auth/login", { body: { email, password }, ip });
 
 /** Владелец, два склада его компании и кладовщик без учётной записи. */
 async function warehouseWithWorker(email, ip) {
-  const r = await call("/api/auth/register", { body: owner(email), ip });
+  const r = await signup(owner(email), ip);
   const ids = await helpers.asOrg(db.pool, r.json.orgId, async (c) => {
     const one = async (sql, args) => (await c.query(sql, args)).rows[0].id;
     const role = await one(`SELECT id FROM uklad.roles WHERE name = 'Кладовщик'`);
@@ -108,8 +131,8 @@ const issue = (w, memberId = w.memberId, warehouseId = w.wh1, org = w.orgId) =>
 const shift = (code) => call("/api/auth/badge", { body: { code } });
 
 test("регистрация создаёт компанию и владельца, кука закрытая", { skip: SKIP }, async () => {
-  const r = await call("/api/auth/register", { body: owner("a@sklad.ru") });
-  assert.equal(r.status, 201);
+  const r = await signup(owner("a@sklad.ru"));
+  assert.equal(r.status, 200);
   assert.match(r.set, /HttpOnly/);
   assert.match(r.set, /Secure/);
   assert.match(r.set, /SameSite=Lax/);
@@ -130,28 +153,23 @@ test("регистрация создаёт компанию и владельц
   assert.ok(rows.every((s) => !s.h.includes(r.token)));
 });
 
-test(
-  "повторная почта — 409; без согласия, с чужого сайта и формой — отказ",
-  { skip: SKIP },
-  async () => {
-    const ip = "10.0.0.2";
-    assert.equal((await call("/api/auth/register", { body: owner("a@sklad.ru"), ip })).status, 409);
-    const noConsent = { ...owner("b@sklad.ru"), consent: false };
-    assert.equal((await call("/api/auth/register", { body: noConsent, ip })).status, 400);
-    const short = { ...owner("b@sklad.ru"), password: "123" };
-    assert.equal((await call("/api/auth/register", { body: short, ip })).status, 400);
-    const foreign = await call("/api/auth/register", {
-      body: owner("b@sklad.ru"),
-      headers: { Origin: "https://evil.example" },
-    });
-    assert.equal(foreign.status, 403);
-    const form = await call("/api/auth/register", {
-      body: owner("b@sklad.ru"),
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    });
-    assert.equal(form.status, 415);
-  },
-);
+test("без согласия, с чужого сайта и формой — отказ", { skip: SKIP }, async () => {
+  const ip = "10.0.0.2";
+  const noConsent = { ...owner("b@sklad.ru"), consent: false };
+  assert.equal((await call("/api/auth/register", { body: noConsent, ip })).status, 400);
+  const short = { ...owner("b@sklad.ru"), password: "123" };
+  assert.equal((await call("/api/auth/register", { body: short, ip })).status, 400);
+  const foreign = await call("/api/auth/register", {
+    body: owner("b@sklad.ru"),
+    headers: { Origin: "https://evil.example" },
+  });
+  assert.equal(foreign.status, 403);
+  const form = await call("/api/auth/register", {
+    body: owner("b@sklad.ru"),
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+  });
+  assert.equal(form.status, 415);
+});
 
 test(
   "вход: неверный пароль и нет почты — один ответ; верный — сессия",
@@ -171,7 +189,7 @@ test(
   "5 ошибок закрывают вход этой почте с этого адреса, но не всей смене",
   { skip: SKIP },
   async () => {
-    await call("/api/auth/register", { body: owner("c@sklad.ru"), ip: "10.2.0.9" });
+    await signup(owner("c@sklad.ru"), "10.2.0.9");
     const ip = "10.2.0.1";
     for (let i = 0; i < 5; i++) await login("c@sklad.ru", ip, "опечатка-опечатка");
     assert.equal((await login("c@sklad.ru", ip)).status, 429);
@@ -267,10 +285,7 @@ test("чужая компания: ни бейдж её сотруднику, н
 });
 
 test("селлер получает свои роли, а не складские", { skip: SKIP }, async () => {
-  const r = await call("/api/auth/register", {
-    body: owner("h@seller.ru", "seller"),
-    ip: "10.6.0.1",
-  });
+  const r = await signup(owner("h@seller.ru", "seller"), "10.6.0.1");
   const me = await call(`/api/auth/me?org=${r.json.orgId}`, { cookie: r.token });
   assert.equal(me.json.orgs[0].seller, true);
   assert.equal(me.json.orgs[0].warehouse, false);
@@ -297,7 +312,7 @@ test("без сессии и с мусорной кукой — 401", { skip: SK
 });
 
 test("отключённая учётная запись и смена пароля гасят сессии сразу", { skip: SKIP }, async () => {
-  const r = await call("/api/auth/register", { body: owner("k@sklad.ru"), ip: "10.9.0.1" });
+  const r = await signup(owner("k@sklad.ru"), "10.9.0.1");
   const second = await login("k@sklad.ru", "10.9.0.1");
   await db.root.query(
     `UPDATE auth.accounts SET password_hash = password_hash || 'x' WHERE email = 'k@sklad.ru'`,
@@ -305,7 +320,7 @@ test("отключённая учётная запись и смена паро�
   assert.equal((await call("/api/auth/me", { cookie: r.token })).status, 401);
   assert.equal((await call("/api/auth/me", { cookie: second.token })).status, 401);
 
-  const r2 = await call("/api/auth/register", { body: owner("l@sklad.ru"), ip: "10.9.0.2" });
+  const r2 = await signup(owner("l@sklad.ru"), "10.9.0.2");
   await db.root.query(`UPDATE auth.accounts SET disabled_at = now() WHERE email = 'l@sklad.ru'`);
   assert.equal((await call("/api/auth/me", { cookie: r2.token })).status, 401);
   assert.equal((await login("l@sklad.ru", "10.9.0.2")).status, 401);
@@ -360,4 +375,166 @@ test("склад не найден — app.warehouse_id пуст, а не «вс
     await c.query("ROLLBACK");
     c.release();
   }
+});
+
+test("регистрация не даёт входа до кода, а занятую почту не выдаёт", { skip: SKIP }, async () => {
+  const ip = "10.12.0.1";
+  const fresh = await call("/api/auth/register", { body: owner("p@sklad.ru"), ip });
+  assert.deepEqual([fresh.status, fresh.json, fresh.token], [202, { ok: true }, undefined]);
+  // Пароль верный, но почта не подтверждена.
+  assert.deepEqual((await login("p@sklad.ru", ip)).json, { ok: false, error: "email_unverified" });
+
+  // Подтверждённая почта: тот же ответ сайта, письмо «вы уже с нами», вторая
+  // компания не создаётся.
+  const before = letterCount("a@sklad.ru");
+  const taken = await call("/api/auth/register", { body: owner("a@sklad.ru"), ip });
+  assert.deepEqual([taken.status, taken.json, taken.token], [202, { ok: true }, undefined]);
+  await settle();
+  assert.equal(letterCount("a@sklad.ru"), before + 1);
+  assert.match(sent.at(-1).subject, /уже зарегистрированы/);
+  const { rows } = await db.root.query(
+    `SELECT count(*)::int AS n FROM uklad.members m JOIN auth.accounts a ON a.id = m.account_id
+     WHERE a.email = 'a@sklad.ru'`,
+  );
+  assert.equal(rows[0].n, 1);
+});
+
+test(
+  "код: пять ошибок сжигают его, новый гасит старый, верный впускает",
+  { skip: SKIP },
+  async () => {
+    const ip = "10.13.0.1";
+    await call("/api/auth/register", { body: owner("q@sklad.ru"), ip });
+    const first = await codeFor("q@sklad.ru");
+    const wrong = first === "000000" ? "111111" : "000000";
+    for (let i = 0; i < 5; i++) {
+      const r = await call("/api/auth/verify", { body: { email: "q@sklad.ru", code: wrong }, ip });
+      assert.deepEqual(r.json, { ok: false, error: "bad_code" });
+    }
+    // Попытки кончились — верный код уже не подходит.
+    const late = await call("/api/auth/verify", { body: { email: "q@sklad.ru", code: first }, ip });
+    assert.equal(late.status, 400);
+
+    await call("/api/auth/resend", { body: { email: "q@sklad.ru" }, ip });
+    const second = await codeFor("q@sklad.ru");
+    const ok = await call("/api/auth/verify", { body: { email: "q@sklad.ru", code: second }, ip });
+    assert.equal(ok.status, 200);
+    assert.ok(ok.token && ok.json.orgId);
+    // Использованный код второй раз не работает, вход по паролю открыт.
+    const again = await call("/api/auth/verify", {
+      body: { email: "q@sklad.ru", code: second },
+      ip,
+    });
+    assert.equal(again.status, 400);
+    assert.equal((await login("q@sklad.ru", ip)).status, 200);
+    // В базе нет кода открытым текстом.
+    const { rows } = await db.root.query(
+      `SELECT encode(code_hash, 'hex') AS h FROM auth.email_codes`,
+    );
+    assert.ok(rows.every((r) => !r.h.includes(second)));
+  },
+);
+
+test(
+  "ответ на «пришлите код» один, есть почта или нет; писем не больше пяти в час",
+  { skip: SKIP },
+  async () => {
+    const ip = "10.14.0.1";
+    const none = await call("/api/auth/reset/request", { body: { email: "nobody@x.ru" }, ip });
+    const real = await call("/api/auth/reset/request", {
+      body: { email: "a@sklad.ru" },
+      ip: "10.14.0.2",
+    });
+    assert.deepEqual([none.status, none.json], [real.status, real.json]);
+    await settle();
+    assert.equal(letterCount("nobody@x.ru"), 0);
+    const before = letterCount("a@sklad.ru");
+    for (let i = 0; i < 6; i++) {
+      await call("/api/auth/reset/request", { body: { email: "a@sklad.ru" }, ip: `10.14.1.${i}` });
+    }
+    await settle();
+    // Один код уже ушёл выше, ещё четыре — и лимит.
+    assert.equal(letterCount("a@sklad.ru") - before, 4);
+  },
+);
+
+test(
+  "сброс пароля: слабый пароль код не тратит, новый гасит старые сессии",
+  { skip: SKIP },
+  async () => {
+    const ip = "10.15.0.1";
+    const r = await signup(owner("s@sklad.ru"), ip);
+    await call("/api/auth/reset/request", { body: { email: "s@sklad.ru" }, ip });
+    const code = await codeFor("s@sklad.ru", "нового пароля");
+    const weak = await call("/api/auth/reset", {
+      body: { email: "s@sklad.ru", code, password: "123" },
+      ip,
+    });
+    assert.deepEqual(weak.json, { ok: false, error: "weak_password" });
+    const NEW = "новый-длинный-пароль";
+    const ok = await call("/api/auth/reset", {
+      body: { email: "s@sklad.ru", code, password: NEW },
+      ip,
+    });
+    assert.equal(ok.status, 200);
+    assert.ok(ok.token);
+    assert.equal((await call("/api/auth/me", { cookie: r.token })).status, 401);
+    assert.equal((await login("s@sklad.ru", ip)).status, 401);
+    assert.equal((await login("s@sklad.ru", ip, NEW)).status, 200);
+  },
+);
+
+test(
+  "чужая неподтверждённая регистрация не достаётся владельцу почты",
+  { skip: SKIP },
+  async () => {
+    const ip = "10.16.0.1";
+    // Злоумышленник записал чужую почту со своим паролем и своей компанией.
+    await call("/api/auth/register", { body: owner("victim@sklad.ru"), ip });
+    // Владелец почты сбрасывает пароль кодом.
+    await call("/api/auth/reset/request", { body: { email: "victim@sklad.ru" }, ip });
+    const code = await codeFor("victim@sklad.ru", "нового пароля");
+    const NEW = "мой-собственный-пароль";
+    const r = await call("/api/auth/reset", {
+      body: { email: "victim@sklad.ru", code, password: NEW },
+      ip,
+    });
+    assert.equal(r.status, 200);
+    const me = await call("/api/auth/me", { cookie: r.token });
+    assert.deepEqual(me.json.orgs, []);
+  },
+);
+
+test("регистрация без подтверждения за 7 дней освобождает почту", { skip: SKIP }, async () => {
+  const ip = "10.17.0.1";
+  await call("/api/auth/register", { body: owner("late@sklad.ru"), ip });
+  await db.root.query(
+    `UPDATE auth.accounts SET created_at = now() - interval '8 days' WHERE email = 'late@sklad.ru'`,
+  );
+  await db.root.query(`SELECT auth.purge()`);
+  const { rows } = await db.root.query(
+    `SELECT count(*)::int AS n FROM auth.accounts WHERE email = 'late@sklad.ru'`,
+  );
+  assert.equal(rows[0].n, 0);
+  // Почта свободна: регистрация с кодом проходит заново.
+  assert.equal((await signup(owner("late@sklad.ru"), ip)).status, 200);
+});
+
+test("20 неудачных кодов за сутки закрывают и верный код", { skip: SKIP }, async () => {
+  const ip = "10.18.0.1";
+  await call("/api/auth/register", { body: owner("brute@sklad.ru"), ip });
+  await db.root.query(
+    `UPDATE auth.email_codes SET attempts = 4 WHERE account_id =
+       (SELECT id FROM auth.accounts WHERE email = 'brute@sklad.ru')`,
+  );
+  // Ещё четыре старых кода с попытками за сутки — всего 20.
+  await db.root.query(
+    `INSERT INTO auth.email_codes (account_id, purpose, code_hash, attempts, expires_at, used_at)
+     SELECT id, 'verify', '\\x00', 4, now(), now()
+     FROM auth.accounts, generate_series(1, 4) WHERE email = 'brute@sklad.ru'`,
+  );
+  await call("/api/auth/resend", { body: { email: "brute@sklad.ru" }, ip });
+  const code = await codeFor("brute@sklad.ru");
+  const r = await call("/api/auth/verify", { body: { email: "brute@sklad.ru", code }, ip });
+  assert.equal(r.status, 400);
 });

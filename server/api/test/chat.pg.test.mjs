@@ -3,7 +3,7 @@
 //
 //   PG_ADMIN_URL=postgres://postgres:postgres@localhost:5432/postgres \
 //     node --test server/api/test/chat.pg.test.mjs
-/* global process, fetch, URL */
+/* global process, fetch, URL, setTimeout */
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
@@ -33,7 +33,9 @@ before(async () => {
   db = await helpers.setupDb();
   const cfg = { publicUrl: ORIGIN, allowedOrigins: [ORIGIN], trustProxy: true };
   const quiet = { error() {} };
-  const auth = createAuth({ pool: db.pool, cfg, send, readBody, log: quiet });
+  // Коды входа идут отдельно от писем о непрочитанном, которые проверяет тест.
+  const authMail = { sendTo: async (m) => void codes.push(m) };
+  const auth = createAuth({ pool: db.pool, cfg, send, readBody, log: quiet, mail: authMail });
   const realtime = { notify: async (to, data) => rings.push({ to, data }) };
   const chat = createChat({ auth, realtime, send, log: quiet });
   const tgApi = {
@@ -105,12 +107,24 @@ async function call(path, { body, who } = {}) {
   return { status: res.status, json: await res.json().catch(() => null), token };
 }
 
+const codes = [];
+async function codeFor(email) {
+  for (let i = 0; i < 50; i++) {
+    const m = codes.findLast((x) => x.to === email);
+    if (m) return /^(\d{6})/.exec(m.subject)[1];
+    await new Promise((r) => setTimeout(r, 10));
+  }
+  throw new Error(`нет кода для ${email}`);
+}
+
 /** Владелец новой компании: токен, компания, его карточка сотрудника. */
 async function signUp(email, kind) {
-  const r = await call("/api/auth/register", {
+  const reg = await call("/api/auth/register", {
     body: { email, password: PW, company: email, kind, name: email, consent: true },
   });
-  assert.equal(r.status, 201);
+  assert.equal(reg.status, 202);
+  const r = await call("/api/auth/verify", { body: { email, code: await codeFor(email) } });
+  assert.equal(r.status, 200);
   const who = { token: r.token, orgId: r.json.orgId };
   const me = await call(`/api/auth/me?org=${who.orgId}`, { who });
   return { ...who, memberId: me.json.current.memberId };
@@ -323,6 +337,11 @@ test(
   { skip: SKIP },
   async () => {
     letters.length = 0;
+    // Регистрация подтвердила почту кодом; здесь проверяем запись, где она
+    // ещё не подтверждена.
+    await db.root.query(
+      `UPDATE auth.accounts SET email_verified_at = NULL WHERE email = 'seller@chat.ru'`,
+    );
     await post("/api/chat/messages", { conversationId: convId, body: "Акт подписали?" }, wh);
     await travel("2 hours");
     // Почта не подтверждена — не пишем: адрес мог вписать кто угодно.
