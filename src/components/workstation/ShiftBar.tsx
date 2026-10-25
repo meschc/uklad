@@ -47,7 +47,7 @@ export function ShiftBar({ staffId, onOpen }: { staffId: string; onOpen: () => v
 
   if (state === "idle")
     return (
-      <div className="grid grid-cols-2 gap-1">
+      <div className="flex items-start gap-3">
         <Cell
           icon={Timer}
           label={t("ws.bar.shift")}
@@ -67,7 +67,7 @@ export function ShiftBar({ staffId, onOpen }: { staffId: string; onOpen: () => v
     );
 
   return (
-    <div className="grid grid-cols-2 gap-1">
+    <div className="flex items-start gap-3">
       <Cell
         icon={Timer}
         label={t("ws.bar.shift")}
@@ -132,7 +132,7 @@ function Cell({
       aria-label={`${label} ${value}. ${hint}`}
       onClick={onClick}
       className={cn(
-        "group relative flex flex-col items-center rounded px-3 py-0.5 text-center leading-tight hover:bg-muted",
+        "group relative flex flex-col items-center rounded py-0.5 text-center leading-tight hover:bg-muted",
         ring && "ring-2 ring-emerald-500",
       )}
     >
