@@ -352,8 +352,8 @@ export const ROADMAP_ITEMS: readonly RoadmapItem[] = [
     id: "roadmap-votes",
     title: c("Голоса и идеи в дорожной карте", "Votes and ideas on the roadmap"),
     summary: c(
-      "Отметьте на этой доске нужное вам и отправьте формой внизу — вместе со своей идеей, если списка не хватило",
-      "Mark what you need on this board and send it with the form below — along with your own idea if the list falls short",
+      "Вход по почте с кодом, голос стрелкой на карточке и своя идея отдельным окном. Общий счёт голосов появится вместе с сервером",
+      "Email sign-in with a code, a vote with the arrow on a card and your own idea in its own window. A shared vote count arrives with the server",
     ),
     status: "done",
     track: "market",
