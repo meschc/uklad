@@ -64,8 +64,8 @@ test.describe("Демо WMS", () => {
     await warehouseCards(page).first().click();
 
     const rail = page.getByRole("navigation", { name: "Разделы" });
-    // `exact`: иначе «Склад» поймает и соседний пункт «План склада».
-    const group = rail.getByRole("button", { name: "Склад", exact: true });
+    // `exact`: точное имя группы, чтобы не поймать соседние пункты.
+    const group = rail.getByRole("button", { name: "О складе", exact: true });
     await expect(group).toHaveAttribute("aria-expanded", "false");
     await group.click();
     await expect(group).toHaveAttribute("aria-expanded", "true");
@@ -87,7 +87,7 @@ test.describe("Демо WMS", () => {
     await page
       .getByRole("navigation", { name: "Разделы" })
       .getByRole("button", {
-        name: "Склад",
+        name: "О складе",
         exact: true,
       })
       .click();
@@ -182,7 +182,7 @@ test.describe("Демо WMS", () => {
       await expect(page).toHaveURL(/view=editor$/);
 
       const rail = page.getByRole("navigation", { name: "Разделы" });
-      await rail.getByRole("button", { name: "Склад", exact: true }).click();
+      await rail.getByRole("button", { name: "О складе", exact: true }).click();
       await rail.getByRole("button", { name: "Интеграции" }).click();
       await expect(page).toHaveURL(/view=integrations$/);
 
@@ -226,7 +226,7 @@ function warehouseCards(page: import("@playwright/test").Page) {
 async function openIntegrations(page: import("@playwright/test").Page) {
   await warehouseCards(page).first().click();
   const rail = page.getByRole("navigation", { name: "Разделы" });
-  await rail.getByRole("button", { name: "Склад", exact: true }).click();
+  await rail.getByRole("button", { name: "О складе", exact: true }).click();
   await rail.getByRole("button", { name: "Интеграции" }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Интеграции");
 }
