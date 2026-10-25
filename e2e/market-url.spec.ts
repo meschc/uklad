@@ -99,18 +99,12 @@ test.describe("Отбор витрины в адресе", () => {
     await expect(page).toHaveURL(/mp=wildberries/);
   });
 
-  test("переключение языка не теряет отбор", async ({ page, isMobile }) => {
+  test("английская версия с тем же отбором показывает те же склады", async ({ page }) => {
+    // Переключатель языка скрыт, пока английскую версию отложили (23 окт), но
+    // ссылки на /en/ с отбором живут: хвост адреса обязан работать и там.
     await openMarket(page, "?mp=wildberries");
     const narrowed = await foundCount(page);
-
-    // На телефоне переключатель живёт в меню: в шапке ему не хватает места.
-    if (isMobile) await page.getByRole("button", { name: "Меню" }).click();
-
-    // Смена языка — переход по другому адресу того же маршрута, и хвост с
-    // отбором обязан переехать вместе с путём: иначе англичанин, которому
-    // прислали ссылку на четыре склада, увидит все шестьдесят три.
-    await page.getByRole("link", { name: "Switch to English" }).click();
-    await expect(page).toHaveURL(/\/en\/market\/\?mp=wildberries$/);
+    await page.goto("/en/market/?mp=wildberries");
     await expect.poll(() => englishCount(page)).toBe(narrowed);
   });
 

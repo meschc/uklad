@@ -148,7 +148,7 @@ export function Filters({
         {SERVICES.length > SERVICES_SHOWN && (
           <button
             onClick={() => setAllServices((v) => !v)}
-            className="mt-2 text-xs font-medium text-primary hover:underline"
+            className="mt-2 text-xs font-medium text-primary transition-opacity hover:opacity-75"
           >
             {allServices ? t(T.collapse) : t(T.more, { n: SERVICES.length - SERVICES_SHOWN })}
           </button>
@@ -216,7 +216,7 @@ function Chip({
       className={cn(
         "inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-all duration-200",
         on
-          ? "border-primary bg-primary/10 text-primary"
+          ? "border-primary bg-primary text-primary-foreground"
           : "border-border text-muted-foreground hover:border-stroke-hover hover:text-foreground",
       )}
     >
@@ -240,7 +240,7 @@ function Switch({
       aria-pressed={on}
       className={cn(
         "flex h-8 items-center gap-2 rounded-full border px-3.5 text-xs font-medium transition-colors",
-        on ? "border-primary bg-primary/[0.07]" : "border-border hover:bg-muted",
+        on ? "border-primary" : "border-border hover:bg-muted",
       )}
     >
       {children}

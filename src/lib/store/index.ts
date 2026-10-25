@@ -27,7 +27,10 @@ import { createFulfillmentSlice } from "./fulfillment.slice";
 import { createRequestsSlice } from "./requests.slice";
 import { createSessionSlice, makeSession } from "./session.slice";
 import { createChatSlice } from "./chat.slice";
+import { createOperationsSlice } from "./operations.slice";
 import { createStaffSlice } from "./staff.slice";
+import { createSubscriptionSlice } from "./subscription.slice";
+import { createWorkstationSlice } from "./workstation.slice";
 import { sanitizeDomains } from "../data/sanitize";
 
 /**
@@ -42,6 +45,65 @@ export type { GoodsConflict, EditorState } from "./state";
 
 /** Ключ автосохранения в localStorage (ТЗ: изменения сохраняются сами). */
 export const PERSIST_KEY = "uklad-store-v1";
+
+/** Версия персиста: её же пишет резервная копия (`lib/backup.ts`). */
+export const PERSIST_VERSION = 8;
+
+// Сохраняем только доменные данные. Транзиентное (инструмент, выделение,
+// буфер, зум/пан, диалоги, поиск, экран) — не персистим. Тот же набор уходит
+// в резервную копию: архив — это ровно то, что пережило бы перезагрузку.
+export function persistedState(s: EditorState) {
+  return {
+    warehouse: s.warehouse,
+    otherWarehouses: s.otherWarehouses,
+    // Работа неактивных складов: без неё архив и перезагрузка теряли бы
+    // поставки и заявки остальных складов.
+    warehouseData: s.warehouseData,
+    activeFloorId: s.activeFloorId,
+    products: s.products,
+    placements: s.placements,
+    categories: s.categories,
+    categoryFields: s.categoryFields,
+    fieldValues: s.fieldValues,
+    templates: s.templates,
+    layoutTemplates: s.layoutTemplates,
+    account: s.account,
+    profile: s.profile,
+    seenHints: s.seenHints,
+    addressing: s.addressing,
+    // Фулфилмент-контур. Новое доменное поле нужно добавлять сюда явно —
+    // иначе оно просто не переживёт перезагрузку страницы.
+    expectedShipments: s.expectedShipments,
+    receivingEvents: s.receivingEvents,
+    boxes: s.boxes,
+    pallets: s.pallets,
+    boxSeq: s.boxSeq,
+    palletSeq: s.palletSeq,
+    // Незакрытая приёмка. Сохранённый ход сверяется с данными при возврате
+    // в мастер (`resumeReceiving`), поэтому устаревшие id здесь не страшны.
+    receiving: s.receiving,
+    requests: s.requests,
+    shipments: s.shipments,
+    session: s.session,
+    // Переписка сохраняется, открытый на экране тред — нет: какой чат был
+    // раскрыт вчера, к делу не относится, а вот сами сообщения потерять
+    // нельзя (п.3).
+    chats: s.chats,
+    integrations: s.integrations,
+    labelTemplates: s.labelTemplates,
+    // Журнал сотрудников и вход по бейджу: вход живёт 12 часов и обязан
+    // пережить перезагрузку экрана посреди смены.
+    staffEvents: s.staffEvents,
+    stationSession: s.stationSession,
+    packSession: s.packSession,
+    breakPolicy: s.breakPolicy,
+    tasks: s.tasks,
+    serviceSettings: s.serviceSettings,
+    // Тариф и настройки резервных копий: срок напоминания и дата последней
+    // копии должны пережить перезагрузку, иначе напоминание врёт.
+    subscription: s.subscription,
+  };
+}
 
 /** Форма персиста (см. partialize ниже) — минимум, нужный миграции. */
 type PersistedState = {
@@ -77,10 +139,13 @@ export const useEditor = create<EditorState>()(
       ...createSessionSlice(...a),
       ...createChatSlice(...a),
       ...createStaffSlice(...a),
+      ...createSubscriptionSlice(...a),
+      ...createWorkstationSlice(...a),
+      ...createOperationsSlice(...a),
     }),
     {
       name: PERSIST_KEY,
-      version: 8,
+      version: PERSIST_VERSION,
       // v1 → v2: модель «проход как объект» заменена на «пол как проход».
       // Проходы больше нельзя ни создать, ни увидеть, но их прямоугольники
       // остаются в старых сохранениях — ловят наложение в overlap.ts и висят
@@ -208,44 +273,7 @@ export const useEditor = create<EditorState>()(
         ...current,
         ...sanitizeDomains(persisted as Record<string, unknown>),
       }),
-      // Сохраняем только доменные данные. Транзиентное (инструмент, выделение,
-      // буфер, зум/пан, диалоги, поиск, экран) — не персистим.
-      partialize: (s) => ({
-        warehouse: s.warehouse,
-        otherWarehouses: s.otherWarehouses,
-        activeFloorId: s.activeFloorId,
-        products: s.products,
-        placements: s.placements,
-        categories: s.categories,
-        categoryFields: s.categoryFields,
-        fieldValues: s.fieldValues,
-        templates: s.templates,
-        layoutTemplates: s.layoutTemplates,
-        account: s.account,
-        profile: s.profile,
-        seenHints: s.seenHints,
-        addressing: s.addressing,
-        // Фулфилмент-контур. Новое доменное поле нужно добавлять сюда явно —
-        // иначе оно просто не переживёт перезагрузку страницы.
-        expectedShipments: s.expectedShipments,
-        receivingEvents: s.receivingEvents,
-        boxes: s.boxes,
-        pallets: s.pallets,
-        boxSeq: s.boxSeq,
-        palletSeq: s.palletSeq,
-        // Незакрытая приёмка. Сохранённый ход сверяется с данными при возврате
-        // в мастер (`resumeReceiving`), поэтому устаревшие id здесь не страшны.
-        receiving: s.receiving,
-        requests: s.requests,
-        shipments: s.shipments,
-        session: s.session,
-        // Переписка сохраняется, открытый на экране тред — нет: какой чат был
-        // раскрыт вчера, к делу не относится, а вот сами сообщения потерять
-        // нельзя (п.3).
-        chats: s.chats,
-        integrations: s.integrations,
-        labelTemplates: s.labelTemplates,
-      }),
+      partialize: persistedState,
     },
   ),
 );
@@ -307,6 +335,16 @@ if (!HAD_PERSISTED)
 // тара, заявки и рейсы за последние два месяца (п.8). Без неё аналитика,
 // задания и документы открываются пустыми, и оценить их невозможно.
 if (!HAD_PERSISTED) {
+  // Демо-номенклатура раздаётся партнёрам склада по кругу — так, как это
+  // сделал бы склад в таблице. Без владельца продавец не видит товар вовсе.
+  const partners = useEditor.getState().warehouse.partners ?? [];
+  if (partners.length) {
+    useEditor.setState((st) => ({
+      products: st.products.map((p, i) =>
+        p.partnerId ? p : { ...p, partnerId: partners[i % partners.length].id },
+      ),
+    }));
+  }
   const s = useEditor.getState();
   useEditor.setState(seedHistory(s.warehouse, s.products, s.placements));
   // История правок не должна начинаться со снимка «до посева»: демо-данные —

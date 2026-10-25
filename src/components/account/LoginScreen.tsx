@@ -28,6 +28,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 export function LoginScreen() {
   const goToDashboard = useEditor((s) => s.goToDashboard);
+  const goToEditor = useEditor((s) => s.goToEditor);
   const profile = useEditor((s) => s.profile);
   const updateProfile = useEditor((s) => s.updateProfile);
   const setRole = useEditor((s) => s.setRole);
@@ -62,12 +63,18 @@ export function LoginScreen() {
     // Роль решает, куда человек попадёт: продавцу склад не нужен, ему нужны
     // остатки и заявки. setRole сам уводит на «свой» стартовый экран.
     setRole(role);
-    if (role === "warehouse") goToDashboard();
+    if (role === "warehouse") goHome();
+  };
+
+  // Один склад — сразу на его панель: выбирать не из чего, лишний экран (п.3.4).
+  const goHome = () => {
+    if (useEditor.getState().otherWarehouses.length === 0) goToEditor();
+    else goToDashboard();
   };
 
   const demo = () => {
     setRole("warehouse");
-    goToDashboard();
+    goHome();
   };
 
   const err = (message: string | null) => (touched ? message : null);

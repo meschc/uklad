@@ -1,3 +1,4 @@
+import { OFFER, PLAN_LIMITS, monthsRu, upTo } from "./offer";
 /**
  * Что на витрине стоит денег, а что нет.
  *
@@ -212,8 +213,8 @@ export const YEARLY_DISCOUNT = 0.25;
 export const HALF_DISCOUNT = 0.15;
 
 /**
- * Тарифы склада. Бесплатного тарифа здесь нет намеренно: две недели на пробу
- * система даёт всем, а «бесплатный тариф» у учётной системы означает склад,
+ * Тарифы склада. Бесплатного тарифа здесь нет намеренно: бесплатный период
+ * (`OFFER.freeMonths`) система даёт всем, а «бесплатный тариф» у учётной системы означает склад,
  * который однажды упрётся в лимит посреди смены.
  */
 export const PLANS: Plan[] = [
@@ -225,14 +226,20 @@ export const PLANS: Plan[] = [
       "A small warehouse moving from spreadsheets to a system",
     ),
     monthly: 4900,
-    cta: c("Начать 14 дней бесплатно", "Start 14 days free"),
+    cta: c(
+      `Начать: ${monthsRu(OFFER.freeMonths)} бесплатно`,
+      `Start: ${OFFER.freeMonths} months free`,
+    ),
     firstScreen: c(
       "Тот же мастер склада, что и в тарифе «Склад»: назвать склад, разметить стеллажи и залить остатки из XLSX. Когда позиций или людей станет больше, тариф меняется без переноса данных.",
       "The same warehouse wizard as on the Warehouse plan: name the warehouse, lay out the racks and import stock from XLSX. When you outgrow the limits, the plan changes with no data migration.",
     ),
     features: [
-      c("1 склад, до 5 000 позиций номенклатуры", "1 warehouse, up to 5,000 SKUs"),
-      c("До 5 сотрудников", "Up to 5 staff"),
+      c(
+        `1 склад, ${upTo(PLAN_LIMITS.start.skus)} позиций номенклатуры`,
+        `1 warehouse, up to ${PLAN_LIMITS.start.skus.toLocaleString("en")} SKUs`,
+      ),
+      c(`До ${PLAN_LIMITS.start.staff} сотрудников`, `Up to ${PLAN_LIMITS.start.staff} staff`),
       c(
         "Печать этикеток и штрихкодов, работа со сканером",
         "Label and barcode printing, scanner support",
@@ -253,14 +260,23 @@ export const PLANS: Plan[] = [
     ),
     monthly: 9900,
     featured: true,
-    cta: c("Начать 14 дней бесплатно", "Start 14 days free"),
+    cta: c(
+      `Начать: ${monthsRu(OFFER.freeMonths)} бесплатно`,
+      `Start: ${OFFER.freeMonths} months free`,
+    ),
     firstScreen: c(
-      "И на пробных двух неделях, и после оплаты первый экран один: мастер склада — назвать склад, разметить стеллажи (можно взять готовую схему) и залить остатки из XLSX. Принимать поставки можно в тот же день; карточка на витрине появляется после проверки данных.",
-      "The first screen is the same on the two-week trial and after payment: the warehouse wizard — name the warehouse, lay out the racks (a ready-made layout will do) and import stock from XLSX. You can take deliveries the same day; the catalogue card appears once the data is verified.",
+      "И в бесплатный период, и после оплаты первый экран один: мастер склада — назвать склад, разметить стеллажи (можно взять готовую схему) и залить остатки из XLSX. Принимать поставки можно в тот же день; карточка на витрине появляется после проверки данных.",
+      "The first screen is the same in the free period and after payment: the warehouse wizard — name the warehouse, lay out the racks (a ready-made layout will do) and import stock from XLSX. You can take deliveries the same day; the catalogue card appears once the data is verified.",
     ),
     features: [
-      c("1 склад, до 30 000 позиций номенклатуры", "1 warehouse, up to 30,000 SKUs"),
-      c("До 15 сотрудников с разными ролями", "Up to 15 staff with separate roles"),
+      c(
+        `1 склад, ${upTo(PLAN_LIMITS.warehouse.skus)} позиций номенклатуры`,
+        `1 warehouse, up to ${PLAN_LIMITS.warehouse.skus.toLocaleString("en")} SKUs`,
+      ),
+      c(
+        `До ${PLAN_LIMITS.warehouse.staff} сотрудников с разными ролями`,
+        `Up to ${PLAN_LIMITS.warehouse.staff} staff with separate roles`,
+      ),
       c(
         "Печать этикеток и штрихкодов, работа со сканером",
         "Label and barcode printing, scanner support",
@@ -290,10 +306,13 @@ export const PLANS: Plan[] = [
       "This plan is not switched on by a button but after a conversation and a contract: by your first login the warehouses, clients and roles are already set up and stock has been migrated from your export. The first screen is a working shift, not an empty system waiting to be filled.",
     ),
     features: [
-      c("Неограниченная номенклатура, до 3 складов", "Unlimited SKUs, up to 3 warehouses"),
       c(
-        "До 50 сотрудников, права настраиваются по операциям",
-        "Up to 50 staff, permissions set per operation",
+        `Неограниченная номенклатура, до ${PLAN_LIMITS.operator.warehouses} складов`,
+        `Unlimited SKUs, up to ${PLAN_LIMITS.operator.warehouses} warehouses`,
+      ),
+      c(
+        `До ${PLAN_LIMITS.operator.staff} сотрудников, права настраиваются по операциям`,
+        `Up to ${PLAN_LIMITS.operator.staff} staff, permissions set per operation`,
       ),
       c(
         "Учёт по клиентам: остатки, отгрузки и биллинг раздельно",

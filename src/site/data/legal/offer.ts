@@ -167,7 +167,7 @@ export const OFFER: LegalDoc = {
           ORG.legalName,
           `ИНН ${ORG.inn}`,
           `Электронная почта: ${ORG.email}`,
-          `Телефон: ${ORG.phone}`,
+          ...(ORG.phone ? [`Телефон: ${ORG.phone}`] : []),
         ),
       ],
     },

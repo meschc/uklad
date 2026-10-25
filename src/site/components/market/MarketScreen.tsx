@@ -14,6 +14,7 @@ import { DEFAULT_FILTERS, SORTS, activeCount, type SortId } from "../../lib/filt
 import { filtersQuery } from "../../lib/marketQuery";
 import { c, useT } from "../../lib/copy";
 import { goWarehouse } from "../../lib/route";
+import { MarketIntro } from "./MarketIntro";
 import { useMarketFilters } from "../../lib/useMarketFilters";
 import { useOverlay } from "../../lib/useOverlay";
 
@@ -27,15 +28,6 @@ interface Paging {
 }
 
 const T = {
-  title: c("Склады для фулфилмента", "Fulfilment warehouses"),
-  lead: c(
-    "Одинаковые карточки и прайс, свободные места по каждому складу. Заявка бесплатна: витрина не берёт комиссию с селлера.",
-    "The same card and the same price list for everyone, free slots per warehouse. Requests are free: we take no seller commission.",
-  ),
-  badge: c(
-    "Галочка на карточке значит ровно одно: Уклад сверил регистрацию компании и право на помещение. Как склад работает, она не оценивает — про это отзывы.",
-    "A check mark on a card means exactly one thing: Uklad verified the company registration and the right to use the premises. It says nothing about how the warehouse works — that is what reviews are for.",
-  ),
   found: c("по вашим условиям", "match your filters"),
   filters: c("Фильтры", "Filters"),
   list: c("Списком", "List"),
@@ -149,130 +141,119 @@ export function MarketScreen() {
   ));
 
   return (
-    <div
-      className={cn(
-        "mx-auto max-w-[1400px] px-4 pt-28 sm:px-6 sm:pt-32",
-        // Полоса сравнения висит над страницей и накрывает её низ — вместе с
-        // кнопкой «Показать ещё». Пока полосы нет, лишний отступ не нужен.
-        selected.length > 0 ? "pb-44 sm:pb-32" : "pb-24",
-      )}
-    >
-      <header className="mb-8">
-        <h1 className="font-display text-3xl font-heading leading-display tracking-tight sm:text-5xl">
-          {t(T.title)}
-        </h1>
-        {/* Не «честная занятость»: это оценка, которую читатель не может
-            проверить. Проверить он может то, что лежит в карточке, — про это и
-            пишем. Та же правка уже сделана в блоке витрины на лендинге. */}
-        <p className="mt-3 max-w-2xl text-base leading-relaxed text-muted-foreground">
-          {t(T.lead)}
-        </p>
-        {/* Что означает галочка — словами и один раз на список, а не подписью
-            под каждой карточкой. В коде `Warehouse.verified` описан честно, но
-            селлер кода не читает и видит только значок, который сам по себе
-            читается как «ручаемся за качество». Ручаться за качество склада
-            витрина не может и не должна: для этого есть отзывы и жалобы. */}
-        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">{t(T.badge)}</p>
-      </header>
+    <>
+      <MarketIntro found={found} filters={filters} onFilters={setFilters} />
+      <div
+        className={cn(
+          "mx-auto max-w-[1280px] px-5 pt-10 sm:px-10 sm:pt-14",
+          // Полоса сравнения висит над страницей и накрывает её низ — вместе с
+          // кнопкой «Показать ещё». Пока полосы нет, лишний отступ не нужен.
+          selected.length > 0 ? "pb-44 sm:pb-32" : "pb-24",
+        )}
+      >
+        <div className="grid gap-8 lg:grid-cols-[264px_minmax(0,1fr)] lg:gap-10">
+          <aside className="hidden lg:block">
+            <div className="sticky top-24 max-h-[calc(100vh-8rem)] overflow-y-auto rounded-[22px] bg-[var(--wh-soft)] p-5">
+              <Filters value={filters} onChange={setFilters} />
+            </div>
+          </aside>
 
-      <div className="grid gap-8 lg:grid-cols-[264px_minmax(0,1fr)] lg:gap-10">
-        <aside className="hidden lg:block">
-          <div className="sticky top-24 max-h-[calc(100vh-8rem)] overflow-y-auto pb-6 pr-1">
-            <Filters value={filters} onChange={setFilters} />
-          </div>
-        </aside>
-
-        <div className="min-w-0">
-          {/* Панель объёма — над списком, а не в колонке фильтров: она не
+          <div className="min-w-0">
+            {/* Панель объёма — над списком, а не в колонке фильтров: она не
               сужает выдачу, а меняет то, что в ней написано. Слева отбирают,
               здесь считают. Одного переноса для этого не хватило — панель
               выглядит и отвечает иначе, чем отбор; разбор в `VolumeBar`. */}
-          <VolumeBar value={volume} range={range} onChange={setVolume} />
+            <VolumeBar value={volume} range={range} onChange={setVolume} />
 
-          <div className="mb-5 mt-6 flex flex-wrap items-center gap-3">
-            <p className="text-sm">
-              <span className="font-display text-lg font-medium tabular-nums">{found.length}</span>{" "}
-              <span className="text-muted-foreground">
-                {t.plural(
-                  found.length,
-                  ["склад", "склада", "складов"],
-                  ["warehouse", "warehouses"],
-                )}{" "}
-                {t(T.found)}
-              </span>
-            </p>
+            <div className="mb-5 mt-6 flex flex-wrap items-center gap-3">
+              <p className="text-sm">
+                <span
+                  key={found.length}
+                  className="wh-swap inline-block text-2xl font-normal tabular-nums tracking-[-0.03em]"
+                >
+                  {found.length}
+                </span>{" "}
+                <span className="text-muted-foreground">
+                  {t.plural(
+                    found.length,
+                    ["склад", "склада", "складов"],
+                    ["warehouse", "warehouses"],
+                  )}{" "}
+                  {t(T.found)}
+                </span>
+              </p>
 
-            <Button
-              variant="outline"
-              size="sm"
-              shape="pill"
-              onClick={() => setSheet(true)}
-              className="lg:hidden"
-            >
-              <SlidersHorizontal />
-              {t(T.filters)}
-              {active > 0 && ` · ${active}`}
-            </Button>
-
-            <div className="ml-auto flex items-center gap-2">
-              <select
-                value={filters.sort}
-                onChange={(e) => setFilters({ ...filters, sort: e.target.value as SortId })}
-                className="h-9 rounded-full border border-border bg-background px-3 text-xs outline-none focus:border-primary"
+              <Button
+                variant="outline"
+                size="sm"
+                shape="pill"
+                onClick={() => setSheet(true)}
+                className="lg:hidden"
               >
-                {SORTS.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {t(s.title)}
-                  </option>
-                ))}
-              </select>
+                <SlidersHorizontal />
+                {t(T.filters)}
+                {active > 0 && ` · ${active}`}
+              </Button>
 
-              {/* Пилюля в пилюле: переключатель вида — тот же приём, что и в
+              <div className="ml-auto flex items-center gap-2">
+                <select
+                  value={filters.sort}
+                  onChange={(e) => setFilters({ ...filters, sort: e.target.value as SortId })}
+                  className="h-9 cursor-pointer rounded-full border border-[var(--wh-line)] bg-[var(--wh-ground)] px-3 text-xs outline-none focus:border-primary"
+                >
+                  {SORTS.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {t(s.title)}
+                    </option>
+                  ))}
+                </select>
+
+                {/* Пилюля в пилюле: переключатель вида — тот же приём, что и в
                   тарифах, только меньше. Внешняя рамка держит форму, внутренняя
                   ездит по ней. */}
-              <div className="flex rounded-full border border-border p-0.5">
-                <ViewBtn on={view === "list"} onClick={() => setView("list")} label={t(T.list)}>
-                  <Rows3 className="size-3.5" />
-                </ViewBtn>
-                <ViewBtn on={view === "map"} onClick={() => setView("map")} label={t(T.map)}>
-                  <MapIcon className="size-3.5" />
-                </ViewBtn>
+                <div className="flex rounded-full border border-border p-0.5">
+                  <ViewBtn on={view === "list"} onClick={() => setView("list")} label={t(T.list)}>
+                    <Rows3 className="size-3.5" />
+                  </ViewBtn>
+                  <ViewBtn on={view === "map"} onClick={() => setView("map")} label={t(T.map)}>
+                    <MapIcon className="size-3.5" />
+                  </ViewBtn>
+                </div>
               </div>
             </div>
-          </div>
 
-          {found.length === 0 ? (
-            <Empty onReset={() => setFilters(DEFAULT_FILTERS)} />
-          ) : view === "list" ? (
-            <>
-              <div className="grid gap-4 xl:grid-cols-2">{cards}</div>
-              {limit < found.length && (
-                <div className="mt-8 text-center">
-                  <Button variant="outline" size="lg" shape="pill" onClick={showMore}>
-                    {t(T.more, { n: Math.min(PAGE, found.length - limit) })}
-                  </Button>
+            {found.length === 0 ? (
+              <Empty onReset={() => setFilters(DEFAULT_FILTERS)} />
+            ) : view === "list" ? (
+              <>
+                <div className="grid gap-4 xl:grid-cols-2">{cards}</div>
+                {limit < found.length && (
+                  <div className="mt-8 text-center">
+                    <button type="button" className="wh-btn wh-btn--soft" onClick={showMore}>
+                      {t(T.more, { n: Math.min(PAGE, found.length - limit) })}
+                    </button>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
+                <div className="r-window h-[52vh] overflow-hidden border border-border lg:sticky lg:top-24 lg:h-[calc(100vh-9rem)]">
+                  <Suspense
+                    fallback={
+                      <div className="grid h-full place-items-center bg-muted/30">
+                        <Loader2 className="size-5 animate-spin text-muted-foreground" />
+                      </div>
+                    }
+                  >
+                    <MarketMap
+                      list={found}
+                      activeId={hovered}
+                      onHover={setHovered}
+                      onOpen={goWarehouse}
+                    />
+                  </Suspense>
                 </div>
-              )}
-            </>
-          ) : (
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
-              <div className="r-window h-[52vh] overflow-hidden border border-border lg:sticky lg:top-24 lg:h-[calc(100vh-9rem)]">
-                <Suspense
-                  fallback={
-                    <div className="grid h-full place-items-center bg-muted/30">
-                      <Loader2 className="size-5 animate-spin text-muted-foreground" />
-                    </div>
-                  }
-                >
-                  <MarketMap
-                    list={found}
-                    activeId={hovered}
-                    onHover={setHovered}
-                    onOpen={goWarehouse}
-                  />
-                </Suspense>
-              </div>
-              {/* `auto-rows-max` здесь обязателен, иначе карточки схлопываются
+                {/* `auto-rows-max` здесь обязателен, иначе карточки схлопываются
                   в полоски по 45 пикселей — одни обложки без текста. Причина
                   складывается из двух: у карточки `overflow-hidden`, поэтому её
                   автоматическая минимальная высота равна нулю, а у колонки
@@ -282,66 +263,67 @@ export function MarketScreen() {
                   высотой строк по содержимому колонка начинает прокручиваться,
                   как и задумано. Колонка флексов ломается так же и по той же
                   причине: `flex-shrink` жмёт карточки до нуля. */}
-              <div className="grid auto-rows-max content-start gap-3 lg:max-h-[calc(100vh-9rem)] lg:overflow-y-auto lg:pr-1">
-                {cards}
-                {limit < found.length && (
-                  <Button variant="outline" size="lg" shape="pill" onClick={showMore}>
-                    {t(T.more, { n: Math.min(PAGE, found.length - limit) })}
-                  </Button>
-                )}
+                <div className="grid auto-rows-max content-start gap-3 lg:max-h-[calc(100vh-9rem)] lg:overflow-y-auto lg:pr-1">
+                  {cards}
+                  {limit < found.length && (
+                    <Button variant="outline" size="lg" shape="pill" onClick={showMore}>
+                      {t(T.more, { n: Math.min(PAGE, found.length - limit) })}
+                    </Button>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {sheet && (
-        <div className="fixed inset-0 z-[70] lg:hidden">
-          {/* Затемнение — фон, а не элемент управления: для скринридера оно
-              скрыто, а закрыть панель с клавиатуры даёт useOverlay (Escape) и
-              кнопка с крестиком ниже. */}
-          <div
-            aria-hidden
-            className="absolute inset-0 animate-fade-in bg-black/50"
-            onClick={() => setSheet(false)}
-          />
-          <div className="absolute inset-y-0 right-0 flex w-[86%] max-w-sm animate-slide-in-right flex-col bg-card shadow-2xl">
-            <div className="flex items-center justify-between border-b border-border px-4 py-3">
-              <span className="font-display font-medium">{t(T.filters)}</span>
-              <button
-                onClick={() => setSheet(false)}
-                aria-label={t(T.close)}
-                className="rounded-full p-1.5 text-muted-foreground hover:bg-muted"
-              >
-                <X className="size-4" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-4">
-              <Filters value={filters} onChange={setFilters} />
-            </div>
-            <Button size="lg" shape="pill" onClick={() => setSheet(false)} className="m-4">
-              {t(T.show, { n: found.length })}
-            </Button>
+            )}
           </div>
         </div>
-      )}
 
-      <CompareBar
-        list={compared}
-        onRemove={drop}
-        onClear={clearCompare}
-        onOpen={() => setCompareOpen(true)}
-      />
+        {sheet && (
+          <div className="fixed inset-0 z-[70] lg:hidden">
+            {/* Затемнение — фон, а не элемент управления: для скринридера оно
+              скрыто, а закрыть панель с клавиатуры даёт useOverlay (Escape) и
+              кнопка с крестиком ниже. */}
+            <div
+              aria-hidden
+              className="absolute inset-0 animate-fade-in bg-black/50"
+              onClick={() => setSheet(false)}
+            />
+            <div className="absolute inset-y-0 right-0 flex w-[86%] max-w-sm animate-slide-in-right flex-col bg-card shadow-2xl">
+              <div className="flex items-center justify-between border-b border-border px-4 py-3">
+                <span className="font-display font-medium">{t(T.filters)}</span>
+                <button
+                  onClick={() => setSheet(false)}
+                  aria-label={t(T.close)}
+                  className="rounded-full p-1.5 text-muted-foreground hover:bg-muted"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4">
+                <Filters value={filters} onChange={setFilters} />
+              </div>
+              <Button size="lg" shape="pill" onClick={() => setSheet(false)} className="m-4">
+                {t(T.show, { n: found.length })}
+              </Button>
+            </div>
+          </div>
+        )}
 
-      {compareOpen && (
-        <CompareSheet
+        <CompareBar
           list={compared}
-          volume={volume}
           onRemove={drop}
-          onClose={() => setCompareOpen(false)}
+          onClear={clearCompare}
+          onOpen={() => setCompareOpen(true)}
         />
-      )}
-    </div>
+
+        {compareOpen && (
+          <CompareSheet
+            list={compared}
+            volume={volume}
+            onRemove={drop}
+            onClose={() => setCompareOpen(false)}
+          />
+        )}
+      </div>
+    </>
   );
 }
 
@@ -363,7 +345,7 @@ function ViewBtn({
       aria-pressed={on}
       aria-label={label}
       className={cn(
-        "inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-medium transition-colors",
+        "inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full px-3 text-xs font-medium transition-colors",
         on ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
       )}
     >
@@ -381,12 +363,12 @@ function Empty({ onReset }: { onReset: () => void }) {
   const t = useT();
 
   return (
-    <div className="r-window border border-dashed border-border py-20 text-center">
+    <div className="rounded-[22px] bg-[var(--wh-soft)] py-20 text-center">
       <p className="font-display text-lg font-medium">{t(T.emptyTitle)}</p>
       <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">{t(T.emptyBody)}</p>
-      <Button variant="outline" size="lg" shape="pill" onClick={onReset} className="mt-5">
+      <button type="button" onClick={onReset} className="wh-btn wh-btn--blue mt-5">
         {t(T.emptyReset)}
-      </Button>
+      </button>
     </div>
   );
 }

@@ -1,26 +1,69 @@
-import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Boxes, Moon, Sun, type LucideIcon } from "lucide-react";
+import { useState } from "react";
+import {
+  Boxes,
+  ChevronDown,
+  LifeBuoy,
+  Moon,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Sun,
+  type LucideIcon,
+} from "lucide-react";
 import { countUnread, selectRole, useEditor, visibleChatPartners } from "@/lib/store";
-import { entriesFor, isGroup } from "./navItems";
+import { applyOrder, entriesFor, entryKey, isGroup, moveItem, type NavLeaf } from "./navItems";
 import type { AppView } from "@/lib/types";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-import { eyebrow } from "@/components/ui/eyebrow";
+import { ReportProblemDialog } from "@/components/support/ReportProblemDialog";
+
+/** Свёрнуто ли меню — удобство одного человека, поэтому в localStorage, а не в сторе. */
+const COLLAPSED_KEY = "uklad-nav-collapsed";
+
+function readCollapsed(): boolean {
+  try {
+    return localStorage.getItem(COLLAPSED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+/** Порядок пунктов, выставленный человеком: ключ списка → ключи записей. */
+const ORDER_KEY = "uklad-nav-order";
+type NavOrder = Record<string, string[]>;
+
+function readOrder(): NavOrder {
+  try {
+    const raw = JSON.parse(localStorage.getItem(ORDER_KEY) ?? "{}") as unknown;
+    return raw && typeof raw === "object" ? (raw as NavOrder) : {};
+  } catch {
+    return {};
+  }
+}
+
+/** Что сейчас тащат: из какого списка и с какой позиции. */
+interface Drag {
+  list: string;
+  index: number;
+}
 
 /**
- * Боковой рельс навигации по экранам приложения. Именно боковой, а не пункты в
- * верхней панели: экранов много, и сверху они бы не поместились рядом с
- * переключателем режимов просмотра плана.
+ * Боковое меню экранов кабинета. Именно боковое, а не пункты в верхней панели:
+ * экранов много, и сверху они бы не поместились рядом с переключателем режимов
+ * просмотра плана.
  *
- * Экранов стало столько, что плоский список перестал читаться, поэтому рельс
- * двухуровневый: близкие по смыслу экраны собраны в группу, а группа
- * раскрывается подменю вбок. Рельс остаётся узким (ширина — деньги редактора),
- * но в нём теперь семь пунктов вместо тринадцати.
+ * Меню широкое, с подписями в строку, а близкие экраны собраны в группы,
+ * которые раскрываются ВНУТРИ меню, а не всплывающим окном вбок: вложенный
+ * список видно целиком, путь к экрану читается как дерево, и ничего не
+ * перекрывает содержимое экрана. Группа с текущим экраном открыта сразу.
  *
- * Рельс общий для всех экранов кабинета, включая редактор: его собственные
- * панели плавают внутри своей области и с рельсом не спорят.
+ * Редактору плана ширина дорога, поэтому меню сворачивается до колонки иконок
+ * (кнопка внизу) — и остаётся свёрнутым между заходами.
+ *
+ * Пункты можно переставить перетаскиванием — и верхние, и внутри группы, но не
+ * из группы в группу: группа собрана по смыслу, и экран, вытащенный из неё,
+ * теряет соседей, с которыми его ищут. Порядок хранится у человека в браузере
+ * отдельно для каждой роли.
  */
-
 export function SideNav() {
   const appView = useEditor((s) => s.appView);
   const goToView = useEditor((s) => s.goToView);
@@ -36,27 +79,94 @@ export function SideNav() {
   );
   const t = useT();
   const dark = theme === "dark";
+  const [order, setOrder] = useState<NavOrder>(readOrder);
+  const [drag, setDrag] = useState<Drag | null>(null);
+  const [reporting, setReporting] = useState(false);
+  const [over, setOver] = useState<Drag | null>(null);
+  const topKey = `${role}:top`;
+  const entries = applyOrder(entriesFor(role), order[topKey], entryKey);
+  const itemsOf = (groupId: string, items: NavLeaf[]) =>
+    applyOrder(items, order[`${role}:${groupId}`], (i) => i.view);
 
-  const [openGroup, setOpenGroup] = useState<string | null>(null);
-  const navRef = useRef<HTMLElement>(null);
+  const saveOrder = (list: string, keys: string[]) => {
+    const next = { ...order, [list]: keys };
+    setOrder(next);
+    try {
+      localStorage.setItem(ORDER_KEY, JSON.stringify(next));
+    } catch {
+      // Приватный режим: порядок продержится до перезагрузки.
+    }
+  };
 
-  // Подменю закрывается кликом мимо и Escape: раскрытая группа перекрывает
-  // содержимое экрана, и «залипнуть» ей нельзя.
-  useEffect(() => {
-    if (!openGroup) return;
-    const onDown = (e: PointerEvent) => {
-      if (!navRef.current?.contains(e.target as Node)) setOpenGroup(null);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpenGroup(null);
-    };
-    document.addEventListener("pointerdown", onDown);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("pointerdown", onDown);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [openGroup]);
+  /** Свойства перетаскивания для строки `index` списка `list` из ключей `keys`. */
+  const dnd = (list: string, keys: string[], index: number) => ({
+    draggable: true,
+    onDragStart: (e: React.DragEvent) => {
+      e.stopPropagation();
+      e.dataTransfer.effectAllowed = "move";
+      setDrag({ list, index });
+    },
+    onDragOver: (e: React.DragEvent) => {
+      if (drag?.list !== list) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (over?.list !== list || over.index !== index) setOver({ list, index });
+    },
+    onDrop: (e: React.DragEvent) => {
+      if (drag?.list !== list) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (drag.index !== index) saveOrder(list, moveItem(keys, drag.index, index));
+      setDrag(null);
+      setOver(null);
+    },
+    onDragEnd: () => {
+      setDrag(null);
+      setOver(null);
+    },
+    className: cn(
+      drag?.list === list && drag.index === index && "opacity-40",
+      over?.list === list &&
+        over.index === index &&
+        drag &&
+        drag.index !== index &&
+        (drag.index < index
+          ? "shadow-[0_2px_0_0_hsl(var(--primary))]"
+          : "shadow-[0_-2px_0_0_hsl(var(--primary))]"),
+      "rounded-lg",
+    ),
+  });
+  const topKeys = entries.map(entryKey);
+
+  const [collapsed, setCollapsed] = useState(readCollapsed);
+  // Раскрытые группы — набор, а не одна: человек держит открытыми те, куда
+  // ходит, как папки в проводнике.
+  const [openGroups, setOpenGroups] = useState<Set<string>>(
+    () =>
+      new Set(
+        entries
+          .filter((e) => isGroup(e) && e.items.some((i) => i.view === appView))
+          .map((e) => (isGroup(e) ? e.id : "")),
+      ),
+  );
+
+  const toggleGroup = (id: string) =>
+    setOpenGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const toggleCollapsed = () => {
+    const next = !collapsed;
+    setCollapsed(next);
+    try {
+      localStorage.setItem(COLLAPSED_KEY, next ? "1" : "0");
+    } catch {
+      // Приватный режим: меню просто не запомнит выбор.
+    }
+  };
 
   // Счётчик на «Заданиях»: сколько заявок ждут склад прямо сейчас.
   const openRequests = requests.filter(
@@ -68,157 +178,189 @@ export function SideNav() {
     return 0;
   };
 
-  const open = (view: AppView) => {
-    goToView(view);
-    setOpenGroup(null);
-  };
-
   return (
     <nav
-      ref={navRef}
       aria-label={t("nav.side.title")}
-      className="relative flex w-[4.5rem] shrink-0 flex-col items-center gap-1 border-r border-border bg-card py-3"
+      className={cn(
+        "flex shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-border bg-card px-2 py-3 transition-[width] duration-200",
+        collapsed ? "w-[3.75rem]" : "w-56",
+      )}
     >
-      {/* Логотип — единственный выход в кабинет: привычка всего веба, поэтому
-          отдельного пункта «Главная» в рельсе больше нет. Под курсором знак
-          меняется на стрелку и проявляется подпись — чтобы «кликабельно» было
-          видно, а не угадывалось. Строка подписи занимает место всегда (просто
-          прозрачная), иначе рельс дёргался бы при каждом наведении. */}
+      {/* Логотип — выход в кабинет: привычка всего веба, отдельного пункта
+          «Главная» в меню нет. */}
       <button
         type="button"
-        onClick={() => {
-          setOpenGroup(null);
-          goToDashboard();
-        }}
+        onClick={goToDashboard}
+        title={t("nav.side.toDashboard")}
         aria-label={t("nav.side.toDashboard")}
-        className="group mb-1 flex w-[3.75rem] flex-col items-center gap-1 rounded-lg px-1 py-1"
+        className="mb-2 flex h-10 cursor-pointer items-center gap-2.5 rounded-lg px-1.5 text-sm font-semibold tracking-tight hover:bg-accent"
       >
-        <span className="flex size-8 items-center justify-center rounded-lg bg-foreground text-background transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
-          <Boxes className="size-4 group-hover:hidden" />
-          <ArrowLeft className="hidden size-4 group-hover:block" />
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-foreground text-background">
+          <Boxes className="size-4" />
         </span>
-        <span className="text-center text-2xs font-medium leading-tight text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100">
-          {t("nav.side.toDashboard")}
-        </span>
+        {!collapsed && <span className="truncate">Уклад</span>}
       </button>
 
-      {entriesFor(role).map((entry) => {
+      {entries.map((entry, index) => {
         if (!isGroup(entry)) {
           return (
-            <RailButton
-              key={entry.view}
-              icon={entry.icon}
-              label={t(entry.key)}
-              active={appView === entry.view}
-              current={appView === entry.view}
-              badge={badgeFor(entry.view)}
-              onClick={() => open(entry.view)}
-            />
+            <div key={entry.view} {...dnd(topKey, topKeys, index)}>
+              <NavRow
+                icon={entry.icon}
+                label={t(entry.key)}
+                collapsed={collapsed}
+                active={appView === entry.view}
+                current={appView === entry.view}
+                badge={badgeFor(entry.view)}
+                onClick={() => goToView(entry.view)}
+              />
+            </div>
           );
         }
 
         const inside = entry.items.some((i) => i.view === appView);
-        const badge = entry.items.reduce((s, i) => s + badgeFor(i.view), 0);
-        const expanded = openGroup === entry.id;
+        const expanded = openGroups.has(entry.id);
+        // Свёрнутая группа не прячет непрочитанное внутри: сумма — на заголовке.
+        const badge = expanded ? 0 : entry.items.reduce((s, i) => s + badgeFor(i.view), 0);
 
         return (
-          <div key={entry.id} className="relative w-full">
-            <RailButton
-              icon={entry.icon}
-              label={t(entry.key)}
-              active={inside || expanded}
-              expanded={expanded}
-              badge={badge}
-              onClick={() => setOpenGroup(expanded ? null : entry.id)}
-            />
-            {expanded && (
-              <ul className="absolute left-full top-0 z-50 ml-1 flex w-52 animate-scale-in flex-col gap-0.5 rounded-xl border border-border bg-popover p-1.5 shadow-lg">
-                <li className={eyebrow({ size: "xs", className: "px-2 pb-1 pt-0.5" })}>
-                  {t(entry.key)}
-                </li>
-                {entry.items.map((item) => {
-                  const activeItem = appView === item.view;
-                  const n = badgeFor(item.view);
-                  return (
-                    <li key={item.view}>
-                      <button
-                        onClick={() => open(item.view)}
-                        aria-current={activeItem ? "page" : undefined}
-                        className={cn(
-                          "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs font-medium transition-colors",
-                          activeItem
-                            ? "bg-primary/10 text-primary"
-                            : "text-foreground hover:bg-accent",
-                        )}
-                      >
-                        <item.icon className="size-4 shrink-0" />
-                        <span className="min-w-0 flex-1 truncate">{t(item.key)}</span>
-                        {n > 0 && (
-                          <span className="shrink-0 rounded-full bg-primary px-1.5 text-2xs font-bold tabular-nums text-primary-foreground">
-                            {n}
-                          </span>
-                        )}
-                      </button>
+          <div key={entry.id} {...dnd(topKey, topKeys, index)}>
+            <div className="flex flex-col gap-0.5">
+              <NavRow
+                icon={entry.icon}
+                label={t(entry.key)}
+                collapsed={collapsed}
+                active={inside && !expanded}
+                expanded={expanded}
+                badge={badge}
+                onClick={() => toggleGroup(entry.id)}
+              />
+              {expanded && (
+                <ul
+                  className={cn(
+                    "flex animate-fade-in flex-col gap-0.5",
+                    !collapsed && "ml-[1.15rem] border-l border-border pl-2",
+                  )}
+                >
+                  {itemsOf(entry.id, entry.items).map((item, i, list) => (
+                    <li
+                      key={item.view}
+                      {...dnd(
+                        `${role}:${entry.id}`,
+                        list.map((x) => x.view),
+                        i,
+                      )}
+                    >
+                      <NavRow
+                        icon={item.icon}
+                        label={t(item.key)}
+                        collapsed={collapsed}
+                        nested
+                        active={appView === item.view}
+                        current={appView === item.view}
+                        badge={badgeFor(item.view)}
+                        onClick={() => goToView(item.view)}
+                      />
                     </li>
-                  );
-                })}
-              </ul>
-            )}
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
         );
       })}
 
-      {/* Роль переключается в кабинете: это выбор «чей это склад сегодня», а не
-          навигация по экранам склада (п.5). */}
-      <div className="mt-auto flex flex-col items-center gap-2 pt-2">
-        <button
+      <div className="mt-auto flex flex-col gap-0.5 pt-2">
+        <NavRow
+          icon={LifeBuoy}
+          label={t("support.nav")}
+          collapsed={collapsed}
+          active={false}
+          badge={0}
+          onClick={() => setReporting(true)}
+        />
+        <NavRow
+          icon={dark ? Sun : Moon}
+          label={t("nav.theme")}
+          collapsed={collapsed}
+          active={false}
+          badge={0}
           onClick={() => updateProfile({ theme: dark ? "light" : "dark" })}
-          aria-label={t("nav.theme")}
-          className="flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-        >
-          {dark ? <Sun className="size-4" /> : <Moon className="size-4" />}
-        </button>
+        />
+        <NavRow
+          icon={collapsed ? PanelLeftOpen : PanelLeftClose}
+          label={collapsed ? t("nav.expand") : t("nav.collapse")}
+          collapsed={collapsed}
+          active={false}
+          badge={0}
+          onClick={toggleCollapsed}
+        />
       </div>
+      {reporting && <ReportProblemDialog onClose={() => setReporting(false)} />}
     </nav>
   );
 }
 
-function RailButton({
+function NavRow({
   icon: Icon,
   label,
+  collapsed,
   active,
   current,
   expanded,
+  nested,
   badge,
   onClick,
 }: {
   icon: LucideIcon;
   label: string;
+  collapsed: boolean;
   active: boolean;
   /** Пункт-экран: помечаем его как текущую страницу. У группы страницы нет. */
   current?: boolean;
+  /** Задано только у группы: раскрыта ли она. */
   expanded?: boolean;
+  nested?: boolean;
   badge: number;
   onClick: () => void;
 }) {
+  const group = expanded !== undefined;
   return (
     <button
+      type="button"
       onClick={onClick}
+      title={collapsed ? label : undefined}
+      aria-label={collapsed ? label : undefined}
       aria-current={current ? "page" : undefined}
       aria-expanded={expanded}
       className={cn(
-        "relative mx-auto flex w-[3.75rem] flex-col items-center gap-1 rounded-lg px-1 py-2 text-2xs font-medium leading-tight transition-colors",
+        "relative flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 text-left text-sm font-medium transition-colors",
+        nested ? "h-8" : "h-9",
+        collapsed && "justify-center px-0",
         active
           ? "bg-primary/10 text-primary"
           : "text-muted-foreground hover:bg-accent hover:text-foreground",
       )}
     >
-      <Icon className="size-[1.15rem]" />
-      <span className="text-center">{label}</span>
+      <Icon className={cn("shrink-0", nested ? "size-4" : "size-[1.15rem]")} />
+      {!collapsed && <span className="min-w-0 flex-1 truncate">{label}</span>}
       {badge > 0 && (
-        <span className="absolute right-1.5 top-1.5 flex min-w-4 items-center justify-center rounded-full bg-primary px-1 text-2xs font-bold text-primary-foreground">
+        <span
+          className={cn(
+            "flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-2xs font-bold tabular-nums text-primary-foreground",
+            collapsed && "absolute right-0.5 top-0.5 min-w-4 px-1",
+          )}
+        >
           {badge}
         </span>
+      )}
+      {group && !collapsed && (
+        <ChevronDown
+          className={cn(
+            "size-4 shrink-0 transition-transform",
+            expanded ? "rotate-0" : "-rotate-90",
+          )}
+        />
       )}
     </button>
   );

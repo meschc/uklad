@@ -1,3 +1,4 @@
+import { useWarehouseProducts } from "@/lib/warehouseProducts";
 import { useMemo, useState } from "react";
 import { X } from "lucide-react";
 import { useEditor } from "@/lib/store";
@@ -31,7 +32,7 @@ export function RequestDialog({
   onClose: () => void;
 }) {
   const t = useT();
-  const products = useEditor((s) => s.products);
+  const products = useWarehouseProducts();
   const placements = useEditor((s) => s.placements);
   const boxes = useEditor((s) => s.boxes);
   const shipments = useEditor((s) => s.expectedShipments);

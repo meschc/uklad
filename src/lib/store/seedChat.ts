@@ -15,15 +15,19 @@ import type { ChatMessage, Partner } from "../types";
  */
 
 const MINUTE = 60_000;
-const HOUR = 60 * MINUTE;
-const DAY = 24 * HOUR;
 
-/** Реплика сценария: кто, что и сколько назад написал. */
+/** Реплика сценария: кто, что и когда написал. */
 interface Line {
   from: ChatMessage["from"];
   text: string;
-  /** Насколько раньше «сейчас», мс. */
-  ago: number;
+  /**
+   * Сколько суток назад и во сколько по часам. Именно время на часах, а не
+   * «столько-то часов назад»: иначе реплики ложатся ровно на 16:04, 17:04,
+   * 18:04, а «машина ушла в 14:20» оказывается написана в шесть вечера —
+   * демо выглядит сгенерированным. Все реплики не позже вчерашнего дня, чтобы
+   * ни одна не оказалась в будущем при раннем открытии кабинета.
+   */
+  when: [days: number, time: string];
 }
 
 /**
@@ -36,73 +40,73 @@ const SCRIPTS: Line[][] = [
     {
       from: "seller",
       text: "Добрый день! Завтра привезём 12 коробов, машина будет к 9:30. Успеем в окно приёмки?",
-      ago: 2 * DAY + 3 * HOUR,
+      when: [3, "08:47"],
     },
     {
       from: "warehouse",
       text: "Здравствуйте. Да, до 11:00 рампа свободна. Пропуск на машину пришлите номером — оформим на въезде.",
-      ago: 2 * DAY + 2 * HOUR,
+      when: [3, "08:58"],
     },
-    { from: "seller", text: "Х221УС799, водитель Асланов.", ago: 2 * DAY + 100 * MINUTE },
-    { from: "warehouse", text: "Принято, пропуск заказан.", ago: 2 * DAY + 90 * MINUTE },
+    { from: "seller", text: "Х221УС799, водитель Асланов.", when: [3, "09:03"] },
+    { from: "warehouse", text: "Принято, пропуск заказан.", when: [3, "09:05"] },
     {
       from: "warehouse",
       text: "Приняли 11 коробов из 12. По коробу с термокружками расхождение: в накладной 40, по факту 36. Акт расхождения приложили к поставке.",
-      ago: DAY + 4 * HOUR,
+      when: [2, "11:34"],
     },
     {
       from: "seller",
       text: "Спасибо, вижу акт. Четыре штуки поставщик недоложил, к вам вопросов нет. Спишем со своей стороны.",
-      ago: DAY + 3 * HOUR,
+      when: [2, "12:10"],
     },
     {
       from: "seller",
       text: "И ещё: с мая планируем возить в полтора раза больше. Тариф на хранение при таком объёме пересматриваете?",
-      ago: 3 * HOUR,
+      when: [1, "18:42"],
     },
   ],
   [
     {
       from: "warehouse",
       text: "Добрый день! По вашему заказу №4412 собрали 18 позиций из 20. Двух наименований нет на остатке — отгружаем частично или ждём поставку?",
-      ago: 6 * HOUR,
+      when: [1, "12:47"],
     },
     {
       from: "seller",
       text: "Отгружайте частично, у покупателя горит срок. Остаток отдельной отправкой, как приедет.",
-      ago: 5 * HOUR,
+      when: [1, "13:05"],
     },
     {
       from: "warehouse",
       text: "Хорошо, машина ушла в 14:20. Накладную загрузили в документы.",
-      ago: 4 * HOUR,
+      when: [1, "14:26"],
     },
     {
       from: "seller",
       text: "Получил. Ещё вопрос по возврату от 12-го: он у вас на выбраковке или уже вернулся в оборот?",
-      ago: 40 * MINUTE,
+      when: [1, "15:52"],
     },
   ],
   [
     {
       from: "seller",
       text: "Здравствуйте! Нужна маркировка «Честный знак» на новую партию обуви. Делаете?",
-      ago: 5 * DAY,
+      when: [6, "10:15"],
     },
     {
       from: "warehouse",
       text: "Да, маркируем. 9 ₽ за единицу, коды загружаете вы — принимаем файлом или через интеграцию.",
-      ago: 5 * DAY - HOUR,
+      when: [6, "10:41"],
     },
     {
       from: "seller",
       text: "Через интеграцию удобнее. Подключимся на следующей неделе.",
-      ago: 4 * DAY,
+      when: [5, "16:20"],
     },
     {
       from: "warehouse",
       text: "Ждём. Как подключитесь — напишите, поставим первую партию в работу вне очереди.",
-      ago: 4 * DAY - 2 * HOUR,
+      when: [5, "16:33"],
     },
   ],
 ];
@@ -131,7 +135,14 @@ export function demoReplyFor(from: ChatMessage["from"], seed: number): string {
 
 /** Разложить сценарии по первым партнёрам склада. */
 export function seedChatFor(partners: Partner[]): Record<string, ChatMessage[]> {
-  const now = nowMs();
+  const today = new Date(nowMs());
+  const at = ([days, time]: Line["when"]) => {
+    const [h, m] = time.split(":").map(Number);
+    const d = new Date(today);
+    d.setDate(d.getDate() - days);
+    d.setHours(h, m, 0, 0);
+    return d.getTime();
+  };
   const chats: Record<string, ChatMessage[]> = {};
 
   partners.slice(0, SCRIPTS.length).forEach((partner, i) => {
@@ -139,10 +150,10 @@ export function seedChatFor(partners: Partner[]): Record<string, ChatMessage[]> 
       id: uid("msg"),
       from: line.from,
       text: line.text,
-      at: now - line.ago,
+      at: at(line.when),
       // Прочитанным считаем всё, кроме последней реплики продавца: она и есть
       // то новое, ради чего человек в чат заходит.
-      readAt: line.from === "warehouse" ? now - line.ago + MINUTE : undefined,
+      readAt: line.from === "warehouse" ? at(line.when) + MINUTE : undefined,
     }));
 
     // Ответы склада продавец давно прочитал; непрочитанным у него ничего не

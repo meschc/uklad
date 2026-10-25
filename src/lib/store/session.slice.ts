@@ -41,7 +41,14 @@ export const createSessionSlice: SliceCreator<SessionSlice> = (set) => ({
     set((s) => ({
       session: {
         ...s.session,
-        user: { ...s.session.user, role, warehouseId: s.warehouse.id },
+        user: {
+          ...s.session.user,
+          role,
+          warehouseId: s.warehouse.id,
+          // Прототип: входим первым партнёром склада. С сервером партнёр
+          // придёт из учётной записи, а не из списка.
+          partnerId: role === "seller" ? s.warehouse.partners?.[0]?.id : undefined,
+        },
       },
       // Экран склада продавцу не показываем и наоборот: уводим на «свой» старт.
       appView: role === "seller" ? "seller" : s.appView === "seller" ? "dashboard" : s.appView,

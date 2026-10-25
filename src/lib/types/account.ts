@@ -27,11 +27,13 @@ export type AppView =
   | "integrations"
   | "tasks"
   | "picking"
+  | "operations"
   | "staff"
   | "analytics"
   | "spec"
   | "seller"
-  | "chat";
+  | "chat"
+  | "workstation";
 
 /**
  * Аккаунт (ТЗ, разд. 3.2): личный или компании. От типа зависит, что
@@ -60,6 +62,10 @@ export interface Profile {
   language: Lang;
   /** Рисовать ли внутреннюю разбивку секции на полки. По умолчанию да. */
   showShelves?: boolean;
+  /** Системные уведомления о сообщениях, когда вкладка скрыта. По умолчанию нет: браузер спрашивает разрешение. */
+  chatNotify?: boolean;
+  /** Показывать ли в уведомлении текст сообщения. По умолчанию да; нет — только кто написал. */
+  chatNotifyPreview?: boolean;
 }
 
 /** Роль текущего пользователя: склад или продавец (переключатель режима). */
@@ -76,6 +82,12 @@ export interface User {
   role: UserRole;
   /** Склад, к которому привязан пользователь. */
   warehouseId: string;
+  /**
+   * Продавец — какой он партнёр склада (`Partner.id`). Продавец видит ТОЛЬКО
+   * товар, который склад за этим партнёром закрепил. Нет поля — не видит
+   * ничего: чужой товар показывать нельзя ни при каких настройках.
+   */
+  partnerId?: string;
   name?: string;
 }
 
@@ -88,4 +100,36 @@ export interface Session {
   user: User;
   token: string;
   startedAt: number;
+}
+
+/**
+ * Тариф аккаунта — те же три готовых тарифа, что на сайте (`site/data/plans`,
+ * таблица отличий в `warehouses/tariffsData.ts`). Оплаты в прототипе нет:
+ * тариф пока выбирается в профиле, а придёт из биллинга сервера.
+ */
+export type TariffId = "operator" | "warehouse" | "start";
+
+/** Персональный менеджер тарифа «Оператор». Назначает его Уклад, не клиент. */
+export interface Manager {
+  name: string;
+  phone?: string;
+  email?: string;
+}
+
+/** Настройки резервных копий (тарифы на сайте, группа «Данные»). */
+export interface BackupSettings {
+  /** Напоминать сделать копию раз в N дней; 0 — не напоминать. */
+  remindEveryDays: number;
+  /** Когда последний раз скачан архив (мс). Нет — копию ещё не делали. */
+  lastBackupAt?: number;
+  /** «Напомнить позже» откладывает напоминание до этого момента (мс). */
+  snoozedUntil?: number;
+  /** Еженедельная копия на почту — только «Склад» и «Оператор». */
+  emailWeekly: boolean;
+}
+
+export interface Subscription {
+  tariff: TariffId;
+  manager?: Manager;
+  backup: BackupSettings;
 }

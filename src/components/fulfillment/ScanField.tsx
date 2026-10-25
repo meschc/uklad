@@ -5,6 +5,7 @@ import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { eyebrow } from "@/components/ui/eyebrow";
+import { CameraScanButton } from "./CameraScan";
 
 /**
  * Поле скана. Физический HID-сканер «печатает» код прямо в сфокусированное
@@ -28,6 +29,7 @@ export function ScanField({
   minLength,
   disabled,
   autoFocus = true,
+  actionLabel,
   onSubmit,
 }: {
   label: string;
@@ -37,6 +39,8 @@ export function ScanField({
   minLength?: number;
   disabled?: boolean;
   autoFocus?: boolean;
+  /** Подпись кнопки: по умолчанию «Принять», у упаковки — своё действие. */
+  actionLabel?: string;
   onSubmit: (code: string) => void;
 }) {
   const t = useT();
@@ -112,13 +116,14 @@ export function ScanField({
             )}
           />
         </div>
+        <CameraScanButton disabled={disabled} onCode={submit} />
         <Button
           variant="outline"
           className="h-11 shrink-0"
           disabled={disabled || !value.trim()}
           onClick={() => submit(value)}
         >
-          {t("scan.apply")}
+          {actionLabel ?? t("scan.apply")}
         </Button>
       </div>
       {hint && <p className="text-xs text-muted-foreground">{hint}</p>}

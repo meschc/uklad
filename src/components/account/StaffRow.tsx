@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { AtSign, Check, Phone, Trash2, UserRound } from "lucide-react";
 import type { StaffMember } from "@/lib/types";
+import type { StaffWorkload } from "@/lib/fulfillment";
 import { useEditor } from "@/lib/store";
 import { staffRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
 import type { TFunc } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
-import { PersonForm, type PersonDraft } from "./PersonForm";
+import { PersonForm, draftToMember, type PersonDraft } from "./PersonForm";
 
 /**
  * Строка сотрудника: просмотр, правка на месте, удаление.
@@ -23,12 +24,15 @@ import { PersonForm, type PersonDraft } from "./PersonForm";
  */
 export function StaffRow({
   member: m,
+  load,
   editing,
   onEdit,
   onDone,
   t,
 }: {
   member: StaffMember;
+  /** Нагрузка по фактам приёмки и отгрузки — в той же строке, что и человек. */
+  load?: StaffWorkload;
   editing: boolean;
   onEdit: () => void;
   /** Правка закончена — экрану остаётся свернуть строку. */
@@ -42,6 +46,7 @@ export function StaffRow({
     phone: m.phone ?? "",
     email: m.email ?? "",
     photoUrl: m.photoUrl ?? "",
+    rate: m.hourlyRate ? String(m.hourlyRate) : "",
   });
 
   const save = useCommand((patch: Partial<Omit<StaffMember, "id">>) =>
@@ -50,7 +55,7 @@ export function StaffRow({
   const remove = useCommand(() => staffRepository.remove(m.id));
 
   const submit = async () => {
-    const res = await save.run(form);
+    const res = await save.run(draftToMember(form));
     if (res.ok) onDone();
   };
 
@@ -58,8 +63,13 @@ export function StaffRow({
     const label = t(save.error ? "data.retry" : "common.save");
     return (
       <tr className="border-t border-border/60 bg-accent/40">
-        <td className="px-3 py-2" colSpan={3}>
-          <PersonForm value={form} onChange={(patch) => setForm({ ...form, ...patch })} t={t} />
+        <td className="px-3 py-2" colSpan={7}>
+          <PersonForm
+            withRate
+            value={form}
+            onChange={(patch) => setForm({ ...form, ...patch })}
+            t={t}
+          />
           {save.error && (
             <p role="alert" className="pt-2 text-xs text-destructive">
               {t(save.error)}
@@ -97,26 +107,44 @@ export function StaffRow({
               <UserRound className="size-3.5" />
             </span>
           )}
-          <span className="font-medium">{m.name}</span>
+          <span className="flex min-w-0 flex-col">
+            <span className="font-medium">{m.name}</span>
+            {(m.phone || m.email) && (
+              <span className="flex flex-wrap items-center gap-x-3 text-xs text-muted-foreground">
+                {m.phone && (
+                  <span className="inline-flex items-center gap-1">
+                    <Phone className="size-3" />
+                    {m.phone}
+                  </span>
+                )}
+                {m.email && (
+                  <span className="inline-flex items-center gap-1">
+                    <AtSign className="size-3" />
+                    {m.email}
+                  </span>
+                )}
+              </span>
+            )}
+          </span>
         </button>
       </td>
       <td className="px-3 py-2 text-muted-foreground">{m.role || "—"}</td>
-      <td className="px-3 py-2">
-        <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-          {m.phone && (
-            <span className="inline-flex items-center gap-1">
-              <Phone className="size-3" />
-              {m.phone}
-            </span>
-          )}
-          {m.email && (
-            <span className="inline-flex items-center gap-1">
-              <AtSign className="size-3" />
-              {m.email}
-            </span>
-          )}
-          {!m.phone && !m.email && "—"}
-        </div>
+      {/* Ставка видна прямо в списке: пустая клетка зовёт её задать, а
+          задаётся она той же правкой строки, что имя и телефон. */}
+      <td className="px-3 py-2 text-right tabular-nums">
+        {m.hourlyRate ? (
+          t("staff.rateValue", { r: m.hourlyRate })
+        ) : (
+          <button onClick={onEdit} className="text-xs text-primary hover:underline">
+            {t("staff.rateSet")}
+          </button>
+        )}
+      </td>
+      <td className="px-3 py-2 text-right tabular-nums">{load?.receipts ?? 0}</td>
+      <td className="px-3 py-2 text-right tabular-nums">{load?.units ?? 0}</td>
+      <td className="px-3 py-2 text-right tabular-nums">{load?.trips ?? 0}</td>
+      <td className="px-3 py-2 text-xs text-muted-foreground">
+        {load?.lastAt ? new Date(load.lastAt).toLocaleDateString() : t("staff.wlNever")}
       </td>
       <td className="px-3 py-2">
         <button

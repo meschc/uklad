@@ -23,7 +23,9 @@ import { money, monthlyPerPlace, occupancy } from "../../data/warehouses";
 import { warehousesRepository } from "../../data/warehousesRepository";
 import { PAGE_NOW, shortDate } from "../../lib/date";
 import { freshness } from "../../lib/freshness";
+import { warehouseSeoText } from "../../lib/warehouseSeoText";
 import { href } from "../../lib/route";
+import { Reveal } from "../Reveal";
 import { c, useT, type Copy, type TFunc } from "../../lib/copy";
 import type { Warehouse } from "../../data/warehouses";
 
@@ -224,243 +226,280 @@ export function WarehouseScreen({ id }: { id?: string }) {
         });
 
   return (
-    <div className="mx-auto max-w-6xl px-4 pb-24 pt-28 sm:px-6 sm:pt-32">
-      <a
-        href={href("/market")}
-        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
-      >
-        <ArrowLeft className="size-3.5" />
-        {t(T.back)}
-      </a>
+    <>
+      {/* Паспорт склада (22 окт): без синего первого экрана — синим здесь
+          только плитка цены, единственное, что сравнивают между складами
+          с первого взгляда. Слева кто это и чем отличается, справа — сколько
+          стоит место и сколько их свободно. */}
+      <section className="mx-auto max-w-[1280px] px-5 pt-8 sm:px-10 sm:pt-12">
+        <a
+          href={href("/market")}
+          className="group inline-flex items-center gap-1.5 text-sm text-[var(--wh-muted)] transition-colors hover:text-[var(--wh-ink)]"
+        >
+          <ArrowLeft className="size-3.5 transition-transform group-hover:-translate-x-0.5" />
+          {t(T.back)}
+        </a>
 
-      {/* Обложка — только у складов, чью площадку мы подключали; плиту с
-          буквой здесь не рисуем: знак склада стоит строкой ниже, и второй раз
-          та же буква во весь экран ничего не добавляет. */}
-      {w.photo && (
-        <figure className="mt-5">
-          <WarehouseCover warehouse={w} className="r-window aspect-[16/5] border border-border" />
-          <figcaption className="mt-2 text-xs leading-relaxed text-muted-foreground">
-            {t(T.photoNote)}
-          </figcaption>
-        </figure>
-      )}
+        <Reveal className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_400px] lg:items-stretch lg:gap-14">
+          <div className="flex flex-col">
+            <div className="flex items-center gap-4">
+              <WarehouseAvatar warehouse={w} className="size-16 shrink-0" />
+              <p className="text-sm leading-relaxed text-[var(--wh-muted)]">
+                {t(T.meta, { legal: t(w.legal), y: w.since, place: place(t, w) })}
+              </p>
+            </div>
+            <h1 className="mt-6 text-[clamp(40px,4.8vw,72px)] font-normal leading-[0.98] tracking-[-0.045em] [text-wrap:balance]">
+              {t(w.name)}
+              {w.verified && (
+                <BadgeCheck
+                  className="ml-3 inline size-[0.6em] align-[0.05em] text-[var(--wh-blue)]"
+                  aria-label={t(T.verified)}
+                />
+              )}
+            </h1>
+            <p className="wh-statement mt-6 max-w-[28ch] text-[var(--wh-muted)] lg:mt-auto lg:pt-8">
+              {t(w.pitch)}
+            </p>
+          </div>
 
-      <header className="mt-5 flex items-start gap-4">
-        <WarehouseAvatar warehouse={w} className="size-14 shrink-0" />
-        <div className="min-w-0">
-          <h1 className="flex items-center gap-2 font-display text-2xl font-heading leading-tight tracking-tight sm:text-4xl">
-            {t(w.name)}
-            {w.verified && (
-              <BadgeCheck className="size-5 shrink-0 text-primary" aria-label={t(T.verified)} />
-            )}
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {t(T.meta, { legal: t(w.legal), y: w.since, place: place(t, w) })}
-          </p>
-        </div>
-      </header>
+          <div className="flex flex-col justify-between gap-8 rounded-[22px] bg-[var(--wh-blue)] p-7 text-[var(--wh-on-blue)]">
+            <div>
+              <p className="text-sm text-white/75">{t(T.perMonth)}</p>
+              <p className="mt-2 whitespace-nowrap text-[clamp(48px,5vw,72px)] font-light leading-none tracking-[-0.05em] tabular-nums">
+                ≈ {money(monthlyPerPlace(w))} ₽
+              </p>
+            </div>
+            <div>
+              <div className="flex items-baseline justify-between gap-4 text-sm">
+                <span className="text-white/75">{t(T.free, { n: money(w.cellsTotal) })}</span>
+                <span className="text-2xl tabular-nums tracking-[-0.03em]">
+                  {money(w.cellsFree)}
+                </span>
+              </div>
+              {/* Полоса свободного: белая часть — свободно, тёмная — занято. */}
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/20">
+                <div
+                  className="wh-grow h-full rounded-full bg-white"
+                  style={{ width: `${100 - busy}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        </Reveal>
+      </section>
 
-      <div className="mt-8 grid gap-10 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="min-w-0">
-          <p className="max-w-2xl text-base leading-relaxed">{t(w.pitch)}</p>
+      <div className="mx-auto max-w-[1280px] px-5 pb-24 pt-10 sm:px-10 sm:pt-14">
+        {w.photo && (
+          <figure className="mb-12">
+            <WarehouseCover
+              warehouse={w}
+              className="aspect-[16/5] overflow-hidden rounded-[22px]"
+            />
+            <figcaption className="mt-2 text-xs leading-relaxed text-muted-foreground">
+              {t(T.photoNote)}
+            </figcaption>
+          </figure>
+        )}
 
-          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {/* У склада без отзывов в этой клетке стоит прочерк, а не ноль:
+        <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="min-w-0">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {/* У склада без отзывов в этой клетке стоит прочерк, а не ноль:
                 нолём в ряду с площадью и временем ответа читается «оценка
                 нулевая», хотя оценки просто нет. Что это значит, объяснено
                 ниже, в блоке отзывов. */}
-            <Fact
-              icon={Star}
-              value={w.reputation.rating === null ? "—" : w.reputation.rating.toFixed(1)}
-              label={
-                w.reputation.rating === null
-                  ? t(T.noReviews)
-                  : t(T.reviews, {
-                      n: w.reputation.reviews,
-                      word: t.plural(
-                        w.reputation.reviews,
-                        ["отзыв", "отзыва", "отзывов"],
-                        ["review", "reviews"],
-                      ),
-                    })
-              }
-            />
-            <Fact icon={Clock} value={t(T.hours, { n: w.responseHours })} label={t(T.answer)} />
-            <Fact icon={Ruler} value={t(T.sqm, { n: money(w.areaM2) })} label={t(T.area)} />
-            <Fact
-              icon={Building2}
-              value={money(w.cellsFree)}
-              label={t(T.free, { n: money(w.cellsTotal) })}
-            />
-          </div>
+              <Fact
+                icon={Star}
+                value={w.reputation.rating === null ? "—" : w.reputation.rating.toFixed(1)}
+                label={
+                  w.reputation.rating === null
+                    ? t(T.noReviews)
+                    : t(T.reviews, {
+                        n: w.reputation.reviews,
+                        word: t.plural(
+                          w.reputation.reviews,
+                          ["отзыв", "отзыва", "отзывов"],
+                          ["review", "reviews"],
+                        ),
+                      })
+                }
+              />
+              <Fact icon={Clock} value={t(T.hours, { n: w.responseHours })} label={t(T.answer)} />
+              <Fact icon={Ruler} value={t(T.sqm, { n: money(w.areaM2) })} label={t(T.area)} />
+              <Fact
+                icon={Building2}
+                value={money(w.cellsFree)}
+                label={t(T.free, { n: money(w.cellsTotal) })}
+              />
+            </div>
 
-          {/* Галочка «проверен» без расшифровки обещает больше, чем мы делаем:
+            {/* Галочка «проверен» без расшифровки обещает больше, чем мы делаем:
               человек читает её как «Уклад отвечает за этот склад», а мы
               сверяли регистрацию и право на помещение — и только. Поэтому
               рядом с галочкой стоит список того, что за ней стоит, и прямая
               оговорка о том, чего за ней нет. Непроверенный склад говорит об
               этом теми же словами: отметка чего-то стоит лишь тогда, когда её
               отсутствие тоже видно. */}
-          <Block title={t(w.verified ? T.checked : T.notCheckedTitle)}>
-            {w.verified ? (
-              <ul className="flex flex-col gap-2.5">
-                <TrustItem>
-                  {t(T.regLine, {
-                    legal: t(w.legal),
-                    form: t(registration(w.legal.ru).form),
-                    registry: t(registration(w.legal.ru).registry),
-                  })}
-                </TrustItem>
-                <TrustItem>
-                  {t(T.useLine, { addr: `${t(w.cityTitle)}, ${t(w.address)}` })}
-                </TrustItem>
-                {w.uklad && <TrustItem>{t(T.ukladLine)}</TrustItem>}
-              </ul>
-            ) : (
-              <p className="text-sm leading-relaxed text-muted-foreground">{t(T.notChecked)}</p>
-            )}
+            <Block title={t(w.verified ? T.checked : T.notCheckedTitle)}>
+              {w.verified ? (
+                <ul className="flex flex-col gap-2.5">
+                  <TrustItem>
+                    {t(T.regLine, {
+                      legal: t(w.legal),
+                      form: t(registration(w.legal.ru).form),
+                      registry: t(registration(w.legal.ru).registry),
+                    })}
+                  </TrustItem>
+                  <TrustItem>
+                    {t(T.useLine, { addr: `${t(w.cityTitle)}, ${t(w.address)}` })}
+                  </TrustItem>
+                  {w.uklad && <TrustItem>{t(T.ukladLine)}</TrustItem>}
+                </ul>
+              ) : (
+                <p className="text-sm leading-relaxed text-muted-foreground">{t(T.notChecked)}</p>
+              )}
 
-            <p className="mt-3.5 text-xs leading-relaxed text-muted-foreground">
-              {t(T.notGuarantee)}{" "}
-              <a
-                href={href("/legal/requisites")}
-                className="font-medium text-primary underline underline-offset-2 hover:text-primary/80"
-              >
-                {t(T.how)}
-              </a>
-            </p>
-          </Block>
+              <p className="mt-3.5 text-xs leading-relaxed text-muted-foreground">
+                {t(T.notGuarantee)}{" "}
+                <a
+                  href={href("/legal/requisites")}
+                  className="font-medium text-primary transition-opacity hover:opacity-75"
+                >
+                  {t(T.how)}
+                </a>
+              </p>
+            </Block>
 
-          {/* Отзывы стоят сразу под проверкой и до рассказа о том, как пойдёт
+            {/* Отзывы стоят сразу под проверкой и до рассказа о том, как пойдёт
               работа: и то и другое отвечает на один вопрос — можно ли этому
               складу верить, — только проверку делали мы, а отзывы писали те,
               кто уже вёз. Второе весит больше, и прятать его в конец страницы
               значит притворяться, что это не так. */}
-          <WarehouseReputation warehouse={w} />
+            <WarehouseReputation warehouse={w} />
 
-          <Block title={t(T.start)}>
-            <ol className="border-t border-border">
-              {START.map((s, i) => (
-                <li key={s.title.ru} className="flex gap-4 border-b border-border py-3.5">
-                  <span className="mt-0.5 shrink-0 font-mono text-xs tabular-nums text-primary">
-                    0{i + 1}
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block text-sm font-medium">{t(s.title)}</span>
-                    <span className="mt-0.5 block text-sm leading-relaxed text-muted-foreground">
-                      {t(s.body)}
+            <Block title={t(T.start)}>
+              <ol className="border-t border-border">
+                {START.map((s, i) => (
+                  <li key={s.title.ru} className="flex gap-4 border-b border-border py-3.5">
+                    <span className="mt-0.5 shrink-0 font-mono text-xs tabular-nums text-primary">
+                      0{i + 1}
                     </span>
-                  </span>
-                </li>
-              ))}
-            </ol>
-            <p className="mt-3 flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
-              <FileSignature className="mt-0.5 size-3.5 shrink-0 text-primary" />
-              {t(T.eSign)}
-            </p>
-          </Block>
+                    <span className="min-w-0">
+                      <span className="block text-sm font-medium">{t(s.title)}</span>
+                      <span className="mt-0.5 block text-sm leading-relaxed text-muted-foreground">
+                        {t(s.body)}
+                      </span>
+                    </span>
+                  </li>
+                ))}
+              </ol>
+              <p className="mt-3 flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
+                <FileSignature className="mt-0.5 size-3.5 shrink-0 text-primary" />
+                {t(T.eSign)}
+              </p>
+            </Block>
 
-          <Block title={t(T.priceTitle)}>
-            <div className="r-inset overflow-hidden border border-border">
-              <Row label={t(T.storage)} value={`${w.price.storage} ₽`} unit={t(T.storageUnit)} />
-              <Row
-                label={t(T.receiving)}
-                value={`${w.price.receiving} ₽`}
-                unit={t(T.receivingUnit)}
-              />
-              <Row label={t(T.picking)} value={`${w.price.picking} ₽`} unit={t(T.pickingUnit)} />
-              <Row label={t(T.marking)} value={`${w.price.marking} ₽`} unit={t(T.markingUnit)} />
-              {/* Итоговая строка выделена токеном палитры, а не синим с
+            <Block title={t(T.priceTitle)}>
+              <div className="r-inset overflow-hidden border border-border">
+                <Row label={t(T.storage)} value={`${w.price.storage} ₽`} unit={t(T.storageUnit)} />
+                <Row
+                  label={t(T.receiving)}
+                  value={`${w.price.receiving} ₽`}
+                  unit={t(T.receivingUnit)}
+                />
+                <Row label={t(T.picking)} value={`${w.price.picking} ₽`} unit={t(T.pickingUnit)} />
+                <Row label={t(T.marking)} value={`${w.price.marking} ₽`} unit={t(T.markingUnit)} />
+                {/* Итоговая строка выделена токеном палитры, а не синим с
                   прозрачностью: см. PriceCell в WarehouseCard. */}
-              <div className="flex items-baseline justify-between gap-3 bg-muted px-4 py-3">
-                <span className="text-sm font-semibold text-primary">{t(T.perMonth)}</span>
-                <span className="font-display text-lg font-medium tabular-nums text-primary">
-                  ≈ {money(monthlyPerPlace(w))} ₽
-                </span>
-              </div>
-            </div>
-            <p className="mt-2.5 text-xs leading-relaxed text-muted-foreground">{t(T.base)}</p>
-            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-              {w.minPlaces === 0 ? t(T.noMin) : t(T.min, { n: w.minPlaces })}{" "}
-              {t(T.payment, { busy })}
-            </p>
-            <p
-              className={cn(
-                "mt-2 flex items-start gap-1.5 text-xs leading-relaxed",
-                fresh === "stale" ? "text-warning" : "text-muted-foreground",
-              )}
-            >
-              <Clock className="mt-0.5 size-3.5 shrink-0" />
-              <span>{freshLine}</span>
-            </p>
-          </Block>
-
-          <Block title={t(T.schemes)}>
-            <div className="flex flex-col gap-1.5">
-              {SCHEMES.filter((s) => w.schemes.includes(s.id)).map((s) => (
-                <div key={s.id} className="flex items-center gap-2.5 text-sm">
-                  <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-bold text-primary">
-                    {s.title}
+                <div className="flex items-baseline justify-between gap-3 bg-muted px-4 py-3">
+                  <span className="text-sm font-semibold text-primary">{t(T.perMonth)}</span>
+                  <span className="font-display text-lg font-medium tabular-nums text-primary">
+                    ≈ {money(monthlyPerPlace(w))} ₽
                   </span>
-                  <span className="text-muted-foreground">{t(s.hint)}</span>
                 </div>
-              ))}
-            </div>
-          </Block>
+              </div>
+              <p className="mt-2.5 text-xs leading-relaxed text-muted-foreground">{t(T.base)}</p>
+              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                {w.minPlaces === 0 ? t(T.noMin) : t(T.min, { n: w.minPlaces })}{" "}
+                {t(T.payment, { busy })}
+              </p>
+              <p
+                className={cn(
+                  "mt-2 flex items-start gap-1.5 text-xs leading-relaxed",
+                  fresh === "stale" ? "text-warning" : "text-muted-foreground",
+                )}
+              >
+                <Clock className="mt-0.5 size-3.5 shrink-0" />
+                <span>{freshLine}</span>
+              </p>
+            </Block>
 
-          <Block title={t(T.ships)}>
-            <div className="flex flex-wrap gap-2">
-              {w.marketplaces.map((id) => {
-                const brand = MARKETPLACE_BY_ID[id];
-                if (!brand) return null;
-                return (
-                  <span
-                    key={id}
-                    className="inline-flex items-center gap-2 rounded-full border border-border py-1 pl-2.5 pr-3 text-xs font-medium"
-                  >
-                    <BrandMark brand={brand} className="size-4" />
-                    {t(brand.title)}
-                  </span>
-                );
-              })}
-            </div>
-          </Block>
+            <Block title={t(T.schemes)}>
+              <div className="flex flex-col gap-1.5">
+                {SCHEMES.filter((s) => w.schemes.includes(s.id)).map((s) => (
+                  <div key={s.id} className="flex items-center gap-2.5 text-sm">
+                    <span className="rounded-full bg-primary px-2.5 py-0.5 text-xs font-bold text-primary-foreground">
+                      {s.title}
+                    </span>
+                    <span className="text-muted-foreground">{t(s.hint)}</span>
+                  </div>
+                ))}
+              </div>
+            </Block>
 
-          <Block title={t(T.services)}>
-            <div className="flex flex-wrap gap-1.5">
-              {w.services.map((id) => {
-                const service = SERVICE_BY_ID[id];
-                return (
-                  <span
-                    key={id}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground"
-                  >
-                    <Check className="size-3 text-primary" strokeWidth={3} />
-                    {/* Запасной вариант — сам идентификатор: услуга у склада
+            <Block title={t(T.ships)}>
+              <div className="flex flex-wrap gap-2">
+                {w.marketplaces.map((id) => {
+                  const brand = MARKETPLACE_BY_ID[id];
+                  if (!brand) return null;
+                  return (
+                    <span
+                      key={id}
+                      className="inline-flex items-center gap-2 rounded-full border border-border py-1 pl-2.5 pr-3 text-xs font-medium"
+                    >
+                      <BrandMark brand={brand} className="size-4" />
+                      {t(brand.title)}
+                    </span>
+                  );
+                })}
+              </div>
+            </Block>
+
+            <Block title={t(T.services)}>
+              <div className="flex flex-wrap gap-1.5">
+                {w.services.map((id) => {
+                  const service = SERVICE_BY_ID[id];
+                  return (
+                    <span
+                      key={id}
+                      className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground"
+                    >
+                      <Check className="size-3 text-primary" strokeWidth={3} />
+                      {/* Запасной вариант — сам идентификатор: услуга у склада
                         есть, а в справочнике её ещё нет. Показать «marking»
                         честнее, чем молча выбросить строку. */}
-                    {service ? t(service.title) : id}
+                      {service ? t(service.title) : id}
+                    </span>
+                  );
+                })}
+              </div>
+            </Block>
+
+            <Block title={t(T.address)}>
+              <p className="flex items-start gap-2 text-sm text-muted-foreground">
+                <MapPin className="mt-0.5 size-4 shrink-0" />
+                <span>
+                  {place(t, w)}, {t(w.address)}
+                  <br />
+                  <span className="font-mono text-xs">
+                    {w.lat.toFixed(4)}, {w.lng.toFixed(4)}
                   </span>
-                );
-              })}
-            </div>
-          </Block>
-
-          <Block title={t(T.address)}>
-            <p className="flex items-start gap-2 text-sm text-muted-foreground">
-              <MapPin className="mt-0.5 size-4 shrink-0" />
-              <span>
-                {place(t, w)}, {t(w.address)}
-                <br />
-                <span className="font-mono text-xs">
-                  {w.lat.toFixed(4)}, {w.lng.toFixed(4)}
                 </span>
-              </span>
-            </p>
-          </Block>
-        </div>
+              </p>
+            </Block>
+          </div>
 
-        {/* Заявка и чат — рядом с текстом, а не под ним: вопрос к складу
+          {/* Заявка и чат — рядом с текстом, а не под ним: вопрос к складу
             возникает ровно в тот момент, когда читаешь прайс, и уходить за
             ним в конец страницы человек не станет.
 
@@ -473,24 +512,35 @@ export function WarehouseScreen({ id }: { id?: string }) {
             единственная точка сайта, где человек уже решился написать складу,
             и рядом с решением стояла дверь наружу. Что у склада есть кабинет,
             сказано выше значком «Уклад». */}
-        <aside>
-          <RequestForm
-            title={t(T.requestTitle)}
-            note={t(T.requestNote, { h: w.responseHours })}
-            submit={t(T.send)}
-            subject={t(T.requestSubject, { name: t(w.name) })}
-          />
+          <aside>
+            <RequestForm
+              title={t(T.requestTitle)}
+              note={t(T.requestNote, { h: w.responseHours })}
+              submit={t(T.send)}
+              subject={t(T.requestSubject, { name: t(w.name) })}
+            />
 
-          <ChatPanel
-            className="mt-4"
-            to={t(w.name)}
-            subject={t(T.chatSubject)}
-            responseHours={w.responseHours}
-            presets={T.presets.map((p) => t(p))}
-          />
-        </aside>
+            <ChatPanel
+              className="mt-4"
+              to={t(w.name)}
+              subject={t(T.chatSubject)}
+              responseHours={w.responseHours}
+              presets={T.presets.map((p) => t(p))}
+            />
+          </aside>
+        </div>
+
+        {/* Текст для поиска: собран из карточки, серый и мелкий — читают его
+            поисковики, а не люди (Кирилл 22 окт, как у Циана). */}
+        <section className="mt-20 max-w-4xl border-t border-[var(--wh-line)] pt-6">
+          {warehouseSeoText(t, w).map((line, i) => (
+            <p key={i} className="mt-2 text-xs leading-relaxed text-[var(--wh-muted)] opacity-80">
+              {line}
+            </p>
+          ))}
+        </section>
       </div>
-    </div>
+    </>
   );
 }
 
