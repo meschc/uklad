@@ -64,6 +64,12 @@ function shiftMarks(events: readonly StaffEvent[], staffId: string): StaffEvent[
     .sort((a, b) => a.at - b.at);
 }
 
+/**
+ * Должности руководства. Их бейджи не показываются подсказкой на экране входа
+ * (в процессах руководство не работает), и только ими отвязывают устройство.
+ */
+export const MANAGER_ROLE = /управля|заместител|руковод|директор|manager/i;
+
 /** Сколько живёт отмена случайной отметки (нажал перерыв локтем). */
 export const MARK_UNDO_MS = 5_000;
 

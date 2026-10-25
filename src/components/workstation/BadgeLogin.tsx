@@ -3,7 +3,7 @@ import { BadgeCheck } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { workstationRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
-import { badgeCode } from "@/lib/workstation";
+import { MANAGER_ROLE, badgeCode } from "@/lib/workstation";
 import { useT } from "@/lib/i18n";
 import { card } from "@/components/ui/card";
 import { eyebrow } from "@/components/ui/eyebrow";
@@ -18,8 +18,6 @@ import { ScanField, type ScanStatus } from "@/components/fulfillment/ScanField";
  * Демо-бейджи — вход за любого сотрудника одним кликом. В рабочем кабинете с
  * сервером их быть не должно: показывать только в демо-режиме.
  */
-const MANAGER_ROLE = /управля|заместител|руковод|директор|manager/i;
-
 export function BadgeLogin() {
   const t = useT();
   const allStaff = useEditor((s) => s.warehouse.staff) ?? [];

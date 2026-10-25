@@ -21,6 +21,9 @@ export const WAREHOUSE_DOMAINS = [
   "tasks",
   // Какие услуги склад оказывает и почём — у каждого склада свои.
   "serviceSettings",
+  // Компьютеры и ТСД стоят на конкретном складе: стол 3 одного склада — не
+  // стол 3 другого.
+  "devices",
 ] as const;
 
 export type WarehouseData = Pick<EditorState, (typeof WAREHOUSE_DOMAINS)[number]>;
@@ -43,6 +46,7 @@ export function emptyWarehouseData(
     requests: [],
     shipments: [],
     tasks: [],
+    devices: [],
   };
 }
 
