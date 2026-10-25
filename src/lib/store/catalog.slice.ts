@@ -69,7 +69,7 @@ export const createCatalogSlice: SliceCreator<CatalogSlice> = (set, get) => ({
 
   addProduct: (p) => {
     const id = uid("prod");
-    set((s) => ({ products: [...s.products, { ...p, id }] }));
+    set((s) => ({ products: [...s.products, { ...p, id, warehouseId: s.warehouse.id }] }));
     return id;
   },
 
@@ -155,6 +155,9 @@ export const createCatalogSlice: SliceCreator<CatalogSlice> = (set, get) => ({
 
   importProducts: (items) =>
     set((s) => ({
-      products: [...s.products, ...items.map((p) => ({ ...p, id: uid("prod") }))],
+      products: [
+        ...s.products,
+        ...items.map((p) => ({ ...p, id: uid("prod"), warehouseId: s.warehouse.id })),
+      ],
     })),
 });

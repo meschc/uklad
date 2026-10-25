@@ -32,7 +32,7 @@ export const REQUISITES: LegalDoc = {
             ["ИНН", ORG.inn],
             ["Действует лично, без доверенности", ORG.director],
             ["Электронная почта", ORG.email],
-            ["Телефон", ORG.phone],
+            ...(ORG.phone ? [["Телефон", ORG.phone] as [string, string]] : []),
             // Документ русский целиком, поэтому из двуязычного поля берётся
             // русская половина явно — см. `hours` в `org.ts`.
             ["Режим работы", ORG.hours.ru],

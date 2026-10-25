@@ -28,6 +28,7 @@ import console from "node:console";
  * страница получает `noindex, nofollow`, а robots.txt запрещает всё. На
  * запуске — false и вернуть robots.txt (инструкция в нём самом).
  */
+// Парный флаг — `SITE_HIDDEN` в src/site/lib/meta.ts, менять оба вместе.
 const SITE_HIDDEN = true;
 
 const DIST = "dist";

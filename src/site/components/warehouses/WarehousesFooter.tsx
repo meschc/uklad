@@ -3,40 +3,44 @@ import { ArrowUp, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LEGAL_DOCS } from "../../data/legal";
 import { ORG } from "../../data/org";
+import { chatHours } from "../../data/offer";
 import { openCookieSettings } from "../../lib/cookieConsent";
-import { ru, useT, type Copy } from "../../lib/copy";
+import { c, useT, type Copy } from "../../lib/copy";
 import { href } from "../../lib/route";
 
 const T = {
-  contactTitle: ru("Связь"),
-  mail: ru("[почта]"),
-  chat: ru("Чат в рабочие дни, 10…18 МСК"),
-  product: ru("Продукт"),
-  uklad: ru("Уклад"),
-  legal: ru("Правовая информация"),
-  docs: ru("Документы"),
-  cookies: ru("Настройки cookie"),
-  up: ru("Наверх"),
-  copyright: ru("© {year} Уклад"),
-  demo: ru("Склады, цены и остатки на витрине демонстрационные"),
-  fake: ru(", реквизиты в документах учебные"),
+  contactTitle: c("Связь", "Contact"),
+  mail: c("[почта]", "[email]"),
+  chat: c(`Чат в рабочие дни, ${chatHours} МСК`, `Chat on weekdays, ${chatHours} Moscow time`),
+  product: c("Продукт", "Product"),
+  uklad: c("Уклад", "Uklad"),
+  legal: c("Правовая информация", "Legal"),
+  docs: c("Документы", "Documents"),
+  cookies: c("Настройки cookie", "Cookie settings"),
+  up: c("Наверх", "Back to top"),
+  copyright: c("© {year} Уклад", "© {year} Uklad"),
+  demo: c(
+    "Склады, цены и остатки на витрине демонстрационные",
+    "Warehouses, prices and stock in the catalogue are for demonstration",
+  ),
+  fake: c(", реквизиты в документах учебные", ", the details in the documents are samples"),
 };
 
 const LINKS: { title: Copy; items: { label: Copy; to: string }[] }[] = [
   {
     title: T.product,
     items: [
-      { label: ru("Как устроена система"), to: "#inside" },
-      { label: ru("Тарифы"), to: "#tariffs" },
-      { label: ru("Дорожная карта"), to: "/roadmap" },
+      { label: c("Как устроена система", "How the system works"), to: "#inside" },
+      { label: c("Тарифы", "Pricing"), to: "#tariffs" },
+      { label: c("Дорожная карта", "Roadmap"), to: "/roadmap" },
     ],
   },
   {
     title: T.uklad,
     items: [
-      { label: ru("Каталог складов"), to: "/market" },
-      { label: ru("Селлерам"), to: "/sellers" },
-      { label: ru("Контакты"), to: "/contacts" },
+      { label: c("Каталог складов", "Warehouse catalogue"), to: "/market" },
+      { label: c("Селлерам", "For sellers"), to: "/sellers" },
+      { label: c("Контакты", "Contacts"), to: "/contacts" },
     ],
   },
 ];
@@ -52,7 +56,7 @@ const LINKS: { title: Copy; items: { label: Copy; to: string }[] }[] = [
  * Стоит вне `main`, поэтому для вспомогательных технологий это настоящий
  * подвал страницы (`contentinfo`), как и общий.
  */
-export function WarehousesFooter() {
+export function WarehousesFooter({ away = false }: { away?: boolean }) {
   const t = useT();
   const [docsOpen, setDocsOpen] = useState(false);
   const docsId = useId();
@@ -78,7 +82,7 @@ export function WarehousesFooter() {
               {col.items.map((l) => (
                 <a
                   key={l.label.ru}
-                  href={l.to.startsWith("#") ? l.to : href(l.to)}
+                  href={!l.to.startsWith("#") ? href(l.to) : away ? `${href("/")}${l.to}` : l.to}
                   className="w-fit text-white/85 transition-[color,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:translate-x-1 hover:text-white motion-reduce:transition-none"
                 >
                   {t(l.label)}

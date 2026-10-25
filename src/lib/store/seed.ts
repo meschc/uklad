@@ -89,8 +89,20 @@ export function seedStaff(): StaffMember[] {
       email: "kuzmina@uklad.ru",
     },
     { id: uid("staff"), name: "Алексей Ким", role: "Оператор приёмки", phone: "+7 916 200-11-19" },
-    { id: uid("staff"), name: "Рустам Юсупов", role: "Комплектовщик", phone: "+7 916 200-11-23" },
-    { id: uid("staff"), name: "Ольга Демидова", role: "Комплектовщик", phone: "+7 916 200-11-25" },
+    {
+      id: uid("staff"),
+      name: "Рустам Юсупов",
+      role: "Комплектовщик",
+      phone: "+7 916 200-11-23",
+      hourlyRate: 350,
+    },
+    {
+      id: uid("staff"),
+      name: "Ольга Демидова",
+      role: "Комплектовщик",
+      phone: "+7 916 200-11-25",
+      hourlyRate: 350,
+    },
     {
       id: uid("staff"),
       name: "Виктор Лапин",
@@ -384,6 +396,7 @@ export function blankWarehouse(
     lat: coords?.lat,
     lng: coords?.lng,
     floors: [{ id: uid("floor"), name: "Этаж 1", modules: [] }],
+    ownCatalog: true,
   };
 }
 

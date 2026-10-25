@@ -40,11 +40,13 @@ export const APP_VIEWS = [
   "integrations",
   "tasks",
   "picking",
+  "operations",
   "staff",
   "analytics",
   "spec",
   "seller",
   "chat",
+  "workstation",
 ] as const satisfies readonly AppView[];
 
 const USER_ROLES = ["warehouse", "seller"] as const satisfies readonly UserRole[];

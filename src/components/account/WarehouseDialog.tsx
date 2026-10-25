@@ -1,4 +1,4 @@
-import { Suspense, lazy, useRef, useState } from "react";
+import { Suspense, lazy, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   Loader2,
@@ -8,6 +8,7 @@ import {
   X,
 } from "lucide-react";
 import { useEditor } from "@/lib/store";
+import { warehouseWorkCount } from "@/lib/store/warehouseData";
 import type { Warehouse, WarehouseKind } from "@/lib/types";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -53,6 +54,16 @@ export function WarehouseDialog({
   const [geocoding, setGeocoding] = useState(false);
   const [geoErr, setGeoErr] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // Работа склада удаляется вместе с ним — безвозвратно. Если она есть,
+  // показываем, что пропадёт, и просим ввести название склада.
+  const work = useMemo(
+    () =>
+      confirmDelete && warehouse ? warehouseWorkCount(useEditor.getState(), warehouse.id) : null,
+    [confirmDelete, warehouse],
+  );
+  const [typedName, setTypedName] = useState("");
+  const mustType = !!work && work.total > 0;
+  const nameOk = !mustType || typedName.trim() === (warehouse?.name ?? "").trim();
   // Карта — опциональный шаг: при создании свёрнута, чтобы не выглядеть
   // обязательной; при правке склада с координатами сразу раскрыта.
   const [showMap, setShowMap] = useState(warehouse?.lat != null);
@@ -312,11 +323,30 @@ export function WarehouseDialog({
                 {t("wh.delete.confirm", { name: warehouse?.name ?? "" })}
               </p>
               <p className="mt-0.5 opacity-90">{t("wh.delete.note")}</p>
+              {mustType && work && (
+                <>
+                  <p className="mt-1.5 font-medium">
+                    {t("wh.delete.work", {
+                      shipments: work.shipments,
+                      requests: work.requests,
+                      boxes: work.boxes,
+                      trips: work.trips,
+                    })}
+                  </p>
+                  <Input
+                    className="mt-1.5 h-8 bg-background text-foreground"
+                    placeholder={t("wh.delete.typeName", { name: warehouse?.name ?? "" })}
+                    value={typedName}
+                    onChange={(e) => setTypedName(e.target.value)}
+                  />
+                </>
+              )}
               <div className="mt-2 flex gap-2">
                 <Button
                   size="sm"
                   variant="destructive"
                   className="h-7"
+                  disabled={!nameOk}
                   onClick={() => {
                     remove(warehouse!.id);
                     onClose();

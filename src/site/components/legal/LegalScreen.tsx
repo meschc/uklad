@@ -8,6 +8,7 @@ import { c, fill, useT } from "../../lib/copy";
 import { searchDoc } from "../../lib/legalSearch";
 import { href } from "../../lib/route";
 import { NotFoundScreen } from "../NotFoundScreen";
+import { AsciiBanner } from "../frame/AsciiBanner";
 import { DocSection } from "./DocBody";
 import { DocSearch } from "./DocSearch";
 
@@ -89,108 +90,120 @@ function LegalDocView({ doc }: { doc: LegalDoc }) {
   const hits = searchDoc(doc, query);
 
   return (
-    <div data-print="page" className="mx-auto max-w-[1100px] px-4 pb-24 pt-28 sm:px-6 sm:pt-32">
-      <div data-print="hide" className="flex flex-wrap items-center justify-between gap-3">
-        <a
-          href={href("/legal")}
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
-        >
-          <ArrowLeft className="size-3.5" />
-          {t(T.allDocs)}
-        </a>
+    <>
+      <AsciiBanner
+        scene="docs"
+        eyebrow={
+          <a
+            href={href("/legal")}
+            className="group inline-flex items-center gap-1.5 transition-colors hover:text-white"
+          >
+            <ArrowLeft className="size-3.5 transition-transform group-hover:-translate-x-0.5" />
+            {t(T.allDocs)}
+          </a>
+        }
+        title={<span lang="ru">{doc.title}</span>}
+        lead={<span lang="ru">{doc.lead}</span>}
+      />
+      <div data-print="page" className="mx-auto max-w-[1100px] px-5 pb-24 pt-10 sm:px-10">
+        <div data-print="hide" className="flex flex-wrap items-center justify-end gap-3">
+          {/*
+           * PDF-версия документа собирается печатью браузера, а не лежит файлом.
+           * Файл пришлось бы обновлять руками при каждой правке текста — и рано
+           * или поздно скачанный PDF разошёлся бы с тем, что написано на
+           * странице. Здесь источник один: печатается ровно то, что человек
+           * только что прочитал, с датой редакции и реквизитами. Оформление
+           * бумажной версии задано в `site.css`, блок `@media print`.
+           */}
+          <Button
+            variant="outline"
+            size="lg"
+            shape="pill"
+            onClick={() => window.print()}
+            title={t(T.printHint)}
+            // Подсветка своя: под курсором кнопка окрашивается фирменным,
+            // а не подливается фоном, — это единственное действие на странице
+            // документа, и оно должно отзываться заметнее обычной кнопки.
+            className="hover:border-primary/50 hover:bg-transparent hover:text-primary"
+          >
+            <Download />
+            {t(T.download)}
+          </Button>
+        </div>
 
-        {/*
-         * PDF-версия документа собирается печатью браузера, а не лежит файлом.
-         * Файл пришлось бы обновлять руками при каждой правке текста — и рано
-         * или поздно скачанный PDF разошёлся бы с тем, что написано на
-         * странице. Здесь источник один: печатается ровно то, что человек
-         * только что прочитал, с датой редакции и реквизитами. Оформление
-         * бумажной версии задано в `site.css`, блок `@media print`.
-         */}
-        <Button
-          variant="outline"
-          size="lg"
-          shape="pill"
-          onClick={() => window.print()}
-          title={t(T.printHint)}
-          // Подсветка своя: под курсором кнопка окрашивается фирменным,
-          // а не подливается фоном, — это единственное действие на странице
-          // документа, и оно должно отзываться заметнее обычной кнопки.
-          className="hover:border-primary/50 hover:bg-transparent hover:text-primary"
-        >
-          <Download />
-          {t(T.download)}
-        </Button>
-      </div>
-
-      <div data-print="doc" className="mt-8 grid gap-12 lg:grid-cols-[minmax(0,1fr)_240px]">
-        {/* `lang="ru"` не украшение: документ остаётся русским на английской
+        <div data-print="doc" className="mt-8 grid gap-12 lg:grid-cols-[minmax(0,1fr)_240px]">
+          {/* `lang="ru"` не украшение: документ остаётся русским на английской
             версии, и без явной пометки браузер предложит прочитать его вслух
             по-английски, а поисковик посчитает страницу английской. */}
-        <article className="min-w-0" lang="ru">
-          <h1 className="font-display text-3xl font-heading leading-title tracking-tight sm:text-4xl">
-            {doc.title}
-          </h1>
-          <p className="mt-4 text-base leading-relaxed text-muted-foreground">{doc.lead}</p>
-          {/* Подпись под документом всегда русская: она стоит в одном
+          <article className="min-w-0" lang="ru">
+            {/* Заголовок и подводка на экране стоят в синем баннере; здесь они
+              только для бумажной версии, баннер на печать не идёт. */}
+            <p className="hidden font-display text-3xl font-heading leading-title tracking-tight print:block">
+              {doc.title}
+            </p>
+            <p className="mt-4 hidden text-base leading-relaxed text-muted-foreground print:block">
+              {doc.lead}
+            </p>
+            {/* Подпись под документом всегда русская: она стоит в одном
               предложении с основанием (`doc.basis`), и «…Гражданского кодекса
               Российской Федерации. Version of 27 August 2026» читалось бы как
               недоперевод. Английскому читателю ту же дату сообщает список
               документов и врезка ниже. */}
-          <p className="mt-5 border-l-2 border-border pl-4 text-sm leading-relaxed text-muted-foreground">
-            {doc.basis}. {fill(VERSION_LINE, { date: LEGAL_UPDATED.ru })}
-          </p>
-
-          {t.lang === "en" && (
-            <p
-              data-print="hide"
-              lang="en"
-              className="mt-5 flex items-start gap-2.5 border border-border bg-muted/40 p-4 text-sm leading-relaxed text-muted-foreground r-inset"
-            >
-              <Languages className="mt-0.5 size-4 shrink-0 text-primary" />
-              {t(T.ruOnly)}
+            <p className="border-l-2 border-border pl-4 text-sm leading-relaxed text-muted-foreground">
+              {doc.basis}. {fill(VERSION_LINE, { date: LEGAL_UPDATED.ru })}
             </p>
-          )}
 
-          {/* Поиск стоит в колонке документа, а не в боковом оглавлении:
+            {t.lang === "en" && (
+              <p
+                data-print="hide"
+                lang="en"
+                className="mt-5 flex items-start gap-2.5 border border-border bg-muted/40 p-4 text-sm leading-relaxed text-muted-foreground r-inset"
+              >
+                <Languages className="mt-0.5 size-4 shrink-0 text-primary" />
+                {t(T.ruOnly)}
+              </p>
+            )}
+
+            {/* Поиск стоит в колонке документа, а не в боковом оглавлении:
               оглавление скрыто на телефоне, а документ на телефоне читают
               чаще всего. */}
-          <DocSearch value={query} onChange={setQuery} hits={hits} />
+            <DocSearch value={query} onChange={setQuery} hits={hits} />
 
-          <div className="mt-10 flex flex-col gap-10">
-            {doc.sections.map((s) => (
-              <DocSection key={s.id} section={s} query={hits.query} />
-            ))}
-          </div>
-        </article>
+            <div className="mt-10 flex flex-col gap-10">
+              {doc.sections.map((s) => (
+                <DocSection key={s.id} section={s} query={hits.query} />
+              ))}
+            </div>
+          </article>
 
-        {/* Оглавление липкое и только на широком экране: на телефоне оно
+          {/* Оглавление липкое и только на широком экране: на телефоне оно
             превратилось бы в вертикальный список во весь первый экран, до
             которого пришлось бы прокручивать сам документ. */}
-        <nav data-print="hide" className="hidden lg:block">
-          <div className="sticky top-24">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              {t(T.inDoc)}
-            </p>
-            <div lang="ru" className="mt-3 flex flex-col gap-1.5 border-l border-border">
-              {/* Настоящие якоря: страница живёт на пути, и хэш свободен.
+          <nav data-print="hide" className="hidden lg:block">
+            <div className="sticky top-24">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                {t(T.inDoc)}
+              </p>
+              <div lang="ru" className="mt-3 flex flex-col gap-1.5 border-l border-border">
+                {/* Настоящие якоря: страница живёт на пути, и хэш свободен.
                   Раньше здесь стояли кнопки — из оглавления договора нельзя
                   было скопировать ссылку на пункт, а именно этим оглавление и
                   полезно, когда на пункт нужно сослаться. */}
-              {doc.sections.map((s) => (
-                <a
-                  key={s.id}
-                  href={`#${s.id}`}
-                  className="-ml-px border-l border-transparent pl-3 text-left text-sm leading-snug text-muted-foreground transition-colors hover:border-primary hover:text-primary"
-                >
-                  {s.title}
-                </a>
-              ))}
+                {doc.sections.map((s) => (
+                  <a
+                    key={s.id}
+                    href={`#${s.id}`}
+                    className="-ml-px border-l border-transparent pl-3 text-left text-sm leading-snug text-muted-foreground transition-colors hover:border-primary hover:text-primary"
+                  >
+                    {s.title}
+                  </a>
+                ))}
+              </div>
             </div>
-          </div>
-        </nav>
+          </nav>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -198,41 +211,41 @@ function LegalIndex() {
   const t = useT();
 
   return (
-    <div className="mx-auto max-w-4xl px-4 pb-24 pt-28 sm:px-6 sm:pt-32">
-      <h1 className="font-display text-3xl font-heading leading-display tracking-tight sm:text-5xl">
-        {t(T.indexTitle)}
-      </h1>
-      <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground">
-        {t(T.indexLead, { date: t(LEGAL_UPDATED) })}
-      </p>
-
-      {/*
-       * Плотность здесь важнее красоты сетки. В карточке четыре строки текста
-       * подряд: иконка, название документа, о чём он и на чём основан, — и на
-       * поле в 20 точек они слипались в один серый прямоугольник. Поля выросли
-       * до 28, промежутки между карточками — вдвое, а строка основания прижата
-       * к низу карточки (`mt-auto`): в ряду они встают на одну линию, и между
-       * текстом и ею появляется просвет, а не случайный отступ.
-       */}
-      <div className="mt-10 grid gap-5 sm:grid-cols-2 sm:gap-6">
-        {LEGAL_DOCS.map((doc) => (
-          <a
-            key={doc.slug}
-            lang="ru"
-            href={href(`/legal/${doc.slug}`)}
-            className="r-window group flex flex-col border border-border bg-card p-6 text-left transition-colors hover:border-primary/40 sm:p-7"
-          >
-            <FileText className="size-5 text-primary" />
-            <h2 className="mt-5 font-display text-base font-heading leading-snug tracking-tight">
-              {doc.title}
-            </h2>
-            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{doc.lead}</p>
-            <p className="mt-auto pt-6 text-xs leading-snug text-muted-foreground/70">
-              {doc.basis}
-            </p>
-          </a>
-        ))}
+    <>
+      <AsciiBanner
+        scene="docs"
+        title={t(T.indexTitle)}
+        lead={t(T.indexLead, { date: t(LEGAL_UPDATED) })}
+      />
+      <div className="mx-auto max-w-[1280px] px-5 pb-24 pt-12 sm:px-10 sm:pt-16">
+        {/*
+         * Плотность здесь важнее красоты сетки. В карточке четыре строки текста
+         * подряд: иконка, название документа, о чём он и на чём основан, — и на
+         * поле в 20 точек они слипались в один серый прямоугольник. Поля выросли
+         * до 28, промежутки между карточками — вдвое, а строка основания прижата
+         * к низу карточки (`mt-auto`): в ряду они встают на одну линию, и между
+         * текстом и ею появляется просвет, а не случайный отступ.
+         */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {LEGAL_DOCS.map((doc) => (
+            <a
+              key={doc.slug}
+              lang="ru"
+              href={href(`/legal/${doc.slug}`)}
+              className="group flex h-full flex-col rounded-[22px] bg-[var(--wh-soft)] p-6 text-left transition-[transform,background-color] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1 hover:bg-[var(--wh-line)] sm:p-7"
+            >
+              <FileText className="size-5 text-[var(--wh-blue)]" />
+              <h2 className="mt-5 font-display text-base font-heading leading-snug tracking-tight">
+                {doc.title}
+              </h2>
+              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{doc.lead}</p>
+              <p className="mt-auto pt-6 text-xs leading-snug text-muted-foreground/70">
+                {doc.basis}
+              </p>
+            </a>
+          ))}
+        </div>
       </div>
-    </div>
+    </>
   );
 }

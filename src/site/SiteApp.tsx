@@ -1,5 +1,4 @@
 import { useEffect } from "react";
-import { LandingPage } from "./LandingPage";
 import { SiteHeader } from "./components/SiteHeader";
 import { SiteFooter } from "./components/SiteFooter";
 import { CookieBar } from "./components/CookieBar";
@@ -12,7 +11,9 @@ import { SellersPage } from "./SellersPage";
 import { WarehousesPage } from "./WarehousesPage";
 import { LegalScreen } from "./components/legal/LegalScreen";
 import { NotFoundScreen } from "./components/NotFoundScreen";
-import { consumePendingAnchor, useRoute } from "./lib/route";
+import { consumePendingAnchor, useRoute, type Page } from "./lib/route";
+import { SiteBar } from "./components/frame/SiteNav";
+import { WarehousesFooter } from "./components/warehouses/WarehousesFooter";
 import { pageMeta } from "./lib/pageMeta";
 import { setCanonical, setDescription, setLocale, setNoIndex, setTitle } from "./lib/meta";
 import { useTypography } from "./lib/typography";
@@ -20,6 +21,16 @@ import { useSystemTheme } from "./lib/theme";
 import { useLinkNavigation } from "./lib/useLinkNavigation";
 import { scrollPageTop, scrollToSection, useSmoothScroll } from "./lib/useSmoothScroll";
 import { c, useT } from "./lib/copy";
+
+/** Страницы, уже переведённые в новый стиль витрины (образец — /warehouses). */
+const NEW_STYLE = new Set<Page>([
+  "market",
+  "warehouse",
+  "notfound",
+  "pricing",
+  "legal",
+  "contacts",
+]);
 
 const T = {
   notFoundCaption: c("Ошибка 404", "Error 404"),
@@ -92,32 +103,39 @@ export function SiteApp() {
 
   return (
     <>
-      {/* У страницы для складов своя шапка поверх синего первого экрана. */}
-      {route.page !== "warehouses" && route.page !== "roadmap" && <SiteHeader route={route} />}
-      {route.page === "landing" ? (
-        <LandingPage />
-      ) : route.page === "warehouses" ? (
+      {/* Страницы в новом стиле целиком: своя шапка и синий подвал. Главная с 21 окт — страница для
+          складов (Кирилл: «главная сейчас это то, что для складов»); прежняя
+          главная для селлеров (`LandingPage`) на паузе вместе с /sellers. */}
+      {route.page === "landing" || route.page === "warehouses" ? (
         // Своя разметка целиком: main внутри и свой подвал после него.
         <WarehousesPage />
       ) : route.page === "roadmap" ? (
         // Тоже в новом стиле целиком: своя шапка, main и подвал складов.
         <RoadmapScreen />
+      ) : NEW_STYLE.has(route.page) ? (
+        <div className="wh">
+          <SiteBar route={route} />
+          <main>
+            {route.page === "market" && <MarketScreen />}
+            {route.page === "warehouse" && <WarehouseScreen id={route.id} />}
+            {route.page === "pricing" && <PricingScreen />}
+            {route.page === "legal" && <LegalScreen slug={route.id} />}
+            {route.page === "contacts" && <ContactsScreen />}
+            {route.page === "notfound" && (
+              <NotFoundScreen caption={t(T.notFoundCaption)} title={t(T.notFoundTitle)}>
+                {t(T.notFoundBody)}
+              </NotFoundScreen>
+            )}
+          </main>
+          <WarehousesFooter away />
+        </div>
       ) : (
-        <main>
-          {route.page === "sellers" && <SellersPage />}
-          {route.page === "market" && <MarketScreen />}
-          {route.page === "warehouse" && <WarehouseScreen id={route.id} />}
-          {route.page === "legal" && <LegalScreen slug={route.id} />}
-          {route.page === "pricing" && <PricingScreen />}
-          {route.page === "contacts" && <ContactsScreen />}
-          {route.page === "notfound" && (
-            <NotFoundScreen caption={t(T.notFoundCaption)} title={t(T.notFoundTitle)}>
-              {t(T.notFoundBody)}
-            </NotFoundScreen>
-          )}
-        </main>
+        <>
+          <SiteHeader route={route} />
+          <main>{route.page === "sellers" && <SellersPage />}</main>
+          <SiteFooter />
+        </>
       )}
-      {route.page !== "warehouses" && route.page !== "roadmap" && <SiteFooter />}
       <CookieBar />
     </>
   );

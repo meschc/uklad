@@ -38,8 +38,21 @@ function setContent(selector: string, content: string): void {
  * ответ 200 (статика иначе не умеет) и заносит «страницы не существует» в
  * индекс как обычную страницу сайта. Дальше её показывают людям.
  */
+/**
+ * Сайт закрыт от поиска до запуска. Тот же флаг — в `scripts/prerender.mjs`:
+ * предрендер пишет noindex в статику, а здесь его не даёт снять скрипт, иначе
+ * робот, выполняющий JS, увидит страницу открытой. Менять оба вместе.
+ */
+export const SITE_HIDDEN = true;
+
 export function setNoIndex(noindex: boolean): void {
   const found = document.head.querySelector<HTMLMetaElement>('meta[name="robots"]');
+  if (SITE_HIDDEN) {
+    const tag = found ?? document.head.appendChild(document.createElement("meta"));
+    tag.name = "robots";
+    tag.content = "noindex, nofollow";
+    return;
+  }
   if (!noindex) {
     found?.remove();
     return;

@@ -56,3 +56,32 @@ export function unreadIn(messages: ChatMessage[], role: UserRole): number {
 export function lastMessage(messages: ChatMessage[]): ChatMessage | null {
   return messages.length ? messages[messages.length - 1] : null;
 }
+
+/**
+ * Последнее своё сообщение, которое ещё можно поправить, — его открывает
+ * стрелка вверх в пустом поле, как в Телеграме.
+ */
+export function lastEditable(messages: ChatMessage[], role: UserRole): ChatMessage | null {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i];
+    if (m.from === role && !m.deletedAt) return m;
+  }
+  return null;
+}
+
+/**
+ * Поиск по переписке: id подходящих сообщений, от новых к старым — так их
+ * перебирает стрелка «к следующему». Регистр и «ё» не различаются: «ПРИЕМКА»
+ * обязана найти «приёмку».
+ */
+export function searchMessages(messages: ChatMessage[], query: string): string[] {
+  const norm = (s: string) => s.toLocaleLowerCase("ru").replace(/ё/g, "е");
+  const q = norm(query.trim());
+  if (!q) return [];
+  const hits: string[] = [];
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i];
+    if (!m.deletedAt && norm(m.text).includes(q)) hits.push(m.id);
+  }
+  return hits;
+}

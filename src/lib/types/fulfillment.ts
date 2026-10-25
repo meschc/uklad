@@ -19,6 +19,13 @@ export interface Box {
   createdAt: number;
   lines: BoxLine[];
   palletId?: string;
+  /**
+   * Грузовая приёмка: короб принят местом и ещё не вскрыт. Товара в нём по
+   * учёту нет — он появится, когда короб откроют на товарной приёмке.
+   */
+  sealed?: boolean;
+  /** Поставка, с которой короб приехал. */
+  shipmentId?: string;
   /** Где физически стоит коробка. Пока не размещена — undefined. */
   address?: CellAddress;
 }
@@ -29,7 +36,27 @@ export interface Pallet {
   barcode: string; // формат УК-PLT-000045
   createdAt: number;
   boxIds: string[];
+  /** Принята местом на грузовой приёмке и ещё не вскрыта. */
+  sealed?: boolean;
+  /** Поставка, с которой паллета приехала. */
+  shipmentId?: string;
   address?: CellAddress;
+}
+
+/**
+ * Грузовая приёмка поставки: сколько мест заявлено по накладной и сколько
+ * приехало. Пересчёт штук — второй этап, он идёт по вскрытым местам.
+ * Машин у поставки может быть несколько — факт копится.
+ */
+export interface CargoIntake {
+  /** По накладной. Пусто — накладной с местами не было, сверять не с чем. */
+  declaredPallets?: number;
+  declaredBoxes?: number;
+  /** Приехало: паллет и коробов без паллеты. */
+  pallets: number;
+  boxes: number;
+  at: number;
+  staffId?: string;
 }
 
 /**
@@ -81,6 +108,8 @@ export interface ExpectedShipment {
    * не потому что мы забыли его учесть, а потому что он физически не хранится.
    */
   crossDock?: boolean;
+  /** Грузовая приёмка — если склад принимает в два этапа. */
+  cargo?: CargoIntake;
 }
 
 /** Расхождение план/факт, зафиксированное оператором осознанно. */
@@ -200,4 +229,138 @@ export interface FulfillmentRequest {
    * может не быть вовсе — он забронирован в строке `ExpectedShipmentLine`.
    */
   reservedShipmentId?: string;
+  /** Упакована на рабочем месте упаковщика: когда и кем (id сотрудника). */
+  packedAt?: number;
+  packedBy?: string;
+}
+
+// --- Рабочее место и смена сотрудника ------------------------------------------
+
+/**
+ * Вид рабочего места. Стационарный экран привязан к столу, а не к человеку:
+ * сотрудник подходит, прикладывает бейдж и работает. Сборка и размещение
+ * остаются на ТСД — там человек ходит по складу, а не стоит у стола.
+ */
+export type WorkstationKind = "pack" | "receiving" | "marking" | "returns" | "shipping";
+
+/**
+ * Отметка в журнале сотрудника. Журнал собирается из того, что человек и так
+ * делает: отметился на смене, отсканировал товар, закрыл заказ. Событие
+ * появляется только по действию самого человека, время — до секунды.
+ */
+export type StaffEventType =
+  | "shift_start"
+  | "break_start"
+  | "break_end"
+  | "shift_end"
+  | "idle_start"
+  | "idle_end"
+  | "pack_scan"
+  | "pack_error"
+  | "pack_reject"
+  | "pack_label"
+  | "pack_done";
+
+/** Отметки, которые ставит сам сотрудник: смена, перерыв, простой. */
+export type ShiftMark = Extract<
+  StaffEventType,
+  "shift_start" | "break_start" | "break_end" | "idle_start" | "idle_end" | "shift_end"
+>;
+
+export interface StaffEvent {
+  id: string;
+  staffId: string;
+  type: StaffEventType;
+  at: number;
+  /** Рабочее место, с которого пришла отметка (нет — с телефона/ТСД). */
+  station?: WorkstationKind;
+  /** Номер заказа, к которому относится скан или упаковка. */
+  orderId?: string;
+  /** Отсканированный код — для разбора ошибки «не тот товар». */
+  code?: string;
+  productId?: string;
+  /** Сколько заняла упаковка единицы, мс (от скана товара до скана этикетки). */
+  ms?: number;
+  /** Причина простоя — у отметки `idle_start`. */
+  reason?: IdleReason;
+}
+
+/** «Нет работы» — простой по вине склада, он оплачивается (ТК РФ ст. 157). */
+export type IdleReason = "no_work" | "other";
+
+/**
+ * Вход по QR-бейджу на рабочем месте или ТСД. Живёт 12 часов — одна смена с
+ * запасом: дольше держать открытым чужой вход на общем экране нельзя.
+ */
+export interface StationSession {
+  staffId: string;
+  station: WorkstationKind;
+  startedAt: number;
+  expiresAt: number;
+}
+
+// --- Упаковка от тары -----------------------------------------------------------
+
+/**
+ * Единица, прошедшая стол упаковки. Цикл на каждую штуку один: скан товара →
+ * этикетка печатается сама → упаковщик клеит её и сканирует → единица
+ * упакована. Время между первым и последним сканом и есть время упаковки.
+ */
+export interface PackedUnit {
+  productId: string;
+  /** Заказ, под который ушла единица; нет — тара без заказов (поставка FBO). */
+  orderId?: string;
+  /** Код этикетки единицы: её сканируют после того, как наклеили. */
+  labelCode: string;
+  scannedAt: number;
+  /** Этикетку отсканировали — единица упакована. Нет — ждём скан этикетки. */
+  confirmedAt?: number;
+}
+
+/** Что пошло не так со штукой: брак, её нет в таре, она лишняя. */
+export type PackRejectReason = "defect" | "not_in_tote" | "extra";
+
+export interface PackReject {
+  productId: string;
+  reason: PackRejectReason;
+  at: number;
+  code: string;
+}
+
+/**
+ * Открытая упаковка: тара с товаром (короб с приёмки или со сборки) пакуется в
+ * короб отгрузки. Живёт в сторе, а не в экране: перезагрузка посреди тары не
+ * должна терять уже упакованное.
+ */
+export interface PackSession {
+  id: string;
+  staffId: string;
+  /** Тара, из которой берут товар (`Box`). */
+  sourceBoxId: string;
+  /** Короб отгрузки, куда кладут упакованное: его код сканируют вторым. */
+  targetCode: string;
+  startedAt: number;
+  units: PackedUnit[];
+  rejects: PackReject[];
+  /** Этикетки заказов, ждущие скана: заказ из нескольких штук закрывается своей. */
+  orderLabels: { orderId: string; labelCode: string; confirmedAt?: number }[];
+  labelSeq: number;
+}
+
+/**
+ * Расписание перерывов склада: его задаёт руководитель. Короткий перерыв
+ * доступен каждые `everyMin` минут работы, обед — с `lunchFrom` (минуты от
+ * полуночи), один раз за смену. Обед — тот же перерыв, только длиннее.
+ */
+export interface BreakPolicy {
+  everyMin: number;
+  shortMin: number;
+  lunchFrom: number;
+  lunchMin: number;
+  /**
+   * Через сколько минут без единого скана сотрудник считается в простое.
+   * 0 — автопростой выключен. Считается на лету и в журнал не пишется:
+   * журнал — только действия человека.
+   */
+  autoIdleMin: number;
 }

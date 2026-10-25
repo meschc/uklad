@@ -1,3 +1,4 @@
+import { useWarehouseProducts } from "@/lib/warehouseProducts";
 import { useCallback, useMemo, useState } from "react";
 import { PackageSearch } from "lucide-react";
 import { type Product } from "@/lib/types";
@@ -28,7 +29,7 @@ import { useRowPicking } from "./useRowPicking";
  */
 export function TableScreen() {
   const warehouse = useEditor((s) => s.warehouse);
-  const products = useEditor((s) => s.products);
+  const products = useWarehouseProducts();
   const placements = useEditor((s) => s.placements);
   const boxes = useEditor((s) => s.boxes);
   const t = useT();

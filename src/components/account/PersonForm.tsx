@@ -16,15 +16,29 @@ export interface PersonDraft {
   phone: string;
   email: string;
   photoUrl: string;
+  /** Ставка за час, ₽, как набрана. Есть только у сотрудника, не у ответственного лица. */
+  rate?: string;
+}
+
+/**
+ * Черновик → поля сотрудника. Ставка приходит строкой из поля ввода: пустая
+ * или нулевая — значит «не задана», а не «работает бесплатно».
+ */
+export function draftToMember({ rate, ...person }: PersonDraft) {
+  const n = Number((rate ?? "").replace(",", "."));
+  return { ...person, hourlyRate: Number.isFinite(n) && n > 0 ? n : undefined };
 }
 
 export function PersonForm({
   value,
   onChange,
+  withRate = false,
   t,
 }: {
   value: PersonDraft;
   onChange: (patch: Partial<PersonDraft>) => void;
+  /** Показать поле ставки — у сотрудника, но не у ответственного лица. */
+  withRate?: boolean;
   t: TFunc;
 }) {
   return (
@@ -70,8 +84,21 @@ export function PersonForm({
           value={value.photoUrl}
           onChange={(e) => onChange({ photoUrl: e.target.value })}
           placeholder={t("staff.photoUrl")}
-          className="h-9 sm:col-span-2"
+          className={withRate ? "h-9" : "h-9 sm:col-span-2"}
         />
+        {withRate && (
+          <label className="flex h-9 items-center gap-2 rounded-md border border-input px-2 text-sm shadow-sm focus-within:ring-2 focus-within:ring-ring">
+            <span className="shrink-0 text-muted-foreground">{t("staff.rate")}</span>
+            <input
+              value={value.rate ?? ""}
+              onChange={(e) => onChange({ rate: e.target.value.replace(/[^\d.,]/g, "") })}
+              inputMode="decimal"
+              placeholder="0"
+              className="w-full min-w-0 bg-transparent text-right tabular-nums outline-none"
+            />
+            <span className="shrink-0 text-muted-foreground">{t("staff.rateUnit")}</span>
+          </label>
+        )}
       </div>
     </div>
   );

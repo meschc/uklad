@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { OFFER, monthsRu } from "../../data/offer";
 import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Reveal } from "../Reveal";
@@ -46,7 +47,7 @@ const QA: { q: Copy; a: Copy }[] = [
     ),
   },
   {
-    q: ru("Что будет через 3 месяца?"),
+    q: ru(`Что будет через ${monthsRu(OFFER.freeMonths)}?`),
     a: ru(
       "Вы продолжаете работу по выбранному тарифу. Пока проект запускается, можно зафиксировать специальную цену на полгода.",
     ),

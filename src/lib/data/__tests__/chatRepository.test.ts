@@ -74,7 +74,7 @@ describe("createChatRepository", () => {
     const res = await repo.send("p1", "Приняли 11 коробов");
 
     // Assert
-    expect(sendChatMessage).toHaveBeenCalledWith("p1", "Приняли 11 коробов");
+    expect(sendChatMessage).toHaveBeenCalledWith("p1", "Приняли 11 коробов", undefined);
     expect(res.ok).toBe(true);
   });
 

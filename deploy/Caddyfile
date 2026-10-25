@@ -1,0 +1,80 @@
+# Caddy: HTTPS, статика сайта и прокси к серверу заявок.
+#
+# Почему Caddy, а не nginx. Caddy сам получает и продлевает сертификат Let's
+# Encrypt — не нужно ставить certbot и помнить про cron. Конфиг короче в
+# разы, а заголовки защиты из аудита 21.10 (п.5) ставятся так же.
+#
+# Домен приходит переменной `SITE_DOMAIN` из `.env`.
+
+{
+	email {$ACME_EMAIL}
+}
+
+{$SITE_DOMAIN} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(self), microphone=(), geolocation=()"
+		# Сначала только отчёт: строгая политика, включённая вслепую, может
+		# сломать карту или шрифты. Неделю смотрим консоль браузера, затем
+		# меняем имя заголовка на `Content-Security-Policy`.
+		Content-Security-Policy-Report-Only "default-src 'self'; img-src 'self' data: blob: https://*.tile.openstreetmap.org https://tile.openstreetmap.org; connect-src 'self' https://nominatim.openstreetmap.org; style-src 'self' 'unsafe-inline'; script-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+		-Server
+	}
+
+	# Сервер заявок и демо-ссылки.
+	handle /api/* {
+		reverse_proxy api:8080
+	}
+	handle /d/* {
+		reverse_proxy api:8080
+	}
+	# Чат в реальном времени: только подключение браузера, API Centrifugo
+	# наружу не выходит.
+	handle /connection/websocket {
+		reverse_proxy centrifugo:8000
+	}
+
+	# Статика. Хэшированные файлы сборки кэшируются надолго, страницы — нет.
+	handle {
+		root * /srv
+		@assets path /assets/*
+		header @assets Cache-Control "public, max-age=31536000, immutable"
+		try_files {path} {path}/index.html {path}.html
+		file_server
+	}
+
+	handle_errors 404 {
+		root * /srv
+		rewrite * /404.html
+		file_server
+	}
+}
+
+# Админка — свой адрес. На основном домене её нет: /api/* и /d/* туда не ведут.
+# Первая линия — список адресов ADMIN_ALLOW_IPS: всем остальным 404, будто
+# адреса нет. Пароль и код из приложения — вторая линия. По умолчанию список
+# пуст (только 127.0.0.1), то есть админка закрыта всем, пока его не заполнят.
+# CSP без скриптов ставит сам сервер админки, остальное дублируем здесь.
+admin.{$SITE_DOMAIN} {
+	@blocked not remote_ip {$ADMIN_ALLOW_IPS}
+	respond @blocked 404
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "same-origin"
+		-Server
+	}
+	reverse_proxy api:8081
+}
+
+# www → без www.
+www.{$SITE_DOMAIN} {
+	redir https://{$SITE_DOMAIN}{uri} permanent
+}
