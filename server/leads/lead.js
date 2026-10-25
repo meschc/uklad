@@ -39,6 +39,9 @@ const MAX_FIELD_VALUE = 2_000;
  * ей отвечают «принято», но письма не шлют, чтобы бот не учился обходу.
  */
 const MIN_ELAPSED_MS = 2_500;
+// ЖДЁТ СЕРВЕРА: это первый слой, elapsed присылает браузер, и бот под нас его
+// подделает. Лимит частоты по IP, CSP/HSTS — в nginx при подключении сервера
+// (аудит безопасности 21.10, п.4–5; узел back-security на карте продукта).
 
 function isFilledString(value, limit) {
   return typeof value === "string" && value.trim() !== "" && value.length <= limit;
