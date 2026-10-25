@@ -136,11 +136,16 @@ export const ru = {
   "nav.side.receiving": "Приёмка",
   "nav.side.tasks": "Задания",
   "nav.side.picking": "Сборка",
-  "nav.side.spec": "О складе",
+  "nav.side.spec": "Паспорт склада",
   "spec.title": "Паспорт склада",
   "spec.subtitle": "{name} · условия хранения, режим работы и ограничения",
   "spec.hoursTitle": "Режим работы и заезд",
-  "spec.hours": "Часы приёмки и отгрузки",
+  "spec.hours": "Часы работы склада",
+  "spec.receivingHours": "Часы приёмки",
+  "spec.shippingHours": "Часы отгрузки",
+  "spec.name": "Название",
+  "spec.address": "Адрес",
+  "spec.addressPlaceholder": "Город, улица, дом",
   "spec.hoursPlaceholder": "Пн–Пт 8:00–20:00, Сб 9:00–15:00",
   "spec.docks": "Доков для погрузки",
   "spec.access": "Заезд и пропуск",
@@ -170,6 +175,11 @@ export const ru = {
   // --- Поле скана -----------------------------------------------------------
   "scan.placeholder": "Отсканируйте или введите код",
   "scan.apply": "Принять",
+  "scan.camera": "Сканировать камерой",
+  "scan.cameraHint": "Наведите камеру на код",
+  "scan.cameraClose": "Закрыть",
+  "scan.cameraError":
+    "Камера недоступна. Разрешите доступ к камере в настройках браузера или введите код вручную.",
 
   // --- Приёмка (§5) ---------------------------------------------------------
   "recv.title": "Приёмка",
@@ -462,11 +472,16 @@ export const en: Record<keyof typeof ru, string> = {
   "nav.side.receiving": "Receiving",
   "nav.side.tasks": "Tasks",
   "nav.side.picking": "Picking",
-  "nav.side.spec": "About",
+  "nav.side.spec": "Passport",
   "spec.title": "Warehouse profile",
   "spec.subtitle": "{name} · storage conditions, hours and limits",
   "spec.hoursTitle": "Hours and access",
-  "spec.hours": "Receiving and shipping hours",
+  "spec.hours": "Opening hours",
+  "spec.receivingHours": "Receiving hours",
+  "spec.shippingHours": "Shipping hours",
+  "spec.name": "Name",
+  "spec.address": "Address",
+  "spec.addressPlaceholder": "City, street, building",
   "spec.hoursPlaceholder": "Mon–Fri 8:00–20:00, Sat 9:00–15:00",
   "spec.docks": "Loading docks",
   "spec.access": "Access and passes",
@@ -496,6 +511,11 @@ export const en: Record<keyof typeof ru, string> = {
   // --- Scan field ------------------------------------------------------------
   "scan.placeholder": "Scan or type a code",
   "scan.apply": "Accept",
+  "scan.camera": "Scan with camera",
+  "scan.cameraHint": "Point the camera at the code",
+  "scan.cameraClose": "Close",
+  "scan.cameraError":
+    "Camera unavailable. Allow camera access in browser settings or type the code.",
 
   // --- Receiving (§5) --------------------------------------------------------
   "recv.title": "Receiving",

@@ -5,6 +5,7 @@ import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { eyebrow } from "@/components/ui/eyebrow";
+import { CameraScanButton } from "./CameraScan";
 
 /**
  * Поле скана. Физический HID-сканер «печатает» код прямо в сфокусированное
@@ -115,6 +116,7 @@ export function ScanField({
             )}
           />
         </div>
+        <CameraScanButton disabled={disabled} onCode={submit} />
         <Button
           variant="outline"
           className="h-11 shrink-0"

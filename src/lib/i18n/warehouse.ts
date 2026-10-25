@@ -196,6 +196,10 @@ export const ru = {
   "staff.col.name": "Сотрудник",
   "staff.col.role": "Должность",
   "staff.col.contacts": "Контакты",
+  "staff.rate": "Ставка",
+  "staff.rateUnit": "₽/ч",
+  "staff.rateValue": "{r} ₽/ч",
+  "staff.rateSet": "задать",
   "staff.emptyTitle": "Сотрудников пока нет",
   "staff.emptyBody": "Добавьте кладовщиков и управляющих — их можно будет указывать при приёмке.",
 
@@ -433,6 +437,10 @@ export const en: Record<keyof typeof ru, string> = {
   "staff.col.name": "Person",
   "staff.col.role": "Position",
   "staff.col.contacts": "Contacts",
+  "staff.rate": "Rate",
+  "staff.rateUnit": "₽/h",
+  "staff.rateValue": "{r} ₽/h",
+  "staff.rateSet": "set",
   "staff.emptyTitle": "No staff yet",
   "staff.emptyBody":
     "Add warehouse workers and managers — they can then be selected during receiving.",
