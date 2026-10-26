@@ -134,7 +134,10 @@ export interface AccountSlice {
   updateWarehouse: (
     id: string,
     patch: Partial<
-      Pick<Warehouse, "name" | "kind" | "address" | "lat" | "lng" | "storageRatePerCell">
+      Pick<
+        Warehouse,
+        "name" | "kind" | "address" | "lat" | "lng" | "storageRatePerCell" | "showOnMarket"
+      >
     >,
   ) => void;
   /** Удалить склад. Нельзя удалить последний; размещения на нём — очищаются. */

@@ -15,6 +15,7 @@ import { warehousesRepository } from "../../data/warehousesRepository";
 import { PAGE_NOW, shortDate } from "../../lib/date";
 import { freshness } from "../../lib/freshness";
 import { warehouseSeoText } from "../../lib/warehouseSeoText";
+import { PREVIEW_ID, readCabinetShowcase } from "../../lib/cabinetShowcase";
 import { href } from "../../lib/route";
 import { Reveal } from "../Reveal";
 import { c, useT, type Copy, type TFunc } from "../../lib/copy";
@@ -68,6 +69,15 @@ const START: { title: Copy; body: Copy }[] = [
 const T = {
   back: c("Все склады", "All warehouses"),
   photo: c("Фото для примера", "Sample photo"),
+  previewBar: c(
+    "Предпросмотр: так селлеры увидят ваш склад на витрине. Данные берутся из кабинета, обновите страницу после правок.",
+    "Preview: this is how sellers will see your warehouse. Data comes from your account; reload after edits.",
+  ),
+  noPreviewTitle: c("Нечего показать", "Nothing to preview"),
+  noPreviewBody: c(
+    "Предпросмотр собирается из кабинета в этом же браузере. Откройте кабинет и нажмите «Посмотреть на витрине».",
+    "The preview is built from your account in this browser. Open the account and press “View on the marketplace”.",
+  ),
   photoNote: c(
     "Фотография из открытых источников: так выглядит склад вообще, а не эта площадка.",
     "A stock photo: this is what a warehouse looks like, not this particular site.",
@@ -200,9 +210,12 @@ const FORMS = {
  */
 export function WarehouseScreen({ id }: { id?: string }) {
   const t = useT();
-  const w = id ? warehousesRepository.get(id) : undefined;
+  const preview = id === PREVIEW_ID;
+  // Предпросмотр из кабинета: склад собирается из его сохранения при каждом
+  // открытии, а не берётся из демо-набора витрины.
+  const w = preview ? readCabinetShowcase() : id ? warehousesRepository.get(id) : undefined;
 
-  if (!w) return <NotFound />;
+  if (!w) return preview ? <NoPreview /> : <NotFound />;
 
   const busy = Math.round(occupancy(w) * 100);
   // На странице склада свежесть подписана всегда, всеми тремя состояниями. В
@@ -223,6 +236,11 @@ export function WarehouseScreen({ id }: { id?: string }) {
           только плитка цены, единственное, что сравнивают между складами
           с первого взгляда. Слева кто это и чем отличается, справа — сколько
           стоит место и сколько их свободно. */}
+      {preview && (
+        <div className="bg-[var(--wh-blue)] text-white">
+          <p className="mx-auto max-w-[1280px] px-5 py-3 text-sm sm:px-10">{t(T.previewBar)}</p>
+        </div>
+      )}
       <section className="mx-auto max-w-[1280px] px-5 pt-8 sm:px-10 sm:pt-12">
         <a
           href={href("/market")}
@@ -522,6 +540,19 @@ export function WarehouseScreen({ id }: { id?: string }) {
         </section>
       </div>
     </>
+  );
+}
+
+function NoPreview() {
+  const t = useT();
+  return (
+    <NotFoundScreen
+      caption={t(T.notFoundCaption)}
+      title={t(T.noPreviewTitle)}
+      action={{ label: "Кабинет", to: "/app/" }}
+    >
+      {t(T.noPreviewBody)}
+    </NotFoundScreen>
   );
 }
 
