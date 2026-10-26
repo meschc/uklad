@@ -58,14 +58,24 @@ export function readCabinetShowcase(): Warehouse | null {
   } catch {
     return null;
   }
-  const w = saved.warehouse;
+  const w = saved?.warehouse;
   if (!w || !Array.isArray(w.floors)) return null;
-  return toShowcase(saved, w);
+  // Формы записи никто не проверял: старая версия кабинета или чужая запись
+  // по тому же ключу должны дать «предпросмотра нет», а не упавшую страницу.
+  try {
+    return toShowcase(saved, w);
+  } catch (e) {
+    console.warn("Предпросмотр карточки: сохранение кабинета не разобрано", e);
+    return null;
+  }
 }
 
 export function toShowcase(saved: CabinetSaved, w: CabinetWarehouse): Warehouse {
   const spec = w.spec ?? {};
-  const settings = saved.serviceSettings ?? { enabled: {}, prices: {} };
+  const settings = {
+    enabled: saved.serviceSettings?.enabled ?? {},
+    prices: saved.serviceSettings?.prices ?? {},
+  };
   const on = (k: ServiceKind) => Boolean(settings.enabled[k]);
 
   // Адрес в кабинете — одна строка «Город, улица, дом». Город — до запятой.
