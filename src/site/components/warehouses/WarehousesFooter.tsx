@@ -10,7 +10,6 @@ import { href } from "../../lib/route";
 
 const T = {
   contactTitle: c("Связь", "Contact"),
-  mail: c("[почта]", "[email]"),
   chat: c(`Чат в рабочие дни, ${chatHours} МСК`, `Chat on weekdays, ${chatHours} Moscow time`),
   product: c("Продукт", "Product"),
   uklad: c("Уклад", "Uklad"),
@@ -19,11 +18,6 @@ const T = {
   cookies: c("Настройки cookie", "Cookie settings"),
   up: c("Наверх", "Back to top"),
   copyright: c("© {year} Уклад", "© {year} Uklad"),
-  demo: c(
-    "Склады, цены и остатки на витрине демонстрационные",
-    "Warehouses, prices and stock in the catalogue are for demonstration",
-  ),
-  fake: c(", реквизиты в документах учебные", ", the details in the documents are samples"),
 };
 
 const LINKS: { title: Copy; items: { label: Copy; to: string }[] }[] = [
@@ -37,11 +31,7 @@ const LINKS: { title: Copy; items: { label: Copy; to: string }[] }[] = [
   },
   {
     title: T.uklad,
-    items: [
-      { label: c("Каталог складов", "Warehouse catalogue"), to: "/market" },
-      { label: c("Селлерам", "For sellers"), to: "/sellers" },
-      { label: c("Контакты", "Contacts"), to: "/contacts" },
-    ],
+    items: [{ label: c("Контакты", "Contacts"), to: "/contacts" }],
   },
 ];
 
@@ -49,8 +39,8 @@ const LINKS: { title: Copy; items: { label: Copy; to: string }[] }[] = [
  * Единственный подвал страницы для складов (Кирилл 19 окт: «подвал должен
  * быть один»). Продолжает синий финальный блок и забирает у общего подвала
  * витрины всё обязательное: реквизиты владельца сайта (ч. 2 ст. 10 149-ФЗ),
- * ссылки на правовые документы, вход в настройки cookie и оговорку о
- * демонстрационных данных. Обязательное — мелко, нижней строкой, документы —
+ * ссылки на правовые документы и вход в настройки cookie. Оговорку
+ * о демонстрационных данных убрали (Кирилл 26 окт). Обязательное — мелко, нижней строкой, документы —
  * раскрывающимся списком.
  *
  * Стоит вне `main`, поэтому для вспомогательных технологий это настоящий
@@ -69,7 +59,12 @@ export function WarehousesFooter({ away = false }: { away?: boolean }) {
         <div className="flex flex-wrap justify-between gap-8 pt-20 text-sm sm:pt-28">
           <div className="flex min-w-[200px] flex-1 flex-col gap-2.5">
             <span className="text-white/60">{t(T.contactTitle)}</span>
-            <span className="text-xl tracking-[-0.02em]">{t(T.mail)}</span>
+            <a
+              href={`mailto:${ORG.email}`}
+              className="w-fit text-xl tracking-[-0.02em] transition-opacity hover:opacity-75"
+            >
+              {ORG.email}
+            </a>
             <span className="text-white/70">{t(T.chat)}</span>
           </div>
           {LINKS.map((col) => (
@@ -142,29 +137,33 @@ export function WarehousesFooter({ away = false }: { away?: boolean }) {
               </a>
             </span>
           </div>
-          <nav
-            id={docsId}
-            aria-label={t(T.legal)}
-            hidden={!docsOpen}
+          {/* Плавное раскрытие (Кирилл 26 окт): высота едет через
+              grid-rows 0fr → 1fr, закрытый список недоступен с клавиатуры. */}
+          <div
             className={cn(
-              "gap-x-6 gap-y-1.5 rounded-xl bg-white/10 p-4 sm:grid-cols-2 lg:grid-cols-4",
-              docsOpen ? "grid" : "hidden",
+              "grid transition-[grid-template-rows,opacity] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none",
+              docsOpen ? "grid-rows-[1fr] opacity-100" : "-mt-3 grid-rows-[0fr] opacity-0",
             )}
+            {...(docsOpen ? {} : { inert: "" })}
           >
-            {LEGAL_DOCS.map((doc) => (
-              <a
-                key={doc.slug}
-                href={href(`/legal/${doc.slug}`)}
-                className="transition-colors duration-200 hover:text-white"
+            <div className="overflow-hidden">
+              <nav
+                id={docsId}
+                aria-label={t(T.legal)}
+                className="grid gap-x-6 gap-y-1.5 rounded-xl bg-white/10 p-4 sm:grid-cols-2 lg:grid-cols-4"
               >
-                {doc.short}
-              </a>
-            ))}
-          </nav>
-          <p>
-            {t(T.demo)}
-            {ORG.filled ? "" : t(T.fake)}.
-          </p>
+                {LEGAL_DOCS.map((doc) => (
+                  <a
+                    key={doc.slug}
+                    href={href(`/legal/${doc.slug}`)}
+                    className="transition-colors duration-200 hover:text-white"
+                  >
+                    {doc.short}
+                  </a>
+                ))}
+              </nav>
+            </div>
+          </div>
         </div>
       </div>
       <div

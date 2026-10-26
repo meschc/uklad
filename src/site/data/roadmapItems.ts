@@ -219,6 +219,7 @@ export const ROADMAP_ITEMS: readonly RoadmapItem[] = [
     track: "platform",
     milestone: "browser",
     version: "0.1.0",
+    mapNode: "cab-chat-ui",
   },
   {
     id: "spec",
@@ -286,12 +287,14 @@ export const ROADMAP_ITEMS: readonly RoadmapItem[] = [
     id: "market",
     title: c("Витрина складов", "The warehouse catalogue"),
     summary: c(
-      "Каталог с отбором и картой, карточка склада с ценами и расчётом хранения, заявка без комиссии",
-      "A catalogue with filters and a map, a warehouse page with prices and a storage estimate, a request with no commission",
+      "Селлер находит склад по городу, услугам и цене и пишет ему без комиссии. Каталог готов и откроется, когда в нём будут настоящие склады",
+      "A seller finds a warehouse by city, services and price and writes to it with no commission. The catalogue is built and opens once real warehouses are in it",
     ),
-    status: "done",
+    status: "progress",
     track: "market",
     milestone: "launch",
+    quarter: "2026-Q4",
+    mapNode: "site-catalog",
   },
   {
     id: "legal",
@@ -303,6 +306,7 @@ export const ROADMAP_ITEMS: readonly RoadmapItem[] = [
     status: "done",
     track: "market",
     milestone: "launch",
+    mapNode: "site-legal",
   },
   {
     id: "prerender",
@@ -358,6 +362,7 @@ export const ROADMAP_ITEMS: readonly RoadmapItem[] = [
     status: "done",
     track: "market",
     milestone: "launch",
+    mapNode: "site-roadmap",
   },
 
   // ——— В работе ———
@@ -401,15 +406,16 @@ export const ROADMAP_ITEMS: readonly RoadmapItem[] = [
   },
   {
     id: "marketplaces",
-    title: c("Обмен с Ozon и Wildberries", "Exchange with Ozon and Wildberries"),
+    title: c("Обмен с маркетплейсами", "Exchange with the marketplaces"),
     summary: c(
-      "Первый настоящий обмен: заказы приезжают в заявки, остатки уходят на площадку",
-      "The first real exchange: orders arrive as requests, stock goes out to the platform",
+      "Wildberries, Ozon, Яндекс Маркет, Авито и Мегамаркет: заказы приезжают в заявки, остатки уходят на площадку",
+      "Wildberries, Ozon, Yandex Market, Avito and Megamarket: orders arrive as requests, stock goes out to the platform",
     ),
     status: "planned",
     track: "integrations",
     milestone: "exchange",
     quarter: "2027-Q1",
+    mapNode: "cab-integrations",
   },
   {
     id: "mobile-picker",
@@ -563,6 +569,7 @@ export const ROADMAP_ITEMS: readonly RoadmapItem[] = [
     status: "done",
     track: "market",
     milestone: "launch",
+    mapNode: "land",
   },
   {
     id: "pricing",
@@ -587,6 +594,7 @@ export const ROADMAP_ITEMS: readonly RoadmapItem[] = [
     origin: "warehouses",
     milestone: "floor",
     quarter: "2026-Q4",
+    mapNode: "cab-staff-login",
   },
   {
     id: "backup",
@@ -599,6 +607,7 @@ export const ROADMAP_ITEMS: readonly RoadmapItem[] = [
     track: "platform",
     milestone: "server",
     quarter: "2026-Q4",
+    mapNode: "cab-backup",
   },
   {
     id: "excel-stock",
@@ -612,6 +621,7 @@ export const ROADMAP_ITEMS: readonly RoadmapItem[] = [
     origin: "warehouses",
     milestone: "service",
     quarter: "2026-Q4",
+    mapNode: "cab-export-products",
   },
   {
     id: "work-hours",
@@ -624,6 +634,7 @@ export const ROADMAP_ITEMS: readonly RoadmapItem[] = [
     track: "staff",
     origin: "warehouses",
     milestone: "service",
+    mapNode: "cab-hours",
   },
   {
     id: "desktop-app",
@@ -635,5 +646,133 @@ export const ROADMAP_ITEMS: readonly RoadmapItem[] = [
     status: "idea",
     track: "platform",
     milestone: "server",
+    mapNode: "cab-desktop",
+  },
+  // ——— Сверено с картой продукта 26 окт. Внутреннее (безопасность, админка,
+  // камера над столом, доступ поддержки) на дорожную карту не выносим ———
+  {
+    id: "warehouse-card",
+    title: c("Публичная карточка склада", "A public warehouse page"),
+    summary: c(
+      "Цены, услуги и свободные места на витрине берутся из кабинета, а склад сам решает, показываться ли",
+      "Prices, services and free space on the catalogue come from the account, and the warehouse decides whether to be listed",
+    ),
+    status: "progress",
+    track: "market",
+    milestone: "launch",
+    quarter: "2026-Q4",
+    mapNode: "site-card",
+  },
+  {
+    id: "workstation",
+    title: c("Рабочее место упаковщика", "The packer's workstation"),
+    summary: c(
+      "Вход по бейджу, смена и перерыв в одном меню, упаковка от тары: следующий товар не берётся, пока не отсканирована этикетка",
+      "Badge sign-in, shift and break in one menu, packing by container: the next item waits until the label is scanned",
+    ),
+    status: "done",
+    track: "staff",
+    origin: "warehouses",
+    milestone: "browser",
+    mapNode: "cab-workstations",
+  },
+  {
+    id: "operations",
+    title: c("Услуги склада и журнал операций", "Warehouse services and an operations log"),
+    summary: c(
+      "Склад включает свои услуги и задаёт цену за единицу, а журнал сам собирает, что и когда сделано",
+      "The warehouse turns on its services and sets a unit price, and the log assembles what was done and when by itself",
+    ),
+    status: "done",
+    track: "fulfillment",
+    origin: "warehouses",
+    milestone: "browser",
+  },
+  {
+    id: "two-stage",
+    title: c("Приёмка в два этапа", "Two-stage intake"),
+    summary: c(
+      "Места пересчитываются при водителе, а вскрываются и принимаются по товару потом, когда дойдут руки",
+      "Pieces are counted with the driver present, then opened and taken in item by item when there is time",
+    ),
+    status: "done",
+    track: "fulfillment",
+    origin: "warehouses",
+    milestone: "browser",
+  },
+  {
+    id: "uklad-id",
+    title: c("Единый номер Уклада", "One Uklad number"),
+    summary: c(
+      "Товар, партия, короб и ячейка читаются одним сканом, какой бы код на них ни стоял",
+      "An item, a batch, a box and a cell are read with one scan, whatever code is on them",
+    ),
+    status: "planned",
+    track: "fulfillment",
+    milestone: "floor",
+    quarter: "2027-Q1",
+    mapNode: "cab-uklad-id",
+  },
+  {
+    id: "analytics-pro",
+    title: c("Своя аналитика", "Your own analytics"),
+    summary: c(
+      "Склад собирает дашборд из нужных ему показателей, а не смотрит готовый шаблон",
+      "The warehouse builds a dashboard from the metrics it needs instead of a fixed template",
+    ),
+    status: "idea",
+    track: "platform",
+    milestone: "service",
+    mapNode: "cab-analytics-pro",
+  },
+  {
+    id: "truck-pass",
+    title: c("Пропуск на склады маркетплейсов", "Passes for marketplace warehouses"),
+    summary: c(
+      "Заявка на машину и пропуск оформляются из рейса, без отдельного кабинета площадки",
+      "The truck booking and the pass are made from the run, without the platform's own account",
+    ),
+    status: "idea",
+    track: "integrations",
+    origin: "warehouses",
+    milestone: "exchange",
+    mapNode: "cab-truck-pass",
+  },
+  {
+    id: "supplies",
+    title: c("Расходные материалы", "Consumables"),
+    summary: c(
+      "Короба, плёнка и скотч списываются по операциям, и склад заранее видит, что заканчивается",
+      "Boxes, film and tape are written off by operation, and the warehouse sees in advance what is running out",
+    ),
+    status: "idea",
+    track: "fulfillment",
+    origin: "warehouses",
+    milestone: "service",
+    mapNode: "cab-supplies",
+  },
+  {
+    id: "floor-zones",
+    title: c("Столы и зоны на плане", "Desks and zones on the plan"),
+    summary: c(
+      "На плане склада появляются рабочие места и зоны приёмки, упаковки и отгрузки",
+      "Workstations and intake, packing and shipping zones appear on the warehouse plan",
+    ),
+    status: "idea",
+    track: "plan",
+    milestone: "floor",
+    mapNode: "cab-floor-zones",
+  },
+  {
+    id: "knowledge-base",
+    title: c("Открытая база знаний", "An open knowledge base"),
+    summary: c(
+      "Как настроить склад и провести смену — статьями на сайте, без звонка в поддержку",
+      "How to set up the warehouse and run a shift, as articles on the site, with no call to support",
+    ),
+    status: "idea",
+    track: "market",
+    milestone: "launch",
+    mapNode: "site-kb",
   },
 ];

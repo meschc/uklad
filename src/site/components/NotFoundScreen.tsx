@@ -28,8 +28,8 @@ interface Props {
 }
 
 const T = {
-  browse: c("Смотреть склады", "Browse warehouses"),
-  home: c("На главную", "Home"),
+  browse: c("На главную", "Home page"),
+  home: c("Написать нам", "Contact us"),
   empty: c("пусто", "empty"),
   rack: c("Стеллаж, в котором пуста ячейка 4-0-4", "A rack with cell 4-0-4 empty"),
 };
@@ -48,7 +48,7 @@ const SHELVES: Cell[][] = [
 
 export function NotFoundScreen({ caption, title, children, action }: Props) {
   const t = useT();
-  const primary = action ?? { label: t(T.browse), to: "/market" };
+  const primary = action ?? { label: t(T.browse), to: "/" };
 
   return (
     <div className="wh">
@@ -69,7 +69,7 @@ export function NotFoundScreen({ caption, title, children, action }: Props) {
               {primary.label}
               <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
             </a>
-            <a href={href("/")} className="wh-btn wh-btn--soft">
+            <a href={href("/contacts")} className="wh-btn wh-btn--soft">
               {t(T.home)}
             </a>
           </div>

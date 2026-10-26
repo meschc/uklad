@@ -125,7 +125,9 @@ export function pageMeta(route: Route, lang: SiteLang): PageMeta {
   const missing =
     Boolean(route.id) && !named && (route.page === "legal" || route.page === "warehouse");
   const page: Page = missing ? "notfound" : route.page;
-  const noindex = page === "notfound";
+  // Предпросмотр карточки из кабинета — личная страница склада, не для поиска.
+  const preview = route.page === "warehouse" && route.id === "preview";
+  const noindex = page === "notfound" || preview;
   const path = noindex ? "" : routePath(route);
 
   return {
@@ -154,6 +156,8 @@ function namedTitle(route: Route, lang: SiteLang, brand: string): string | null 
   }
 
   if (route.page === "warehouse") {
+    if (route.id === "preview")
+      return `${lang === "ru" ? "Предпросмотр карточки" : "Card preview"} — ${brand}`;
     // У склада в заголовке его название: склады сравнивают в соседних вкладках,
     // и различать их приходится по корешку вкладки, где помещается слов пять.
     const w = route.id ? warehousesRepository.get(route.id) : undefined;

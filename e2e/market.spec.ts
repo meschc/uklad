@@ -231,12 +231,15 @@ test.describe("Витрина складов", () => {
         .click();
       await expect(page).toHaveURL(/\/warehouse\/w-\d+\/$/);
 
-      await expect(page.getByRole("heading", { name: "Что проверил Уклад" })).toBeVisible();
+      const heading = page.getByRole("heading", { name: /Что проверил Уклад/ });
+      await expect(heading).toBeVisible();
       await expect(page.getByText(REGISTRY)).toBeVisible();
       await expect(page.getByText(phrase("Право пользования площадкой"))).toBeVisible();
 
       // Оговорка — не мелкий шрифт для юристов, а часть обещания: без неё
-      // список проверок читается как гарантия качества услуг.
+      // список проверок читается как гарантия качества услуг. С 26 окт она
+      // в сноске у заголовка и открывается наведением.
+      await heading.getByRole("button", { name: /Пояснение/ }).hover();
       await expect(page.getByText(phrase("Проверка — не поручительство"))).toBeVisible();
       await page.getByRole("link", { name: "Как это устроено" }).click();
       await expect(page).toHaveURL(/\/legal\/requisites\/$/);

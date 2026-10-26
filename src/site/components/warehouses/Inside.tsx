@@ -47,6 +47,8 @@ const BRANCHES: { title: Copy; body: Copy; ui: ReactNode }[] = [
 /** Центры колонок сетки из четырёх при ширине 1200 и зазоре 24 (в долях 1000). */
 const BRANCH_X = [117.5, 352.5, 647.5, 882.5];
 
+const SHOW_CATALOG = false;
+
 export function Inside() {
   const t = useT();
 
@@ -103,21 +105,24 @@ export function Inside() {
         ))}
       </div>
 
-      <Reveal className="mt-16 flex flex-col gap-6 rounded-[22px] p-6 shadow-[inset_0_0_0_1.5px_var(--wh-blue)] sm:mt-[72px] sm:flex-row sm:items-center sm:justify-between sm:px-8 sm:py-7">
-        <div className="flex items-center gap-5">
-          <MapPin className="size-9 shrink-0 text-[var(--wh-blue)]" strokeWidth={1.6} />
-          <div>
-            <h3 className="text-xl font-medium tracking-[-0.02em]">{t(T.showcaseTitle)}</h3>
-            <p className="wh-muted mt-1.5 text-[15px] leading-relaxed">{t(T.showcaseBody)}</p>
+      {/* Плашка каталога скрыта, пока витрина складов не запущена (26 окт). */}
+      {SHOW_CATALOG && (
+        <Reveal className="mt-16 flex flex-col gap-6 rounded-[22px] p-6 shadow-[inset_0_0_0_1.5px_var(--wh-blue)] sm:mt-[72px] sm:flex-row sm:items-center sm:justify-between sm:px-8 sm:py-7">
+          <div className="flex items-center gap-5">
+            <MapPin className="size-9 shrink-0 text-[var(--wh-blue)]" strokeWidth={1.6} />
+            <div>
+              <h3 className="text-xl font-medium tracking-[-0.02em]">{t(T.showcaseTitle)}</h3>
+              <p className="wh-muted mt-1.5 text-[15px] leading-relaxed">{t(T.showcaseBody)}</p>
+            </div>
           </div>
-        </div>
-        <a
-          href={href("/market")}
-          className="shrink-0 text-[15px] font-medium text-[var(--wh-blue)] hover:underline"
-        >
-          {t(T.showcaseLink)}
-        </a>
-      </Reveal>
+          <a
+            href={href("/market")}
+            className="shrink-0 text-[15px] font-medium text-[var(--wh-blue)] hover:underline"
+          >
+            {t(T.showcaseLink)}
+          </a>
+        </Reveal>
+      )}
     </section>
   );
 }

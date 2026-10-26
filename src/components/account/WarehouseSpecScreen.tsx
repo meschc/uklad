@@ -8,7 +8,9 @@ import {
   Shield,
   ShieldCheck,
   Thermometer,
+  ExternalLink,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { selectRole, useEditor } from "@/lib/store";
 import type { FireCategory, WarehouseClass, WarehouseSpec } from "@/lib/types";
 import { useT } from "@/lib/i18n";
@@ -125,6 +127,33 @@ export function WarehouseSpecScreen() {
       title={t("spec.title")}
       subtitle={t("spec.subtitle", { name: warehouse.name })}
       wide
+      actions={
+        !ro && (
+          <>
+            {/* Публичность карточки — решение склада, а не Уклада. */}
+            <label
+              className="flex h-9 cursor-pointer items-center gap-2 text-sm"
+              title={t("spec.onMarketHint")}
+            >
+              <input
+                type="checkbox"
+                className="size-4 accent-primary"
+                checked={Boolean(warehouse.showOnMarket)}
+                onChange={(e) => updateWarehouse(warehouse.id, { showOnMarket: e.target.checked })}
+              />
+              {t("spec.onMarket")}
+            </label>
+            {/* Витрина живёт на том же адресе и собирает предпросмотр из
+                сохранения кабинета (site/lib/cabinetShowcase.ts). */}
+            <Button variant="outline" size="sm" asChild>
+              <a href="/warehouse/preview/" target="_blank" rel="noopener">
+                <ExternalLink />
+                {t("spec.viewOnMarket")}
+              </a>
+            </Button>
+          </>
+        )
+      }
     >
       {/* Визитка объекта: класс, адрес, полнота и шесть цифр, которые
           спрашивают первыми в любом разговоре про склад. */}
