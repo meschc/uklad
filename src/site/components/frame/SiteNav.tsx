@@ -12,7 +12,6 @@ import { LogoMark } from "../Logo";
 const LINKS: { label: Copy; to: string }[] = [
   { to: "/warehouses", label: c("Складам", "For warehouses") },
   { to: "/market", label: c("Каталог складов", "Warehouses") },
-  { to: "/sellers", label: c("Селлерам", "For sellers") },
   { to: "/pricing", label: c("Тарифы", "Pricing") },
   { to: "/roadmap", label: c("Дорожная карта", "Roadmap") },
 ];

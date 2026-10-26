@@ -39,7 +39,6 @@ const LINKS: { title: Copy; items: { label: Copy; to: string }[] }[] = [
     title: T.uklad,
     items: [
       { label: c("Каталог складов", "Warehouse catalogue"), to: "/market" },
-      { label: c("Селлерам", "For sellers"), to: "/sellers" },
       { label: c("Контакты", "Contacts"), to: "/contacts" },
     ],
   },
