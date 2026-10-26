@@ -1,19 +1,10 @@
-import {
-  ArrowLeft,
-  BadgeCheck,
-  Building2,
-  Check,
-  Clock,
-  FileSignature,
-  MapPin,
-  Ruler,
-  Star,
-} from "lucide-react";
+import { ArrowLeft, BadgeCheck, Building2, Check, Clock, MapPin, Ruler, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BrandMark } from "../BrandMark";
 import { ChatPanel } from "../ChatPanel";
 import { NotFoundScreen } from "../NotFoundScreen";
 import { Block } from "./Block";
+import { Footnote } from "./Footnote";
 import { RequestForm } from "./RequestForm";
 import { WarehouseAvatar } from "./WarehouseAvatar";
 import { WarehouseReputation } from "./WarehouseReputation";
@@ -76,6 +67,7 @@ const START: { title: Copy; body: Copy }[] = [
 
 const T = {
   back: c("Все склады", "All warehouses"),
+  photo: c("Фото для примера", "Sample photo"),
   photoNote: c(
     "Фотография из открытых источников: так выглядит склад вообще, а не эта площадка.",
     "A stock photo: this is what a warehouse looks like, not this particular site.",
@@ -290,24 +282,24 @@ export function WarehouseScreen({ id }: { id?: string }) {
 
       <div className="mx-auto max-w-[1280px] px-5 pb-24 pt-10 sm:px-10 sm:pt-14">
         {w.photo && (
-          <figure className="mb-12">
+          <figure className="relative mb-14">
             <WarehouseCover
               warehouse={w}
               className="aspect-[16/5] overflow-hidden rounded-[22px]"
             />
-            <figcaption className="mt-2 text-xs leading-relaxed text-muted-foreground">
-              {t(T.photoNote)}
+            <figcaption className="absolute bottom-3 left-3 rounded-full bg-white/90 px-2.5 py-1 text-xs text-[var(--wh-muted)] backdrop-blur">
+              {t(T.photo)}
+              <Footnote n={1}>{t(T.photoNote)}</Footnote>
             </figcaption>
           </figure>
         )}
 
-        <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-14">
           <div className="min-w-0">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {/* У склада без отзывов в этой клетке стоит прочерк, а не ноль:
                 нолём в ряду с площадью и временем ответа читается «оценка
-                нулевая», хотя оценки просто нет. Что это значит, объяснено
-                ниже, в блоке отзывов. */}
+                нулевая», хотя оценки просто нет. */}
               <Fact
                 icon={Star}
                 value={w.reputation.rating === null ? "—" : w.reputation.rating.toFixed(1)}
@@ -333,74 +325,55 @@ export function WarehouseScreen({ id }: { id?: string }) {
               />
             </div>
 
-            {/* Галочка «проверен» без расшифровки обещает больше, чем мы делаем:
-              человек читает её как «Уклад отвечает за этот склад», а мы
-              сверяли регистрацию и право на помещение — и только. Поэтому
-              рядом с галочкой стоит список того, что за ней стоит, и прямая
-              оговорка о том, чего за ней нет. Непроверенный склад говорит об
-              этом теми же словами: отметка чего-то стоит лишь тогда, когда её
-              отсутствие тоже видно. */}
-            <Block title={t(w.verified ? T.checked : T.notCheckedTitle)}>
-              {w.verified ? (
-                <ul className="flex flex-col gap-2.5">
-                  <TrustItem>
-                    {t(T.regLine, {
-                      legal: t(w.legal),
-                      form: t(registration(w.legal.ru).form),
-                      registry: t(registration(w.legal.ru).registry),
-                    })}
-                  </TrustItem>
-                  <TrustItem>
-                    {t(T.useLine, { addr: `${t(w.cityTitle)}, ${t(w.address)}` })}
-                  </TrustItem>
-                  {w.uklad && <TrustItem>{t(T.ukladLine)}</TrustItem>}
-                </ul>
-              ) : (
-                <p className="text-sm leading-relaxed text-muted-foreground">{t(T.notChecked)}</p>
-              )}
+            {/* Галочка «проверен» без расшифровки обещает больше, чем мы делаем,
+              поэтому рядом список того, что за ней стоит, а оговорка о том,
+              чего за ней нет, — сноской у заголовка. */}
+            <div className="mt-14">
+              <Block
+                title={t(w.verified ? T.checked : T.notCheckedTitle)}
+                note={{
+                  n: 2,
+                  body: (
+                    <>
+                      {t(T.notGuarantee)}{" "}
+                      <a
+                        href={href("/legal/requisites")}
+                        className="text-[var(--wh-blue)] transition-opacity hover:opacity-75"
+                      >
+                        {t(T.how)}
+                      </a>
+                    </>
+                  ),
+                }}
+              >
+                {w.verified ? (
+                  <ul className="flex flex-col gap-3">
+                    <TrustItem>
+                      {t(T.regLine, {
+                        legal: t(w.legal),
+                        form: t(registration(w.legal.ru).form),
+                        registry: t(registration(w.legal.ru).registry),
+                      })}
+                    </TrustItem>
+                    <TrustItem>
+                      {t(T.useLine, { addr: `${t(w.cityTitle)}, ${t(w.address)}` })}
+                    </TrustItem>
+                    {w.uklad && <TrustItem>{t(T.ukladLine)}</TrustItem>}
+                  </ul>
+                ) : (
+                  <p className="text-[15px] leading-relaxed text-[var(--wh-muted)]">
+                    {t(T.notChecked)}
+                  </p>
+                )}
+              </Block>
+            </div>
 
-              <p className="mt-3.5 text-xs leading-relaxed text-muted-foreground">
-                {t(T.notGuarantee)}{" "}
-                <a
-                  href={href("/legal/requisites")}
-                  className="font-medium text-primary transition-opacity hover:opacity-75"
-                >
-                  {t(T.how)}
-                </a>
-              </p>
-            </Block>
-
-            {/* Отзывы стоят сразу под проверкой и до рассказа о том, как пойдёт
-              работа: и то и другое отвечает на один вопрос — можно ли этому
-              складу верить, — только проверку делали мы, а отзывы писали те,
-              кто уже вёз. Второе весит больше, и прятать его в конец страницы
-              значит притворяться, что это не так. */}
+            {/* Отзывы сразу под проверкой: оба отвечают на вопрос «можно ли
+              складу верить», только отзывы писали те, кто уже вёз. */}
             <WarehouseReputation warehouse={w} />
 
-            <Block title={t(T.start)}>
-              <ol className="border-t border-border">
-                {START.map((s, i) => (
-                  <li key={s.title.ru} className="flex gap-4 border-b border-border py-3.5">
-                    <span className="mt-0.5 shrink-0 font-mono text-xs tabular-nums text-primary">
-                      0{i + 1}
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block text-sm font-medium">{t(s.title)}</span>
-                      <span className="mt-0.5 block text-sm leading-relaxed text-muted-foreground">
-                        {t(s.body)}
-                      </span>
-                    </span>
-                  </li>
-                ))}
-              </ol>
-              <p className="mt-3 flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
-                <FileSignature className="mt-0.5 size-3.5 shrink-0 text-primary" />
-                {t(T.eSign)}
-              </p>
-            </Block>
-
-            <Block title={t(T.priceTitle)}>
-              <div className="r-inset overflow-hidden border border-border">
+            <Block title={t(T.priceTitle)} note={{ n: 4, body: t(T.base) }}>
+              <div className="overflow-hidden rounded-[22px] bg-[var(--wh-soft)]">
                 <Row label={t(T.storage)} value={`${w.price.storage} ₽`} unit={t(T.storageUnit)} />
                 <Row
                   label={t(T.receiving)}
@@ -409,39 +382,57 @@ export function WarehouseScreen({ id }: { id?: string }) {
                 />
                 <Row label={t(T.picking)} value={`${w.price.picking} ₽`} unit={t(T.pickingUnit)} />
                 <Row label={t(T.marking)} value={`${w.price.marking} ₽`} unit={t(T.markingUnit)} />
-                {/* Итоговая строка выделена токеном палитры, а не синим с
-                  прозрачностью: см. PriceCell в WarehouseCard. */}
-                <div className="flex items-baseline justify-between gap-3 bg-muted px-4 py-3">
-                  <span className="text-sm font-semibold text-primary">{t(T.perMonth)}</span>
-                  <span className="font-display text-lg font-medium tabular-nums text-primary">
+                <div className="flex items-baseline justify-between gap-3 bg-[var(--wh-blue)] px-6 py-4 text-white">
+                  <span className="text-[15px] font-medium">
+                    {t(T.perMonth)}
+                    <Footnote n={5}>
+                      {w.minPlaces === 0 ? t(T.noMin) : t(T.min, { n: w.minPlaces })}{" "}
+                      {t(T.payment, { busy })}
+                    </Footnote>
+                  </span>
+                  <span className="text-xl tabular-nums tracking-[-0.02em]">
                     ≈ {money(monthlyPerPlace(w))} ₽
                   </span>
                 </div>
               </div>
-              <p className="mt-2.5 text-xs leading-relaxed text-muted-foreground">{t(T.base)}</p>
-              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                {w.minPlaces === 0 ? t(T.noMin) : t(T.min, { n: w.minPlaces })}{" "}
-                {t(T.payment, { busy })}
-              </p>
+              {/* Несвежие цены — предупреждение, а не пояснение: его не прячем. */}
               <p
                 className={cn(
-                  "mt-2 flex items-start gap-1.5 text-xs leading-relaxed",
-                  fresh === "stale" ? "text-warning" : "text-muted-foreground",
+                  "mt-4 flex items-start gap-2 text-sm leading-relaxed",
+                  fresh === "stale" ? "text-warning" : "text-[var(--wh-muted)]",
                 )}
               >
-                <Clock className="mt-0.5 size-3.5 shrink-0" />
+                <Clock className="mt-0.5 size-4 shrink-0" />
                 <span>{freshLine}</span>
               </p>
             </Block>
 
+            <Block title={t(T.start)} note={{ n: 6, body: t(T.eSign) }}>
+              <ol className="grid gap-3 sm:grid-cols-2">
+                {START.map((s, i) => (
+                  <li key={s.title.ru} className="rounded-[22px] bg-[var(--wh-soft)] p-6">
+                    <span className="font-mono text-sm tabular-nums text-[var(--wh-blue)]">
+                      0{i + 1}
+                    </span>
+                    <span className="mt-3 block text-[17px] font-medium tracking-[-0.01em]">
+                      {t(s.title)}
+                    </span>
+                    <span className="mt-1.5 block text-[15px] leading-relaxed text-[var(--wh-muted)]">
+                      {t(s.body)}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            </Block>
+
             <Block title={t(T.schemes)}>
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-3">
                 {SCHEMES.filter((s) => w.schemes.includes(s.id)).map((s) => (
-                  <div key={s.id} className="flex items-center gap-2.5 text-sm">
-                    <span className="rounded-full bg-primary px-2.5 py-0.5 text-xs font-bold text-primary-foreground">
+                  <div key={s.id} className="flex items-center gap-3 text-[15px]">
+                    <span className="w-14 shrink-0 rounded-full bg-[var(--wh-blue)] py-1 text-center text-xs font-semibold text-white">
                       {s.title}
                     </span>
-                    <span className="text-muted-foreground">{t(s.hint)}</span>
+                    <span className="text-[var(--wh-muted)]">{t(s.hint)}</span>
                   </div>
                 ))}
               </div>
@@ -453,11 +444,13 @@ export function WarehouseScreen({ id }: { id?: string }) {
                   const brand = MARKETPLACE_BY_ID[id];
                   if (!brand) return null;
                   return (
+                    // Отступы со всех сторон одинаковые (Кирилл 26 окт):
+                    // значок и текст стоят в пилюле ровно.
                     <span
                       key={id}
-                      className="inline-flex items-center gap-2 rounded-full border border-border py-1 pl-2.5 pr-3 text-xs font-medium"
+                      className="inline-flex items-center gap-2 rounded-full bg-[var(--wh-soft)] px-4 py-2.5 text-sm"
                     >
-                      <BrandMark brand={brand} className="size-4" />
+                      <BrandMark brand={brand} className="size-5" />
                       {t(brand.title)}
                     </span>
                   );
@@ -466,18 +459,17 @@ export function WarehouseScreen({ id }: { id?: string }) {
             </Block>
 
             <Block title={t(T.services)}>
-              <div className="flex flex-wrap gap-1.5">
+              <div className="flex flex-wrap gap-2">
                 {w.services.map((id) => {
                   const service = SERVICE_BY_ID[id];
                   return (
                     <span
                       key={id}
-                      className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground"
+                      className="inline-flex items-center gap-2 rounded-full bg-[var(--wh-soft)] px-4 py-2.5 text-sm"
                     >
-                      <Check className="size-3 text-primary" strokeWidth={3} />
+                      <Check className="size-3.5 text-[var(--wh-blue)]" strokeWidth={3} />
                       {/* Запасной вариант — сам идентификатор: услуга у склада
-                        есть, а в справочнике её ещё нет. Показать «marking»
-                        честнее, чем молча выбросить строку. */}
+                        есть, а в справочнике её ещё нет. */}
                       {service ? t(service.title) : id}
                     </span>
                   );
@@ -486,12 +478,12 @@ export function WarehouseScreen({ id }: { id?: string }) {
             </Block>
 
             <Block title={t(T.address)}>
-              <p className="flex items-start gap-2 text-sm text-muted-foreground">
-                <MapPin className="mt-0.5 size-4 shrink-0" />
+              <p className="flex items-start gap-3 text-[15px] leading-relaxed">
+                <MapPin className="mt-0.5 size-5 shrink-0 text-[var(--wh-blue)]" />
                 <span>
                   {place(t, w)}, {t(w.address)}
                   <br />
-                  <span className="font-mono text-xs">
+                  <span className="font-mono text-xs text-[var(--wh-muted)]">
                     {w.lat.toFixed(4)}, {w.lng.toFixed(4)}
                   </span>
                 </span>
@@ -499,20 +491,10 @@ export function WarehouseScreen({ id }: { id?: string }) {
             </Block>
           </div>
 
-          {/* Заявка и чат — рядом с текстом, а не под ним: вопрос к складу
-            возникает ровно в тот момент, когда читаешь прайс, и уходить за
-            ним в конец страницы человек не станет.
-
-            Колонка при этом не липкая, хотя была. В заявке появились поля, и
-            колонка переросла экран: липкий блок выше окна встаёт наверху и
-            больше не двигается — до кнопки под полями доскроллить нельзя.
-
-            Под кнопкой заявки стояла ещё одна — «Посмотреть кабинет», ссылка
-            в демонстрацию системы. Место для неё худшее из возможных: это
-            единственная точка сайта, где человек уже решился написать складу,
-            и рядом с решением стояла дверь наружу. Что у склада есть кабинет,
-            сказано выше значком «Уклад». */}
-          <aside>
+          {/* Заявка и чат — рядом с текстом: вопрос к складу возникает, пока
+            читаешь прайс. Колонка не липкая: форма выше экрана, и липкий блок
+            не дал бы доскроллить до кнопки. */}
+          <aside className="flex flex-col gap-4">
             <RequestForm
               title={t(T.requestTitle)}
               note={t(T.requestNote, { h: w.responseHours })}
@@ -521,7 +503,6 @@ export function WarehouseScreen({ id }: { id?: string }) {
             />
 
             <ChatPanel
-              className="mt-4"
               to={t(w.name)}
               subject={t(T.chatSubject)}
               responseHours={w.responseHours}
@@ -573,8 +554,10 @@ function registration(legal: string): { form: Copy; registry: Copy } {
 /** Строка списка проверок: галочка и одно проверенное утверждение. */
 function TrustItem({ children }: { children: React.ReactNode }) {
   return (
-    <li className="flex items-start gap-2.5 text-sm leading-relaxed">
-      <Check className="mt-0.5 size-3.5 shrink-0 text-primary" strokeWidth={3} />
+    <li className="flex items-start gap-3 text-[15px] leading-relaxed">
+      <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-[var(--wh-blue)]">
+        <Check className="size-3 text-white" strokeWidth={3} />
+      </span>
       <span className="min-w-0">{children}</span>
     </li>
   );
@@ -582,25 +565,23 @@ function TrustItem({ children }: { children: React.ReactNode }) {
 
 function Fact({ icon: Icon, value, label }: { icon: typeof Star; value: string; label: string }) {
   return (
-    <div className="r-inset border border-border px-3 py-2.5">
-      <span className="flex items-center gap-1.5">
-        <Icon className="size-3.5 text-muted-foreground" />
-        <span className="font-display text-base font-medium tabular-nums tracking-tight">
-          {value}
-        </span>
+    <div className="rounded-[22px] bg-[var(--wh-soft)] p-5">
+      <Icon className="size-5 text-[var(--wh-blue)]" strokeWidth={1.8} />
+      <span className="mt-4 block text-[28px] leading-none tabular-nums tracking-[-0.03em]">
+        {value}
       </span>
-      <span className="mt-0.5 block text-xs leading-snug text-muted-foreground">{label}</span>
+      <span className="mt-2 block text-sm leading-snug text-[var(--wh-muted)]">{label}</span>
     </div>
   );
 }
 
 function Row({ label, value, unit }: { label: string; value: string; unit: string }) {
   return (
-    <div className="flex items-baseline justify-between gap-3 border-b border-border px-4 py-2.5 last:border-0">
-      <span className="text-sm">{label}</span>
-      <span className="flex items-baseline gap-1.5">
-        <span className="font-semibold tabular-nums">{value}</span>
-        <span className="text-xs text-muted-foreground">{unit}</span>
+    <div className="flex items-baseline justify-between gap-3 border-b border-[var(--wh-line)] px-6 py-4">
+      <span className="text-[15px]">{label}</span>
+      <span className="flex items-baseline gap-2">
+        <span className="text-[17px] tabular-nums tracking-[-0.01em]">{value}</span>
+        <span className="w-24 text-right text-sm text-[var(--wh-muted)]">{unit}</span>
       </span>
     </div>
   );

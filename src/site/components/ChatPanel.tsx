@@ -73,10 +73,12 @@ export function ChatPanel({ to, subject, responseHours, presets = [], className 
   };
 
   return (
-    <div className={cn("r-window border border-border bg-card", className)}>
-      <div className="border-b border-border px-4 py-3">
-        <p className="text-sm font-medium">{t(T.title)}</p>
-        <p className="mt-0.5 text-xs text-muted-foreground">
+    <div
+      className={cn("rounded-[22px] bg-[var(--wh-soft,hsl(var(--card)))] p-6 sm:p-7", className)}
+    >
+      <div>
+        <p className="text-[22px] font-medium leading-tight tracking-[-0.02em]">{t(T.title)}</p>
+        <p className="mt-2 text-sm text-muted-foreground">
           {to} · {t(T.subject)}: {subject}
         </p>
       </div>
@@ -86,15 +88,15 @@ export function ChatPanel({ to, subject, responseHours, presets = [], className 
           что не сказать вовсе. На карточке склада панель стоит прямо под
           настоящей формой заявки, и без этой строки две одинаковые с виду
           формы означали бы разное, ничем это не показывая. */}
-      <p className="flex items-start gap-2 border-b border-border bg-muted/40 px-4 py-2.5 text-xs leading-relaxed text-muted-foreground">
+      <p className="mt-4 flex items-start gap-2 rounded-2xl bg-white px-4 py-3 text-xs leading-relaxed text-muted-foreground">
         <FlaskConical className="mt-px size-3.5 shrink-0" />
         <span>{t(T.demo)}</span>
       </p>
 
-      <div className="space-y-2 p-4">
+      <div className="mt-4 space-y-3">
         {sent.map((message, i) => (
           <div key={i} className="flex flex-col items-end gap-1">
-            <p className="r-inset max-w-[85%] bg-primary/[0.08] px-3.5 py-2 text-sm leading-relaxed">
+            <p className="max-w-[85%] rounded-2xl bg-primary px-4 py-2.5 text-sm leading-relaxed text-primary-foreground">
               {message}
             </p>
             <span className="text-2xs text-muted-foreground">
@@ -111,7 +113,7 @@ export function ChatPanel({ to, subject, responseHours, presets = [], className 
                 key={p}
                 type="button"
                 onClick={() => setText(p)}
-                className="inline-flex h-8 items-center rounded-full border border-border px-3 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+                className="inline-flex h-9 items-center rounded-full bg-white px-4 text-sm text-muted-foreground transition-colors hover:text-foreground"
               >
                 {p}
               </button>
@@ -134,7 +136,7 @@ export function ChatPanel({ to, subject, responseHours, presets = [], className 
             rows={2}
             placeholder={t(T.placeholder)}
             aria-label={t(T.aria, { to, subject })}
-            className="r-inset min-h-[52px] flex-1 resize-none border border-input bg-background px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
+            className="min-h-[52px] flex-1 resize-none rounded-2xl border border-transparent bg-white px-4 py-3 text-[15px] outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
           />
           {/* Та же общая кнопка, только квадратная: подписи у неё нет, и
               ступень `icon` (36) встаёт на место высоты. Цвет, подсветка и

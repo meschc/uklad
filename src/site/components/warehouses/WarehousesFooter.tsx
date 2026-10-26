@@ -10,7 +10,6 @@ import { href } from "../../lib/route";
 
 const T = {
   contactTitle: c("Связь", "Contact"),
-  mail: c("[почта]", "[email]"),
   chat: c(`Чат в рабочие дни, ${chatHours} МСК`, `Chat on weekdays, ${chatHours} Moscow time`),
   product: c("Продукт", "Product"),
   uklad: c("Уклад", "Uklad"),
@@ -37,10 +36,7 @@ const LINKS: { title: Copy; items: { label: Copy; to: string }[] }[] = [
   },
   {
     title: T.uklad,
-    items: [
-      { label: c("Каталог складов", "Warehouse catalogue"), to: "/market" },
-      { label: c("Контакты", "Contacts"), to: "/contacts" },
-    ],
+    items: [{ label: c("Контакты", "Contacts"), to: "/contacts" }],
   },
 ];
 
@@ -68,7 +64,12 @@ export function WarehousesFooter({ away = false }: { away?: boolean }) {
         <div className="flex flex-wrap justify-between gap-8 pt-20 text-sm sm:pt-28">
           <div className="flex min-w-[200px] flex-1 flex-col gap-2.5">
             <span className="text-white/60">{t(T.contactTitle)}</span>
-            <span className="text-xl tracking-[-0.02em]">{t(T.mail)}</span>
+            <a
+              href={`mailto:${ORG.email}`}
+              className="w-fit text-xl tracking-[-0.02em] transition-opacity hover:opacity-75"
+            >
+              {ORG.email}
+            </a>
             <span className="text-white/70">{t(T.chat)}</span>
           </div>
           {LINKS.map((col) => (

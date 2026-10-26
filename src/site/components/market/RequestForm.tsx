@@ -114,12 +114,12 @@ export function RequestForm({
   };
 
   return (
-    <div className={cn("r-window border border-border bg-card p-4 sm:p-5", className)}>
-      <p className="text-sm font-medium">{title}</p>
-      <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">{note}</p>
+    <div className={cn("rounded-[22px] bg-[var(--wh-soft)] p-6 sm:p-7", className)}>
+      <p className="text-[22px] font-medium leading-tight tracking-[-0.02em]">{title}</p>
+      <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[var(--wh-muted)]">{note}</p>
 
       {!done && (
-        <div className="mt-4 space-y-4">
+        <div className="mt-6 space-y-5">
           <Text
             id="request-goods"
             label={t(T.goods)}
@@ -129,9 +129,7 @@ export function RequestForm({
           />
 
           <fieldset>
-            <legend className="text-xs uppercase tracking-wide text-muted-foreground">
-              {t(T.volume)}
-            </legend>
+            <legend className="text-sm text-[var(--wh-muted)]">{t(T.volume)}</legend>
             <VolumeFields
               idPrefix="request"
               value={draft.volume}
@@ -167,7 +165,7 @@ export function RequestForm({
         mailIdle={mailSubmit}
         blocker={blocker ? t(blocker) : null}
         onClick={send}
-        className="mt-4"
+        className="mt-6"
       />
     </div>
   );
@@ -197,7 +195,7 @@ function Text({
 }) {
   return (
     <div>
-      <label htmlFor={id} className="block text-xs uppercase tracking-wide text-muted-foreground">
+      <label htmlFor={id} className="block text-sm text-[var(--wh-muted)]">
         {label}
       </label>
       <input
@@ -207,7 +205,7 @@ function Text({
         placeholder={placeholder}
         maxLength={type === "text" ? MAX_TEXT : undefined}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-1.5 h-10 w-full rounded-full border border-border bg-background px-3.5 text-sm outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-primary"
+        className="mt-2 h-11 w-full rounded-full border border-transparent bg-white px-4 text-[15px] outline-none transition-colors placeholder:text-[var(--wh-muted)]/60 focus:border-[var(--wh-blue)]"
       />
     </div>
   );

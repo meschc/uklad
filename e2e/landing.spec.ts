@@ -25,13 +25,14 @@ test.describe("Главная", () => {
     }
   });
 
-  test("каталог складов открывается из подвала и с самого верха", async ({ page }) => {
+  test("из подвала можно перейти на другую страницу и попасть в её начало", async ({ page }) => {
+    // Каталог складов скрыт до запуска (26 окт): переход проверяем на «Контактах».
     const footer = page.getByRole("contentinfo");
     await footer.scrollIntoViewIfNeeded();
-    await footer.getByRole("link", { name: "Каталог складов" }).click();
+    await footer.getByRole("link", { name: "Контакты" }).click();
 
-    await expect(page).toHaveURL(/\/market\/$/);
-    await expect(page.getByRole("heading", { name: "Склады для фулфилмента" })).toBeVisible();
+    await expect(page).toHaveURL(/\/contacts\/$/);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Контакты");
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBeLessThan(50);
   });
 
