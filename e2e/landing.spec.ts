@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { acceptCookies, expectNoOverflow, phrase, scrollTo } from "./helpers";
+import { acceptCookies, expectNoOverflow, scrollTo } from "./helpers";
 
 /**
  * Главная глазами склада, который пришёл первый раз. С 21 окт на главной
@@ -50,7 +50,7 @@ test.describe("Главная", () => {
     );
   });
 
-  test("подвал раскрывает владельца сайта и природу данных", async ({ page }) => {
+  test("подвал раскрывает владельца сайта", async ({ page }) => {
     // По роли, а не по тегу: у карточек свои `<footer>`.
     const footer = page.getByRole("contentinfo");
     await footer.scrollIntoViewIfNeeded();
@@ -59,7 +59,6 @@ test.describe("Главная", () => {
     await expect(footer).toContainText(/ИНН \d{12}\b/);
     await expect(footer).toContainText("Самозанятый (плательщик НПД)");
     await expect(footer).not.toContainText("ОГРНИП");
-    await expect(footer).toContainText(phrase("остатки на витрине демонстрационные"));
   });
 
   test("страница не едет вбок", async ({ page }) => {

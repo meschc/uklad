@@ -43,6 +43,7 @@ const T = {
     "Например: 1 200 SKU, отгружаем на Wildberries и Ozon, ищем склад в Подмосковье",
     "For example: 1,200 SKUs, we ship to Wildberries and Ozon, looking for a warehouse near Moscow",
   ),
+  formTitle: c("Написать нам", "Write to us"),
   send: c("Отправить", "Send"),
   subject: c("Вопрос с сайта — {name}", "Website enquiry — {name}"),
   consentNote: c(
@@ -167,6 +168,10 @@ function Card({
   );
 }
 
+/** Поле формы: белое на сером, без рамки — как в форме склада. */
+const FIELD =
+  "mt-1.5 w-full rounded-xl bg-[var(--wh-ground)] px-4 text-base outline-none ring-1 ring-transparent transition-shadow placeholder:text-[var(--wh-muted)]/70 focus:ring-2 focus:ring-[var(--wh-blue)]";
+
 const EMPTY_CONSENT: ConsentState = { data: false, ads: false };
 
 /**
@@ -206,21 +211,28 @@ function ContactForm() {
   };
 
   return (
-    <form onSubmit={submit} className="r-window border border-border bg-card p-6 sm:p-7">
-      <div className="grid gap-4 sm:grid-cols-2">
+    // Подложка и поля — как у формы склада на лендинге и в карточке склада
+    // (Кирилл 26 окт: «форма устаревше выглядит»): серый фон, белые поля
+    // без рамки, фокус — синим кольцом.
+    <form onSubmit={submit} className="rounded-[22px] bg-[var(--wh-soft)] p-6 sm:p-8">
+      <h2 className="text-[22px] font-medium tracking-tight">{t(T.formTitle)}</h2>
+      <div className="mt-6 grid gap-4 sm:grid-cols-2">
         <Field label={t(T.fName)} name="name" required placeholder={t(T.fNamePh)} />
         <Field label={t(T.fContact)} name="contact" required placeholder="+7 900 000-00-00" />
         <div className="sm:col-span-2">
           <Field label={t(T.fCompany)} name="company" placeholder={t(T.fCompanyPh)} />
         </div>
         <div className="sm:col-span-2">
-          <label className="text-sm font-medium">{t(T.fNeed)}</label>
+          <label htmlFor="message" className="text-sm font-medium">
+            {t(T.fNeed)}
+          </label>
           <textarea
+            id="message"
             name="message"
             rows={4}
             required
             placeholder={t(T.fNeedPh)}
-            className="r-inset mt-1.5 w-full resize-y border border-border bg-background px-3.5 py-2.5 text-sm outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary"
+            className={`${FIELD} resize-y py-3`}
           />
         </div>
       </div>
@@ -261,7 +273,7 @@ function Field({
         name={name}
         required={required}
         placeholder={placeholder}
-        className="mt-1.5 h-10 w-full rounded-full border border-border bg-background px-4 text-sm outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary"
+        className={`${FIELD} h-12`}
       />
     </div>
   );

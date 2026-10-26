@@ -18,11 +18,6 @@ const T = {
   cookies: c("Настройки cookie", "Cookie settings"),
   up: c("Наверх", "Back to top"),
   copyright: c("© {year} Уклад", "© {year} Uklad"),
-  demo: c(
-    "Склады, цены и остатки на витрине демонстрационные",
-    "Warehouses, prices and stock in the catalogue are for demonstration",
-  ),
-  fake: c(", реквизиты в документах учебные", ", the details in the documents are samples"),
 };
 
 const LINKS: { title: Copy; items: { label: Copy; to: string }[] }[] = [
@@ -44,8 +39,8 @@ const LINKS: { title: Copy; items: { label: Copy; to: string }[] }[] = [
  * Единственный подвал страницы для складов (Кирилл 19 окт: «подвал должен
  * быть один»). Продолжает синий финальный блок и забирает у общего подвала
  * витрины всё обязательное: реквизиты владельца сайта (ч. 2 ст. 10 149-ФЗ),
- * ссылки на правовые документы, вход в настройки cookie и оговорку о
- * демонстрационных данных. Обязательное — мелко, нижней строкой, документы —
+ * ссылки на правовые документы и вход в настройки cookie. Оговорку
+ * о демонстрационных данных убрали (Кирилл 26 окт). Обязательное — мелко, нижней строкой, документы —
  * раскрывающимся списком.
  *
  * Стоит вне `main`, поэтому для вспомогательных технологий это настоящий
@@ -169,10 +164,6 @@ export function WarehousesFooter({ away = false }: { away?: boolean }) {
               </nav>
             </div>
           </div>
-          <p>
-            {t(T.demo)}
-            {ORG.filled ? "" : t(T.fake)}.
-          </p>
         </div>
       </div>
       <div
