@@ -141,25 +141,33 @@ export function WarehousesFooter({ away = false }: { away?: boolean }) {
               </a>
             </span>
           </div>
-          <nav
-            id={docsId}
-            aria-label={t(T.legal)}
-            hidden={!docsOpen}
+          {/* Плавное раскрытие (Кирилл 26 окт): высота едет через
+              grid-rows 0fr → 1fr, закрытый список недоступен с клавиатуры. */}
+          <div
             className={cn(
-              "gap-x-6 gap-y-1.5 rounded-xl bg-white/10 p-4 sm:grid-cols-2 lg:grid-cols-4",
-              docsOpen ? "grid" : "hidden",
+              "grid transition-[grid-template-rows,opacity] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none",
+              docsOpen ? "grid-rows-[1fr] opacity-100" : "-mt-3 grid-rows-[0fr] opacity-0",
             )}
+            {...(docsOpen ? {} : { inert: "" })}
           >
-            {LEGAL_DOCS.map((doc) => (
-              <a
-                key={doc.slug}
-                href={href(`/legal/${doc.slug}`)}
-                className="transition-colors duration-200 hover:text-white"
+            <div className="overflow-hidden">
+              <nav
+                id={docsId}
+                aria-label={t(T.legal)}
+                className="grid gap-x-6 gap-y-1.5 rounded-xl bg-white/10 p-4 sm:grid-cols-2 lg:grid-cols-4"
               >
-                {doc.short}
-              </a>
-            ))}
-          </nav>
+                {LEGAL_DOCS.map((doc) => (
+                  <a
+                    key={doc.slug}
+                    href={href(`/legal/${doc.slug}`)}
+                    className="transition-colors duration-200 hover:text-white"
+                  >
+                    {doc.short}
+                  </a>
+                ))}
+              </nav>
+            </div>
+          </div>
           <p>
             {t(T.demo)}
             {ORG.filled ? "" : t(T.fake)}.
