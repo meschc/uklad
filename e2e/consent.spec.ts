@@ -90,18 +90,19 @@ test.describe("Cookie и согласия", () => {
     // открывает письмо. Если переменную однажды зададут, здесь будет
     // «Отправить» — и тест на это и укажет, а не промолчит.
     const send = form.getByRole("button", { name: "Написать письмо" });
-    await expect(send).toBeDisabled();
-    // Прямо об этом и написано под кнопкой — обещание должно совпадать с делом.
-    await expect(form).toContainText(
-      phrase("заранее проставленная галочка согласием не считается"),
-    );
+    // С 26 окт кнопка не серая заранее, как на лендинге: нажатие без согласия
+    // ничего не отправляет и прямо говорит, чего не хватает.
+    await send.click();
+    await expect(form.getByRole("alert")).toContainText(phrase("без него письмо не уйдёт"));
+    await expect(send).toBeVisible();
 
     // Рекламная галочка ничего не разблокирует: согласия разные и раздельные.
     await form.getByRole("checkbox").nth(1).check();
-    await expect(send).toBeDisabled();
+    await send.click();
+    await expect(form.getByRole("alert")).toBeVisible();
 
     await form.getByRole("checkbox").first().check();
-    await expect(send).toBeEnabled();
+    await expect(form.getByRole("alert")).toHaveCount(0);
     // Что произойдёт по нажатию, написано до нажатия, а не после.
     await expect(form).toContainText(phrase("Отправить его нужно самому"));
 
