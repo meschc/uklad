@@ -1,15 +1,15 @@
 import { useMemo, useState } from "react";
 import { CheckCircle2, Lightbulb, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { DialogShell } from "@/components/ui/dialog-shell";
 import { TRACK_LABELS, type Track } from "../../data/roadmap";
 import { ROADMAP_ITEMS } from "../../data/roadmapItems";
 import { ru, useT } from "../../lib/copy";
 import { useOverlay } from "../../lib/useOverlay";
 import { closeDialog, openDialog, submitIdea, useRoadmap } from "../../lib/roadmap/store";
 import type { RoadmapError } from "../../lib/roadmap/port";
-import { TRACK_TONE } from "./roadmapColors";
+import { TRACK_COLORS } from "./roadmapColors";
 import { Hint, SubmitButton } from "./RoadmapLogin";
+import { SidePanel } from "../frame/SidePanel";
 
 const MAX_TITLE = 90;
 const MAX_DETAILS = 1_500;
@@ -31,7 +31,7 @@ const T = {
   close: ru("Закрыть"),
   doneTitle: ru("Идея отправлена"),
   doneLead: ru(
-    "Разберём её за неделю. Пока она видна только вам, в блоке «Мои идеи» слева. Если возьмём в работу, она появится на доске, и мы напишем на почту.",
+    "Пока идея видна только вам, в блоке «Мои идеи» слева. Если возьмём в работу, она появится на доске, и мы напишем на почту.",
   ),
   ok: ru("Хорошо"),
 };
@@ -98,8 +98,8 @@ export function RoadmapIdeaForm() {
   };
 
   return (
-    <DialogShell size="xl" scroll onClose={closeDialog}>
-      <div className="wh overflow-y-auto p-6 sm:p-8">
+    <SidePanel onClose={closeDialog} label={t(T.title)}>
+      <div className="p-6 sm:p-8">
         <div className="flex items-start justify-between gap-3">
           <span className="grid size-10 place-items-center rounded-full bg-[var(--wh-blue)] text-[var(--wh-on-blue)]">
             {done ? <CheckCircle2 className="size-5" /> : <Lightbulb className="size-5" />}
@@ -205,9 +205,9 @@ export function RoadmapIdeaForm() {
                       className={cn(
                         "h-9 rounded-full px-3.5 text-sm font-medium transition-colors",
                         on
-                          ? "bg-[var(--wh-ink)] text-[var(--wh-ground)]"
+                          ? TRACK_COLORS[id].fill
                           : cn(
-                              TRACK_TONE[id],
+                              TRACK_COLORS[id].text,
                               "bg-[var(--wh-soft)] shadow-[inset_0_0_0_1px_var(--wh-line)]",
                             ),
                       )}
@@ -225,7 +225,7 @@ export function RoadmapIdeaForm() {
           </form>
         )}
       </div>
-    </DialogShell>
+    </SidePanel>
   );
 }
 

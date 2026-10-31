@@ -4,6 +4,8 @@ import { telHref } from "@/lib/phone";
 import { ORG } from "../data/org";
 import { href } from "../lib/route";
 import { ConsentChecks, type ConsentState } from "./ConsentChecks";
+import { ContactField } from "./ContactField";
+import { contactKind } from "../lib/contact";
 import { LeadSubmit } from "./LeadSubmit";
 import { Reveal } from "./Reveal";
 import { AsciiBanner } from "./frame/AsciiBanner";
@@ -47,7 +49,7 @@ const T = {
   send: c("Отправить", "Send"),
   subject: c("Вопрос с сайта — {name}", "Website enquiry — {name}"),
   consentNote: c(
-    "Отметьте согласие на обработку данных — без него письмо не уйдёт.",
+    "Отметьте согласие на обработку данных — без него сообщение не отправится.",
     "Tick the consent to data processing — the message cannot be sent without it.",
   ),
 };
@@ -196,6 +198,7 @@ function ContactForm() {
   const t = useT();
   const [consent, setConsent] = useState<ConsentState>(EMPTY_CONSENT);
   const [tried, setTried] = useState(false);
+  const [contact, setContact] = useState("");
   const lead = useLeadSend();
 
   const submit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -203,10 +206,8 @@ function ContactForm() {
     // Как в форме склада на лендинге: кнопка всегда живая, а про согласие
     // напоминаем только тому, кто нажал без него (Кирилл 26 окт: подпись
     // «Кнопка активна…» заранее не нужна).
-    if (!consent.data) {
-      setTried(true);
-      return;
-    }
+    setTried(true);
+    if (!consent.data || contactKind(contact) === null) return;
 
     const data = new FormData(e.currentTarget);
     const field = (name: string, label: Copy): LeadField => ({
@@ -220,7 +221,7 @@ function ContactForm() {
       subject: t(T.subject, { name: String(data.get("name") ?? "") }),
       fields: [
         field("name", T.fName),
-        field("contact", T.fContact),
+        { label: t(T.fContact), value: contact.trim() },
         field("company", T.fCompany),
         field("message", T.fNeed),
       ],
@@ -239,7 +240,15 @@ function ContactForm() {
       <h2 className="text-[22px] font-medium tracking-tight">{t(T.formTitle)}</h2>
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         <Field label={t(T.fName)} name="name" required placeholder={t(T.fNamePh)} />
-        <Field label={t(T.fContact)} name="contact" required placeholder="+7 900 000-00-00" />
+        <ContactField
+          id="contact"
+          label={t(T.fContact)}
+          placeholder="+7 900 000-00-00"
+          value={contact}
+          onChange={setContact}
+          tried={tried}
+          inputClassName={`${FIELD} h-12`}
+        />
         <div className="sm:col-span-2">
           <Field label={t(T.fCompany)} name="company" placeholder={t(T.fCompanyPh)} />
         </div>

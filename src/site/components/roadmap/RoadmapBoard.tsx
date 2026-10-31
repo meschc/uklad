@@ -19,7 +19,7 @@ import { RoadmapVote } from "./RoadmapVote";
 import { c, useT } from "../../lib/copy";
 import { Reveal } from "../Reveal";
 import { RoadmapIdea } from "./RoadmapIdea";
-import { ORIGIN_TONE, STATUS_TONE, TRACK_TONE } from "./roadmapColors";
+import { ORIGIN_TONE, STATUS_TONE, TRACK_TONE, TRACK_COLORS, ORIGIN_COLORS } from "./roadmapColors";
 
 const T = {
   all: c("Все идеи", "All ideas"),
@@ -127,12 +127,12 @@ export function RoadmapBoard() {
           {topics.map((item) => (
             <TopicChip
               key={`${item.kind}-${item.id}`}
-              tone={
+              color={
                 item.kind === "track"
-                  ? TRACK_TONE[item.id]
+                  ? TRACK_COLORS[item.id]
                   : item.kind === "origin"
-                    ? ORIGIN_TONE[item.id]
-                    : "text-[var(--wh-blue)]"
+                    ? ORIGIN_COLORS[item.id]
+                    : TRACK_COLORS.plan
               }
               label={t(topicLabel(item))}
               on={sameTopic(topic, item)}
@@ -194,13 +194,13 @@ function TopicChip({
   label,
   on,
   onClick,
-  tone,
+  color,
 }: {
   label: string;
   on: boolean;
   onClick: () => void;
-  /** Цвет темы — тот же, что у тега на карточке. */
-  tone?: string;
+  /** Цвет темы — тот же, что у тега на карточке; выбранный залит им же. */
+  color?: { text: string; fill: string };
 }) {
   return (
     <button
@@ -210,8 +210,8 @@ function TopicChip({
       className={cn(
         "inline-flex h-8 items-center rounded-full px-3 text-sm font-medium transition-colors",
         on
-          ? "bg-[var(--wh-ink)] text-[var(--wh-ground)]"
-          : cn(tone ?? "text-[var(--wh-ink)]", "hover:bg-[var(--wh-soft)]"),
+          ? (color?.fill ?? "bg-[var(--wh-ink)] text-[var(--wh-ground)]")
+          : cn(color?.text ?? "text-[var(--wh-ink)]", "hover:bg-[var(--wh-soft)]"),
       )}
     >
       {label}

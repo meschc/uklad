@@ -15,7 +15,7 @@ test.describe("Главная", () => {
   test("первый экран объясняет, что это", async ({ page }) => {
     await expect(page).toHaveTitle(/Уклад/);
     await expect(page.getByRole("heading", { level: 1 })).toContainText(
-      "систему управления складом",
+      "система управления складом",
     );
   });
 
@@ -46,7 +46,7 @@ test.describe("Главная", () => {
       )
       .toBeLessThan(200);
     await expect(page.getByRole("heading", { level: 1 })).toContainText(
-      "систему управления складом",
+      "система управления складом",
     );
   });
 

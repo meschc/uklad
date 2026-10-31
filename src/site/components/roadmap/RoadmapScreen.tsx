@@ -18,7 +18,10 @@ const T = {
   tabsLabel: c("Разделы", "Sections"),
   suggest: c("Предложить идею", "Suggest an idea"),
 
-  title: c("Помогите решить, что Уклад сделает дальше", "Help decide what Uklad builds next"),
+  title: c(
+    "Выбирайте, куда развивается Уклад, и предлагайте идеи",
+    "Choose where Uklad goes next and suggest ideas",
+  ),
   lead: c(
     "Здесь всё, что мы обсуждаем, планируем, делаем и уже сделали. Очерёдность решают голоса складов и селлеров.",
     "Here is everything we discuss, plan, build and have shipped. The order is decided by warehouse and seller votes.",
@@ -40,8 +43,8 @@ const T = {
   ],
   nextTitle: c("Что дальше", "What happens next"),
   next: c(
-    "Раз в неделю разбираем голоса и новые идеи и переносим карточки между колонками. Срок у запланированного — квартал, а не число.",
-    "Once a week we go through votes and new ideas and move cards between columns. Planned work gets a quarter, not a date.",
+    "Разбираем голоса и новые идеи и переносим карточки между колонками. Срок у запланированного — квартал, а не число.",
+    "We go through votes and new ideas and move cards between columns. Planned work gets a quarter, not a date.",
   ),
 };
 

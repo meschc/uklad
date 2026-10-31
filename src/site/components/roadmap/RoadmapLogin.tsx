@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, Mail, X } from "lucide-react";
-import { DialogShell } from "@/components/ui/dialog-shell";
 import { ConsentChecks, type ConsentState } from "../ConsentChecks";
 import { ru, useT } from "../../lib/copy";
 import { useOverlay } from "../../lib/useOverlay";
 import { closeDialog, port, requestCode, verifyCode } from "../../lib/roadmap/store";
 import type { RoadmapError } from "../../lib/roadmap/port";
+import { SidePanel } from "../frame/SidePanel";
 
 const T = {
   title: ru("Вход по почте"),
@@ -95,8 +95,8 @@ export function RoadmapLogin() {
   };
 
   return (
-    <DialogShell size="md" onClose={closeDialog}>
-      <div className="wh p-6 sm:p-8">
+    <SidePanel onClose={closeDialog} label={t(T.title)}>
+      <div className="p-6 sm:p-8">
         <div className="flex items-start justify-between gap-3">
           <span className="grid size-10 place-items-center rounded-full bg-[var(--wh-blue)] text-[var(--wh-on-blue)]">
             <Mail className="size-5" />
@@ -208,7 +208,7 @@ export function RoadmapLogin() {
           </form>
         )}
       </div>
-    </DialogShell>
+    </SidePanel>
   );
 }
 
