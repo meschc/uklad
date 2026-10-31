@@ -2,9 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ru, useT, type Copy } from "../../lib/copy";
-import { href } from "../../lib/route";
 import { Reveal } from "../Reveal";
-import { LogoMark } from "../Logo";
 import { AsciiField } from "./AsciiField";
 
 const T = {
@@ -67,11 +65,10 @@ export function HeroScreens() {
   const [auto, setAuto] = useState(true);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const leadRef = useRef<HTMLDivElement>(null);
-  const navRef = useRef<HTMLElement>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
   // Один и тот же массив на все рендеры: иначе поле перезапускалось бы при
   // каждой смене экрана. Под этими блоками знаки прозрачнее.
-  const quiet = useMemo(() => [navRef, titleRef, leadRef, tabsRef], []);
+  const quiet = useMemo(() => [titleRef, leadRef, tabsRef], []);
 
   useEffect(() => {
     if (!auto) return;
@@ -88,34 +85,7 @@ export function HeroScreens() {
         <AsciiField quiet={quiet} />
 
         <div className="relative mx-auto max-w-[1280px] px-5 pb-[clamp(120px,22vw,340px)] sm:px-10">
-          <header ref={navRef} className="flex items-center justify-between gap-6 py-5 sm:py-6">
-            <a
-              href={href("/")}
-              className="flex items-center gap-2 text-xl font-semibold tracking-tight text-white"
-            >
-              {/* Фирменный знак, а не заглушка (Кирилл 19 окт: «где логотип?»).
-                  Название белым: общий `Logo` красит его цветом текста темы,
-                  а на синем он должен быть белым в обеих темах. */}
-              <LogoMark className="rounded-lg ring-1 ring-white/40" />
-              {t(T.brand)}
-            </a>
-            <nav className="flex items-center gap-8 text-sm">
-              <a href="#inside" className="hidden text-white/85 hover:text-white md:inline">
-                {t(T.navInside)}
-              </a>
-              <a href="#tariffs" className="hidden text-white/85 hover:text-white md:inline">
-                {t(T.navTariffs)}
-              </a>
-              <a href="#faq" className="hidden text-white/85 hover:text-white md:inline">
-                {t(T.navFaq)}
-              </a>
-              <a href="#connect" className="wh-btn wh-btn--white !h-10 !px-[18px] !text-sm">
-                {t(T.connect)}
-              </a>
-            </nav>
-          </header>
-
-          <Reveal className="flex flex-col gap-8 pt-10 sm:pt-[72px] lg:flex-row lg:items-end lg:justify-between lg:gap-16">
+          <Reveal className="flex flex-col gap-8 pt-14 sm:pt-[88px] lg:flex-row lg:items-end lg:justify-between lg:gap-16">
             <h1
               ref={titleRef}
               className="max-w-[15ch] text-[clamp(40px,4.8vw,64px)] font-normal leading-[0.98] tracking-[-0.045em] [text-wrap:balance]"

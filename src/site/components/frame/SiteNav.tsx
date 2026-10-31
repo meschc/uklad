@@ -11,8 +11,7 @@ import { LogoMark } from "../Logo";
  */
 const LINKS: { label: Copy; to: string }[] = [
   { to: "/warehouses", label: c("Складам", "For warehouses") },
-  { to: "/market", label: c("Каталог складов", "Warehouses") },
-  { to: "/sellers", label: c("Селлерам", "For sellers") },
+  // Каталог складов скрыт до запуска (Кирилл 26 окт), страницы живут по адресу.
   { to: "/pricing", label: c("Тарифы", "Pricing") },
   { to: "/roadmap", label: c("Дорожная карта", "Roadmap") },
 ];
@@ -38,7 +37,16 @@ export const SITE_NAV_H = 64;
 /** Английскую версию отложили (Кирилл 23 окт): переключатель скрыт, страницы /en/ остаются. */
 const SHOW_LANG = false;
 
-export function SiteNav({ route, tone }: { route: Route; tone: "blue" | "sticky" }) {
+export function SiteNav({
+  route,
+  tone,
+  extra,
+}: {
+  route: Route;
+  tone: "blue" | "sticky";
+  /** Своё у страницы справа от кнопки, например вход на дорожной карте. */
+  extra?: React.ReactNode;
+}) {
   const t = useT();
   const [open, setOpen] = useState(false);
   const other = t.lang === "ru" ? "en" : "ru";
@@ -110,6 +118,7 @@ export function SiteNav({ route, tone }: { route: Route; tone: "blue" | "sticky"
           >
             {t(T.connect)}
           </a>
+          {extra}
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
@@ -164,14 +173,14 @@ export function SiteNav({ route, tone }: { route: Route; tone: "blue" | "sticky"
  * Шапка страниц без синего первого экрана: закреплена с самого верха, та же
  * светлая, что выезжает на остальных.
  */
-export function SiteBar({ route }: { route: Route }) {
+export function SiteBar({ route, extra }: { route: Route; extra?: React.ReactNode }) {
   return (
     <header
       style={{ height: SITE_NAV_H }}
       className="sticky top-0 z-[60] border-b border-[var(--wh-line)] bg-[color-mix(in_srgb,var(--wh-ground)_88%,transparent)] backdrop-blur-md"
     >
       <div className="mx-auto flex h-full max-w-[1280px] flex-col justify-center px-5 sm:px-10">
-        <SiteNav route={route} tone="sticky" />
+        <SiteNav route={route} tone="sticky" extra={extra} />
       </div>
     </header>
   );

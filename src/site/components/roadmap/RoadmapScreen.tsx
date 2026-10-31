@@ -5,7 +5,8 @@ import { c, useT } from "../../lib/copy";
 import { RoadmapBoard } from "./RoadmapBoard";
 import { RoadmapChangelog } from "./RoadmapChangelog";
 import { RoadmapAsk } from "./RoadmapAsk";
-import { RoadmapHeader } from "./RoadmapHeader";
+import { SiteBar } from "../frame/SiteNav";
+import { RoadmapAccount } from "./RoadmapAccount";
 import { WarehousesFooter } from "../warehouses/WarehousesFooter";
 import { RoadmapDialogs } from "./RoadmapAccount";
 import { RoadmapMyIdeas } from "./RoadmapMyIdeas";
@@ -61,7 +62,7 @@ export function RoadmapScreen() {
 
   return (
     <div className="wh">
-      <RoadmapHeader />
+      <SiteBar route={{ page: "roadmap" }} extra={<RoadmapAccount />} />
       <main className="px-4 pt-8 lg:px-8">
         <nav
           aria-label={t(T.tabsLabel)}
