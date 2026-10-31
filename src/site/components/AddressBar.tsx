@@ -37,7 +37,14 @@ export function AddressBar() {
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    go(`/${path.trim().replace(/^\/+/, "")}`);
+    // Только буквы, цифры и `-_./%`: обратный слеш и табы браузер читает
+    // как `//`, и pushState на «чужой» адрес бросил бы исключение.
+    const clean = path.replace(/[^\p{L}\p{N}\-_./%]/gu, "").replace(/^\/+/, "");
+    try {
+      go(`/${clean}`);
+    } catch {
+      go("/");
+    }
   };
 
   return (
