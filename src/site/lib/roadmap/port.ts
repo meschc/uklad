@@ -23,7 +23,7 @@ export interface Session {
 /** Голос: 1 — за, -1 — против; 0 снимает свой голос. */
 export type VoteValue = -1 | 0 | 1;
 
-/** Комментарий к пункту. Автор виден без домена почты: «ivan…». */
+/** Комментарий к пункту. Автор — псевдоним, который человек выбрал сам, иначе «Гость». */
 export interface RoadmapComment {
   id: string;
   author: string;
@@ -84,7 +84,12 @@ export interface RoadmapPort {
   vote(token: string, itemId: string, value: VoteValue): Promise<Result<{ count: number }>>;
   /** Комментарии к пункту: читать может любой, писать — вошедший. */
   comments(itemId: string): Promise<Result<RoadmapComment[]>>;
-  addComment(token: string, itemId: string, text: string): Promise<Result<RoadmapComment>>;
+  addComment(
+    token: string,
+    itemId: string,
+    text: string,
+    alias: string | null,
+  ): Promise<Result<RoadmapComment>>;
   submitIdea(token: string, draft: IdeaDraft): Promise<Result<SubmittedIdea>>;
 }
 
@@ -140,11 +145,11 @@ export function httpPort(base: string): RoadmapPort {
         ...(value === 0 ? {} : { body: JSON.stringify({ value }) }),
       }),
     comments: (itemId) => call(`/comments/${encodeURIComponent(itemId)}`),
-    addComment: (token, itemId, text) =>
+    addComment: (token, itemId, text, alias) =>
       call(`/comments/${encodeURIComponent(itemId)}`, {
         method: "POST",
         token,
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text, alias }),
       }),
     submitIdea: (token, draft) =>
       call("/ideas", { method: "POST", token, body: JSON.stringify(draft) }),

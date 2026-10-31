@@ -79,11 +79,14 @@ describe("дорожная карта", () => {
 
   test("комментарий пишет только вошедший и видит любой", async () => {
     renderHook(() => useRoadmap());
-    expect(await postComment("database", "Нужно")).toMatchObject({ ok: false, error: "auth" });
+    expect(await postComment("database", "Нужно", null)).toMatchObject({
+      ok: false,
+      error: "auth",
+    });
 
     await login();
-    const res = await postComment("database", "  Нужно скорее  ");
-    expect(res).toMatchObject({ ok: true, data: { text: "Нужно скорее", author: "sklad" } });
+    const res = await postComment("database", "  Нужно скорее  ", null);
+    expect(res).toMatchObject({ ok: true, data: { text: "Нужно скорее", author: "Гость" } });
 
     const read = await loadComments("database");
     expect(read.ok && read.data).toHaveLength(1);

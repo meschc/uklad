@@ -171,10 +171,10 @@ export function loadComments(itemId: string) {
 }
 
 /** Комментарий пишет только вошедший: без входа вернём `auth`, окно входа откроет вызывающий. */
-export async function postComment(itemId: string, text: string) {
+export async function postComment(itemId: string, text: string, alias: string | null) {
   const session = state.session;
   if (!session) return { ok: false, error: "auth" } as const;
-  const res = await port.addComment(session.token, itemId, text);
+  const res = await port.addComment(session.token, itemId, text, alias);
   if (!res.ok && res.error === "auth") logout();
   return res;
 }

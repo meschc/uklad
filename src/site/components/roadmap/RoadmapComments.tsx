@@ -9,6 +9,11 @@ const T = {
   placeholder: c("Что вам важно в этой функции?", "What matters to you about this feature?"),
   send: c("Отправить", "Send"),
   login: c("Войти по почте, чтобы написать", "Sign in by email to write"),
+  alias: c("Имя в обсуждении", "Name in the discussion"),
+  aliasConsent: c(
+    "Показывать это имя под комментарием. Без галочки подпись — «Гость»",
+    "Show this name under my comment. Without it the byline is “Guest”",
+  ),
   failed: c("Не отправилось. Попробуйте ещё раз.", "Could not send. Please try again."),
 };
 
@@ -17,13 +22,16 @@ const MAX = 1000;
 /**
  * Обсуждение пункта внутри правой панели. Читать может любой, писать — только
  * вошедший по почте: анонимные комментарии на публичной карте без модерации
- * превращаются в спам. Автор подписан началом почты, без домена.
+ * превращаются в спам. Автор подписан псевдонимом, который человек задал сам (по отдельной галочке),
+ * иначе «Гость»: почту и её части под комментарием не показываем.
  */
 export function RoadmapComments({ itemId }: { itemId: string }) {
   const t = useT();
   const { session } = useRoadmap();
   const [list, setList] = useState<RoadmapComment[]>([]);
   const [text, setText] = useState("");
+  const [alias, setAlias] = useState("");
+  const [showAlias, setShowAlias] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
 
@@ -42,7 +50,7 @@ export function RoadmapComments({ itemId }: { itemId: string }) {
     if (!text.trim() || busy) return;
     setBusy(true);
     setFailed(false);
-    const res = await postComment(itemId, text);
+    const res = await postComment(itemId, text, showAlias ? alias : null);
     setBusy(false);
     if (res.ok) {
       setList((prev) => [...prev, res.data]);
@@ -85,6 +93,22 @@ export function RoadmapComments({ itemId }: { itemId: string }) {
             rows={3}
             className="w-full resize-y rounded-2xl border border-[var(--wh-line)] bg-[var(--wh-tile)] px-4 py-3 text-sm outline-none focus-visible:border-[var(--wh-blue)]"
           />
+          <input
+            value={alias}
+            onChange={(e) => setAlias(e.target.value.slice(0, 30))}
+            placeholder={t(T.alias)}
+            aria-label={t(T.alias)}
+            className="h-10 w-full rounded-full border border-[var(--wh-line)] bg-[var(--wh-tile)] px-4 text-sm outline-none focus-visible:border-[var(--wh-blue)]"
+          />
+          <label className="flex items-start gap-2 text-xs text-[var(--wh-muted)]">
+            <input
+              type="checkbox"
+              checked={showAlias}
+              onChange={(e) => setShowAlias(e.target.checked)}
+              className="mt-0.5"
+            />
+            {t(T.aliasConsent)}
+          </label>
           {failed && <p className="text-xs text-destructive">{t(T.failed)}</p>}
           <button
             type="submit"

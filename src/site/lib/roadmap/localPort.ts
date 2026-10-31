@@ -30,10 +30,9 @@ function votesOf(acc: Account): Record<string, VoteValue> {
   return Object.fromEntries(acc.votes.map((id) => [id, 1 as VoteValue]));
 }
 
-/** «ivan.petrov@mail.ru» → «ivan.pe…»: почту целиком под комментарием не показываем. */
-function authorOf(email: string): string {
-  const name = email.split("@")[0] ?? "";
-  return name.length > 7 ? `${name.slice(0, 7)}…` : name;
+/** Почта под комментарием не показывается: только псевдоним, иначе «Гость». */
+function authorOf(alias: string | null): string {
+  return alias?.trim().slice(0, 30) || "Гость";
 }
 
 function read(): Db {
@@ -110,13 +109,13 @@ export function localPort(): RoadmapPort {
       return { ok: true, data: read().comments?.[itemId] ?? [] };
     },
 
-    async addComment(token, itemId, text) {
+    async addComment(_token, itemId, text, alias) {
       const clean = text.trim().slice(0, 1000);
       if (!clean) return { ok: false, error: "invalid" };
       const db = read();
       const comment: RoadmapComment = {
         id: `c-${Date.now().toString(36)}`,
-        author: authorOf(emailOf(token)),
+        author: authorOf(alias),
         text: clean,
         createdAt: new Date().toISOString(),
       };
