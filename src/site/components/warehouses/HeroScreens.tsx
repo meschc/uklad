@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ru, useT, type Copy } from "../../lib/copy";
 import { Reveal } from "../Reveal";
+import { RollText } from "../RollText";
 import { AsciiField } from "./AsciiField";
-import { LivePlan, LiveTasks, ScaledWindow } from "./LiveCabinet";
+import { CabinetFrame } from "./LiveCabinet";
+import type { AppView } from "@/lib/types";
 import { SITE_NAV_H } from "../frame/SiteNav";
 
 /** Демо-кабинет с посевными данными: живёт по /app/ (ADR 0008). */
@@ -26,35 +28,38 @@ const T = {
 };
 
 /**
- * Экраны демо-кабинета. План и задания — живые макеты (`LiveCabinet`):
- * реагируют на наведение и нажатия. Остальные пока снимки с `/app/`.
+ * Экраны демо-кабинета: настоящий `/app/` во фрейме (`CabinetFrame`), до его
+ * загрузки — снимок того же экрана.
  */
-const SCREENS: { label: Copy; file: string; caption: Copy; live?: () => ReactNode }[] = [
+const SCREENS: { label: Copy; file: string; caption: Copy; view: AppView }[] = [
   {
     label: ru("План склада"),
     file: "plan.webp",
-    live: () => <LivePlan />,
+    view: "editor",
     caption: ru("План склада: у каждой ячейки адрес, по нему идут приёмка и сборка"),
   },
   {
     label: ru("Задания"),
     file: "tasks.webp",
-    live: () => <LiveTasks />,
+    view: "tasks",
     caption: ru("Заявки селлеров сгруппированы по назначению"),
   },
   {
     label: ru("Приёмка"),
     file: "receiving.webp",
+    view: "receiving",
     caption: ru("Приёмка со сверкой план-факт по каждой поставке"),
   },
   {
     label: ru("Чат с селлерами"),
     file: "chat.webp",
+    view: "chat",
     caption: ru("Вопросы селлеров в одном чате, а не в мессенджерах"),
   },
   {
     label: ru("Сотрудники"),
     file: "staff.webp",
+    view: "staff",
     caption: ru("Нагрузка сотрудников по фактам: приёмки, единицы, отгрузки"),
   },
 ];
@@ -112,8 +117,8 @@ export function HeroScreens() {
             <div ref={leadRef} className="flex min-w-0 flex-col gap-5 lg:w-[470px] lg:shrink-0">
               <p className="text-[17px] leading-[1.55] text-white/85">{t(T.lead)}</p>
               <div className="flex flex-col gap-2.5 sm:flex-row">
-                <a href="#connect" className="wh-btn wh-btn--white wh-btn--live">
-                  {t(T.connect)}
+                <a href="#connect" className="wh-btn wh-btn--white">
+                  <RollText text={t(T.connect)} />
                   <ArrowRight className="size-4" />
                 </a>
                 <a href={DEMO_HREF} className="wh-btn wh-btn--ghost">
@@ -178,20 +183,12 @@ export function HeroScreens() {
               <span className="w-[42px]" aria-hidden />
             </div>
             {/* Смена экрана — мягким всплытием, а не щелчком. */}
-            {cur.live ? (
-              <div key={cur.file} className="wh-swap">
-                <ScaledWindow>{cur.live()}</ScaledWindow>
-              </div>
-            ) : (
-              <img
-                key={cur.file}
-                src={`${import.meta.env.BASE_URL}photos/cabinet/${cur.file}`}
-                alt={t(T.alt, { label })}
-                width={1240}
-                height={640}
-                className="wh-swap block aspect-[1240/640] w-full object-cover object-left-top"
-              />
-            )}
+            <CabinetFrame
+              view={cur.view}
+              title={t(T.alt, { label })}
+              fallback={`${import.meta.env.BASE_URL}photos/cabinet/${cur.file}`}
+              fallbackAlt={t(T.alt, { label })}
+            />
           </div>
         </Reveal>
         <p key={cur.file} className="wh-swap wh-muted mt-4 text-[15px]">

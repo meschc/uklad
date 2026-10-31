@@ -279,9 +279,18 @@ export function AsciiField({
       ctx.globalAlpha = 1;
     };
 
+    // На время прокрутки поле замирает: кадр отдаём прокрутке, а не знакам
+    // (Кирилл 31 окт: «когда начинаю скроллить, пролаг»). Догоняет через
+    // 200 мс после остановки — на глаз это продолжение того же движения.
+    let scrolledAt = -1e9;
+    const onScroll = () => {
+      scrolledAt = performance.now();
+    };
+
     const loop = (now: number) => {
       raf = requestAnimationFrame(loop);
       if (!visible || document.hidden || now - last < 1000 / FPS) return;
+      if (now - scrolledAt < 200) return;
       last = now;
       draw(now);
     };
@@ -321,6 +330,7 @@ export function AsciiField({
 
     if (!still) {
       raf = requestAnimationFrame(loop);
+      window.addEventListener("scroll", onScroll, { passive: true });
       window.addEventListener("pointermove", move, { passive: true });
       document.documentElement.addEventListener("pointerleave", leave);
     }
@@ -328,6 +338,7 @@ export function AsciiField({
       cancelAnimationFrame(raf);
       ro.disconnect();
       io.disconnect();
+      window.removeEventListener("scroll", onScroll);
       window.removeEventListener("pointermove", move);
       document.documentElement.removeEventListener("pointerleave", leave);
     };

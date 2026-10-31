@@ -731,61 +731,60 @@ a.wh-invert-chip:hover {
 }
 
 /*
- * «Подключить склад» — живая кнопка (Кирилл 31 окт: «что-то цепляющее»).
- * Раз в несколько секунд по ней проходит блик, а под курсором блик
- * пробегает сразу и стрелка уезжает вперёд. Ни нового цвета, ни
- * постоянного мигания: заметно, но не кричит. Без анимаций — без блика.
+ * «Подключить склад» — буквы волной прокатываются вверх (`RollText`):
+ * раз в 7 с сами и сразу под курсором (Кирилл 31 окт: живая кнопка, но
+ * без градиента). Под каждой буквой её копия, поэтому возврат незаметен.
  */
-.wh-btn--live {
-  position: relative;
+.wh-roll-text {
+  display: inline-flex;
   overflow: hidden;
-  isolation: isolate;
-  --sheen: rgb(255 255 255 / 0.55);
+  height: 1.3em;
+  line-height: 1.3em;
 }
-.wh-btn--white.wh-btn--live {
-  --sheen: color-mix(in srgb, var(--wh-blue) 22%, transparent);
+.wh-roll-ch {
+  position: relative;
+  display: inline-block;
+  animation: wh-roll-auto 7s cubic-bezier(0.65, 0, 0.35, 1) calc(2s + var(--i) * 28ms) infinite;
 }
-.wh-btn--live::after {
-  content: "";
+.wh-roll-ch::after {
+  content: attr(data-ch);
   position: absolute;
-  inset: 0;
-  z-index: -1;
-  background: linear-gradient(105deg, transparent 30%, var(--sheen) 50%, transparent 70%);
-  background-size: 250% 100%;
-  background-position: 120% 0;
-  animation: wh-sheen 4.8s ease-in-out 1.2s infinite;
-  pointer-events: none;
+  left: 0;
+  top: 100%;
 }
-.wh-btn--live:hover::after {
-  animation: wh-sheen-once 0.7s ease-out;
+a:hover .wh-roll-ch,
+button:hover .wh-roll-ch {
+  animation: wh-roll-once 0.5s cubic-bezier(0.65, 0, 0.35, 1) calc(var(--i) * 18ms) both;
 }
-.wh-btn--live svg {
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.wh-btn--live:hover svg {
-  transform: translateX(4px);
-}
-@keyframes wh-sheen {
+@keyframes wh-roll-auto {
   0%,
-  70% {
-    background-position: 120% 0;
+  90% {
+    transform: translateY(0);
   }
+  97%,
   100% {
-    background-position: -20% 0;
+    transform: translateY(-100%);
   }
 }
-@keyframes wh-sheen-once {
+@keyframes wh-roll-once {
   from {
-    background-position: 120% 0;
+    transform: translateY(0);
   }
   to {
-    background-position: -20% 0;
+    transform: translateY(-100%);
   }
 }
+.wh-btn svg {
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.wh-btn:hover svg {
+  transform: translateX(3px);
+}
 @media (prefers-reduced-motion: reduce) {
-  .wh-btn--live::after {
+  .wh-roll-ch,
+  a:hover .wh-roll-ch,
+  button:hover .wh-roll-ch {
     animation: none;
-    display: none;
   }
 }
 

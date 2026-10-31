@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { c, useT, type Copy } from "../../lib/copy";
 import { href, routePath, switchLang, type Route } from "../../lib/route";
 import { LogoMark } from "../Logo";
+import { RollText } from "../RollText";
 
 /**
  * Пункты шапки страниц в новом стиле. Склад раньше селлера — тот же порядок,
@@ -112,11 +113,11 @@ export function SiteNav({
           <a
             href={`${href("/warehouses")}#connect`}
             className={cn(
-              "wh-btn wh-btn--live !h-10 !px-[18px] !text-sm max-sm:!hidden",
+              "wh-btn !h-10 !px-[18px] !text-sm max-sm:!hidden",
               onBlue ? "wh-btn--white" : "wh-btn--blue",
             )}
           >
-            {t(T.connect)}
+            <RollText text={t(T.connect)} />
           </a>
           {extra}
           <button
@@ -202,7 +203,11 @@ export function SiteBar({
         "sticky top-0 z-[60] border-b transition-colors duration-200 motion-reduce:transition-none",
         blue
           ? "border-transparent bg-transparent"
-          : "border-[var(--wh-line)] bg-[color-mix(in_srgb,var(--wh-ground)_88%,transparent)] backdrop-blur-md",
+          : overBlue
+            ? // Над живым ASCII-полем размытие пересчитывалось бы на каждом
+              // кадре прокрутки — на главной фон шапки сплошной.
+              "border-[var(--wh-line)] bg-[var(--wh-ground)]"
+            : "border-[var(--wh-line)] bg-[color-mix(in_srgb,var(--wh-ground)_88%,transparent)] backdrop-blur-md",
       )}
     >
       <div className="mx-auto flex h-full max-w-[1280px] flex-col justify-center px-5 sm:px-10">
