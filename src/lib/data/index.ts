@@ -15,6 +15,7 @@ export { requestsRepository } from "./requestsRepository";
 export { backupRepository } from "./backupRepository";
 export { staffRepository } from "./staffRepository";
 export { workstationRepository } from "./workstationRepository";
+export { documentsRepository } from "./documentsRepository";
 export { sanitizeDomains } from "./sanitize";
 export type { Repository, StorePort } from "./repository";
 export { attempt, fail, ok } from "./result";

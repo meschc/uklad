@@ -28,6 +28,7 @@ import { createRequestsSlice } from "./requests.slice";
 import { createSessionSlice, makeSession } from "./session.slice";
 import { createChatSlice } from "./chat.slice";
 import { createOperationsSlice } from "./operations.slice";
+import { createDocsSlice } from "./docs.slice";
 import { createStaffSlice } from "./staff.slice";
 import { createSubscriptionSlice } from "./subscription.slice";
 import { createWorkstationSlice } from "./workstation.slice";
@@ -99,6 +100,7 @@ export function persistedState(s: EditorState) {
     packSession: s.packSession,
     breakPolicy: s.breakPolicy,
     devices: s.devices,
+    docRecords: s.docRecords,
     thisDeviceId: s.thisDeviceId,
     tasks: s.tasks,
     serviceSettings: s.serviceSettings,
@@ -145,6 +147,7 @@ export const useEditor = create<EditorState>()(
       ...createSubscriptionSlice(...a),
       ...createWorkstationSlice(...a),
       ...createOperationsSlice(...a),
+      ...createDocsSlice(...a),
     }),
     {
       name: PERSIST_KEY,

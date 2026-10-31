@@ -10,6 +10,8 @@ import type {
   BreakPolicy,
   PackSession,
   Device,
+  DocEdits,
+  DocRecord,
   StaffEvent,
   ShiftMark,
   IdleReason,
@@ -730,6 +732,22 @@ export interface WorkstationSlice {
   prepareDemoTote: () => string | null;
 }
 
+/** Складские документы: правки черновиков и подтверждение старшим. */
+export interface DocsSlice {
+  docRecords: DocRecord[];
+  /** Правка черновика. false — документ уже подтверждён или операции нет. */
+  saveDocDraft: (kind: DocRecord["kind"], sourceId: string, edits: DocEdits) => boolean;
+  confirmDoc: (
+    kind: DocRecord["kind"],
+    sourceId: string,
+    staffId: string,
+  ) => "ok" | "notSenior" | "locked" | "missing";
+  /** Какой документ открыть на экране «Документы» — переход из задания или приёмки. */
+  docFocus: { kind: DocRecord["kind"]; sourceId: string } | null;
+  openDoc: (kind: DocRecord["kind"], sourceId: string) => void;
+  clearDocFocus: () => void;
+}
+
 export interface OperationsSlice {
   /** Задания на операции склада: маркировка, упаковка, возвраты… */
   tasks: WarehouseTask[];
@@ -759,6 +777,7 @@ export type EditorState = AccountSlice &
   SubscriptionSlice &
   WorkstationSlice &
   OperationsSlice &
+  DocsSlice &
   SessionSlice &
   ChatSlice &
   IntegrationsSlice &

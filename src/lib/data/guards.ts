@@ -8,6 +8,7 @@ import type {
   Product,
   ReceivingEvent,
   Device,
+  DocRecord,
   StaffEvent,
   StaffMember,
   WarehouseTask,
@@ -69,6 +70,21 @@ export const isRequest: Guard<FulfillmentRequest> = (v): v is FulfillmentRequest
 /** Устройство склада: имя, вид места и дата привязки. */
 export const isDevice: Guard<Device> = (v): v is Device =>
   hasId(v) && isStr(v.name) && isStr(v.station) && isNum(v.createdAt);
+/** Документ склада: вид, источник, статус и правки. */
+export const isDocRecord: Guard<DocRecord> = (v): v is DocRecord => {
+  if (!hasId(v) || !isStr(v.sourceId) || !isRec(v.edits)) return false;
+  if (v.kind !== "receiving" && v.kind !== "shipment") return false;
+  if (v.status === "draft") return true;
+  // Подтверждённый без снимка, автора или даты — не подтверждённый: такую
+  // запись можно было бы подложить через резервную копию.
+  return (
+    v.status === "confirmed" &&
+    isRec(v.snapshot) &&
+    Array.isArray((v.snapshot as Rec).lines) &&
+    isStr(v.confirmedBy) &&
+    isNum(v.confirmedAt)
+  );
+};
 export const isStaffEvent: Guard<StaffEvent> = (v): v is StaffEvent =>
   hasId(v) && isStr(v.staffId) && isStr(v.type) && isNum(v.at);
 /** Задание на операцию: вид, объём, статус и дата заведения. */
