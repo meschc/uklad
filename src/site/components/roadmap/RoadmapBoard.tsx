@@ -200,7 +200,7 @@ function TopicChip({
   on: boolean;
   onClick: () => void;
   /** Цвет темы — тот же, что у тега на карточке; выбранный залит им же. */
-  color?: { text: string; fill: string };
+  color?: { dot: string; fill: string };
 }) {
   return (
     <button
@@ -208,12 +208,13 @@ function TopicChip({
       onClick={onClick}
       aria-pressed={on}
       className={cn(
-        "inline-flex h-8 items-center rounded-full px-3 text-sm font-medium transition-colors",
+        "inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-sm font-medium transition-colors",
         on
           ? (color?.fill ?? "bg-[var(--wh-ink)] text-[var(--wh-ground)]")
-          : cn(color?.text ?? "text-[var(--wh-ink)]", "hover:bg-[var(--wh-soft)]"),
+          : "text-[var(--wh-ink)] hover:bg-[var(--wh-soft)]",
       )}
     >
+      {color && !on && <span aria-hidden className={cn("size-2 rounded-full", color.dot)} />}
       {label}
     </button>
   );
@@ -302,7 +303,7 @@ function Card({ item, voted, count }: { item: RoadmapItem; voted: boolean; count
       <p className="mt-1.5 line-clamp-3 text-sm leading-relaxed text-muted-foreground">
         {t(item.summary)}
       </p>
-      <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs font-medium">
+      <div className="mt-3 flex flex-wrap gap-1.5">
         <span className={TRACK_TONE[item.track]}>{t(TRACK_LABELS[item.track])}</span>
         {item.origin && (
           <span className={ORIGIN_TONE[item.origin]}>{t(ORIGIN_LABELS[item.origin])}</span>

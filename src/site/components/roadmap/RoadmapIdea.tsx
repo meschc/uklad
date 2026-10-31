@@ -97,7 +97,7 @@ export function RoadmapIdea({
           )}
 
           <dt className="text-[var(--wh-muted)]">{t(T.topics)}</dt>
-          <dd className="flex flex-wrap gap-x-3 font-medium">
+          <dd className="flex flex-wrap items-center gap-1.5">
             <span className={TRACK_TONE[item.track]}>{t(TRACK_LABELS[item.track])}</span>
             {item.origin && (
               <span className={ORIGIN_TONE[item.origin]}>{t(ORIGIN_LABELS[item.origin])}</span>

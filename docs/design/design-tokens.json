@@ -92,6 +92,56 @@
         "$value": "#B35309",
         "$description": "CSS: hsl(var(--warning))"
       },
+      "tag-plan": {
+        "$type": "color",
+        "$value": "#2463EB",
+        "$description": "CSS: hsl(var(--tag-plan))"
+      },
+      "tag-fulfillment": {
+        "$type": "color",
+        "$value": "#F4831F",
+        "$description": "CSS: hsl(var(--tag-fulfillment))"
+      },
+      "tag-staff": {
+        "$type": "color",
+        "$value": "#B832AD",
+        "$description": "CSS: hsl(var(--tag-staff))"
+      },
+      "tag-integrations": {
+        "$type": "color",
+        "$value": "#00943B",
+        "$description": "CSS: hsl(var(--tag-integrations))"
+      },
+      "tag-market": {
+        "$type": "color",
+        "$value": "#FDCC08",
+        "$description": "CSS: hsl(var(--tag-market))"
+      },
+      "tag-platform": {
+        "$type": "color",
+        "$value": "#6E6F72",
+        "$description": "CSS: hsl(var(--tag-platform))"
+      },
+      "tag-warehouses": {
+        "$type": "color",
+        "$value": "#996633",
+        "$description": "CSS: hsl(var(--tag-warehouses))"
+      },
+      "tag-sellers": {
+        "$type": "color",
+        "$value": "#6CBE46",
+        "$description": "CSS: hsl(var(--tag-sellers))"
+      },
+      "tag-bug": {
+        "$type": "color",
+        "$value": "#EE362F",
+        "$description": "CSS: hsl(var(--tag-bug))"
+      },
+      "tag-ink": {
+        "$type": "color",
+        "$value": "#101114",
+        "$description": "CSS: hsl(var(--tag-ink))"
+      },
       "border": {
         "$type": "color",
         "$value": "#E5E7EB",
@@ -288,6 +338,56 @@
         "$type": "color",
         "$value": "#FBBD23",
         "$description": "CSS: hsl(var(--warning))"
+      },
+      "tag-plan": {
+        "$type": "color",
+        "$value": "#156BF4",
+        "$description": "CSS: hsl(var(--tag-plan))"
+      },
+      "tag-fulfillment": {
+        "$type": "color",
+        "$value": "#F4831F",
+        "$description": "CSS: hsl(var(--tag-fulfillment))"
+      },
+      "tag-staff": {
+        "$type": "color",
+        "$value": "#B832AD",
+        "$description": "CSS: hsl(var(--tag-staff))"
+      },
+      "tag-integrations": {
+        "$type": "color",
+        "$value": "#00943B",
+        "$description": "CSS: hsl(var(--tag-integrations))"
+      },
+      "tag-market": {
+        "$type": "color",
+        "$value": "#FDCC08",
+        "$description": "CSS: hsl(var(--tag-market))"
+      },
+      "tag-platform": {
+        "$type": "color",
+        "$value": "#6E6F72",
+        "$description": "CSS: hsl(var(--tag-platform))"
+      },
+      "tag-warehouses": {
+        "$type": "color",
+        "$value": "#996633",
+        "$description": "CSS: hsl(var(--tag-warehouses))"
+      },
+      "tag-sellers": {
+        "$type": "color",
+        "$value": "#6CBE46",
+        "$description": "CSS: hsl(var(--tag-sellers))"
+      },
+      "tag-bug": {
+        "$type": "color",
+        "$value": "#EE362F",
+        "$description": "CSS: hsl(var(--tag-bug))"
+      },
+      "tag-ink": {
+        "$type": "color",
+        "$value": "#101114",
+        "$description": "CSS: hsl(var(--tag-ink))"
       },
       "border": {
         "$type": "color",

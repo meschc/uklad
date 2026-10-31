@@ -203,15 +203,18 @@ export function RoadmapIdeaForm() {
                       aria-pressed={on}
                       onClick={() => setTrack(on ? null : id)}
                       className={cn(
-                        "h-9 rounded-full px-3.5 text-sm font-medium transition-colors",
+                        "inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-sm font-medium transition-colors",
                         on
                           ? TRACK_COLORS[id].fill
-                          : cn(
-                              TRACK_COLORS[id].text,
-                              "bg-[var(--wh-soft)] shadow-[inset_0_0_0_1px_var(--wh-line)]",
-                            ),
+                          : "bg-[var(--wh-soft)] text-[var(--wh-ink)] shadow-[inset_0_0_0_1px_var(--wh-line)]",
                       )}
                     >
+                      {!on && (
+                        <span
+                          aria-hidden
+                          className={cn("size-2 rounded-full", TRACK_COLORS[id].dot)}
+                        />
+                      )}
                       {t(TRACK_LABELS[id])}
                     </button>
                   );
