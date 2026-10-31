@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import { useContext, type ReactNode } from "react";
+import { EmbeddedShell } from "./embeddedShell";
 
 /**
  * Общая рамка экранов фулфилмента: заголовок, подпись, слот под действия и
@@ -19,6 +20,20 @@ export function ScreenShell({
   /** Широкая колонка — для таблиц и дашборда; узкая — для мастера приёмки. */
   wide?: boolean;
 }) {
+  const embedded = useContext(EmbeddedShell);
+  if (embedded) {
+    return (
+      <div className="flex flex-col gap-5">
+        {(subtitle || actions) && (
+          <header className="flex items-start justify-between gap-4">
+            {subtitle && <p className="min-w-0 text-xs text-muted-foreground">{subtitle}</p>}
+            {actions && <div className="ml-auto flex shrink-0 items-center gap-2">{actions}</div>}
+          </header>
+        )}
+        {children}
+      </div>
+    );
+  }
   return (
     <div className="h-full overflow-y-auto bg-background">
       <div className={`mx-auto flex ${wide ? "max-w-5xl" : "max-w-2xl"} flex-col gap-5 px-6 py-7`}>

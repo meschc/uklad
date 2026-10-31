@@ -54,6 +54,11 @@ export function boundDevice(s: Pick<EditorState, "devices" | "thisDeviceId">): D
 export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get) => ({
   staffEvents: [],
   stationSession: null,
+  stationTab: null,
+  openStation: (tab) => {
+    set({ stationTab: tab });
+    get().goToView("workstation");
+  },
   devices: [],
   thisDeviceId: null,
 
