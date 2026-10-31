@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import {
+  FileText,
   CalendarClock,
   CalendarDays,
   ClipboardList,
@@ -48,6 +49,8 @@ export function TasksScreen() {
   const boxes = useEditor((s) => s.boxes);
   const showToast = useEditor((s) => s.showToast);
   const goToView = useEditor((s) => s.goToView);
+  const trips = useEditor((s) => s.shipments);
+  const openDoc = useEditor((s) => s.openDoc);
   const t = useT();
 
   // Смена статуса идёт через репозиторий (п.3.2.1). Здесь нет формы, которую
@@ -279,6 +282,25 @@ export function TasksScreen() {
                                 </Button>
                               </div>
                             )}
+                            {/* Уехавшая заявка ведёт к накладной своего рейса:
+                                её правят и подтверждают на экране «Документы». */}
+                            {r.status === "shipped" &&
+                              (() => {
+                                const trip = trips.find((s) => s.requestIds.includes(r.id));
+                                if (!trip) return null;
+                                return (
+                                  <div className="flex justify-end">
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => openDoc("shipment", trip.id)}
+                                    >
+                                      <FileText className="size-3" />
+                                      {t("doc.kind.shipmentShort")}
+                                    </Button>
+                                  </div>
+                                );
+                              })()}
                             {r.status === "in_progress" && (
                               <div className="flex justify-end">
                                 <Button size="sm" onClick={() => goToView("picking")}>

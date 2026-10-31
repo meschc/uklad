@@ -26,7 +26,8 @@ import { nowMs } from "./utils";
  * по составу граф близкие к М-4 (приход) и к расходной накладной (отгрузка).
  */
 
-export type DocKind = "pick" | "shipment" | "receiving";
+/** `discrepancy` — акт расхождений: строится из листа приёмки (`docFlow.ts`). */
+export type DocKind = "pick" | "shipment" | "receiving" | "discrepancy";
 
 /** Одна строка документа. */
 export interface DocLine {
@@ -51,6 +52,10 @@ export interface DocModel {
   counterparty?: string;
   /** Машина / водитель. */
   vehicle?: string;
+  /** Ответственный, пломбы и комментарий — из правки черновика (`DocEdits`). */
+  responsible?: string;
+  seals?: string;
+  comment?: string;
   lines: DocLine[];
   totalQty: number;
   totalFact?: number;
@@ -60,6 +65,7 @@ const PREFIX: Record<DocKind, string> = {
   pick: "СБ",
   shipment: "РН",
   receiving: "ПР",
+  discrepancy: "АР",
 };
 
 /**
@@ -68,7 +74,7 @@ const PREFIX: Record<DocKind, string> = {
  * разные — разными. Сквозной счётчик здесь был бы враньём: он должен жить в
  * учётной системе, а не в браузере одного кладовщика.
  */
-function docNumber(kind: DocKind, sourceId: string, date: number): string {
+export function docNumber(kind: DocKind, sourceId: string, date: number): string {
   const d = new Date(date);
   const ymd =
     String(d.getFullYear() % 100).padStart(2, "0") +

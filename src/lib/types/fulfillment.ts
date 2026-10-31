@@ -1,3 +1,4 @@
+import type { DocModel } from "../documents";
 // ---------------------------------------------------------------------------
 // Фулфилмент: приёмка, коробки, паллеты, заявки, рейсы.
 // Сущности спроектированы так, чтобы лечь в таблицы Supabase почти без правок,
@@ -380,4 +381,39 @@ export interface BreakPolicy {
    * журнал — только действия человека.
    */
   autoIdleMin: number;
+}
+
+/**
+ * Что можно поправить в документе, пока он черновик. Номер, дата и плановые
+ * количества сюда не входят: они берутся из операции и не правятся никогда.
+ * Факт правится построчно — ключ это номер строки (`DocLine.no`) строкой.
+ */
+export interface DocEdits {
+  responsible?: string;
+  vehicle?: string;
+  seals?: string;
+  comment?: string;
+  facts?: Record<string, number>;
+}
+
+/**
+ * Складской документ, который уже кто-то тронул: поправил черновик или
+ * подтвердил. Документ без записи — тоже черновик, собранный из операции на
+ * лету (`docFlow.ts`): так он «появляется сам» без хука в каждом срезе.
+ * Подтверждённый хранит снимок (`snapshot`) — бумага не должна меняться,
+ * если завтра поправят карточку товара.
+ */
+export interface DocRecord {
+  id: string;
+  kind: "receiving" | "shipment";
+  /** id поставки (`ExpectedShipment`) или рейса (`Shipment`). */
+  sourceId: string;
+  status: "draft" | "confirmed";
+  edits: DocEdits;
+  updatedAt: number;
+  confirmedAt?: number;
+  /** Кто подтвердил — id старшего из персонала. */
+  confirmedBy?: string;
+  /** Модель документа на момент подтверждения. */
+  snapshot?: DocModel;
 }
