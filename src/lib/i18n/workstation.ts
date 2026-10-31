@@ -34,8 +34,16 @@ export const ru = {
   "ws.markRejected": "Эту отметку сейчас поставить нельзя",
 
   "ws.tab.shift": "Смена",
+  "ws.tab.receiving": "Приёмка",
+  "ws.tab.picking": "Сборка",
   "ws.tab.pack": "Упаковка",
+  "ws.tab.shipping": "Отгрузка",
   "ws.tab.log": "Журнал",
+  "ws.ship.emptyTitle": "Грузить нечего",
+  "ws.ship.empty":
+    "Здесь появятся собранные заявки. Одна машина увозит всё, что едет одному получателю.",
+  "ws.ship.noTarget": "Без назначения",
+  "ws.ship.count": "заявок: {n}",
   "ws.panel.close": "Закрыть",
   "ws.device.nameEmpty": "Назовите устройство — по имени столы и различают",
   "ws.device.notManager": "Это не бейдж руководителя",
@@ -225,8 +233,16 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.markRejected": "This mark can't be set right now",
 
   "ws.tab.shift": "Shift",
+  "ws.tab.receiving": "Receiving",
+  "ws.tab.picking": "Picking",
   "ws.tab.pack": "Packing",
+  "ws.tab.shipping": "Dispatch",
   "ws.tab.log": "Log",
+  "ws.ship.emptyTitle": "Nothing to load",
+  "ws.ship.empty":
+    "Picked requests show up here. One truck takes everything going to one recipient.",
+  "ws.ship.noTarget": "No destination",
+  "ws.ship.count": "requests: {n}",
   "ws.panel.close": "Close",
   "ws.device.nameEmpty": "Name the device — that is how desks are told apart",
   "ws.device.notManager": "This is not a manager's badge",

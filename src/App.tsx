@@ -8,7 +8,7 @@ import { useDeepLink } from "@/lib/useDeepLink";
 import { useT } from "@/lib/i18n";
 import { SideNav } from "@/components/nav/SideNav";
 import { navFor } from "@/components/nav/navItems";
-import type { AppView } from "@/lib/types";
+import type { AppView, StationTab } from "@/lib/types";
 import { ChatWatcher } from "@/components/chat/ChatWatcher";
 import { Toast } from "@/components/editor/Toast";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -48,14 +48,8 @@ const LoginScreen = lazy(() =>
 const HeatmapView = lazy(() =>
   import("@/components/heatmap/HeatmapView").then((m) => ({ default: m.HeatmapView })),
 );
-const ReceivingScreen = lazy(() =>
-  import("@/components/fulfillment/ReceivingScreen").then((m) => ({ default: m.ReceivingScreen })),
-);
 const TasksScreen = lazy(() =>
   import("@/components/fulfillment/TasksScreen").then((m) => ({ default: m.TasksScreen })),
-);
-const PickingScreen = lazy(() =>
-  import("@/components/fulfillment/PickingScreen").then((m) => ({ default: m.PickingScreen })),
 );
 const OperationsScreen = lazy(() =>
   import("@/components/fulfillment/OperationsScreen").then((m) => ({
@@ -130,15 +124,20 @@ export default function App() {
   // только рабочее место, куда бы ни вела ссылка. Отвязать его можно бейджем
   // руководителя на самом столе или с экрана «Устройства» с другого компьютера.
   const kiosk = useEditor((s) => boundDevice(s) !== null) && role === "warehouse";
-  const view = kiosk
-    ? "workstation"
-    : ACCOUNT_VIEWS.has(appView) || allowed.includes(appView)
-      ? appView
-      : allowed[0];
+  // Приёмка и сборка были отдельными экранами, теперь это вкладки рабочего
+  // места. Старая ссылка (`?view=receiving`) ведёт на нужную вкладку.
+  const stationTab = role === "warehouse" ? STATION_VIEWS[appView] : undefined;
+  const view =
+    kiosk || stationTab
+      ? "workstation"
+      : ACCOUNT_VIEWS.has(appView) || allowed.includes(appView)
+        ? appView
+        : allowed[0];
 
   useEffect(() => {
-    if (view !== appView) useEditor.getState().goToView(view);
-  }, [view, appView]);
+    if (stationTab) useEditor.getState().openStation(stationTab);
+    else if (view !== appView) useEditor.getState().goToView(view);
+  }, [view, appView, stationTab]);
 
   if (IS_HEATMAP) {
     return (
@@ -207,6 +206,12 @@ export default function App() {
   );
 }
 
+/** Бывшие экраны процессов → вкладка рабочего места. */
+const STATION_VIEWS: Partial<Record<AppView, StationTab>> = {
+  receiving: "receiving",
+  picking: "picking",
+};
+
 /** Экраны уровня аккаунта: живут вне контекста конкретного склада. */
 const ACCOUNT_VIEWS = new Set<AppView>(["login", "dashboard", "profile"]);
 
@@ -235,12 +240,8 @@ function renderView(view: string) {
       return <Dashboard />;
     case "profile":
       return <Profile />;
-    case "receiving":
-      return <ReceivingScreen />;
     case "tasks":
       return <TasksScreen />;
-    case "picking":
-      return <PickingScreen />;
     case "operations":
       return <OperationsScreen />;
     case "staff":

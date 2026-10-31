@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowLeft,
   ListChecks,
@@ -6,14 +6,16 @@ import {
   MonitorSmartphone,
   X,
   Package,
+  PackagePlus,
   Printer,
   ScanLine,
   Scale,
+  Truck,
 } from "lucide-react";
 import { boundDevice, useEditor } from "@/lib/store";
 import { workstationRepository } from "@/lib/data";
 import { isSessionLive } from "@/lib/workstation";
-import type { WorkstationKind } from "@/lib/types";
+import type { StationTab, WorkstationKind } from "@/lib/types";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -24,30 +26,54 @@ import { ShiftMenu } from "./ShiftMenu";
 import { ShiftBar } from "./ShiftBar";
 import { PackStation } from "./PackStation";
 import { StaffLog } from "./StaffLog";
+import { ShipStation } from "./ShipStation";
+import { EmbeddedShell } from "@/components/fulfillment/embeddedShell";
+import { ReceivingScreen } from "@/components/fulfillment/ReceivingScreen";
+import { PickingScreen } from "@/components/fulfillment/PickingScreen";
 import { formatTime, useNow } from "./useNow";
 
 /**
  * Рабочее место у стола (узел карты cab-workstations): общий экран, за которым
- * сменяются люди. Вход — по QR-бейджу, дальше три вкладки: смена (она же меню
- * сотрудника на ТСД и телефоне — вёрстка одна, узкая), упаковка и свой журнал.
+ * сменяются люди. Вход — по QR-бейджу, дальше процессы склада вкладками:
+ * приёмка, сборка, упаковка, отгрузка и свой журнал. Смена — в шапке, панелью
+ * справа (она же меню сотрудника на ТСД и телефоне).
  *
- * Пока сделан только стол упаковки. Остальные столы перечислены в шапке как
- * «скоро»: приёмка, маркировка, возвраты и отгрузка лягут в ту же рамку —
- * бейдж, смена и журнал у них общие, меняется только средняя вкладка.
+ * Процессы живут здесь, а не в меню кабинета: работу делают за столом по
+ * бейджу, и в факты пишется тот, кто вошёл. Кабинету остаются задания,
+ * документы и аналитика — контроль, а не работа.
  */
 
-type Tab = "pack" | "log";
-
-const STATIONS: WorkstationKind[] = ["pack", "receiving", "marking", "returns", "shipping"];
+/** Стол, привязанный к месту, открывается на своей вкладке. */
+const DEVICE_TAB: Record<WorkstationKind, StationTab> = {
+  pack: "pack",
+  receiving: "receiving",
+  shipping: "shipping",
+  marking: "pack",
+  returns: "receiving",
+};
 
 export function WorkstationScreen() {
   const t = useT();
   const now = useNow();
   const session = useEditor((s) => s.stationSession);
   const staff = useEditor((s) => s.warehouse.staff);
-  const [tab, setTab] = useState<Tab>("pack");
-  const [shiftOpen, setShiftOpen] = useState(false);
   const device = useEditor(boundDevice);
+  const focus = useEditor((s) => s.stationTab);
+  const [tab, setTab] = useState<StationTab>(
+    focus ?? (device ? DEVICE_TAB[device.station] : "pack"),
+  );
+  const [shiftOpen, setShiftOpen] = useState(false);
+
+  // Переход из заданий («Собрать», «Отгрузить») открывает нужную вкладку —
+  // и когда рабочее место уже открыто. Дальше человек переключает сам.
+  const [seenFocus, setSeenFocus] = useState(focus);
+  if (focus && focus !== seenFocus) {
+    setSeenFocus(focus);
+    setTab(focus);
+  }
+  useEffect(() => {
+    if (focus) useEditor.setState({ stationTab: null });
+  }, [focus]);
   const [unbinding, setUnbinding] = useState(false);
 
   const live = isSessionLive(session, now);
@@ -74,22 +100,6 @@ export function WorkstationScreen() {
             {t("ws.exit")}
           </Button>
         )}
-        <div className="hidden min-w-0 flex-wrap items-center gap-1.5 2xl:flex">
-          {STATIONS.map((st) => (
-            <span
-              key={st}
-              className={cn(
-                "rounded-full px-2.5 py-1 text-xs",
-                st === "pack"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground",
-              )}
-            >
-              {t(`ws.station.${st}` as MsgKey)}
-              {st !== "pack" && ` · ${t("ws.soon")}`}
-            </span>
-          ))}
-        </div>
         <Equipment />
         {member && (
           <div className="ml-auto flex items-center gap-4">
@@ -119,20 +129,30 @@ export function WorkstationScreen() {
           // Ширина одна на все вкладки: иначе полоса вкладок прыгает при
           // переключении. Смена ушла в шапку — главное на экране товар.
           <div className="mx-auto flex max-w-5xl flex-col gap-5 px-4 py-6">
-            <Segmented<Tab>
+            <Segmented<StationTab>
               value={tab}
               onChange={setTab}
               grow
               size="md"
               ariaLabel={t("ws.title")}
               options={[
+                { value: "receiving", label: t("ws.tab.receiving"), icon: <PackagePlus /> },
+                { value: "picking", label: t("ws.tab.picking"), icon: <ScanLine /> },
                 { value: "pack", label: t("ws.tab.pack"), icon: <Package /> },
+                { value: "shipping", label: t("ws.tab.shipping"), icon: <Truck /> },
                 { value: "log", label: t("ws.tab.log"), icon: <ListChecks /> },
               ]}
             />
+            {/* Приёмка и сборка — те же мастера, что были экранами кабинета,
+                только без своей рамки: заголовок уже на вкладке. */}
+            <EmbeddedShell.Provider value={true}>
+              {tab === "receiving" && <ReceivingScreen staffId={member.id} />}
+              {tab === "picking" && <PickingScreen />}
+            </EmbeddedShell.Provider>
             {tab === "pack" && (
               <PackStation staffId={member.id} onNeedShift={() => setShiftOpen(true)} />
             )}
+            {tab === "shipping" && <ShipStation staffId={member.id} />}
             {tab === "log" && <StaffLog staffId={member.id} now={now} />}
           </div>
         )}

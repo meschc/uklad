@@ -15,6 +15,7 @@ import type {
   IdleReason,
   StationSession,
   WorkstationKind,
+  StationTab,
   Account,
   AddressingConfig,
   AppView,
@@ -692,6 +693,13 @@ export interface WorkstationSlice {
   staffEvents: StaffEvent[];
   /** Кто вошёл по бейджу на этом экране. Один на устройство — экран общий. */
   stationSession: StationSession | null;
+  /**
+   * Какую вкладку рабочего места открыть: переход из заданий или старая
+   * ссылка на приёмку. Не сохраняется — это намерение перехода, а не данные.
+   */
+  stationTab: StationTab | null;
+  /** Открыть рабочее место на нужной вкладке. */
+  openStation: (tab: StationTab) => void;
   /**
    * Вход по скану бейджа. Возвращает id сотрудника или null, если бейдж не
    * принадлежит никому из персонала активного склада.

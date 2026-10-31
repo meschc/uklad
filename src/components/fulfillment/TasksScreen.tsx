@@ -23,7 +23,6 @@ import { Segmented } from "@/components/ui/segmented";
 import { ScreenShell, EmptyState } from "./ScreenShell";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { card } from "@/components/ui/card";
-import { ShipDialog } from "./ShipDialog";
 import { RequestCalendar } from "./RequestCalendar";
 
 /**
@@ -47,7 +46,7 @@ export function TasksScreen() {
   const placements = useEditor((s) => s.placements);
   const boxes = useEditor((s) => s.boxes);
   const showToast = useEditor((s) => s.showToast);
-  const goToView = useEditor((s) => s.goToView);
+  const openStation = useEditor((s) => s.openStation);
   const t = useT();
 
   // Смена статуса идёт через репозиторий (п.3.2.1). Здесь нет формы, которую
@@ -63,8 +62,6 @@ export function TasksScreen() {
   };
 
   const [filter, setFilter] = useState<RequestStatus | "all">("all");
-  // Заявки, которые грузим в машину прямо сейчас (открытый диалог отгрузки).
-  const [shipping, setShipping] = useState<string[] | null>(null);
   // Список или календарь (п.10.4) — одни и те же заявки, разный взгляд.
   const [view, setView] = useState<"list" | "calendar">("list");
   const [day, setDay] = useState<number | null>(null);
@@ -101,7 +98,7 @@ export function TasksScreen() {
       subtitle={t("tasks.subtitle")}
       wide
       actions={
-        <Button size="sm" variant="outline" onClick={() => goToView("picking")}>
+        <Button size="sm" variant="outline" onClick={() => openStation("picking")}>
           <ScanLine className="size-3.5" />
           {t("tasks.toPicking")}
         </Button>
@@ -191,7 +188,7 @@ export function TasksScreen() {
                   ))
                 )}
                 {/* Погрузка: собранное по этому назначению уезжает одной
-                    машиной. Кнопка появляется, только когда есть что грузить. */}
+                    машиной. Грузят за столом отгрузки — кнопка ведёт туда. */}
                 {(() => {
                   const ready = g.items.filter((r) => r.status === "done");
                   if (!ready.length) return null;
@@ -200,7 +197,7 @@ export function TasksScreen() {
                       size="sm"
                       variant="outline"
                       className="ml-auto h-7"
-                      onClick={() => setShipping(ready.map((r) => r.id))}
+                      onClick={() => openStation("shipping")}
                     >
                       <Truck className="size-3.5" />
                       {t("ship.action", { n: ready.length })}
@@ -281,7 +278,7 @@ export function TasksScreen() {
                             )}
                             {r.status === "in_progress" && (
                               <div className="flex justify-end">
-                                <Button size="sm" onClick={() => goToView("picking")}>
+                                <Button size="sm" onClick={() => openStation("picking")}>
                                   <ScanLine className="size-3" />
                                   {t("tasks.pick")}
                                 </Button>
@@ -298,8 +295,6 @@ export function TasksScreen() {
           ))}
         </div>
       )}
-
-      {shipping && <ShipDialog requestIds={shipping} onClose={() => setShipping(null)} />}
     </ScreenShell>
   );
 }
