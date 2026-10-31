@@ -66,7 +66,7 @@ export function Inside() {
       </Reveal>
 
       <div className="mt-12 flex justify-center sm:mt-16">
-        <UkladLogoLive cell={48} label={t(T.brand)} />
+        <UkladLogoLive variant="stage" cell={44} label={t(T.brand)} />
       </div>
 
       {/* Плавные ветки к четырём колонкам. На узком экране колонки встают

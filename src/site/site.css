@@ -943,15 +943,3 @@ button:hover .wh-roll-ch {
     animation: none;
   }
 }
-
-/* Живой логотип (`UkladLogoLive`): клетка под указателем выворачивается в
-   обратный цвет — без перехода, как и сами шаги. */
-.uk-live-cell {
-  background: var(--fill);
-  color: var(--ink);
-}
-.uk-live-cell:hover {
-  background: var(--ink);
-  color: var(--fill);
-  box-shadow: inset 0 0 0 2px var(--fill);
-}

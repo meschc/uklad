@@ -165,8 +165,11 @@ export function SiteNav({
 
 /**
  * Закреплённая шапка витрины. На странице с синим первым экраном (`overBlue`)
- * она сначала прозрачная, с белыми ссылками, и поле знаков идёт под ней, а с прокруткой становится
- * светлой или тёмной по теме — как было до объединения шапок (Кирилл 31 окт).
+ * она сначала прозрачная, с белыми ссылками, и поле знаков идёт под ней, а с
+ * прокруткой становится полупрозрачной по теме, с размытием — как было до
+ * объединения шапок (Кирилл 31 окт). Когда под шапку заходит синий низ
+ * страницы (блок заявки или подвал), она становится цветом подвала: светлая
+ * плашка поверх синего выглядела тяжёлой.
  */
 export function SiteBar({
   route,
@@ -178,28 +181,36 @@ export function SiteBar({
   overBlue?: boolean;
 }) {
   const [scrolled, setScrolled] = useState(false);
+  const [atBottom, setAtBottom] = useState(false);
 
   useEffect(() => {
-    if (!overBlue) return;
-    const onScroll = () => setScrolled(window.scrollY > 96);
+    const onScroll = () => {
+      setScrolled(window.scrollY > 96);
+      // Синий низ — блок заявки, а где его нет, подвал.
+      const low = document.getElementById("connect") ?? document.querySelector("footer");
+      setAtBottom(!!low && low.getBoundingClientRect().top <= SITE_NAV_H / 2);
+    };
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, [overBlue]);
+    window.addEventListener("resize", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, []);
 
-  const blue = overBlue && !scrolled;
+  const top = overBlue && !scrolled;
+  const blue = top || atBottom;
 
   return (
     <header
       style={{ height: SITE_NAV_H }}
       className={cn(
         "sticky top-0 z-[60] border-b transition-colors duration-200 motion-reduce:transition-none",
-        blue
+        top
           ? "border-transparent bg-transparent"
-          : overBlue
-            ? // Над живым ASCII-полем размытие пересчитывалось бы на каждом
-              // кадре прокрутки — на главной фон шапки сплошной.
-              "border-[var(--wh-line)] bg-[var(--wh-ground)]"
+          : atBottom
+            ? "border-transparent bg-[color-mix(in_srgb,var(--wh-blue)_88%,transparent)] backdrop-blur-md"
             : "border-[var(--wh-line)] bg-[color-mix(in_srgb,var(--wh-ground)_88%,transparent)] backdrop-blur-md",
       )}
     >

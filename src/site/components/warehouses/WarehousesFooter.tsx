@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { ArrowUp, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AsciiScene } from "../frame/AsciiScene";
@@ -62,16 +62,40 @@ function linkHref(to: string, away: boolean): string {
  * Стоит вне `main`, поэтому для вспомогательных технологий это настоящий
  * подвал страницы (`contentinfo`), как и общий.
  */
+/**
+ * Высота синего блока заявки над подвалом (`#connect`), если он на странице.
+ * Меряется после монтирования и при каждом изменении размера блока.
+ */
+function useConnectHeight() {
+  const [h, setH] = useState(0);
+  useEffect(() => {
+    const el = document.getElementById("connect");
+    if (!el) return;
+    const ro = new ResizeObserver(() => setH(el.offsetHeight));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return h;
+}
+
 export function WarehousesFooter({ away = false }: { away?: boolean }) {
   const t = useT();
   const [docsOpen, setDocsOpen] = useState(false);
   const docsId = useId();
+  const reach = useConnectHeight();
 
   return (
-    <footer className="relative overflow-hidden bg-[var(--wh-blue)] text-white">
+    <footer className="relative bg-[var(--wh-blue)] text-white">
       {/* Свой рисунок, не поле первого экрана: стеллажи из знаков плывут
-          вверх (Кирилл 31 окт: «в подвал тоже ascii, но другую»). */}
-      <AsciiScene kind="racks" density={0.5} className="opacity-35" />
+          вверх (Кирилл 31 окт: «в подвал тоже ascii, но другую»). Сцена одна
+          на весь синий низ — от блока «Подключить склад» до конца подвала:
+          своя граница у подвала читалась как невидимая стена. */}
+      <AsciiScene
+        kind="racks"
+        density={0.5}
+        className="opacity-35"
+        style={reach ? { top: -reach, height: `calc(100% + ${reach}px)` } : undefined}
+      />
       <div className="relative mx-auto max-w-[1280px] px-5 sm:px-10">
         {/* Отделён от финального блока воздухом, а не линией: тонкая черта под
             карточкой заявки читалась как обрыв (Кирилл 19 окт). */}
