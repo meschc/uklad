@@ -18,17 +18,20 @@
 
 Все тела — JSON. Авторизация — `Authorization: Bearer <token>`.
 
-| Метод и путь            | Тело                                | Ответ                                |
-| ----------------------- | ----------------------------------- | ------------------------------------ |
-| `POST /auth/code`       | `{ email, consent: { data, ads } }` | `204`. Без `consent.data` — `400`    |
-| `POST /auth/verify`     | `{ email, code }`                   | `{ token, user: { email } }`         |
-| `GET /board`            | — (токен необязателен)              | `{ counts, mine, ideas }`            |
-| `PUT /votes/:itemId`    | —                                   | `{ count }` — голосов у пункта после |
-| `DELETE /votes/:itemId` | —                                   | `{ count }`                          |
-| `POST /ideas`           | `{ title, details, track }`         | `SubmittedIdea`                      |
+| Метод и путь             | Тело                                | Ответ                             |
+| ------------------------ | ----------------------------------- | --------------------------------- |
+| `POST /auth/code`        | `{ email, consent: { data, ads } }` | `204`. Без `consent.data` — `400` |
+| `POST /auth/verify`      | `{ email, code }`                   | `{ token, user: { email } }`      |
+| `GET /board`             | — (токен необязателен)              | `{ counts, mine, ideas }`         |
+| `PUT /votes/:itemId`     | `{ value: 1 \| -1 }`                | `{ count }` — итог пункта после   |
+| `DELETE /votes/:itemId`  | —                                   | `{ count }` — свой голос снят     |
+| `GET /comments/:itemId`  | — (токен необязателен)              | `RoadmapComment[]`                |
+| `POST /comments/:itemId` | `{ text }` (до 1000 знаков)         | `RoadmapComment`                  |
+| `POST /ideas`            | `{ title, details, track }`         | `SubmittedIdea`                   |
 
-- `counts` — `{ [itemId]: number }`; `mine` — id пунктов, за которые голосовал вошедший;
+- `counts` — `{ [itemId]: number }`, итог «за» минус «против»; `mine` — `{ [itemId]: 1 | -1 }`, голоса вошедшего;
   `ideas` — его идеи: `{ id, title, details, track, status: "review"|"accepted"|"declined", createdAt }`.
+- `RoadmapComment` — `{ id, author, text, createdAt }`; `author` — начало почты без домена. Писать комментарии может только вошедший; серверу нужны лимит частоты и жалоба на комментарий до открытия записи для всех.
 - `itemId` — id из `src/site/data/roadmapItems.ts`; позже — узел карты продукта (`mapNode`).
 
 ## Коды ошибок

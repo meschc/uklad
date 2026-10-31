@@ -1,5 +1,5 @@
 import { readLocal, writeLocal } from "@/lib/safeStorage";
-import type { RoadmapPort, SubmittedIdea } from "./port";
+import type { RoadmapComment, RoadmapPort, SubmittedIdea, VoteValue } from "./port";
 
 /**
  * Локальная реализация порта — до появления сервера.
@@ -13,7 +13,8 @@ import type { RoadmapPort, SubmittedIdea } from "./port";
 const KEY = "uklad.roadmap.local";
 
 interface Account {
-  votes: string[];
+  /** Раньше голос был только «за» и хранился списком; список читается как «за». */
+  votes: Record<string, VoteValue> | string[];
   ideas: SubmittedIdea[];
 }
 
@@ -21,6 +22,18 @@ interface Db {
   accounts: Record<string, Account>;
   /** Выданные коды: почта → код. */
   codes: Record<string, string>;
+  comments?: Record<string, RoadmapComment[]>;
+}
+
+function votesOf(acc: Account): Record<string, VoteValue> {
+  if (!Array.isArray(acc.votes)) return acc.votes;
+  return Object.fromEntries(acc.votes.map((id) => [id, 1 as VoteValue]));
+}
+
+/** «ivan.petrov@mail.ru» → «ivan.pe…»: почту целиком под комментарием не показываем. */
+function authorOf(email: string): string {
+  const name = email.split("@")[0] ?? "";
+  return name.length > 7 ? `${name.slice(0, 7)}…` : name;
 }
 
 function read(): Db {
@@ -41,13 +54,13 @@ function write(db: Db): void {
 const emailOf = (token: string) => token.replace(/^local:/, "");
 
 function account(db: Db, email: string): Account {
-  return (db.accounts[email] ??= { votes: [], ideas: [] });
+  return (db.accounts[email] ??= { votes: {}, ideas: [] });
 }
 
 function counts(db: Db): Record<string, number> {
   const out: Record<string, number> = {};
   for (const acc of Object.values(db.accounts)) {
-    for (const id of acc.votes) out[id] = (out[id] ?? 0) + 1;
+    for (const [id, value] of Object.entries(votesOf(acc))) out[id] = (out[id] ?? 0) + value;
   }
   return out;
 }
@@ -78,18 +91,38 @@ export function localPort(): RoadmapPort {
       const own = token ? db.accounts[emailOf(token)] : undefined;
       return {
         ok: true,
-        data: { counts: counts(db), mine: own?.votes ?? [], ideas: own?.ideas ?? [] },
+        data: { counts: counts(db), mine: own ? votesOf(own) : {}, ideas: own?.ideas ?? [] },
       };
     },
 
-    async vote(token, itemId, on) {
+    async vote(token, itemId, value) {
       const db = read();
       const acc = account(db, emailOf(token));
-      acc.votes = on
-        ? [...new Set([...acc.votes, itemId])]
-        : acc.votes.filter((id) => id !== itemId);
+      const votes = votesOf(acc);
+      if (value === 0) delete votes[itemId];
+      else votes[itemId] = value;
+      acc.votes = votes;
       write(db);
       return { ok: true, data: { count: counts(db)[itemId] ?? 0 } };
+    },
+
+    async comments(itemId) {
+      return { ok: true, data: read().comments?.[itemId] ?? [] };
+    },
+
+    async addComment(token, itemId, text) {
+      const clean = text.trim().slice(0, 1000);
+      if (!clean) return { ok: false, error: "invalid" };
+      const db = read();
+      const comment: RoadmapComment = {
+        id: `c-${Date.now().toString(36)}`,
+        author: authorOf(emailOf(token)),
+        text: clean,
+        createdAt: new Date().toISOString(),
+      };
+      db.comments = { ...db.comments, [itemId]: [...(db.comments?.[itemId] ?? []), comment] };
+      write(db);
+      return { ok: true, data: comment };
     },
 
     async submitIdea(token, draft) {

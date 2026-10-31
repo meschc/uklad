@@ -50,7 +50,7 @@ function matches(
   topic: Topic | null,
   query: string,
   title: string,
-  mine: ReadonlySet<string>,
+  mine: ReadonlyMap<string, 1 | -1>,
 ) {
   if (topic?.kind === "mine" && !mine.has(item.id)) return false;
   if (topic?.kind === "track" && item.track !== topic.id) return false;
@@ -173,7 +173,7 @@ export function RoadmapBoard() {
             isVotable(openItem) ? (
               <RoadmapVote
                 item={openItem}
-                voted={mine.has(openItem.id)}
+                my={mine.get(openItem.id) ?? 0}
                 count={counts[openItem.id] ?? 0}
                 size="lg"
               />
@@ -227,7 +227,7 @@ function Column({
 }: {
   status: Status;
   items: RoadmapItem[];
-  mine: ReadonlySet<string>;
+  mine: ReadonlyMap<string, 1 | -1>;
   counts: Record<string, number>;
 }) {
   const t = useT();
@@ -253,7 +253,7 @@ function Column({
       <ul className="mt-3 flex flex-col gap-3">
         {shown.map((item) => (
           <li key={item.id}>
-            <Card item={item} voted={mine.has(item.id)} count={counts[item.id] ?? 0} />
+            <Card item={item} my={mine.get(item.id) ?? 0} count={counts[item.id] ?? 0} />
           </li>
         ))}
       </ul>
@@ -270,7 +270,7 @@ function Column({
   );
 }
 
-function Card({ item, voted, count }: { item: RoadmapItem; voted: boolean; count: number }) {
+function Card({ item, my, count }: { item: RoadmapItem; my: 0 | 1 | -1; count: number }) {
   const t = useT();
   // Готовому без версии подпись нужна не меньше, чем выпущенному: иначе
   // «готово» читается как «уже у вас», хотя выложено этого ещё не было.
@@ -286,7 +286,7 @@ function Card({ item, voted, count }: { item: RoadmapItem; voted: boolean; count
   return (
     <article className="r-window relative h-full border border-[var(--wh-line)] bg-[var(--wh-tile)] p-4 transition-shadow hover:shadow-sm">
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        {isVotable(item) && <RoadmapVote item={item} voted={voted} count={count} />}
+        {isVotable(item) && <RoadmapVote item={item} my={my} count={count} />}
         {note && <span className="ml-auto tabular-nums">{note}</span>}
       </div>
       <h4 className="mt-2 text-sm font-heading leading-snug">
