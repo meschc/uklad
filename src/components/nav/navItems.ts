@@ -96,6 +96,8 @@ const WAREHOUSE_NAV: NavEntry[] = [
     items: [
       { view: "spec", key: "nav.side.spec", icon: ClipboardCheck },
       { view: "staff", key: "nav.side.staff", icon: Users },
+      // Компьютеры и ТСД у столов: какой стоит где и кто за ним.
+      { view: "devices", key: "nav.side.devices", icon: MonitorSmartphone },
       { view: "operations", key: "nav.side.operations", icon: ListChecks },
       { view: "integrations", key: "nav.side.integrations", icon: Plug },
     ],

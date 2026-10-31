@@ -1,6 +1,7 @@
 import { nowMs, uid } from "../utils";
 import {
   DEFAULT_BREAK_POLICY,
+  MANAGER_ROLE,
   MARK_UNDO_MS,
   SESSION_TTL_MS,
   allowedMarks,
@@ -19,7 +20,7 @@ import {
   toteRemaining,
   unitLabelCode,
 } from "../packing";
-import type { PackSession, StaffEvent } from "../types";
+import type { Device, PackSession, StaffEvent } from "../types";
 import type { EditorState, SliceCreator, WorkstationSlice } from "./state";
 
 /**
@@ -44,21 +45,71 @@ function event(e: Omit<StaffEvent, "id">): StaffEvent {
   return { id: uid("sev"), ...e };
 }
 
+/** Устройство, к которому привязан этот браузер, если оно есть и не отключено. */
+export function boundDevice(s: Pick<EditorState, "devices" | "thisDeviceId">): Device | null {
+  const d = s.thisDeviceId ? s.devices.find((x) => x.id === s.thisDeviceId) : undefined;
+  return d && !d.revokedAt ? d : null;
+}
+
 export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get) => ({
   staffEvents: [],
   stationSession: null,
+  devices: [],
+  thisDeviceId: null,
+
+  addDevice: (name, station) => {
+    const device: Device = { id: uid("dev"), name: name.trim(), station, createdAt: nowMs() };
+    // Новое устройство сразу становится этим браузером: заводят его, сидя
+    // за тем самым компьютером. Вход, открытый в кабинете, закрываем — дальше
+    // за столом входят только по бейджу.
+    set((s) => ({
+      devices: [...s.devices, device],
+      thisDeviceId: device.id,
+      stationSession: null,
+    }));
+    return device;
+  },
+
+  revokeDevice: (id) =>
+    set((s) => ({
+      devices: s.devices.map((d) =>
+        d.id === id && !d.revokedAt ? { ...d, revokedAt: nowMs() } : d,
+      ),
+      // Отключили этот же браузер — вход на нём гаснет вместе с устройством.
+      ...(s.thisDeviceId === id ? { thisDeviceId: null, stationSession: null } : {}),
+    })),
+
+  unbindThisDevice: (managerBadge) => {
+    const staffId = parseBadge(managerBadge);
+    const member = staffId && (get().warehouse.staff ?? []).find((m) => m.id === staffId);
+    if (!member || !MANAGER_ROLE.test(member.role)) return false;
+    // Отвязанный стол перестаёт быть устройством склада и в списке остаётся
+    // отключённым: по нему ещё видно, где и когда он работал.
+    const id = get().thisDeviceId;
+    set((s) => ({
+      devices: s.devices.map((d) =>
+        d.id === id && !d.revokedAt ? { ...d, revokedAt: nowMs() } : d,
+      ),
+      thisDeviceId: null,
+      stationSession: null,
+    }));
+    return true;
+  },
 
   badgeLogin: (code, station) => {
     const staffId = parseBadge(code);
     const member = staffId && (get().warehouse.staff ?? []).find((m) => m.id === staffId);
     if (!member) return null;
     const now = nowMs();
+    const device = boundDevice(get());
     set({
       stationSession: {
         staffId: member.id,
-        station,
+        // На привязанном устройстве вид места задаёт оно, а не экран.
+        station: device?.station ?? station,
         startedAt: now,
         expiresAt: now + SESSION_TTL_MS,
+        ...(device ? { deviceId: device.id } : {}),
       },
     });
     return member.id;

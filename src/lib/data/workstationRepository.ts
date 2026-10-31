@@ -1,5 +1,5 @@
 import type { ItemScan } from "../packing";
-import type { IdleReason, ShiftMark, StaffEvent, WorkstationKind } from "../types";
+import type { Device, IdleReason, ShiftMark, StaffEvent, WorkstationKind } from "../types";
 import { isStaffEvent } from "./guards";
 import { readList, storePort, type StorePort } from "./repository";
 import { attempt, fail, ok, type Result } from "./result";
@@ -18,6 +18,14 @@ export interface WorkstationRepository {
   mark: (type: ShiftMark, reason?: IdleReason) => Promise<Result<void>>;
   /** Отменить случайную отметку в первые секунды. */
   undoMark: () => Promise<Result<void>>;
+  /**
+   * Завести устройство и привязать к нему этот браузер. Пустое имя — отказ
+   * `ws.device.nameEmpty`: на экране «Устройства» столы различают по имени.
+   */
+  addDevice: (name: string, station: WorkstationKind) => Promise<Result<Device>>;
+  revokeDevice: (id: string) => Promise<Result<void>>;
+  /** Отвязать этот браузер бейджем руководителя. Чужой бейдж — `ws.device.notManager`. */
+  unbindDevice: (managerBadge: string) => Promise<Result<void>>;
   /** Начать тару: скан тары с товаром и короба отгрузки. */
   packStart: (sourceCode: string, targetCode: string) => Promise<Result<void>>;
   packItem: (code: string) => Promise<Result<ItemScan>>;
@@ -48,6 +56,16 @@ export function createWorkstationRepository(port: StorePort = storePort): Workst
       const res = await attempt(() => port.get().undoShiftMark());
       if (!res.ok) return res;
       return res.data ? ok(undefined) : fail("ws.markRejected");
+    },
+    addDevice: async (name, station) => {
+      if (!name.trim()) return fail("ws.device.nameEmpty");
+      return attempt(() => port.get().addDevice(name, station));
+    },
+    revokeDevice: (id) => attempt(() => port.get().revokeDevice(id)),
+    unbindDevice: async (code) => {
+      const res = await attempt(() => port.get().unbindThisDevice(code));
+      if (!res.ok) return res;
+      return res.data ? ok(undefined) : fail("ws.device.notManager");
     },
     packStart: async (source, target) => {
       const res = await attempt(() => port.get().packStart(source, target));

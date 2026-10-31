@@ -33,7 +33,8 @@ export type AppView =
   | "spec"
   | "seller"
   | "chat"
-  | "workstation";
+  | "workstation"
+  | "devices";
 
 /**
  * Аккаунт (ТЗ, разд. 3.2): личный или компании. От типа зависит, что
