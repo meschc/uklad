@@ -13,6 +13,7 @@ import {
   type ItemScan,
 } from "@/lib/packing";
 import type { PackSession } from "@/lib/types";
+import { DEMO_BADGES } from "@/lib/workstation";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -117,6 +118,22 @@ export function PackRun({
           actionLabel={t(label ? "ws.act.confirm" : "ws.act.pack")}
           onSubmit={(c) => void onScan(c)}
         />
+
+        {DEMO_BADGES && (
+          <DemoCodes
+            codes={
+              closing
+                ? [{ code: session.targetCode, hint: t("ws.demo.target") }]
+                : label
+                  ? [{ code: label, hint: t("ws.demo.label") }]
+                  : [...remaining.keys()].map((id) => ({
+                      code: products.find((p) => p.id === id)?.barcode ?? id,
+                      hint: nameOf(id),
+                    }))
+            }
+            onScan={(c) => void onScan(c)}
+          />
+        )}
 
         {feedback?.key.startsWith("ws.run.not_in_tote") && (
           <div
@@ -406,6 +423,40 @@ function LastItem({
         ) : (
           <p className="text-sm text-muted-foreground">{t("ws.run.lastNone")}</p>
         ))}
+    </div>
+  );
+}
+
+/**
+ * Демо-коды: сканера под рукой нет — клик по коду делает то же, что скан.
+ * Показывает ровно то, что сейчас ждёт стол: товар из тары, напечатанную
+ * этикетку или короб отгрузки при закрытии. На сервере плашки нет.
+ */
+function DemoCodes({
+  codes,
+  onScan,
+}: {
+  codes: { code: string; hint: string }[];
+  onScan: (code: string) => void;
+}) {
+  const t = useT();
+  if (codes.length === 0) return null;
+  return (
+    <div className="flex flex-col gap-2 rounded-xl border border-dashed border-border p-3">
+      <p className="text-xs text-muted-foreground">
+        <span className="font-semibold text-foreground">{t("ws.demo.title")}</span> ·{" "}
+        {t("ws.demo.hint")}
+      </p>
+      <ul className="flex flex-wrap gap-2">
+        {codes.slice(0, 8).map(({ code, hint }) => (
+          <li key={code}>
+            <Button variant="outline" size="sm" onClick={() => onScan(code)} title={hint}>
+              <span className="font-mono">{code}</span>
+              <span className="max-w-40 truncate text-muted-foreground">{hint}</span>
+            </Button>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
