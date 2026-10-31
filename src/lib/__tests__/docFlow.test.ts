@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { create, type StateCreator } from "zustand";
 import { createDocsSlice } from "../store/docs.slice";
 import type { DocsSlice, EditorState } from "../store/state";
+import { isDocRecord } from "../data/guards";
 import { discrepancyDoc, docEntries, resolveDoc, type DocSources } from "../docFlow";
 import type { ExpectedShipment, FulfillmentRequest, Product, Shipment, Warehouse } from "../types";
 
@@ -103,5 +104,21 @@ describe("документы из операций", () => {
     const changed = { ...src, requests: [{ ...req, pickedQty: 1 }] };
     const doc = resolveDoc("shipment", "tr1", changed, s().docRecords[0])!;
     expect(doc.lines[0].fact).toBe(3);
+  });
+
+  it("подтверждённый документ без снимка и автора не проходит проверку формы", () => {
+    const base = { id: "d1", kind: "shipment", sourceId: "tr1", edits: {}, updatedAt: 1 };
+    expect(isDocRecord({ ...base, status: "draft" })).toBe(true);
+    expect(isDocRecord({ ...base, status: "confirmed" })).toBe(false);
+    expect(isDocRecord({ ...base, status: "signed" })).toBe(false);
+    expect(
+      isDocRecord({
+        ...base,
+        status: "confirmed",
+        confirmedBy: "s2",
+        confirmedAt: 2,
+        snapshot: { lines: [] },
+      }),
+    ).toBe(true);
   });
 });
