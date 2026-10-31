@@ -50,6 +50,12 @@ find "$BACKUP_DIR" -maxdepth 1 -name 'uklad-*.db.gz*' -mtime +"$BACKUP_KEEP_DAYS
 # pg_dump внутри контейнера db: снимок целостный, писать в базу он не мешает.
 # Нет сервиса db (кабинет ещё не включён) — пропускаем.
 if docker compose ps --status running --services 2>/dev/null | grep -qx db; then
+  # В копии кабинета — почты, имена и хэши паролей всех компаний. На другую
+  # машину она уходит только зашифрованной.
+  if [ -n "${BACKUP_REMOTE:-}" ] && [ -z "${BACKUP_AGE_RECIPIENT:-}" ]; then
+    echo "Копия кабинета не отправлена: задан BACKUP_REMOTE, но нет BACKUP_AGE_RECIPIENT" >&2
+    exit 1
+  fi
   # Сначала в файл, потом gzip: в конвейере `pg_dump | gzip` сбой дампа
   # потерялся бы, и в копиях лежал бы обрезанный файл.
   PG_FILE="$BACKUP_DIR/uklad-pg-$STAMP.sql"
