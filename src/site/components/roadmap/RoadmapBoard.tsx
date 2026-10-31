@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check, ChevronUp, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   ORIGIN_LABELS,
@@ -14,11 +14,12 @@ import {
 } from "../../data/roadmap";
 import { ROADMAP_ITEMS } from "../../data/roadmapItems";
 import { groupByStatus, quarterLabel } from "../../lib/roadmapStats";
-import { MAX_VOTES, isVotable, toggleVote, useVotes } from "../../lib/roadmapVotes";
+import { useRoadmap } from "../../lib/roadmap/store";
+import { RoadmapVote } from "./RoadmapVote";
 import { c, useT } from "../../lib/copy";
 import { Reveal } from "../Reveal";
 import { RoadmapIdea } from "./RoadmapIdea";
-import { ORIGIN_TONE, STATUS_TONE, TRACK_TONE } from "./roadmapColors";
+import { ORIGIN_TONE, STATUS_TONE, TRACK_TONE, TRACK_COLORS, ORIGIN_COLORS } from "./roadmapColors";
 
 const T = {
   all: c("Все идеи", "All ideas"),
@@ -32,30 +33,26 @@ const T = {
   unreleased: c("Ждёт выпуска", "Awaiting release"),
 
   showAll: c("Показать всё готовое: {count}", "Show everything done: {count}"),
-  vote: c("Голос", "Vote"),
-  voteFor: c("Голос за «{title}»", "Vote for “{title}”"),
-  votedFor: c("Отмечено: «{title}». Нажмите, чтобы снять", "Marked: “{title}”. Click to unmark"),
-  voteFull: c(
-    "Отмечено {max} пунктов. Снимите лишнее, чтобы отметить это",
-    "{max} items marked. Unmark something to mark this one",
-  ),
-  marked: c("Отмечено {count} из {max}.", "{count} of {max} marked."),
-  markedSend: c("Отправить голоса", "Send the votes"),
-  markedNote: c(
-    "Отметки хранятся в этом браузере и дойдут до нас с формой внизу.",
-    "The marks live in this browser and reach us with the form below.",
-  ),
+  mine: c("Мои голоса", "My votes"),
 };
 
 /** Сколько готовых пунктов видно, пока колонка свёрнута. */
 const DONE_PREVIEW = 6;
 
 /** Тема в отборе: направление работы или источник пункта. */
-type Topic = { kind: "track"; id: Track } | { kind: "origin"; id: Origin };
+type Topic =
+  { kind: "track"; id: Track } | { kind: "origin"; id: Origin } | { kind: "mine"; id: "mine" };
 
 const sameTopic = (a: Topic | null, b: Topic | null) => a?.kind === b?.kind && a?.id === b?.id;
 
-function matches(item: RoadmapItem, topic: Topic | null, query: string, title: string) {
+function matches(
+  item: RoadmapItem,
+  topic: Topic | null,
+  query: string,
+  title: string,
+  mine: ReadonlySet<string>,
+) {
+  if (topic?.kind === "mine" && !mine.has(item.id)) return false;
   if (topic?.kind === "track" && item.track !== topic.id) return false;
   if (topic?.kind === "origin" && item.origin !== topic.id) return false;
   return query === "" || title.toLowerCase().includes(query);
@@ -75,10 +72,13 @@ function matches(item: RoadmapItem, topic: Topic | null, query: string, title: s
 export function RoadmapBoard() {
   const t = useT();
   const [topic, setTopic] = useState<Topic | null>(null);
+  // Голоса читаются один раз на всю доску и раздаются карточкам готовым
+  // ответом, а не подпиской в каждой из полусотни карточек.
+  const { mine, counts, session } = useRoadmap();
   const [query, setQuery] = useState("");
   const q = query.trim().toLowerCase();
   const visible = ROADMAP_ITEMS.filter((item) =>
-    matches(item, topic, q, `${t(item.title)} ${t(item.summary)}`),
+    matches(item, topic, q, `${t(item.title)} ${t(item.summary)}`, mine),
   );
   const groups = groupByStatus(visible);
 
@@ -107,13 +107,10 @@ export function RoadmapBoard() {
     setOpenId(null);
   };
 
-  // Отметки читаются один раз на всю доску и раздаются карточкам готовым
-  // ответом, а не подпиской в каждой из полусотни карточек.
-  const votes = useVotes();
-  const marked = new Set(votes);
-  const full = votes.length >= MAX_VOTES;
-
   const topics: Topic[] = [
+    // «Мои голоса» — первой темой, как только есть за что: вошедший человек
+    // чаще всего возвращается посмотреть, сдвинулось ли то, за что он голосовал.
+    ...(session && mine.size > 0 ? [{ kind: "mine" as const, id: "mine" as const }] : []),
     ...(Object.keys(ORIGIN_LABELS) as Origin[])
       .filter((id) => ROADMAP_ITEMS.some((item) => item.origin === id))
       .map((id) => ({ kind: "origin" as const, id })),
@@ -130,7 +127,13 @@ export function RoadmapBoard() {
           {topics.map((item) => (
             <TopicChip
               key={`${item.kind}-${item.id}`}
-              tone={item.kind === "track" ? TRACK_TONE[item.id] : ORIGIN_TONE[item.id]}
+              color={
+                item.kind === "track"
+                  ? TRACK_COLORS[item.id]
+                  : item.kind === "origin"
+                    ? ORIGIN_COLORS[item.id]
+                    : TRACK_COLORS.plan
+              }
               label={t(topicLabel(item))}
               on={sameTopic(topic, item)}
               onClick={() => setTopic(sameTopic(topic, item) ? null : item)}
@@ -153,7 +156,7 @@ export function RoadmapBoard() {
       <div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
         {STATUS_ORDER.map((status, index) => (
           <Reveal key={status} delay={index * 70} as="section">
-            <Column status={status} items={groups[status]} marked={marked} full={full} />
+            <Column status={status} items={groups[status]} mine={mine} counts={counts} />
           </Reveal>
         ))}
       </div>
@@ -168,31 +171,22 @@ export function RoadmapBoard() {
           onClose={close}
           vote={
             isVotable(openItem) ? (
-              <VoteButton item={openItem} voted={marked.has(openItem.id)} full={full} />
+              <RoadmapVote
+                item={openItem}
+                voted={mine.has(openItem.id)}
+                count={counts[openItem.id] ?? 0}
+                size="lg"
+              />
             ) : null
           }
         />
-      )}
-
-      {votes.length > 0 && (
-        <p className="mt-8 text-center text-sm leading-relaxed text-muted-foreground">
-          <span className="tabular-nums">
-            {t(T.marked, { count: votes.length, max: MAX_VOTES })}
-          </span>{" "}
-          {t(T.markedNote)}{" "}
-          <a
-            href="#ideas"
-            className="font-medium text-[var(--wh-blue)] underline-offset-4 hover:underline"
-          >
-            {t(T.markedSend)}
-          </a>
-        </p>
       )}
     </section>
   );
 }
 
 function topicLabel(topic: Topic) {
+  if (topic.kind === "mine") return T.mine;
   return topic.kind === "track" ? TRACK_LABELS[topic.id] : ORIGIN_LABELS[topic.id];
 }
 
@@ -200,13 +194,13 @@ function TopicChip({
   label,
   on,
   onClick,
-  tone,
+  color,
 }: {
   label: string;
   on: boolean;
   onClick: () => void;
-  /** Цвет темы — тот же, что у тега на карточке. */
-  tone?: string;
+  /** Цвет темы — тот же, что у тега на карточке; выбранный залит им же. */
+  color?: { dot: string; fill: string; hover: string };
 }) {
   return (
     <button
@@ -214,12 +208,13 @@ function TopicChip({
       onClick={onClick}
       aria-pressed={on}
       className={cn(
-        "inline-flex h-8 items-center rounded-full px-3 text-sm font-medium transition-colors",
+        "inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-sm font-medium transition-colors",
         on
-          ? "bg-[var(--wh-ink)] text-[var(--wh-ground)]"
-          : cn(tone ?? "text-[var(--wh-ink)]", "hover:bg-[var(--wh-soft)]"),
+          ? (color?.fill ?? "bg-[var(--wh-ink)] text-[var(--wh-ground)]")
+          : cn("text-[var(--wh-ink)]", color?.hover ?? "hover:bg-[var(--wh-soft)]"),
       )}
     >
+      {color && !on && <span aria-hidden className={cn("size-2 rounded-full", color.dot)} />}
       {label}
     </button>
   );
@@ -228,13 +223,13 @@ function TopicChip({
 function Column({
   status,
   items,
-  marked,
-  full,
+  mine,
+  counts,
 }: {
   status: Status;
   items: RoadmapItem[];
-  marked: ReadonlySet<string>;
-  full: boolean;
+  mine: ReadonlySet<string>;
+  counts: Record<string, number>;
 }) {
   const t = useT();
   // Готового много и становится всё больше: колонка показывает последнее, а
@@ -259,7 +254,7 @@ function Column({
       <ul className="mt-3 flex flex-col gap-3">
         {shown.map((item) => (
           <li key={item.id}>
-            <Card item={item} voted={marked.has(item.id)} full={full} />
+            <Card item={item} voted={mine.has(item.id)} count={counts[item.id] ?? 0} />
           </li>
         ))}
       </ul>
@@ -276,7 +271,7 @@ function Column({
   );
 }
 
-function Card({ item, voted, full }: { item: RoadmapItem; voted: boolean; full: boolean }) {
+function Card({ item, voted, count }: { item: RoadmapItem; voted: boolean; count: number }) {
   const t = useT();
   // Готовому без версии подпись нужна не меньше, чем выпущенному: иначе
   // «готово» читается как «уже у вас», хотя выложено этого ещё не было.
@@ -290,9 +285,9 @@ function Card({ item, voted, full }: { item: RoadmapItem; voted: boolean; full: 
         : null;
 
   return (
-    <article className="r-window relative h-full border border-[var(--wh-line)] bg-[var(--wh-tile)] p-4 transition-shadow hover:shadow-sm">
+    <article className="r-window relative h-full border border-[var(--wh-line)] bg-[var(--wh-tile)] p-4 transition-colors hover:border-[var(--wh-blue)]">
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        {isVotable(item) && <VoteButton item={item} voted={voted} full={full} />}
+        {isVotable(item) && <RoadmapVote item={item} voted={voted} count={count} />}
         {note && <span className="ml-auto tabular-nums">{note}</span>}
       </div>
       <h4 className="mt-2 text-sm font-heading leading-snug">
@@ -308,7 +303,7 @@ function Card({ item, voted, full }: { item: RoadmapItem; voted: boolean; full: 
       <p className="mt-1.5 line-clamp-3 text-sm leading-relaxed text-muted-foreground">
         {t(item.summary)}
       </p>
-      <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs font-medium">
+      <div className="mt-3 flex flex-wrap gap-1.5">
         <span className={TRACK_TONE[item.track]}>{t(TRACK_LABELS[item.track])}</span>
         {item.origin && (
           <span className={ORIGIN_TONE[item.origin]}>{t(ORIGIN_LABELS[item.origin])}</span>
@@ -318,33 +313,7 @@ function Card({ item, voted, full }: { item: RoadmapItem; voted: boolean; full: 
   );
 }
 
-/**
- * Голос — стрелка вверх, как у taptop, но без общего числа: сложить голоса
- * всех посетителей негде, а нарисованная цифра выглядела бы как настоящая
- * (см. `lib/roadmapVotes`). Название пункта уходит в `aria-label` целиком.
- */
-function VoteButton({ item, voted, full }: { item: RoadmapItem; voted: boolean; full: boolean }) {
-  const t = useT();
-  const title = t(item.title);
-  const blocked = full && !voted;
-
-  return (
-    <button
-      type="button"
-      onClick={() => toggleVote(item.id)}
-      disabled={blocked}
-      aria-pressed={voted}
-      aria-label={t(voted ? T.votedFor : T.voteFor, { title })}
-      title={blocked ? t(T.voteFull, { max: MAX_VOTES }) : undefined}
-      className={cn(
-        "r-chip relative z-10 inline-flex h-8 shrink-0 items-center gap-1 px-2.5 text-xs font-medium transition-colors",
-        voted
-          ? "bg-[var(--wh-blue)] text-[var(--wh-on-blue)]"
-          : "bg-[var(--wh-soft)] text-foreground enabled:hover:text-[var(--wh-blue)] disabled:opacity-40",
-      )}
-    >
-      {voted ? <Check className="size-3.5" strokeWidth={3} /> : <ChevronUp className="size-3.5" />}
-      {t(T.vote)}
-    </button>
-  );
+/** За готовое не голосуют: оно уже работает, и голос ничего не сдвинет. */
+function isVotable(item: RoadmapItem): boolean {
+  return item.status !== "done";
 }

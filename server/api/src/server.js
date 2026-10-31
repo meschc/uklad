@@ -365,7 +365,7 @@ function main() {
     pool = new pg.Pool({ connectionString: process.env.DATABASE_URL, max: 10 });
     // Обрыв простаивающего соединения не должен ронять процесс.
     pool.on("error", (e) => console.error("[uklad] база:", e.message));
-    const auth = createAuth({ pool, cfg, send, readBody, log: console });
+    const auth = createAuth({ pool, cfg, send, readBody, log: console, mail });
     auth.purge();
     setInterval(auth.purge, DAY_MS).unref();
     // Чат: без CENTRIFUGO_* работает, только кабинет сам перечитывает ленту.

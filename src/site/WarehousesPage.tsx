@@ -4,7 +4,7 @@ import { FinalConnect } from "./components/warehouses/FinalConnect";
 import { HeroScreens } from "./components/warehouses/HeroScreens";
 import { Inside } from "./components/warehouses/Inside";
 import { Offer } from "./components/warehouses/Offer";
-import { StickyNav } from "./components/warehouses/StickyNav";
+import { SiteBar } from "./components/frame/SiteNav";
 import { Questions } from "./components/warehouses/Questions";
 import { Tariffs } from "./components/warehouses/Tariffs";
 import { WarehousesFooter } from "./components/warehouses/WarehousesFooter";
@@ -22,7 +22,7 @@ import { WarehousesFooter } from "./components/warehouses/WarehousesFooter";
 export function WarehousesPage() {
   return (
     <div className="wh">
-      <StickyNav />
+      <SiteBar route={{ page: "warehouses" }} overBlue />
       <main>
         <HeroScreens />
         <Familiar />

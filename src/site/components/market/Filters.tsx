@@ -3,7 +3,7 @@ import { BadgeCheck, RotateCcw, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { BrandMark } from "../BrandMark";
-import { LogoMark } from "../Logo";
+import { UkladIcon } from "@/components/brand/UkladLogo";
 import { CITIES } from "../../data/cities";
 import { MARKETPLACES, SCHEMES, SERVICES } from "../../data/marketplaces";
 import {
@@ -165,7 +165,7 @@ export function Filters({
             {t(T.verified)}
           </Switch>
           <Switch on={value.ukladOnly} onClick={() => set({ ukladOnly: !value.ukladOnly })}>
-            <LogoMark className="size-4" />
+            <UkladIcon className="h-4" />
             {t(T.withAccount)}
           </Switch>
         </div>

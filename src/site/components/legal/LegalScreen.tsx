@@ -1,5 +1,18 @@
 import { useState } from "react";
-import { ArrowLeft, Download, FileText, Languages } from "lucide-react";
+import {
+  ArrowLeft,
+  BadgeCheck,
+  Cookie,
+  Download,
+  FileSignature,
+  FileText,
+  Handshake,
+  Languages,
+  ListOrdered,
+  ShieldCheck,
+  UserCheck,
+  type LucideIcon,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LEGAL_BY_SLUG, LEGAL_DOCS } from "../../data/legal";
 import type { LegalDoc } from "../../data/legal/types";
@@ -23,7 +36,25 @@ import { DocSearch } from "./DocSearch";
 /** Подпись под документом. Одноязычна намеренно — см. место применения. */
 const VERSION_LINE = "Редакция от {date}.";
 
+/** Своя иконка у каждого документа (Кирилл 26 окт: одинаковые сливались). */
+const ICONS: Record<string, LucideIcon> = {
+  requisites: BadgeCheck,
+  terms: Handshake,
+  offer: FileSignature,
+  privacy: ShieldCheck,
+  consent: UserCheck,
+  cookies: Cookie,
+  recommendations: ListOrdered,
+};
+
 const T = {
+  editions: c("Редакции", "Versions"),
+  current: c("Действующая — от {date}", "Current — {date}"),
+  past: c("от {date}", "{date}"),
+  noPast: c(
+    "Это первая редакция. Когда текст изменится, прежний останется здесь целиком — с датой и тем, что поменялось.",
+    "This is the first version. When the text changes, the previous one will stay here in full, with its date and what changed.",
+  ),
   notFoundCaption: c("Ошибка 404", "Error 404"),
   notFoundTitle: c("Такого документа нет", "No such document"),
   notFoundBody: c(
@@ -105,7 +136,7 @@ function LegalDocView({ doc }: { doc: LegalDoc }) {
         title={<span lang="ru">{doc.title}</span>}
         lead={<span lang="ru">{doc.lead}</span>}
       />
-      <div data-print="page" className="mx-auto max-w-[1100px] px-5 pb-24 pt-10 sm:px-10">
+      <div data-print="page" className="mx-auto max-w-[1280px] px-5 pb-24 pt-10 sm:px-10">
         <div data-print="hide" className="flex flex-wrap items-center justify-end gap-3">
           {/*
            * PDF-версия документа собирается печатью браузера, а не лежит файлом.
@@ -171,9 +202,11 @@ function LegalDocView({ doc }: { doc: LegalDoc }) {
 
             <div className="mt-10 flex flex-col gap-10">
               {doc.sections.map((s) => (
-                <DocSection key={s.id} section={s} query={hits.query} />
+                <DocSection key={s.id} section={s} query={hits.query} self={`/legal/${doc.slug}`} />
               ))}
             </div>
+
+            <Editions doc={doc} />
           </article>
 
           {/* Оглавление липкое и только на широком экране: на телефоне оно
@@ -232,9 +265,9 @@ function LegalIndex() {
               key={doc.slug}
               lang="ru"
               href={href(`/legal/${doc.slug}`)}
-              className="group flex h-full flex-col rounded-[22px] bg-[var(--wh-soft)] p-6 text-left transition-[transform,background-color] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1 hover:bg-[var(--wh-line)] sm:p-7"
+              className="group flex h-full flex-col rounded-[22px] bg-[var(--wh-soft)] p-6 text-left transition-colors duration-200 hover:bg-[var(--wh-line)] sm:p-7"
             >
-              <FileText className="size-5 text-[var(--wh-blue)]" />
+              <DocIcon slug={doc.slug} />
               <h2 className="mt-5 font-display text-base font-heading leading-snug tracking-tight">
                 {doc.title}
               </h2>
@@ -247,5 +280,45 @@ function LegalIndex() {
         </div>
       </div>
     </>
+  );
+}
+
+function DocIcon({ slug }: { slug: string }) {
+  const Icon = ICONS[slug] ?? FileText;
+  return <Icon className="size-5 text-[var(--wh-blue)]" />;
+}
+
+/**
+ * Архив редакций под документом. Прошлые тексты раскрываются на месте, а не
+ * в окне: их читают, сверяя с действующим, и прокрутка назад должна работать.
+ */
+function Editions({ doc }: { doc: LegalDoc }) {
+  const t = useT();
+  const past = doc.editions ?? [];
+
+  return (
+    <aside data-print="hide" className="mt-16 rounded-[22px] bg-[var(--wh-soft)] p-6 sm:p-7">
+      <h2 className="text-[22px] font-medium tracking-tight">{t(T.editions)}</h2>
+      <p className="mt-4 text-sm font-medium">{t(T.current, { date: t(LEGAL_UPDATED) })}</p>
+      {past.length === 0 ? (
+        <p className="mt-2 text-sm leading-relaxed text-[var(--wh-muted)]">{t(T.noPast)}</p>
+      ) : (
+        <div className="mt-4 flex flex-col gap-2">
+          {past.map((e) => (
+            <details key={e.date} className="group rounded-2xl bg-[var(--wh-ground)] px-5 py-4">
+              <summary className="cursor-pointer list-none text-sm">
+                <span className="font-medium">{t(T.past, { date: e.date })}</span>
+                <span className="text-[var(--wh-muted)]"> · {e.changes}</span>
+              </summary>
+              <div className="mt-6 flex flex-col gap-10">
+                {e.sections.map((s) => (
+                  <DocSection key={s.id} section={s} />
+                ))}
+              </div>
+            </details>
+          ))}
+        </div>
+      )}
+    </aside>
   );
 }

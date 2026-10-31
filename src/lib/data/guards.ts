@@ -7,6 +7,7 @@ import type {
   Pallet,
   Product,
   ReceivingEvent,
+  Device,
   StaffEvent,
   StaffMember,
   WarehouseTask,
@@ -65,6 +66,9 @@ export const isReceivingEvent: Guard<ReceivingEvent> = (v): v is ReceivingEvent 
 export const isRequest: Guard<FulfillmentRequest> = (v): v is FulfillmentRequest =>
   hasId(v) && isStr(v.productId) && isNum(v.qty) && isStr(v.status);
 
+/** Устройство склада: имя, вид места и дата привязки. */
+export const isDevice: Guard<Device> = (v): v is Device =>
+  hasId(v) && isStr(v.name) && isStr(v.station) && isNum(v.createdAt);
 export const isStaffEvent: Guard<StaffEvent> = (v): v is StaffEvent =>
   hasId(v) && isStr(v.staffId) && isStr(v.type) && isNum(v.at);
 /** Задание на операцию: вид, объём, статус и дата заведения. */

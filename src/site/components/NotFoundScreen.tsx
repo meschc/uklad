@@ -3,6 +3,7 @@ import { ArrowRight, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { href } from "../lib/route";
 import { c, useT } from "../lib/copy";
+import { AddressBar } from "./AddressBar";
 
 /**
  * «Ничего не нашлось» — одним экраном на все случаи витрины.
@@ -28,8 +29,8 @@ interface Props {
 }
 
 const T = {
-  browse: c("Смотреть склады", "Browse warehouses"),
-  home: c("На главную", "Home"),
+  browse: c("На главную", "Home page"),
+  home: c("Написать нам", "Contact us"),
   empty: c("пусто", "empty"),
   rack: c("Стеллаж, в котором пуста ячейка 4-0-4", "A rack with cell 4-0-4 empty"),
 };
@@ -48,11 +49,14 @@ const SHELVES: Cell[][] = [
 
 export function NotFoundScreen({ caption, title, children, action }: Props) {
   const t = useT();
-  const primary = action ?? { label: t(T.browse), to: "/market" };
+  const primary = action ?? { label: t(T.browse), to: "/" };
 
   return (
     <div className="wh">
-      <div className="mx-auto grid max-w-[1280px] items-center gap-12 px-5 pb-24 pt-14 sm:px-10 sm:pt-20 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-20">
+      <div className="mx-auto max-w-[1280px] px-5 pt-10 sm:px-10 sm:pt-14">
+        <AddressBar />
+      </div>
+      <div className="mx-auto grid max-w-[1280px] items-center gap-12 px-5 pb-24 pt-10 sm:px-10 sm:pt-14 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-20">
         <Rack label={t(T.rack)} empty={t(T.empty)} />
 
         <div className="wh-swap">
@@ -69,7 +73,7 @@ export function NotFoundScreen({ caption, title, children, action }: Props) {
               {primary.label}
               <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
             </a>
-            <a href={href("/")} className="wh-btn wh-btn--soft">
+            <a href={href("/contacts")} className="wh-btn wh-btn--soft">
               {t(T.home)}
             </a>
           </div>

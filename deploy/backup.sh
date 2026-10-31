@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
-# Резервная копия базы заявок: снимок SQLite → gzip → (по желанию) на другую
-# машину. Запускается cron'ом раз в сутки, см. README.md, шаг «Бэкапы».
+# Резервные копии: база заявок (SQLite) и база кабинета (Postgres) → gzip →
+# (по желанию) шифрование и другая машина. Запускается cron'ом раз в сутки, см. README.md, шаг «Бэкапы».
 #
 # Снимок делается через `VACUUM INTO`, а не копированием файла: база в режиме
 # WAL, и простой `cp` во время записи может унести половину транзакции.
@@ -45,3 +45,32 @@ fi
 
 # Старые копии — только свои, по имени, и только в папке копий.
 find "$BACKUP_DIR" -maxdepth 1 -name 'uklad-*.db.gz*' -mtime +"$BACKUP_KEEP_DAYS" -delete
+
+# --- База кабинета (Postgres) ---
+# pg_dump внутри контейнера db: снимок целостный, писать в базу он не мешает.
+# Нет сервиса db (кабинет ещё не включён) — пропускаем.
+if docker compose ps --status running --services 2>/dev/null | grep -qx db; then
+  # В копии кабинета — почты, имена и хэши паролей всех компаний. На другую
+  # машину она уходит только зашифрованной.
+  if [ -n "${BACKUP_REMOTE:-}" ] && [ -z "${BACKUP_AGE_RECIPIENT:-}" ]; then
+    echo "Копия кабинета не отправлена: задан BACKUP_REMOTE, но нет BACKUP_AGE_RECIPIENT" >&2
+    exit 1
+  fi
+  # Сначала в файл, потом gzip: в конвейере `pg_dump | gzip` сбой дампа
+  # потерялся бы, и в копиях лежал бы обрезанный файл.
+  PG_FILE="$BACKUP_DIR/uklad-pg-$STAMP.sql"
+  docker compose exec -T db pg_dump -U postgres uklad > "$PG_FILE"
+  gzip -9 "$PG_FILE"
+  PG_FILE="$PG_FILE.gz"
+  if [ -n "${BACKUP_AGE_RECIPIENT:-}" ]; then
+    age -r "$BACKUP_AGE_RECIPIENT" -o "$PG_FILE.age" "$PG_FILE"
+    rm -f "$PG_FILE"
+    PG_FILE="$PG_FILE.age"
+  fi
+  chmod 600 "$PG_FILE"
+  echo "Копия кабинета: $PG_FILE"
+  if [ -n "${BACKUP_REMOTE:-}" ]; then
+    rsync -a "$PG_FILE" "$BACKUP_REMOTE/"
+  fi
+  find "$BACKUP_DIR" -maxdepth 1 -name 'uklad-pg-*.sql.gz*' -mtime +"$BACKUP_KEEP_DAYS" -delete
+fi

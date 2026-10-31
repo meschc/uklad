@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { acceptCookies, expectNoOverflow, phrase, scrollTo } from "./helpers";
+import { acceptCookies, expectNoOverflow, scrollTo } from "./helpers";
 
 /**
  * Главная глазами склада, который пришёл первый раз. С 21 окт на главной
@@ -15,7 +15,7 @@ test.describe("Главная", () => {
   test("первый экран объясняет, что это", async ({ page }) => {
     await expect(page).toHaveTitle(/Уклад/);
     await expect(page.getByRole("heading", { level: 1 })).toContainText(
-      "систему управления складом",
+      "система управления складом",
     );
   });
 
@@ -25,13 +25,14 @@ test.describe("Главная", () => {
     }
   });
 
-  test("каталог складов открывается из подвала и с самого верха", async ({ page }) => {
+  test("из подвала можно перейти на другую страницу и попасть в её начало", async ({ page }) => {
+    // Каталог складов скрыт до запуска (26 окт): переход проверяем на «Контактах».
     const footer = page.getByRole("contentinfo");
     await footer.scrollIntoViewIfNeeded();
-    await footer.getByRole("link", { name: "Каталог складов" }).click();
+    await footer.getByRole("link", { name: "Контакты" }).click();
 
-    await expect(page).toHaveURL(/\/market\/$/);
-    await expect(page.getByRole("heading", { name: "Склады для фулфилмента" })).toBeVisible();
+    await expect(page).toHaveURL(/\/contacts\/$/);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Контакты");
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBeLessThan(50);
   });
 
@@ -45,11 +46,11 @@ test.describe("Главная", () => {
       )
       .toBeLessThan(200);
     await expect(page.getByRole("heading", { level: 1 })).toContainText(
-      "систему управления складом",
+      "система управления складом",
     );
   });
 
-  test("подвал раскрывает владельца сайта и природу данных", async ({ page }) => {
+  test("подвал раскрывает владельца сайта", async ({ page }) => {
     // По роли, а не по тегу: у карточек свои `<footer>`.
     const footer = page.getByRole("contentinfo");
     await footer.scrollIntoViewIfNeeded();
@@ -58,7 +59,6 @@ test.describe("Главная", () => {
     await expect(footer).toContainText(/ИНН \d{12}\b/);
     await expect(footer).toContainText("Самозанятый (плательщик НПД)");
     await expect(footer).not.toContainText("ОГРНИП");
-    await expect(footer).toContainText(phrase("остатки на витрине демонстрационные"));
   });
 
   test("страница не едет вбок", async ({ page }) => {

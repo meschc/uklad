@@ -2,6 +2,8 @@ import { Fragment } from "react";
 import { Info } from "lucide-react";
 import type { LegalBlock, LegalSection } from "../../data/legal/types";
 import { splitMatches } from "../../lib/legalSearch";
+import { splitLinks } from "../../lib/legalLinks";
+import { href } from "../../lib/route";
 
 /**
  * Текст с подсветкой найденного.
@@ -32,6 +34,31 @@ function Marked({ text, query }: { text: string; query: string }) {
 }
 
 /**
+ * Текст документа: ссылки на соседние документы плюс подсветка поиска внутри
+ * каждого куска. Совпадение, разрезанное краем ссылки, подсветится частями —
+ * это честнее, чем прятать ссылку на время поиска.
+ */
+function Rich({ text, query, self }: { text: string; query: string; self?: string }) {
+  return (
+    <>
+      {splitLinks(text, self).map((part, i) =>
+        part.to ? (
+          <a
+            key={i}
+            href={href(part.to)}
+            className="text-[var(--wh-blue)] underline decoration-[var(--wh-blue)]/30 underline-offset-[3px] transition-colors hover:decoration-[var(--wh-blue)]"
+          >
+            <Marked text={part.text} query={query} />
+          </a>
+        ) : (
+          <Marked key={i} text={part.text} query={query} />
+        ),
+      )}
+    </>
+  );
+}
+
+/**
  * Типографика правовых документов — в одном месте на все семь.
  *
  * Юридический текст читают не подряд, а поиском по странице: человек пришёл
@@ -43,12 +70,12 @@ function Marked({ text, query }: { text: string; query: string }) {
  * ищут». Он проходит через каждый вид блока без исключений: спрятать совпадение
  * в ячейке таблицы значит соврать счётчиком под полем поиска.
  */
-function Block({ block, query }: { block: LegalBlock; query: string }) {
+function Block({ block, query, self }: { block: LegalBlock; query: string; self?: string }) {
   switch (block.kind) {
     case "p":
       return (
         <p className="mt-4 leading-prose text-foreground/85">
-          <Marked text={block.text} query={query} />
+          <Rich text={block.text} query={query} self={self} />
         </p>
       );
 
@@ -61,7 +88,7 @@ function Block({ block, query }: { block: LegalBlock; query: string }) {
                   прилипает к первой строке и разъезжается на переносах. */}
               <span className="mt-[0.6em] size-1.5 shrink-0 rounded-full bg-primary/50" />
               <span>
-                <Marked text={item} query={query} />
+                <Rich text={item} query={query} self={self} />
               </span>
             </li>
           ))}
@@ -77,7 +104,7 @@ function Block({ block, query }: { block: LegalBlock; query: string }) {
                 {i + 1}
               </span>
               <span>
-                <Marked text={item} query={query} />
+                <Rich text={item} query={query} self={self} />
               </span>
             </li>
           ))}
@@ -89,7 +116,7 @@ function Block({ block, query }: { block: LegalBlock; query: string }) {
         <div className="r-inset mt-5 flex gap-3 border border-primary/25 bg-primary/[0.05] p-4">
           <Info className="mt-0.5 size-4 shrink-0 text-primary" />
           <p className="text-sm leading-prose text-foreground/85">
-            <Marked text={block.text} query={query} />
+            <Rich text={block.text} query={query} self={self} />
           </p>
         </div>
       );
@@ -127,7 +154,7 @@ function Block({ block, query }: { block: LegalBlock; query: string }) {
                           : "px-4 py-3 align-top leading-relaxed text-foreground/80"
                       }
                     >
-                      <Marked text={cell} query={query} />
+                      <Rich text={cell} query={query} self={self} />
                     </td>
                   ))}
                 </tr>
@@ -139,7 +166,16 @@ function Block({ block, query }: { block: LegalBlock; query: string }) {
   }
 }
 
-export function DocSection({ section, query = "" }: { section: LegalSection; query?: string }) {
+export function DocSection({
+  section,
+  query = "",
+  self,
+}: {
+  section: LegalSection;
+  query?: string;
+  /** Путь открытого документа — на себя он не ссылается. */
+  self?: string;
+}) {
   return (
     <section
       id={section.id}
@@ -149,7 +185,7 @@ export function DocSection({ section, query = "" }: { section: LegalSection; que
         <Marked text={section.title} query={query} />
       </h2>
       {section.blocks.map((block, i) => (
-        <Block key={i} block={block} query={query} />
+        <Block key={i} block={block} query={query} self={self} />
       ))}
     </section>
   );

@@ -69,12 +69,12 @@ export function CookieBar() {
       data-print="hide"
       className="fixed inset-x-3 bottom-3 z-[80] sm:inset-x-auto sm:bottom-5 sm:left-5 sm:w-[380px]"
     >
-      <div className="cookie-in flex flex-col gap-4 rounded-[20px] bg-white p-5 shadow-[0_18px_50px_-12px_rgba(16,24,40,0.25),0_0_0_1px_rgba(16,24,40,0.06)]">
+      <div className="wh cookie-in flex flex-col gap-4 rounded-[20px] bg-[var(--wh-tile)] p-5 shadow-[0_18px_50px_-12px_rgba(16,24,40,0.25),0_0_0_1px_rgba(16,24,40,0.06)] dark:shadow-[0_18px_50px_-12px_rgba(0,0,0,0.6),0_0_0_1px_rgba(255,255,255,0.08)]">
         <div className="flex items-start gap-3">
           <span className="cookie-bite grid size-10 shrink-0 place-items-center rounded-full bg-[hsl(var(--primary))] text-white">
             <Cookie className="size-5" />
           </span>
-          <p className="pt-0.5 text-[15px] leading-snug text-[#111]">
+          <p className="pt-0.5 text-[15px] leading-snug text-[var(--wh-ink)]">
             {t(T.text)}{" "}
             {/* Баннер остаётся на экране: человек ушёл читать политику именно
                 затем, чтобы решить, и кнопки выбора должны ждать его там же. */}
@@ -95,7 +95,7 @@ export function CookieBar() {
             size="sm"
             shape="pill"
             onClick={() => decide("necessary")}
-            className="flex-1 bg-[#FAFAFA] hover:bg-[#F0F0F0]"
+            className="flex-1 bg-[#FAFAFA] text-[var(--wh-ink)] hover:bg-[#F0F0F0] dark:bg-white/10 dark:hover:bg-white/15"
           >
             {t(T.necessary)}
           </Button>

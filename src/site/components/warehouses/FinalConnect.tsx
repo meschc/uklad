@@ -12,7 +12,7 @@ const T = {
     ru(`До ${OFFER.newFeatures} новых функций`),
   ],
   title: ru("Подключить склад"),
-  now: ru("Сейчас в Москве {time} · {status}"),
+  now: ru("В Москве {time} · {status}"),
   open: ru(`на связи до ${CHAT_HOURS.to}:00`),
   closed: ru(`ответим в рабочее время с ${CHAT_HOURS.from}:00`),
   label: ru("Заявка на подключение"),
@@ -23,7 +23,7 @@ const T = {
 
 const STEPS: { title: Copy; body: Copy }[] = [
   {
-    title: ru("Созвонимся"),
+    title: ru("Свяжемся"),
     body: ru("В рабочий день после заявки. Расскажете, как устроен склад."),
   },
   {

@@ -76,38 +76,48 @@ test.describe("Cookie и согласия", () => {
     expect(await choice(page)).toBe("all");
   });
 
-  test("форма контактов не отправится без согласия на обработку данных", async ({ page }) => {
+  test("форма контактов проверяет контакт и не уходит без согласия", async ({ page }) => {
+    // Приёмник заявок — наш сервер (`/api/leads`); в сборке для тестов его
+    // нет, поэтому отвечаем за него сами и смотрим, что ушло.
+    const sent: unknown[] = [];
+    await page.route("**/api/leads", async (route) => {
+      sent.push(route.request().postDataJSON());
+      await route.fulfill({ status: 200, json: { ok: true } });
+    });
     await page.goto("/contacts/");
     const form = page.locator("form");
     await form.scrollIntoViewIfNeeded();
 
     await form.getByPlaceholder("Имя").fill("Кирилл");
-    await form.getByPlaceholder("+7 900 000-00-00").fill("kirill@example.com");
+    const contact = form.getByPlaceholder("+7 900 000-00-00");
+    // Мусор вместо контакта не проходит (Кирилл 26 окт).
+    await contact.fill("799423щшоуаыфа");
     await form.locator("textarea").fill("1 200 SKU, Wildberries и Ozon, склад в Подмосковье");
+    await expect(form).toContainText(phrase("Нужен телефон"));
 
-    // Подпись кнопки — «Написать письмо»: пока приёмник заявок не настроен
-    // (`VITE_LEADS_ENDPOINT` пуст), форма не притворяется работающей, а честно
-    // открывает письмо. Если переменную однажды зададут, здесь будет
-    // «Отправить» — и тест на это и укажет, а не промолчит.
-    const send = form.getByRole("button", { name: "Написать письмо" });
-    await expect(send).toBeDisabled();
-    // Прямо об этом и написано под кнопкой — обещание должно совпадать с делом.
-    await expect(form).toContainText(
-      phrase("заранее проставленная галочка согласием не считается"),
-    );
+    // Телефон приводится к одному виду по ходу ввода.
+    await contact.fill("89001234567");
+    await expect(contact).toHaveValue("+7 900 123-45-67");
+    await expect(form.getByText(phrase("Нужен телефон"))).toHaveCount(0);
+
+    // Про почту и «отправьте сами» форма больше не говорит: заявка уходит на сервер.
+    await expect(form).not.toContainText("Кнопка откроет письмо");
+    const send = form.getByRole("button", { name: "Отправить" });
+
+    // Без согласия нажатие ничего не отправляет и прямо говорит, чего не хватает.
+    await send.click();
+    await expect(form.getByRole("alert")).toContainText(phrase("без него сообщение не отправится"));
 
     // Рекламная галочка ничего не разблокирует: согласия разные и раздельные.
     await form.getByRole("checkbox").nth(1).check();
-    await expect(send).toBeDisabled();
+    await send.click();
+    await expect(form.getByRole("alert")).toBeVisible();
+    expect(sent).toHaveLength(0);
 
     await form.getByRole("checkbox").first().check();
-    await expect(send).toBeEnabled();
-    // Что произойдёт по нажатию, написано до нажатия, а не после.
-    await expect(form).toContainText(phrase("Отправить его нужно самому"));
-
     await send.click();
-    await expect(form.getByRole("button", { name: "Письмо открыто" })).toBeVisible();
-    await expect(form).toContainText(phrase("Проверьте, что оно ушло"));
+    await expect(form.getByRole("button", { name: "Отправлено" })).toBeVisible();
+    expect(sent).toHaveLength(1);
   });
 
   test("ссылка в подписи к галочке ведёт в документ", async ({ page }) => {

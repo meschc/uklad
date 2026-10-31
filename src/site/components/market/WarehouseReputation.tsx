@@ -92,13 +92,11 @@ export function WarehouseReputation({ warehouse: w }: { warehouse: Warehouse }) 
   const nothing = reviews.length === 0 && complaints.length === 0;
 
   return (
-    <Block title={t(T.title)}>
-      <p className="text-xs leading-relaxed text-muted-foreground">{t(T.rule)}</p>
-
+    <Block title={t(T.title)} note={{ n: 3, body: t(T.rule) }}>
       {nothing ? (
-        <p className="mt-3 text-sm leading-relaxed">{t(T.empty)}</p>
+        <p className="text-[15px] leading-relaxed text-[var(--wh-muted)]">{t(T.empty)}</p>
       ) : (
-        <ul className="mt-4 flex flex-col gap-3">
+        <ul className="flex flex-col gap-3">
           {reviews.map((review) => (
             <li key={review.id}>
               <ReviewCard review={review} t={t} />
@@ -109,7 +107,7 @@ export function WarehouseReputation({ warehouse: w }: { warehouse: Warehouse }) 
 
       {complaints.length > 0 && (
         <>
-          <h3 className="mb-3 mt-7 text-xs font-heading uppercase tracking-wide text-muted-foreground">
+          <h3 className="mb-4 mt-10 text-[17px] font-medium tracking-[-0.01em]">
             {t(T.complaintsTitle)}
           </h3>
           {w.reputation.demoted && (
@@ -128,8 +126,8 @@ export function WarehouseReputation({ warehouse: w }: { warehouse: Warehouse }) 
         </>
       )}
 
-      <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
-        <span className="font-medium text-foreground">{t(T.howTitle)}. </span>
+      <p className="mt-5 text-sm leading-relaxed text-[var(--wh-muted)]">
+        <span className="font-medium text-[var(--wh-ink)]">{t(T.howTitle)}. </span>
         {t(T.how, { n: COMPLAINT_ANSWER_DAYS })}
       </p>
 
@@ -141,7 +139,7 @@ export function WarehouseReputation({ warehouse: w }: { warehouse: Warehouse }) 
 /** Отзыв: оценка, дата, автор — и текст, ради которого его открывают. */
 function ReviewCard({ review, t }: { review: Review; t: TFunc }) {
   return (
-    <article className="r-inset border border-border p-4">
+    <article className="rounded-[22px] bg-[var(--wh-soft)] p-6">
       <header className="flex items-center justify-between gap-3">
         <span
           className="flex items-center gap-0.5"
@@ -162,7 +160,7 @@ function ReviewCard({ review, t }: { review: Review; t: TFunc }) {
           {t(T.seller, { id: review.authorId })} · {shortDate(t.lang, review.createdAt)}
         </span>
       </header>
-      <p className="mt-2 text-sm leading-relaxed">{t(review.text)}</p>
+      <p className="mt-3 text-[15px] leading-relaxed">{t(review.text)}</p>
     </article>
   );
 }
@@ -180,7 +178,9 @@ function ComplaintCard({ complaint, now, t }: { complaint: Complaint; now: numbe
   const confirmed = open && days > COMPLAINT_ANSWER_DAYS;
 
   return (
-    <article className={`r-inset border p-4 ${confirmed ? "border-warning/50" : "border-border"}`}>
+    <article
+      className={`rounded-[22px] bg-[var(--wh-soft)] p-6 ${confirmed ? "shadow-[inset_0_0_0_1.5px_hsl(var(--warning)/0.5)]" : ""}`}
+    >
       <header className="flex items-center justify-between gap-3">
         <span className="flex items-center gap-1.5 text-xs font-medium">
           <AlertTriangle className="size-3.5 shrink-0 text-warning" />
@@ -190,7 +190,7 @@ function ComplaintCard({ complaint, now, t }: { complaint: Complaint; now: numbe
           {shortDate(t.lang, complaint.createdAt)}
         </span>
       </header>
-      <p className="mt-2 text-sm leading-relaxed">{t(complaint.text)}</p>
+      <p className="mt-3 text-[15px] leading-relaxed">{t(complaint.text)}</p>
 
       {complaint.answer ? (
         <div className="mt-3 border-l-2 border-primary/40 pl-3">
@@ -255,7 +255,7 @@ function ComplaintForm({ warehouse: w }: { warehouse: Warehouse }) {
       <button
         type="button"
         onClick={() => setShown(true)}
-        className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-border px-3.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-warning/60 hover:text-foreground"
+        className="wh-btn wh-btn--soft mt-5 !h-10 !px-4 !text-sm"
       >
         <AlertTriangle className="size-3.5" />
         {t(T.open)}
@@ -266,7 +266,7 @@ function ComplaintForm({ warehouse: w }: { warehouse: Warehouse }) {
   const done = lead.state === "sent" || lead.state === "mailed";
 
   return (
-    <div className="r-window mt-4 border border-border bg-card p-4 sm:p-5">
+    <div className="mt-5 rounded-[22px] bg-[var(--wh-soft)] p-6">
       <p className="text-sm font-medium">{t(T.open)}</p>
       <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{t(T.formNote)}</p>
 

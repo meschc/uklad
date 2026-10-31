@@ -101,6 +101,17 @@ chmod 600 .env
 `.env` в git не попадает. Пароли не пересылайте в чаты и не вставляйте в
 код — только сюда.
 
+Пароли базы кабинета (Postgres) генерируются прямо здесь, на сервере, —
+четыре разные строки из букв и цифр, дописываются в конец `.env`:
+
+```sh
+for v in SUPERUSER OWNER APP NOTIFIER; do
+  echo "PG_${v}_PASSWORD=$(openssl rand -hex 32)" >> .env; done
+```
+
+Делается один раз, до первого запуска: роли в базе создаются с этими
+паролями при первом старте `db`, и правка `.env` потом их уже не меняет.
+
 Папка для базы (сервер в контейнере работает не от root, а от пользователя
 с номером 1000):
 
@@ -126,7 +137,7 @@ docker compose up -d --build
 Первая сборка — 3–5 минут. Затем:
 
 ```sh
-docker compose ps                         # оба сервиса Up (healthy)
+docker compose ps                         # web, api, db Up (healthy), migrate — Exited (0)
 curl -s https://u-klad.ru/api/health      # {"ok":true}
 docker compose logs -f api                # журнал сервера заявок, выход Ctrl+C
 ```
@@ -188,6 +199,17 @@ crontab -e
 
 ```sh
 sudo ./restore.sh /var/backups/uklad/uklad-2026-11-01-0300.db.gz
+```
+
+Копия кабинета (`uklad-pg-*.sql.gz`) восстанавливается в пустую базу
+нового сервера — после первого `docker compose up -d db`, пока миграции не
+запускались:
+
+```sh
+docker compose up -d db
+gunzip -c /var/backups/uklad/uklad-pg-2026-11-01-0300.sql.gz \
+  | docker compose exec -T db psql -U postgres -d uklad -v ON_ERROR_STOP=1
+docker compose up -d
 ```
 
 Раз в месяц пробуйте восстановить копию — бэкап, который ни разу не
@@ -280,10 +302,20 @@ ssh -L 8081:127.0.0.1:8081 uklad@сервер
 docker compose exec api node api/src/admin/cli.js unlock почта@домен
 ```
 
+## База кабинета
+
+В compose три сервиса для кабинета: `db` (Postgres 16, данные в томе
+`pgdata`), `migrate` (при каждом `up` применяет новые файлы
+`server/db/migrations` под владельцем таблиц и выходит) и `api`, который
+стартует только после успешных миграций и ходит в базу ролью приложения.
+Наружу база не открыта. Если `api` не поднялся — `docker compose logs migrate`.
+
+Том `pgdata` переживает пересборку и `docker compose down`. Стирает его
+только `docker compose down -v` — эту команду не выполнять.
+
 ## Дальше: проверочный сервер и Postgres
 
-Пока на сервере только заявки, этого хватает. Когда кабинет переедет на
-сервер (`support/data-architecture.md`), до первых клиентов добавить:
+До первых клиентов добавить:
 
 - **Проверочный сервер (staging).** Второй маленький VPS или второй
   `compose` на том же сервере с доменом `staging.u-klad.ru` и своим `.env`.

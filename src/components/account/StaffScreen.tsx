@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { Check, Download, Plus, Upload, UserRound, Users } from "lucide-react";
+import { Check, Download, Plus, Upload, Users } from "lucide-react";
 import { selectRole, useEditor } from "@/lib/store";
 import { staffRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
@@ -316,7 +316,11 @@ export function StaffScreen() {
   );
 }
 
-/** Контакты склада и люди — карточками, без единого поля ввода (п.27). */
+/**
+ * Контакты склада для продавца, без единого поля ввода (п.27). Только телефон
+ * и почта склада и ответственное лицо: телефоны и почты остальных сотрудников —
+ * чужие персональные данные, продавцу они не нужны и не передаются.
+ */
 function ReadOnlyContacts({
   warehouse,
   t,
@@ -324,7 +328,6 @@ function ReadOnlyContacts({
   warehouse: { phone?: string; email?: string; manager?: StaffMember; staff?: StaffMember[] };
   t: TFunc;
 }) {
-  const people = warehouse.staff ?? [];
   return (
     <>
       <section className={card({ className: "flex flex-wrap gap-6 text-sm" })}>
@@ -364,35 +367,6 @@ function ReadOnlyContacts({
             </p>
           </div>
         )}
-      </section>
-
-      <section className="flex flex-col gap-2">
-        <h2 className="text-sm font-semibold">
-          {t("staff.people")} · {people.length}
-        </h2>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          {people.map((m) => (
-            <div key={m.id} className={card({ pad: "sm", className: "flex items-center gap-3" })}>
-              {m.photoUrl ? (
-                <img
-                  src={m.photoUrl}
-                  alt=""
-                  className="size-9 rounded-full border border-border object-cover"
-                />
-              ) : (
-                <span className="flex size-9 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                  <UserRound className="size-4" />
-                </span>
-              )}
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium">{m.name}</p>
-                <p className="truncate text-xs text-muted-foreground">
-                  {[m.role, m.phone, m.email].filter(Boolean).join(" · ") || "—"}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
       </section>
     </>
   );

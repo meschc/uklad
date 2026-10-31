@@ -4,6 +4,8 @@ import { telHref } from "@/lib/phone";
 import { ORG } from "../data/org";
 import { href } from "../lib/route";
 import { ConsentChecks, type ConsentState } from "./ConsentChecks";
+import { ContactField } from "./ContactField";
+import { contactKind } from "../lib/contact";
 import { LeadSubmit } from "./LeadSubmit";
 import { Reveal } from "./Reveal";
 import { AsciiBanner } from "./frame/AsciiBanner";
@@ -43,11 +45,12 @@ const T = {
     "Например: 1 200 SKU, отгружаем на Wildberries и Ozon, ищем склад в Подмосковье",
     "For example: 1,200 SKUs, we ship to Wildberries and Ozon, looking for a warehouse near Moscow",
   ),
+  formTitle: c("Написать нам", "Write to us"),
   send: c("Отправить", "Send"),
   subject: c("Вопрос с сайта — {name}", "Website enquiry — {name}"),
   consentNote: c(
-    "Кнопка активна только после согласия на обработку данных — заранее проставленная галочка согласием не считается.",
-    "The button unlocks only after you consent to data processing — a pre-ticked box is not consent.",
+    "Отметьте согласие на обработку данных — без него сообщение не отправится.",
+    "Tick the consent to data processing — the message cannot be sent without it.",
   ),
 };
 
@@ -83,7 +86,9 @@ export function ContactsScreen() {
       </AsciiBanner>
       <div className="mx-auto max-w-[1280px] px-5 pb-24 pt-12 sm:px-10 sm:pt-16">
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_380px]">
-          <Reveal>
+          {/* Колонки одной высоты (Кирилл 26 окт): форма тянется на всю
+              строку сетки, карточки справа делят её высоту поровну. */}
+          <Reveal className="h-full">
             <ContactForm />
           </Reveal>
 
@@ -119,8 +124,16 @@ export function ContactsScreen() {
                   {ORG.phone}
                 </a>
               )}
-              <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
-                <Clock className="size-3.5" />
+              {/* Без телефона часы и есть содержимое карточки — второй значок
+                часов рядом с заголовком повторял бы первый. */}
+              <p
+                className={
+                  ORG.phone
+                    ? "mt-1 flex items-center gap-1.5 text-sm text-muted-foreground"
+                    : "text-[var(--wh-ink)]"
+                }
+              >
+                {ORG.phone && <Clock className="size-3.5" />}
                 {t(ORG.hours)}
               </p>
             </Card>
@@ -157,7 +170,7 @@ function Card({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-[22px] bg-[var(--wh-soft)] p-5 sm:p-6">
+    <div className="flex-1 rounded-[22px] bg-[var(--wh-soft)] p-5 sm:p-6">
       <p className="flex items-center gap-2 text-sm text-[var(--wh-muted)]">
         <Icon className="size-4 text-[var(--wh-blue)]" />
         {title}
@@ -166,6 +179,10 @@ function Card({
     </div>
   );
 }
+
+/** Поле формы: белое на сером, без рамки — как в форме склада. */
+const FIELD =
+  "mt-1.5 w-full rounded-xl bg-[var(--wh-ground)] px-4 text-base outline-none ring-1 ring-transparent transition-shadow placeholder:text-[var(--wh-muted)]/70 focus:ring-2 focus:ring-[var(--wh-blue)]";
 
 const EMPTY_CONSENT: ConsentState = { data: false, ads: false };
 
@@ -180,10 +197,17 @@ const EMPTY_CONSENT: ConsentState = { data: false, ads: false };
 function ContactForm() {
   const t = useT();
   const [consent, setConsent] = useState<ConsentState>(EMPTY_CONSENT);
+  const [tried, setTried] = useState(false);
+  const [contact, setContact] = useState("");
   const lead = useLeadSend();
 
   const submit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    // Как в форме склада на лендинге: кнопка всегда живая, а про согласие
+    // напоминаем только тому, кто нажал без него (Кирилл 26 окт: подпись
+    // «Кнопка активна…» заранее не нужна).
+    setTried(true);
+    if (!consent.data || contactKind(contact) === null) return;
 
     const data = new FormData(e.currentTarget);
     const field = (name: string, label: Copy): LeadField => ({
@@ -197,7 +221,7 @@ function ContactForm() {
       subject: t(T.subject, { name: String(data.get("name") ?? "") }),
       fields: [
         field("name", T.fName),
-        field("contact", T.fContact),
+        { label: t(T.fContact), value: contact.trim() },
         field("company", T.fCompany),
         field("message", T.fNeed),
       ],
@@ -206,35 +230,51 @@ function ContactForm() {
   };
 
   return (
-    <form onSubmit={submit} className="r-window border border-border bg-card p-6 sm:p-7">
-      <div className="grid gap-4 sm:grid-cols-2">
+    // Подложка и поля — как у формы склада на лендинге и в карточке склада
+    // (Кирилл 26 окт: «форма устаревше выглядит»): серый фон, белые поля
+    // без рамки, фокус — синим кольцом.
+    <form
+      onSubmit={submit}
+      className="flex h-full flex-col rounded-[22px] bg-[var(--wh-soft)] p-6 sm:p-8"
+    >
+      <h2 className="text-[22px] font-medium tracking-tight">{t(T.formTitle)}</h2>
+      <div className="mt-6 grid gap-4 sm:grid-cols-2">
         <Field label={t(T.fName)} name="name" required placeholder={t(T.fNamePh)} />
-        <Field label={t(T.fContact)} name="contact" required placeholder="+7 900 000-00-00" />
+        <ContactField
+          id="contact"
+          label={t(T.fContact)}
+          placeholder="+7 900 000-00-00"
+          value={contact}
+          onChange={setContact}
+          tried={tried}
+          inputClassName={`${FIELD} h-12`}
+        />
         <div className="sm:col-span-2">
           <Field label={t(T.fCompany)} name="company" placeholder={t(T.fCompanyPh)} />
         </div>
         <div className="sm:col-span-2">
-          <label className="text-sm font-medium">{t(T.fNeed)}</label>
+          <label htmlFor="message" className="text-sm font-medium">
+            {t(T.fNeed)}
+          </label>
           <textarea
+            id="message"
             name="message"
             rows={4}
             required
             placeholder={t(T.fNeedPh)}
-            className="r-inset mt-1.5 w-full resize-y border border-border bg-background px-3.5 py-2.5 text-sm outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary"
+            className={`${FIELD} resize-y py-3`}
           />
         </div>
       </div>
 
       <ConsentChecks value={consent} onChange={setConsent} className="mt-5" />
 
-      <LeadSubmit
-        lead={lead}
-        idle={t(T.send)}
-        blocker={consent.data ? null : t(T.consentNote)}
-        type="submit"
-        icon
-        className="mt-5"
-      />
+      <LeadSubmit lead={lead} idle={t(T.send)} type="submit" icon className="mt-auto pt-5" />
+      {tried && !consent.data && (
+        <p role="alert" className="mt-2 text-xs leading-relaxed text-destructive">
+          {t(T.consentNote)}
+        </p>
+      )}
     </form>
   );
 }
@@ -261,7 +301,7 @@ function Field({
         name={name}
         required={required}
         placeholder={placeholder}
-        className="mt-1.5 h-10 w-full rounded-full border border-border bg-background px-4 text-sm outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary"
+        className={`${FIELD} h-12`}
       />
     </div>
   );
