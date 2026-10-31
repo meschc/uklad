@@ -9,7 +9,6 @@ import { useT, type MsgKey } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/segmented";
-import { card } from "@/components/ui/card";
 import { DocumentSheet } from "./DocumentSheet";
 import { DocPanel } from "./DocPanel";
 import { ScreenShell, EmptyState } from "./ScreenShell";
@@ -169,7 +168,8 @@ export function DocumentsScreen() {
     <ScreenShell title={t("doc.title")} subtitle={t("doc.subtitle")} wide>
       <style>{`@page { size: A4 portrait; margin: 0; }`}</style>
 
-      <div className={card({ className: "flex flex-wrap items-center gap-3" })}>
+      {/* Без общей рамки: переключатели и действия стоят прямо на экране. */}
+      <div className="flex flex-wrap items-center gap-3">
         <Segmented
           size="md"
           value={tab}
@@ -222,12 +222,7 @@ export function DocumentsScreen() {
         />
       ) : (
         <div className="grid gap-4 lg:grid-cols-[minmax(0,16rem)_minmax(0,1fr)]">
-          <ul
-            className={card({
-              pad: "xs",
-              className: "flex max-h-[32rem] flex-col gap-1 overflow-y-auto scrollbar-thin",
-            })}
-          >
+          <ul className="flex max-h-[32rem] flex-col gap-1 overflow-y-auto scrollbar-thin">
             {sources.map((s) => (
               <li key={s.id}>
                 <button
@@ -252,7 +247,8 @@ export function DocumentsScreen() {
             ))}
           </ul>
 
-          <div className="overflow-auto rounded-xl border border-border bg-muted/40 p-4 scrollbar-thin">
+          {/* Лист — как бумага A4 на столе: без подложки, только тень. */}
+          <div className="overflow-auto pb-6 scrollbar-thin">
             {doc ? (
               <div
                 style={{
@@ -264,7 +260,7 @@ export function DocumentsScreen() {
                   <DocumentSheet
                     doc={doc}
                     warehouse={warehouse}
-                    className="shadow-lg"
+                    className="shadow-[0_1px_3px_rgba(0,0,0,0.08),0_8px_28px_rgba(0,0,0,0.12)]"
                     {...sheetProps}
                   />
                 </div>
