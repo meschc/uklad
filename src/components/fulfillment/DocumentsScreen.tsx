@@ -247,8 +247,7 @@ export function DocumentsScreen() {
             ))}
           </ul>
 
-          {/* Лист — как бумага A4 на столе: без подложки, только тень. */}
-          <div className="overflow-auto pb-6 scrollbar-thin">
+          <div className="overflow-auto rounded-xl border border-border bg-muted/40 p-4 scrollbar-thin">
             {doc ? (
               <div
                 style={{
@@ -260,7 +259,7 @@ export function DocumentsScreen() {
                   <DocumentSheet
                     doc={doc}
                     warehouse={warehouse}
-                    className="shadow-[0_1px_3px_rgba(0,0,0,0.08),0_8px_28px_rgba(0,0,0,0.12)]"
+                    className="shadow-lg"
                     {...sheetProps}
                   />
                 </div>
