@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
  * подсвечивает их. Только на синих фонах — первый экран и карточка тарифа
  * «Склад» (Кирилл 19 окт: без фигур из знаков, поле на весь фон и живое).
  *
- * Canvas, а не DOM: несколько тысяч знаков 30 раз в секунду DOM не потянет.
+ * Canvas, а не DOM: несколько тысяч знаков 24 раза в секунду DOM не потянет.
  * Поле лежит под всем блоком целиком; под текстом из `quiet` знаки те же, но
  * прозрачнее — текст читается, а поле не обрывается дырой. Кадры не рисуются,
  * пока поле вне экрана или вкладка скрыта; при `prefers-reduced-motion`
@@ -16,7 +16,9 @@ import { cn } from "@/lib/utils";
 
 const RAMP = "  .·:-=+*#%";
 const LINE = 1.2;
-const FPS = 30;
+const FPS = 24;
+/** Строка перерисовывается раз в столько кадров (кроме места под курсором). */
+const INTERLACE = 3;
 /** Радиус влияния курсора, px. */
 const REACH = 140;
 /** Насколько далеко курсор отталкивает знак у самого центра, px. */
@@ -66,8 +68,25 @@ export function AsciiField({
     // полем, и гаснет, когда он ушёл, — знаки возвращаются на место без рывка.
     const ptr = { x: -1e4, y: -1e4, tx: -1e4, ty: -1e4, on: false, force: 0 };
 
+    /*
+     * Всё, что не зависит от времени, считается один раз при смене размера:
+     * шум клетки, расстояние до центра «волны» и синусы/косинусы базовых
+     * фаз. Кадр складывает их по формуле суммы углов — без тригонометрии на
+     * каждую из ~8 тысяч клеток (31 окт: поле тормозило слабые машины).
+     */
+    let g1 = new Float32Array(0);
+    let g2 = new Float32Array(0);
+    let rs = new Float32Array(0);
+    let rc = new Float32Array(0);
+    let xs = new Float32Array(0);
+    let xc = new Float32Array(0);
+    let ys = new Float32Array(0);
+    let yc = new Float32Array(0);
+    let ds = new Float32Array(0);
+    let dc = new Float32Array(0);
+
     const resize = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
       w = canvas.clientWidth;
       h = canvas.clientHeight;
       canvas.width = Math.round(w * dpr);
@@ -80,9 +99,31 @@ export function AsciiField({
       cols = Math.ceil(w / cw);
       rows = Math.ceil(h / ch);
 
+      const n = cols * rows;
+      g1 = new Float32Array(n);
+      g2 = new Float32Array(n);
+      ds = new Float32Array(n);
+      dc = new Float32Array(n);
+      for (let y = 0; y < rows; y++)
+        for (let x = 0; x < cols; x++) {
+          const i = y * cols + x;
+          g1[i] = (grain(x, y) - 0.5) * 0.22;
+          g2[i] = grain(y, x);
+          const d = Math.hypot(x - cols * 0.72, (y - rows * 0.45) * 1.6) * 0.22;
+          ds[i] = Math.sin(d);
+          dc[i] = Math.cos(d);
+        }
+      xs = Float32Array.from({ length: cols }, (_, x) => Math.sin(x * 0.21));
+      xc = Float32Array.from({ length: cols }, (_, x) => Math.cos(x * 0.21));
+      ys = Float32Array.from({ length: rows }, (_, y) => Math.sin(y * 0.29));
+      yc = Float32Array.from({ length: rows }, (_, y) => Math.cos(y * 0.29));
+      // Диагональ (x − y) сдвинута на rows, чтобы индекс был неотрицательным.
+      rs = Float32Array.from({ length: cols + rows }, (_, k) => Math.sin((k - rows) * 0.13));
+      rc = Float32Array.from({ length: cols + rows }, (_, k) => Math.cos((k - rows) * 0.13));
+
       // Под текстом поле тише, но без резкой границы: прозрачность плавно
       // спадает на FEATHER px от края блока, иначе зона читается прямоугольником.
-      mask = new Float32Array(cols * rows).fill(1);
+      mask = new Float32Array(n).fill(1);
       const box = canvas.getBoundingClientRect();
       const rects = (quiet ?? [])
         .map((q) => q.current?.getBoundingClientRect())
@@ -111,8 +152,22 @@ export function AsciiField({
       }
     };
 
-    const draw = (t: number) => {
-      ctx.clearRect(0, 0, w, h);
+    /** Прозрачность квантуется: знаки одной ступени рисуются одним проходом. */
+    const STEPS = 12;
+    const bins: number[][] = Array.from({ length: RAMP.length * STEPS }, () => []);
+
+    /*
+     * Перерисовывается не всё поле: за кадр — каждая INTERLACE-я строка,
+     * полоса сканера и прямоугольник под курсором (прежний и новый).
+     * Волна медленная, и строка, обновлённая раз в три кадра, на глаз не
+     * отстаёт, а знаков за кадр втрое меньше — они и были главным расходом.
+     */
+    let phase = 0;
+    let prevScan = -10;
+    /** Прямоугольник под курсором прошлого кадра, в клетках: x0, y0, x1, y1. */
+    let prevBox: number[] | null = null;
+
+    const draw = (t: number, full = false) => {
       // Полоса сканера: проходит поле за ~7 с и уходит за край перед повтором.
       const scan = ((t / 7000) % 1.3) * rows;
       ptr.x += (ptr.tx - ptr.x) * 0.25;
@@ -120,37 +175,105 @@ export function AsciiField({
       ptr.force += ((ptr.on ? 1 : 0) - ptr.force) * 0.12;
       const touch = ptr.force > 0.01;
 
+      // Фазы кадра: sin(a + b) = sin a·cos b + cos a·sin b.
+      const ax = t * 0.0007;
+      const sax = Math.sin(ax);
+      const cax = Math.cos(ax);
+      const ay = -t * 0.0005;
+      const say = Math.sin(ay);
+      const cay = Math.cos(ay);
+      const ar = t * 0.0004;
+      const sar = Math.sin(ar);
+      const car = Math.cos(ar);
+      const ad = -t * 0.0015;
+      const sad = Math.sin(ad);
+      const cad = Math.cos(ad);
+
+      for (const b of bins) b.length = 0;
+
+      const cell = (x: number, y: number, near: number, wy: number) => {
+        const i = y * cols + x;
+        const k = x - y + rows;
+        const v =
+          xs[x] * cax + xc[x] * sax + wy + rs[k] * car + rc[k] * sar + ds[i] * cad + dc[i] * sad;
+        let n = (v + 4) / 8 + g1[i];
+        let px = x * cw;
+        let py = y * ch;
+
+        if (touch) {
+          const dx = px + cw / 2 - ptr.x;
+          const dy = py + ch / 2 - ptr.y;
+          if (dx * dx + dy * dy < REACH * REACH) {
+            const d = Math.sqrt(dx * dx + dy * dy);
+            const f = (1 - d / REACH) ** 2 * ptr.force;
+            const len = d || 1;
+            px += (dx / len) * PUSH * f;
+            py += (dy / len) * PUSH * f;
+            n += f * 0.6;
+          }
+        }
+
+        const lit = near > 0 && g2[i] < near * 0.7;
+        const level = Math.min(1, Math.max(0, n * n * 1.5 + (lit ? 0.45 : 0)));
+        const gi = Math.floor(level * (RAMP.length - 1));
+        if (gi < 2) return;
+        const alpha = (0.08 + level * 0.4) * strength * mask[i];
+        const step = Math.min(STEPS - 1, Math.round(alpha * 2 * (STEPS - 1)));
+        if (step <= 0) return;
+        bins[gi * STEPS + step].push(px, py);
+      };
+
+      // Какие строки целиком: своя очередь и полоса сканера (прежняя и новая).
+      phase = (phase + 1) % INTERLACE;
+      const whole = new Uint8Array(rows);
+      for (let y = 0; y < rows; y++) {
+        if (full || y % INTERLACE === phase) whole[y] = 1;
+        if (Math.abs(y - scan) < 2 || Math.abs(y - prevScan) < 2) whole[y] = 1;
+      }
+      prevScan = scan;
+
+      // Прямоугольник под курсором: всё, куда курсор мог сдвинуть знак.
+      const r = REACH + PUSH;
+      const box = touch
+        ? [
+            Math.max(0, Math.floor((ptr.x - r) / cw) - 1),
+            Math.max(0, Math.floor((ptr.y - r) / ch) - 1),
+            Math.min(cols - 1, Math.ceil((ptr.x + r) / cw) + 1),
+            Math.min(rows - 1, Math.ceil((ptr.y + r) / ch) + 1),
+          ]
+        : null;
+      const boxes = full ? [] : [box, prevBox].filter((b): b is number[] => !!b);
+      prevBox = box;
+
+      if (full) ctx.clearRect(0, 0, w, h);
+      else {
+        for (let y = 0; y < rows; y++) if (whole[y]) ctx.clearRect(0, y * ch, w, ch);
+        for (const [x0, y0, x1, y1] of boxes)
+          ctx.clearRect(x0 * cw, y0 * ch, (x1 - x0 + 1) * cw, (y1 - y0 + 1) * ch);
+      }
+
       for (let y = 0; y < rows; y++) {
         const near = Math.max(0, 1 - Math.abs(y - scan) / 1.5);
+        const wy = ys[y] * cay + yc[y] * say;
+        if (whole[y]) {
+          for (let x = 0; x < cols; x++) cell(x, y, near, wy);
+          continue;
+        }
         for (let x = 0; x < cols; x++) {
-          const v =
-            Math.sin(x * 0.21 + t * 0.0007) +
-            Math.sin(y * 0.29 - t * 0.0005) +
-            Math.sin((x - y) * 0.13 + t * 0.0004) +
-            Math.sin(Math.hypot(x - cols * 0.72, (y - rows * 0.45) * 1.6) * 0.22 - t * 0.0015);
-          let n = (v + 4) / 8 + (grain(x, y) - 0.5) * 0.22;
-          let px = x * cw;
-          let py = y * ch;
+          let inBox = false;
+          for (const [x0, y0, x1, y1] of boxes)
+            if (x >= x0 && x <= x1 && y >= y0 && y <= y1) inBox = true;
+          if (inBox) cell(x, y, near, wy);
+        }
+      }
 
-          if (touch) {
-            const dx = px + cw / 2 - ptr.x;
-            const dy = py + ch / 2 - ptr.y;
-            const d = Math.hypot(dx, dy);
-            if (d < REACH) {
-              const k = (1 - d / REACH) ** 2 * ptr.force;
-              const len = d || 1;
-              px += (dx / len) * PUSH * k;
-              py += (dy / len) * PUSH * k;
-              n += k * 0.6;
-            }
-          }
-
-          const lit = near > 0 && grain(y, x) < near * 0.7;
-          const level = Math.min(1, Math.max(0, n * n * 1.5 + (lit ? 0.45 : 0)));
-          const i = Math.floor(level * (RAMP.length - 1));
-          if (i < 2) continue;
-          ctx.globalAlpha = (0.08 + level * 0.4) * strength * mask[y * cols + x];
-          ctx.fillText(RAMP[i], px, py);
+      for (let gi = 2; gi < RAMP.length; gi++) {
+        const sym = RAMP[gi];
+        for (let st = 1; st < STEPS; st++) {
+          const list = bins[gi * STEPS + st];
+          if (!list.length) continue;
+          ctx.globalAlpha = st / (2 * (STEPS - 1));
+          for (let j = 0; j < list.length; j += 2) ctx.fillText(sym, list[j], list[j + 1]);
         }
       }
       ctx.globalAlpha = 1;
@@ -164,11 +287,11 @@ export function AsciiField({
     };
 
     resize();
-    draw(2400);
+    draw(2400, true);
 
     const ro = new ResizeObserver(() => {
       resize();
-      draw(last || 2400);
+      draw(last || 2400, true);
     });
     ro.observe(canvas);
 

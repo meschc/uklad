@@ -42,9 +42,7 @@ export function RoadmapMyIdeas() {
                 · {shortDate(t.lang, Date.parse(idea.createdAt))}
               </span>
               {idea.track && (
-                <span className={cn("font-medium", TRACK_TONE[idea.track])}>
-                  {t(TRACK_LABELS[idea.track])}
-                </span>
+                <span className={TRACK_TONE[idea.track]}>{t(TRACK_LABELS[idea.track])}</span>
               )}
             </p>
           </li>

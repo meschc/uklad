@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { c, useT, type Copy } from "../../lib/copy";
@@ -112,7 +112,7 @@ export function SiteNav({
           <a
             href={`${href("/warehouses")}#connect`}
             className={cn(
-              "wh-btn !h-10 !px-[18px] !text-sm max-sm:!hidden",
+              "wh-btn wh-btn--live !h-10 !px-[18px] !text-sm max-sm:!hidden",
               onBlue ? "wh-btn--white" : "wh-btn--blue",
             )}
           >
@@ -170,17 +170,43 @@ export function SiteNav({
 }
 
 /**
- * Шапка страниц без синего первого экрана: закреплена с самого верха, та же
- * светлая, что выезжает на остальных.
+ * Закреплённая шапка витрины. На странице с синим первым экраном (`overBlue`)
+ * она сначала прозрачная, с белыми ссылками, и поле знаков идёт под ней, а с прокруткой становится
+ * светлой или тёмной по теме — как было до объединения шапок (Кирилл 31 окт).
  */
-export function SiteBar({ route, extra }: { route: Route; extra?: React.ReactNode }) {
+export function SiteBar({
+  route,
+  extra,
+  overBlue = false,
+}: {
+  route: Route;
+  extra?: React.ReactNode;
+  overBlue?: boolean;
+}) {
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    if (!overBlue) return;
+    const onScroll = () => setScrolled(window.scrollY > 96);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [overBlue]);
+
+  const blue = overBlue && !scrolled;
+
   return (
     <header
       style={{ height: SITE_NAV_H }}
-      className="sticky top-0 z-[60] border-b border-[var(--wh-line)] bg-[color-mix(in_srgb,var(--wh-ground)_88%,transparent)] backdrop-blur-md"
+      className={cn(
+        "sticky top-0 z-[60] border-b transition-colors duration-200 motion-reduce:transition-none",
+        blue
+          ? "border-transparent bg-transparent"
+          : "border-[var(--wh-line)] bg-[color-mix(in_srgb,var(--wh-ground)_88%,transparent)] backdrop-blur-md",
+      )}
     >
       <div className="mx-auto flex h-full max-w-[1280px] flex-col justify-center px-5 sm:px-10">
-        <SiteNav route={route} tone="sticky" extra={extra} />
+        <SiteNav route={route} tone={blue ? "blue" : "sticky"} extra={extra} />
       </div>
     </header>
   );

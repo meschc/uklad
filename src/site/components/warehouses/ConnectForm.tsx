@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { ConsentChecks, type ConsentState } from "../ConsentChecks";
+import { ContactField } from "../ContactField";
+import { contactKind } from "../../lib/contact";
 import { LeadSubmit } from "../LeadSubmit";
 import { ru, useT } from "../../lib/copy";
 import { useLeadSend } from "../../lib/useLeadSend";
@@ -44,6 +46,7 @@ export function ConnectForm({ idPrefix, className }: { idPrefix: string; classNa
   // Подсказку о согласии показываем только после попытки отправить без
   // галочки, под кнопкой (Кирилл 19 окт): заранее она читалась как упрёк.
   const [tried, setTried] = useState(false);
+  const [contact, setContact] = useState("");
 
   const accountingLabel = {
     "": "",
@@ -55,10 +58,8 @@ export function ConnectForm({ idPrefix, className }: { idPrefix: string; classNa
 
   const submit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!consent.data) {
-      setTried(true);
-      return;
-    }
+    setTried(true);
+    if (!consent.data || contactKind(contact) === null) return;
     const data = new FormData(e.currentTarget);
     const name = String(data.get("name") ?? "");
 
@@ -68,7 +69,7 @@ export function ConnectForm({ idPrefix, className }: { idPrefix: string; classNa
       subject: t(T.subject, { name }),
       fields: [
         { label: t(T.name), value: name },
-        { label: t(T.contact), value: String(data.get("contact") ?? "") },
+        { label: t(T.contact), value: contact.trim() },
         { label: t(T.accounting), value: accountingLabel },
       ],
       consent,
@@ -85,11 +86,14 @@ export function ConnectForm({ idPrefix, className }: { idPrefix: string; classNa
   return (
     <form onSubmit={submit} className={cn("flex flex-col gap-4", className)}>
       <Field id={`${idPrefix}-name`} name="name" label={t(T.name)} placeholder={t(T.namePh)} />
-      <Field
+      <ContactField
         id={`${idPrefix}-contact`}
-        name="contact"
         label={t(T.contact)}
         placeholder={t(T.contactPh)}
+        value={contact}
+        onChange={setContact}
+        tried={tried}
+        inputClassName={FIELD}
       />
 
       <div>
@@ -139,6 +143,9 @@ export function ConnectForm({ idPrefix, className }: { idPrefix: string; classNa
   );
 }
 
+const FIELD =
+  "mt-1.5 h-12 w-full rounded-xl border border-border bg-background px-4 text-base outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary";
+
 function Field({
   id,
   name,
@@ -158,14 +165,7 @@ function Field({
         {label}
         <span className="ml-0.5 text-primary">*</span>
       </label>
-      <input
-        id={id}
-        name={name}
-        type={type}
-        required
-        placeholder={placeholder}
-        className="mt-1.5 h-12 w-full rounded-xl border border-border bg-background px-4 text-base outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary"
-      />
+      <input id={id} name={name} type={type} required placeholder={placeholder} className={FIELD} />
     </div>
   );
 }

@@ -12,8 +12,8 @@ const T = {
   and: c("и подтверждаю, что ознакомлен с", "and confirm I have read the"),
   privacyLink: c("политикой обработки", "privacy policy"),
   ads: c(
-    "Хочу получать письма о новых складах и возможностях сервиса. Необязательно.",
-    "I’d like emails about new warehouses and features. Optional.",
+    "Хочу получать письма о новых функциях и возможностях сервиса",
+    "I’d like emails about new features and what the service can do",
   ),
 };
 

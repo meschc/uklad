@@ -1,9 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ru, useT, type Copy } from "../../lib/copy";
 import { Reveal } from "../Reveal";
 import { AsciiField } from "./AsciiField";
+import { LivePlan, LiveTasks, ScaledWindow } from "./LiveCabinet";
+import { SITE_NAV_H } from "../frame/SiteNav";
+
+/** Демо-кабинет с посевными данными: живёт по /app/ (ADR 0008). */
+export const DEMO_HREF = "/app/";
 
 const T = {
   brand: ru("Уклад"),
@@ -11,7 +16,7 @@ const T = {
   navTariffs: ru("Тарифы"),
   navFaq: ru("Вопросы"),
   connect: ru("Подключить склад"),
-  title: ru("Внедрим адаптивную систему управления складом"),
+  title: ru("Уклад — адаптивная система управления складом"),
   lead: ru(
     "Хранение и учёт товара, сотрудники и задачи, связь с селлерами в одной системе. Три\u00a0месяца бесплатно.",
   ),
@@ -20,16 +25,21 @@ const T = {
   alt: ru("Кабинет склада, экран «{label}»"),
 };
 
-/** Настоящие экраны демо-кабинета, снятые с `/app/` (19 окт). */
-const SCREENS: { label: Copy; file: string; caption: Copy }[] = [
+/**
+ * Экраны демо-кабинета. План и задания — живые макеты (`LiveCabinet`):
+ * реагируют на наведение и нажатия. Остальные пока снимки с `/app/`.
+ */
+const SCREENS: { label: Copy; file: string; caption: Copy; live?: () => ReactNode }[] = [
   {
     label: ru("План склада"),
     file: "plan.webp",
+    live: () => <LivePlan />,
     caption: ru("План склада: у каждой ячейки адрес, по нему идут приёмка и сборка"),
   },
   {
     label: ru("Задания"),
     file: "tasks.webp",
+    live: () => <LiveTasks />,
     caption: ru("Заявки селлеров сгруппированы по назначению"),
   },
   {
@@ -66,9 +76,10 @@ export function HeroScreens() {
   const titleRef = useRef<HTMLHeadingElement>(null);
   const leadRef = useRef<HTMLDivElement>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
+  const navRef = useRef<HTMLDivElement>(null);
   // Один и тот же массив на все рендеры: иначе поле перезапускалось бы при
   // каждой смене экрана. Под этими блоками знаки прозрачнее.
-  const quiet = useMemo(() => [titleRef, leadRef, tabsRef], []);
+  const quiet = useMemo(() => [navRef, titleRef, leadRef, tabsRef], []);
 
   useEffect(() => {
     if (!auto) return;
@@ -81,8 +92,14 @@ export function HeroScreens() {
 
   return (
     <>
-      <section className="relative overflow-hidden rounded-b-[24px] bg-[var(--wh-blue)] text-white sm:rounded-b-[32px]">
+      {/* Экран заходит под закреплённую шапку на её высоту: пока шапка
+          прозрачная (`SiteBar overBlue`), поле знаков видно и за ней. */}
+      <section
+        style={{ marginTop: -SITE_NAV_H }}
+        className="relative overflow-hidden rounded-b-[24px] bg-[var(--wh-blue)] text-white sm:rounded-b-[32px]"
+      >
         <AsciiField quiet={quiet} />
+        <div ref={navRef} style={{ height: SITE_NAV_H }} aria-hidden />
 
         <div className="relative mx-auto max-w-[1280px] px-5 pb-[clamp(120px,22vw,340px)] sm:px-10">
           <Reveal className="flex flex-col gap-8 pt-14 sm:pt-[88px] lg:flex-row lg:items-end lg:justify-between lg:gap-16">
@@ -95,11 +112,11 @@ export function HeroScreens() {
             <div ref={leadRef} className="flex min-w-0 flex-col gap-5 lg:w-[470px] lg:shrink-0">
               <p className="text-[17px] leading-[1.55] text-white/85">{t(T.lead)}</p>
               <div className="flex flex-col gap-2.5 sm:flex-row">
-                <a href="#connect" className="wh-btn wh-btn--white group">
+                <a href="#connect" className="wh-btn wh-btn--white wh-btn--live">
                   {t(T.connect)}
-                  <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+                  <ArrowRight className="size-4" />
                 </a>
-                <a href="#inside" className="wh-btn wh-btn--ghost">
+                <a href={DEMO_HREF} className="wh-btn wh-btn--ghost">
                   {t(T.look)}
                 </a>
               </div>
@@ -143,7 +160,12 @@ export function HeroScreens() {
           поле живёт только на синем (Кирилл 19 окт). */}
       <div className="relative mx-auto -mt-[clamp(120px,22vw,340px)] max-w-[1280px] px-5 sm:px-10">
         <Reveal delay={160} className="relative">
-          <div className="relative overflow-hidden rounded-[14px] bg-white shadow-[0_0_0_1px_rgba(13,14,17,0.1),0_4px_12px_rgba(13,14,17,0.06)]">
+          {/* Под курсором экраны не листаются сами: человек смотрит или
+              нажимает, и окно не должно уехать из-под руки. */}
+          <div
+            onPointerEnter={() => setAuto(false)}
+            className="relative overflow-hidden rounded-[14px] bg-white shadow-[0_0_0_1px_rgba(13,14,17,0.1),0_4px_12px_rgba(13,14,17,0.06)]"
+          >
             <div className="flex h-9 items-center gap-4 border-b border-[#ececef] px-3.5">
               <span className="flex gap-1.5" aria-hidden>
                 <span className="block size-2.5 rounded-full bg-[#e3e4e8]" />
@@ -156,14 +178,20 @@ export function HeroScreens() {
               <span className="w-[42px]" aria-hidden />
             </div>
             {/* Смена экрана — мягким всплытием, а не щелчком. */}
-            <img
-              key={cur.file}
-              src={`${import.meta.env.BASE_URL}photos/cabinet/${cur.file}`}
-              alt={t(T.alt, { label })}
-              width={1240}
-              height={640}
-              className="wh-swap block aspect-[1240/640] w-full object-cover object-left-top"
-            />
+            {cur.live ? (
+              <div key={cur.file} className="wh-swap">
+                <ScaledWindow>{cur.live()}</ScaledWindow>
+              </div>
+            ) : (
+              <img
+                key={cur.file}
+                src={`${import.meta.env.BASE_URL}photos/cabinet/${cur.file}`}
+                alt={t(T.alt, { label })}
+                width={1240}
+                height={640}
+                className="wh-swap block aspect-[1240/640] w-full object-cover object-left-top"
+              />
+            )}
           </div>
         </Reveal>
         <p key={cur.file} className="wh-swap wh-muted mt-4 text-[15px]">
