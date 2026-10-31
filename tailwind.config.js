@@ -116,17 +116,17 @@ export default {
         "6xl": ["56px", "1"],
       },
       fontFamily: {
-        // Geist и в тексте, и в заголовках. До него здесь стоял Golos Text, а
-        // до Golos — пара Inter + Onest. Условие к любой замене одно и то же:
-        // настоящая кириллица, а не «латиница с дорисованными Я и Ж». У Geist
-        // она есть — весь русский алфавит, ударение, «₽» и «№».
+        // Medeo Sans и в тексте, и в заголовках (Кирилл 31 окт). До него здесь
+        // стоял Geist, до Geist — Golos Text, до Golos — пара Inter + Onest.
+        // Условие к любой замене одно и то же: настоящая кириллица, а не
+        // «латиница с дорисованными Я и Ж». У Medeo она есть, с «₽» и «№».
         //
         // Заголовки и текст одним шрифтом — намеренно: разделяет их вес и
         // трекинг, а не смена гарнитуры. Так страница читается как один голос,
         // а не как два.
-        sans: ["Geist", "ui-sans-serif", "system-ui", "sans-serif"],
-        display: ["Geist", "ui-sans-serif", "system-ui", "sans-serif"],
-        mono: ["ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
+        sans: ["Medeo Sans", "ui-sans-serif", "system-ui", "sans-serif"],
+        display: ["Medeo Sans", "ui-sans-serif", "system-ui", "sans-serif"],
+        mono: ["Medeo Mono", "ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
       },
       // Вес заголовка — 550, ступени между `medium` и `semibold` у Tailwind
       // нет. Начертание переменное, поэтому дробная ступень существует так же

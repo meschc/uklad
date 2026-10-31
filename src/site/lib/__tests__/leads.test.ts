@@ -91,12 +91,13 @@ describe("отправка", () => {
     fetchMock.mockReset();
   });
 
-  it("без настроенного приёмника никуда не ходит", async () => {
+  it("без переменной окружения шлёт на свой сервер, а не в почту", async () => {
     vi.stubEnv("VITE_LEADS_ENDPOINT", "");
+    fetchMock.mockResolvedValue({ ok: true, status: 200 });
 
-    expect(hasLeadsEndpoint()).toBe(false);
-    await expect(sendLead(LEAD)).resolves.toEqual({ ok: false, reason: "unconfigured" });
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(hasLeadsEndpoint()).toBe(true);
+    await expect(sendLead(LEAD)).resolves.toEqual({ ok: true });
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/leads");
   });
 
   it("шлёт на адрес из переменной окружения заявку целиком", async () => {

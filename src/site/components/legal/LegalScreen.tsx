@@ -265,7 +265,7 @@ function LegalIndex() {
               key={doc.slug}
               lang="ru"
               href={href(`/legal/${doc.slug}`)}
-              className="group flex h-full flex-col rounded-[22px] bg-[var(--wh-soft)] p-6 text-left transition-[transform,background-color] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1 hover:bg-[var(--wh-line)] sm:p-7"
+              className="group flex h-full flex-col rounded-[22px] bg-[var(--wh-soft)] p-6 text-left transition-colors duration-200 hover:bg-[var(--wh-line)] sm:p-7"
             >
               <DocIcon slug={doc.slug} />
               <h2 className="mt-5 font-display text-base font-heading leading-snug tracking-tight">
