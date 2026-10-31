@@ -800,8 +800,8 @@ export const ROADMAP_ITEMS: readonly RoadmapItem[] = [
     id: "referrals",
     title: c("Реферальные программы", "Referral programs"),
     summary: c(
-      "Вознаграждение за подключение к Укладу: для сотрудников, селлеров и складов",
-      "A reward for bringing someone to Uklad: for staff, sellers and warehouses",
+      "Обсуждаем, нужна ли награда за приведённого в Уклад человека — сотрудникам, селлерам и складам. Условий пока нет",
+      "We are discussing whether to reward bringing someone to Uklad — staff, sellers and warehouses. There are no terms yet",
     ),
     status: "idea",
     track: "market",
