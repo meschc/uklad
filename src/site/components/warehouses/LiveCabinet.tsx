@@ -81,7 +81,10 @@ export function CabinetFrame({
   }, [view, ready]);
 
   return (
-    <div ref={box} className="relative aspect-[1240/640] w-full overflow-hidden bg-white">
+    <div
+      ref={box}
+      className="relative aspect-[1240/640] w-full overflow-hidden bg-[var(--wh-ground)]"
+    >
       <img
         src={fallback}
         alt={fallbackAlt}

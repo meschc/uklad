@@ -169,15 +169,15 @@ export function HeroScreens() {
               нажимает, и окно не должно уехать из-под руки. */}
           <div
             onPointerEnter={() => setAuto(false)}
-            className="relative overflow-hidden rounded-[14px] bg-white shadow-[0_0_0_1px_rgba(13,14,17,0.1),0_4px_12px_rgba(13,14,17,0.06)]"
+            className="relative overflow-hidden rounded-[14px] bg-[var(--wh-ground)] shadow-[0_0_0_1px_rgba(13,14,17,0.1),0_4px_12px_rgba(13,14,17,0.06)]"
           >
-            <div className="flex h-9 items-center gap-4 border-b border-[#ececef] px-3.5">
+            <div className="flex h-9 items-center gap-4 border-b border-[var(--wh-line)] px-3.5">
               <span className="flex gap-1.5" aria-hidden>
-                <span className="block size-2.5 rounded-full bg-[#e3e4e8]" />
-                <span className="block size-2.5 rounded-full bg-[#e3e4e8]" />
-                <span className="block size-2.5 rounded-full bg-[#e3e4e8]" />
+                <span className="block size-2.5 rounded-full bg-[var(--wh-line)]" />
+                <span className="block size-2.5 rounded-full bg-[var(--wh-line)]" />
+                <span className="block size-2.5 rounded-full bg-[var(--wh-line)]" />
               </span>
-              <span className="flex-1 truncate text-center font-mono text-xs text-[#5b5e66]">
+              <span className="flex-1 truncate text-center font-mono text-xs text-[var(--wh-muted)]">
                 u-klad.ru/app · {label}
               </span>
               <span className="w-[42px]" aria-hidden />
