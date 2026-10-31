@@ -31,7 +31,8 @@ export type Dialog = null | { kind: "login" } | { kind: "idea" };
 export interface RoadmapState {
   session: Session | null;
   counts: Record<string, number>;
-  mine: ReadonlySet<string>;
+  /** Свой голос по пункту: 1 — за, -1 — против. */
+  mine: ReadonlyMap<string, 1 | -1>;
   ideas: readonly SubmittedIdea[];
   dialog: Dialog;
   /** Что сделать сразу после входа: поставить голос или открыть форму идеи. */
@@ -42,7 +43,7 @@ export interface RoadmapState {
 const EMPTY: RoadmapState = {
   session: null,
   counts: {},
-  mine: new Set(),
+  mine: new Map(),
   ideas: [],
   dialog: null,
   after: null,
@@ -59,7 +60,11 @@ function set(patch: Partial<RoadmapState>): void {
 }
 
 function applyBoard(board: BoardState): void {
-  set({ counts: board.counts, mine: new Set(board.mine), ideas: board.ideas });
+  set({
+    counts: board.counts,
+    mine: new Map(Object.entries(board.mine) as [string, 1 | -1][]),
+    ideas: board.ideas,
+  });
 }
 
 function readSession(): Session | null {
@@ -123,28 +128,32 @@ export async function verifyCode(email: string, code: string): Promise<RoadmapEr
 
 export function logout(): void {
   removeLocal(SESSION_KEY);
-  set({ session: null, mine: new Set(), ideas: [] });
+  set({ session: null, mine: new Map(), ideas: [] });
 }
 
-/** Голос по нажатию: без входа — окно входа, после входа голос ставится сам. */
-export function toggleVote(itemId: string): void {
+/**
+ * Голос стрелкой. Повторное нажатие той же стрелки снимает голос, нажатие
+ * противоположной переставляет его: итог меняется на 2. Без входа — окно
+ * входа, а после входа голос ставится сам.
+ */
+export function castVote(itemId: string, dir: 1 | -1): void {
   const session = state.session;
   if (!session) {
     openDialog({ kind: "login" }, () => {
-      if (!state.mine.has(itemId)) toggleVote(itemId);
+      if (!state.mine.has(itemId)) castVote(itemId, dir);
     });
     return;
   }
 
-  const on = !state.mine.has(itemId);
+  const prev = state.mine.get(itemId) ?? 0;
+  const next = prev === dir ? 0 : dir;
   const before = { counts: state.counts, mine: state.mine };
-  const mine = new Set(state.mine);
-  if (on) mine.add(itemId);
-  else mine.delete(itemId);
-  const count = Math.max(0, (state.counts[itemId] ?? 0) + (on ? 1 : -1));
-  set({ mine, counts: { ...state.counts, [itemId]: count } });
+  const mine = new Map(state.mine);
+  if (next === 0) mine.delete(itemId);
+  else mine.set(itemId, next);
+  set({ mine, counts: { ...state.counts, [itemId]: (state.counts[itemId] ?? 0) + next - prev } });
 
-  void port.vote(session.token, itemId, on).then((res) => {
+  void port.vote(session.token, itemId, next).then((res) => {
     if (res.ok) {
       set({ counts: { ...state.counts, [itemId]: res.data.count } });
       return;
@@ -152,6 +161,22 @@ export function toggleVote(itemId: string): void {
     set({ ...before, error: res.error });
     if (res.error === "auth") logout();
   });
+}
+
+/** Старое имя: голос «за». */
+export const toggleVote = (itemId: string): void => castVote(itemId, 1);
+
+export function loadComments(itemId: string) {
+  return port.comments(itemId);
+}
+
+/** Комментарий пишет только вошедший: без входа вернём `auth`, окно входа откроет вызывающий. */
+export async function postComment(itemId: string, text: string, alias: string | null) {
+  const session = state.session;
+  if (!session) return { ok: false, error: "auth" } as const;
+  const res = await port.addComment(session.token, itemId, text, alias);
+  if (!res.ok && res.error === "auth") logout();
+  return res;
 }
 
 /** Отправить идею. Без входа форма сначала просит войти (см. `RoadmapIdeaForm`). */
