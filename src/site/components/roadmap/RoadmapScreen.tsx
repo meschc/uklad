@@ -33,8 +33,8 @@ const T = {
       "Sign in with your email: no password, we send a code.",
     ),
     c(
-      "Голосуйте стрелкой на карточке. Голос засчитывается сразу, повторное нажатие его снимает.",
-      "Vote with the arrow on a card. It counts at once; press again to take it back.",
+      "Голосуйте стрелками на карточке: вверх — за, вниз — против. Голос засчитывается сразу, повторное нажатие его снимает.",
+      "Vote with the arrows on a card: up for, down against. It counts at once; press again to take it back.",
     ),
     c(
       "Предлагайте своё кнопкой «Предложить идею»: опишите задачу, а не готовое решение.",
