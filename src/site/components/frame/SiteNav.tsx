@@ -3,7 +3,7 @@ import { Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { c, useT, type Copy } from "../../lib/copy";
 import { href, routePath, switchLang, type Route } from "../../lib/route";
-import { LogoMark } from "../Logo";
+import { UkladWordmark } from "@/components/brand/UkladLogo";
 import { RollText } from "../RollText";
 
 /**
@@ -74,15 +74,8 @@ export function SiteNav({
   return (
     <div className="relative">
       <div className="flex items-center justify-between gap-6">
-        <a
-          href={href("/")}
-          className={cn(
-            "flex items-center gap-2 text-xl font-semibold tracking-tight",
-            onBlue && "text-white",
-          )}
-        >
-          <LogoMark className={cn("rounded-lg", onBlue && "ring-1 ring-white/40")} />
-          {t(T.brand)}
+        <a href={href("/")} className="flex items-center">
+          <UkladWordmark className="h-10" label={t(T.brand)} />
         </a>
         <nav className="flex items-center gap-7 text-sm">
           {LINKS.map((l) => (

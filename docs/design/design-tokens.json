@@ -500,8 +500,8 @@
     "$description": "Ведётся руками. Цвета знака, а не темы: они не меняются ни со светлой и тёмной темой, ни с правкой --primary.",
     "mark": {
       "$type": "color",
-      "$value": "#426EFF",
-      "$description": "Плитка знака. Копии: MARK_BLUE в src/site/components/Logo.tsx, public/favicon.svg, public/og.svg — меняются вместе."
+      "$value": "#2563EB",
+      "$description": "Синий логотипа (с 31.10.2026 слово из клеток). Копии: src/components/brand/UkladLogo.tsx, public/favicon.svg, public/og.svg — меняются вместе."
     }
   },
   "radius": {

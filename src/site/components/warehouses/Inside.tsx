@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { ArrowRight, MapPin } from "lucide-react";
-import { LogoMark } from "../Logo";
+import { UkladBox } from "@/components/brand/UkladLogo";
 import { Reveal } from "../Reveal";
 import { ru, useT, type Copy } from "../../lib/copy";
 import { href } from "../../lib/route";
@@ -66,10 +66,7 @@ export function Inside() {
       </Reveal>
 
       <div className="mt-12 flex justify-center sm:mt-16">
-        <div className="inline-flex h-14 items-center gap-2.5 rounded-2xl bg-[var(--wh-blue)] pl-3 pr-6 text-xl font-semibold tracking-tight text-white">
-          <LogoMark className="rounded-lg ring-1 ring-white/40" />
-          {t(T.brand)}
-        </div>
+        <UkladBox className="h-16" label={t(T.brand)} />
       </div>
 
       {/* Плавные ветки к четырём колонкам. На узком экране колонки встают
