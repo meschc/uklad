@@ -41,6 +41,7 @@ services:
       # в лимит выдачи.
       - caddy_data:/data
       - caddy_config:/config
+    networks: [front]
     depends_on:
       - api
 
@@ -58,13 +59,40 @@ services:
     # интернет. Для отладки — только "127.0.0.1:8080:8080".
     # Только для SSH-туннеля к админке (deploy/README.md, «Админка»):
     # ports: ["127.0.0.1:8081:8081"]
-    env_file: .env
+    # Только перечисленное, а не весь .env (`env_file`): в .env лежат пароли
+    # суперпользователя и владельца базы, и утечка окружения api не должна
+    # их отдавать. Новая переменная сервера — дописать сюда.
     environment:
+      SMTP_HOST: ${SMTP_HOST:-smtp.yandex.ru}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      MAIL_TO: ${MAIL_TO:-}
+      MAIL_FROM: ${MAIL_FROM:-${SMTP_USER:-}}
+      LEADS_RETENTION_DAYS: ${LEADS_RETENTION_DAYS:-180}
+      REPORTS_RETENTION_DAYS: ${REPORTS_RETENTION_DAYS:-90}
+      REPORTS_PER_DAY: ${REPORTS_PER_DAY:-500}
+      REPORTS_MB_PER_DAY: ${REPORTS_MB_PER_DAY:-200}
+      DEMO_LINK_DAYS: ${DEMO_LINK_DAYS:-14}
+      DEMO_PER_EMAIL_PER_DAY: ${DEMO_PER_EMAIL_PER_DAY:-3}
+      RATE_LIMIT_BURST: ${RATE_LIMIT_BURST:-5}
+      RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-2}
+      CENTRIFUGO_API_URL: ${CENTRIFUGO_API_URL:-}
+      CENTRIFUGO_API_KEY: ${CENTRIFUGO_API_KEY:-}
+      CENTRIFUGO_TOKEN_SECRET: ${CENTRIFUGO_TOKEN_SECRET:-}
+      TELEGRAM_BOT_NAME: ${TELEGRAM_BOT_NAME:-}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:-}
       DB_FILE: /data/uklad.db
       TRUST_PROXY: "1"
       PUBLIC_URL: https://${SITE_DOMAIN}
       # Админка: Caddy проксирует admin.<домен> на порт 8081 внутри сети.
       ADMIN_ORIGIN: https://admin.${SITE_DOMAIN}
+      # Кабинет — Postgres под ролью приложения (не владельцем таблиц).
+      # Строки собираются здесь из паролей ниже и перекрывают пустые
+      # DATABASE_URL / NOTIFIER_DATABASE_URL из .env.
+      DATABASE_URL: postgres://uklad_app:${PG_APP_PASSWORD}@db:5432/uklad
+      NOTIFIER_DATABASE_URL: postgres://uklad_notifier:${PG_NOTIFIER_PASSWORD}@db:5432/uklad
     volumes:
       - ./data:/data
     read_only: true
@@ -72,6 +100,64 @@ services:
       - /tmp
     security_opt:
       - no-new-privileges:true
+    networks: [front, back]
+    depends_on:
+      # Сервер стартует только на актуальной схеме: миграции прошли до него.
+      migrate:
+        condition: service_completed_successfully
+
+  # База кабинета (server/db, ADR 0009). Наружу порт не открыт — ни `ports:`,
+  # ни туннеля: к ней ходят только api и migrate по внутренней сети.
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    logging: *logging
+    mem_limit: 768m
+    cpus: 1.0
+    shm_size: 128m
+    environment:
+      POSTGRES_PASSWORD: ${PG_SUPERUSER_PASSWORD:?заполните пароли PG_* в .env}
+      PG_OWNER_PASSWORD: ${PG_OWNER_PASSWORD:?заполните пароли PG_* в .env}
+      PG_APP_PASSWORD: ${PG_APP_PASSWORD:?заполните пароли PG_* в .env}
+      PG_NOTIFIER_PASSWORD: ${PG_NOTIFIER_PASSWORD:?заполните пароли PG_* в .env}
+    volumes:
+      # Данные — именованный том: переживают пересборку и `down`.
+      # Стирает их только `docker compose down -v` — не выполнять.
+      - pgdata:/var/lib/postgresql/data
+      # Роли и база при первом запуске (только пока том пуст).
+      - ../server/db/init.sql:/uklad/init.sql:ro
+      - ./db-init.sh:/docker-entrypoint-initdb.d/10-uklad.sh:ro
+    # По TCP, а не через сокет: пока идёт первый запуск, временный сервер
+    # слушает только сокет, и проверка по сокету сказала бы «готов» раньше
+    # времени — migrate получил бы отказ в соединении.
+    networks: [back]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U postgres -d uklad"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    security_opt:
+      - no-new-privileges:true
+
+  # Миграции схемы: запускается при каждом `up`, применяет новые файлы
+  # server/db/migrations под uklad_owner и выходит.
+  migrate:
+    build:
+      context: ../server/db
+      dockerfile: Dockerfile
+    image: uklad-migrate:${UKLAD_TAG:-latest}
+    restart: "no"
+    logging: *logging
+    mem_limit: 128m
+    environment:
+      DATABASE_URL: postgres://uklad_owner:${PG_OWNER_PASSWORD}@db:5432/uklad
+    networks: [back]
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      db:
+        condition: service_healthy
 
   # Доставка сообщений чата в реальном времени (решение 21.10, MIT). Сам
   # переписку не хранит: в канал уходит только «что изменилось», текст кабинет
@@ -92,10 +178,20 @@ services:
       CENTRIFUGO_CLIENT_ALLOWED_ORIGINS: https://${SITE_DOMAIN}
       # personal:#<id> — подписаться может только сам сотрудник из токена.
       CENTRIFUGO_CHANNEL_NAMESPACES: '[{"name":"personal","allow_user_limited_channels":true}]'
+    networks: [front, back]
     read_only: true
     security_opt:
       - no-new-privileges:true
 
+# Две сети: в front — то, к чему ходит Caddy (web, api, centrifugo), в back —
+# база и всё, что к ней ходит. Caddy, единственный, кто смотрит в интернет,
+# до базы не дотягивается вовсе.
+networks:
+  front:
+  back:
+    internal: true
+
 volumes:
   caddy_data:
   caddy_config:
+  pgdata:
