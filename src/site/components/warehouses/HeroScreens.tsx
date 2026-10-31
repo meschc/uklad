@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { ru, useT, type Copy } from "../../lib/copy";
 import { Reveal } from "../Reveal";
 import { AsciiField } from "./AsciiField";
+import { SITE_NAV_H } from "../frame/SiteNav";
 
 const T = {
   brand: ru("Уклад"),
@@ -66,9 +67,10 @@ export function HeroScreens() {
   const titleRef = useRef<HTMLHeadingElement>(null);
   const leadRef = useRef<HTMLDivElement>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
+  const navRef = useRef<HTMLDivElement>(null);
   // Один и тот же массив на все рендеры: иначе поле перезапускалось бы при
   // каждой смене экрана. Под этими блоками знаки прозрачнее.
-  const quiet = useMemo(() => [titleRef, leadRef, tabsRef], []);
+  const quiet = useMemo(() => [navRef, titleRef, leadRef, tabsRef], []);
 
   useEffect(() => {
     if (!auto) return;
@@ -81,8 +83,14 @@ export function HeroScreens() {
 
   return (
     <>
-      <section className="relative overflow-hidden rounded-b-[24px] bg-[var(--wh-blue)] text-white sm:rounded-b-[32px]">
+      {/* Экран заходит под закреплённую шапку на её высоту: пока шапка
+          прозрачная (`SiteBar overBlue`), поле знаков видно и за ней. */}
+      <section
+        style={{ marginTop: -SITE_NAV_H }}
+        className="relative overflow-hidden rounded-b-[24px] bg-[var(--wh-blue)] text-white sm:rounded-b-[32px]"
+      >
         <AsciiField quiet={quiet} />
+        <div ref={navRef} style={{ height: SITE_NAV_H }} aria-hidden />
 
         <div className="relative mx-auto max-w-[1280px] px-5 pb-[clamp(120px,22vw,340px)] sm:px-10">
           <Reveal className="flex flex-col gap-8 pt-14 sm:pt-[88px] lg:flex-row lg:items-end lg:justify-between lg:gap-16">

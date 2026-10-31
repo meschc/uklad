@@ -171,7 +171,7 @@ export function SiteNav({
 
 /**
  * Закреплённая шапка витрины. На странице с синим первым экраном (`overBlue`)
- * она сначала в цвет экрана, с белыми ссылками, а с прокруткой становится
+ * она сначала прозрачная, с белыми ссылками, и поле знаков идёт под ней, а с прокруткой становится
  * светлой или тёмной по теме — как было до объединения шапок (Кирилл 31 окт).
  */
 export function SiteBar({
@@ -201,7 +201,7 @@ export function SiteBar({
       className={cn(
         "sticky top-0 z-[60] border-b transition-colors duration-200 motion-reduce:transition-none",
         blue
-          ? "border-transparent bg-[var(--wh-blue)]"
+          ? "border-transparent bg-transparent"
           : "border-[var(--wh-line)] bg-[color-mix(in_srgb,var(--wh-ground)_88%,transparent)] backdrop-blur-md",
       )}
     >
