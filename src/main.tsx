@@ -32,6 +32,26 @@ if (isEmbed(window.location.search)) {
   // Перехват на окне до React: план не панорамируется колесом, а фрейм без
   // своей прокрутки отдаёт её странице снаружи.
   window.addEventListener("wheel", (e) => e.stopPropagation(), { capture: true, passive: true });
+  // Живой снимок, а не второй кабинет (Кирилл 31 окт): наведение подсвечивает
+  // как в продукте, но нажать, протащить, ввести или открыть меню нельзя.
+  const block = (e: Event) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+  for (const type of [
+    "pointerdown",
+    "pointerup",
+    "mousedown",
+    "mouseup",
+    "click",
+    "dblclick",
+    "auxclick",
+    "contextmenu",
+    "keydown",
+    "dragstart",
+  ]) {
+    window.addEventListener(type, block, { capture: true, passive: false });
+  }
   window.addEventListener("message", (e) => {
     if (e.origin !== window.location.origin) return;
     const view = embedView(e.data);

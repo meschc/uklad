@@ -97,6 +97,7 @@ export function CabinetFrame({
           ref={frame}
           src={`/app/?role=warehouse&view=${first}&embed=1`}
           title={title}
+          tabIndex={-1}
           width={LIVE_W}
           height={LIVE_H}
           onLoad={() => window.setTimeout(() => setReady(true), SETTLE_MS)}
