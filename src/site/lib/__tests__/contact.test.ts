@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { contactKind, maskContact } from "../contact";
+import { contactKind, maskContact, domainHints } from "../contact";
 
 describe("contactKind", () => {
   it.each([
@@ -36,5 +36,18 @@ describe("maskContact", () => {
   it("стирать маску можно: пустое остаётся пустым", () => {
     expect(maskContact("")).toBe("");
     expect(maskContact("+")).toBe("+");
+  });
+});
+
+describe("domainHints", () => {
+  it("после «@» предлагает службы, начинающиеся с набранного", () => {
+    expect(domainHints("ivan@")).toEqual(["yandex.ru", "mail.ru", "gmail.com", "icloud.com"]);
+    expect(domainHints("ivan@g")).toEqual(["gmail.com"]);
+  });
+  it("молчит без «@», с двумя «@» и когда домен набран целиком", () => {
+    expect(domainHints("ivan")).toEqual([]);
+    expect(domainHints("@mail")).toEqual([]);
+    expect(domainHints("a@b@c")).toEqual([]);
+    expect(domainHints("ivan@mail.ru")).toEqual([]);
   });
 });

@@ -49,3 +49,19 @@ export function maskContact(raw: string): string {
   if (d[0] === "8") return formatPhone(`7${d.slice(1)}`);
   return formatPhone(raw);
 }
+
+/** Почтовые службы для подсказки после «@»: сначала российские. */
+const DOMAINS = ["yandex.ru", "mail.ru", "gmail.com", "icloud.com", "bk.ru", "inbox.ru"];
+const MAX_HINTS = 4;
+
+/**
+ * Подсказки домена: после «@» предлагаем почтовые службы, которые начинаются
+ * с уже набранного (Кирилл 31 окт). Когда домен набран целиком — молчим.
+ */
+export function domainHints(value: string): string[] {
+  const at = value.indexOf("@");
+  if (at < 1 || value.indexOf("@", at + 1) !== -1) return [];
+  const typed = value.slice(at + 1).toLowerCase();
+  if (DOMAINS.includes(typed)) return [];
+  return DOMAINS.filter((d) => d.startsWith(typed)).slice(0, MAX_HINTS);
+}

@@ -6,6 +6,9 @@ import { Reveal } from "../Reveal";
 import { AsciiField } from "./AsciiField";
 import { SITE_NAV_H } from "../frame/SiteNav";
 
+/** Демо-кабинет с посевными данными: живёт по /app/ (ADR 0008). */
+export const DEMO_HREF = "/app/";
+
 const T = {
   brand: ru("Уклад"),
   navInside: ru("Как устроена система"),
@@ -103,11 +106,11 @@ export function HeroScreens() {
             <div ref={leadRef} className="flex min-w-0 flex-col gap-5 lg:w-[470px] lg:shrink-0">
               <p className="text-[17px] leading-[1.55] text-white/85">{t(T.lead)}</p>
               <div className="flex flex-col gap-2.5 sm:flex-row">
-                <a href="#connect" className="wh-btn wh-btn--white group">
+                <a href="#connect" className="wh-btn wh-btn--white wh-btn--live">
                   {t(T.connect)}
-                  <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+                  <ArrowRight className="size-4" />
                 </a>
-                <a href="#inside" className="wh-btn wh-btn--ghost">
+                <a href={DEMO_HREF} className="wh-btn wh-btn--ghost">
                   {t(T.look)}
                 </a>
               </div>

@@ -9,32 +9,43 @@ import type { Origin, Status, Track } from "../../data/roadmap";
  * нет: жёлтый, оранжевый и салатовый в нём не читаются, а одна система меток
  * лучше двух. На светлых заливках текст тёмный (`--tag-ink`).
  */
-type Tone = { dot: string; fill: string };
+type Tone = {
+  dot: string;
+  fill: string;
+  /** Наведение на тему в отборе — её же цвет, бледно, а не общий серый. */
+  hover: string;
+};
 
 // Классы целиком, а не шаблоном: Tailwind находит их только в тексте файла.
 export const TRACK_COLORS: Record<Track, Tone> = {
   plan: {
     dot: "bg-[hsl(var(--tag-plan))]",
+    hover: "hover:bg-[hsl(var(--tag-plan)/0.14)]",
     fill: "bg-[hsl(var(--tag-plan))] text-white",
   },
   fulfillment: {
     dot: "bg-[hsl(var(--tag-fulfillment))]",
+    hover: "hover:bg-[hsl(var(--tag-fulfillment)/0.14)]",
     fill: "bg-[hsl(var(--tag-fulfillment))] text-[hsl(var(--tag-ink))]",
   },
   staff: {
     dot: "bg-[hsl(var(--tag-staff))]",
+    hover: "hover:bg-[hsl(var(--tag-staff)/0.14)]",
     fill: "bg-[hsl(var(--tag-staff))] text-white",
   },
   integrations: {
     dot: "bg-[hsl(var(--tag-integrations))]",
+    hover: "hover:bg-[hsl(var(--tag-integrations)/0.14)]",
     fill: "bg-[hsl(var(--tag-integrations))] text-white",
   },
   platform: {
     dot: "bg-[hsl(var(--tag-platform))]",
+    hover: "hover:bg-[hsl(var(--tag-platform)/0.14)]",
     fill: "bg-[hsl(var(--tag-platform))] text-white",
   },
   market: {
     dot: "bg-[hsl(var(--tag-market))]",
+    hover: "hover:bg-[hsl(var(--tag-market)/0.14)]",
     fill: "bg-[hsl(var(--tag-market))] text-[hsl(var(--tag-ink))]",
   },
 };
@@ -42,14 +53,17 @@ export const TRACK_COLORS: Record<Track, Tone> = {
 export const ORIGIN_COLORS: Record<Origin, Tone> = {
   warehouses: {
     dot: "bg-[hsl(var(--tag-warehouses))]",
+    hover: "hover:bg-[hsl(var(--tag-warehouses)/0.14)]",
     fill: "bg-[hsl(var(--tag-warehouses))] text-white",
   },
   sellers: {
     dot: "bg-[hsl(var(--tag-sellers))]",
+    hover: "hover:bg-[hsl(var(--tag-sellers)/0.14)]",
     fill: "bg-[hsl(var(--tag-sellers))] text-[hsl(var(--tag-ink))]",
   },
   bug: {
     dot: "bg-[hsl(var(--tag-bug))]",
+    hover: "hover:bg-[hsl(var(--tag-bug)/0.14)]",
     fill: "bg-[hsl(var(--tag-bug))] text-white",
   },
 };

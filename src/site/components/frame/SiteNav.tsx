@@ -112,7 +112,7 @@ export function SiteNav({
           <a
             href={`${href("/warehouses")}#connect`}
             className={cn(
-              "wh-btn !h-10 !px-[18px] !text-sm max-sm:!hidden",
+              "wh-btn wh-btn--live !h-10 !px-[18px] !text-sm max-sm:!hidden",
               onBlue ? "wh-btn--white" : "wh-btn--blue",
             )}
           >

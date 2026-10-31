@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Lightbulb } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { c, useT } from "../../lib/copy";
@@ -17,6 +17,11 @@ const T = {
   tabLog: c("Обновления", "Changelog"),
   tabsLabel: c("Разделы", "Sections"),
   suggest: c("Предложить идею", "Suggest an idea"),
+  suggestTitle: c("Не нашли нужного?", "Missing something?"),
+  suggestBody: c(
+    "Опишите задачу склада, а не готовое решение. Идея появится в колонке «Обсуждаем».",
+    "Describe the warehouse task, not a ready solution. The idea lands in “Discussing”.",
+  ),
 
   title: c(
     "Выбирайте, куда развивается Уклад, и предлагайте идеи",
@@ -29,7 +34,7 @@ const T = {
   howTitle: c("Как участвовать", "How to take part"),
   how: [
     c(
-      "Войдите по почте: пароль не нужен, придёт код.",
+      "Войдите в аккаунт Уклада или создайте его по почте: пароль не нужен, придёт код.",
       "Sign in with your email: no password, we send a code.",
     ),
     c(
@@ -64,6 +69,13 @@ export function RoadmapScreen() {
   const t = useT();
   const [tab, setTab] = useState<Tab>("board");
 
+  // С лендинга «Ваша функция +» ведёт сюда с #suggest: сразу открываем форму.
+  useEffect(() => {
+    if (window.location.hash !== "#suggest") return;
+    history.replaceState(null, "", window.location.pathname + window.location.search);
+    openDialog({ kind: "idea" });
+  }, []);
+
   return (
     <div className="wh">
       <SiteBar route={{ page: "roadmap" }} extra={<RoadmapAccount />} />
@@ -80,16 +92,22 @@ export function RoadmapScreen() {
           <aside className="lg:sticky lg:top-24 lg:self-start">
             <h1 className="text-2xl font-heading leading-tight tracking-tight">{t(T.title)}</h1>
             <p className="mt-3 text-sm leading-relaxed text-[var(--wh-muted)]">{t(T.lead)}</p>
-            {/* Кнопка — у призыва «предлагайте идеи», а не в строке вкладок
-                (Кирилл 31 окт); вид и высота — как у «Подключить склад». */}
-            <button
-              type="button"
-              onClick={() => openDialog({ kind: "idea" })}
-              className="wh-btn wh-btn--blue mt-5 !h-10 !px-[18px] !text-sm"
-            >
-              <Lightbulb className="size-4" />
-              {t(T.suggest)}
-            </button>
+            {/* Кнопка на своей плашке с пояснением, а не одна в воздухе под
+                абзацем (Кирилл 31 окт). */}
+            <div className="mt-5 rounded-[18px] bg-[var(--wh-soft)] p-4">
+              <p className="text-sm font-medium">{t(T.suggestTitle)}</p>
+              <p className="mt-1 text-sm leading-relaxed text-[var(--wh-muted)]">
+                {t(T.suggestBody)}
+              </p>
+              <button
+                type="button"
+                onClick={() => openDialog({ kind: "idea" })}
+                className="wh-btn wh-btn--blue mt-3 !h-10 w-full !px-[18px] !text-sm"
+              >
+                <Lightbulb className="size-4" />
+                {t(T.suggest)}
+              </button>
+            </div>
 
             <h2 className="mt-6 text-sm font-heading">{t(T.howTitle)}</h2>
             <ul className="mt-2 space-y-2 text-sm leading-relaxed text-[var(--wh-muted)]">

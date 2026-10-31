@@ -91,8 +91,11 @@ export function Familiar() {
 }
 
 /*
- * Рисунки линиями: `currentColor` даёт приглушённый цвет, акцент — синий
- * страницы. Своих цветов нет, чтобы тёмная тема не ломала их.
+ * Один стиль на все рисунки (Кирилл 31 окт): белые плитки с тонкой
+ * сплошной обводкой, строки — серые штрихи толщиной 3, и ровно один
+ * акцент — сплошная синяя заливка с белым внутри. Пунктира и синих
+ * контуров нет нигде. `currentColor` даёт приглушённый цвет, своих цветов
+ * нет, чтобы тёмная тема не ломала их.
  */
 const BLUE = "var(--wh-blue)";
 const MONO = "var(--font-mono, monospace)";
@@ -195,13 +198,19 @@ function TasksArt() {
         fill="var(--wh-ground)"
         stroke="currentColor"
         strokeOpacity="0.5"
-        strokeDasharray="4 3"
       />
       <text x="50" y="83" fontSize="11" fontFamily={MONO} fill="currentColor" textAnchor="middle">
         кто?
       </text>
-      <circle cx="132" cy="48" r="24" fill="none" stroke={BLUE} strokeWidth="2" />
-      <path d="M132 34v14l9 6" fill="none" stroke={BLUE} strokeWidth="2" strokeLinecap="round" />
+      <circle cx="132" cy="48" r="24" fill={BLUE} />
+      <path
+        d="M132 34v14l9 6"
+        fill="none"
+        stroke="#fff"
+        strokeWidth="3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </Art>
   );
 }

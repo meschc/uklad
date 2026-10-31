@@ -94,8 +94,12 @@ function useScrollProgress(ref: RefObject<Element | null>, off: boolean) {
     const measure = () => {
       frame = 0;
       const vh = window.innerHeight;
-      const top = el.getBoundingClientRect().top;
-      setProgress(Math.min(1, Math.max(0, (vh * 0.85 - top) / (vh * 0.4))));
+      // По центру блока: путь начинается, когда середина шагов входит снизу,
+      // и пятый шаг загорается, только когда блок встал посередине экрана
+      // (Кирилл 31 окт: раньше он горел, пока блок ещё не долистан).
+      const r = el.getBoundingClientRect();
+      const center = r.top + r.height / 2;
+      setProgress(Math.min(1, Math.max(0, (vh * 0.95 - center) / (vh * 0.45))));
     };
     const onScroll = () => {
       if (!frame) frame = requestAnimationFrame(measure);
@@ -288,15 +292,7 @@ function AddressesScheme({ still }: { still: boolean }) {
         </g>
       ))}
       {/* Проход между рядами. */}
-      <line
-        x1="14"
-        y1="54"
-        x2="186"
-        y2="54"
-        stroke="currentColor"
-        strokeOpacity="0.3"
-        strokeDasharray="3 3"
-      />
+      <line x1="14" y1="54" x2="186" y2="54" stroke="currentColor" strokeOpacity="0.3" />
     </svg>
   );
 }

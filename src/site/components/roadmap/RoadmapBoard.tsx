@@ -200,7 +200,7 @@ function TopicChip({
   on: boolean;
   onClick: () => void;
   /** Цвет темы — тот же, что у тега на карточке; выбранный залит им же. */
-  color?: { dot: string; fill: string };
+  color?: { dot: string; fill: string; hover: string };
 }) {
   return (
     <button
@@ -211,7 +211,7 @@ function TopicChip({
         "inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-sm font-medium transition-colors",
         on
           ? (color?.fill ?? "bg-[var(--wh-ink)] text-[var(--wh-ground)]")
-          : "text-[var(--wh-ink)] hover:bg-[var(--wh-soft)]",
+          : cn("text-[var(--wh-ink)]", color?.hover ?? "hover:bg-[var(--wh-soft)]"),
       )}
     >
       {color && !on && <span aria-hidden className={cn("size-2 rounded-full", color.dot)} />}
@@ -285,7 +285,7 @@ function Card({ item, voted, count }: { item: RoadmapItem; voted: boolean; count
         : null;
 
   return (
-    <article className="r-window relative h-full border border-[var(--wh-line)] bg-[var(--wh-tile)] p-4 transition-shadow hover:shadow-sm">
+    <article className="r-window relative h-full border border-[var(--wh-line)] bg-[var(--wh-tile)] p-4 transition-colors hover:border-[var(--wh-blue)]">
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
         {isVotable(item) && <RoadmapVote item={item} voted={voted} count={count} />}
         {note && <span className="ml-auto tabular-nums">{note}</span>}

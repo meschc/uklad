@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
-import { MapPin } from "lucide-react";
+import { ArrowRight, MapPin } from "lucide-react";
 import { LogoMark } from "../Logo";
 import { Reveal } from "../Reveal";
 import { ru, useT, type Copy } from "../../lib/copy";
 import { href } from "../../lib/route";
+import { DEMO_HREF } from "./HeroScreens";
 
 const T = {
   title: ru("Товар, сотрудники и селлеры"),
@@ -14,6 +15,7 @@ const T = {
     "Селлеры ищут склад по городу, условиям и цене. Карточка вашего склада появляется в каталоге после подключения.",
   ),
   showcaseLink: ru("Открыть каталог →"),
+  demo: ru("Посмотреть демо"),
 };
 
 /**
@@ -104,6 +106,13 @@ export function Inside() {
           </Reveal>
         ))}
       </div>
+
+      <Reveal className="mt-12 flex justify-center sm:mt-14">
+        <a href={DEMO_HREF} className="wh-btn wh-btn--soft group">
+          {t(T.demo)}
+          <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+        </a>
+      </Reveal>
 
       {/* Плашка каталога скрыта, пока витрина складов не запущена (26 окт). */}
       {SHOW_CATALOG && (
