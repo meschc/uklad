@@ -40,6 +40,7 @@ import { sanitizeDomains } from "../data/sanitize";
 
 export { fieldValueKey, resolveFloor, FLOOR_MAX } from "./helpers";
 export { selectRole } from "./session.slice";
+export { boundDevice } from "./workstation.slice";
 export { countUnread, selectSellerPartnerId, visibleChatPartners } from "./chat.slice";
 export type { GoodsConflict, EditorState } from "./state";
 
@@ -97,6 +98,8 @@ export function persistedState(s: EditorState) {
     stationSession: s.stationSession,
     packSession: s.packSession,
     breakPolicy: s.breakPolicy,
+    devices: s.devices,
+    thisDeviceId: s.thisDeviceId,
     tasks: s.tasks,
     serviceSettings: s.serviceSettings,
     // Тариф и настройки резервных копий: срок напоминания и дата последней
