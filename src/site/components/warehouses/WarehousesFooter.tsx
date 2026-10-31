@@ -1,6 +1,7 @@
 import { useId, useState } from "react";
 import { ArrowUp, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AsciiScene } from "../frame/AsciiScene";
 import { LEGAL_DOCS } from "../../data/legal";
 import { ORG } from "../../data/org";
 import { chatHours } from "../../data/offer";
@@ -67,8 +68,11 @@ export function WarehousesFooter({ away = false }: { away?: boolean }) {
   const docsId = useId();
 
   return (
-    <footer className="overflow-hidden bg-[var(--wh-blue)] text-white">
-      <div className="mx-auto max-w-[1280px] px-5 sm:px-10">
+    <footer className="relative overflow-hidden bg-[var(--wh-blue)] text-white">
+      {/* Свой рисунок, не поле первого экрана: стеллажи из знаков плывут
+          вверх (Кирилл 31 окт: «в подвал тоже ascii, но другую»). */}
+      <AsciiScene kind="racks" density={0.5} className="opacity-35" />
+      <div className="relative mx-auto max-w-[1280px] px-5 sm:px-10">
         {/* Отделён от финального блока воздухом, а не линией: тонкая черта под
             карточкой заявки читалась как обрыв (Кирилл 19 окт). */}
         <div className="flex flex-wrap justify-between gap-8 pt-20 text-sm sm:pt-28">
