@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ru, useT, type Copy } from "../../lib/copy";
 import { Reveal } from "../Reveal";
 import { AsciiField } from "./AsciiField";
+import { LivePlan, LiveTasks, ScaledWindow } from "./LiveCabinet";
 import { SITE_NAV_H } from "../frame/SiteNav";
 
 /** Демо-кабинет с посевными данными: живёт по /app/ (ADR 0008). */
@@ -24,16 +25,21 @@ const T = {
   alt: ru("Кабинет склада, экран «{label}»"),
 };
 
-/** Настоящие экраны демо-кабинета, снятые с `/app/` (19 окт). */
-const SCREENS: { label: Copy; file: string; caption: Copy }[] = [
+/**
+ * Экраны демо-кабинета. План и задания — живые макеты (`LiveCabinet`):
+ * реагируют на наведение и нажатия. Остальные пока снимки с `/app/`.
+ */
+const SCREENS: { label: Copy; file: string; caption: Copy; live?: () => ReactNode }[] = [
   {
     label: ru("План склада"),
     file: "plan.webp",
+    live: () => <LivePlan />,
     caption: ru("План склада: у каждой ячейки адрес, по нему идут приёмка и сборка"),
   },
   {
     label: ru("Задания"),
     file: "tasks.webp",
+    live: () => <LiveTasks />,
     caption: ru("Заявки селлеров сгруппированы по назначению"),
   },
   {
@@ -154,7 +160,12 @@ export function HeroScreens() {
           поле живёт только на синем (Кирилл 19 окт). */}
       <div className="relative mx-auto -mt-[clamp(120px,22vw,340px)] max-w-[1280px] px-5 sm:px-10">
         <Reveal delay={160} className="relative">
-          <div className="relative overflow-hidden rounded-[14px] bg-white shadow-[0_0_0_1px_rgba(13,14,17,0.1),0_4px_12px_rgba(13,14,17,0.06)]">
+          {/* Под курсором экраны не листаются сами: человек смотрит или
+              нажимает, и окно не должно уехать из-под руки. */}
+          <div
+            onPointerEnter={() => setAuto(false)}
+            className="relative overflow-hidden rounded-[14px] bg-white shadow-[0_0_0_1px_rgba(13,14,17,0.1),0_4px_12px_rgba(13,14,17,0.06)]"
+          >
             <div className="flex h-9 items-center gap-4 border-b border-[#ececef] px-3.5">
               <span className="flex gap-1.5" aria-hidden>
                 <span className="block size-2.5 rounded-full bg-[#e3e4e8]" />
@@ -167,14 +178,20 @@ export function HeroScreens() {
               <span className="w-[42px]" aria-hidden />
             </div>
             {/* Смена экрана — мягким всплытием, а не щелчком. */}
-            <img
-              key={cur.file}
-              src={`${import.meta.env.BASE_URL}photos/cabinet/${cur.file}`}
-              alt={t(T.alt, { label })}
-              width={1240}
-              height={640}
-              className="wh-swap block aspect-[1240/640] w-full object-cover object-left-top"
-            />
+            {cur.live ? (
+              <div key={cur.file} className="wh-swap">
+                <ScaledWindow>{cur.live()}</ScaledWindow>
+              </div>
+            ) : (
+              <img
+                key={cur.file}
+                src={`${import.meta.env.BASE_URL}photos/cabinet/${cur.file}`}
+                alt={t(T.alt, { label })}
+                width={1240}
+                height={640}
+                className="wh-swap block aspect-[1240/640] w-full object-cover object-left-top"
+              />
+            )}
           </div>
         </Reveal>
         <p key={cur.file} className="wh-swap wh-muted mt-4 text-[15px]">
