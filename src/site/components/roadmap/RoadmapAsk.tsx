@@ -37,9 +37,9 @@ export function RoadmapAsk() {
             <button
               type="button"
               onClick={() => openDialog({ kind: "idea" })}
-              className="inline-flex h-14 shrink-0 items-center gap-2 rounded-full bg-white px-7 text-base font-medium text-[var(--wh-blue)] transition-transform hover:-translate-y-0.5"
+              className="wh-btn wh-btn--white shrink-0"
             >
-              <Lightbulb className="size-5" />
+              <Lightbulb className="size-4" />
               {t(T.suggest)}
             </button>
           </div>

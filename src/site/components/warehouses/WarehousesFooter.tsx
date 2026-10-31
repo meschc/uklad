@@ -71,14 +71,16 @@ export function WarehousesFooter({ away = false }: { away?: boolean }) {
             <nav
               key={col.title.ru}
               aria-label={t(col.title)}
-              className="flex min-w-[160px] flex-col gap-2.5"
+              className="flex min-w-[160px] flex-col gap-1"
             >
-              <span className="text-white/60">{t(col.title)}</span>
+              <span className="mb-1.5 text-white/60">{t(col.title)}</span>
               {col.items.map((l) => (
                 <a
                   key={l.label.ru}
                   href={!l.to.startsWith("#") ? href(l.to) : away ? `${href("/")}${l.to}` : l.to}
-                  className="w-fit text-white/85 transition-[color,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:translate-x-1 hover:text-white motion-reduce:transition-none"
+                  // Подсветка — светлая пилюля вокруг ссылки, без сдвига вправо
+                  // (Кирилл 31 окт: ореол побольше, анимаций поменьше).
+                  className="-mx-3 w-fit rounded-full px-3 py-1 text-white/85 transition-colors duration-200 hover:bg-white/15 hover:text-white"
                 >
                   {t(l.label)}
                 </a>

@@ -63,7 +63,13 @@ export function Familiar() {
                 i === 2 && "lg:pl-8",
               )}
             >
-              {p.art}
+              {/* Иллюстрации всех блоков лендинга — на одной серой плашке:
+                  белые детали, синий акцент (Кирилл 31 окт: «где-то с
+                  заливкой, где-то без»). Та же плашка в «Как проходит
+                  подключение» и в «Товар, сотрудники и селлеры». */}
+              <div className="flex h-40 items-center justify-center rounded-[18px] bg-[var(--wh-soft)] p-5">
+                {p.art}
+              </div>
               <h3 className="mt-7 text-[22px] font-medium tracking-[-0.02em]">{t(p.title)}</h3>
               <p className="wh-muted mt-2.5 text-base leading-relaxed">{t(p.body)}</p>
             </Reveal>

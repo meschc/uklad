@@ -82,6 +82,11 @@ html {
      сам, поэтому в `lib/useSmoothScroll.ts` своей поправки нет. Менять высоту
      шапки — здесь. */
   scroll-padding-top: 88px;
+  /* Место под полосу прокрутки держим всегда: панель справа и вход прячут
+     прокрутку (`useOverlay`), и без запаса страница прыгала на ширину полосы
+     (Кирилл 31 окт). На телефоне и в macOS с плавающей полосой это ничего
+     не меняет. */
+  scrollbar-gutter: stable;
 }
 
 body {
@@ -553,6 +558,26 @@ input[type="search"]::-webkit-search-cancel-button {
 .wh-invert {
   background: var(--wh-ink);
   color: var(--wh-ground);
+}
+/* В тёмной теме инверсия к светлому выглядела чужой плитой — там блок синий. */
+.dark .wh-invert {
+  background: var(--wh-blue);
+  color: #fff;
+}
+/* Выделенная карточка и метка «Делаем»: синие на тёмном, белые на синем. */
+.wh-invert-accent {
+  background: var(--wh-blue);
+  color: #fff;
+}
+.dark .wh-invert-accent {
+  background: #fff;
+  color: var(--wh-blue);
+}
+.wh-invert-dot {
+  background: var(--wh-blue);
+}
+.dark .wh-invert-dot {
+  background: #fff;
 }
 .wh-invert-muted {
   color: color-mix(in srgb, currentColor 68%, transparent);

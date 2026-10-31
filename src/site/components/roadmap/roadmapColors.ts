@@ -1,88 +1,72 @@
 import type { Origin, Status, Track } from "../../data/roadmap";
 
 /**
- * Цвета дорожной карты (Кирилл 20 окт: «разделить по цветам»; 26 окт:
- * «согласовать доп цвета», активный фильтр — в цвет раздела).
- *
- * Палитра — одна шкала, а не шесть цветов на глаз: синий фирменный плюс
- * пять тонов одной светлоты и насыщенности (OKLCH L 0.55, C 0.15; в тёмной
- * теме L 0.78), поэтому ни один раздел не кричит громче соседа, а белый
- * текст на заливке читается у всех одинаково. Серый — у «Платформы»: это
- * не раздел продукта, а то, на чём он стоит.
+ * Цвета дорожной карты (просьба Кирилла 20 окт: «разделить по цветам», чтобы
+ * доска читалась как отдельный инструмент, а не как ещё один блок сайта).
  *
  * Цвет — у текста тега и у метки колонки, а не у заливки карточки: бледные
- * подложки Кирилл запретил. Заливка — только у выбранного фильтра.
+ * подложки Кирилл запретил, а цветной текст на белом остаётся чистым, как у
+ * taptop. Каждый цвет — пара для светлой и тёмной темы. Выбранная тема в
+ * отборе заливается тем же цветом (Кирилл 26 окт). Новую общую палитру
+ * дополнительных цветов Кирилл ещё не утвердил (31 окт) — до тех пор здесь
+ * прежние цвета.
  */
-interface Tone {
-  /** Текст тега на белом. */
-  text: string;
-  /** Выбранный фильтр: заливка цветом и контрастный текст. */
-  fill: string;
-}
-
-// Классы Tailwind собираются из строк в исходнике, поэтому каждый записан
-// целиком: склейка через шаблон сборщик стилей не увидит.
-const BLUE: Tone = {
-  text: "text-[var(--wh-blue)] dark:text-[#7ba7ff]",
-  fill: "bg-[var(--wh-blue)] text-white dark:bg-[#7ba7ff] dark:text-[#0f1013]",
-};
-const AMBER: Tone = {
-  text: "text-[#ab5a00] dark:text-[#eca760]",
-  fill: "bg-[#ab5a00] text-white dark:bg-[#eca760] dark:text-[#0f1013]",
-};
-const VIOLET: Tone = {
-  text: "text-[#795bbf] dark:text-[#bda8fc]",
-  fill: "bg-[#795bbf] text-white dark:bg-[#bda8fc] dark:text-[#0f1013]",
-};
-const TEAL: Tone = {
-  text: "text-[#008a8d] dark:text-[#3bcfcf]",
-  fill: "bg-[#008a8d] text-white dark:bg-[#3bcfcf] dark:text-[#0f1013]",
-};
-const ROSE: Tone = {
-  text: "text-[#b64466] dark:text-[#f896ad]",
-  fill: "bg-[#b64466] text-white dark:bg-[#f896ad] dark:text-[#0f1013]",
-};
-const GRAPHITE: Tone = {
-  text: "text-[#4d5562] dark:text-[#a1a4ab]",
-  fill: "bg-[#4d5562] text-white dark:bg-[#a1a4ab] dark:text-[#0f1013]",
-};
-/** Нейтральный — у происхождения пункта: это пометка, а не раздел. */
-const INK: Tone = {
-  text: "text-[var(--wh-ink)]",
-  fill: "bg-[var(--wh-ink)] text-[var(--wh-ground)]",
-};
-const RED: Tone = {
-  text: "text-[#dc2626] dark:text-[#f87171]",
-  fill: "bg-[#dc2626] text-white dark:bg-[#f87171] dark:text-[#0f1013]",
-};
+type Tone = { text: string; fill: string };
 
 export const TRACK_COLORS: Record<Track, Tone> = {
-  plan: BLUE,
-  fulfillment: AMBER,
-  staff: VIOLET,
-  integrations: TEAL,
-  platform: GRAPHITE,
-  market: ROSE,
+  plan: {
+    text: "text-[#2247ff] dark:text-[#7b93ff]",
+    fill: "bg-[#2247ff] text-white dark:bg-[#7b93ff] dark:text-[#0f1013]",
+  },
+  fulfillment: {
+    text: "text-[#c2410c] dark:text-[#fb923c]",
+    fill: "bg-[#c2410c] text-white dark:bg-[#fb923c] dark:text-[#0f1013]",
+  },
+  staff: {
+    text: "text-[#7c3aed] dark:text-[#a78bfa]",
+    fill: "bg-[#7c3aed] text-white dark:bg-[#a78bfa] dark:text-[#0f1013]",
+  },
+  integrations: {
+    text: "text-[#0f766e] dark:text-[#2dd4bf]",
+    fill: "bg-[#0f766e] text-white dark:bg-[#2dd4bf] dark:text-[#0f1013]",
+  },
+  platform: {
+    text: "text-[#4d5562] dark:text-[#a1a4ab]",
+    fill: "bg-[#4d5562] text-white dark:bg-[#a1a4ab] dark:text-[#0f1013]",
+  },
+  market: {
+    text: "text-[#be185d] dark:text-[#f472b6]",
+    fill: "bg-[#be185d] text-white dark:bg-[#f472b6] dark:text-[#0f1013]",
+  },
 };
 
 export const ORIGIN_COLORS: Record<Origin, Tone> = {
-  warehouses: INK,
-  sellers: INK,
-  bug: RED,
+  warehouses: {
+    text: "text-[#a16207] dark:text-[#facc15]",
+    fill: "bg-[#a16207] text-white dark:bg-[#facc15] dark:text-[#0f1013]",
+  },
+  sellers: {
+    text: "text-[#15803d] dark:text-[#4ade80]",
+    fill: "bg-[#15803d] text-white dark:bg-[#4ade80] dark:text-[#0f1013]",
+  },
+  bug: {
+    text: "text-[#dc2626] dark:text-[#f87171]",
+    fill: "bg-[#dc2626] text-white dark:bg-[#f87171] dark:text-[#0f1013]",
+  },
 };
 
-export const TRACK_TONE: Record<Track, string> = Object.fromEntries(
+export const TRACK_TONE = Object.fromEntries(
   Object.entries(TRACK_COLORS).map(([k, v]) => [k, v.text]),
 ) as Record<Track, string>;
 
-export const ORIGIN_TONE: Record<Origin, string> = Object.fromEntries(
+export const ORIGIN_TONE = Object.fromEntries(
   Object.entries(ORIGIN_COLORS).map(([k, v]) => [k, v.text]),
 ) as Record<Origin, string>;
 
-/** Метка колонки — те же тона: обсуждение янтарное, план фиолетовый, работа синяя, готово зелёное. */
+/** Метка колонки: от пустого кружка у обсуждения к сплошному у готового. */
 export const STATUS_TONE: Record<Status, string> = {
-  idea: "bg-[#ab5a00] dark:bg-[#eca760]",
-  planned: "bg-[#795bbf] dark:bg-[#bda8fc]",
-  progress: "bg-[var(--wh-blue)] dark:bg-[#7ba7ff]",
-  done: "bg-[#05893e] dark:bg-[#7ccd8e]",
+  idea: "bg-[#f59e0b]",
+  planned: "bg-[#8b5cf6]",
+  progress: "bg-[#2247ff]",
+  done: "bg-[#16a34a]",
 };

@@ -9,7 +9,7 @@ const T = {
   sub: ru("Условия тестового периода для первых складов."),
   roadmapTitle: ru("Открытая дорожная карта"),
   roadmapBody: ru(
-    "Что предложили склады, что в работе и что уже работает, видно на одной странице. Ваши функции появляются там же.",
+    "Что обсуждаем, что делаем и что уже готово, видно на одной странице. Ваши идеи попадают туда же.",
   ),
   roadmapLink: ru("Дорожная карта →"),
 };
@@ -43,19 +43,19 @@ const NUMBERS: { value: string; unit: Copy; body: Copy }[] = [
 type Stage = "idea" | "doing" | "done";
 
 /**
- * Колонки по нарастающей (19 окт): от предложения склада к работающей
- * функции. Примеры — заглушки до решения Кирилла о содержимом карты.
+ * Колонки по нарастающей (19 окт): от идеи к готовой функции. Подписи —
+ * те же, что у колонок доски на /roadmap (Кирилл 31 окт). Примеры — заглушки до решения Кирилла о содержимом карты.
  */
 const ROADMAP: { stage: Stage; title: Copy; items: Copy[] }[] = [
-  { stage: "idea", title: ru("Предложения"), items: [ru("Ваша функция")] },
+  { stage: "idea", title: ru("Обсуждаем"), items: [ru("Ваша функция")] },
   {
     stage: "doing",
-    title: ru("В работе"),
+    title: ru("Делаем"),
     items: [ru("Выгрузка остатков в Excel"), ru("Вход на ТСД по QR-коду")],
   },
   {
     stage: "done",
-    title: ru("Работает"),
+    title: ru("Готово"),
     items: [ru("Адресное хранение"), ru("Чат с селлерами")],
   },
 ];
@@ -96,8 +96,8 @@ export function Offer() {
 
       <section className="mx-auto mt-16 max-w-[1280px] px-5 sm:px-10">
         {/* Колонки карты — по всей ширине блока (Кирилл 19 окт), текст строкой
-            над ними. Карточка инверсна странице: тёмная на светлой, светлая
-            на тёмной, — иначе в тёмной теме она пропадает. */}
+            над ними. Карточка тёмная на светлой странице и синяя на тёмной
+            (Кирилл 31 окт), — иначе в тёмной теме она пропадает. */}
         <Reveal className="wh-invert flex flex-col gap-8 rounded-[28px] p-6 sm:p-10">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between lg:gap-16">
             <div className="max-w-[560px]">
@@ -116,7 +116,7 @@ export function Offer() {
                     className={cn(
                       "block size-2 rounded-full",
                       col.stage === "idea" && "border border-current",
-                      col.stage === "doing" && "bg-[var(--wh-blue)]",
+                      col.stage === "doing" && "wh-invert-dot",
                       col.stage === "done" && "bg-[#3ecf8e]",
                     )}
                   />
@@ -128,7 +128,7 @@ export function Offer() {
                     className={cn(
                       "rounded-[10px] px-3 py-2.5",
                       col.stage === "idea" && "wh-invert-dash border border-dashed",
-                      col.stage === "doing" && i === 0 && "bg-[var(--wh-blue)] text-white",
+                      col.stage === "doing" && i === 0 && "wh-invert-accent",
                       col.stage !== "idea" &&
                         !(col.stage === "doing" && i === 0) &&
                         "wh-invert-chip",

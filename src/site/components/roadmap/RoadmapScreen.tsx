@@ -52,7 +52,8 @@ type Tab = "board" | "log";
 
 /**
  * Дорожная карта по образцу taptop (решение 20 окт): описание слева, доска
- * справа, сверху вкладки «Дорожная карта / Обновления» и «Предложить идею».
+ * справа, сверху вкладки «Дорожная карта / Обновления»; «Предложить идею» —
+ * под заголовком слева.
  *
  * Страница живёт внутри обёртки `.wh` — в новом стиле витрины, токены
  * `--wh-*` из `site.css`. Данные — `data/roadmapItems.ts`; позже их будет
@@ -73,20 +74,22 @@ export function RoadmapScreen() {
         >
           <TabButton on={tab === "board"} onClick={() => setTab("board")} label={t(T.tabBoard)} />
           <TabButton on={tab === "log"} onClick={() => setTab("log")} label={t(T.tabLog)} />
-          <button
-            type="button"
-            onClick={() => openDialog({ kind: "idea" })}
-            className="ml-auto inline-flex h-9 items-center gap-1.5 rounded-full bg-[var(--wh-blue)] px-4 text-sm font-medium text-[var(--wh-on-blue)] transition-colors hover:bg-[var(--wh-blue-deep)]"
-          >
-            <Lightbulb className="size-4" />
-            {t(T.suggest)}
-          </button>
         </nav>
 
         <div className="mt-8 grid gap-10 lg:grid-cols-[300px_1fr]">
           <aside className="lg:sticky lg:top-24 lg:self-start">
             <h1 className="text-2xl font-heading leading-tight tracking-tight">{t(T.title)}</h1>
             <p className="mt-3 text-sm leading-relaxed text-[var(--wh-muted)]">{t(T.lead)}</p>
+            {/* Кнопка — у призыва «предлагайте идеи», а не в строке вкладок
+                (Кирилл 31 окт); вид и высота — как у «Подключить склад». */}
+            <button
+              type="button"
+              onClick={() => openDialog({ kind: "idea" })}
+              className="wh-btn wh-btn--blue mt-5 !h-10 !px-[18px] !text-sm"
+            >
+              <Lightbulb className="size-4" />
+              {t(T.suggest)}
+            </button>
 
             <h2 className="mt-6 text-sm font-heading">{t(T.howTitle)}</h2>
             <ul className="mt-2 space-y-2 text-sm leading-relaxed text-[var(--wh-muted)]">
@@ -122,7 +125,7 @@ function TabButton({ on, onClick, label }: { on: boolean; onClick: () => void; l
       onClick={onClick}
       aria-pressed={on}
       className={cn(
-        "inline-flex h-9 items-center rounded-full px-4 text-sm font-medium transition-colors",
+        "inline-flex h-10 items-center rounded-full px-4 text-sm font-medium transition-colors",
         on
           ? "bg-[var(--wh-soft)] text-[var(--wh-ink)]"
           : "text-[var(--wh-muted)] hover:text-[var(--wh-ink)]",

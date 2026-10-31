@@ -45,9 +45,6 @@ const STEPS: Step[] = [
   },
 ];
 
-/** Сколько линия-путь заполняется от первого шага до последнего, мс. */
-const PATH_MS = 1600;
-
 /** Без анимаций: настройка устройства или среда без наблюдателя (сборка в статику). */
 function useStill() {
   const [still] = useState(
@@ -83,6 +80,38 @@ function useInView(ref: RefObject<Element | null>, once: boolean) {
   return on;
 }
 
+/**
+ * Насколько путь прокручен: 0 — ряд шагов только показался снизу (на 85 %
+ * высоты окна), 1 — дошёл до 45 %. Шаги загораются по мере прокрутки, а не
+ * по таймеру (Кирилл 31 окт): человек сам ведёт путь колесом.
+ */
+function useScrollProgress(ref: RefObject<Element | null>, off: boolean) {
+  const [progress, setProgress] = useState(0);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || off) return;
+    let frame = 0;
+    const measure = () => {
+      frame = 0;
+      const vh = window.innerHeight;
+      const top = el.getBoundingClientRect().top;
+      setProgress(Math.min(1, Math.max(0, (vh * 0.85 - top) / (vh * 0.4))));
+    };
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(measure);
+    };
+    measure();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, [ref, off]);
+  return progress;
+}
+
 /** Шаг цикла схемы: растёт раз в `ms`, пока схема в кадре. */
 function useTick(active: boolean, ms: number) {
   const [tick, setTick] = useState(0);
@@ -103,8 +132,8 @@ function useTick(active: boolean, ms: number) {
  * на переносе, она перестаёт быть путём.
  *
  * Движение (Кирилл 19 окт: «тут всё статично»): при входе в кадр линия
- * заполняется слева направо и кружки шагов загораются по очереди, когда
- * линия до них доходит; схемы показывают свою работу — подсветка идёт по
+ * заполняется слева направо по мере прокрутки, и кружки шагов загораются по
+ * очереди, когда линия до них доходит; схемы показывают свою работу — подсветка идёт по
  * ячейкам, строки таблицы переезжают в список товаров с отсчётом остатков,
  * карточки сотрудников подсвечиваются по одной. Без анимаций всё стоит в
  * конечном виде.
@@ -113,8 +142,8 @@ export function ConnectPath() {
   const t = useT();
   const still = useStill();
   const pathRef = useRef<HTMLDivElement>(null);
-  const seen = useInView(pathRef, true);
-  const lit = still || seen;
+  const scrolled = useScrollProgress(pathRef, still);
+  const progress = still ? 1 : scrolled;
 
   return (
     <section
@@ -131,13 +160,15 @@ export function ConnectPath() {
           aria-hidden
         />
         <span
-          className="absolute inset-x-[10%] top-[19px] hidden h-0.5 origin-left bg-[var(--wh-blue)] transition-transform ease-[cubic-bezier(0.65,0,0.35,1)] lg:block"
-          style={{ transform: `scaleX(${lit ? 1 : 0})`, transitionDuration: `${PATH_MS}ms` }}
+          className="absolute inset-x-[10%] top-[19px] hidden h-0.5 origin-left bg-[var(--wh-blue)] transition-transform duration-200 ease-out lg:block"
+          style={{ transform: `scaleX(${progress})` }}
           aria-hidden
         />
         <ol className="relative grid grid-cols-1 gap-x-4 gap-y-10 text-center sm:grid-cols-2 lg:grid-cols-5">
           {STEPS.map((step, i) => {
             const last = i === STEPS.length - 1;
+            // Кружок горит, когда линия до него дошла.
+            const lit = progress > 0 && progress >= i / (STEPS.length - 1) - 0.001;
             return (
               <Reveal
                 key={step.title.ru}
@@ -157,7 +188,6 @@ export function ConnectPath() {
                         ? "bg-[var(--wh-ground)] text-[var(--wh-blue)] shadow-[inset_0_0_0_2px_var(--wh-blue)]"
                         : "bg-[var(--wh-blue)] text-white"),
                   )}
-                  style={{ transitionDelay: lit && !still ? `${(i * PATH_MS) / 4}ms` : "0ms" }}
                 >
                   {i + 1}
                 </span>
