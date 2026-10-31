@@ -202,7 +202,7 @@ test.describe("Правовая информация", () => {
     await footer.getByRole("link", { name: "Тарифы" }).click();
 
     await expect(page.getByRole("heading", { level: 1 })).toContainText(
-      "систему управления складом",
+      "система управления складом",
     );
     await expect
       .poll(async () =>

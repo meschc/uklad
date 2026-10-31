@@ -22,7 +22,7 @@ import { WarehousesFooter } from "./components/warehouses/WarehousesFooter";
 export function WarehousesPage() {
   return (
     <div className="wh">
-      <SiteBar route={{ page: "warehouses" }} />
+      <SiteBar route={{ page: "warehouses" }} overBlue />
       <main>
         <HeroScreens />
         <Familiar />

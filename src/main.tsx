@@ -1,7 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
-import { parseDeepLink } from "./lib/appViews";
+import { embedView, isEmbed, parseDeepLink } from "./lib/appViews";
 import { useEditor } from "./lib/store";
 import { describeError, journal } from "./lib/support/journal";
 import "./index.css";
@@ -18,6 +18,46 @@ import "./print.css";
 const link = parseDeepLink(window.location.search);
 if (link.role) useEditor.getState().setRole(link.role);
 if (link.view) useEditor.getState().goToView(link.view);
+
+// Встроенный в витрину кабинет (см. `isEmbed`): без подсказок и тостов,
+// колесо уходит странице витрины, экран переключает витрина сообщением.
+if (isEmbed(window.location.search)) {
+  const quiet = () => {
+    const s = useEditor.getState();
+    if (s.activeHint) s.dismissHint();
+    if (s.toast) useEditor.setState({ toast: null });
+  };
+  quiet();
+  useEditor.subscribe(quiet);
+  // Перехват на окне до React: план не панорамируется колесом, а фрейм без
+  // своей прокрутки отдаёт её странице снаружи.
+  window.addEventListener("wheel", (e) => e.stopPropagation(), { capture: true, passive: true });
+  // Живой снимок, а не второй кабинет (Кирилл 31 окт): наведение подсвечивает
+  // как в продукте, но нажать, протащить, ввести или открыть меню нельзя.
+  const block = (e: Event) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+  for (const type of [
+    "pointerdown",
+    "pointerup",
+    "mousedown",
+    "mouseup",
+    "click",
+    "dblclick",
+    "auxclick",
+    "contextmenu",
+    "keydown",
+    "dragstart",
+  ]) {
+    window.addEventListener(type, block, { capture: true, passive: false });
+  }
+  window.addEventListener("message", (e) => {
+    if (e.origin !== window.location.origin) return;
+    const view = embedView(e.data);
+    if (view) useEditor.getState().goToView(view);
+  });
+}
 
 // Журнал для «Сообщить о проблеме»: какие экраны открывались и что упало.
 // Пишется только номер экрана и текст ошибки, без данных склада.

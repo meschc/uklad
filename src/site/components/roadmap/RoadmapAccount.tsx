@@ -16,6 +16,8 @@ const T = {
 /**
  * Вход и аккаунт в шапке дорожной карты. Без входа — «Войти», после —
  * кружок с первой буквой почты и меню: сколько голосов и идей, выход.
+ * «Войти» — та же кнопка, что «Подключить склад» рядом, только второстепенная
+ * (серая): одна высота и одна форма на все действия шапки (Кирилл 31 окт).
  */
 export function RoadmapAccount() {
   const t = useT();
@@ -37,7 +39,7 @@ export function RoadmapAccount() {
       <button
         type="button"
         onClick={() => openDialog({ kind: "login" })}
-        className="inline-flex h-10 items-center gap-1.5 rounded-full px-3 text-sm font-medium hover:bg-[var(--wh-soft)]"
+        className="wh-btn wh-btn--soft !h-10 !px-[18px] !text-sm"
       >
         <UserRound className="size-4" />
         {t(T.login)}

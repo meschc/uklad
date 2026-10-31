@@ -3,6 +3,7 @@ import { ArrowRight, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { href } from "../lib/route";
 import { c, useT } from "../lib/copy";
+import { AddressBar } from "./AddressBar";
 
 /**
  * «Ничего не нашлось» — одним экраном на все случаи витрины.
@@ -52,7 +53,10 @@ export function NotFoundScreen({ caption, title, children, action }: Props) {
 
   return (
     <div className="wh">
-      <div className="mx-auto grid max-w-[1280px] items-center gap-12 px-5 pb-24 pt-14 sm:px-10 sm:pt-20 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-20">
+      <div className="mx-auto max-w-[1280px] px-5 pt-10 sm:px-10 sm:pt-14">
+        <AddressBar />
+      </div>
+      <div className="mx-auto grid max-w-[1280px] items-center gap-12 px-5 pb-24 pt-10 sm:px-10 sm:pt-14 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-20">
         <Rack label={t(T.rack)} empty={t(T.empty)} />
 
         <div className="wh-swap">
