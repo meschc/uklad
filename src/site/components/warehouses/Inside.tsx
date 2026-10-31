@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
-import { MapPin } from "lucide-react";
-import { LogoMark } from "../Logo";
+import { ArrowRight, MapPin } from "lucide-react";
+import { UkladBox } from "@/components/brand/UkladLogo";
 import { Reveal } from "../Reveal";
 import { ru, useT, type Copy } from "../../lib/copy";
 import { href } from "../../lib/route";
+import { DEMO_HREF } from "./HeroScreens";
 
 const T = {
   title: ru("Товар, сотрудники и селлеры"),
@@ -14,6 +15,7 @@ const T = {
     "Селлеры ищут склад по городу, условиям и цене. Карточка вашего склада появляется в каталоге после подключения.",
   ),
   showcaseLink: ru("Открыть каталог →"),
+  demo: ru("Посмотреть демо"),
 };
 
 /**
@@ -64,10 +66,7 @@ export function Inside() {
       </Reveal>
 
       <div className="mt-12 flex justify-center sm:mt-16">
-        <div className="inline-flex h-14 items-center gap-2.5 rounded-2xl bg-[var(--wh-blue)] pl-3 pr-6 text-xl font-semibold tracking-tight text-white">
-          <LogoMark className="rounded-lg ring-1 ring-white/40" />
-          {t(T.brand)}
-        </div>
+        <UkladBox className="h-16" label={t(T.brand)} />
       </div>
 
       {/* Плавные ветки к четырём колонкам. На узком экране колонки встают
@@ -96,7 +95,7 @@ export function Inside() {
             delay={i * 70}
             className="flex flex-col items-center text-center"
           >
-            <div className="w-full max-w-[260px] rounded-2xl border border-[var(--wh-line)] bg-[var(--wh-tile)] text-left">
+            <div className="w-full max-w-[260px] rounded-[18px] bg-[var(--wh-soft)] text-left">
               {b.ui}
             </div>
             <h3 className="mt-6 text-xl font-medium tracking-[-0.02em]">{t(b.title)}</h3>
@@ -104,6 +103,13 @@ export function Inside() {
           </Reveal>
         ))}
       </div>
+
+      <Reveal className="mt-12 flex justify-center sm:mt-14">
+        <a href={DEMO_HREF} className="wh-btn wh-btn--soft group">
+          {t(T.demo)}
+          <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+        </a>
+      </Reveal>
 
       {/* Плашка каталога скрыта, пока витрина складов не запущена (26 окт). */}
       {SHOW_CATALOG && (
@@ -127,7 +133,8 @@ export function Inside() {
   );
 }
 
-/* Кусочки интерфейса: та же раскладка, что в кабинете, но без данных. */
+/* Кусочки интерфейса: та же раскладка, что в кабинете, но без данных.
+   Плашка серая, детали белые, акцент синий — как у остальных иллюстраций. */
 
 function CellsUi() {
   return (
@@ -136,7 +143,7 @@ function CellsUi() {
         {Array.from({ length: 10 }, (_, i) => (
           <span
             key={i}
-            className={`block h-[18px] rounded-[3px] ${i === 2 ? "bg-[var(--wh-blue)]" : "bg-[var(--wh-soft)] shadow-[inset_0_0_0_1px_var(--wh-line)]"}`}
+            className={`block h-[18px] rounded-[3px] ${i === 2 ? "bg-[var(--wh-blue)]" : "bg-[var(--wh-tile)] shadow-[inset_0_0_0_1px_var(--wh-line)]"}`}
           />
         ))}
       </div>
@@ -158,7 +165,7 @@ function StaffUi() {
             <span>{p.name}</span>
             <span className="wh-muted">{p.units}</span>
           </div>
-          <div className="mt-1 h-1 rounded-sm bg-[var(--wh-soft)] shadow-[inset_0_0_0_1px_var(--wh-line)]">
+          <div className="mt-1 h-1 rounded-sm bg-[var(--wh-tile)] shadow-[inset_0_0_0_1px_var(--wh-line)]">
             <div className="h-1 rounded-sm bg-[var(--wh-blue)]" style={{ width: `${p.share}%` }} />
           </div>
         </div>
@@ -170,11 +177,11 @@ function StaffUi() {
 function ChatUi() {
   return (
     <div className="flex flex-col gap-1.5 px-4 py-3.5 text-[13px]">
-      <span className="self-start rounded-[12px_12px_12px_4px] bg-[var(--wh-soft)] px-2.5 py-1.5 shadow-[inset_0_0_0_1px_var(--wh-line)]">
-        Можно отгрузить частично?
+      <span className="self-start rounded-[12px_12px_12px_4px] bg-[var(--wh-tile)] px-2.5 py-1.5 shadow-[inset_0_0_0_1px_var(--wh-line)]">
+        Поставка уже принята?
       </span>
       <span className="self-end rounded-[12px_12px_4px_12px] bg-[var(--wh-blue)] px-2.5 py-1.5 text-white">
-        Да, машина ушла в 14:20
+        Да, 120 из 120, всё на местах
       </span>
     </div>
   );

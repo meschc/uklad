@@ -1,15 +1,15 @@
 import { useMemo, useState } from "react";
 import { CheckCircle2, Lightbulb, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { DialogShell } from "@/components/ui/dialog-shell";
 import { TRACK_LABELS, type Track } from "../../data/roadmap";
 import { ROADMAP_ITEMS } from "../../data/roadmapItems";
 import { ru, useT } from "../../lib/copy";
 import { useOverlay } from "../../lib/useOverlay";
 import { closeDialog, openDialog, submitIdea, useRoadmap } from "../../lib/roadmap/store";
 import type { RoadmapError } from "../../lib/roadmap/port";
-import { TRACK_TONE } from "./roadmapColors";
+import { TRACK_COLORS } from "./roadmapColors";
 import { Hint, SubmitButton } from "./RoadmapLogin";
+import { SidePanel } from "../frame/SidePanel";
 
 const MAX_TITLE = 90;
 const MAX_DETAILS = 1_500;
@@ -27,11 +27,13 @@ const T = {
   send: ru("Отправить идею"),
   sending: ru("Отправляем…"),
   needTitle: ru("Напишите идею хотя бы одной строкой."),
-  loginFirst: ru("Сначала войдите по почте, затем идея отправится."),
+  loginFirst: ru(
+    "Сначала войдите в аккаунт Уклада или создайте его по почте, затем идея отправится.",
+  ),
   close: ru("Закрыть"),
   doneTitle: ru("Идея отправлена"),
   doneLead: ru(
-    "Разберём её за неделю. Пока она видна только вам, в блоке «Мои идеи» слева. Если возьмём в работу, она появится на доске, и мы напишем на почту.",
+    "Пока идея видна только вам, в блоке «Мои идеи» слева. Если возьмём в работу, она появится на доске, и мы напишем на почту.",
   ),
   ok: ru("Хорошо"),
 };
@@ -98,8 +100,8 @@ export function RoadmapIdeaForm() {
   };
 
   return (
-    <DialogShell size="xl" scroll onClose={closeDialog}>
-      <div className="wh overflow-y-auto p-6 sm:p-8">
+    <SidePanel onClose={closeDialog} label={t(T.title)}>
+      <div className="p-6 sm:p-8">
         <div className="flex items-start justify-between gap-3">
           <span className="grid size-10 place-items-center rounded-full bg-[var(--wh-blue)] text-[var(--wh-on-blue)]">
             {done ? <CheckCircle2 className="size-5" /> : <Lightbulb className="size-5" />}
@@ -203,15 +205,18 @@ export function RoadmapIdeaForm() {
                       aria-pressed={on}
                       onClick={() => setTrack(on ? null : id)}
                       className={cn(
-                        "h-9 rounded-full px-3.5 text-sm font-medium transition-colors",
+                        "inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-sm font-medium transition-colors",
                         on
-                          ? "bg-[var(--wh-ink)] text-[var(--wh-ground)]"
-                          : cn(
-                              TRACK_TONE[id],
-                              "bg-[var(--wh-soft)] shadow-[inset_0_0_0_1px_var(--wh-line)]",
-                            ),
+                          ? TRACK_COLORS[id].fill
+                          : "bg-[var(--wh-soft)] text-[var(--wh-ink)] shadow-[inset_0_0_0_1px_var(--wh-line)]",
                       )}
                     >
+                      {!on && (
+                        <span
+                          aria-hidden
+                          className={cn("size-2 rounded-full", TRACK_COLORS[id].dot)}
+                        />
+                      )}
                       {t(TRACK_LABELS[id])}
                     </button>
                   );
@@ -225,7 +230,7 @@ export function RoadmapIdeaForm() {
           </form>
         )}
       </div>
-    </DialogShell>
+    </SidePanel>
   );
 }
 

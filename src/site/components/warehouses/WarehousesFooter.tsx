@@ -25,15 +25,30 @@ const LINKS: { title: Copy; items: { label: Copy; to: string }[] }[] = [
     title: T.product,
     items: [
       { label: c("Как устроена система", "How the system works"), to: "#inside" },
+      { label: c("Демо-кабинет", "Demo"), to: "/app" },
+      { label: c("Как проходит подключение", "How onboarding works"), to: "#connect-path" },
       { label: c("Тарифы", "Pricing"), to: "#tariffs" },
-      { label: c("Дорожная карта", "Roadmap"), to: "/roadmap" },
+      { label: c("Вопросы", "FAQ"), to: "#faq" },
     ],
   },
   {
     title: T.uklad,
-    items: [{ label: c("Контакты", "Contacts"), to: "/contacts" }],
+    items: [
+      { label: c("Войти в кабинет", "Sign in"), to: "/app" },
+      { label: c("Дорожная карта", "Roadmap"), to: "/roadmap" },
+      { label: c("Предложить идею", "Suggest an idea"), to: "/roadmap#suggest" },
+      { label: c("Документы", "Documents"), to: "/legal" },
+      { label: c("Контакты", "Contacts"), to: "/contacts" },
+    ],
   },
 ];
+
+/** Путь с якорем (`/roadmap#suggest`) или якорь этой страницы (`#faq`). */
+function linkHref(to: string, away: boolean): string {
+  const [path, hash] = to.split("#");
+  if (path) return `${href(path)}${hash ? `#${hash}` : ""}`;
+  return away ? `${href("/")}#${hash}` : `#${hash}`;
+}
 
 /**
  * Единственный подвал страницы для складов (Кирилл 19 окт: «подвал должен
@@ -71,14 +86,16 @@ export function WarehousesFooter({ away = false }: { away?: boolean }) {
             <nav
               key={col.title.ru}
               aria-label={t(col.title)}
-              className="flex min-w-[160px] flex-col gap-2.5"
+              className="flex min-w-[160px] flex-col gap-1"
             >
-              <span className="text-white/60">{t(col.title)}</span>
+              <span className="mb-1.5 text-white/60">{t(col.title)}</span>
               {col.items.map((l) => (
                 <a
                   key={l.label.ru}
-                  href={!l.to.startsWith("#") ? href(l.to) : away ? `${href("/")}${l.to}` : l.to}
-                  className="w-fit text-white/85 transition-[color,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:translate-x-1 hover:text-white motion-reduce:transition-none"
+                  href={linkHref(l.to, away)}
+                  // Подсветка — светлая пилюля вокруг ссылки, без сдвига вправо
+                  // (Кирилл 31 окт: ореол побольше, анимаций поменьше).
+                  className="-mx-3 w-fit rounded-full px-3 py-1 text-white/85 transition-colors duration-200 hover:bg-white/15 hover:text-white"
                 >
                   {t(l.label)}
                 </a>

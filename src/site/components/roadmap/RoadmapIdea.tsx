@@ -1,6 +1,5 @@
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { DialogShell } from "@/components/ui/dialog-shell";
 import {
   MILESTONES,
   ORIGIN_LABELS,
@@ -12,6 +11,8 @@ import {
 import { quarterLabel } from "../../lib/roadmapStats";
 import { c, useT } from "../../lib/copy";
 import { ORIGIN_TONE, STATUS_TONE, TRACK_TONE } from "./roadmapColors";
+import { useOverlay } from "../../lib/useOverlay";
+import { SidePanel } from "../frame/SidePanel";
 
 const T = {
   close: c("Закрыть", "Close"),
@@ -43,6 +44,7 @@ export function RoadmapIdea({
   onClose: () => void;
 }) {
   const t = useT();
+  useOverlay(true, onClose);
   const stage = MILESTONES.find((m) => m.id === item.milestone);
   const when =
     item.status === "done"
@@ -54,8 +56,8 @@ export function RoadmapIdea({
         : t(T.noDate);
 
   return (
-    <DialogShell size="2xl" onClose={onClose}>
-      <div className="wh p-6 sm:p-8">
+    <SidePanel onClose={onClose} label={t(item.title)}>
+      <div className="p-6 sm:p-8">
         <div className="flex items-start gap-3">
           {vote}
           <button
@@ -95,7 +97,7 @@ export function RoadmapIdea({
           )}
 
           <dt className="text-[var(--wh-muted)]">{t(T.topics)}</dt>
-          <dd className="flex flex-wrap gap-x-3 font-medium">
+          <dd className="flex flex-wrap items-center gap-1.5">
             <span className={TRACK_TONE[item.track]}>{t(TRACK_LABELS[item.track])}</span>
             {item.origin && (
               <span className={ORIGIN_TONE[item.origin]}>{t(ORIGIN_LABELS[item.origin])}</span>
@@ -111,6 +113,6 @@ export function RoadmapIdea({
           {t(T.discuss)}
         </a>
       </div>
-    </DialogShell>
+    </SidePanel>
   );
 }
