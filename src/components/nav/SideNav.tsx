@@ -1,6 +1,5 @@
 import { useState } from "react";
 import {
-  Boxes,
   ChevronDown,
   LifeBuoy,
   Moon,
@@ -16,6 +15,7 @@ import type { AppView } from "@/lib/types";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { ReportProblemDialog } from "@/components/support/ReportProblemDialog";
+import { UkladLockup } from "@/components/brand/UkladLockup";
 
 /** Свёрнуто ли меню — удобство одного человека, поэтому в localStorage, а не в сторе. */
 const COLLAPSED_KEY = "uklad-nav-collapsed";
@@ -210,12 +210,12 @@ export function SideNav() {
         onClick={goToDashboard}
         title={t("nav.side.toDashboard")}
         aria-label={t("nav.side.toDashboard")}
-        className="mb-2 flex h-10 cursor-pointer items-center gap-2.5 rounded-lg px-1.5 text-sm font-semibold tracking-tight hover:bg-accent"
+        className={cn(
+          "mb-2 flex h-10 cursor-pointer items-center rounded-lg hover:bg-accent",
+          collapsed ? "px-0.5" : "px-1.5",
+        )}
       >
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-foreground text-background">
-          <Boxes className="size-4" />
-        </span>
-        {!collapsed && <span className="truncate">Уклад</span>}
+        <UkladLockup wordless={collapsed} />
       </button>
 
       {shown.map((entry) => {

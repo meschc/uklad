@@ -9,6 +9,7 @@ import type {
   TariffId,
   BreakPolicy,
   PackSession,
+  Device,
   StaffEvent,
   ShiftMark,
   IdleReason,
@@ -134,7 +135,10 @@ export interface AccountSlice {
   updateWarehouse: (
     id: string,
     patch: Partial<
-      Pick<Warehouse, "name" | "kind" | "address" | "lat" | "lng" | "storageRatePerCell">
+      Pick<
+        Warehouse,
+        "name" | "kind" | "address" | "lat" | "lng" | "storageRatePerCell" | "showOnMarket"
+      >
     >,
   ) => void;
   /** Удалить склад. Нельзя удалить последний; размещения на нём — очищаются. */
@@ -665,6 +669,19 @@ export interface SubscriptionSlice {
 // --- Рабочее место и смена сотрудника -----------------------------------------
 
 export interface WorkstationSlice {
+  /** Устройства склада: компьютеры и ТСД у рабочих мест. */
+  devices: Device[];
+  /**
+   * К какому устройству привязан этот браузер. На сервере это кука с ключом
+   * устройства, а не поле данных склада: здесь оно живёт рядом лишь в демо.
+   */
+  thisDeviceId: string | null;
+  /** Завести устройство и привязать к нему этот браузер. */
+  addDevice: (name: string, station: WorkstationKind) => Device;
+  /** Отключить устройство: на нём больше никто не войдёт. */
+  revokeDevice: (id: string) => void;
+  /** Отвязать этот браузер — только по бейджу руководителя, иначе null. */
+  unbindThisDevice: (managerBadge: string) => boolean;
   /**
    * Журнал сотрудников: отметки смены, сканы и упаковки (узел cab-staff-log).
    * Время упаковки каждой штуки по сотруднику — это контроль выработки, то есть

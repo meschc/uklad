@@ -2,7 +2,7 @@ import { Suspense, lazy, useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { isHeatmapWindow } from "@/lib/appViews";
-import { selectRole, useEditor } from "@/lib/store";
+import { boundDevice, selectRole, useEditor } from "@/lib/store";
 import { applyTheme } from "@/lib/theme";
 import { useDeepLink } from "@/lib/useDeepLink";
 import { useT } from "@/lib/i18n";
@@ -87,6 +87,11 @@ const WorkstationScreen = lazy(() =>
     default: m.WorkstationScreen,
   })),
 );
+const DevicesScreen = lazy(() =>
+  import("@/components/workstation/DevicesScreen").then((m) => ({
+    default: m.DevicesScreen,
+  })),
+);
 const ChatScreen = lazy(() =>
   import("@/components/chat/ChatScreen").then((m) => ({ default: m.ChatScreen })),
 );
@@ -121,7 +126,15 @@ export default function App() {
   // логотип, в профиль — шапка кабинета), но выкидывать с них по «не нашёл в
   // списке разрешённых» нельзя — иначе кабинет стал бы недостижим.
   const allowed = navFor(role).map((n) => n.view);
-  const view = ACCOUNT_VIEWS.has(appView) || allowed.includes(appView) ? appView : allowed[0];
+  // Компьютер, привязанный к месту, — это стол, а не кабинет: он открывает
+  // только рабочее место, куда бы ни вела ссылка. Отвязать его можно бейджем
+  // руководителя на самом столе или с экрана «Устройства» с другого компьютера.
+  const kiosk = useEditor((s) => boundDevice(s) !== null) && role === "warehouse";
+  const view = kiosk
+    ? "workstation"
+    : ACCOUNT_VIEWS.has(appView) || allowed.includes(appView)
+      ? appView
+      : allowed[0];
 
   useEffect(() => {
     if (view !== appView) useEditor.getState().goToView(view);
@@ -163,7 +176,9 @@ export default function App() {
   // сообщении вообще имеет смысл только тогда, когда человек не в чате (п.3).
   const chrome = (
     <>
-      <ChatWatcher />
+      {/* За столом сообщения продавцов не всплывают: экран общий, переписка
+          — дело руководителя. */}
+      {!kiosk && <ChatWatcher />}
       <Toast />
     </>
   );
@@ -248,6 +263,8 @@ function renderView(view: string) {
       return <ChatScreen />;
     case "workstation":
       return <WorkstationScreen />;
+    case "devices":
+      return <DevicesScreen />;
     case "login":
       return <LoginScreen />;
     default:

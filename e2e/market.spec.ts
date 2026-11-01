@@ -116,14 +116,13 @@ test.describe("Витрина складов", () => {
   });
 
   test("заявка уходит только заполненной и с согласием", async ({ page }) => {
+    await page.route("**/api/leads", (route) => route.fulfill({ status: 200, json: { ok: true } }));
     await cards(page).first().click();
     // Заявка и чат живут в одной боковой колонке — сужаем поиск до неё, иначе
     // «Отправить» поймает и поле чата.
     const aside = page.getByRole("complementary");
-    // «Написать письмо», а не «Отправить заявку»: приёмник заявок в сборке не
-    // настроен (`VITE_LEADS_ENDPOINT` пуст), и форма не притворяется
-    // работающей — кнопка открывает подставленное письмо.
-    const send = aside.getByRole("button", { name: "Написать письмо" });
+    // Заявка уходит на наш сервер (`/api/leads`, в тесте отвечаем за него сами).
+    const send = aside.getByRole("button", { name: "Отправить заявку" });
 
     // Пустая заявка не уходит, и рядом написано, чего не хватает.
     await expect(send).toBeDisabled();
@@ -133,11 +132,9 @@ test.describe("Витрина складов", () => {
     await expect(send).toBeDisabled();
     await aside.getByRole("checkbox").first().check();
     await expect(send).toBeEnabled();
-    // Что сделает нажатие — сказано до нажатия.
-    await expect(aside).toContainText(phrase("Отправить его нужно самому"));
 
     await send.click();
-    await expect(aside.getByRole("button", { name: "Письмо открыто" })).toBeVisible();
+    await expect(aside.getByRole("button", { name: "Отправлено" })).toBeVisible();
   });
 
   test("карта — второй способ смотреть тот же отбор", async ({ page }) => {
@@ -231,12 +228,15 @@ test.describe("Витрина складов", () => {
         .click();
       await expect(page).toHaveURL(/\/warehouse\/w-\d+\/$/);
 
-      await expect(page.getByRole("heading", { name: "Что проверил Уклад" })).toBeVisible();
+      const heading = page.getByRole("heading", { name: /Что проверил Уклад/ });
+      await expect(heading).toBeVisible();
       await expect(page.getByText(REGISTRY)).toBeVisible();
       await expect(page.getByText(phrase("Право пользования площадкой"))).toBeVisible();
 
       // Оговорка — не мелкий шрифт для юристов, а часть обещания: без неё
-      // список проверок читается как гарантия качества услуг.
+      // список проверок читается как гарантия качества услуг. С 26 окт она
+      // в сноске у заголовка и открывается наведением.
+      await heading.getByRole("button", { name: /Пояснение/ }).hover();
       await expect(page.getByText(phrase("Проверка — не поручительство"))).toBeVisible();
       await page.getByRole("link", { name: "Как это устроено" }).click();
       await expect(page).toHaveURL(/\/legal\/requisites\/$/);
@@ -452,16 +452,17 @@ test.describe("Витрина складов", () => {
     });
 
     test("заявка из таблицы уходит во все отмеченные и только после согласия", async ({ page }) => {
+      await page.route("**/api/leads", (route) =>
+        route.fulfill({ status: 200, json: { ok: true } }),
+      );
       await mark(page);
       await mark(page);
       await bar(page).getByRole("button", { name: "Сравнить", exact: true }).click();
 
       const table = page.getByRole("dialog", { name: "Сравнение складов" });
       // В подписи кнопки число складов: заявка уходит сразу во все, и человек
-      // обязан видеть, во сколько именно, до нажатия. Слово перед числом
-      // зависит от того, настроен ли приёмник: с ним — «Отправить заявку в 2
-      // склада», без него кнопка честно открывает письмо.
-      const send = table.getByRole("button", { name: phrase("Написать письмо в 2 склада") });
+      // обязан видеть, во сколько именно, до нажатия.
+      const send = table.getByRole("button", { name: phrase("Отправить заявку в 2 склада") });
       await expect(send).toBeDisabled();
 
       await fillRequest(table);
@@ -473,7 +474,7 @@ test.describe("Витрина складов", () => {
       await table.getByRole("checkbox").first().check();
       await expect(send).toBeEnabled();
       await send.click();
-      await expect(table.getByRole("button", { name: "Письмо открыто" })).toBeVisible();
+      await expect(table.getByRole("button", { name: "Отправлено" })).toBeVisible();
     });
 
     test("объём добавляет в таблицу главную строку — месяц", async ({ page }) => {

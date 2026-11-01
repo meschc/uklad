@@ -102,6 +102,7 @@ export const createAccountSlice: SliceCreator<AccountSlice> = (set, get) => ({
         // переименование склада из другого места молча его затирало бы.
         storageRatePerCell:
           "storageRatePerCell" in patch ? patch.storageRatePerCell : w.storageRatePerCell,
+        showOnMarket: "showOnMarket" in patch ? patch.showOnMarket : w.showOnMarket,
       });
       if (s.warehouse.id === id) return { warehouse: apply(s.warehouse) };
       return {

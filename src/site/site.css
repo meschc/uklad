@@ -82,6 +82,11 @@ html {
      сам, поэтому в `lib/useSmoothScroll.ts` своей поправки нет. Менять высоту
      шапки — здесь. */
   scroll-padding-top: 88px;
+  /* Место под полосу прокрутки держим всегда: панель справа и вход прячут
+     прокрутку (`useOverlay`), и без запаса страница прыгала на ширину полосы
+     (Кирилл 31 окт). На телефоне и в macOS с плавающей полосой это ничего
+     не меняет. */
+  scrollbar-gutter: stable;
 }
 
 body {
@@ -554,11 +559,34 @@ input[type="search"]::-webkit-search-cancel-button {
   background: var(--wh-ink);
   color: var(--wh-ground);
 }
+/* В тёмной теме инверсия к светлому выглядела чужой плитой — там блок синий. */
+.dark .wh-invert {
+  background: var(--wh-blue);
+  color: #fff;
+}
+/* Выделенная карточка и метка «Делаем»: синие на тёмном, белые на синем. */
+.wh-invert-accent {
+  background: var(--wh-blue);
+  color: #fff;
+}
+.dark .wh-invert-accent {
+  background: #fff;
+  color: var(--wh-blue);
+}
+.wh-invert-dot {
+  background: var(--wh-blue);
+}
+.dark .wh-invert-dot {
+  background: #fff;
+}
 .wh-invert-muted {
   color: color-mix(in srgb, currentColor 68%, transparent);
 }
 .wh-invert-chip {
   background: color-mix(in srgb, currentColor 8%, transparent);
+}
+a.wh-invert-chip:hover {
+  background: color-mix(in srgb, currentColor 14%, transparent);
 }
 .wh-invert-dash {
   border-color: color-mix(in srgb, currentColor 32%, transparent);
@@ -703,6 +731,64 @@ input[type="search"]::-webkit-search-cancel-button {
 }
 
 /*
+ * «Подключить склад» — буквы волной прокатываются вверх (`RollText`):
+ * раз в 7 с сами и сразу под курсором (Кирилл 31 окт: живая кнопка, но
+ * без градиента). Под каждой буквой её копия, поэтому возврат незаметен.
+ */
+.wh-roll-text {
+  display: inline-flex;
+  overflow: hidden;
+  height: 1.3em;
+  line-height: 1.3em;
+}
+.wh-roll-ch {
+  position: relative;
+  display: inline-block;
+  animation: wh-roll-auto 7s cubic-bezier(0.65, 0, 0.35, 1) calc(2s + var(--i) * 28ms) infinite;
+}
+.wh-roll-ch::after {
+  content: attr(data-ch);
+  position: absolute;
+  left: 0;
+  top: 100%;
+}
+a:hover .wh-roll-ch,
+button:hover .wh-roll-ch {
+  animation: wh-roll-once 0.5s cubic-bezier(0.65, 0, 0.35, 1) calc(var(--i) * 18ms) both;
+}
+@keyframes wh-roll-auto {
+  0%,
+  90% {
+    transform: translateY(0);
+  }
+  97%,
+  100% {
+    transform: translateY(-100%);
+  }
+}
+@keyframes wh-roll-once {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-100%);
+  }
+}
+.wh-btn svg {
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.wh-btn:hover svg {
+  transform: translateX(3px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .wh-roll-ch,
+  a:hover .wh-roll-ch,
+  button:hover .wh-roll-ch {
+    animation: none;
+  }
+}
+
+/*
  * Смена числа в калькуляторе (20 окт): больше — сверху вниз, меньше — снизу
  * вверх, с лёгким размытием. Уходящее значение заканчивается невидимым.
  */
@@ -753,51 +839,6 @@ input[type="search"]::-webkit-search-cancel-button {
   }
   .wh-roll-out-down,
   .wh-roll-out-up {
-    display: none;
-  }
-}
-
-/*
- * 404 «Ячейка пуста» (22 окт): коробки встают на полки по очереди, луч
- * сканера проходит стеллаж сверху вниз, пустая ячейка мерцает рамкой.
- */
-@keyframes wh-box-in {
-  from {
-    opacity: 0;
-    transform: translateY(-18px);
-  }
-}
-.wh-box {
-  animation: wh-box-in 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-@keyframes wh-scan {
-  0% {
-    transform: translateY(-100%);
-  }
-  100% {
-    transform: translateY(var(--wh-scan-to, 520px));
-  }
-}
-.wh-scan {
-  height: 2px;
-  background: var(--wh-blue);
-  box-shadow: 0 0 18px 2px color-mix(in srgb, var(--wh-blue) 45%, transparent);
-  animation: wh-scan 3.6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
-}
-@keyframes wh-404-blink {
-  50% {
-    border-color: transparent;
-  }
-}
-.wh-404-cell {
-  animation: wh-404-blink 1.6s steps(1) infinite;
-}
-@media (prefers-reduced-motion: reduce) {
-  .wh-box,
-  .wh-404-cell {
-    animation: none;
-  }
-  .wh-scan {
     display: none;
   }
 }

@@ -22,7 +22,8 @@ const DOC = LEGAL_BY_SLUG.privacy;
 
 /** Сколько разделов видно на экране — по заголовкам второго уровня. */
 function sectionCount(): number {
-  return screen.getAllByRole("heading", { level: 2 }).length;
+  // Заголовки разделов, без блока «Редакции» под документом.
+  return document.querySelectorAll("article section > h2").length;
 }
 
 function searchBlock(): HTMLElement {

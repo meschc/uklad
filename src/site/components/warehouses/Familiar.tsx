@@ -63,7 +63,13 @@ export function Familiar() {
                 i === 2 && "lg:pl-8",
               )}
             >
-              {p.art}
+              {/* Иллюстрации всех блоков лендинга — на одной серой плашке:
+                  белые детали, синий акцент (Кирилл 31 окт: «где-то с
+                  заливкой, где-то без»). Та же плашка в «Как проходит
+                  подключение» и в «Товар, сотрудники и селлеры». */}
+              <div className="flex h-40 items-center justify-center rounded-[18px] bg-[var(--wh-soft)] p-5">
+                {p.art}
+              </div>
               <h3 className="mt-7 text-[22px] font-medium tracking-[-0.02em]">{t(p.title)}</h3>
               <p className="wh-muted mt-2.5 text-base leading-relaxed">{t(p.body)}</p>
             </Reveal>
@@ -85,8 +91,11 @@ export function Familiar() {
 }
 
 /*
- * Рисунки линиями: `currentColor` даёт приглушённый цвет, акцент — синий
- * страницы. Своих цветов нет, чтобы тёмная тема не ломала их.
+ * Один стиль на все рисунки (Кирилл 31 окт): белые плитки с тонкой
+ * сплошной обводкой, строки — серые штрихи толщиной 3, и ровно один
+ * акцент — сплошная синяя заливка с белым внутри. Пунктира и синих
+ * контуров нет нигде. `currentColor` даёт приглушённый цвет, своих цветов
+ * нет, чтобы тёмная тема не ломала их.
  */
 const BLUE = "var(--wh-blue)";
 const MONO = "var(--font-mono, monospace)";
@@ -189,13 +198,19 @@ function TasksArt() {
         fill="var(--wh-ground)"
         stroke="currentColor"
         strokeOpacity="0.5"
-        strokeDasharray="4 3"
       />
       <text x="50" y="83" fontSize="11" fontFamily={MONO} fill="currentColor" textAnchor="middle">
         кто?
       </text>
-      <circle cx="132" cy="48" r="24" fill="none" stroke={BLUE} strokeWidth="2" />
-      <path d="M132 34v14l9 6" fill="none" stroke={BLUE} strokeWidth="2" strokeLinecap="round" />
+      <circle cx="132" cy="48" r="24" fill={BLUE} />
+      <path
+        d="M132 34v14l9 6"
+        fill="none"
+        stroke="#fff"
+        strokeWidth="3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </Art>
   );
 }
