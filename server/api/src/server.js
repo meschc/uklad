@@ -485,7 +485,8 @@ function main() {
 
   server.listen(cfg.port, () => console.log(`[uklad] сервер слушает порт ${cfg.port}`));
 
-  // Админка на отдельном порту: Caddy пускает к нему только admin.<домен>.
+  // Админка на отдельном порту: наружу он открыт только на 127.0.0.1
+  // сервера, вход — SSH-туннелем (deploy/admin-tunnel.sh).
   let admin;
   if (cfg.adminOrigin.startsWith("https://")) {
     const { createAdminApp } = require("./admin/app");
