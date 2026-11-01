@@ -11,16 +11,23 @@ cd "$(dirname "$0")"
 # Какой коммит выкладывать. Автовыкладка (.github/workflows/staging.yml)
 # передаёт через SSH ровно тот коммит, что прошёл CI; руками — свежий main.
 # Принимается только полный хэш, и только если он уже в origin/main.
-TARGET=${SSH_ORIGINAL_COMMAND:-}
-git -C .. fetch --quiet origin main
-if [ -n "$TARGET" ]; then
-  case "$TARGET" in *[!0-9a-f]*) echo "Не хэш коммита: отказ"; exit 1 ;; esac
-  [ ${#TARGET} -eq 40 ] || { echo "Не хэш коммита: отказ"; exit 1; }
-  git -C .. merge-base --is-ancestor "$TARGET" origin/main \
-    || { echo "Коммита $TARGET нет в main: отказ"; exit 1; }
-  git -C .. merge --ff-only "$TARGET"
-else
-  git -C .. merge --ff-only origin/main
+#
+# Слияние может заменить и этот файл, а shell читает скрипт по ходу работы.
+# Поэтому весь блок разбирается целиком (одна команда if), а после слияния
+# скрипт перезапускается с новой версии и этот шаг пропускает.
+if [ -z "${UKLAD_REEXEC:-}" ]; then
+  TARGET=${SSH_ORIGINAL_COMMAND:-}
+  git -C .. fetch --quiet origin main
+  if [ -n "$TARGET" ]; then
+    case "$TARGET" in *[!0-9a-f]*) echo "Не хэш коммита: отказ"; exit 1 ;; esac
+    [ ${#TARGET} -eq 40 ] || { echo "Не хэш коммита: отказ"; exit 1; }
+    git -C .. merge-base --is-ancestor "$TARGET" origin/main \
+      || { echo "Коммита $TARGET нет в main: отказ"; exit 1; }
+    git -C .. merge --ff-only "$TARGET"
+  else
+    git -C .. merge --ff-only origin/main
+  fi
+  UKLAD_REEXEC=1 exec "./$(basename "$0")"
 fi
 TAG=$(git -C .. rev-parse --short HEAD)
 
