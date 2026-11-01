@@ -14,6 +14,8 @@ import { migrate } from "../src/migrate.js";
 const ADMIN_URL =
   process.env.PG_ADMIN_URL ?? "postgres://postgres:postgres@localhost:5432/postgres";
 const TEST_PW = "uklad-test-only";
+// Ключ замка подготовки кластера (pg_advisory_lock): любой, лишь бы общий.
+const SETUP_LOCK = 7_734_001;
 
 function urlFor(database, user, password) {
   const u = new URL(ADMIN_URL);
@@ -30,14 +32,27 @@ export async function setupDb() {
   const name = `uklad_test_${randomBytes(4).toString("hex")}`;
   const admin = new pg.Client({ connectionString: ADMIN_URL });
   await admin.connect();
-  for (const role of ["uklad_owner", "uklad_app", "uklad_notifier"]) {
-    const { rowCount } = await admin.query(`SELECT 1 FROM pg_roles WHERE rolname = $1`, [role]);
-    if (!rowCount) await admin.query(`CREATE ROLE ${role}`);
-    await admin.query(`ALTER ROLE ${role} LOGIN NOBYPASSRLS PASSWORD '${TEST_PW}'`);
+  // Роли общие на весь кластер, а файлы тестов идут параллельно. Два
+  // одновременных ALTER ROLE одной роли падают «tuple concurrently updated»,
+  // поэтому подготовка — под общим замком. Без него падал `before`, открытое
+  // соединение держало процесс, и задание CI висело до таймаута в 6 часов.
+  try {
+    await admin.query(`SELECT pg_advisory_lock(${SETUP_LOCK})`);
+    for (const role of ["uklad_owner", "uklad_app", "uklad_notifier"]) {
+      const { rowCount } = await admin.query(`SELECT 1 FROM pg_roles WHERE rolname = $1`, [role]);
+      if (!rowCount) await admin.query(`CREATE ROLE ${role}`);
+      await admin.query(`ALTER ROLE ${role} LOGIN NOBYPASSRLS PASSWORD '${TEST_PW}'`);
+    }
+    await admin.query(`CREATE DATABASE ${name} OWNER uklad_owner`);
+    await admin.query(`GRANT CONNECT ON DATABASE ${name} TO uklad_app`);
+    await admin.query(`GRANT CONNECT ON DATABASE ${name} TO uklad_notifier`);
+    await admin.query(`SELECT pg_advisory_unlock(${SETUP_LOCK})`);
+  } catch (err) {
+    // Сбой подготовки не должен оставлять соединение: иначе процесс теста
+    // не завершится и ошибку никто не увидит.
+    await admin.end().catch(() => {});
+    throw err;
   }
-  await admin.query(`CREATE DATABASE ${name} OWNER uklad_owner`);
-  await admin.query(`GRANT CONNECT ON DATABASE ${name} TO uklad_app`);
-  await admin.query(`GRANT CONNECT ON DATABASE ${name} TO uklad_notifier`);
 
   const owner = new pg.Client({ connectionString: urlFor(name, "uklad_owner", TEST_PW) });
   await owner.connect();
