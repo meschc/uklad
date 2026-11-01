@@ -84,10 +84,14 @@ export function Dashboard() {
                 {t("dash.greeting", { name: account.name })}
               </p>
               <p className="text-xs text-muted-foreground">
-                {account.type === "company"
-                  ? `${t("dash.account.company")} · ${account.org}`
-                  : t("dash.account.personal")}
-                {account.title ? ` · ${account.title}` : ""}
+                {/* Роль берётся из сессии: в демо подпись меняется вместе с
+                    переключателем «Кладовщик / Продавец». */}
+                {[
+                  account.type === "company" ? account.org : t("dash.account.personal"),
+                  readOnly ? t("role.seller") : account.title || t("role.warehouse"),
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
               </p>
             </div>
           </div>

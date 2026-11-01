@@ -524,6 +524,20 @@ export function Profile() {
               </Section>
             </div>
           )}
+
+          {/* У продавца справа место под его опции: тарифов склада у него нет,
+              кабинет входит в тариф склада. Список опций появится после
+              запуска и онлайн-оплаты. */}
+          {isSeller && (
+            <div className="flex min-w-0 flex-col gap-6">
+              <Section title={t("profile.sellerOptions.title")}>
+                <div className={card({ className: "flex flex-col gap-2 text-sm" })}>
+                  <p>{t("profile.sellerOptions.included")}</p>
+                  <p className="text-muted-foreground">{t("profile.sellerOptions.paid")}</p>
+                </div>
+              </Section>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center justify-between">
