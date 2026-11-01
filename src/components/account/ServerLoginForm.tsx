@@ -4,6 +4,7 @@ import { useEditor } from "@/lib/store";
 import type { UserRole } from "@/lib/types";
 import { authRepository, roleOf, type ServerMe } from "@/lib/data/authRepository";
 import { leaveServerSession } from "@/lib/store/leave";
+import { hasUnsyncedChanges } from "@/lib/store/serverSync";
 import type { Result } from "@/lib/data";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -26,7 +27,7 @@ type Step = "signIn" | "signUp" | "verify" | "reset" | "resetCode";
 const MIN_PASSWORD = 10;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
-export function ServerLoginForm({ onDemo }: { onDemo: () => void }) {
+export function ServerLoginForm() {
   const t = useT();
   const startServerSession = useEditor((s) => s.startServerSession);
   // Чьи данные сохранены на этом компьютере. Есть владелец — демо не
@@ -76,7 +77,11 @@ export function ServerLoginForm({ onDemo }: { onDemo: () => void }) {
   const admit = (me: ServerMe, mail: string) => {
     const who = roleOf(me);
     if (!who) return setError("login.err.noOrg");
-    if (ownerOrgId && ownerOrgId !== who.orgId) return setSwitchTo(who);
+    if (ownerOrgId && ownerOrgId !== who.orgId) {
+      // Всё прежней компании уже на сервере — копию можно стирать молча.
+      if (!hasUnsyncedChanges()) return leaveServerSession();
+      return setSwitchTo(who);
+    }
     startServerSession(mail, who.role, who.orgId);
   };
 
@@ -309,13 +314,15 @@ export function ServerLoginForm({ onDemo }: { onDemo: () => void }) {
             </Button>
           )}
 
-          {(step === "signIn" || step === "signUp") && !ownerOrgId && (
-            <>
-              <Button type="button" variant="outline" className="w-full" onClick={onDemo}>
-                {t("login.demo")}
-              </Button>
-              <p className="text-center text-xs text-muted-foreground">{t("login.demoHint")}</p>
-            </>
+          {/* Демо открывается не со входа, а по заявке: ссылку присылает письмо
+              (`/d/<токен>`), так мы знаем, кто смотрит, и почта настоящая. */}
+          {(step === "signIn" || step === "signUp") && (
+            <p className="text-center text-xs text-muted-foreground">
+              {t("login.demoByRequest")}{" "}
+              <a href="/#connect" className="underline">
+                {t("login.demoRequest")}
+              </a>
+            </p>
           )}
         </form>
       </div>

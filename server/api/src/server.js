@@ -340,7 +340,7 @@ function createApp({ cfg, db, mail, cabinet = null, now = () => new Date(), log 
       if (demo && req.method === "GET") return handleDemo(req, res, demo[1]);
       if (cabinet && (await cabinet.handle(req, res, url))) return;
       // Кабинет без базы не работает: честный 503, а не «нет такого адреса».
-      if (!cabinet && /^\/api\/(auth|staff|chat|telegram)\//.test(url.pathname)) {
+      if (!cabinet && /^\/api\/(auth|staff|chat|telegram|cabinet)\//.test(url.pathname)) {
         return send(res, 503, { ok: false });
       }
       return send(res, 404, { ok: false });
@@ -420,9 +420,12 @@ function main() {
         log: console,
       }).start();
     }
+    const { createSnapshot } = require("./cabinet/snapshot");
+    const snapshot = createSnapshot({ auth, send, log: console });
     cabinet = {
       handle: async (req, res, url) =>
         (await auth.handle(req, res, url)) ||
+        (await snapshot.handle(req, res, url)) ||
         (await chat.handle(req, res, url)) ||
         (await telegram.handle(req, res, url)),
     };

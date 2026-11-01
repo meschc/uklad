@@ -1,5 +1,6 @@
 import { removeLocal } from "../safeStorage";
 import { PERSIST_KEY } from "./index";
+import { clearSyncMeta } from "./serverSync";
 
 /**
  * Стереть сохранение кабинета и открыть вход с чистого листа.
@@ -16,6 +17,7 @@ import { PERSIST_KEY } from "./index";
  */
 export function leaveServerSession(note?: "offline") {
   removeLocal(PERSIST_KEY);
+  clearSyncMeta();
   const query = note ? "?view=login&logout=offline" : "?view=login";
   window.location.replace(`${window.location.pathname}${query}`);
 }

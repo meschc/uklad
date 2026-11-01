@@ -33,6 +33,16 @@ const PUBLIC_PATHS = new Set([
 ]);
 
 let onUnauthorized: (() => void) | null = null;
+let currentOrg: string | null = null;
+
+/**
+ * В какой компании работает вошедший. Сервер принимает это как просьбу
+ * (`X-Uklad-Org`) и сверяет с членством сам — подменить здесь чужую компанию
+ * бесполезно, база не пустит.
+ */
+export function setApiOrg(orgId: string | null) {
+  currentOrg = orgId;
+}
 
 /** Кто узнаёт, что сессии больше нет. Ставит кабинет, пока вход серверный. */
 export function setUnauthorizedHandler(handler: (() => void) | null) {
@@ -59,7 +69,10 @@ export async function apiRequest(
   const res = await fetch(`${BASE}${path}`, {
     method,
     credentials: "same-origin",
-    headers: body ? { "Content-Type": "application/json" } : undefined,
+    headers: {
+      ...(body ? { "Content-Type": "application/json" } : {}),
+      ...(currentOrg ? { "X-Uklad-Org": currentOrg } : {}),
+    },
     body: body ? JSON.stringify(body) : undefined,
   });
   let parsed: Record<string, unknown> = {};

@@ -123,12 +123,19 @@ export const ru = {
   "login.codeSent": "Отправили код на {email}. Письмо идёт до пары минут, проверьте и «Спам».",
   "login.codeResent": "Отправили новый код на {email}.",
   "login.code": "Код из письма",
+  "login.demoByRequest": "Хотите сначала посмотреть кабинет?",
+  "login.demoRequest": "Оставьте заявку на демо",
+  "sync.err.network":
+    "Нет связи с сервером. Правки сохранены на этом устройстве и уйдут, когда связь вернётся.",
+  "sync.err.tooBig": "Данные кабинета слишком большие для одной записи. Напишите в поддержку.",
+  "sync.conflict":
+    "На сервере была более новая версия кабинета, открыли её. Ваши незаписанные правки отложены в копию на этом устройстве.",
+  "profile.logoutUnsynced":
+    "Часть правок ещё не дошла до сервера и при выходе пропадёт. Скачайте копию, если она нужна.",
   "login.switch.body":
-    "На этом компьютере сохранены данные кабинета другой компании. Чтобы войти, их нужно стереть. Если они ваши, отмените и войдите той почтой, под которой их вели.",
+    "На этом компьютере есть правки другой компании, которые ещё не дошли до сервера. Чтобы войти, их нужно стереть. Если они ваши, отмените и войдите той почтой, под которой их вели.",
   "login.switch.confirm": "Стереть и войти",
   "login.switch.cancel": "Отмена",
-  "profile.logoutWipe":
-    "Данные кабинета на этом компьютере будут стёрты. Сначала скачайте копию, если она нужна.",
   "profile.logoutBackup": "Скачать копию",
   "profile.logoutConfirm": "Выйти и стереть",
   "login.loggedOutOffline":
@@ -355,12 +362,19 @@ export const en: Record<keyof typeof ru, string> = {
   "login.codeSent": "We sent a code to {email}. It can take a couple of minutes; check Spam too.",
   "login.codeResent": "We sent a new code to {email}.",
   "login.code": "Code from the email",
+  "login.demoByRequest": "Want to see the cabinet first?",
+  "login.demoRequest": "Request a demo",
+  "sync.err.network":
+    "Can't reach the server. Changes are saved on this device and will be sent once you're back online.",
+  "sync.err.tooBig": "The cabinet data is too large for a single save. Please contact support.",
+  "sync.conflict":
+    "The server had a newer version of the cabinet, so we opened it. Your unsaved changes were set aside in a copy on this device.",
+  "profile.logoutUnsynced":
+    "Some changes haven't reached the server yet and will be lost when you sign out. Download a copy if you need it.",
   "login.switch.body":
-    "This computer holds cabinet data of another company. To sign in, it has to be erased. If it's yours, cancel and sign in with the email you used for it.",
+    "This computer has another company's changes that haven't reached the server yet. To sign in, they have to be erased. If they're yours, cancel and sign in with the email you used for them.",
   "login.switch.confirm": "Erase and sign in",
   "login.switch.cancel": "Cancel",
-  "profile.logoutWipe":
-    "Cabinet data on this computer will be erased. Download a copy first if you need it.",
   "profile.logoutBackup": "Download a copy",
   "profile.logoutConfirm": "Sign out and erase",
   "login.loggedOutOffline":

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Boxes, Lock, Mail, Store, Warehouse } from "lucide-react";
+import { Lock, Mail, Store, Warehouse } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import type { UserRole } from "@/lib/types";
 import { useT } from "@/lib/i18n";
@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Segmented } from "@/components/ui/segmented";
 import { hasCabinetServer } from "@/lib/data/api";
+import { UkladAppTile } from "@/components/brand/UkladLockup";
 import { AsciiBackdrop } from "./AsciiBackdrop";
 import { ServerLoginForm } from "./ServerLoginForm";
 
@@ -86,9 +87,8 @@ export function LoginScreen() {
       <div className="no-scrollbar flex min-w-0 flex-1 items-center justify-center overflow-y-auto px-6 py-10">
         <div className="flex w-full max-w-sm flex-col items-center gap-6">
           <div className="flex flex-col items-center gap-2 text-center">
-            <span className="flex size-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm">
-              <Boxes className="size-6" />
-            </span>
+            {/* Тот же знак, что в боковой панели и на витрине. */}
+            <UkladAppTile className="size-12 rounded-2xl" />
             <div>
               <h1 className="text-xl font-semibold tracking-tight">Уклад</h1>
               <p className="text-sm text-muted-foreground">{t("login.tagline")}</p>
@@ -96,7 +96,7 @@ export function LoginScreen() {
           </div>
 
           {hasCabinetServer ? (
-            <ServerLoginForm onDemo={demo} />
+            <ServerLoginForm />
           ) : (
             <>
               <div className="w-full rounded-2xl border border-border bg-card p-5 shadow-sm">

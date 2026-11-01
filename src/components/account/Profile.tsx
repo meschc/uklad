@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { authRepository } from "@/lib/data/authRepository";
 import { leaveServerSession } from "@/lib/store/leave";
+import { flushServerSync } from "@/lib/store/serverSync";
 import { downloadBackup } from "./backupDownload";
 import { PERSIST_KEY, selectRole, useEditor } from "@/lib/store";
 import { removeLocal } from "@/lib/safeStorage";
@@ -72,7 +73,9 @@ export function Profile() {
   const [confirmLogout, setConfirmLogout] = useState(false);
   const logout = async () => {
     if (!serverSession) return goToLogin();
-    if (!confirmLogout) return setConfirmLogout(true);
+    // Всё записано на сервере — копия на этом компьютере больше не нужна,
+    // выходим сразу. Не всё — сначала строка с «Скачать копию».
+    if (!confirmLogout && !(await flushServerSync())) return setConfirmLogout(true);
     const res = await authRepository.logout();
     leaveServerSession(res.ok ? undefined : "offline");
   };
@@ -557,7 +560,7 @@ export function Profile() {
 
         {confirmLogout && (
           <div className="flex flex-wrap items-center gap-2 text-sm">
-            <span className="mr-auto">{t("profile.logoutWipe")}</span>
+            <span className="mr-auto">{t("profile.logoutUnsynced")}</span>
             <Button size="sm" variant="outline" onClick={() => void downloadBackup()}>
               {t("profile.logoutBackup")}
             </Button>
