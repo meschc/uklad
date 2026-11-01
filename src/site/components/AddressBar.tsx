@@ -18,7 +18,9 @@ const HOST = "u-klad.ru/";
  * открылся: домен серым, путь синим, и путь правится прямо здесь — опечатку
  * в `/pricng` проще исправить, чем искать страницу в меню. Enter переходит.
  * Под строкой — живые страницы, похожие на набранное; они пересчитываются по
- * ходу ввода, поэтому строка сама подсказывает, что можно ввести.
+ * ходу ввода, поэтому строка сама подсказывает, что можно ввести. Наведение
+ * на подсказку строку не трогает (Кирилл 31 окт): иначе список пересчитывался
+ * под курсором, пилюли менялись местами и подсветка пропадала.
  *
  * Путь берётся из адреса браузера: 404 предрендерена одним файлом на все
  * неизвестные адреса, и на сборке пути ещё нет.
@@ -75,13 +77,12 @@ export function AddressBar() {
           <CornerDownLeft className="size-4" />
         </button>
       </form>
-      <div className="mt-3 flex flex-wrap items-center gap-2 pl-1 text-sm">
+      <div className="mt-3 flex flex-wrap items-center justify-center gap-2 text-sm">
         <span className="text-[var(--wh-muted)]">{t(T.maybe)}</span>
         {hints.map((h) => (
           <a
             key={h.to}
             href={href(h.to)}
-            onMouseEnter={() => setPath(h.to.replace(/^\//, ""))}
             className="inline-flex h-8 items-center gap-2 rounded-full bg-[var(--wh-soft)] px-3 transition-colors hover:bg-[var(--wh-line)]"
           >
             {t(h.label)}
