@@ -163,14 +163,16 @@ cd ~/uklad/deploy && ./deploy.sh
 выкладку без нового коммита можно кнопкой Run workflow во вкладке Actions.
 
 Прогон входит ключом, который умеет только запустить `deploy.sh`: в
-`authorized_keys` у него стоит `command=…`, без терминала и проброса портов.
+`authorized_keys` у него стоят `restrict,command=…`: без терминала, проброса
+портов и всего остального. Прогон передаёт хэш коммита, прошедшего CI, и
+`deploy.sh` выкладывает только его и только если он есть в main.
 Войти по нему в консоль нельзя.
 
 Разовая настройка — на Mac, когда обычный `ssh deploy@…` работает:
 
 ```sh
 ssh-keygen -t ed25519 -N "" -C github-staging -f ~/uklad-gh
-ssh deploy@168.113.176.106 "echo 'command=\"/home/deploy/uklad/deploy/deploy.sh\",no-port-forwarding,no-agent-forwarding,no-X11-forwarding,no-pty $(cat ~/uklad-gh.pub)' >> ~/.ssh/authorized_keys"
+ssh deploy@168.113.176.106 "echo 'restrict,command=\"/home/deploy/uklad/deploy/deploy.sh\" $(cat ~/uklad-gh.pub)' >> ~/.ssh/authorized_keys"
 ssh-keyscan -t ed25519 168.113.176.106 > ~/uklad-gh-known
 ```
 

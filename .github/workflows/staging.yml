@@ -28,7 +28,13 @@ concurrency:
 jobs:
   deploy:
     name: Обновить staging
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    # Только push в сам main этого репозитория: фильтр branches смотрит на
+    # имя ветки, и PR из форка с веткой main тоже прошёл бы его.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -48,9 +54,12 @@ jobs:
 
       # Что запустить, решает сервер (command= в authorized_keys), а не прогон.
       # Отпечаток сверяется строго: подменённый сервер ключ не получит.
+      # Передаётся хэш, прошедший CI; сервер проверит, что он в main.
       - name: Выкладка
+        env:
+          SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
         run: >-
           ssh -i ~/.ssh/staging
           -o StrictHostKeyChecking=yes -o IdentitiesOnly=yes
           -o ServerAliveInterval=30 -o ConnectTimeout=20
-          deploy@168.113.176.106
+          deploy@168.113.176.106 "$SHA"
