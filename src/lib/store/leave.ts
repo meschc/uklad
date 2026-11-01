@@ -1,14 +1,16 @@
 import { removeLocal } from "../safeStorage";
 import { PERSIST_KEY } from "./index";
-import { clearSyncMeta } from "./serverSync";
+import { BEFORE_SYNC_KEY, clearSyncMeta } from "./serverSync";
 
 /**
  * Стереть сохранение кабинета и открыть вход с чистого листа.
  *
- * Данные кабинета пока лежат в браузере под одним ключом, и это единственная
- * их копия. Поэтому стирание — только по явному действию человека: выход с
- * подтверждением (там же «Скачать копию») или вход другой компанией на этом
- * компьютере. Истёкшая сессия данные не трогает (`sessionLost`).
+ * Кабинет живёт на сервере, браузер держит копию (ADR 0010). Стирание — только
+ * по явному действию человека: выход (незаписанное — с подтверждением и
+ * «Скачать копию») или вход другой компанией на этом компьютере. Стирается и
+ * отложенная при расхождении копия: на общем компьютере после выхода данных
+ * компании оставаться не должно. Истёкшая сессия данные не трогает
+ * (`sessionLost`).
  * Перезагрузка, а не сброс стора на месте: посев живёт в одном месте — на
  * старте приложения (как «Демо-данные → Загрузить заново»).
  *
@@ -17,6 +19,7 @@ import { clearSyncMeta } from "./serverSync";
  */
 export function leaveServerSession(note?: "offline") {
   removeLocal(PERSIST_KEY);
+  removeLocal(BEFORE_SYNC_KEY);
   clearSyncMeta();
   const query = note ? "?view=login&logout=offline" : "?view=login";
   window.location.replace(`${window.location.pathname}${query}`);
