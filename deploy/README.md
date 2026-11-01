@@ -156,6 +156,40 @@ cd ~/uklad/deploy && ./deploy.sh
 ждёт, пока сервер ответит. База и сертификаты лежат вне образов и при
 обновлении не трогаются.
 
+## Автовыкладка
+
+Когда main проходит CI, GitHub сам запускает на сервере `deploy.sh`
+(`.github/workflows/staging.yml`). Руками ничего делать не нужно. Повторить
+выкладку без нового коммита можно кнопкой Run workflow во вкладке Actions.
+
+Прогон входит ключом, который умеет только запустить `deploy.sh`: в
+`authorized_keys` у него стоят `restrict,command=…`: без терминала, проброса
+портов и всего остального. Прогон передаёт хэш коммита, прошедшего CI, и
+`deploy.sh` выкладывает только его и только если он есть в main.
+Войти по нему в консоль нельзя.
+
+Разовая настройка — на Mac, когда обычный `ssh deploy@…` работает:
+
+```sh
+ssh-keygen -t ed25519 -N "" -C github-staging -f ~/uklad-gh
+ssh deploy@168.113.176.106 "echo 'restrict,command=\"/home/deploy/uklad/deploy/deploy.sh\" $(cat ~/uklad-gh.pub)' >> ~/.ssh/authorized_keys"
+ssh-keyscan -t ed25519 168.113.176.106 > ~/uklad-gh-known
+```
+
+Затем в GitHub: репозиторий → Settings → Secrets and variables → Actions →
+New repository secret, два секрета:
+
+- `STAGING_SSH_KEY` — содержимое `~/uklad-gh` (`pbcopy < ~/uklad-gh`);
+- `STAGING_KNOWN_HOSTS` — содержимое `~/uklad-gh-known` (`pbcopy < ~/uklad-gh-known`).
+
+После этого удалите файлы с Mac: `rm ~/uklad-gh ~/uklad-gh.pub ~/uklad-gh-known`.
+Ключ остаётся только в секретах GitHub. Отозвать его — стереть строку
+`github-staging` в `~/.ssh/authorized_keys` на сервере.
+
+Копии перед выкладкой `deploy.sh` кладёт в `BACKUP_DIR`. Если это
+`/var/backups/uklad`, один раз создайте папку под root:
+`install -d -o deploy -g deploy -m 700 /var/backups/uklad`.
+
 ## Откат
 
 Новая версия сломалась — вернуть прошлую одной командой, за полминуты:
