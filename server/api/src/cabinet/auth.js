@@ -136,7 +136,7 @@ function createAuth({ pool, cfg, send, readBody, log, mail }) {
 
   // POST только с нашего сайта и только JSON: форма с чужого сайта не
   // пройдёт ни по Origin, ни по типу тела (CSRF).
-  async function readJson(req, res) {
+  async function readJson(req, res, maxBytes) {
     const origin = (req.headers.origin ?? "").replace(/\/+$/, "");
     if (!cfg.allowedOrigins.includes(origin)) {
       send(res, 403, { ok: false });
@@ -146,7 +146,7 @@ function createAuth({ pool, cfg, send, readBody, log, mail }) {
       send(res, 415, { ok: false });
       return null;
     }
-    const body = await readBody(req);
+    const body = await readBody(req, maxBytes);
     if (!body.ok) {
       send(res, 413, { ok: false }, { Connection: "close" });
       return null;

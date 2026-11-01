@@ -7,7 +7,8 @@ import { applyTheme, systemTheme } from "@/lib/theme";
 import { useDeepLink } from "@/lib/useDeepLink";
 import { useT } from "@/lib/i18n";
 import { authRepository } from "@/lib/data/authRepository";
-import { setUnauthorizedHandler } from "@/lib/data/api";
+import { hasCabinetServer, setUnauthorizedHandler } from "@/lib/data/api";
+import { startServerSync } from "@/lib/store/serverSync";
 import { SideNav } from "@/components/nav/SideNav";
 import { navFor } from "@/components/nav/navItems";
 import type { AppView } from "@/lib/types";
@@ -138,7 +139,17 @@ export default function App() {
   const serverSession = useEditor((s) => s.session.source === "server");
   // Данные компании без живого входа закрыты: ни ссылка на экран, ни демо не
   // откроют их, пока владелец не войдёт.
-  const locked = useEditor((s) => !!s.session.orgId && s.session.source !== "server");
+  // В сборке с сервером кабинет без входа закрыт целиком: демо открывается
+  // только по ссылке из письма-заявки, а не ссылкой на экран.
+  const locked = useEditor((s) =>
+    hasCabinetServer
+      ? s.session.source !== "server"
+      : !!s.session.orgId && s.session.source !== "server",
+  );
+  // Данные вошедшей компании живут на сервере: загрузка при входе и запись
+  // правок сами (`serverSync.ts`, ADR 0010).
+  const syncOrg = useEditor((s) => (s.session.source === "server" ? s.session.orgId : undefined));
+  useEffect(() => (syncOrg ? startServerSync(syncOrg) : undefined), [syncOrg]);
   useEffect(() => {
     if (!serverSession) return;
     setUnauthorizedHandler(() => useEditor.getState().sessionLost());
@@ -214,7 +225,7 @@ export default function App() {
     <>
       {/* За столом сообщения продавцов не всплывают: экран общий, переписка
           — дело руководителя. */}
-      {!kiosk && <ChatWatcher />}
+      {!kiosk && !locked && <ChatWatcher />}
       <Toast />
     </>
   );
