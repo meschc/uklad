@@ -73,10 +73,26 @@ test("заявка уходит письмом, а демо — ссылкой �
   const open = await fetch(`${s.base}/d/${link[1]}`, { redirect: "manual" });
   assert.equal(open.status, 302);
   assert.equal(open.headers.get("location"), "/app/");
+  // Ссылка оставляет браузеру пропуск: без него кабинет в сборке с сервером закрыт.
+  const cookie = open.headers.get("set-cookie");
+  assert.match(
+    cookie,
+    /^__Host-uklad_demo=[A-Za-z0-9_-]{22}; Path=\/; HttpOnly; Secure; SameSite=Lax; Max-Age=\d+$/,
+  );
+  const pass = (c) =>
+    fetch(`${s.base}/api/demo/pass`, { headers: c ? { cookie: c } : {} }).then((r) => r.json());
+  const jar = cookie.split(";")[0];
+  const ok = await pass(jar);
+  assert.equal(ok.ok, true);
+  assert.equal(JSON.stringify(ok).includes(link[1]), false, "токен не уходит обратно");
+  assert.deepEqual(await pass(""), { ok: false });
+  assert.deepEqual(await pass("__Host-uklad_demo=AAAAAAAAAAAAAAAAAAAAAA"), { ok: false });
 
   s.tick(15 * 86_400_000);
   const late = await fetch(`${s.base}/d/${link[1]}`, { redirect: "manual" });
-  assert.equal(late.headers.get("location"), "/?demo=expired");
+  assert.equal(late.headers.get("location"), "/?demo=expired#demo");
+  assert.match(late.headers.get("set-cookie"), /Max-Age=0/);
+  assert.deepEqual(await pass(jar), { ok: false }, "пропуск гаснет вместе со ссылкой");
   await s.stop();
 });
 
@@ -161,6 +177,6 @@ test("демо-писем на один адрес не больше лимит�
 test("кривой токен не трогает базу и ведёт на главную", async () => {
   const s = await start();
   const r = await fetch(`${s.base}/d/'%20or%201=1`, { redirect: "manual" });
-  assert.equal(r.headers.get("location"), "/?demo=expired");
+  assert.equal(r.headers.get("location"), "/?demo=expired#demo");
   await s.stop();
 });

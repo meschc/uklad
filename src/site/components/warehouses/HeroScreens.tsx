@@ -9,8 +9,9 @@ import { CabinetFrame } from "./LiveCabinet";
 import type { AppView } from "@/lib/types";
 import { SITE_NAV_H } from "../frame/SiteNav";
 
-/** Демо-кабинет с посевными данными: живёт по /app/ (ADR 0008). */
-export const DEMO_HREF = "/app/";
+// Демо открывает только личная ссылка из письма: кнопка ведёт к заявке на неё
+// в конце страницы (`FinalConnect`, якорь `#demo`).
+export const DEMO_HREF = "#demo";
 
 const T = {
   brand: ru("Уклад"),
