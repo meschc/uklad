@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type CSSProperties } from "react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -172,6 +172,7 @@ export function AsciiScene({
   density = 1,
   ink = "255,255,255",
   className,
+  style,
 }: {
   kind: SceneKind;
   /** Множитель числа фигур. */
@@ -179,6 +180,8 @@ export function AsciiScene({
   /** Цвет знаков, «r,g,b»: белый на синем, тёмный на белом. */
   ink?: string;
   className?: string;
+  /** Растянуть холст за пределы родителя (подвал тянет сцену под блок заявки). */
+  style?: CSSProperties;
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
 
@@ -336,6 +339,7 @@ export function AsciiScene({
       ref={ref}
       aria-hidden
       className={cn("pointer-events-none absolute inset-0 h-full w-full", className)}
+      style={style}
     />
   );
 }
