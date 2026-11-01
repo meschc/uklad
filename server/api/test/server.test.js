@@ -106,7 +106,8 @@ test("слишком быстрая отправка: «принято», но �
 
 test("без времени на странице заявка не принимается", async () => {
   const s = await start();
-  const { elapsed: _omit, ...noTime } = lead();
+  const noTime = lead();
+  delete noTime.elapsed;
   assert.equal((await post(s.base, noTime)).status, 400);
   await s.stop();
 });
