@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, KeyRound, Lock, Mail, Store, Warehouse } from "lucide-react";
+import { Check, Store, Warehouse } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import type { UserRole } from "@/lib/types";
 import { authRepository, roleOf, type ServerMe } from "@/lib/data/authRepository";
@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Segmented } from "@/components/ui/segmented";
+import { EmailInput } from "./EmailInput";
 
 /**
  * Вход через сервер: пароль, регистрация с кодом из письма, сброс пароля.
@@ -234,28 +235,18 @@ export function ServerLoginForm() {
             <p className="text-sm text-muted-foreground">{t(notice, { email: email.trim() })}</p>
           )}
 
-          <Field
-            icon={<Mail className="size-4" />}
-            label={t("login.email")}
-            error={shown(emailErr)}
-          >
-            <Input
-              type="email"
-              autoComplete="email"
+          <Field label={t("login.email")} error={shown(emailErr)}>
+            <EmailInput
               value={email}
               readOnly={needsCode}
-              onChange={(e) => setEmail(e.target.value)}
+              onValueChange={setEmail}
               placeholder={t("profile.emailPlaceholder")}
               className={cn("h-9", shown(emailErr) && "border-destructive")}
             />
           </Field>
 
           {needsCode && (
-            <Field
-              icon={<KeyRound className="size-4" />}
-              label={t("login.code")}
-              error={shown(codeErr)}
-            >
+            <Field label={t("login.code")} error={shown(codeErr)}>
               <Input
                 inputMode="numeric"
                 autoComplete="one-time-code"
@@ -269,7 +260,6 @@ export function ServerLoginForm() {
 
           {needsPassword && (
             <Field
-              icon={<Lock className="size-4" />}
               label={t(step === "resetCode" ? "login.newPassword" : "login.password")}
               error={shown(passErr)}
             >
@@ -318,7 +308,8 @@ export function ServerLoginForm() {
               (`/d/<токен>`), так мы знаем, кто смотрит, и почта настоящая. */}
           {(step === "signIn" || step === "signUp") && (
             <p className="text-center text-xs text-muted-foreground">
-              {t("login.demoByRequest")}{" "}
+              {t("login.demoByRequest")}
+              <br />
               <a href="/#connect" className="underline">
                 {t("login.demoRequest")}
               </a>
@@ -351,22 +342,18 @@ export function ServerLoginForm() {
 }
 
 function Field({
-  icon,
   label,
   error,
   children,
 }: {
-  icon: React.ReactNode;
   label: string;
   error?: string | null;
   children: React.ReactNode;
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <Label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-        <span className="text-muted-foreground/70">{icon}</span>
-        {label}
-      </Label>
+      {/* Как на формах витрины: обычная подпись, без капса и значков. */}
+      <label className="text-sm font-medium">{label}</label>
       {children}
       {error && <span className="text-xs text-destructive">{error}</span>}
     </div>

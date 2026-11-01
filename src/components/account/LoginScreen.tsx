@@ -89,10 +89,7 @@ export function LoginScreen() {
           <div className="flex flex-col items-center gap-2 text-center">
             {/* Тот же знак, что в боковой панели и на витрине. */}
             <UkladAppTile className="size-12 rounded-2xl" />
-            <div>
-              <h1 className="text-xl font-semibold tracking-tight">Уклад</h1>
-              <p className="text-sm text-muted-foreground">{t("login.tagline")}</p>
-            </div>
+            <h1 className="text-xl font-semibold tracking-tight">Уклад</h1>
           </div>
 
           {hasCabinetServer ? (

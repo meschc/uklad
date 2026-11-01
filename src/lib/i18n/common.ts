@@ -100,10 +100,9 @@ export const ru = {
   "login.resetSent": "Если аккаунт с адресом {email} существует, ссылка для сброса уже отправлена.",
   "login.demo": "Посмотреть демо",
   "login.demoHint": "Демо открывает заполненный склад: план, товары и заявки уже на месте.",
-  "login.tagline": "Визуальная раскладка склада",
   "login.tab.signIn": "Вход",
   "login.tab.signUp": "Регистрация",
-  "login.email": "Email",
+  "login.email": "Почта",
   "login.password": "Пароль",
   "login.passwordPlaceholder": "••••••••",
   "login.submit.signIn": "Войти",
@@ -125,6 +124,7 @@ export const ru = {
   "login.code": "Код из письма",
   "login.demoByRequest": "Хотите сначала посмотреть кабинет?",
   "login.demoRequest": "Оставьте заявку на демо",
+  "login.emailHints": "Популярные почтовые сервисы",
   "sync.err.network":
     "Нет связи с сервером. Правки сохранены на этом устройстве и уйдут, когда связь вернётся.",
   "sync.err.tooBig": "Данные кабинета слишком большие для одной записи. Напишите в поддержку.",
@@ -345,7 +345,6 @@ export const en: Record<keyof typeof ru, string> = {
   "login.demo": "Open the demo",
   "login.demoHint":
     "The demo opens a filled warehouse: plan, goods and requests are already there.",
-  "login.tagline": "Visual warehouse layout",
   "login.tab.signIn": "Sign in",
   "login.tab.signUp": "Sign up",
   "login.email": "Email",
@@ -369,6 +368,7 @@ export const en: Record<keyof typeof ru, string> = {
   "login.code": "Code from the email",
   "login.demoByRequest": "Want to see the cabinet first?",
   "login.demoRequest": "Request a demo",
+  "login.emailHints": "Popular email services",
   "sync.err.network":
     "Can't reach the server. Changes are saved on this device and will be sent once you're back online.",
   "sync.err.tooBig": "The cabinet data is too large for a single save. Please contact support.",
