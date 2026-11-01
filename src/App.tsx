@@ -97,6 +97,7 @@ const ChatScreen = lazy(() =>
 // Отдельное окно тепловой карты (`window.open` из TopBar): признак — в URL,
 // вычисляется один раз при загрузке страницы.
 const IS_HEATMAP = isHeatmapWindow(window.location.search);
+const IS_EMBED = isEmbed(window.location.search);
 
 /**
  * Открыт ли этому браузеру демо-кабинет. Спрашиваем один раз при загрузке и
@@ -166,11 +167,16 @@ export default function App() {
   // браузеру куку-пропуск, кабинет спрашивает о ней сервер (`demoRepository`).
   // Пока в браузере лежит копия компании, демо не открывается: под ним
   // оказался бы не демо-склад, а её данные.
-  const demo = useDemoPass(serverSession);
+  // Превью на витрине (`?embed=1`) — исключение: это снимок демо-склада в
+  // памяти, нажать и ввести там ничего нельзя (`main.tsx`), так что кабинетом
+  // в обход заявки он не служит, а чужих данных в нём нет (`store/index.ts`).
+  const demo = useDemoPass(serverSession || IS_EMBED);
   const locked = useEditor((s) =>
-    hasCabinetServer
-      ? s.session.source !== "server" && (demo !== "open" || !!s.session.orgId)
-      : !!s.session.orgId && s.session.source !== "server",
+    IS_EMBED
+      ? false
+      : hasCabinetServer
+        ? s.session.source !== "server" && (demo !== "open" || !!s.session.orgId)
+        : !!s.session.orgId && s.session.source !== "server",
   );
   // Данные вошедшей компании живут на сервере: загрузка при входе и запись
   // правок сами (`serverSync.ts`, ADR 0010).
