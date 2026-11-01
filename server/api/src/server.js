@@ -189,6 +189,12 @@ function createApp({ cfg, db, mail, cabinet = null, now = () => new Date(), log 
       log.error("[uklad] заявка не принята:", parsed.error);
       return send(res, 400, { ok: false }, cors);
     }
+    // Слишком быстрая отправка (parseLead считает по `elapsed` из браузера):
+    // отвечаем «принято», в базу и на почту не пускаем.
+    if (parsed.bot) {
+      log.error("[uklad] заявка отброшена: отправлена слишком быстро");
+      return send(res, 200, { ok: true }, cors);
+    }
     const { lead } = parsed;
     const t = now();
     const leadId = db.addLead(lead, t);

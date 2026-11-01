@@ -23,6 +23,7 @@ function lead(over = {}) {
     consent: { data: true, ads: false },
     fields: { Имя: "Тест", Почта: "test@example.ru" },
     message: "Имя: Тест\nПочта: test@example.ru",
+    elapsed: 20000,
     ...over,
   };
 }
@@ -91,6 +92,22 @@ test("чужой источник получает 403", async () => {
   const s = await start();
   assert.equal((await post(s.base, lead(), "https://evil.example")).status, 403);
   assert.equal(s.sent.length, 0);
+  await s.stop();
+});
+
+test("слишком быстрая отправка: «принято», но в базу и на почту не идёт", async () => {
+  const s = await start();
+  const r = await post(s.base, lead({ elapsed: 300 }));
+  assert.equal(r.status, 200);
+  assert.equal(s.sent.length, 0);
+  assert.equal(s.db.purge(new Date("2027-12-01T00:00:00Z"), 180).leads, 0);
+  await s.stop();
+});
+
+test("без времени на странице заявка не принимается", async () => {
+  const s = await start();
+  const { elapsed: _omit, ...noTime } = lead();
+  assert.equal((await post(s.base, noTime)).status, 400);
   await s.stop();
 });
 
