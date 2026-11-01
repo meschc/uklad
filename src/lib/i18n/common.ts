@@ -22,6 +22,7 @@ export const ru = {
   // Личный кабинет (§3.2)
   "dash.title": "Личный кабинет",
   "dash.greeting": "Здравствуйте, {name}",
+  "dash.greetingNoName": "Здравствуйте!",
   "dash.account.company": "Компания",
   "dash.account.personal": "Личный аккаунт",
   "dash.openProfile": "Настройки профиля",
@@ -33,6 +34,7 @@ export const ru = {
   "dash.stats.fill": "Средняя заполненность",
   "dash.warehouses.title": "Склады",
   "dash.warehouses.subtitle": "Выберите склад для работы",
+  "dash.warehouses.empty": "Складов пока нет — добавьте первый",
   "dash.card.open": "Открыть",
   "dash.card.active": "Активный",
   "dash.card.fill": "заполнен на {p}%",
@@ -266,6 +268,7 @@ export const en: Record<keyof typeof ru, string> = {
   // Dashboard (§3.2)
   "dash.title": "Dashboard",
   "dash.greeting": "Hello, {name}",
+  "dash.greetingNoName": "Hello!",
   "dash.account.company": "Company",
   "dash.account.personal": "Personal account",
   "dash.openProfile": "Profile settings",
@@ -277,6 +280,7 @@ export const en: Record<keyof typeof ru, string> = {
   "dash.stats.fill": "Average fill",
   "dash.warehouses.title": "Warehouses",
   "dash.warehouses.subtitle": "Pick a warehouse to work on",
+  "dash.warehouses.empty": "No warehouses yet — add the first one",
   "dash.card.open": "Open",
   "dash.card.active": "Active",
   "dash.card.fill": "{p}% filled",

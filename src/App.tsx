@@ -207,13 +207,18 @@ export default function App() {
   // руководителя на самом столе или с экрана «Устройства» с другого компьютера.
   const kiosk = useEditor((s) => boundDevice(s) !== null) && role === "warehouse";
   const legacyStation = role === "warehouse" && STATION_VIEWS.has(appView);
+  // Склада у компании ещё нет: рабочим экранам показывать нечего, кабинет
+  // стоит на главной с карточкой «Новый склад».
+  const noWarehouse = useEditor((s) => s.warehouse.placeholder === true);
   const view = locked
     ? "login"
-    : kiosk || legacyStation
-      ? "workstation"
-      : ACCOUNT_VIEWS.has(appView) || allowed.includes(appView)
-        ? appView
-        : allowed[0];
+    : noWarehouse && !ACCOUNT_VIEWS.has(appView)
+      ? "dashboard"
+      : kiosk || legacyStation
+        ? "workstation"
+        : ACCOUNT_VIEWS.has(appView) || allowed.includes(appView)
+          ? appView
+          : allowed[0];
 
   useEffect(() => {
     // Пока сервер не ответил про пропуск, экран не трогаем: иначе демо
