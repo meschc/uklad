@@ -17,7 +17,8 @@ import { flushServerSync, hasDeferredCopy } from "@/lib/store/serverSync";
 import { downloadBackup, downloadDeferredCopy } from "./backupDownload";
 import { PERSIST_KEY, selectRole, useEditor } from "@/lib/store";
 import { removeLocal } from "@/lib/safeStorage";
-import { isValidInn, lookupCompany } from "@/lib/company";
+import { isValidInn } from "@/lib/company";
+import { companyRepository } from "@/lib/data/companyRepository";
 import type { Lang } from "@/lib/types";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -30,6 +31,10 @@ import { Row, ReadValue, RowEditor } from "./ProfileRow";
 import { TariffSection } from "./TariffSection";
 import { NotifySection, ProfileHero, Section, ThemeTile } from "./ProfileParts";
 import { BackupSection } from "./BackupSection";
+import { AccountDataSection } from "./AccountDataSection";
+
+/** Вкладки профиля: длинная страница из всех разделов сразу не читалась. */
+type ProfileTab = "account" | "company" | "tariff" | "settings";
 
 /**
  * Настройки профиля (ТЗ, разд. 3.3 + п.4): имя, почта, реквизиты компании,
@@ -94,6 +99,18 @@ export function Profile() {
 
   const [edit, setEdit] = useState<FieldId | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [tab, setTab] = useState<ProfileTab>("account");
+  const tabs: { value: ProfileTab; label: string }[] = [
+    { value: "account", label: t("profile.section.account") },
+    ...(account.type === "company"
+      ? [{ value: "company" as const, label: t("profile.section.company") }]
+      : []),
+    {
+      value: "tariff",
+      label: t(isSeller ? "profile.sellerOptions.title" : "profile.tab.tariff"),
+    },
+    { value: "settings", label: t("profile.tab.settings") },
+  ];
 
   /**
    * Сброс к демо-данным. Чистим хранилище и перезагружаем страницу, а не
@@ -158,20 +175,32 @@ export function Profile() {
   const saveInn = () => {
     if (innErr) return;
     const inn = draft.inn.trim();
-    const info = inn ? lookupCompany(inn) : null;
-    updateAccount({
-      inn: inn || undefined,
-      ...(info
-        ? {
-            org: info.name,
-            kpp: info.kpp,
-            ogrn: info.ogrn,
-            legalAddress: info.legalAddress,
-          }
-        : {}),
-    });
-    setInnNote(info ? t("profile.innFetched") : null);
+    // ИНН сохраняется сразу, реквизиты догоняют: справочник может не
+    // ответить, а введённое терять нельзя.
+    updateAccount({ inn: inn || undefined });
     close();
+    if (!inn) return setInnNote(null);
+    setInnNote(t("profile.innFetching"));
+    void companyRepository.lookup(inn).then((res) => {
+      // Пока ждали, ИНН успели поменять — этот ответ уже не о нём.
+      if (useEditor.getState().account.inn !== inn) return;
+      if (!res.ok) return setInnNote(t(res.error));
+      const info = res.data;
+      if (!info) return setInnNote(t("profile.innNotFound"));
+      updateAccount({
+        org: info.name,
+        kpp: info.kpp,
+        ogrn: info.ogrn,
+        legalAddress: info.legalAddress,
+      });
+      setInnNote(
+        info.mock
+          ? t("profile.innMock")
+          : info.status && info.status !== "ACTIVE"
+            ? t("profile.innInactive")
+            : t("profile.innFetched"),
+      );
+    });
   };
 
   const saveOrg = () => {
@@ -199,18 +228,35 @@ export function Profile() {
 
   return (
     <div className="h-full overflow-y-auto bg-background">
-      <div className="mx-auto flex max-w-5xl flex-col gap-6 px-6 py-8">
-        {/* Шапка */}
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon-sm" onClick={goToDashboard}>
-            <ChevronLeft className="size-4" />
-          </Button>
-          <div className="min-w-0 flex-1">
-            <h1 className="text-lg font-semibold tracking-tight">{t("profile.title")}</h1>
-            <p className="text-xs text-muted-foreground">{t("profile.subtitle")}</p>
+      {/* Шапка закреплена (Кирилл 1 ноя): «Готово» внизу длинной страницы
+          было не видно. Вкладки — в ней же, чтобы переключаться, не
+          проматывая наверх. */}
+      <header className="sticky top-0 z-10 border-b border-border bg-background">
+        <div className="mx-auto flex max-w-3xl flex-col gap-3 px-6 pb-3 pt-5">
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon-sm" onClick={goToDashboard}>
+              <ChevronLeft className="size-4" />
+            </Button>
+            <div className="min-w-0 flex-1">
+              <h1 className="text-lg font-semibold tracking-tight">{t("profile.title")}</h1>
+              <p className="text-xs text-muted-foreground">{t("profile.subtitle")}</p>
+            </div>
+            <Button size="sm" onClick={goToDashboard}>
+              {t("profile.done")}
+            </Button>
+          </div>
+          <div className="no-scrollbar overflow-x-auto">
+            <Segmented<ProfileTab>
+              size="md"
+              ariaLabel={t("profile.tabs")}
+              value={tab}
+              onChange={setTab}
+              options={tabs}
+            />
           </div>
         </div>
-
+      </header>
+      <div className="mx-auto flex max-w-3xl flex-col gap-6 px-6 py-6">
         {/* Визитка: кто вошёл и на каком тарифе — чтобы экран начинался не
             со строки «Имя», а с человека. */}
         <ProfileHero
@@ -263,8 +309,8 @@ export function Profile() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
-          <div className="flex min-w-0 flex-col gap-6">
+        <div className="flex min-w-0 flex-col gap-6">
+          {tab === "account" && (
             <Section title={t("profile.section.account")}>
               <div
                 className={card({
@@ -331,238 +377,249 @@ export function Profile() {
                     <ReadValue value={profile.email} onEdit={() => open("email")} />
                   )}
                 </Row>
-
-                {/* Компания: ИНН — ключ, остальное приходит по нему */}
-                {account.type === "company" && (
-                  <>
-                    <Row icon={<Hash className="size-4" />} label={t("profile.inn")}>
-                      {edit === "inn" ? (
-                        <RowEditor
-                          onSave={saveInn}
-                          onCancel={close}
-                          canSave={!innErr}
-                          hint={
-                            innErr ? { text: innErr, error: true } : { text: t("profile.innHint") }
-                          }
-                        >
-                          <Input
-                            // eslint-disable-next-line jsx-a11y/no-autofocus -- строчный редактор открыт по клику «изменить»: фокус обязан уйти в поле
-                            autoFocus
-                            value={draft.inn}
-                            inputMode="numeric"
-                            maxLength={12}
-                            onChange={(e) => set({ inn: e.target.value.replace(/\D/g, "") })}
-                            placeholder="7712345678"
-                            className={cn("h-9 w-full font-mono", innErr && "border-destructive")}
-                          />
-                        </RowEditor>
-                      ) : (
-                        <div className="flex flex-col items-end gap-0.5">
-                          <ReadValue value={account.inn ?? ""} mono onEdit={() => open("inn")} />
-                          {innNote && (
-                            <span className="text-xs text-muted-foreground">{innNote}</span>
-                          )}
-                        </div>
-                      )}
-                    </Row>
-
-                    <Row icon={<Building2 className="size-4" />} label={t("profile.image.logo")}>
-                      <ImagePicker
-                        value={account.orgLogo}
-                        fallback={
-                          <span className="flex size-10 items-center justify-center rounded-xl bg-muted text-muted-foreground">
-                            <Building2 className="size-5" />
-                          </span>
-                        }
-                        onChange={(orgLogo) => updateAccount({ orgLogo })}
-                      />
-                    </Row>
-
-                    <Row icon={<Building2 className="size-4" />} label={t("profile.company")}>
-                      {edit === "org" ? (
-                        <RowEditor onSave={saveOrg} onCancel={close}>
-                          <Input
-                            // eslint-disable-next-line jsx-a11y/no-autofocus -- строчный редактор открыт по клику «изменить»: фокус обязан уйти в поле
-                            autoFocus
-                            value={draft.org}
-                            onChange={(e) => set({ org: e.target.value })}
-                            placeholder={t("profile.companyPlaceholder")}
-                            className="h-9 w-full"
-                          />
-                        </RowEditor>
-                      ) : (
-                        <ReadValue value={account.org ?? ""} onEdit={() => open("org")} />
-                      )}
-                    </Row>
-
-                    <Row
-                      icon={<Building2 className="size-4" />}
-                      label={t("profile.companyDetails")}
-                    >
-                      {edit === "details" ? (
-                        <RowEditor onSave={saveDetails} onCancel={close}>
-                          <div className="flex w-full flex-col gap-1.5">
-                            <Input
-                              // eslint-disable-next-line jsx-a11y/no-autofocus -- строчный редактор открыт по клику «изменить»: фокус обязан уйти в поле
-                              autoFocus
-                              value={draft.kpp}
-                              onChange={(e) => set({ kpp: e.target.value })}
-                              placeholder={t("profile.kpp")}
-                              className="h-9 font-mono"
-                            />
-                            <Input
-                              value={draft.ogrn}
-                              onChange={(e) => set({ ogrn: e.target.value })}
-                              placeholder={t("profile.ogrn")}
-                              className="h-9 font-mono"
-                            />
-                            <Input
-                              value={draft.legalAddress}
-                              onChange={(e) => set({ legalAddress: e.target.value })}
-                              placeholder={t("profile.legalAddress")}
-                              className="h-9"
-                            />
-                          </div>
-                        </RowEditor>
-                      ) : (
-                        <ReadValue onEdit={() => open("details")}>
-                          {hasDetails ? (
-                            <div className="flex max-w-56 flex-col items-end text-right">
-                              {account.kpp && (
-                                <span className="font-mono text-xs">{account.kpp}</span>
-                              )}
-                              {account.ogrn && (
-                                <span className="font-mono text-xs">{account.ogrn}</span>
-                              )}
-                              {account.legalAddress && (
-                                <span className="truncate text-xs text-muted-foreground">
-                                  {account.legalAddress}
-                                </span>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-sm text-muted-foreground">—</span>
-                          )}
-                        </ReadValue>
-                      )}
-                    </Row>
-                  </>
-                )}
               </div>
             </Section>
+          )}
+          {tab === "account" && serverSession && <AccountDataSection />}
 
-            {/* Вид — плитками, а не строками: тема видна сразу, её не надо
-                читать. */}
-            <Section title={t("profile.section.look")}>
-              <div className="grid grid-cols-2 gap-3">
-                <ThemeTile
-                  theme="light"
-                  active={profile.theme === "light"}
-                  label={t("profile.theme.light")}
-                  onClick={() => updateProfile({ theme: "light" })}
-                />
-                <ThemeTile
-                  theme="dark"
-                  active={profile.theme === "dark"}
-                  label={t("profile.theme.dark")}
-                  onClick={() => updateProfile({ theme: "dark" })}
-                />
-              </div>
-              {/* Выбор языка скрыт до перевода кабинета (Кирилл, 31 окт). */}
-              {SHOW_LANGUAGE && (
-                <div className={card({ pad: "none", className: "overflow-hidden" })}>
-                  <Row icon={<Globe className="size-4" />} label={t("profile.language")}>
-                    <Segmented<Lang>
-                      value={profile.language}
-                      onChange={(language) => updateProfile({ language })}
-                      options={[
-                        { value: "ru", label: t("profile.lang.ru") },
-                        { value: "en", label: t("profile.lang.en") },
-                      ]}
-                    />
-                  </Row>
-                </div>
-              )}
-            </Section>
-
-            <Section title={t("profile.section.notify")}>
-              <NotifySection />
-            </Section>
-
-            <Section title={t("profile.section.other")}>
-              {/* Обучение: сброс подсказок + переход в редактор, где сразу
-            показывается приветственная подсказка. */}
+          {/* Компания отдельно от аккаунта (Кирилл 1 ноя): человек и
+              юрлицо — разные вещи, и в одном списке строк они сливались.
+              ИНН — ключ, остальное приходит по нему. */}
+          {tab === "company" && account.type === "company" && (
+            <Section title={t("profile.section.company")}>
               <div
                 className={card({
                   pad: "none",
                   className: "flex flex-col divide-y divide-border overflow-hidden",
                 })}
               >
-                <Row icon={<RotateCcw className="size-4" />} label={t("profile.onboarding")}>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      resetHints();
-                      goToEditor();
-                      useEditor.getState().showHint("welcome");
-                    }}
-                  >
-                    {t("profile.onboardingReplay")}
-                  </Button>
-                </Row>
+                <>
+                  <Row icon={<Hash className="size-4" />} label={t("profile.inn")}>
+                    {edit === "inn" ? (
+                      <RowEditor
+                        onSave={saveInn}
+                        onCancel={close}
+                        canSave={!innErr}
+                        hint={
+                          innErr ? { text: innErr, error: true } : { text: t("profile.innHint") }
+                        }
+                      >
+                        <Input
+                          // eslint-disable-next-line jsx-a11y/no-autofocus -- строчный редактор открыт по клику «изменить»: фокус обязан уйти в поле
+                          autoFocus
+                          value={draft.inn}
+                          inputMode="numeric"
+                          maxLength={12}
+                          onChange={(e) => set({ inn: e.target.value.replace(/\D/g, "") })}
+                          placeholder="7712345678"
+                          className={cn("h-9 w-full font-mono", innErr && "border-destructive")}
+                        />
+                      </RowEditor>
+                    ) : (
+                      <div className="flex flex-col items-end gap-0.5">
+                        <ReadValue value={account.inn ?? ""} mono onEdit={() => open("inn")} />
+                        {innNote && (
+                          <span className="text-xs text-muted-foreground">{innNote}</span>
+                        )}
+                      </div>
+                    )}
+                  </Row>
 
-                {/* Демо-данные (п.8). Посев применяется только при первом запуске —
+                  <Row icon={<Building2 className="size-4" />} label={t("profile.image.logo")}>
+                    <ImagePicker
+                      value={account.orgLogo}
+                      fallback={
+                        <span className="flex size-10 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                          <Building2 className="size-5" />
+                        </span>
+                      }
+                      onChange={(orgLogo) => updateAccount({ orgLogo })}
+                    />
+                  </Row>
+
+                  <Row icon={<Building2 className="size-4" />} label={t("profile.company")}>
+                    {edit === "org" ? (
+                      <RowEditor onSave={saveOrg} onCancel={close}>
+                        <Input
+                          // eslint-disable-next-line jsx-a11y/no-autofocus -- строчный редактор открыт по клику «изменить»: фокус обязан уйти в поле
+                          autoFocus
+                          value={draft.org}
+                          onChange={(e) => set({ org: e.target.value })}
+                          placeholder={t("profile.companyPlaceholder")}
+                          className="h-9 w-full"
+                        />
+                      </RowEditor>
+                    ) : (
+                      <ReadValue value={account.org ?? ""} onEdit={() => open("org")} />
+                    )}
+                  </Row>
+
+                  <Row icon={<Building2 className="size-4" />} label={t("profile.companyDetails")}>
+                    {edit === "details" ? (
+                      <RowEditor onSave={saveDetails} onCancel={close}>
+                        <div className="flex w-full flex-col gap-1.5">
+                          <Input
+                            // eslint-disable-next-line jsx-a11y/no-autofocus -- строчный редактор открыт по клику «изменить»: фокус обязан уйти в поле
+                            autoFocus
+                            value={draft.kpp}
+                            onChange={(e) => set({ kpp: e.target.value })}
+                            placeholder={t("profile.kpp")}
+                            className="h-9 font-mono"
+                          />
+                          <Input
+                            value={draft.ogrn}
+                            onChange={(e) => set({ ogrn: e.target.value })}
+                            placeholder={t("profile.ogrn")}
+                            className="h-9 font-mono"
+                          />
+                          <Input
+                            value={draft.legalAddress}
+                            onChange={(e) => set({ legalAddress: e.target.value })}
+                            placeholder={t("profile.legalAddress")}
+                            className="h-9"
+                          />
+                        </div>
+                      </RowEditor>
+                    ) : (
+                      <ReadValue onEdit={() => open("details")}>
+                        {hasDetails ? (
+                          <div className="flex max-w-56 flex-col items-end text-right">
+                            {account.kpp && (
+                              <span className="font-mono text-xs">{account.kpp}</span>
+                            )}
+                            {account.ogrn && (
+                              <span className="font-mono text-xs">{account.ogrn}</span>
+                            )}
+                            {account.legalAddress && (
+                              <span className="truncate text-xs text-muted-foreground">
+                                {account.legalAddress}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">—</span>
+                        )}
+                      </ReadValue>
+                    )}
+                  </Row>
+                </>
+              </div>
+            </Section>
+          )}
+
+          {tab === "settings" && (
+            <>
+              {/* Вид — плитками, а не строками: тема видна сразу, её не надо
+                читать. */}
+              <Section title={t("profile.section.look")}>
+                <div className="grid grid-cols-2 gap-3">
+                  <ThemeTile
+                    theme="light"
+                    active={profile.theme === "light"}
+                    label={t("profile.theme.light")}
+                    onClick={() => updateProfile({ theme: "light" })}
+                  />
+                  <ThemeTile
+                    theme="dark"
+                    active={profile.theme === "dark"}
+                    label={t("profile.theme.dark")}
+                    onClick={() => updateProfile({ theme: "dark" })}
+                  />
+                </div>
+                {/* Выбор языка скрыт до перевода кабинета (Кирилл, 31 окт). */}
+                {SHOW_LANGUAGE && (
+                  <div className={card({ pad: "none", className: "overflow-hidden" })}>
+                    <Row icon={<Globe className="size-4" />} label={t("profile.language")}>
+                      <Segmented<Lang>
+                        value={profile.language}
+                        onChange={(language) => updateProfile({ language })}
+                        options={[
+                          { value: "ru", label: t("profile.lang.ru") },
+                          { value: "en", label: t("profile.lang.en") },
+                        ]}
+                      />
+                    </Row>
+                  </div>
+                )}
+              </Section>
+
+              <Section title={t("profile.section.notify")}>
+                <NotifySection />
+              </Section>
+
+              <Section title={t("profile.section.other")}>
+                {/* Обучение: сброс подсказок + переход в редактор, где сразу
+            показывается приветственная подсказка. */}
+                <div
+                  className={card({
+                    pad: "none",
+                    className: "flex flex-col divide-y divide-border overflow-hidden",
+                  })}
+                >
+                  <Row icon={<RotateCcw className="size-4" />} label={t("profile.onboarding")}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        resetHints();
+                        goToEditor();
+                        useEditor.getState().showHint("welcome");
+                      }}
+                    >
+                      {t("profile.onboardingReplay")}
+                    </Button>
+                  </Row>
+
+                  {/* Демо-данные (п.8). Посев применяется только при первом запуске —
               иначе он затирал бы работу пользователя при каждой перезагрузке.
               Но тогда обновлённую демо-историю невозможно увидеть, не почистив
               хранилище руками, поэтому здесь — явная кнопка. Она стирает ВСЁ,
               поэтому в два шага и с прямым предупреждением. */}
-                <Row icon={<DatabaseBackup className="size-4" />} label={t("profile.demoData")}>
-                  {confirmReset ? (
-                    <div className="flex flex-wrap items-center justify-end gap-2">
-                      <span className="text-xs text-destructive">{t("profile.demoWarn")}</span>
-                      <Button size="sm" variant="outline" onClick={() => setConfirmReset(false)}>
-                        {t("common.cancel")}
+                  <Row icon={<DatabaseBackup className="size-4" />} label={t("profile.demoData")}>
+                    {confirmReset ? (
+                      <div className="flex flex-wrap items-center justify-end gap-2">
+                        <span className="text-xs text-destructive">{t("profile.demoWarn")}</span>
+                        <Button size="sm" variant="outline" onClick={() => setConfirmReset(false)}>
+                          {t("common.cancel")}
+                        </Button>
+                        <Button size="sm" variant="destructive" onClick={resetDemoData}>
+                          {t("profile.demoConfirm")}
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button size="sm" variant="outline" onClick={() => setConfirmReset(true)}>
+                        {t("profile.demoReload")}
                       </Button>
-                      <Button size="sm" variant="destructive" onClick={resetDemoData}>
-                        {t("profile.demoConfirm")}
-                      </Button>
-                    </div>
-                  ) : (
-                    <Button size="sm" variant="outline" onClick={() => setConfirmReset(true)}>
-                      {t("profile.demoReload")}
-                    </Button>
-                  )}
-                </Row>
-              </div>
-            </Section>
-          </div>
+                    )}
+                  </Row>
+                </div>
+              </Section>
+            </>
+          )}
 
           {/* Тариф и резервные копии — обещания тарифов на сайте. Продавец
               смотрит те же данные в режиме чтения: это дело склада. */}
-          {!isSeller && (
-            <div className="flex min-w-0 flex-col gap-6">
+          {tab === "tariff" && !isSeller && (
+            <>
               <Section title={t("tariff.title")}>
                 <TariffSection />
               </Section>
               <Section title={t("backup.title")}>
                 <BackupSection />
               </Section>
-            </div>
+            </>
           )}
 
-          {/* У продавца справа место под его опции: тарифов склада у него нет,
+          {/* У продавца вместо тарифа — его опции: тарифов склада у него нет,
               кабинет входит в тариф склада. Список опций появится после
               запуска и онлайн-оплаты. */}
-          {isSeller && (
-            <div className="flex min-w-0 flex-col gap-6">
-              <Section title={t("profile.sellerOptions.title")}>
-                <div className={card({ className: "flex flex-col gap-2 text-sm" })}>
-                  <p>{t("profile.sellerOptions.included")}</p>
-                  <p className="text-muted-foreground">{t("profile.sellerOptions.paid")}</p>
-                </div>
-              </Section>
-            </div>
+          {tab === "tariff" && isSeller && (
+            <Section title={t("profile.sellerOptions.title")}>
+              <div className={card({ className: "flex flex-col gap-2 text-sm" })}>
+                <p>{t("profile.sellerOptions.included")}</p>
+                <p className="text-muted-foreground">{t("profile.sellerOptions.paid")}</p>
+              </div>
+            </Section>
           )}
         </div>
 
@@ -584,7 +641,7 @@ export function Profile() {
             </Button>
           </div>
         )}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center">
           <Button
             size="sm"
             variant="ghost"
@@ -593,9 +650,6 @@ export function Profile() {
           >
             <LogOut className="size-4" />
             {t(confirmLogout ? "profile.logoutConfirm" : "profile.logout")}
-          </Button>
-          <Button size="sm" onClick={goToDashboard}>
-            {t("profile.done")}
           </Button>
         </div>
       </div>

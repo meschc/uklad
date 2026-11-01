@@ -16,11 +16,13 @@ import { BEFORE_SYNC_KEY, markSignedOut } from "./serverSync";
  *
  * `offline` — выход не дошёл до сервера: на этом устройстве человек вышел,
  * а сессия на сервере ещё жива. Экран входа скажет об этом прямо.
+ * `deleted` — аккаунт назначен к удалению: экран входа напомнит, что 30 дней
+ * его можно вернуть, войдя паролем.
  */
-export function leaveServerSession(note?: "offline") {
+export function leaveServerSession(note?: "offline" | "deleted") {
   removeLocal(PERSIST_KEY);
   removeLocal(BEFORE_SYNC_KEY);
   markSignedOut();
-  const query = note ? "?view=login&logout=offline" : "?view=login";
+  const query = note ? `?view=login&logout=${note}` : "?view=login";
   window.location.replace(`${window.location.pathname}${query}`);
 }

@@ -3,6 +3,8 @@ import { useState } from "react";
 import { ArrowRight, Info, MapPin, Moon, Pencil, Plus, Settings, Sun } from "lucide-react";
 import { selectRole, useEditor } from "@/lib/store";
 import { BackupReminder } from "./BackupReminder";
+import { IntroCard } from "./IntroCard";
+import { DeletionBanner } from "./DeletionBanner";
 import { allCells } from "@/lib/placement";
 import { addressKey } from "@/lib/address";
 import { planBounds } from "@/lib/planGeometry";
@@ -81,7 +83,11 @@ export function Dashboard() {
             )}
             <div>
               <p className="text-lg font-semibold tracking-tight">
-                {t("dash.greeting", { name: account.name })}
+                {/* Новая компания ещё без имени: «Здравствуйте,» с пустотой
+                    после запятой выглядело как сбой. */}
+                {account.name.trim()
+                  ? t("dash.greeting", { name: account.name })
+                  : t("dash.greetingNoName")}
               </p>
               <p className="text-xs text-muted-foreground">
                 {/* Роль берётся из сессии: в демо подпись меняется вместе с
@@ -115,13 +121,19 @@ export function Dashboard() {
           </div>
         </header>
 
-        {!readOnly && <BackupReminder />}
+        <DeletionBanner />
+        <IntroCard />
+
+        {/* Пока складов нет, копировать нечего. */}
+        {!readOnly && warehouses.length > 0 && <BackupReminder />}
 
         {/* Список складов — карточки в стиле проектов Figma */}
         <section>
           <div className="mb-3 flex items-baseline justify-between">
             <h2 className="text-sm font-semibold">{t("dash.warehouses.title")}</h2>
-            <p className="text-xs text-muted-foreground">{t("dash.warehouses.subtitle")}</p>
+            <p className="text-xs text-muted-foreground">
+              {t(warehouses.length ? "dash.warehouses.subtitle" : "dash.warehouses.empty")}
+            </p>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {warehouses.map((w) => (

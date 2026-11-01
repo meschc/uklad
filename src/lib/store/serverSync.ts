@@ -173,12 +173,19 @@ function devicePart(state: Persisted): Record<string, unknown> {
 }
 
 /**
- * Пустой кабинет новой компании: один пустой склад, без товаров, истории и
- * демо-переписки. Настройки, которые не являются данными (категории, шаблоны
+ * Пустой кабинет новой компании: ни одного склада (только место под него,
+ * `placeholder`), без товаров, истории и демо-переписки. Склад человек
+ * заводит сам — подставленный без спроса «Мой склад» читался как ошибка
+ * (Кирилл 1 ноя). Настройки, которые не являются данными (категории, шаблоны
  * полок и наклеек, адресация, тариф), остаются заводскими.
  */
 export function blankCabinet(current: Persisted, email: string): Persisted {
-  const warehouse = { ...blankWarehouse("Мой склад", "mezzanine", ""), staff: [], partners: [] };
+  const warehouse = {
+    ...blankWarehouse("", "mezzanine", ""),
+    staff: [],
+    partners: [],
+    placeholder: true,
+  };
   return {
     ...current,
     ...emptyWarehouseData(),
@@ -324,7 +331,18 @@ export function startServerSync(orgId: string): () => void {
 
     deferIfNeeded();
     const integrations = withLocalSecrets(snap.data.integrations, current.integrations);
-    replaceWith({ ...snap.data, integrations, ...devicePart(current) }, snap.format, {
+    // Профиль живёт на устройстве. На новом устройстве в нём заводской
+    // «Кирилл» из демо — чужое имя и почта в настоящем аккаунте, поэтому
+    // профиль чужой копии берёт имя и почту из сессии.
+    const device = devicePart(current);
+    if (meta?.orgId !== orgId) {
+      device.profile = {
+        ...current.profile,
+        name: current.session.user.name ?? "",
+        email: current.session.user.email,
+      };
+    }
+    replaceWith({ ...snap.data, integrations, ...device }, snap.format, {
       orgId,
       version: snap.version,
       dirty: false,
