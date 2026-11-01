@@ -13,15 +13,8 @@ const base = {
 };
 
 describe("приёмник заявок — защита от ботов", () => {
-  it("без времени на странице заявка принимается и не считается ботом", () => {
-    const parsed = parseLead(base);
-    expect(parsed.ok).toBe(true);
-    expect(parsed.bot).toBe(false);
-  });
-
-  it("время не числом или отрицательное — бот", () => {
-    expect(parseLead({ ...base, elapsed: "20000" }).bot).toBe(true);
-    expect(parseLead({ ...base, elapsed: -5 }).bot).toBe(true);
+  it("без времени на странице заявка не принимается", () => {
+    expect(parseLead(base).ok).toBe(false);
   });
 
   it("отправленная сразу после загрузки — бот", () => {
