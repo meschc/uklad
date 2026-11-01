@@ -66,7 +66,11 @@ export function ServerLoginForm() {
   const consentErr = step === "signUp" && !consent ? t("login.err.consent") : null;
   const invalid = emailErr || passErr || codeErr || consentErr;
 
+  // Откуда пришли на ввод кода: «Изменить почту» возвращает туда же, с тем же
+  // паролем, — человек правит одну опечатку, а не заполняет форму заново.
+  const [codeFrom, setCodeFrom] = useState<Step>("signUp");
   const go = (next: Step, message: MsgKey | null = null) => {
+    if (next === "verify" || next === "resetCode") setCodeFrom(step);
     setStep(next);
     setTouched(false);
     setError(null);
@@ -231,19 +235,35 @@ export function ServerLoginForm() {
         )}
 
         <form onSubmit={submit} className="flex flex-col gap-3" noValidate>
-          {notice && (
+          {notice && notice !== "login.codeSent" && (
             <p className="text-sm text-muted-foreground">{t(notice, { email: email.trim() })}</p>
           )}
 
-          <Field label={t("login.email")} error={shown(emailErr)}>
-            <EmailInput
-              value={email}
-              readOnly={needsCode}
-              onValueChange={setEmail}
-              placeholder={t("profile.emailPlaceholder")}
-              className={cn("h-9", shown(emailErr) && "border-destructive")}
-            />
-          </Field>
+          {needsCode ? (
+            // Почта крупно (Кирилл 1 ноя): письмо не дошло чаще всего из-за
+            // опечатки в адресе, и её должно быть видно с первого взгляда.
+            <div className="flex flex-col items-start gap-1">
+              <p className="text-sm text-muted-foreground">{t("login.codeSentTo")}</p>
+              <p className="break-all text-lg font-semibold leading-snug">{email.trim()}</p>
+              <button
+                type="button"
+                className="text-sm text-primary underline-offset-4 hover:underline"
+                onClick={() => go(codeFrom)}
+              >
+                {t("login.changeEmail")}
+              </button>
+              <p className="mt-1 text-xs text-muted-foreground">{t("login.codeSpam")}</p>
+            </div>
+          ) : (
+            <Field label={t("login.email")} error={shown(emailErr)}>
+              <EmailInput
+                value={email}
+                onValueChange={setEmail}
+                placeholder={t("profile.emailPlaceholder")}
+                className={cn("h-9", shown(emailErr) && "border-destructive")}
+              />
+            </Field>
+          )}
 
           {needsCode && (
             <Field label={t("login.code")} error={shown(codeErr)}>
