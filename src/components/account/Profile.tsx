@@ -11,6 +11,7 @@ import {
   ShieldCheck,
   User,
 } from "lucide-react";
+import { authRepository } from "@/lib/data/authRepository";
 import { PERSIST_KEY, selectRole, useEditor } from "@/lib/store";
 import { removeLocal } from "@/lib/safeStorage";
 import { isValidInn, lookupCompany } from "@/lib/company";
@@ -61,6 +62,14 @@ export function Profile() {
   const goToDashboard = useEditor((s) => s.goToDashboard);
   const goToEditor = useEditor((s) => s.goToEditor);
   const goToLogin = useEditor((s) => s.goToLogin);
+  const serverSession = useEditor((s) => s.session.source === "server");
+  const endSession = useEditor((s) => s.endSession);
+  // Выход с сервера закрывает сессию и там: кука без записи в базе ничего не
+  // открывает. Сбой связи выход не держит — экран входа всё равно откроется.
+  const logout = () => {
+    if (!serverSession) return goToLogin();
+    void authRepository.logout().finally(endSession);
+  };
   const resetHints = useEditor((s) => s.resetHints);
   const tariff = useEditor((s) => s.subscription.tariff);
   const isSeller = useEditor((s) => selectRole(s) === "seller");
@@ -544,7 +553,7 @@ export function Profile() {
           <Button
             size="sm"
             variant="ghost"
-            onClick={goToLogin}
+            onClick={logout}
             className="gap-1.5 text-muted-foreground hover:text-destructive"
           >
             <LogOut className="size-4" />

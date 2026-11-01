@@ -153,6 +153,17 @@ test("регистрация создаёт компанию и владельц
   assert.ok(rows.every((s) => !s.h.includes(r.token)));
 });
 
+test("регистрация без названия компании: компания зовётся почтой", { skip: SKIP }, async () => {
+  const body = owner("noname@sklad.ru");
+  delete body.company;
+  const r = await signup(body, "10.0.0.40");
+  assert.equal(r.status, 200);
+  const me = await call("/api/auth/me", { cookie: r.token });
+  assert.equal(me.status, 200);
+  assert.equal(me.json.orgs[0].name, "noname@sklad.ru");
+  assert.equal(me.json.orgs[0].warehouse, true);
+});
+
 test("без согласия, с чужого сайта и формой — отказ", { skip: SKIP }, async () => {
   const ip = "10.0.0.2";
   const noConsent = { ...owner("b@sklad.ru"), consent: false };

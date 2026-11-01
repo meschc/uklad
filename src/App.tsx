@@ -6,6 +6,7 @@ import { boundDevice, selectRole, useEditor } from "@/lib/store";
 import { applyTheme, systemTheme } from "@/lib/theme";
 import { useDeepLink } from "@/lib/useDeepLink";
 import { useT } from "@/lib/i18n";
+import { authRepository } from "@/lib/data/authRepository";
 import { SideNav } from "@/components/nav/SideNav";
 import { navFor } from "@/components/nav/navItems";
 import type { AppView } from "@/lib/types";
@@ -125,6 +126,23 @@ export default function App() {
   useEffect(() => {
     document.documentElement.lang = language;
   }, [language]);
+
+  // Вход через сервер живёт в куке, а стор помнит только пометку о нём. При
+  // открытии кабинета спрашиваем сервер, жива ли сессия: истекла или закрыта
+  // с другого устройства — обратно на вход, а не в данные без хозяина. Сбой
+  // связи сессию не гасит: пусть человек работает, проверим при следующем
+  // открытии.
+  const serverSession = useEditor((s) => s.session.source === "server");
+  useEffect(() => {
+    if (!serverSession) return;
+    let alive = true;
+    void authRepository.me().then((res) => {
+      if (alive && res.ok && res.data === null) useEditor.getState().endSession();
+    });
+    return () => {
+      alive = false;
+    };
+  }, [serverSession]);
 
   // Роль ограничивает набор экранов: продавец не должен попасть в редактор
   // структуры склада, даже если состояние восстановилось из localStorage.

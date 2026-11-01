@@ -10,7 +10,10 @@
  * ошибка настройки.
  */
 interface ImportMetaEnv {
-  /** Адрес API кабинета. Пока не используется: данных нет ни у кого. */
+  /**
+   * Адрес API кабинета (`src/lib/data/api.ts`). Образ сервера ставит `/api`.
+   * Пусто — сервера нет (демо на GitHub Pages): вход и данные в браузере.
+   */
   readonly VITE_API_URL?: string;
   /** Канонический домен витрины для canonical, hreflang и sitemap. */
   readonly VITE_SITE_ORIGIN?: string;

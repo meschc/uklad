@@ -8,14 +8,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Segmented } from "@/components/ui/segmented";
+import { hasCabinetServer } from "@/lib/data/api";
 import { AsciiBackdrop } from "./AsciiBackdrop";
+import { ServerLoginForm } from "./ServerLoginForm";
 
 /**
- * Вход, регистрация и восстановление пароля (п.28). Авторизации в прототипе
- * нет, поэтому экран проверяет то, что можно проверить на клиенте: формат
- * почты и длину пароля. Всё остальное (существует ли аккаунт, письмо со
- * сбросом) честно показано как заглушка — иначе интерфейс обещал бы то, чего
- * за ним не стоит.
+ * Вход, регистрация и восстановление пароля (п.28). Сборка с сервером
+ * (`VITE_API_URL`) входит по-настоящему — форму ведёт `ServerLoginForm`.
+ * Демо без сервера (GitHub Pages) проверяет только то, что можно проверить на
+ * клиенте: формат почты и длину пароля.
  *
  * В регистрации только почта и пароль (п.3): имя и компания — это профиль, а не
  * пропуск в систему, их правят в настройках и по ИНН. Роль остаётся: она решает
@@ -94,125 +95,131 @@ export function LoginScreen() {
             </div>
           </div>
 
-          <div className="w-full rounded-2xl border border-border bg-card p-5 shadow-sm">
-            <Segmented
-              size="md"
-              grow
-              className="mb-4"
-              value={mode === "reset" ? "signIn" : mode}
-              onChange={(m) => {
-                setMode(m);
-                setTouched(false);
-                setResetSent(false);
-              }}
-              options={[
-                { value: "signIn" as Mode, label: t("login.tab.signIn") },
-                { value: "signUp" as Mode, label: t("login.tab.signUp") },
-              ]}
-            />
-
-            {mode === "signUp" && (
-              <div className="mb-3 flex flex-col gap-1.5">
-                <Label className="text-xs font-medium text-muted-foreground">
-                  {t("login.roleTitle")}
-                </Label>
+          {hasCabinetServer ? (
+            <ServerLoginForm onDemo={demo} />
+          ) : (
+            <>
+              <div className="w-full rounded-2xl border border-border bg-card p-5 shadow-sm">
                 <Segmented
                   size="md"
                   grow
-                  value={role}
-                  onChange={setLocalRole}
+                  className="mb-4"
+                  value={mode === "reset" ? "signIn" : mode}
+                  onChange={(m) => {
+                    setMode(m);
+                    setTouched(false);
+                    setResetSent(false);
+                  }}
                   options={[
-                    { value: "warehouse", label: t("role.warehouse"), icon: <Warehouse /> },
-                    { value: "seller", label: t("role.seller"), icon: <Store /> },
+                    { value: "signIn" as Mode, label: t("login.tab.signIn") },
+                    { value: "signUp" as Mode, label: t("login.tab.signUp") },
                   ]}
                 />
-                <p className="text-xs text-muted-foreground">
-                  {t(role === "warehouse" ? "login.roleWarehouse" : "login.roleSeller")}
-                </p>
-              </div>
-            )}
 
-            <form onSubmit={submit} className="flex flex-col gap-3" noValidate>
-              <LoginField
-                icon={<Mail className="size-4" />}
-                label={t("login.email")}
-                error={err(emailErr)}
-              >
-                <Input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder={t("profile.emailPlaceholder")}
-                  className={cn("h-9", err(emailErr) && "border-destructive")}
-                />
-              </LoginField>
-
-              {mode !== "reset" && (
-                <LoginField
-                  icon={<Lock className="size-4" />}
-                  label={t("login.password")}
-                  error={err(passErr)}
-                >
-                  <Input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder={t("login.passwordPlaceholder")}
-                    className={cn("h-9", err(passErr) && "border-destructive")}
-                  />
-                </LoginField>
-              )}
-
-              {resetSent && (
-                <p className="rounded-md border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-2 text-xs text-emerald-700 dark:text-emerald-400">
-                  {t("login.resetSent", { email: email.trim() })}
-                </p>
-              )}
-
-              <Button type="submit" className="mt-1 w-full">
-                {t(
-                  mode === "signIn"
-                    ? "login.submit.signIn"
-                    : mode === "signUp"
-                      ? "login.submit.signUp"
-                      : "login.submit.reset",
+                {mode === "signUp" && (
+                  <div className="mb-3 flex flex-col gap-1.5">
+                    <Label className="text-xs font-medium text-muted-foreground">
+                      {t("login.roleTitle")}
+                    </Label>
+                    <Segmented
+                      size="md"
+                      grow
+                      value={role}
+                      onChange={setLocalRole}
+                      options={[
+                        { value: "warehouse", label: t("role.warehouse"), icon: <Warehouse /> },
+                        { value: "seller", label: t("role.seller"), icon: <Store /> },
+                      ]}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {t(role === "warehouse" ? "login.roleWarehouse" : "login.roleSeller")}
+                    </p>
+                  </div>
                 )}
-              </Button>
 
-              {/* Демо — вход в готовый склад без регистрации (п.28). */}
-              <Button type="button" variant="outline" className="w-full" onClick={demo}>
-                {t("login.demo")}
-              </Button>
-              <p className="text-center text-xs text-muted-foreground">{t("login.demoHint")}</p>
-            </form>
-          </div>
+                <form onSubmit={submit} className="flex flex-col gap-3" noValidate>
+                  <LoginField
+                    icon={<Mail className="size-4" />}
+                    label={t("login.email")}
+                    error={err(emailErr)}
+                  >
+                    <Input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder={t("profile.emailPlaceholder")}
+                      className={cn("h-9", err(emailErr) && "border-destructive")}
+                    />
+                  </LoginField>
 
-          <div className="flex flex-col items-center gap-1.5">
-            {mode !== "reset" ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setMode("reset");
-                  setTouched(false);
-                }}
-                className="text-sm text-muted-foreground hover:text-foreground"
-              >
-                {t("login.forgot")}
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => {
-                  setMode("signIn");
-                  setTouched(false);
-                  setResetSent(false);
-                }}
-                className="text-sm text-muted-foreground hover:text-foreground"
-              >
-                {t("login.backToSignIn")}
-              </button>
-            )}
-          </div>
+                  {mode !== "reset" && (
+                    <LoginField
+                      icon={<Lock className="size-4" />}
+                      label={t("login.password")}
+                      error={err(passErr)}
+                    >
+                      <Input
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder={t("login.passwordPlaceholder")}
+                        className={cn("h-9", err(passErr) && "border-destructive")}
+                      />
+                    </LoginField>
+                  )}
+
+                  {resetSent && (
+                    <p className="rounded-md border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-2 text-xs text-emerald-700 dark:text-emerald-400">
+                      {t("login.resetSent", { email: email.trim() })}
+                    </p>
+                  )}
+
+                  <Button type="submit" className="mt-1 w-full">
+                    {t(
+                      mode === "signIn"
+                        ? "login.submit.signIn"
+                        : mode === "signUp"
+                          ? "login.submit.signUp"
+                          : "login.submit.reset",
+                    )}
+                  </Button>
+
+                  {/* Демо — вход в готовый склад без регистрации (п.28). */}
+                  <Button type="button" variant="outline" className="w-full" onClick={demo}>
+                    {t("login.demo")}
+                  </Button>
+                  <p className="text-center text-xs text-muted-foreground">{t("login.demoHint")}</p>
+                </form>
+              </div>
+
+              <div className="flex flex-col items-center gap-1.5">
+                {mode !== "reset" ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode("reset");
+                      setTouched(false);
+                    }}
+                    className="text-sm text-muted-foreground hover:text-foreground"
+                  >
+                    {t("login.forgot")}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode("signIn");
+                      setTouched(false);
+                      setResetSent(false);
+                    }}
+                    className="text-sm text-muted-foreground hover:text-foreground"
+                  >
+                    {t("login.backToSignIn")}
+                  </button>
+                )}
+              </div>
+            </>
+          )}
         </div>
       </div>
 
