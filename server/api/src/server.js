@@ -189,6 +189,10 @@ function createApp({ cfg, db, mail, cabinet = null, now = () => new Date(), log 
       log.error("[uklad] заявка не принята:", parsed.error);
       return send(res, 400, { ok: false }, cors);
     }
+    if (parsed.bot) {
+      log.error("[uklad] заявка отправлена сразу после загрузки страницы, отброшена");
+      return send(res, 200, { ok: true }, cors);
+    }
     const { lead } = parsed;
     const t = now();
     const leadId = db.addLead(lead, t);

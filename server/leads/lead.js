@@ -96,17 +96,19 @@ function parseLead(raw) {
     return { ok: false, error: "нет согласия на обработку персональных данных" };
   }
 
+  // Нет поля — страница открыта до выкладки или заявка не с витрины: не бот.
+  // Есть, но не число или отрицательное — подделка: считаем ботом.
   const { elapsed } = raw;
-  if (typeof elapsed !== "number" || !Number.isFinite(elapsed)) {
-    return { ok: false, error: "нет времени на странице" };
-  }
+  const bot =
+    elapsed !== undefined &&
+    (typeof elapsed !== "number" || !Number.isFinite(elapsed) || elapsed < MIN_ELAPSED_MS);
 
   const fields = parseFields(raw.fields);
   if (fields === null) return { ok: false, error: "поля заявки не разобрались" };
 
   return {
     ok: true,
-    bot: elapsed < MIN_ELAPSED_MS,
+    bot,
     lead: {
       kind,
       lang,
