@@ -79,6 +79,10 @@ test("заявка уходит письмом, а демо — ссылкой �
     cookie,
     /^__Host-uklad_demo=[A-Za-z0-9_-]{22}; Path=\/; HttpOnly; Secure; SameSite=Lax; Max-Age=\d+$/,
   );
+  // Ответы зависят от куки: общий кеш не должен отдать чужой пропуск.
+  assert.equal(open.headers.get("cache-control"), "no-store");
+  const passRes = await fetch(`${s.base}/api/demo/pass`);
+  assert.equal(passRes.headers.get("cache-control"), "no-store");
   const pass = (c) =>
     fetch(`${s.base}/api/demo/pass`, { headers: c ? { cookie: c } : {} }).then((r) => r.json());
   const jar = cookie.split(";")[0];
