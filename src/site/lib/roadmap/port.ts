@@ -20,6 +20,18 @@ export interface Session {
   user: RoadmapUser;
 }
 
+/** Голос: 1 — за, -1 — против; 0 снимает свой голос. */
+export type VoteValue = -1 | 0 | 1;
+
+/** Комментарий к пункту. Автор — псевдоним, который человек выбрал сам, иначе «Гость». */
+export interface RoadmapComment {
+  id: string;
+  author: string;
+  text: string;
+  /** ISO-дата. */
+  createdAt: string;
+}
+
 /** Идея, присланная посетителем. До разбора видна только автору. */
 export interface SubmittedIdea {
   id: string;
@@ -40,10 +52,10 @@ export interface IdeaDraft {
 
 /** Состояние доски для посетителя: голоса всех и его собственные. */
 export interface BoardState {
-  /** Число голосов по id пункта. Пункта без голосов в словаре может не быть. */
+  /** Итог голосов (за минус против) по id пункта. Пункта без голосов в словаре может не быть. */
   counts: Record<string, number>;
-  /** За что голосовал вошедший посетитель. Без входа — пусто. */
-  mine: string[];
+  /** Голос вошедшего посетителя по id пункта: 1 — за, -1 — против. Без входа — пусто. */
+  mine: Record<string, VoteValue>;
   /** Его идеи. Без входа — пусто. */
   ideas: SubmittedIdea[];
 }
@@ -68,8 +80,16 @@ export interface RoadmapPort {
   requestCode(email: string, consent: Consent): Promise<Result<{ devCode?: string }>>;
   verifyCode(email: string, code: string): Promise<Result<Session>>;
   load(token: string | null): Promise<Result<BoardState>>;
-  /** Поставить (`on`) или снять голос. Возвращает новое число голосов пункта. */
-  vote(token: string, itemId: string, on: boolean): Promise<Result<{ count: number }>>;
+  /** Поставить голос (`1` или `-1`) или снять (`0`). Возвращает новый итог пункта. */
+  vote(token: string, itemId: string, value: VoteValue): Promise<Result<{ count: number }>>;
+  /** Комментарии к пункту: читать может любой, писать — вошедший. */
+  comments(itemId: string): Promise<Result<RoadmapComment[]>>;
+  addComment(
+    token: string,
+    itemId: string,
+    text: string,
+    alias: string | null,
+  ): Promise<Result<RoadmapComment>>;
   submitIdea(token: string, draft: IdeaDraft): Promise<Result<SubmittedIdea>>;
 }
 
@@ -118,8 +138,19 @@ export function httpPort(base: string): RoadmapPort {
     verifyCode: (email, code) =>
       call("/auth/verify", { method: "POST", body: JSON.stringify({ email, code }) }),
     load: (token) => call("/board", { token }),
-    vote: (token, itemId, on) =>
-      call(`/votes/${encodeURIComponent(itemId)}`, { method: on ? "PUT" : "DELETE", token }),
+    vote: (token, itemId, value) =>
+      call(`/votes/${encodeURIComponent(itemId)}`, {
+        method: value === 0 ? "DELETE" : "PUT",
+        token,
+        ...(value === 0 ? {} : { body: JSON.stringify({ value }) }),
+      }),
+    comments: (itemId) => call(`/comments/${encodeURIComponent(itemId)}`),
+    addComment: (token, itemId, text, alias) =>
+      call(`/comments/${encodeURIComponent(itemId)}`, {
+        method: "POST",
+        token,
+        body: JSON.stringify({ text, alias }),
+      }),
     submitIdea: (token, draft) =>
       call("/ideas", { method: "POST", token, body: JSON.stringify(draft) }),
   };

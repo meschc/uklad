@@ -36,6 +36,9 @@ export const REQUISITES: LegalDoc = {
             // Документ русский целиком, поэтому из двуязычного поля берётся
             // русская половина явно — см. `hours` в `org.ts`.
             ["Режим работы", ORG.hours.ru],
+            ...(ORG.mailAddress
+              ? [["Почтовый адрес для корреспонденции", ORG.mailAddress] as [string, string]]
+              : []),
             ["Адрес сайта", ORG.site],
           ],
         ),

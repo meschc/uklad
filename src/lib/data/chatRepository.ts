@@ -1,4 +1,4 @@
-import type { ChatMessage } from "../types";
+import type { ChatMessage, ChatTopic } from "../types";
 import { isChatMessage } from "./guards";
 import { readList, storePort, type StorePort } from "./repository";
 import { attempt, type Result } from "./result";
@@ -24,7 +24,12 @@ import { attempt, type Result } from "./result";
 export interface ChatRepository {
   /** Лента переписки с одним собеседником. */
   thread: (partnerId: string) => Promise<Result<ChatMessage[]>>;
-  send: (partnerId: string, text: string, replyTo?: string) => Promise<Result<void>>;
+  send: (
+    partnerId: string,
+    text: string,
+    replyTo?: string,
+    topic?: ChatTopic,
+  ) => Promise<Result<void>>;
   edit: (partnerId: string, messageId: string, text: string) => Promise<Result<void>>;
   remove: (partnerId: string, messageId: string) => Promise<Result<void>>;
   /** Пометить входящие прочитанными. */
@@ -35,8 +40,8 @@ export function createChatRepository(port: StorePort = storePort): ChatRepositor
   return {
     thread: (partnerId) =>
       readList(() => port.get().chats[partnerId] ?? [], isChatMessage, `chats/${partnerId}`),
-    send: (partnerId, text, replyTo) =>
-      attempt(() => port.get().sendChatMessage(partnerId, text, replyTo)),
+    send: (partnerId, text, replyTo, topic) =>
+      attempt(() => port.get().sendChatMessage(partnerId, text, replyTo, topic)),
     edit: (partnerId, messageId, text) =>
       attempt(() => port.get().editChatMessage(partnerId, messageId, text)),
     remove: (partnerId, messageId) =>

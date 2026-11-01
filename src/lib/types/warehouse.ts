@@ -201,6 +201,17 @@ export interface Partner {
  * при синхронизации, и «непрочитанных 3» перестаёт совпадать с лентой. Отметка
  * на самом сообщении пересчитывается всегда и не расходится ни с чем.
  */
+/** По какому вопросу сообщение: товар, заявка, приёмка, отгрузка или другое. */
+export type ChatTopicKind = "product" | "request" | "receiving" | "shipment" | "other";
+
+export interface ChatTopic {
+  kind: ChatTopicKind;
+  /** Конкретный товар (id), если вопрос по нему. */
+  productId?: string;
+  /** Название товара на момент отправки: лента не должна менять подпись задним числом. */
+  label?: string;
+}
+
 export interface ChatMessage {
   id: string;
   /** Кто написал: склад или продавец. */
@@ -211,6 +222,8 @@ export interface ChatMessage {
   readAt?: number;
   /** Ответ на сообщение: id цитируемой реплики той же переписки. */
   replyTo?: string;
+  /** Тема обращения, выбранная через «+». */
+  topic?: ChatTopic;
   /** Когда автор поправил текст. Пусто — не правилось. */
   editedAt?: number;
   /**

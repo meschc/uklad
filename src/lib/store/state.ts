@@ -10,6 +10,8 @@ import type {
   BreakPolicy,
   PackSession,
   Device,
+  DocEdits,
+  DocRecord,
   StaffEvent,
   ShiftMark,
   IdleReason,
@@ -22,6 +24,7 @@ import type {
   CategoryField,
   CellAddress,
   ChatMessage,
+  ChatTopic,
   Discrepancy,
   ExpectedShipment,
   Shipment,
@@ -598,7 +601,7 @@ export interface ChatSlice {
   seedChatsOnce: () => void;
   openChat: (partnerId: string) => void;
   /** Отправить сообщение от лица текущей роли. Пустые строки игнорируются. */
-  sendChatMessage: (partnerId: string, text: string, replyTo?: string) => void;
+  sendChatMessage: (partnerId: string, text: string, replyTo?: string, topic?: ChatTopic) => void;
   /** Поправить своё сообщение. Чужое и удалённое не правятся. */
   editChatMessage: (partnerId: string, messageId: string, text: string) => void;
   /** Удалить своё сообщение: текст стирается, пометка остаётся в ленте. */
@@ -730,6 +733,22 @@ export interface WorkstationSlice {
   prepareDemoTote: () => string | null;
 }
 
+/** Складские документы: правки черновиков и подтверждение старшим. */
+export interface DocsSlice {
+  docRecords: DocRecord[];
+  /** Правка черновика. false — документ уже подтверждён или операции нет. */
+  saveDocDraft: (kind: DocRecord["kind"], sourceId: string, edits: DocEdits) => boolean;
+  confirmDoc: (
+    kind: DocRecord["kind"],
+    sourceId: string,
+    staffId: string,
+  ) => "ok" | "notSenior" | "locked" | "missing";
+  /** Какой документ открыть на экране «Документы» — переход из задания или приёмки. */
+  docFocus: { kind: DocRecord["kind"]; sourceId: string } | null;
+  openDoc: (kind: DocRecord["kind"], sourceId: string) => void;
+  clearDocFocus: () => void;
+}
+
 export interface OperationsSlice {
   /** Задания на операции склада: маркировка, упаковка, возвраты… */
   tasks: WarehouseTask[];
@@ -759,6 +778,7 @@ export type EditorState = AccountSlice &
   SubscriptionSlice &
   WorkstationSlice &
   OperationsSlice &
+  DocsSlice &
   SessionSlice &
   ChatSlice &
   IntegrationsSlice &

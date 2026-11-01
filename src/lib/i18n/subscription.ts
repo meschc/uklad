@@ -30,7 +30,7 @@ export const ru = {
   "backup.last": "Последняя — {date}",
   "backup.restore": "Восстановить",
   "backup.pick": "Выбрать файл",
-  "backup.restoreWarn": "Данные кабинета заменятся архивом от {date}",
+  "backup.restoreWarn": "Копия от {date} заменит текущие данные кабинета. Это нельзя отменить.",
   "backup.restoreConfirm": "Заменить данные",
   "backup.remind": "Напоминать",
   "backup.remind.0": "Нет",
@@ -91,7 +91,8 @@ export const en: Record<keyof typeof ru, string> = {
   "backup.last": "Last: {date}",
   "backup.restore": "Restore",
   "backup.pick": "Choose file",
-  "backup.restoreWarn": "Your data will be replaced with the archive from {date}",
+  "backup.restoreWarn":
+    "The backup from {date} will replace the current cabinet data. This cannot be undone.",
   "backup.restoreConfirm": "Replace data",
   "backup.remind": "Remind",
   "backup.remind.0": "Off",

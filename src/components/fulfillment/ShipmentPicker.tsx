@@ -1,8 +1,9 @@
-import { useMemo, useRef, useState } from "react";
+import { useContext, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   Check,
   Download,
+  FileText,
   FileSpreadsheet,
   Loader2,
   PackageSearch,
@@ -28,6 +29,7 @@ import { Button } from "@/components/ui/button";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { card } from "@/components/ui/card";
 import { EmptyState } from "./ScreenShell";
+import { EmbeddedShell } from "./embeddedShell";
 
 /**
  * Шаг 5.1 — выбор ожидаемой поставки.
@@ -49,7 +51,9 @@ export function ShipmentPicker({
   const [creating, setCreating] = useState(false);
 
   const open = shipments.filter((sh) => sh.status !== "closed");
-  const closed = shipments.filter((sh) => sh.status === "closed");
+  // За столом нужны только ожидаемые приёмки: закрытые — дело руководителя.
+  const atStation = useContext(EmbeddedShell);
+  const closed = atStation ? [] : shipments.filter((sh) => sh.status === "closed");
 
   if (creating) {
     return <ShipmentForm onDone={onPick} onCancel={() => setCreating(false)} />;
@@ -94,7 +98,20 @@ export function ShipmentPicker({
         <div className="flex flex-col gap-2 pt-2">
           <p className={eyebrow()}>{t("recv.pick.closed")}</p>
           {closed.slice(0, 5).map((sh) => (
-            <ShipmentCard key={sh.id} shipment={sh} onPick={onPick} t={t} />
+            <div key={sh.id} className="flex flex-col gap-1">
+              <ShipmentCard shipment={sh} onPick={onPick} t={t} />
+              {/* Закрытая поставка дала лист приёмки: правят и подтверждают его
+                  на экране «Документы». */}
+              <Button
+                size="sm"
+                variant="ghost"
+                className="self-start"
+                onClick={() => useEditor.getState().openDoc("receiving", sh.id)}
+              >
+                <FileText className="size-3.5" />
+                {t("doc.kind.receiving")}
+              </Button>
+            </div>
           ))}
         </div>
       )}

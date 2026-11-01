@@ -21,6 +21,7 @@ const TITLE_KEY: Record<DocKind, MsgKey> = {
   pick: "doc.kind.pick",
   shipment: "doc.kind.shipment",
   receiving: "doc.kind.receiving",
+  discrepancy: "doc.kind.discrepancy",
 };
 
 /** Кто вторая сторона: у сборки — куда, у отгрузки — кому, у приёмки — от кого. */
@@ -28,20 +29,27 @@ const PARTY_KEY: Record<DocKind, MsgKey> = {
   pick: "doc.counterparty",
   shipment: "doc.recipient",
   receiving: "doc.supplier",
+  discrepancy: "doc.supplier",
 };
 
 export function DocumentSheet({
   doc,
   warehouse,
   className,
+  draft,
+  confirmedLine,
 }: {
   doc: DocModel;
   warehouse: Warehouse;
   className?: string;
+  /** Черновик печатается с пометкой: бумагу без подтверждения видно сразу. */
+  draft?: boolean;
+  /** «Подтвердил Иванов, 31.10.2026» — у подтверждённого документа. */
+  confirmedLine?: string;
 }) {
   const t = useT();
   const showFact = doc.kind !== "pick" || (doc.totalFact ?? 0) > 0;
-  const showDiff = doc.kind === "receiving";
+  const showDiff = doc.kind === "receiving" || doc.kind === "discrepancy";
   const totalDiff = doc.totalFact != null ? doc.totalFact - doc.totalQty : null;
 
   return (
@@ -55,6 +63,12 @@ export function DocumentSheet({
           <p className="mt-0.5 font-mono text-[11px]">
             {t("doc.number")} {doc.number} {t("doc.from")} {new Date(doc.date).toLocaleDateString()}
           </p>
+          {draft && (
+            <p className="mt-1 inline-block border border-black px-1.5 text-[10px] font-bold tracking-widest">
+              {t("doc.stamp.draft")}
+            </p>
+          )}
+          {confirmedLine && <p className="mt-1 text-[10px]">{confirmedLine}</p>}
         </div>
         <div className="shrink-0 text-right text-[10px] leading-snug">
           <p className="font-semibold">{warehouse.name}</p>
@@ -68,9 +82,11 @@ export function DocumentSheet({
         <Field label={t("doc.vehicle")} value={doc.vehicle} />
         <Field
           label={t("doc.responsible")}
-          value={warehouse.contactPerson ?? warehouse.manager?.name}
+          value={doc.responsible ?? warehouse.contactPerson ?? warehouse.manager?.name}
         />
         <Field label={t("doc.positions")} value={String(doc.lines.length)} />
+        {doc.seals && <Field label={t("doc.seals")} value={doc.seals} />}
+        {doc.comment && <Field label={t("doc.comment")} value={doc.comment} />}
       </dl>
 
       <table className="w-full border-collapse text-[10px]">

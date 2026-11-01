@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { selectRole, useEditor } from "@/lib/store";
 import type { FireCategory, WarehouseClass, WarehouseSpec } from "@/lib/types";
 import { useT } from "@/lib/i18n";
+import { ReadOnlyContacts } from "./StaffScreen";
 import { ScreenShell } from "@/components/fulfillment/ScreenShell";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { card } from "@/components/ui/card";
@@ -124,7 +125,7 @@ export function WarehouseSpecScreen() {
       // пересоздаётся само — при переходе на другой склад в полях оставались
       // цифры предыдущего. Ключ пересобирает форму вместе со складом.
       key={warehouse.id}
-      title={t("spec.title")}
+      title={t(ro ? "about.title" : "spec.title")}
       subtitle={t("spec.subtitle", { name: warehouse.name })}
       wide
       actions={
@@ -155,6 +156,9 @@ export function WarehouseSpecScreen() {
         )
       }
     >
+      {/* Продавцу «Паспорт» и «Персонал» одной вкладкой: сверху, как связаться. */}
+      {ro && <ReadOnlyContacts warehouse={warehouse} t={t} />}
+
       {/* Визитка объекта: класс, адрес, полнота и шесть цифр, которые
           спрашивают первыми в любом разговоре про склад. */}
       <section className={card({ className: "flex flex-col gap-4" })}>

@@ -99,7 +99,8 @@ export function FinalConnect() {
         id="connect"
         className="mt-16 scroll-mt-4 rounded-t-[24px] bg-[var(--wh-blue)] text-white sm:rounded-t-[32px]"
       >
-        <div className="mx-auto max-w-[1280px] px-5 pt-16 sm:px-10 sm:pt-24">
+        {/* Поверх общей с подвалом ASCII-сцены (её рисует `WarehousesFooter`). */}
+        <div className="relative z-[1] mx-auto max-w-[1280px] px-5 pt-16 sm:px-10 sm:pt-24">
           <div className="grid grid-cols-1 gap-14 lg:grid-cols-2 lg:gap-20">
             <Reveal>
               <h2 className="text-[clamp(40px,5vw,72px)] font-normal leading-[0.98] tracking-[-0.045em]">

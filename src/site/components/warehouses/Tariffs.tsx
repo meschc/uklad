@@ -167,7 +167,7 @@ export function Tariffs({ page = false }: { page?: boolean }) {
               className={cn(
                 "flex flex-col gap-4 rounded-[22px] p-7",
                 blue
-                  ? "relative overflow-hidden bg-[var(--wh-blue)] text-white [&>:not(canvas)]:relative"
+                  ? "relative overflow-hidden bg-[var(--wh-blue)] text-white [&>:not(.wh-ascii)]:relative"
                   : "shadow-[inset_0_0_0_1px_var(--wh-line)]",
               )}
             >

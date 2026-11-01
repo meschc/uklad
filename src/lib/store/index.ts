@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { safeImageUrl } from "../image";
 import { persist } from "zustand/middleware";
 import { uid } from "../utils";
 import { hasLocal } from "../safeStorage";
@@ -28,6 +29,7 @@ import { createRequestsSlice } from "./requests.slice";
 import { createSessionSlice, makeSession } from "./session.slice";
 import { createChatSlice } from "./chat.slice";
 import { createOperationsSlice } from "./operations.slice";
+import { createDocsSlice } from "./docs.slice";
 import { createStaffSlice } from "./staff.slice";
 import { createSubscriptionSlice } from "./subscription.slice";
 import { createWorkstationSlice } from "./workstation.slice";
@@ -99,6 +101,7 @@ export function persistedState(s: EditorState) {
     packSession: s.packSession,
     breakPolicy: s.breakPolicy,
     devices: s.devices,
+    docRecords: s.docRecords,
     thisDeviceId: s.thisDeviceId,
     tasks: s.tasks,
     serviceSettings: s.serviceSettings,
@@ -145,6 +148,7 @@ export const useEditor = create<EditorState>()(
       ...createSubscriptionSlice(...a),
       ...createWorkstationSlice(...a),
       ...createOperationsSlice(...a),
+      ...createDocsSlice(...a),
     }),
     {
       name: PERSIST_KEY,
@@ -272,10 +276,22 @@ export const useEditor = create<EditorState>()(
        * битые записи, а не роняет приложение целиком — завтра здесь же
        * встретится первый неожиданный ответ настоящего backend.
        */
-      merge: (persisted, current) => ({
-        ...current,
-        ...sanitizeDomains(persisted as Record<string, unknown>),
-      }),
+      merge: (persisted, current) => {
+        const merged = {
+          ...current,
+          ...sanitizeDomains(persisted as Record<string, unknown>),
+        };
+        // Картинки профиля — только свой data-URL (см. `safeImageUrl`).
+        const account = merged.account;
+        return {
+          ...merged,
+          account: {
+            ...account,
+            avatar: safeImageUrl(account.avatar),
+            orgLogo: safeImageUrl(account.orgLogo),
+          },
+        };
+      },
       partialize: persistedState,
     },
   ),

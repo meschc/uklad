@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { BadgeCheck } from "lucide-react";
-import { useEditor } from "@/lib/store";
+import { boundDevice, useEditor } from "@/lib/store";
 import { workstationRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
 import { DEMO_BADGES, MANAGER_ROLE, badgeCode } from "@/lib/workstation";
-import { useT } from "@/lib/i18n";
+import type { WorkstationKind } from "@/lib/types";
+import { useT, type MsgKey } from "@/lib/i18n";
 import { card } from "@/components/ui/card";
+import { Segmented } from "@/components/ui/segmented";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { QrSvg } from "@/components/table/QrSvg";
 import { ScanField, type ScanStatus } from "@/components/fulfillment/ScanField";
@@ -18,6 +20,9 @@ import { ScanField, type ScanStatus } from "@/components/fulfillment/ScanField";
  * Демо-бейджи — вход за любого сотрудника одним кликом. В рабочем кабинете с
  * сервером их быть не должно: показывать только в демо-режиме.
  */
+/** Столы, у которых уже есть свой экран. */
+const OPEN_STATIONS: WorkstationKind[] = ["receiving", "picking", "pack", "shipping"];
+
 export function BadgeLogin() {
   const t = useT();
   const allStaff = useEditor((s) => s.warehouse.staff) ?? [];
@@ -26,9 +31,13 @@ export function BadgeLogin() {
   const staff = allStaff.filter((m) => !MANAGER_ROLE.test(m.role));
   const login = useCommand(workstationRepository.login);
   const [status, setStatus] = useState<ScanStatus>("idle");
+  // Закреплённый стол сам знает свой процесс. На свободном компьютере человек
+  // называет его до скана — и после входа видит только его.
+  const device = useEditor(boundDevice);
+  const [station, setStation] = useState<WorkstationKind>("pack");
 
   const submit = async (code: string) => {
-    const res = await login.run(code, "pack");
+    const res = await login.run(code, device?.station ?? station);
     setStatus(res.ok ? "ok" : "error");
   };
 
@@ -41,6 +50,24 @@ export function BadgeLogin() {
         <h1 className="text-xl font-semibold tracking-tight">{t("ws.login.title")}</h1>
         <p className="max-w-md text-sm text-muted-foreground">{t("ws.login.body")}</p>
       </div>
+
+      {!device && (
+        <div className="flex flex-col items-center gap-2">
+          <Segmented<WorkstationKind>
+            value={station}
+            onChange={setStation}
+            size="md"
+            ariaLabel={t("ws.login.station")}
+            options={OPEN_STATIONS.map((st) => ({
+              value: st,
+              label: t(`ws.station.${st}` as MsgKey),
+            }))}
+          />
+          <p className="max-w-md text-center text-xs text-muted-foreground">
+            {t("ws.login.stationHint")}
+          </p>
+        </div>
+      )}
 
       <ScanField
         label={t("ws.login.scan")}

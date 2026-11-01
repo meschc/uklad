@@ -44,8 +44,11 @@ import type { Draft } from "./receiving/types";
  * переживает уход на другой экран и перезагрузку — приёмка идёт часами и
  * прерывается постоянно (п.4.7). В экране остаётся только сиюминутное:
  * опознанный сканом товар, подсветка поля, диалоги.
+ *
+ * Открывается вкладкой рабочего места: кто принимает, там известно по бейджу
+ * (`staffId`), поэтому выбор приёмщика из списка не показывается.
  */
-export function ReceivingScreen() {
+export function ReceivingScreen({ staffId: badgeStaffId }: { staffId?: string } = {}) {
   const t = useT();
   const products = useEditor((s) => s.products);
   const warehouse = useEditor((s) => s.warehouse);
@@ -73,6 +76,11 @@ export function ReceivingScreen() {
   useLayoutEffect(() => {
     resumeReceiving();
   }, [resumeReceiving]);
+
+  // Принимает тот, кто вошёл по бейджу, — его и пишем в факты приёмки.
+  useLayoutEffect(() => {
+    if (badgeStaffId && staffId !== badgeStaffId) setReceiving({ staffId: badgeStaffId });
+  }, [badgeStaffId, staffId, setReceiving]);
 
   const [draft, setDraft] = useState<Draft | null>(null);
   const box = boxes.find((b) => b.id === boxId) ?? null;
@@ -425,12 +433,14 @@ export function ReceivingScreen() {
               />
             </div>
           )}
-          <StaffPicker
-            staff={staff}
-            value={staffId}
-            onChange={(id) => setReceiving({ staffId: id })}
-            t={t}
-          />
+          {!badgeStaffId && (
+            <StaffPicker
+              staff={staff}
+              value={staffId}
+              onChange={(id) => setReceiving({ staffId: id })}
+              t={t}
+            />
+          )}
           {twoStage && stage === "cargo" ? (
             <CargoStep staffId={staffId} t={t} />
           ) : (

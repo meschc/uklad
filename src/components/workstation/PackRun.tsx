@@ -13,6 +13,7 @@ import {
   type ItemScan,
 } from "@/lib/packing";
 import type { PackSession } from "@/lib/types";
+import { DEMO_BADGES } from "@/lib/workstation";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -102,7 +103,7 @@ export function PackRun({
   const order = unit?.orderId ? orders.find((o) => o.id === unit.orderId) : undefined;
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_18rem]">
+    <div className="flex flex-col gap-6">
       <section className="flex flex-col gap-4">
         <ScanField
           label={t("ws.run.scan")}
@@ -117,6 +118,22 @@ export function PackRun({
           actionLabel={t(label ? "ws.act.confirm" : "ws.act.pack")}
           onSubmit={(c) => void onScan(c)}
         />
+
+        {DEMO_BADGES && (
+          <DemoCodes
+            codes={
+              closing
+                ? [{ code: session.targetCode, hint: t("ws.demo.target") }]
+                : label
+                  ? [{ code: label, hint: t("ws.demo.label") }]
+                  : [...remaining.keys()].map((id) => ({
+                      code: products.find((p) => p.id === id)?.barcode ?? id,
+                      hint: nameOf(id),
+                    }))
+            }
+            onScan={(c) => void onScan(c)}
+          />
+        )}
 
         {feedback?.key.startsWith("ws.run.not_in_tote") && (
           <div
@@ -139,15 +156,15 @@ export function PackRun({
                 <img
                   src={product.imageUrl}
                   alt=""
-                  className="size-24 shrink-0 rounded-lg object-cover"
+                  className="size-48 shrink-0 rounded-xl object-cover"
                 />
               ) : (
-                <span className="flex size-24 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-                  <Package className="size-10" />
+                <span className="flex size-48 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                  <Package className="size-20" />
                 </span>
               )}
               <div className="min-w-0">
-                <p className="text-3xl font-semibold leading-tight tracking-tight">
+                <p className="text-4xl font-semibold leading-tight tracking-tight">
                   {product.name}
                 </p>
                 <p className="mt-1 font-mono text-base text-muted-foreground">{product.sku}</p>
@@ -199,27 +216,7 @@ export function PackRun({
         )}
       </section>
 
-      <aside className="flex flex-col gap-4">
-        <dl className="grid grid-cols-2 gap-2">
-          <Stat label={t("ws.run.packed")} value={String(summary.packed)} />
-          <Stat
-            label={t("ws.run.avg")}
-            value={
-              summary.avgMs == null ? "—" : t("ws.run.sec", { n: Math.round(summary.avgMs / 1000) })
-            }
-          />
-          <Stat
-            label={t("ws.run.defects")}
-            value={String(summary.defects)}
-            tone={summary.defects > 0}
-          />
-          <Stat
-            label={t("ws.run.errors")}
-            value={String(summary.errors)}
-            tone={summary.errors > 0}
-          />
-        </dl>
-
+      <div className="grid gap-5 md:grid-cols-2">
         <div className="flex flex-col gap-1.5">
           <h3 className={eyebrow({ tone: "muted", size: "xs" })}>
             {t("ws.run.tote")} · <span className="font-mono normal-case">{box.barcode}</span>
@@ -270,36 +267,62 @@ export function PackRun({
             </ul>
           )}
         </div>
+      </div>
 
-        <Button
-          size="lg"
-          variant={summary.shortage > 0 ? "outline" : "default"}
-          className={cn(
-            summary.shortage > 0 && "hover:border-amber-500 hover:bg-amber-500 hover:text-white",
-          )}
-          disabled={!!label}
-          onClick={() => {
-            setClosing(true);
-            setFeedback({ status: "idle", key: "ws.chk.closeBody", box: session.targetCode });
-          }}
-        >
-          {summary.shortage > 0
-            ? t("ws.run.finishShort", { n: summary.shortage })
-            : t("ws.run.finish")}
-        </Button>
-        {closing && (
+      <footer className="flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-border pt-4">
+        {/* Счётчики — второстепенное: упаковщик смотрит на товар, а не на цифры. */}
+        <dl className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground">
+          <Stat label={t("ws.run.packed")} value={String(summary.packed)} />
+          <Stat
+            label={t("ws.run.avg")}
+            value={
+              summary.avgMs == null ? "—" : t("ws.run.sec", { n: Math.round(summary.avgMs / 1000) })
+            }
+          />
+          <Stat
+            label={t("ws.run.defects")}
+            value={String(summary.defects)}
+            tone={summary.defects > 0}
+          />
+          <Stat
+            label={t("ws.run.errors")}
+            value={String(summary.errors)}
+            tone={summary.errors > 0}
+          />
+        </dl>
+        <div className="ml-auto flex flex-wrap items-center gap-3">
+          <p className="text-xs text-muted-foreground">
+            {t("ws.run.outTote")} <span className="font-mono">{session.targetCode}</span>
+          </p>
           <Button
-            variant="ghost"
+            size="lg"
+            variant={summary.shortage > 0 ? "outline" : "default"}
+            className={cn(
+              summary.shortage > 0 && "hover:border-amber-500 hover:bg-amber-500 hover:text-white",
+            )}
+            disabled={!!label}
             onClick={() => {
-              setClosing(false);
-              setFeedback(null);
+              setClosing(true);
+              setFeedback({ status: "idle", key: "ws.chk.closeBody", box: session.targetCode });
             }}
           >
-            {t("ws.chk.closeCancel")}
+            {summary.shortage > 0
+              ? t("ws.run.finishShort", { n: summary.shortage })
+              : t("ws.run.finish")}
           </Button>
-        )}
-        <p className="font-mono text-xs text-muted-foreground">→ {session.targetCode}</p>
-      </aside>
+          {closing && (
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setClosing(false);
+                setFeedback(null);
+              }}
+            >
+              {t("ws.chk.closeCancel")}
+            </Button>
+          )}
+        </div>
+      </footer>
     </div>
   );
 }
@@ -348,9 +371,9 @@ function LabelBlock({ code, title, lines }: { code: string; title: string; lines
 
 function Stat({ label, value, tone }: { label: string; value: string; tone?: boolean }) {
   return (
-    <div className={card({ pad: "sm" })}>
-      <dt className={eyebrow({ tone: "muted", size: "xs" })}>{label}</dt>
-      <dd className={cn("mt-0.5 text-lg font-semibold tabular-nums", tone && "text-destructive")}>
+    <div className="flex items-baseline gap-1.5">
+      <dt>{label}</dt>
+      <dd className={cn("font-medium tabular-nums text-foreground", tone && "text-destructive")}>
         {value}
       </dd>
     </div>
@@ -406,6 +429,40 @@ function LastItem({
         ) : (
           <p className="text-sm text-muted-foreground">{t("ws.run.lastNone")}</p>
         ))}
+    </div>
+  );
+}
+
+/**
+ * Демо-коды: сканера под рукой нет — клик по коду делает то же, что скан.
+ * Показывает ровно то, что сейчас ждёт стол: товар из тары, напечатанную
+ * этикетку или короб отгрузки при закрытии. На сервере плашки нет.
+ */
+function DemoCodes({
+  codes,
+  onScan,
+}: {
+  codes: { code: string; hint: string }[];
+  onScan: (code: string) => void;
+}) {
+  const t = useT();
+  if (codes.length === 0) return null;
+  return (
+    <div className="flex flex-col gap-2 rounded-xl border border-dashed border-border p-3">
+      <p className="text-xs text-muted-foreground">
+        <span className="font-semibold text-foreground">{t("ws.demo.title")}</span> ·{" "}
+        {t("ws.demo.hint")}
+      </p>
+      <ul className="flex flex-wrap gap-2">
+        {codes.slice(0, 8).map(({ code, hint }) => (
+          <li key={code}>
+            <Button variant="outline" size="sm" onClick={() => onScan(code)} title={hint}>
+              <span className="font-mono">{code}</span>
+              <span className="max-w-40 truncate text-muted-foreground">{hint}</span>
+            </Button>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

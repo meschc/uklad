@@ -137,6 +137,8 @@ export const ru = {
   "nav.side.tasks": "Задания",
   "nav.side.picking": "Сборка",
   "nav.side.spec": "Паспорт склада",
+  "nav.side.about": "О складе",
+  "about.title": "О складе",
   "spec.title": "Паспорт склада",
   "spec.viewOnMarket": "Посмотреть на витрине",
   "spec.onMarket": "Показывать на витрине",
@@ -299,6 +301,10 @@ export const ru = {
 
   // --- Сборка (§8) ----------------------------------------------------------
   "pick.title": "Сборка",
+  "pick.next.qty": "Возьмите: {n} шт.",
+  "pick.next.start": "Начать задание",
+  "pick.next.skip": "Пропустить",
+  "pick.next.left": "ещё заданий: {n}",
   "pick.subtitle": "Поштучный пересчёт: здесь считается каждая единица",
   "pick.backToQueue": "К очереди",
   "pick.emptyTitle": "Нечего собирать",
@@ -476,6 +482,8 @@ export const en: Record<keyof typeof ru, string> = {
   "nav.side.tasks": "Tasks",
   "nav.side.picking": "Picking",
   "nav.side.spec": "Passport",
+  "nav.side.about": "About the warehouse",
+  "about.title": "About the warehouse",
   "spec.title": "Warehouse profile",
   "spec.viewOnMarket": "View on the marketplace",
   "spec.onMarket": "Show on the marketplace",
@@ -638,6 +646,10 @@ export const en: Record<keyof typeof ru, string> = {
 
   // --- Picking (§8) ----------------------------------------------------------
   "pick.title": "Picking",
+  "pick.next.qty": "Take: {n} pcs",
+  "pick.next.start": "Start the task",
+  "pick.next.skip": "Skip",
+  "pick.next.left": "more tasks: {n}",
   "pick.subtitle": "Unit by unit: every item is scanned here",
   "pick.backToQueue": "Back to queue",
   "pick.emptyTitle": "Nothing to pick",

@@ -76,7 +76,7 @@ export function TableToolbar({
 
       {/* Партнёры — отдельный фильтр: на складе лежит товар нескольких
           продавцов, и разбирать его надо по одному партнёру (п.15). */}
-      {partners.length > 0 && (
+      {partners.length > 0 && !readOnly && (
         <select
           value={filter.partnerId}
           onChange={(e) => onFilter({ partnerId: e.target.value })}
