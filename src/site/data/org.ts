@@ -68,6 +68,7 @@ export const ORG: Org = {
   inn: "621701694478",
   director: "Мещеряков Кирилл Денисович",
   email: "hello@u-klad.ru",
+  mailAddress: "142713, Московская область, посёлок Володарского, до востребования, Мещеряков К.Д.",
   privacyEmail: "privacy@u-klad.ru",
   hours: c("будни, 10:00–18:00 по московскому времени", "weekdays, 10:00–18:00 Moscow time"),
   site: "u-klad.ru",
