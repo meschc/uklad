@@ -117,9 +117,40 @@ export function markSignedOut() {
   writeMeta({ orgId: "", version: 0, dirty: false });
 }
 
-/** Что уходит на сервер: всё сохранение, кроме частей устройства. */
+/**
+ * Пароли и токены подключений (WB, Ozon, Честный знак…) в снимок не идут:
+ * снимок лежит в базе и в её копиях открытым JSON. Они остаются на этом
+ * устройстве, пока подключения не переедут на сервер с шифрованием.
+ */
+const SECRET_FIELDS = ["password", "token"] as const;
+type Integrations = Persisted["integrations"];
+
+function withoutSecrets(all: Integrations): Integrations {
+  const out: Integrations = {};
+  for (const [id, cfg] of Object.entries(all ?? {})) {
+    const copy = { ...cfg };
+    for (const f of SECRET_FIELDS) delete copy[f];
+    out[id] = copy;
+  }
+  return out;
+}
+
+/** Вернуть пароли и токены этого устройства в пришедшие с сервера подключения. */
+function withLocalSecrets(fromServer: unknown, local: Integrations): Integrations {
+  const out: Integrations = { ...((fromServer as Integrations | undefined) ?? {}) };
+  for (const [id, cfg] of Object.entries(local ?? {})) {
+    if (!out[id]) continue;
+    for (const f of SECRET_FIELDS) if (cfg[f]) out[id] = { ...out[id], [f]: cfg[f] };
+  }
+  return out;
+}
+
+/** Что уходит на сервер: всё сохранение, кроме частей устройства и секретов. */
 export function companyPart(state: Persisted): Record<string, unknown> {
-  const out: Record<string, unknown> = { ...state };
+  const out: Record<string, unknown> = {
+    ...state,
+    integrations: withoutSecrets(state.integrations),
+  };
   for (const key of DEVICE_KEYS) delete out[key];
   return out;
 }
@@ -282,7 +313,8 @@ export function startServerSync(orgId: string): () => void {
     }
 
     deferIfNeeded();
-    replaceWith({ ...snap.data, ...devicePart(current) }, snap.format, {
+    const integrations = withLocalSecrets(snap.data.integrations, current.integrations);
+    replaceWith({ ...snap.data, integrations, ...devicePart(current) }, snap.format, {
       orgId,
       version: snap.version,
       dirty: false,
