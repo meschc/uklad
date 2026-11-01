@@ -38,7 +38,10 @@
     <script>
       (function () {
         var theme;
+        // Во фрейме витрины (?embed=1) — тема системы, как у самой витрины.
+        var embed = /[?&]embed=1(&|$)/.test(location.search);
         try {
+          if (embed) throw 0;
           var saved = localStorage.getItem("uklad-store-v1");
           if (saved) theme = JSON.parse(saved).state.profile.theme;
         } catch (e) {
