@@ -11,6 +11,9 @@ import {
   ShieldCheck,
   User,
 } from "lucide-react";
+import { authRepository } from "@/lib/data/authRepository";
+import { leaveServerSession } from "@/lib/store/leave";
+import { downloadBackup } from "./backupDownload";
 import { PERSIST_KEY, selectRole, useEditor } from "@/lib/store";
 import { removeLocal } from "@/lib/safeStorage";
 import { isValidInn, lookupCompany } from "@/lib/company";
@@ -61,6 +64,18 @@ export function Profile() {
   const goToDashboard = useEditor((s) => s.goToDashboard);
   const goToEditor = useEditor((s) => s.goToEditor);
   const goToLogin = useEditor((s) => s.goToLogin);
+  const serverSession = useEditor((s) => s.session.source === "server");
+  // Выход с сервера стирает данные кабинета на этом компьютере — пока они
+  // живут только здесь, поэтому сначала подтверждение строкой на месте кнопки
+  // и «Скачать копию». Не дошёл до сервера — экран входа говорит, что там
+  // сессия ещё жива.
+  const [confirmLogout, setConfirmLogout] = useState(false);
+  const logout = async () => {
+    if (!serverSession) return goToLogin();
+    if (!confirmLogout) return setConfirmLogout(true);
+    const res = await authRepository.logout();
+    leaveServerSession(res.ok ? undefined : "offline");
+  };
   const resetHints = useEditor((s) => s.resetHints);
   const tariff = useEditor((s) => s.subscription.tariff);
   const isSeller = useEditor((s) => selectRole(s) === "seller");
@@ -540,15 +555,26 @@ export function Profile() {
           )}
         </div>
 
+        {confirmLogout && (
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="mr-auto">{t("profile.logoutWipe")}</span>
+            <Button size="sm" variant="outline" onClick={() => void downloadBackup()}>
+              {t("profile.logoutBackup")}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setConfirmLogout(false)}>
+              {t("login.switch.cancel")}
+            </Button>
+          </div>
+        )}
         <div className="flex items-center justify-between">
           <Button
             size="sm"
             variant="ghost"
-            onClick={goToLogin}
+            onClick={logout}
             className="gap-1.5 text-muted-foreground hover:text-destructive"
           >
             <LogOut className="size-4" />
-            {t("profile.logout")}
+            {t(confirmLogout ? "profile.logoutConfirm" : "profile.logout")}
           </Button>
           <Button size="sm" onClick={goToDashboard}>
             {t("profile.done")}

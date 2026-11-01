@@ -53,5 +53,8 @@ export default defineConfig(({ isSsrBuild, mode }) => ({
     // origin с пустым хранилищем (иначе показался бы демо-сид). См. память.
     port: 5174,
     strictPort: true,
+    // Кабинет с сервером локально: `VITE_API_URL=/api` в `.env.local` и
+    // `server/api` на 8080 (`ALLOWED_ORIGIN=http://localhost:5174`).
+    proxy: { "/api": "http://localhost:8080" },
   },
 }));
