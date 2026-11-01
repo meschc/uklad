@@ -321,7 +321,7 @@ export function StaffScreen() {
  * и почта склада и ответственное лицо: телефоны и почты остальных сотрудников —
  * чужие персональные данные, продавцу они не нужны и не передаются.
  */
-function ReadOnlyContacts({
+export function ReadOnlyContacts({
   warehouse,
   t,
 }: {
