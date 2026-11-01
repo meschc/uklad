@@ -34,6 +34,15 @@ const MAX_FIELDS = 30;
 const MAX_FIELD_LABEL = 200;
 const MAX_FIELD_VALUE = 2_000;
 
+/**
+ * Быстрее этого форму руками не заполнить. Заявка, пришедшая раньше, — бот:
+ * ей отвечают «принято», но письма не шлют, чтобы бот не учился обходу.
+ */
+const MIN_ELAPSED_MS = 2_500;
+// ЖДЁТ СЕРВЕРА: это первый слой, elapsed присылает браузер, и бот под нас его
+// подделает. Лимит частоты по IP, CSP/HSTS — в nginx при подключении сервера
+// (аудит безопасности 21.10, п.4–5; узел back-security на карте продукта).
+
 function isFilledString(value, limit) {
   return typeof value === "string" && value.trim() !== "" && value.length <= limit;
 }
@@ -87,11 +96,17 @@ function parseLead(raw) {
     return { ok: false, error: "нет согласия на обработку персональных данных" };
   }
 
+  const { elapsed } = raw;
+  if (typeof elapsed !== "number" || !Number.isFinite(elapsed)) {
+    return { ok: false, error: "нет времени на странице" };
+  }
+
   const fields = parseFields(raw.fields);
   if (fields === null) return { ok: false, error: "поля заявки не разобрались" };
 
   return {
     ok: true,
+    bot: elapsed < MIN_ELAPSED_MS,
     lead: {
       kind,
       lang,
