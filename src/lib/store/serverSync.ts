@@ -331,7 +331,18 @@ export function startServerSync(orgId: string): () => void {
 
     deferIfNeeded();
     const integrations = withLocalSecrets(snap.data.integrations, current.integrations);
-    replaceWith({ ...snap.data, integrations, ...devicePart(current) }, snap.format, {
+    // Профиль живёт на устройстве. На новом устройстве в нём заводской
+    // «Кирилл» из демо — чужое имя и почта в настоящем аккаунте, поэтому
+    // профиль чужой копии берёт имя и почту из сессии.
+    const device = devicePart(current);
+    if (meta?.orgId !== orgId) {
+      device.profile = {
+        ...current.profile,
+        name: current.session.user.name ?? "",
+        email: current.session.user.email,
+      };
+    }
+    replaceWith({ ...snap.data, integrations, ...device }, snap.format, {
       orgId,
       version: snap.version,
       dirty: false,

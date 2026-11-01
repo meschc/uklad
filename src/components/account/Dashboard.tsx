@@ -4,6 +4,7 @@ import { ArrowRight, Info, MapPin, Moon, Pencil, Plus, Settings, Sun } from "luc
 import { selectRole, useEditor } from "@/lib/store";
 import { BackupReminder } from "./BackupReminder";
 import { IntroCard } from "./IntroCard";
+import { DeletionBanner } from "./DeletionBanner";
 import { allCells } from "@/lib/placement";
 import { addressKey } from "@/lib/address";
 import { planBounds } from "@/lib/planGeometry";
@@ -120,6 +121,7 @@ export function Dashboard() {
           </div>
         </header>
 
+        <DeletionBanner />
         <IntroCard />
 
         {/* Пока складов нет, копировать нечего. */}

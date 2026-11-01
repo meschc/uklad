@@ -31,6 +31,7 @@ import { Row, ReadValue, RowEditor } from "./ProfileRow";
 import { TariffSection } from "./TariffSection";
 import { NotifySection, ProfileHero, Section, ThemeTile } from "./ProfileParts";
 import { BackupSection } from "./BackupSection";
+import { AccountDataSection } from "./AccountDataSection";
 
 /** Вкладки профиля: длинная страница из всех разделов сразу не читалась. */
 type ProfileTab = "account" | "company" | "tariff" | "settings";
@@ -379,6 +380,7 @@ export function Profile() {
               </div>
             </Section>
           )}
+          {tab === "account" && serverSession && <AccountDataSection />}
 
           {/* Компания отдельно от аккаунта (Кирилл 1 ноя): человек и
               юрлицо — разные вещи, и в одном списке строк они сливались.
