@@ -1,5 +1,6 @@
 import { setApiOrg } from "../data/api";
 import { makeBackup } from "../backup";
+import { SECRET_INTEGRATION_FIELDS } from "../integrations";
 import { snapshotRepository } from "../data/snapshotRepository";
 import { readLocal, writeLocal } from "../safeStorage";
 import { PERSIST_KEY, PERSIST_VERSION, persistedState, useEditor } from "./index";
@@ -122,7 +123,7 @@ export function markSignedOut() {
  * снимок лежит в базе и в её копиях открытым JSON. Они остаются на этом
  * устройстве, пока подключения не переедут на сервер с шифрованием.
  */
-const SECRET_FIELDS = ["password", "token"] as const;
+const SECRET_FIELDS = [...SECRET_INTEGRATION_FIELDS];
 type Integrations = Persisted["integrations"];
 
 function withoutSecrets(all: Integrations): Integrations {
