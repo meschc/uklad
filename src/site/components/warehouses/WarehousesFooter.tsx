@@ -1,6 +1,7 @@
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { ArrowUp, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AsciiScene } from "../frame/AsciiScene";
 import { LEGAL_DOCS } from "../../data/legal";
 import { ORG } from "../../data/org";
 import { chatHours } from "../../data/offer";
@@ -25,15 +26,30 @@ const LINKS: { title: Copy; items: { label: Copy; to: string }[] }[] = [
     title: T.product,
     items: [
       { label: c("Как устроена система", "How the system works"), to: "#inside" },
+      { label: c("Демо-кабинет", "Demo"), to: "/app" },
+      { label: c("Как проходит подключение", "How onboarding works"), to: "#connect-path" },
       { label: c("Тарифы", "Pricing"), to: "#tariffs" },
-      { label: c("Дорожная карта", "Roadmap"), to: "/roadmap" },
+      { label: c("Вопросы", "FAQ"), to: "#faq" },
     ],
   },
   {
     title: T.uklad,
-    items: [{ label: c("Контакты", "Contacts"), to: "/contacts" }],
+    items: [
+      { label: c("Войти в кабинет", "Sign in"), to: "/app" },
+      { label: c("Дорожная карта", "Roadmap"), to: "/roadmap" },
+      { label: c("Предложить идею", "Suggest an idea"), to: "/roadmap#suggest" },
+      { label: c("Документы", "Documents"), to: "/legal" },
+      { label: c("Контакты", "Contacts"), to: "/contacts" },
+    ],
   },
 ];
+
+/** Путь с якорем (`/roadmap#suggest`) или якорь этой страницы (`#faq`). */
+function linkHref(to: string, away: boolean): string {
+  const [path, hash] = to.split("#");
+  if (path) return `${href(path)}${hash ? `#${hash}` : ""}`;
+  return away ? `${href("/")}#${hash}` : `#${hash}`;
+}
 
 /**
  * Единственный подвал страницы для складов (Кирилл 19 окт: «подвал должен
@@ -46,14 +62,41 @@ const LINKS: { title: Copy; items: { label: Copy; to: string }[] }[] = [
  * Стоит вне `main`, поэтому для вспомогательных технологий это настоящий
  * подвал страницы (`contentinfo`), как и общий.
  */
+/**
+ * Высота синего блока заявки над подвалом (`#connect`), если он на странице.
+ * Меряется после монтирования и при каждом изменении размера блока.
+ */
+function useConnectHeight() {
+  const [h, setH] = useState(0);
+  useEffect(() => {
+    const el = document.getElementById("connect");
+    if (!el) return;
+    const ro = new ResizeObserver(() => setH(el.offsetHeight));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return h;
+}
+
 export function WarehousesFooter({ away = false }: { away?: boolean }) {
   const t = useT();
   const [docsOpen, setDocsOpen] = useState(false);
   const docsId = useId();
+  const reach = useConnectHeight();
 
   return (
-    <footer className="overflow-hidden bg-[var(--wh-blue)] text-white">
-      <div className="mx-auto max-w-[1280px] px-5 sm:px-10">
+    <footer className="relative bg-[var(--wh-blue)] text-white">
+      {/* Свой рисунок, не поле первого экрана: стеллажи из знаков плывут
+          вверх (Кирилл 31 окт: «в подвал тоже ascii, но другую»). Сцена одна
+          на весь синий низ — от блока «Подключить склад» до конца подвала:
+          своя граница у подвала читалась как невидимая стена. */}
+      <AsciiScene
+        kind="racks"
+        density={0.5}
+        className="opacity-35"
+        style={reach ? { top: -reach, height: `calc(100% + ${reach}px)` } : undefined}
+      />
+      <div className="relative mx-auto max-w-[1280px] px-5 sm:px-10">
         {/* Отделён от финального блока воздухом, а не линией: тонкая черта под
             карточкой заявки читалась как обрыв (Кирилл 19 окт). */}
         <div className="flex flex-wrap justify-between gap-8 pt-20 text-sm sm:pt-28">
@@ -71,14 +114,16 @@ export function WarehousesFooter({ away = false }: { away?: boolean }) {
             <nav
               key={col.title.ru}
               aria-label={t(col.title)}
-              className="flex min-w-[160px] flex-col gap-2.5"
+              className="flex min-w-[160px] flex-col gap-1"
             >
-              <span className="text-white/60">{t(col.title)}</span>
+              <span className="mb-1.5 text-white/60">{t(col.title)}</span>
               {col.items.map((l) => (
                 <a
                   key={l.label.ru}
-                  href={!l.to.startsWith("#") ? href(l.to) : away ? `${href("/")}${l.to}` : l.to}
-                  className="w-fit text-white/85 transition-[color,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:translate-x-1 hover:text-white motion-reduce:transition-none"
+                  href={linkHref(l.to, away)}
+                  // Подсветка — светлая пилюля вокруг ссылки, без сдвига вправо
+                  // (Кирилл 31 окт: ореол побольше, анимаций поменьше).
+                  className="-mx-3 w-fit rounded-full px-3 py-1 text-white/85 transition-colors duration-200 hover:bg-white/15 hover:text-white"
                 >
                   {t(l.label)}
                 </a>

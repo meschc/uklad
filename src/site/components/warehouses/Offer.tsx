@@ -2,16 +2,22 @@ import { cn } from "@/lib/utils";
 import { Reveal } from "../Reveal";
 import { ru, useT, type Copy } from "../../lib/copy";
 import { href } from "../../lib/route";
+import { Plus } from "lucide-react";
 import { OFFER, chatHours, monthsRu } from "../../data/offer";
+import { STATUS_LABELS, STATUS_ORDER } from "../../data/roadmap";
+import { ROADMAP_ITEMS } from "../../data/roadmapItems";
+import { STATUS_TONE } from "../roadmap/roadmapColors";
 
 const T = {
   title: ru("Система, настроенная под ваш склад"),
   sub: ru("Условия тестового периода для первых складов."),
   roadmapTitle: ru("Открытая дорожная карта"),
   roadmapBody: ru(
-    "Что предложили склады, что в работе и что уже работает, видно на одной странице. Ваши функции появляются там же.",
+    "Что обсуждаем, планируем, делаем и что уже готово, видно на одной странице. Ваши идеи попадают туда же.",
   ),
   roadmapLink: ru("Дорожная карта →"),
+  yours: ru("Ваша функция"),
+  yoursHint: ru("Предложить идею"),
 };
 
 /** Условия, которые склад сравнивает первыми, — крупным числом. */
@@ -40,25 +46,19 @@ const NUMBERS: { value: string; unit: Copy; body: Copy }[] = [
   },
 ];
 
-type Stage = "idea" | "doing" | "done";
-
 /**
- * Колонки по нарастающей (19 окт): от предложения склада к работающей
- * функции. Примеры — заглушки до решения Кирилла о содержимом карты.
+ * Колонки — те же четыре, что на доске /roadmap, в том же порядке и с теми же
+ * метками (Кирилл 31 окт). Пункты берутся с доски, а не пишутся здесь
+ * отдельно: иначе блок разойдётся с картой на первой же правке.
  */
-const ROADMAP: { stage: Stage; title: Copy; items: Copy[] }[] = [
-  { stage: "idea", title: ru("Предложения"), items: [ru("Ваша функция")] },
-  {
-    stage: "doing",
-    title: ru("В работе"),
-    items: [ru("Выгрузка остатков в Excel"), ru("Вход на ТСД по QR-коду")],
-  },
-  {
-    stage: "done",
-    title: ru("Работает"),
-    items: [ru("Адресное хранение"), ru("Чат с селлерами")],
-  },
-];
+const PER_COLUMN = 2;
+const COLUMNS = STATUS_ORDER.map((status) => ({
+  status,
+  items: ROADMAP_ITEMS.filter((item) => item.status === status).slice(
+    0,
+    status === "idea" ? PER_COLUMN - 1 : PER_COLUMN,
+  ),
+}));
 
 export function Offer() {
   const t = useT();
@@ -96,8 +96,8 @@ export function Offer() {
 
       <section className="mx-auto mt-16 max-w-[1280px] px-5 sm:px-10">
         {/* Колонки карты — по всей ширине блока (Кирилл 19 окт), текст строкой
-            над ними. Карточка инверсна странице: тёмная на светлой, светлая
-            на тёмной, — иначе в тёмной теме она пропадает. */}
+            над ними. Карточка тёмная на светлой странице и синяя на тёмной
+            (Кирилл 31 окт), — иначе в тёмной теме она пропадает. */}
         <Reveal className="wh-invert flex flex-col gap-8 rounded-[28px] p-6 sm:p-10">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between lg:gap-16">
             <div className="max-w-[560px]">
@@ -108,34 +108,42 @@ export function Offer() {
               {t(T.roadmapLink)}
             </a>
           </div>
-          <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-3 sm:gap-4">
-            {ROADMAP.map((col, ci) => (
-              <Reveal key={col.stage} delay={120 + ci * 90} className="flex flex-col gap-2">
+          <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+            {COLUMNS.map((col, ci) => (
+              <Reveal key={col.status} delay={120 + ci * 90} className="flex flex-col gap-2">
                 <span className="wh-invert-muted flex items-center gap-2">
                   <span
                     className={cn(
                       "block size-2 rounded-full",
-                      col.stage === "idea" && "border border-current",
-                      col.stage === "doing" && "bg-[var(--wh-blue)]",
-                      col.stage === "done" && "bg-[#3ecf8e]",
+                      // Синяя точка на синем блоке тёмной темы пропала бы.
+                      col.status === "progress" ? "wh-invert-dot" : STATUS_TONE[col.status],
                     )}
                   />
-                  {t(col.title)}
+                  {t(STATUS_LABELS[col.status])}
                 </span>
-                {col.items.map((item, i) => (
-                  <span
-                    key={item.ru}
+                {col.status === "idea" && (
+                  <a
+                    href={`${href("/roadmap")}#suggest`}
+                    aria-label={t(T.yoursHint)}
+                    className="wh-invert-dash group flex items-center justify-between gap-3 rounded-[10px] border border-dashed px-3 py-2.5 transition-colors hover:border-solid"
+                  >
+                    {t(T.yours)}
+                    <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-white/15 transition-colors group-hover:bg-white/25">
+                      <Plus className="size-3.5" />
+                    </span>
+                  </a>
+                )}
+                {col.items.map((item) => (
+                  <a
+                    key={item.id}
+                    href={`${href("/roadmap")}#idea-${encodeURIComponent(item.id)}`}
                     className={cn(
-                      "rounded-[10px] px-3 py-2.5",
-                      col.stage === "idea" && "wh-invert-dash border border-dashed",
-                      col.stage === "doing" && i === 0 && "bg-[var(--wh-blue)] text-white",
-                      col.stage !== "idea" &&
-                        !(col.stage === "doing" && i === 0) &&
-                        "wh-invert-chip",
+                      "rounded-[10px] px-3 py-2.5 transition-colors",
+                      col.status === "progress" ? "wh-invert-accent" : "wh-invert-chip",
                     )}
                   >
-                    {t(item)}
-                  </span>
+                    {t(item.title)}
+                  </a>
                 ))}
               </Reveal>
             ))}

@@ -1,6 +1,16 @@
 import { useState } from "react";
-import { ArrowLeft, ListChecks, LogOut, X, Package, Printer, ScanLine, Scale } from "lucide-react";
-import { useEditor } from "@/lib/store";
+import {
+  ArrowLeft,
+  ListChecks,
+  LogOut,
+  MonitorSmartphone,
+  X,
+  Package,
+  Printer,
+  ScanLine,
+  Scale,
+} from "lucide-react";
+import { boundDevice, useEditor } from "@/lib/store";
 import { workstationRepository } from "@/lib/data";
 import { isSessionLive } from "@/lib/workstation";
 import type { WorkstationKind } from "@/lib/types";
@@ -9,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/segmented";
 import { BadgeLogin } from "./BadgeLogin";
+import { UnbindDevice } from "./UnbindDevice";
 import { ShiftMenu } from "./ShiftMenu";
 import { ShiftBar } from "./ShiftBar";
 import { PackStation } from "./PackStation";
@@ -36,6 +47,8 @@ export function WorkstationScreen() {
   const staff = useEditor((s) => s.warehouse.staff);
   const [tab, setTab] = useState<Tab>("pack");
   const [shiftOpen, setShiftOpen] = useState(false);
+  const device = useEditor(boundDevice);
+  const [unbinding, setUnbinding] = useState(false);
 
   const live = isSessionLive(session, now);
   const member = live ? (staff ?? []).find((m) => m.id === session!.staffId) : undefined;
@@ -43,10 +56,24 @@ export function WorkstationScreen() {
   return (
     <div className="flex h-full flex-col bg-background">
       <header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border px-4 py-2.5">
-        <Button variant="ghost" size="sm" onClick={() => useEditor.getState().goToView("tasks")}>
-          <ArrowLeft />
-          {t("ws.exit")}
-        </Button>
+        {device ? (
+          // Стол, привязанный к месту, в кабинет не уходит: вместо выхода —
+          // имя места, чтобы по экрану было видно, какой это стол.
+          <div className="flex items-center gap-2 text-sm font-medium">
+            <MonitorSmartphone className="size-4 text-muted-foreground" />
+            {device.name}
+            {!member && !unbinding && (
+              <Button variant="ghost" size="sm" onClick={() => setUnbinding(true)}>
+                {t("ws.kiosk.unbind")}
+              </Button>
+            )}
+          </div>
+        ) : (
+          <Button variant="ghost" size="sm" onClick={() => useEditor.getState().goToView("tasks")}>
+            <ArrowLeft />
+            {t("ws.exit")}
+          </Button>
+        )}
         <div className="hidden min-w-0 flex-wrap items-center gap-1.5 2xl:flex">
           {STATIONS.map((st) => (
             <span
@@ -82,7 +109,11 @@ export function WorkstationScreen() {
       </header>
 
       <main className="min-h-0 flex-1 overflow-y-auto">
-        {!member ? (
+        {!member && unbinding ? (
+          // Вместо входа, а не поверх него: иначе бейдж руководителя прочитал
+          // бы и вход и пустил его за стол.
+          <UnbindDevice onDone={() => setUnbinding(false)} />
+        ) : !member ? (
           <BadgeLogin />
         ) : (
           // Ширина одна на все вкладки: иначе полоса вкладок прыгает при

@@ -128,7 +128,17 @@ jobs:
 
       - name: Конфиг compose
         working-directory: deploy
+        # В образце пароли базы пустые нарочно: без них compose на сервере
+        # не стартует. Для проверки синтаксиса подставляем заглушки.
+        env:
+          PG_SUPERUSER_PASSWORD: ci
+          PG_OWNER_PASSWORD: ci
+          PG_APP_PASSWORD: ci
+          PG_NOTIFIER_PASSWORD: ci
         run: cp .env.example .env && docker compose config --quiet
+
+      - name: Образ миграций
+        run: docker build -f server/db/Dockerfile -t uklad-migrate server/db
 
       - name: Образ сервера заявок
         run: docker build -f server/api/Dockerfile -t uklad-api server

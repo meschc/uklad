@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { ru, useT } from "../../lib/copy";
 import { href } from "../../lib/route";
-import { LogoMark } from "../Logo";
+import { Logo } from "../Logo";
 
 const T = {
   brand: ru("Уклад"),
@@ -43,12 +43,8 @@ export function StickyNav() {
       )}
     >
       <div className="mx-auto flex h-full max-w-[1280px] items-center justify-between gap-6 px-5 sm:px-10">
-        <a
-          href={href("/")}
-          className="flex items-center gap-2 text-lg font-semibold tracking-tight"
-        >
-          <LogoMark className="rounded-lg" />
-          {t(T.brand)}
+        <a href={href("/")} aria-label={t(T.brand)} className="flex items-center">
+          <Logo />
         </a>
         <nav className="flex items-center gap-8 text-sm">
           <a href="#inside" className="wh-muted hidden hover:text-[var(--wh-ink)] md:inline">

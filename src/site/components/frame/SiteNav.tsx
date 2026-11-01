@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { c, useT, type Copy } from "../../lib/copy";
 import { href, routePath, switchLang, type Route } from "../../lib/route";
-import { LogoMark } from "../Logo";
+import { Logo } from "../Logo";
+import { RollText } from "../RollText";
 
 /**
  * Пункты шапки страниц в новом стиле. Склад раньше селлера — тот же порядок,
@@ -73,15 +74,8 @@ export function SiteNav({
   return (
     <div className="relative">
       <div className="flex items-center justify-between gap-6">
-        <a
-          href={href("/")}
-          className={cn(
-            "flex items-center gap-2 text-xl font-semibold tracking-tight",
-            onBlue && "text-white",
-          )}
-        >
-          <LogoMark className={cn("rounded-lg", onBlue && "ring-1 ring-white/40")} />
-          {t(T.brand)}
+        <a href={href("/")} aria-label={t(T.brand)} className="flex items-center">
+          <Logo tone={onBlue ? "white" : "blue"} />
         </a>
         <nav className="flex items-center gap-7 text-sm">
           {LINKS.map((l) => (
@@ -116,7 +110,7 @@ export function SiteNav({
               onBlue ? "wh-btn--white" : "wh-btn--blue",
             )}
           >
-            {t(T.connect)}
+            <RollText text={t(T.connect)} />
           </a>
           {extra}
           <button
@@ -170,17 +164,58 @@ export function SiteNav({
 }
 
 /**
- * Шапка страниц без синего первого экрана: закреплена с самого верха, та же
- * светлая, что выезжает на остальных.
+ * Закреплённая шапка витрины. На странице с синим первым экраном (`overBlue`)
+ * она сначала прозрачная, с белыми ссылками, и поле знаков идёт под ней, а с
+ * прокруткой становится полупрозрачной по теме, с размытием — как было до
+ * объединения шапок (Кирилл 31 окт). Когда под шапку заходит синий низ
+ * страницы (блок заявки или подвал), она становится цветом подвала: светлая
+ * плашка поверх синего выглядела тяжёлой.
  */
-export function SiteBar({ route, extra }: { route: Route; extra?: React.ReactNode }) {
+export function SiteBar({
+  route,
+  extra,
+  overBlue = false,
+}: {
+  route: Route;
+  extra?: React.ReactNode;
+  overBlue?: boolean;
+}) {
+  const [scrolled, setScrolled] = useState(false);
+  const [atBottom, setAtBottom] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => {
+      setScrolled(window.scrollY > 96);
+      // Синий низ — блок заявки, а где его нет, подвал.
+      const low = document.getElementById("connect") ?? document.querySelector("footer");
+      setAtBottom(!!low && low.getBoundingClientRect().top <= SITE_NAV_H / 2);
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, []);
+
+  const top = overBlue && !scrolled;
+  const blue = top || atBottom;
+
   return (
     <header
       style={{ height: SITE_NAV_H }}
-      className="sticky top-0 z-[60] border-b border-[var(--wh-line)] bg-[color-mix(in_srgb,var(--wh-ground)_88%,transparent)] backdrop-blur-md"
+      className={cn(
+        "sticky top-0 z-[60] border-b transition-colors duration-200 motion-reduce:transition-none",
+        top
+          ? "border-transparent bg-transparent"
+          : atBottom
+            ? "border-transparent bg-[color-mix(in_srgb,var(--wh-blue)_88%,transparent)] backdrop-blur-md"
+            : "border-[var(--wh-line)] bg-[color-mix(in_srgb,var(--wh-ground)_88%,transparent)] backdrop-blur-md",
+      )}
     >
       <div className="mx-auto flex h-full max-w-[1280px] flex-col justify-center px-5 sm:px-10">
-        <SiteNav route={route} tone="sticky" extra={extra} />
+        <SiteNav route={route} tone={blue ? "blue" : "sticky"} extra={extra} />
       </div>
     </header>
   );

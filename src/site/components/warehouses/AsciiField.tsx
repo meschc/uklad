@@ -1,5 +1,6 @@
 import { useEffect, useRef, type RefObject } from "react";
 import { cn } from "@/lib/utils";
+import { createAsciiField, FPS, type FieldMessage, type FieldSize } from "./asciiFieldCore";
 
 /**
  * Поле ASCII-знаков на синем: по нему медленно идут волны, сверху вниз
@@ -7,28 +8,79 @@ import { cn } from "@/lib/utils";
  * подсвечивает их. Только на синих фонах — первый экран и карточка тарифа
  * «Склад» (Кирилл 19 окт: без фигур из знаков, поле на весь фон и живое).
  *
- * Canvas, а не DOM: несколько тысяч знаков 30 раз в секунду DOM не потянет.
+ * Canvas, а не DOM: несколько тысяч знаков 24 раза в секунду DOM не потянет.
+ * Рисует поле воркер на OffscreenCanvas (`asciiField.worker.ts`): тогда кадры
+ * поля не мешают прокрутке, и паузы на время прокрутки не нужны. Где воркера
+ * с OffscreenCanvas нет, тот же расчёт (`asciiFieldCore.ts`) идёт здесь.
  * Поле лежит под всем блоком целиком; под текстом из `quiet` знаки те же, но
  * прозрачнее — текст читается, а поле не обрывается дырой. Кадры не рисуются,
  * пока поле вне экрана или вкладка скрыта; при `prefers-reduced-motion`
  * рисуется один неподвижный кадр и курсор на поле не влияет.
  */
 
-const RAMP = "  .·:-=+*#%";
-const LINE = 1.2;
-const FPS = 30;
-/** Радиус влияния курсора, px. */
-const REACH = 140;
-/** Насколько далеко курсор отталкивает знак у самого центра, px. */
-const PUSH = 18;
-/** Ширина плавного перехода тихой зоны под текстом, px. */
-const FEATHER = 90;
-
-/** Постоянный «шум» клетки: ломает ровные строки одинаковых знаков. */
-const grain = (x: number, y: number) => {
-  const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
-  return s - Math.floor(s);
+type Port = {
+  resize: (size: FieldSize) => void;
+  pointer: (x: number, y: number, on: boolean) => void;
+  visible: (on: boolean) => void;
+  dispose: () => void;
 };
+
+/** Воркер с OffscreenCanvas: поле рисуется вне основного потока. */
+function workerPort(
+  canvas: HTMLCanvasElement,
+  init: Omit<Extract<FieldMessage, { type: "init" }>, "type" | "canvas">,
+): Port | null {
+  if (typeof Worker === "undefined" || !("transferControlToOffscreen" in canvas)) return null;
+  let worker: Worker;
+  let off: OffscreenCanvas;
+  try {
+    off = canvas.transferControlToOffscreen();
+    worker = new Worker(new URL("./asciiField.worker.ts", import.meta.url), { type: "module" });
+  } catch {
+    return null;
+  }
+  const send = (m: FieldMessage, transfer: Transferable[] = []) => worker.postMessage(m, transfer);
+  send({ type: "init", canvas: off, ...init }, [off]);
+  return {
+    resize: (size) => send({ type: "resize", ...size }),
+    pointer: (x, y, on) => send({ type: "ptr", x, y, on }),
+    visible: (on) => send({ type: "vis", on }),
+    dispose: () => worker.terminate(),
+  };
+}
+
+/** Запасной путь: тот же расчёт в основном потоке. */
+function mainPort(
+  canvas: HTMLCanvasElement,
+  init: Omit<Extract<FieldMessage, { type: "init" }>, "type" | "canvas">,
+): Port | null {
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+  const field = createAsciiField(ctx, canvas, init.font, init.strength);
+  field.resize(init);
+  field.draw(2400, true);
+  let visible = true;
+  let last = 0;
+  let raf = 0;
+  const loop = (now: number) => {
+    raf = requestAnimationFrame(loop);
+    if (!visible || now - last < 1000 / FPS) return;
+    last = now;
+    field.draw(now);
+  };
+  if (!init.still) raf = requestAnimationFrame(loop);
+  return {
+    resize: (size) => {
+      field.resize(size);
+      field.draw(last || 2400, true);
+    },
+    pointer: field.pointer,
+    visible: (on) => {
+      visible = on;
+    },
+    dispose: () => cancelAnimationFrame(raf),
+  };
+}
 
 export function AsciiField({
   quiet,
@@ -43,137 +95,49 @@ export function AsciiField({
   font?: number;
   className?: string;
 }) {
-  const ref = useRef<HTMLCanvasElement>(null);
+  const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const canvas = ref.current;
-    const ctx = canvas?.getContext("2d");
-    if (!canvas || !ctx) return;
+    const host = ref.current;
+    if (!host) return;
+    // Холст создаётся здесь, а не разметкой: отданный воркеру холст второй
+    // раз не отдать, а StrictMode и смена свойств запускают эффект заново.
+    const canvas = document.createElement("canvas");
+    canvas.className = "absolute inset-0 size-full";
+    host.appendChild(canvas);
 
     const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const ch = font * LINE;
-    let w = 0;
-    let h = 0;
-    let cw = font * 0.6;
-    let cols = 0;
-    let rows = 0;
-    /** Прозрачность клетки: 1 — открытое поле, меньше — под текстом. */
-    let mask = new Float32Array(0);
-    let visible = true;
-    let raf = 0;
-    let last = 0;
-    // Курсор в координатах поля; `force` плавно растёт, пока курсор над
-    // полем, и гаснет, когда он ушёл, — знаки возвращаются на место без рывка.
-    const ptr = { x: -1e4, y: -1e4, tx: -1e4, ty: -1e4, on: false, force: 0 };
-
-    const resize = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      w = canvas.clientWidth;
-      h = canvas.clientHeight;
-      canvas.width = Math.round(w * dpr);
-      canvas.height = Math.round(h * dpr);
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.font = `${font}px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace`;
-      ctx.textBaseline = "top";
-      ctx.fillStyle = "#fff";
-      cw = ctx.measureText("M").width || cw;
-      cols = Math.ceil(w / cw);
-      rows = Math.ceil(h / ch);
-
-      // Под текстом поле тише, но без резкой границы: прозрачность плавно
-      // спадает на FEATHER px от края блока, иначе зона читается прямоугольником.
-      mask = new Float32Array(cols * rows).fill(1);
+    const measure = (): FieldSize => {
       const box = canvas.getBoundingClientRect();
-      const rects = (quiet ?? [])
-        .map((q) => q.current?.getBoundingClientRect())
-        .filter((r): r is DOMRect => !!r)
-        .map((r) => ({
-          l: r.left - box.left,
-          r: r.right - box.left,
-          t: r.top - box.top,
-          b: r.bottom - box.top,
-        }));
-      if (rects.length) {
-        for (let y = 0; y < rows; y++) {
-          for (let x = 0; x < cols; x++) {
-            const cx = x * cw + cw / 2;
-            const cy = y * ch + ch / 2;
-            let k = 0;
-            for (const q of rects) {
-              const dx = Math.max(q.l - cx, 0, cx - q.r);
-              const dy = Math.max(q.t - cy, 0, cy - q.b);
-              const f = Math.max(0, 1 - Math.hypot(dx, dy) / FEATHER);
-              k = Math.max(k, f * f * (3 - 2 * f));
-            }
-            mask[y * cols + x] = 1 - k * 0.65;
-          }
-        }
-      }
+      return {
+        w: canvas.clientWidth,
+        h: canvas.clientHeight,
+        dpr: Math.min(window.devicePixelRatio || 1, 1.5),
+        rects: (quiet ?? [])
+          .map((q) => q.current?.getBoundingClientRect())
+          .filter((r): r is DOMRect => !!r)
+          .map((r) => ({
+            l: r.left - box.left,
+            r: r.right - box.left,
+            t: r.top - box.top,
+            b: r.bottom - box.top,
+          })),
+      };
     };
+    const init = { font, strength, still, ...measure() };
+    const port = workerPort(canvas, init) ?? mainPort(canvas, init);
+    if (!port) {
+      canvas.remove();
+      return;
+    }
 
-    const draw = (t: number) => {
-      ctx.clearRect(0, 0, w, h);
-      // Полоса сканера: проходит поле за ~7 с и уходит за край перед повтором.
-      const scan = ((t / 7000) % 1.3) * rows;
-      ptr.x += (ptr.tx - ptr.x) * 0.25;
-      ptr.y += (ptr.ty - ptr.y) * 0.25;
-      ptr.force += ((ptr.on ? 1 : 0) - ptr.force) * 0.12;
-      const touch = ptr.force > 0.01;
-
-      for (let y = 0; y < rows; y++) {
-        const near = Math.max(0, 1 - Math.abs(y - scan) / 1.5);
-        for (let x = 0; x < cols; x++) {
-          const v =
-            Math.sin(x * 0.21 + t * 0.0007) +
-            Math.sin(y * 0.29 - t * 0.0005) +
-            Math.sin((x - y) * 0.13 + t * 0.0004) +
-            Math.sin(Math.hypot(x - cols * 0.72, (y - rows * 0.45) * 1.6) * 0.22 - t * 0.0015);
-          let n = (v + 4) / 8 + (grain(x, y) - 0.5) * 0.22;
-          let px = x * cw;
-          let py = y * ch;
-
-          if (touch) {
-            const dx = px + cw / 2 - ptr.x;
-            const dy = py + ch / 2 - ptr.y;
-            const d = Math.hypot(dx, dy);
-            if (d < REACH) {
-              const k = (1 - d / REACH) ** 2 * ptr.force;
-              const len = d || 1;
-              px += (dx / len) * PUSH * k;
-              py += (dy / len) * PUSH * k;
-              n += k * 0.6;
-            }
-          }
-
-          const lit = near > 0 && grain(y, x) < near * 0.7;
-          const level = Math.min(1, Math.max(0, n * n * 1.5 + (lit ? 0.45 : 0)));
-          const i = Math.floor(level * (RAMP.length - 1));
-          if (i < 2) continue;
-          ctx.globalAlpha = (0.08 + level * 0.4) * strength * mask[y * cols + x];
-          ctx.fillText(RAMP[i], px, py);
-        }
-      }
-      ctx.globalAlpha = 1;
-    };
-
-    const loop = (now: number) => {
-      raf = requestAnimationFrame(loop);
-      if (!visible || document.hidden || now - last < 1000 / FPS) return;
-      last = now;
-      draw(now);
-    };
-
-    resize();
-    draw(2400);
-
-    const ro = new ResizeObserver(() => {
-      resize();
-      draw(last || 2400);
-    });
+    let seen = true;
+    const vis = () => port.visible(seen && !document.hidden);
+    const ro = new ResizeObserver(() => port.resize(measure()));
     ro.observe(canvas);
-
     const io = new IntersectionObserver(([e]) => {
-      visible = e.isIntersecting;
+      seen = e.isIntersecting;
+      vis();
     });
     io.observe(canvas);
 
@@ -183,38 +147,31 @@ export function AsciiField({
       const r = canvas.getBoundingClientRect();
       const x = e.clientX - r.left;
       const y = e.clientY - r.top;
-      ptr.on = x >= 0 && y >= 0 && x <= r.width && y <= r.height;
-      if (!ptr.on) return;
-      if (ptr.x < -1e3) {
-        ptr.x = x;
-        ptr.y = y;
-      }
-      ptr.tx = x;
-      ptr.ty = y;
+      port.pointer(x, y, x >= 0 && y >= 0 && x <= r.width && y <= r.height);
     };
-    const leave = () => {
-      ptr.on = false;
-    };
+    const leave = () => port.pointer(0, 0, false);
 
     if (!still) {
-      raf = requestAnimationFrame(loop);
       window.addEventListener("pointermove", move, { passive: true });
       document.documentElement.addEventListener("pointerleave", leave);
+      document.addEventListener("visibilitychange", vis);
     }
     return () => {
-      cancelAnimationFrame(raf);
+      port.dispose();
       ro.disconnect();
       io.disconnect();
       window.removeEventListener("pointermove", move);
       document.documentElement.removeEventListener("pointerleave", leave);
+      document.removeEventListener("visibilitychange", vis);
+      canvas.remove();
     };
   }, [quiet, strength, font]);
 
   return (
-    <canvas
+    <div
       ref={ref}
       aria-hidden
-      className={cn("pointer-events-none absolute inset-0 size-full", className)}
+      className={cn("wh-ascii pointer-events-none absolute inset-0 overflow-hidden", className)}
     />
   );
 }

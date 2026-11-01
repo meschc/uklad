@@ -47,6 +47,7 @@ export const APP_VIEWS = [
   "seller",
   "chat",
   "workstation",
+  "devices",
 ] as const satisfies readonly AppView[];
 
 const USER_ROLES = ["warehouse", "seller"] as const satisfies readonly UserRole[];
@@ -105,4 +106,27 @@ export function deepLinkSearch(search: string, link: DeepLink): string {
   else params.delete(VIEW_PARAM);
   const query = params.toString();
   return query ? `?${query}` : "";
+}
+
+/**
+ * Кабинет, встроенный в первый экран витрины (Кирилл 31 окт: «живые экраны
+ * должны быть как реальные у нас»). Витрина показывает настоящий `/app/` во
+ * фрейме, а не его макет: так экран на лендинге не расходится с продуктом.
+ * Во встроенном режиме кабинет не всплывает подсказками и тостами, не
+ * перехватывает колесо (страница витрины должна прокручиваться) и слушает
+ * от витрины одну команду — открыть экран.
+ */
+const EMBED_PARAM = "embed";
+export const EMBED_VIEW_MESSAGE = "uklad:view";
+
+export function isEmbed(search: string): boolean {
+  return new URLSearchParams(search).has(EMBED_PARAM);
+}
+
+/** Экран из сообщения витрины или `null`, если сообщение не наше. */
+export function embedView(data: unknown): AppView | null {
+  if (!data || typeof data !== "object") return null;
+  const { type, view } = data as { type?: unknown; view?: unknown };
+  if (type !== EMBED_VIEW_MESSAGE || typeof view !== "string") return null;
+  return (APP_VIEWS as readonly string[]).includes(view) ? (view as AppView) : null;
 }
