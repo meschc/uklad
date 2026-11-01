@@ -22,6 +22,8 @@
  *   POST /api/support/reports — «Сообщить о проблеме» из кабинета (`src/lib/support/report.ts`)
  *   GET  /d/<токен>       — персональная демо-ссылка → кука-пропуск и кабинет
  *   GET  /api/demo/pass   — открыт ли этому браузеру демо-кабинет
+ *   /api/auth/account*    — удаление аккаунта, выход на других устройствах
+ *                           (`cabinet/account.js`)
  *   /api/auth/*, /api/staff/* — вход в кабинет (`cabinet/auth.js`), если
  *                           задан DATABASE_URL (Postgres, `server/db`)
  *   POST /api/company/lookup — реквизиты по ИНН (`cabinet/company.js`)
@@ -461,6 +463,10 @@ function main() {
         log: console,
       }).start();
     }
+    const { createAccount } = require("./cabinet/account");
+    const account = createAccount({ pool, auth, send, cfg, log: console });
+    account.purge();
+    setInterval(account.purge, DAY_MS).unref();
     const { createSnapshot } = require("./cabinet/snapshot");
     const snapshot = createSnapshot({ auth, send, log: console });
     // Реквизиты по ИНН: без DADATA_API_KEY маршрут отвечает 503, профиль
@@ -475,6 +481,7 @@ function main() {
     cabinet = {
       handle: async (req, res, url) =>
         (await auth.handle(req, res, url)) ||
+        (await account.handle(req, res, url)) ||
         (await snapshot.handle(req, res, url)) ||
         (await company.handle(req, res, url)) ||
         (await chat.handle(req, res, url)) ||

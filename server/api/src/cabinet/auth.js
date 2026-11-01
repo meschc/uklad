@@ -521,7 +521,18 @@ function createAuth({ pool, cfg, send, readBody, log, mail }) {
   const purge = () => pool.query(`SELECT auth.purge()`).catch((e) => log.error(e.message));
 
   // `readJson` нужен соседним модулям кабинета (чат): та же защита от CSRF.
-  return { handle, withSession, readJson, purge, cookieName: COOKIE };
+  // `account.js` (удаление аккаунта, выход на других устройствах) работает с
+  // той же кукой, теми же письмами и той же проверкой пароля.
+  return {
+    handle,
+    withSession,
+    readJson,
+    purge,
+    cookieName: COOKIE,
+    tokenHash,
+    clearCookie,
+    deliver,
+  };
 }
 
 module.exports = { maskAddress, createAuth, BADGE_PREFIX };

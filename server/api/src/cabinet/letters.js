@@ -34,4 +34,23 @@ function alreadyLetter(publicUrl) {
   };
 }
 
-module.exports = { codeLetter, alreadyLetter };
+/** Удаление назначено: когда, что пропадёт и как передумать. */
+function deletionLetter(at, publicUrl) {
+  const date = at.toLocaleDateString("ru-RU", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "Europe/Moscow",
+  });
+  return {
+    subject: "Аккаунт в Укладе будет удалён",
+    text:
+      `Здравствуйте!\n\nВы попросили удалить аккаунт. Мы удалим его ${date}: ` +
+      `почту, пароль, имя и фото, а если в компании больше никого нет — и данные ` +
+      `кабинета компании.\n\nПередумали — до этой даты войдите в кабинет и ` +
+      `нажмите «Отменить удаление»: ${publicUrl}/app/\n\n` +
+      `Если это были не вы, срочно войдите и смените пароль.\n`,
+  };
+}
+
+module.exports = { codeLetter, alreadyLetter, deletionLetter };
