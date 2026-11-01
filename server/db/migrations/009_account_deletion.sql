@@ -135,7 +135,7 @@ BEGIN
           JOIN uklad.roles r ON r.org_id = m.org_id AND r.id = m.role_id
           JOIN auth.accounts a ON a.id = m.account_id
           WHERE m.org_id = v_org AND m.deleted_at IS NULL AND a.disabled_at IS NULL
-            AND a.delete_requested_at IS NULL AND 'staff.manage' = ANY (r.permissions)
+            AND 'staff.manage' = ANY (r.permissions)
         ) THEN
           UPDATE uklad.members
           SET deleted_at = coalesce(deleted_at, now()), status = 'disabled',
