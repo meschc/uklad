@@ -232,14 +232,20 @@ function createAuth({ pool, cfg, send, readBody, log, mail }) {
   // Адрес — только доменом (152-ФЗ: в журнале не нужен).
   function deliver(to, letter) {
     const domain = to.slice(to.lastIndexOf("@") + 1);
+    // Ответ и ошибка SMTP часто повторяют адрес целиком — прячем его.
+    const clean = (text) =>
+      String(text ?? "")
+        .split(to)
+        .join("***")
+        .slice(0, 200);
     Promise.resolve()
       .then(() => mail.sendTo({ to, ...letter }))
       .then((info) =>
         log.info?.(
-          `[uklad] письмо входа принято почтой: @${domain} ${info?.messageId ?? ""} ${info?.response ?? ""}`,
+          `[uklad] письмо входа принято почтой: @${domain} ${clean(info?.messageId)} ${clean(info?.response)}`,
         ),
       )
-      .catch((e) => log.error(`[uklad] письмо входа не ушло: @${domain}`, e.message));
+      .catch((e) => log.error(`[uklad] письмо входа не ушло: @${domain}`, clean(e?.message)));
   }
 
   async function sendCode(accountId, email, purpose, target = null) {
