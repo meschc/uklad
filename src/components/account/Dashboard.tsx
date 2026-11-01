@@ -1,16 +1,6 @@
+import { UkladAppTile } from "@/components/brand/UkladLockup";
 import { useState } from "react";
-import {
-  ArrowRight,
-  Building2,
-  Info,
-  MapPin,
-  Moon,
-  Pencil,
-  Plus,
-  Settings,
-  Sun,
-  User,
-} from "lucide-react";
+import { ArrowRight, Info, MapPin, Moon, Pencil, Plus, Settings, Sun } from "lucide-react";
 import { selectRole, useEditor } from "@/lib/store";
 import { BackupReminder } from "./BackupReminder";
 import { allCells } from "@/lib/placement";
@@ -80,13 +70,15 @@ export function Dashboard() {
         {/* Шапка: пользователь / компания */}
         <header className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-foreground text-background">
-              {account.type === "company" ? (
-                <Building2 className="size-5" />
-              ) : (
-                <User className="size-5" />
-              )}
-            </div>
+            {(account.type === "company" ? account.orgLogo : undefined) || account.avatar ? (
+              <img
+                src={(account.type === "company" ? account.orgLogo : undefined) || account.avatar}
+                alt=""
+                className="size-11 rounded-xl object-cover"
+              />
+            ) : (
+              <UkladAppTile className="size-11" />
+            )}
             <div>
               <p className="text-lg font-semibold tracking-tight">
                 {t("dash.greeting", { name: account.name })}

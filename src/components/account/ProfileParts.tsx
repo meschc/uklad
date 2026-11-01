@@ -30,7 +30,9 @@ export function ProfileHero({
   email,
   org,
   tariff,
+  avatar,
 }: {
+  avatar?: string;
   name: string;
   email: string;
   org?: string;
@@ -44,9 +46,13 @@ export function ProfileHero({
     .join("");
   return (
     <div className={card({ className: "flex flex-wrap items-center gap-4" })}>
-      <span className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-primary text-xl font-semibold text-primary-foreground">
-        {initials || "·"}
-      </span>
+      {avatar ? (
+        <img src={avatar} alt="" className="size-14 shrink-0 rounded-2xl object-cover" />
+      ) : (
+        <span className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-primary text-xl font-semibold text-primary-foreground">
+          {initials || "·"}
+        </span>
+      )}
       <div className="min-w-0 flex-1">
         <p className="truncate text-base font-semibold">{name}</p>
         <p className="truncate text-sm text-muted-foreground">

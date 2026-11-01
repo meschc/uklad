@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/segmented";
 import { Input } from "@/components/ui/input";
 import { card } from "@/components/ui/card";
+import { ImagePicker } from "./ImagePicker";
 import { Row, ReadValue, RowEditor } from "./ProfileRow";
 import { TariffSection } from "./TariffSection";
 import { NotifySection, ProfileHero, Section, ThemeTile } from "./ProfileParts";
@@ -184,6 +185,7 @@ export function Profile() {
         {/* Визитка: кто вошёл и на каком тарифе — чтобы экран начинался не
             со строки «Имя», а с человека. */}
         <ProfileHero
+          avatar={account.avatar}
           name={profile.name}
           email={profile.email}
           org={account.org}
@@ -241,6 +243,18 @@ export function Profile() {
                   className: "flex flex-col divide-y divide-border overflow-hidden",
                 })}
               >
+                <Row icon={<User className="size-4" />} label={t("profile.image.photo")}>
+                  <ImagePicker
+                    value={account.avatar}
+                    fallback={
+                      <span className="flex size-10 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                        <User className="size-5" />
+                      </span>
+                    }
+                    onChange={(avatar) => updateAccount({ avatar })}
+                  />
+                </Row>
+
                 {/* Имя */}
                 <Row icon={<User className="size-4" />} label={t("profile.name")}>
                   {edit === "name" ? (
@@ -321,6 +335,18 @@ export function Profile() {
                           )}
                         </div>
                       )}
+                    </Row>
+
+                    <Row icon={<Building2 className="size-4" />} label={t("profile.image.logo")}>
+                      <ImagePicker
+                        value={account.orgLogo}
+                        fallback={
+                          <span className="flex size-10 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                            <Building2 className="size-5" />
+                          </span>
+                        }
+                        onChange={(orgLogo) => updateAccount({ orgLogo })}
+                      />
                     </Row>
 
                     <Row icon={<Building2 className="size-4" />} label={t("profile.company")}>
