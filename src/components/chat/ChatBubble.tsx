@@ -74,6 +74,12 @@ export function ChatBubble({
             </span>
           </button>
         )}
+        {message.topic && !deleted && (
+          <p className="mb-1 text-2xs font-semibold opacity-80">
+            {t(`chat.topic.${message.topic.kind}`)}
+            {message.topic.label ? ` · ${message.topic.label}` : ""}
+          </p>
+        )}
         {deleted ? (
           <p className="italic opacity-70">{t("chat.deleted")}</p>
         ) : (

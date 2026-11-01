@@ -74,8 +74,21 @@ describe("createChatRepository", () => {
     const res = await repo.send("p1", "Приняли 11 коробов");
 
     // Assert
-    expect(sendChatMessage).toHaveBeenCalledWith("p1", "Приняли 11 коробов", undefined);
+    expect(sendChatMessage).toHaveBeenCalledWith("p1", "Приняли 11 коробов", undefined, undefined);
     expect(res.ok).toBe(true);
+  });
+
+  it("передаёт тему обращения вместе с сообщением", async () => {
+    // Arrange
+    const sendChatMessage = vi.fn();
+    const repo = createChatRepository(fakePort({ sendChatMessage }));
+    const topic = { kind: "product" as const, productId: "pr1", label: "Кружка" };
+
+    // Act
+    await repo.send("p1", "Где остаток?", undefined, topic);
+
+    // Assert
+    expect(sendChatMessage).toHaveBeenCalledWith("p1", "Где остаток?", undefined, topic);
   });
 
   it("превращает падение отправки в отказ — черновик экрану ещё пригодится", async () => {
