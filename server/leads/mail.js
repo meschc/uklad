@@ -151,7 +151,7 @@ async function sendLetter({ subject, text, fields = [] }) {
 async function sendTo({ to, subject, text }) {
   if (!EMAIL.test(to)) throw new Error("адрес получателя не похож на почту");
   const mailer = ensureTransport();
-  await withRetry(() => mailer.sendMail({ from: config.from, to, subject, text }));
+  return withRetry(() => mailer.sendMail({ from: config.from, to, subject, text }));
 }
 
 module.exports = { sendLetter, sendTo, replyTo, withRetry };

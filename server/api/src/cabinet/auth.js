@@ -227,11 +227,19 @@ function createAuth({ pool, cfg, send, readBody, log, mail }) {
     (await pool.query(`SELECT * FROM auth.code_target($1, $2)`, [email, purpose])).rows[0] ?? null;
 
   // Письмо уходит в фоне: ответ сайта не должен зависеть ни от почтового
-  // сервера, ни от того, было ли кому писать.
+  // сервера, ни от того, было ли кому писать. В журнал — ответ почтового
+  // сервера и номер письма: без них «не дошло» не отличить от «не ушло».
+  // Адрес — только доменом (152-ФЗ: в журнале не нужен).
   function deliver(to, letter) {
+    const domain = to.slice(to.lastIndexOf("@") + 1);
     Promise.resolve()
       .then(() => mail.sendTo({ to, ...letter }))
-      .catch((e) => log.error("[uklad] письмо входа не ушло:", e.message));
+      .then((info) =>
+        log.info?.(
+          `[uklad] письмо входа принято почтой: @${domain} ${info?.messageId ?? ""} ${info?.response ?? ""}`,
+        ),
+      )
+      .catch((e) => log.error(`[uklad] письмо входа не ушло: @${domain}`, e.message));
   }
 
   async function sendCode(accountId, email, purpose, target = null) {
