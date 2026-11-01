@@ -5,6 +5,10 @@
 
 export const ru = {
   "profile.section.account": "Аккаунт",
+  "profile.section.company": "Компания",
+  "profile.tab.tariff": "Тариф и копии",
+  "profile.tab.settings": "Настройки",
+  "profile.tabs": "Разделы профиля",
   "profile.section.look": "Оформление",
   "profile.section.other": "Обучение и демо",
   "tariff.title": "Тариф",
@@ -66,6 +70,10 @@ export const ru = {
 
 export const en: Record<keyof typeof ru, string> = {
   "profile.section.account": "Account",
+  "profile.section.company": "Company",
+  "profile.tab.tariff": "Plan and backups",
+  "profile.tab.settings": "Settings",
+  "profile.tabs": "Profile sections",
   "profile.section.look": "Appearance",
   "profile.section.other": "Onboarding and demo",
   "tariff.title": "Plan",
