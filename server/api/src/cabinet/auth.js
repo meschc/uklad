@@ -55,6 +55,14 @@ const DEFAULT_COMPANY = "Новая компания";
 const EMAIL_RE = /^[^\s@]{1,64}@[^\s@]{1,255}\.[^\s@]{2,}$/;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/** Ответ и ошибка SMTP часто повторяют адрес целиком: в журнал — без него. */
+function maskAddress(text, address) {
+  return String(text ?? "")
+    .split(address)
+    .join("***")
+    .slice(0, 200);
+}
+
 const sha256 = (s) => createHash("sha256").update(s).digest();
 const newSecret = (bytes) => randomBytes(bytes).toString("base64url");
 const ms = (n) => `${n / 1000} seconds`;
@@ -232,12 +240,7 @@ function createAuth({ pool, cfg, send, readBody, log, mail }) {
   // Адрес — только доменом (152-ФЗ: в журнале не нужен).
   function deliver(to, letter) {
     const domain = to.slice(to.lastIndexOf("@") + 1);
-    // Ответ и ошибка SMTP часто повторяют адрес целиком — прячем его.
-    const clean = (text) =>
-      String(text ?? "")
-        .split(to)
-        .join("***")
-        .slice(0, 200);
+    const clean = (text) => maskAddress(text, to);
     Promise.resolve()
       .then(() => mail.sendTo({ to, ...letter }))
       .then((info) =>
@@ -521,4 +524,4 @@ function createAuth({ pool, cfg, send, readBody, log, mail }) {
   return { handle, withSession, readJson, purge, cookieName: COOKIE };
 }
 
-module.exports = { createAuth, BADGE_PREFIX };
+module.exports = { maskAddress, createAuth, BADGE_PREFIX };
