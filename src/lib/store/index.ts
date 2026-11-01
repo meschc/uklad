@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { safeImageUrl } from "../image";
 import { persist } from "zustand/middleware";
 import { uid } from "../utils";
 import { hasLocal } from "../safeStorage";
@@ -272,10 +273,22 @@ export const useEditor = create<EditorState>()(
        * битые записи, а не роняет приложение целиком — завтра здесь же
        * встретится первый неожиданный ответ настоящего backend.
        */
-      merge: (persisted, current) => ({
-        ...current,
-        ...sanitizeDomains(persisted as Record<string, unknown>),
-      }),
+      merge: (persisted, current) => {
+        const merged = {
+          ...current,
+          ...sanitizeDomains(persisted as Record<string, unknown>),
+        };
+        // Картинки профиля — только свой data-URL (см. `safeImageUrl`).
+        const account = merged.account;
+        return {
+          ...merged,
+          account: {
+            ...account,
+            avatar: safeImageUrl(account.avatar),
+            orgLogo: safeImageUrl(account.orgLogo),
+          },
+        };
+      },
       partialize: persistedState,
     },
   ),

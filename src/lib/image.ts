@@ -2,6 +2,22 @@
 export const IMAGE_MAX_BYTES = 4 * 1024 * 1024;
 export const IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp"];
 
+/** Потолок data-URL картинки профиля: 256×256 в webp весит единицы килобайт. */
+export const IMAGE_MAX_DATA_URL = 150 * 1024;
+
+/**
+ * Картинка из хранилища или архива копии: только свой data-URL, не чужой адрес.
+ * Внешняя ссылка в `<img>` заставила бы браузер сходить по ней при показе
+ * (слежка по IP), а подложенный архив мог её принести.
+ */
+export function safeImageUrl(v: unknown): string | undefined {
+  return typeof v === "string" &&
+    v.length <= IMAGE_MAX_DATA_URL &&
+    /^data:image\/(webp|png|jpeg);base64,[A-Za-z0-9+/]+=*$/.test(v)
+    ? v
+    : undefined;
+}
+
 export type ImageError = "type" | "size" | "read";
 
 /**
@@ -34,7 +50,10 @@ export async function imageToDataUrl(
       side,
     );
     bitmap.close();
-    return { url: canvas.toDataURL("image/webp", 0.85) };
+    // Safari без webp отдаёт PNG, а он может не влезть в потолок — тогда jpeg.
+    let url = canvas.toDataURL("image/webp", 0.85);
+    if (url.length > IMAGE_MAX_DATA_URL) url = canvas.toDataURL("image/jpeg", 0.8);
+    return url.length > IMAGE_MAX_DATA_URL ? { error: "size" } : { url };
   } catch {
     return { error: "read" };
   }
