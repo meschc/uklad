@@ -299,6 +299,10 @@ export const ru = {
 
   // --- Сборка (§8) ----------------------------------------------------------
   "pick.title": "Сборка",
+  "pick.next.qty": "Возьмите: {n} шт.",
+  "pick.next.start": "Начать задание",
+  "pick.next.skip": "Пропустить",
+  "pick.next.left": "ещё заданий: {n}",
   "pick.subtitle": "Поштучный пересчёт: здесь считается каждая единица",
   "pick.backToQueue": "К очереди",
   "pick.emptyTitle": "Нечего собирать",
@@ -638,6 +642,10 @@ export const en: Record<keyof typeof ru, string> = {
 
   // --- Picking (§8) ----------------------------------------------------------
   "pick.title": "Picking",
+  "pick.next.qty": "Take: {n} pcs",
+  "pick.next.start": "Start the task",
+  "pick.next.skip": "Skip",
+  "pick.next.left": "more tasks: {n}",
   "pick.subtitle": "Unit by unit: every item is scanned here",
   "pick.backToQueue": "Back to queue",
   "pick.emptyTitle": "Nothing to pick",

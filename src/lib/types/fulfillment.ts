@@ -241,7 +241,7 @@ export interface FulfillmentRequest {
  * сотрудник подходит, прикладывает бейдж и работает. Сборка и размещение
  * остаются на ТСД — там человек ходит по складу, а не стоит у стола.
  */
-export type WorkstationKind = "pack" | "receiving" | "marking" | "returns" | "shipping";
+export type WorkstationKind = "pack" | "receiving" | "picking" | "marking" | "returns" | "shipping";
 
 /**
  * Отметка в журнале сотрудника. Журнал собирается из того, что человек и так

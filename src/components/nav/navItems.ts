@@ -7,14 +7,11 @@ import {
   ListChecks,
   MessagesSquare,
   MonitorSmartphone,
-  PackagePlus,
   Plug,
   Printer,
-  ScanLine,
   ScanSearch,
   Store,
   Tags,
-  Truck,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -58,20 +55,12 @@ export const isGroup = (e: NavEntry): e is NavGroup => "items" in e;
 
 const WAREHOUSE_NAV: NavEntry[] = [
   { view: "editor", key: "nav.side.plan", icon: Boxes },
-  {
-    // Ежедневный конвейер: товар приехал → его ждут → его собирают.
-    id: "flow",
-    key: "nav.group.flow",
-    icon: Truck,
-    items: [
-      { view: "receiving", key: "nav.side.receiving", icon: PackagePlus },
-      { view: "tasks", key: "nav.side.tasks", icon: ClipboardList },
-      { view: "picking", key: "nav.side.picking", icon: ScanLine },
-      // Стол упаковщика и меню смены: открывается на весь экран, вход по бейджу.
-      { view: "workstation", key: "nav.side.workstation", icon: MonitorSmartphone },
-    ],
-  },
-  // Переписка с продавцами — сразу за конвейером и отдельным пунктом (п.3):
+  // Процессы склада — приёмка, сборка, упаковка, отгрузка — на рабочем месте
+  // вкладками, а не пунктами меню: работу делают за столом по бейджу. В
+  // кабинете руководителю остаются «Задания» (контроль), документы и аналитика.
+  { view: "workstation", key: "nav.side.workstation", icon: MonitorSmartphone },
+  { view: "tasks", key: "nav.side.tasks", icon: ClipboardList },
+  // Переписка с продавцами — сразу за работой и отдельным пунктом (п.3):
   // в неё заходят по десять раз на день, и прятать её в группу значило бы
   // добавить клик к самому частому действию после приёмки.
   { view: "chat", key: "nav.side.chat", icon: MessagesSquare },
@@ -88,8 +77,8 @@ const WAREHOUSE_NAV: NavEntry[] = [
   },
   {
     // Всё о самом складе: какой он, кто на нём работает, какие услуги и по
-    // какой цене оказывает, с чем связан. «Операции» здесь, а не в «Работе»:
-    // это прайс и отчёт по услугам склада, а не шаг ежедневного конвейера.
+    // какой цене оказывает, с чем связан. «Операции» здесь: это прайс и отчёт
+    // по услугам склада, а не шаг ежедневной работы.
     id: "setup",
     key: "nav.group.setup",
     icon: ClipboardCheck,

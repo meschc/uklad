@@ -15,8 +15,15 @@ import { ScreenShell } from "@/components/fulfillment/ScreenShell";
 import { useNow } from "./useNow";
 
 /** Места, у которых уже есть свой экран. Остальные видны в списке как «скоро». */
-const READY: WorkstationKind[] = ["pack"];
-const STATIONS: WorkstationKind[] = ["pack", "receiving", "marking", "returns", "shipping"];
+const READY: WorkstationKind[] = ["pack", "receiving", "picking", "shipping"];
+const STATIONS: WorkstationKind[] = [
+  "pack",
+  "receiving",
+  "picking",
+  "shipping",
+  "marking",
+  "returns",
+];
 
 /**
  * Устройства склада (вид `devices`, группа «О складе»). Руководитель заводит
