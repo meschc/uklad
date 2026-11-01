@@ -74,7 +74,7 @@ export const createChatSlice: SliceCreator<ChatSlice> = (set, get) => ({
   // той, что сообщения и показывает.
   openChat: (partnerId) => set({ activeChatId: partnerId }),
 
-  sendChatMessage: (partnerId, text, replyTo) => {
+  sendChatMessage: (partnerId, text, replyTo, topic) => {
     const body = text.trim();
     if (!body) return;
     const message: ChatMessage = {
@@ -83,6 +83,7 @@ export const createChatSlice: SliceCreator<ChatSlice> = (set, get) => ({
       text: body,
       at: nowMs(),
       ...(replyTo ? { replyTo } : {}),
+      ...(topic ? { topic } : {}),
     };
     set((s) => ({
       chats: { ...s.chats, [partnerId]: [...(s.chats[partnerId] ?? []), message] },

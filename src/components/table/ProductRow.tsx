@@ -149,7 +149,7 @@ export function ProductRow({
       <td className="px-3 py-1.5">
         <span className="rounded bg-muted px-1.5 py-0.5 text-xs">{catLabel(t, p.category)}</span>
       </td>
-      <td className="px-3 py-1.5 text-xs text-muted-foreground">{partner || "—"}</td>
+      {!readOnly && <td className="px-3 py-1.5 text-xs text-muted-foreground">{partner || "—"}</td>}
       <td className="whitespace-nowrap px-3 py-1.5 tabular-nums text-muted-foreground">
         {cm(p.widthCm)} × {cm(p.heightCm)} × {cm(p.depthCm)}
       </td>

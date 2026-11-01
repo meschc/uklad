@@ -50,15 +50,17 @@ export const createAccountSlice: SliceCreator<AccountSlice> = (set, get) => ({
    */
   openWarehouse: (id) =>
     set((s) => {
-      if (s.warehouse.id === id) return { appView: "editor" };
+      // Стартовый экран зависит от роли: продавцу — его остатки, складу — план.
+      const start = s.session.user.role === "seller" ? "seller" : "editor";
+      if (s.warehouse.id === id) return { appView: start };
       const target = s.otherWarehouses.find((w) => w.id === id);
-      if (!target) return { appView: "editor" };
+      if (!target) return { appView: start };
       return {
         ...swapWarehouseData(s as EditorState, id, target.ownCatalog),
         warehouse: target,
         otherWarehouses: s.otherWarehouses.filter((w) => w.id !== id).concat(s.warehouse),
         activeFloorId: target.floors[0]?.id ?? "",
-        appView: "editor",
+        appView: start,
         mode: "2d",
         selection: [],
         activeShelf: null,

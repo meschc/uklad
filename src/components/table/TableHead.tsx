@@ -11,11 +11,14 @@ export function TableHead({
   somePicked,
   onToggleAll,
   onSort,
+  hidePartner,
 }: {
   allPicked: boolean;
   somePicked: boolean;
   onToggleAll: () => void;
   onSort: (key: SortKey) => void;
+  /** Продавцу колонка «партнёр» не нужна: весь товар здесь его. */
+  hidePartner?: boolean;
 }) {
   const t = useT();
   return (
@@ -40,9 +43,11 @@ export function TableHead({
         <Th sortable onClick={() => onSort("category")}>
           {t("table.col.category")}
         </Th>
-        <Th sortable onClick={() => onSort("partner")}>
-          {t("table.col.partner")}
-        </Th>
+        {!hidePartner && (
+          <Th sortable onClick={() => onSort("partner")}>
+            {t("table.col.partner")}
+          </Th>
+        )}
         <Th>{t("table.col.dims")}</Th>
         <Th sortable onClick={() => onSort("weight")}>
           {t("table.col.weight")}

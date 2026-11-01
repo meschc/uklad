@@ -1,6 +1,6 @@
 import { ChevronLeft, Gauge, Layers, Printer, Table2, Box } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useEditor } from "@/lib/store";
+import { selectRole, useEditor } from "@/lib/store";
 import type { ViewMode } from "@/lib/types";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { Segmented } from "@/components/ui/segmented";
@@ -24,6 +24,8 @@ export function TopBar() {
   const mode = useEditor((s) => s.mode);
   const setMode = useEditor((s) => s.setMode);
   const goToDashboard = useEditor((s) => s.goToDashboard);
+  // Продавцу печать плана не нужна: это инструмент склада.
+  const isSeller = useEditor((s) => selectRole(s) === "seller");
   const setPrintPreview = useEditor((s) => s.setPrintPreview);
   const t = useT();
 
@@ -71,15 +73,17 @@ export function TopBar() {
           боковой рельс — здесь нужнее печатный план для сверки (п.9). */}
       <div className="flex items-center gap-1.5">
         <SaveStatus />
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          onClick={() => setPrintPreview(true)}
-          aria-label={t("print.plan")}
-          title={t("print.plan")}
-        >
-          <Printer className="size-4" />
-        </Button>
+        {!isSeller && (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => setPrintPreview(true)}
+            aria-label={t("print.plan")}
+            title={t("print.plan")}
+          >
+            <Printer className="size-4" />
+          </Button>
+        )}
       </div>
     </header>
   );

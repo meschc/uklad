@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/segmented";
 import { Input } from "@/components/ui/input";
 import { card } from "@/components/ui/card";
+import { ImagePicker } from "./ImagePicker";
 import { Row, ReadValue, RowEditor } from "./ProfileRow";
 import { TariffSection } from "./TariffSection";
 import { NotifySection, ProfileHero, Section, ThemeTile } from "./ProfileParts";
@@ -48,6 +49,9 @@ const CONFIRM_CODE_LENGTH = 6;
 
 /** Какая строка сейчас правится. */
 type FieldId = "name" | "email" | "inn" | "org" | "details";
+
+/** Выбор языка скрыт: английского кабинета пока нет. */
+const SHOW_LANGUAGE = false;
 
 export function Profile() {
   const profile = useEditor((s) => s.profile);
@@ -184,6 +188,7 @@ export function Profile() {
         {/* Визитка: кто вошёл и на каком тарифе — чтобы экран начинался не
             со строки «Имя», а с человека. */}
         <ProfileHero
+          avatar={account.avatar}
           name={profile.name}
           email={profile.email}
           org={account.org}
@@ -241,6 +246,18 @@ export function Profile() {
                   className: "flex flex-col divide-y divide-border overflow-hidden",
                 })}
               >
+                <Row icon={<User className="size-4" />} label={t("profile.image.photo")}>
+                  <ImagePicker
+                    value={account.avatar}
+                    fallback={
+                      <span className="flex size-10 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                        <User className="size-5" />
+                      </span>
+                    }
+                    onChange={(avatar) => updateAccount({ avatar })}
+                  />
+                </Row>
+
                 {/* Имя */}
                 <Row icon={<User className="size-4" />} label={t("profile.name")}>
                   {edit === "name" ? (
@@ -321,6 +338,18 @@ export function Profile() {
                           )}
                         </div>
                       )}
+                    </Row>
+
+                    <Row icon={<Building2 className="size-4" />} label={t("profile.image.logo")}>
+                      <ImagePicker
+                        value={account.orgLogo}
+                        fallback={
+                          <span className="flex size-10 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                            <Building2 className="size-5" />
+                          </span>
+                        }
+                        onChange={(orgLogo) => updateAccount({ orgLogo })}
+                      />
                     </Row>
 
                     <Row icon={<Building2 className="size-4" />} label={t("profile.company")}>
@@ -413,18 +442,21 @@ export function Profile() {
                   onClick={() => updateProfile({ theme: "dark" })}
                 />
               </div>
-              <div className={card({ pad: "none", className: "overflow-hidden" })}>
-                <Row icon={<Globe className="size-4" />} label={t("profile.language")}>
-                  <Segmented<Lang>
-                    value={profile.language}
-                    onChange={(language) => updateProfile({ language })}
-                    options={[
-                      { value: "ru", label: t("profile.lang.ru") },
-                      { value: "en", label: t("profile.lang.en") },
-                    ]}
-                  />
-                </Row>
-              </div>
+              {/* Выбор языка скрыт до перевода кабинета (Кирилл, 31 окт). */}
+              {SHOW_LANGUAGE && (
+                <div className={card({ pad: "none", className: "overflow-hidden" })}>
+                  <Row icon={<Globe className="size-4" />} label={t("profile.language")}>
+                    <Segmented<Lang>
+                      value={profile.language}
+                      onChange={(language) => updateProfile({ language })}
+                      options={[
+                        { value: "ru", label: t("profile.lang.ru") },
+                        { value: "en", label: t("profile.lang.en") },
+                      ]}
+                    />
+                  </Row>
+                </div>
+              )}
             </Section>
 
             <Section title={t("profile.section.notify")}>
@@ -489,6 +521,20 @@ export function Profile() {
               </Section>
               <Section title={t("backup.title")}>
                 <BackupSection />
+              </Section>
+            </div>
+          )}
+
+          {/* У продавца справа место под его опции: тарифов склада у него нет,
+              кабинет входит в тариф склада. Список опций появится после
+              запуска и онлайн-оплаты. */}
+          {isSeller && (
+            <div className="flex min-w-0 flex-col gap-6">
+              <Section title={t("profile.sellerOptions.title")}>
+                <div className={card({ className: "flex flex-col gap-2 text-sm" })}>
+                  <p>{t("profile.sellerOptions.included")}</p>
+                  <p className="text-muted-foreground">{t("profile.sellerOptions.paid")}</p>
+                </div>
               </Section>
             </div>
           )}

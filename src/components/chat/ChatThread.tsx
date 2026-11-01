@@ -5,12 +5,14 @@ import {
   ChevronUp,
   Loader2,
   Pencil,
+  Plus,
   Reply,
   Search,
   SendHorizontal,
   X,
 } from "lucide-react";
-import type { ChatMessage, Partner, UserRole } from "@/lib/types";
+import type { ChatMessage, ChatTopic, ChatTopicKind, Partner, UserRole } from "@/lib/types";
+import { visibleProducts } from "@/lib/warehouseProducts";
 import { groupMessagesByDay, lastEditable, searchMessages } from "@/lib/chat";
 import { chatRepository } from "@/lib/data";
 import { useEditor } from "@/lib/store";
@@ -58,6 +60,17 @@ export function ChatThread({
   const showToast = useEditor((s) => s.showToast);
   const [draft, setDraftState] = useState(() => drafts.get(partner.id) ?? "");
   const [mode, setMode] = useState<Mode>({ kind: "send" });
+  // Тема обращения: по какому вопросу пишем. Выбирается через «+» и сбрасывается
+  // после отправки, чтобы следующее сообщение не уехало не в ту тему.
+  const [topic, setTopic] = useState<ChatTopic | null>(null);
+  const [topicOpen, setTopicOpen] = useState(false);
+  const products = useEditor((s) => s.products);
+  const warehouseNow = useEditor((s) => s.warehouse);
+  const user = useEditor((s) => s.session.user);
+  const topicProducts = useMemo(
+    () => visibleProducts(products, warehouseNow, user),
+    [products, warehouseNow, user],
+  );
   const [atBottom, setAtBottom] = useState(true);
   const [flash, setFlash] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -78,7 +91,7 @@ export function ChatThread({
 
   // Отправка идёт через репозиторий (п.3.2.1): здесь появится запрос к серверу.
   const send = useCommand((text: string, replyTo?: string) =>
-    chatRepository.send(partner.id, text, replyTo),
+    chatRepository.send(partner.id, text, replyTo, topic ?? undefined),
   );
   const edit = useCommand((id: string, text: string) => chatRepository.edit(partner.id, id, text));
   const busy = send.pending || edit.pending;
@@ -180,6 +193,8 @@ export function ChatThread({
       const res = await send.run(text, mode.kind === "reply" ? mode.target.id : undefined);
       if (!res.ok) return;
       setDraft("");
+      setTopic(null);
+      setTopicOpen(false);
       setAtBottom(true);
     }
     setMode({ kind: "send" });
@@ -344,7 +359,36 @@ export function ChatThread({
             </Button>
           </div>
         )}
+        {mode.kind !== "edit" && (topic || topicOpen) && (
+          <TopicPanel
+            topic={topic}
+            open={topicOpen}
+            products={topicProducts}
+            onPick={(next) => {
+              setTopic(next);
+              // Товар выбирают в два шага: вид темы, затем сам товар.
+              setTopicOpen(next?.kind === "product" && !next.productId);
+            }}
+            onClose={() => {
+              setTopic(null);
+              setTopicOpen(false);
+            }}
+          />
+        )}
         <div className="mx-auto flex max-w-2xl items-end gap-2">
+          {mode.kind !== "edit" && (
+            <Button
+              variant="outline"
+              size="icon"
+              className="size-10"
+              aria-label={t("chat.topic.add")}
+              title={t("chat.topic.add")}
+              aria-expanded={topicOpen}
+              onClick={() => setTopicOpen((v) => !v)}
+            >
+              <Plus className="size-4" />
+            </Button>
+          )}
           <textarea
             ref={inputRef}
             value={draft}
@@ -400,5 +444,69 @@ export function ChatThread({
         </p>
       </footer>
     </section>
+  );
+}
+
+const TOPIC_KINDS: ChatTopicKind[] = ["product", "request", "receiving", "shipment", "other"];
+
+/**
+ * Панель темы над полем ввода — не выпадающее окно, а строка в самом чате
+ * (всплывающих окон в интерфейсе нет). Сначала вид вопроса, у товара ещё и сам
+ * товар из списка того, что видит этот пользователь.
+ */
+function TopicPanel({
+  topic,
+  open,
+  products,
+  onPick,
+  onClose,
+}: {
+  topic: ChatTopic | null;
+  open: boolean;
+  products: { id: string; name: string }[];
+  onPick: (topic: ChatTopic | null) => void;
+  onClose: () => void;
+}) {
+  const t = useT();
+  return (
+    <div className="mx-auto mb-2 flex max-w-2xl flex-col gap-2 border-l-2 border-primary pl-2.5">
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-muted-foreground">{t("chat.topic.label")}</span>
+        <div className="flex flex-1 flex-wrap gap-1.5">
+          {TOPIC_KINDS.map((kind) => (
+            <Button
+              key={kind}
+              size="sm"
+              variant={topic?.kind === kind ? "default" : "outline"}
+              className="h-8"
+              onClick={() => onPick(topic?.kind === kind ? null : { kind })}
+            >
+              {t(`chat.topic.${kind}`)}
+            </Button>
+          ))}
+        </div>
+        <Button variant="ghost" size="sm" aria-label={t("chat.cancel")} onClick={onClose}>
+          <X className="size-4" />
+        </Button>
+      </div>
+      {open && topic?.kind === "product" && (
+        <select
+          aria-label={t("chat.topic.pickProduct")}
+          value={topic.productId ?? ""}
+          onChange={(e) => {
+            const p = products.find((x) => x.id === e.target.value);
+            onPick(p ? { kind: "product", productId: p.id, label: p.name } : { kind: "product" });
+          }}
+          className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+        >
+          <option value="">{t("chat.topic.pickProduct")}</option>
+          {products.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
+      )}
+    </div>
   );
 }

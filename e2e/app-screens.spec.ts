@@ -41,13 +41,13 @@ test.describe("Обход экранов кабинета", () => {
           .getByRole("group", { name: "Роль" })
           .getByRole("button", { name: "Продавец" })
           .click();
-      } else {
-        await page
-          .getByRole("button")
-          .filter({ hasText: /\d+ этаж/ })
-          .first()
-          .click();
       }
+      // Складов несколько: обе роли сначала видят список и сами открывают склад.
+      await page
+        .getByRole("button")
+        .filter({ hasText: /\d+ этаж/ })
+        .first()
+        .click();
 
       const rail = page.getByRole("navigation", { name: "Разделы" });
       await expect(rail).toBeVisible();

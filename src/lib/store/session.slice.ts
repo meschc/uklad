@@ -51,6 +51,9 @@ export const createSessionSlice: SliceCreator<SessionSlice> = (set) => ({
         },
       },
       // Экран склада продавцу не показываем и наоборот: уводим на «свой» старт.
-      appView: role === "seller" ? "seller" : s.appView === "seller" ? "dashboard" : s.appView,
+      // Один сценарий для обеих ролей: складов несколько — сначала список, склад
+      // один — сразу его рабочий экран (с выходом на главную через логотип).
+      appView:
+        s.otherWarehouses.length === 0 ? (role === "seller" ? "seller" : "editor") : "dashboard",
     })),
 });

@@ -120,6 +120,7 @@ export function TableScreen() {
             somePicked={pick.someVisiblePicked}
             onToggleAll={pick.toggleAllVisible}
             onSort={toggleSort}
+            hidePartner={readOnly}
           />
           <tbody>
             {visible.map((row) => (

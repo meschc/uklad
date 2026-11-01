@@ -53,6 +53,10 @@ export interface Account {
   kpp?: string;
   ogrn?: string;
   legalAddress?: string;
+  /** Фото человека, data-URL до 256×256. */
+  avatar?: string;
+  /** Логотип компании, data-URL до 256×256. */
+  orgLogo?: string;
 }
 
 /** Настройки профиля (ТЗ, разд. 3.3): имя, email, тема, язык. */
