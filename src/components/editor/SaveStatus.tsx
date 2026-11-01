@@ -74,8 +74,8 @@ export function SaveStatus() {
       }}
       className={cn(
         // Подложка при наведении — той же высоты, что у соседей в шапке
-        // («Загруженность», переключатель темы): px-2.5 py-1.5 = 28px.
-        "flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs transition-colors",
+        // («Загруженность», переключатель режимов, печать): h-8 = 32px.
+        "flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs transition-colors",
         "text-muted-foreground hover:bg-accent hover:text-foreground",
       )}
     >

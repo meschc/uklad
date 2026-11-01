@@ -97,26 +97,30 @@ export function BackupSection() {
       </Row>
 
       <Row icon={<Upload className="size-4" />} label={t("backup.restore")}>
-        <div className="flex flex-wrap items-center justify-end gap-2">
+        <div className="flex flex-col items-end gap-2">
           {restoreError && <span className="text-xs text-destructive">{t(restoreError)}</span>}
           {pending ? (
             <>
-              <span className="text-xs text-destructive">
+              {/* Предупреждение отдельной строкой над кнопками: в одну линию с
+                  ними оно переносилось по слову и толкало кнопки. */}
+              <p className="max-w-64 text-right text-xs text-destructive">
                 {t("backup.restoreWarn", {
                   date: pending.createdAt ? fmt(pending.createdAt) : "—",
                 })}
-              </span>
-              <Button size="sm" variant="outline" onClick={() => setPending(null)}>
-                {t("common.cancel")}
-              </Button>
-              <Button
-                size="sm"
-                variant="destructive"
-                disabled={restore.pending}
-                onClick={confirmRestore}
-              >
-                {t("backup.restoreConfirm")}
-              </Button>
+              </p>
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="outline" onClick={() => setPending(null)}>
+                  {t("common.cancel")}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  disabled={restore.pending}
+                  onClick={confirmRestore}
+                >
+                  {t("backup.restoreConfirm")}
+                </Button>
+              </div>
             </>
           ) : (
             <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
