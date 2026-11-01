@@ -4,7 +4,7 @@ import { useEditor } from "@/lib/store";
 import type { UserRole } from "@/lib/types";
 import { authRepository, roleOf, type ServerMe } from "@/lib/data/authRepository";
 import { leaveServerSession } from "@/lib/store/leave";
-import { hasUnsyncedChanges } from "@/lib/store/serverSync";
+import { hasDeferredCopy, hasUnsyncedChanges } from "@/lib/store/serverSync";
 import type { Result } from "@/lib/data";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -79,7 +79,7 @@ export function ServerLoginForm() {
     if (!who) return setError("login.err.noOrg");
     if (ownerOrgId && ownerOrgId !== who.orgId) {
       // Всё прежней компании уже на сервере — копию можно стирать молча.
-      if (!hasUnsyncedChanges()) return leaveServerSession();
+      if (!hasUnsyncedChanges() && !hasDeferredCopy()) return leaveServerSession();
       return setSwitchTo(who);
     }
     startServerSession(mail, who.role, who.orgId);

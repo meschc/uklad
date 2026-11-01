@@ -1,6 +1,7 @@
 import { setApiOrg } from "../data/api";
+import { makeBackup } from "../backup";
 import { snapshotRepository } from "../data/snapshotRepository";
-import { readLocal, removeLocal, writeLocal } from "../safeStorage";
+import { readLocal, writeLocal } from "../safeStorage";
 import { PERSIST_KEY, PERSIST_VERSION, persistedState, useEditor } from "./index";
 import { blankWarehouse } from "./seed";
 import { emptyWarehouseData } from "./warehouseData";
@@ -22,6 +23,11 @@ import { emptyWarehouseData } from "./warehouseData";
  *   снимок, а свои незаписанные правки найдёт в отложенной копии.
  * — Нет связи — работаем дальше в браузере, пометка «не записано» живёт в
  *   хранилище и переживает перезагрузку; запись повторится сама.
+ * — Копия в браузере, которую нельзя признать записанной (незаписанные
+ *   правки или копия до первого входа), перед заменой откладывается в
+ *   `BEFORE_SYNC_KEY`. Выход с отложенной копией спрашивает и даёт её скачать.
+ * — Снимок — весь кабинет, поэтому он только руководителю (сервер отвечает
+ *   403 остальным): такой вход работу на сервер не пишет.
  *
  * Часть сохранения принадлежит устройству, а не компании: кто вошёл, какой
  * это компьютер, смена у стола, тема и язык. На сервер она не уходит и при
@@ -50,7 +56,7 @@ const DEVICE_KEYS = [
   "profile",
 ] as const;
 
-const SAVE_DELAY_MS = 1500;
+const SAVE_DELAY_MS = 5000;
 const RETRY_MS = 30_000;
 
 type Persisted = ReturnType<typeof persistedState>;
@@ -74,9 +80,41 @@ export function hasUnsyncedChanges(): boolean {
   return readMeta()?.dirty === true;
 }
 
-/** Забыть пометку синхронизации — вместе со стиранием данных на выходе. */
-export function clearSyncMeta() {
-  removeLocal(SYNC_KEY);
+/** Есть ли отложенная копия — правки, проигравшие свежему снимку. */
+export function hasDeferredCopy(): boolean {
+  return readLocal(BEFORE_SYNC_KEY) !== null;
+}
+
+/**
+ * Отложенная копия файлом резервной копии (`lib/backup.ts`): её можно
+ * восстановить в профиле тем же путём, что и любую копию. `null` — копии нет.
+ */
+export function deferredCopyFile(): { fileName: string; text: string } | null {
+  try {
+    const raw = JSON.parse(readLocal(BEFORE_SYNC_KEY) ?? "null") as {
+      state?: Record<string, unknown>;
+      version?: number;
+      savedAt?: number;
+    } | null;
+    if (!raw?.state || typeof raw.version !== "number") return null;
+    const at = typeof raw.savedAt === "number" ? raw.savedAt : Date.now();
+    return {
+      fileName: `uklad-deferred-${new Date(at).toISOString().slice(0, 10)}.json`,
+      text: JSON.stringify(makeBackup(raw.state, raw.version, at)),
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Пометка «здесь ничьей работы нет» — вместе со стиранием данных на выходе.
+ * После выхода кабинет заново сеет демо; без пометки следующий вход принял
+ * бы его за неизвестную работу и отложил копию, а выход каждый раз
+ * спрашивал бы про неё.
+ */
+export function markSignedOut() {
+  writeMeta({ orgId: "", version: 0, dirty: false });
 }
 
 /** Что уходит на сервер: всё сохранение, кроме частей устройства. */
@@ -143,6 +181,14 @@ export function startServerSync(orgId: string): () => void {
   // старте (тосты, выбор этажа) иначе поднял бы версию без единой правки.
   let booted = false;
 
+  /** Снимок не для этой роли: не пишем и не повторяем, говорим один раз. */
+  const forbid = () => {
+    if (stopped) return;
+    stopped = true;
+    clearTimeout(timer);
+    useEditor.getState().showToast("sync.err.forbidden");
+  };
+
   const schedule = (ms = SAVE_DELAY_MS) => {
     if (stopped) return;
     clearTimeout(timer);
@@ -164,7 +210,8 @@ export function startServerSync(orgId: string): () => void {
       const res = await snapshotRepository.save(meta.version, PERSIST_VERSION, data);
       if (!res.ok) {
         writeMeta({ ...meta, dirty: true });
-        schedule(RETRY_MS);
+        if (res.error === "sync.err.forbidden") forbid();
+        else schedule(RETRY_MS);
         return false;
       }
       if ("conflict" in res.data) {
@@ -186,12 +233,30 @@ export function startServerSync(orgId: string): () => void {
     const res = await snapshotRepository.load();
     if (stopped) return;
     if (!res.ok) {
+      if (res.error === "sync.err.forbidden") return forbid();
       schedule(RETRY_MS);
       return;
     }
     const meta = readMeta();
     const current = persistedState(useEditor.getState());
     const snap = res.data;
+
+    // Чистая пометка — копия совпадает с сервером (своя) или здесь после
+    // выхода только демо: терять нечего. Незаписанные правки и копию без
+    // пометки (работа до первого входа на этом устройстве) перед заменой
+    // откладываем: это может быть единственная их копия.
+    const deferIfNeeded = () => {
+      if (meta && !meta.dirty) return;
+      writeLocal(
+        BEFORE_SYNC_KEY,
+        JSON.stringify({ state: current, version: PERSIST_VERSION, savedAt: Date.now() }),
+      );
+      try {
+        sessionStorage.setItem(NOTE_KEY, "conflict");
+      } catch {
+        // без пометки человек просто не увидит тост
+      }
+    };
 
     if (!snap) {
       // На сервере пусто. Своя работа в браузере — отправляем её; чужая
@@ -202,6 +267,7 @@ export function startServerSync(orgId: string): () => void {
         void flush();
         return;
       }
+      deferIfNeeded();
       const blank = blankCabinet(current, current.session.user.email);
       return replaceWith(blank, PERSIST_VERSION, { orgId, version: 0, dirty: true });
     }
@@ -215,17 +281,7 @@ export function startServerSync(orgId: string): () => void {
       return;
     }
 
-    if (meta?.orgId === orgId && meta.dirty) {
-      writeLocal(
-        BEFORE_SYNC_KEY,
-        JSON.stringify({ state: current, version: PERSIST_VERSION, savedAt: Date.now() }),
-      );
-      try {
-        sessionStorage.setItem(NOTE_KEY, "conflict");
-      } catch {
-        // без пометки человек просто не увидит тост
-      }
-    }
+    deferIfNeeded();
     replaceWith({ ...snap.data, ...devicePart(current) }, snap.format, {
       orgId,
       version: snap.version,

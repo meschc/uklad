@@ -166,3 +166,63 @@ test("без сессии, без компании, не объект и сли�
   const big = JSON.stringify({ version: 0, format: 8, data: { x: "я".repeat(5 * 1024 * 1024) } });
   assert.equal((await call("/api/cabinet/snapshot", { ...a, raw: big })).status, 413);
 });
+
+test(
+  "снимок только руководителю: бейдж и роль без staff.manage — 403",
+  { skip: SKIP },
+  async () => {
+    const helpers = await import("../../db/test/helpers.js");
+    const a = await owner("snap-f@sklad.ru", "10.0.1.6");
+    await call("/api/cabinet/snapshot", {
+      ...a,
+      body: { version: 0, format: 8, data: data("ставки") },
+    });
+    const ids = await helpers.asOrg(db.pool, a.org, async (c) => {
+      const one = async (sql, args) => (await c.query(sql, args)).rows[0].id;
+      const role = await one(`SELECT id FROM uklad.roles WHERE name = 'Упаковщик'`);
+      return {
+        memberId: await one(
+          `INSERT INTO uklad.members (org_id, role_id, display_name) VALUES ($1, $2, 'Иван') RETURNING id`,
+          [a.org, role],
+        ),
+        warehouseId: await one(
+          `INSERT INTO uklad.warehouses (org_id, name) VALUES ($1, 'Мезонин') RETURNING id`,
+          [a.org],
+        ),
+      };
+    });
+    const issued = await call("/api/staff/badge", { ...a, body: ids });
+    assert.equal(issued.status, 200);
+    const shift = await fetch(base + "/api/auth/badge", {
+      method: "POST",
+      headers: {
+        Origin: ORIGIN,
+        "Content-Type": "application/json",
+        "X-Forwarded-For": "10.0.1.7",
+      },
+      body: JSON.stringify({ code: issued.json.code }),
+    });
+    const badge = new RegExp(`${cookieName}=([^;]*)`).exec(shift.headers.get("set-cookie"))[1];
+    assert.equal((await call("/api/cabinet/snapshot", { cookie: badge })).status, 403);
+    const write = await call("/api/cabinet/snapshot", {
+      cookie: badge,
+      body: { version: 1, format: 8, data: data("упаковщик") },
+    });
+    assert.equal(write.status, 403);
+
+    // Вход паролем, но в роли без права на персонал — тоже нет.
+    await db.root.query(
+      `UPDATE uklad.roles SET permissions = array_remove(permissions, 'staff.manage')
+     WHERE org_id = $1 AND name = 'Владелец'`,
+      [a.org],
+    );
+    assert.equal((await call("/api/cabinet/snapshot", a)).status, 403);
+    await db.root.query(
+      `UPDATE uklad.roles SET permissions = array_append(permissions, 'staff.manage')
+     WHERE org_id = $1 AND name = 'Владелец'`,
+      [a.org],
+    );
+    const read = await call("/api/cabinet/snapshot", a);
+    assert.equal(read.json.snapshot.data.warehouse.name, "ставки");
+  },
+);

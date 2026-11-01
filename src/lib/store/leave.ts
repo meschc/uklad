@@ -1,6 +1,6 @@
 import { removeLocal } from "../safeStorage";
 import { PERSIST_KEY } from "./index";
-import { BEFORE_SYNC_KEY, clearSyncMeta } from "./serverSync";
+import { BEFORE_SYNC_KEY, markSignedOut } from "./serverSync";
 
 /**
  * Стереть сохранение кабинета и открыть вход с чистого листа.
@@ -20,7 +20,7 @@ import { BEFORE_SYNC_KEY, clearSyncMeta } from "./serverSync";
 export function leaveServerSession(note?: "offline") {
   removeLocal(PERSIST_KEY);
   removeLocal(BEFORE_SYNC_KEY);
-  clearSyncMeta();
+  markSignedOut();
   const query = note ? "?view=login&logout=offline" : "?view=login";
   window.location.replace(`${window.location.pathname}${query}`);
 }

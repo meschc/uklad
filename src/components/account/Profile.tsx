@@ -13,8 +13,8 @@ import {
 } from "lucide-react";
 import { authRepository } from "@/lib/data/authRepository";
 import { leaveServerSession } from "@/lib/store/leave";
-import { flushServerSync } from "@/lib/store/serverSync";
-import { downloadBackup } from "./backupDownload";
+import { flushServerSync, hasDeferredCopy } from "@/lib/store/serverSync";
+import { downloadBackup, downloadDeferredCopy } from "./backupDownload";
 import { PERSIST_KEY, selectRole, useEditor } from "@/lib/store";
 import { removeLocal } from "@/lib/safeStorage";
 import { isValidInn, lookupCompany } from "@/lib/company";
@@ -66,16 +66,24 @@ export function Profile() {
   const goToEditor = useEditor((s) => s.goToEditor);
   const goToLogin = useEditor((s) => s.goToLogin);
   const serverSession = useEditor((s) => s.session.source === "server");
-  // Выход с сервера стирает данные кабинета на этом компьютере — пока они
-  // живут только здесь, поэтому сначала подтверждение строкой на месте кнопки
-  // и «Скачать копию». Не дошёл до сервера — экран входа говорит, что там
-  // сессия ещё жива.
+  // Выход с сервера стирает копию кабинета на этом компьютере. Всё записано
+  // и отложенной копии нет — выходим сразу; иначе подтверждение строкой на
+  // месте кнопки и «Скачать копию». Не дошёл до сервера — экран входа
+  // говорит, что там сессия ещё жива.
   const [confirmLogout, setConfirmLogout] = useState(false);
+  const [deferred, setDeferred] = useState(false);
   const logout = async () => {
     if (!serverSession) return goToLogin();
     // Всё записано на сервере — копия на этом компьютере больше не нужна,
     // выходим сразу. Не всё — сначала строка с «Скачать копию».
-    if (!confirmLogout && !(await flushServerSync())) return setConfirmLogout(true);
+    if (!confirmLogout) {
+      const synced = await flushServerSync();
+      const hasDeferred = hasDeferredCopy();
+      if (!synced || hasDeferred) {
+        setDeferred(hasDeferred);
+        return setConfirmLogout(true);
+      }
+    }
     const res = await authRepository.logout();
     leaveServerSession(res.ok ? undefined : "offline");
   };
@@ -560,7 +568,14 @@ export function Profile() {
 
         {confirmLogout && (
           <div className="flex flex-wrap items-center gap-2 text-sm">
-            <span className="mr-auto">{t("profile.logoutUnsynced")}</span>
+            <span className="mr-auto">
+              {t(deferred ? "profile.logoutDeferred" : "profile.logoutUnsynced")}
+            </span>
+            {deferred && (
+              <Button size="sm" variant="outline" onClick={downloadDeferredCopy}>
+                {t("profile.logoutDeferredBackup")}
+              </Button>
+            )}
             <Button size="sm" variant="outline" onClick={() => void downloadBackup()}>
               {t("profile.logoutBackup")}
             </Button>

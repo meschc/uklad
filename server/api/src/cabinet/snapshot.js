@@ -11,21 +11,41 @@
  * клиент знает текущую `version`. Не знает — 409 и текущая версия: клиент
  * забирает свежий снимок, а не затирает чужую работу молча.
  *
+ * Кому: только вход по паролю с правом `staff.manage` (владелец, начальник
+ * склада). В снимке весь кабинет — ставки, журнал смен, товар всех продавцов,
+ * — поэтому продавец и вход по бейджу получают 403: своё они увидят через
+ * отдельные таблицы, когда снимок разложится по ним.
+ *
  * Маршруты:
  *   GET  /api/cabinet/snapshot — снимок компании или `snapshot: null`
  *   POST /api/cabinet/snapshot — { version, format, data }; version 0 — первая запись
  */
-/* global module */
+/* global require, module */
+/* eslint-disable @typescript-eslint/no-require-imports */
+const { createRateLimit } = require("../rateLimit");
 
 // Пустой кабинет — единицы килобайт, демо со всей историей — около мегабайта.
 // Восемь — с запасом, но не столько, чтобы одним запросом забить диск.
 const MAX_SNAPSHOT_BYTES = 8 * 1024 * 1024;
+// Кабинет пишет не чаще раза в 5 секунд на человека; 30 записей в минуту на
+// компанию — запас на несколько устройств, но не на скрипт с мегабайтами.
+const WRITES_PER_MINUTE = 30;
+
+const FORBIDDEN = Symbol("forbidden");
+const LIMITED = Symbol("limited");
+/** Снимок — весь кабинет: только руководитель, вошедший паролем. */
+const mayUse = (ctx) => Boolean(ctx.accountId) && ctx.can("staff.manage");
 
 function createSnapshot({ auth, send, log }) {
   const { withSession, readJson } = auth;
+  const writes = createRateLimit({
+    capacity: WRITES_PER_MINUTE,
+    refillPerMinute: WRITES_PER_MINUTE,
+  });
 
   async function load(req, res) {
-    const out = await withSession(req, async (c) => {
+    const out = await withSession(req, async (c, ctx) => {
+      if (!mayUse(ctx)) return FORBIDDEN;
       const { rows } = await c.query(
         `SELECT version, format, data, updated_at FROM uklad.cabinet_snapshots
          WHERE org_id = uklad.current_org()`,
@@ -33,6 +53,7 @@ function createSnapshot({ auth, send, log }) {
       return rows[0] ?? false;
     });
     if (out === null) return send(res, 401, { ok: false });
+    if (out === FORBIDDEN) return send(res, 403, { ok: false });
     if (!out) return send(res, 200, { ok: true, snapshot: null });
     return send(res, 200, {
       ok: true,
@@ -63,6 +84,8 @@ function createSnapshot({ auth, send, log }) {
     }
     const data = JSON.stringify(b.data);
     const out = await withSession(req, async (c, ctx) => {
+      if (!mayUse(ctx)) return FORBIDDEN;
+      if (!writes.take(ctx.orgId)) return LIMITED;
       // Первая запись: строки ещё нет. Двое одновременно — второй получит
       // конфликт ключа и ответ 409, а не вторую строку.
       if (version === 0) {
@@ -86,6 +109,8 @@ function createSnapshot({ auth, send, log }) {
       return rows[0] ? { version: rows[0].version } : { conflict: true };
     });
     if (out === null) return send(res, 401, { ok: false });
+    if (out === FORBIDDEN) return send(res, 403, { ok: false });
+    if (out === LIMITED) return send(res, 429, { ok: false }, { "Retry-After": "30" });
     if (out.conflict) {
       const current = await withSession(req, async (c) => {
         const { rows } = await c.query(

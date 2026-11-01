@@ -25,6 +25,7 @@ export const snapshotRepository = {
     const res = await attempt(() => apiRequest("GET", "/cabinet/snapshot"), "sync.err.network");
     if (!res.ok) return res;
     const { status, body } = res.data;
+    if (status === 403) return fail("sync.err.forbidden");
     if (status !== 200) return fail("sync.err.network");
     const s = body.snapshot as Snapshot | null | undefined;
     if (!s) return ok(null);
@@ -50,6 +51,7 @@ export const snapshotRepository = {
     if (status === 409)
       return ok({ conflict: typeof body.version === "number" ? body.version : 0 });
     if (status === 413) return fail("sync.err.tooBig");
+    if (status === 403) return fail("sync.err.forbidden");
     return fail("sync.err.network");
   },
 };

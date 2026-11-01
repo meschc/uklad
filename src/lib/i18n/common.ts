@@ -137,6 +137,11 @@ export const ru = {
   "login.switch.confirm": "Стереть и войти",
   "login.switch.cancel": "Отмена",
   "profile.logoutBackup": "Скачать копию",
+  "profile.logoutDeferred":
+    "На этом устройстве лежит отложенная копия: правки, которые не попали на сервер, или данные, бывшие здесь до входа. При выходе она сотрётся.",
+  "profile.logoutDeferredBackup": "Скачать отложенную копию",
+  "sync.err.forbidden":
+    "Ваша роль не даёт доступа ко всему кабинету. Правки на этом устройстве на сервер не уходят — попросите руководителя склада.",
   "profile.logoutConfirm": "Выйти и стереть",
   "login.loggedOutOffline":
     "Вы вышли на этом устройстве, но сервер не ответил: там сессия ещё жива. Если компьютер чужой, войдите и выйдите снова, когда появится связь.",
@@ -376,6 +381,11 @@ export const en: Record<keyof typeof ru, string> = {
   "login.switch.confirm": "Erase and sign in",
   "login.switch.cancel": "Cancel",
   "profile.logoutBackup": "Download a copy",
+  "profile.logoutDeferred":
+    "There is a set-aside copy on this device: changes that didn't reach the server, or data that was here before you signed in. Signing out will erase it.",
+  "profile.logoutDeferredBackup": "Download the set-aside copy",
+  "sync.err.forbidden":
+    "Your role doesn't give access to the whole cabinet. Changes on this device are not sent to the server — ask your warehouse manager.",
   "profile.logoutConfirm": "Sign out and erase",
   "login.loggedOutOffline":
     "You're signed out on this device, but the server didn't respond, so the session is still alive there. On a shared computer, sign in and out again once you're back online.",

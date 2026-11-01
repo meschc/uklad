@@ -33,6 +33,10 @@ describe("snapshotRepository", () => {
     expect(await snapshotRepository.save(2, 8, {})).toEqual({ ok: true, data: { conflict: 5 } });
     vi.stubGlobal("fetch", reply(413));
     expect(await snapshotRepository.save(2, 8, {})).toMatchObject({ error: "sync.err.tooBig" });
+    // Не руководитель: снимок не для этой роли, повторять бессмысленно.
+    vi.stubGlobal("fetch", reply(403));
+    expect(await snapshotRepository.save(2, 8, {})).toMatchObject({ error: "sync.err.forbidden" });
+    expect(await snapshotRepository.load()).toMatchObject({ error: "sync.err.forbidden" });
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("offline")));
     expect(await snapshotRepository.save(2, 8, {})).toMatchObject({ error: "sync.err.network" });
   });
