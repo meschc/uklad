@@ -17,7 +17,8 @@ import { flushServerSync, hasDeferredCopy } from "@/lib/store/serverSync";
 import { downloadBackup, downloadDeferredCopy } from "./backupDownload";
 import { PERSIST_KEY, selectRole, useEditor } from "@/lib/store";
 import { removeLocal } from "@/lib/safeStorage";
-import { isValidInn, lookupCompany } from "@/lib/company";
+import { isValidInn } from "@/lib/company";
+import { companyRepository } from "@/lib/data/companyRepository";
 import type { Lang } from "@/lib/types";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -173,20 +174,32 @@ export function Profile() {
   const saveInn = () => {
     if (innErr) return;
     const inn = draft.inn.trim();
-    const info = inn ? lookupCompany(inn) : null;
-    updateAccount({
-      inn: inn || undefined,
-      ...(info
-        ? {
-            org: info.name,
-            kpp: info.kpp,
-            ogrn: info.ogrn,
-            legalAddress: info.legalAddress,
-          }
-        : {}),
-    });
-    setInnNote(info ? t("profile.innFetched") : null);
+    // ИНН сохраняется сразу, реквизиты догоняют: справочник может не
+    // ответить, а введённое терять нельзя.
+    updateAccount({ inn: inn || undefined });
     close();
+    if (!inn) return setInnNote(null);
+    setInnNote(t("profile.innFetching"));
+    void companyRepository.lookup(inn).then((res) => {
+      // Пока ждали, ИНН успели поменять — этот ответ уже не о нём.
+      if (useEditor.getState().account.inn !== inn) return;
+      if (!res.ok) return setInnNote(t(res.error));
+      const info = res.data;
+      if (!info) return setInnNote(t("profile.innNotFound"));
+      updateAccount({
+        org: info.name,
+        kpp: info.kpp,
+        ogrn: info.ogrn,
+        legalAddress: info.legalAddress,
+      });
+      setInnNote(
+        info.mock
+          ? t("profile.innMock")
+          : info.status && info.status !== "ACTIVE"
+            ? t("profile.innInactive")
+            : t("profile.innFetched"),
+      );
+    });
   };
 
   const saveOrg = () => {
