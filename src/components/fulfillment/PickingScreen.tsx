@@ -12,7 +12,7 @@ import { useEditor } from "@/lib/store";
 import { addressKey, formatAddress, parseAddress } from "@/lib/address";
 import { stockAt, stockByProduct } from "@/lib/fulfillment";
 import { findByCode, matchesProductCode, parseHonestSignMock } from "@/lib/barcode";
-import type { CellAddress, FulfillmentRequest } from "@/lib/types";
+import type { CellAddress, FulfillmentRequest, Product } from "@/lib/types";
 import { useT, type MsgKey, type TFunc } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -34,7 +34,12 @@ import { ScanField, type ScanStatus } from "./ScanField";
 
 type Step = "queue" | "place" | "items";
 
-export function PickingScreen() {
+/**
+ * `autoStart` — режим стола: вместо очереди из всех заявок сборщику выпадает
+ * одно задание, следующее по порядку. Список не нужен: товар выбирают не
+ * глазами, а идут туда, куда сказала система.
+ */
+export function PickingScreen({ autoStart = false }: { autoStart?: boolean } = {}) {
   const t = useT();
   const requests = useEditor((s) => s.requests);
   const products = useEditor((s) => s.products);
@@ -60,7 +65,13 @@ export function PickingScreen() {
 
   const stock = useMemo(() => stockByProduct(placements, boxes), [placements, boxes]);
 
+  const [skipped, setSkipped] = useState<string[]>([]);
   const queue = requests.filter((r) => r.status === "new" || r.status === "in_progress");
+  // Начатое — первым: заявку, которую бросили на полпути, надо закончить.
+  const upcoming = [...queue]
+    .filter((r) => !skipped.includes(r.id))
+    .sort((a, b) => Number(b.status === "in_progress") - Number(a.status === "in_progress"));
+  const next = upcoming[0] ?? queue[0];
   const active = requests.find((r) => r.id === activeId) ?? null;
   const product = active ? products.find((p) => p.id === active.productId) : undefined;
   const picked = active?.pickedQty ?? 0;
@@ -184,7 +195,27 @@ export function PickingScreen() {
         </div>
       )}
 
-      {step === "queue" && (
+      {step === "queue" && autoStart && next && (
+        <NextTask
+          request={next}
+          left={queue.length - 1}
+          have={stock.get(next.productId)?.qty ?? 0}
+          product={products.find((p) => p.id === next.productId)}
+          where={(stock.get(next.productId)?.locations ?? [])
+            .slice(0, 3)
+            .map((l) => formatAddress(warehouse, l.addr) ?? "")
+            .filter(Boolean)}
+          onStart={() => open(next)}
+          onSkip={
+            queue.length > 1
+              ? () => setSkipped((v) => (upcoming.length > 1 ? [...v, next.id] : []))
+              : undefined
+          }
+          t={t}
+        />
+      )}
+
+      {step === "queue" && !(autoStart && next) && (
         <>
           {queue.length === 0 ? (
             <EmptyState
@@ -321,6 +352,76 @@ export function PickingScreen() {
         </div>
       )}
     </ScreenShell>
+  );
+}
+
+/** Следующее задание сборщика: что взять, сколько и где оно лежит. */
+function NextTask({
+  request,
+  product,
+  left,
+  have,
+  where,
+  onStart,
+  onSkip,
+  t,
+}: {
+  request: FulfillmentRequest;
+  product?: Product;
+  left: number;
+  have: number;
+  where: string[];
+  onStart: () => void;
+  onSkip?: () => void;
+  t: TFunc;
+}) {
+  return (
+    <div className={card({ className: "flex flex-col gap-4" })}>
+      <div className="flex items-start gap-4">
+        {product?.imageUrl ? (
+          <img src={product.imageUrl} alt="" className="size-24 shrink-0 rounded-lg object-cover" />
+        ) : (
+          <span className="flex size-24 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+            <Package className="size-10" />
+          </span>
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="font-mono text-base text-muted-foreground">{product?.sku ?? "—"}</p>
+          <p className="text-2xl font-semibold leading-tight tracking-tight">
+            {product?.name ?? "—"}
+          </p>
+          <p className="mt-2 text-xl font-semibold tabular-nums">
+            {t("pick.next.qty", { n: request.qty - (request.pickedQty ?? 0) })}
+          </p>
+          {where.length > 0 ? (
+            <p className="mt-1 inline-flex items-center gap-1 text-sm text-primary">
+              <MapPin className="size-3.5" />
+              {where.join(" · ")}
+            </p>
+          ) : (
+            <p className="mt-1 text-sm text-destructive">{t("pick.noStock")}</p>
+          )}
+          {have < request.qty && where.length > 0 && (
+            <p className="text-xs text-destructive">{t("tasks.inStock", { n: have })}</p>
+          )}
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button size="lg" onClick={onStart}>
+          {t("pick.next.start")}
+        </Button>
+        {onSkip && (
+          <Button variant="ghost" onClick={onSkip}>
+            {t("pick.next.skip")}
+          </Button>
+        )}
+        {left > 0 && (
+          <span className="ml-auto text-xs text-muted-foreground">
+            {t("pick.next.left", { n: left })}
+          </span>
+        )}
+      </div>
+    </div>
   );
 }
 

@@ -9,6 +9,7 @@ export const ru = {
   "ws.title": "Рабочее место",
   "ws.station.pack": "Упаковка",
   "ws.station.receiving": "Приёмка",
+  "ws.station.picking": "Сборка",
   "ws.station.marking": "Маркировка",
   "ws.station.returns": "Возвраты",
   "ws.station.shipping": "Отгрузка",
@@ -24,6 +25,10 @@ export const ru = {
   "ws.equip.off": "не подключено",
 
   "ws.login.title": "Приложите бейдж",
+  "ws.login.station": "Какой стол",
+  "ws.login.stationHint":
+    "На этом компьютере стол не закреплён — выберите, с чем будете работать. Закреплённый стол открывается сразу.",
+  "ws.history": "Журнал смены",
   "ws.login.body":
     "Отсканируйте QR-код с бейджа. Вход действует 12 часов — одну смену, потом нужно отсканировать снова.",
   "ws.login.scan": "Бейдж сотрудника",
@@ -34,16 +39,14 @@ export const ru = {
   "ws.markRejected": "Эту отметку сейчас поставить нельзя",
 
   "ws.tab.shift": "Смена",
-  "ws.tab.receiving": "Приёмка",
-  "ws.tab.picking": "Сборка",
-  "ws.tab.pack": "Упаковка",
-  "ws.tab.shipping": "Отгрузка",
   "ws.tab.log": "Журнал",
   "ws.ship.emptyTitle": "Грузить нечего",
   "ws.ship.empty":
     "Здесь появятся собранные заявки. Одна машина увозит всё, что едет одному получателю.",
   "ws.ship.noTarget": "Без назначения",
   "ws.ship.count": "заявок: {n}",
+  "ws.ship.short": "Собрано меньше, чем заказано: не хватает {n} шт. Проверьте товар у машины.",
+  "ws.ship.confirmShort": "Отгрузить с недостачей",
   "ws.panel.close": "Закрыть",
   "ws.device.nameEmpty": "Назовите устройство — по имени столы и различают",
   "ws.device.notManager": "Это не бейдж руководителя",
@@ -142,6 +145,7 @@ export const ru = {
   "ws.run.rejected": "Отмечено как брак: {name}",
   "ws.label.wrong": "Это не та этикетка. Отсканируйте ту, что только что напечаталась.",
   "ws.run.tote": "В таре",
+  "ws.run.outTote": "Тара выхода:",
   "ws.run.orders": "Заказы в таре",
   "ws.run.ordersNone": "Заказов нет — поставка без деления по заказам",
   "ws.run.packed": "Упаковано",
@@ -212,6 +216,7 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.title": "Workstation",
   "ws.station.pack": "Packing",
   "ws.station.receiving": "Receiving",
+  "ws.station.picking": "Picking",
   "ws.station.marking": "Marking",
   "ws.station.returns": "Returns",
   "ws.station.shipping": "Dispatch",
@@ -227,6 +232,10 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.equip.off": "not connected",
 
   "ws.login.title": "Scan your badge",
+  "ws.login.station": "Which desk",
+  "ws.login.stationHint":
+    "This computer is not tied to a desk — pick what you will work on. A tied desk opens right away.",
+  "ws.history": "Shift log",
   "ws.login.body":
     "Scan the QR code on your badge. Sign-in lasts 12 hours — one shift — then scan again.",
   "ws.login.scan": "Staff badge",
@@ -237,16 +246,14 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.markRejected": "This mark can't be set right now",
 
   "ws.tab.shift": "Shift",
-  "ws.tab.receiving": "Receiving",
-  "ws.tab.picking": "Picking",
-  "ws.tab.pack": "Packing",
-  "ws.tab.shipping": "Dispatch",
   "ws.tab.log": "Log",
   "ws.ship.emptyTitle": "Nothing to load",
   "ws.ship.empty":
     "Picked requests show up here. One truck takes everything going to one recipient.",
   "ws.ship.noTarget": "No destination",
   "ws.ship.count": "requests: {n}",
+  "ws.ship.short": "Picked less than ordered: {n} pcs short. Check the goods at the truck.",
+  "ws.ship.confirmShort": "Ship with shortage",
   "ws.panel.close": "Close",
   "ws.device.nameEmpty": "Name the device — that is how desks are told apart",
   "ws.device.notManager": "This is not a manager's badge",
@@ -346,6 +353,7 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.run.rejected": "Marked as defect: {name}",
   "ws.label.wrong": "Wrong label. Scan the one that has just printed.",
   "ws.run.tote": "In the tote",
+  "ws.run.outTote": "Outbound container:",
   "ws.run.orders": "Orders in the tote",
   "ws.run.ordersNone": "No orders — a supply not split by order",
   "ws.run.packed": "Packed",

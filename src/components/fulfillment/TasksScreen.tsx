@@ -46,7 +46,7 @@ export function TasksScreen() {
   const placements = useEditor((s) => s.placements);
   const boxes = useEditor((s) => s.boxes);
   const showToast = useEditor((s) => s.showToast);
-  const openStation = useEditor((s) => s.openStation);
+  const goToView = useEditor((s) => s.goToView);
   const t = useT();
 
   // Смена статуса идёт через репозиторий (п.3.2.1). Здесь нет формы, которую
@@ -98,7 +98,7 @@ export function TasksScreen() {
       subtitle={t("tasks.subtitle")}
       wide
       actions={
-        <Button size="sm" variant="outline" onClick={() => openStation("picking")}>
+        <Button size="sm" variant="outline" onClick={() => goToView("workstation")}>
           <ScanLine className="size-3.5" />
           {t("tasks.toPicking")}
         </Button>
@@ -197,7 +197,7 @@ export function TasksScreen() {
                       size="sm"
                       variant="outline"
                       className="ml-auto h-7"
-                      onClick={() => openStation("shipping")}
+                      onClick={() => goToView("workstation")}
                     >
                       <Truck className="size-3.5" />
                       {t("ship.action", { n: ready.length })}
@@ -278,7 +278,7 @@ export function TasksScreen() {
                             )}
                             {r.status === "in_progress" && (
                               <div className="flex justify-end">
-                                <Button size="sm" onClick={() => openStation("picking")}>
+                                <Button size="sm" onClick={() => goToView("workstation")}>
                                   <ScanLine className="size-3" />
                                   {t("tasks.pick")}
                                 </Button>

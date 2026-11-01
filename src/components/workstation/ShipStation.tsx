@@ -4,6 +4,7 @@ import { useEditor } from "@/lib/store";
 import { groupRequestsByTarget } from "@/lib/fulfillment";
 import type { FulfillmentRequest } from "@/lib/types";
 import { useT } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { card } from "@/components/ui/card";
@@ -59,6 +60,9 @@ function ShipGroup({
   const named = [...new Set(items.map((r) => r.vehicle).filter(Boolean))];
   const [vehicle, setVehicle] = useState(named.length === 1 ? (named[0] as string) : "");
 
+  // Недостача — собрано меньше, чем заказано: такую машину не отправляют молча.
+  const short = items.reduce((n, r) => n + Math.max(0, r.qty - (r.pickedQty ?? r.qty)), 0);
+
   const ship = () =>
     shipRequests(
       items.map((r) => r.id),
@@ -73,16 +77,23 @@ function ShipGroup({
           {t("ws.ship.count", { n: items.length })}
         </span>
       </div>
+      {/* Проверка перед погрузкой: сколько заказано и сколько реально собрано. */}
       <ul className="flex flex-col gap-1 text-sm">
-        {items.map((r) => (
-          <li key={r.id} className="flex justify-between gap-3">
-            <span className="min-w-0 truncate">
-              {products.find((p) => p.id === r.productId)?.name ?? "—"}
-            </span>
-            <span className="tabular-nums text-muted-foreground">{r.pickedQty ?? r.qty}</span>
-          </li>
-        ))}
+        {items.map((r) => {
+          const got = r.pickedQty ?? r.qty;
+          return (
+            <li key={r.id} className="flex justify-between gap-3">
+              <span className="min-w-0 truncate">
+                {products.find((p) => p.id === r.productId)?.name ?? "—"}
+              </span>
+              <span className={cn("tabular-nums", got < r.qty && "font-medium text-destructive")}>
+                {got} / {r.qty}
+              </span>
+            </li>
+          );
+        })}
       </ul>
+      {short > 0 && <p className="text-xs text-destructive">{t("ws.ship.short", { n: short })}</p>}
       <div className="flex flex-wrap items-end gap-2">
         <label className="flex min-w-0 flex-1 flex-col gap-1 text-sm">
           <span className="text-muted-foreground">{t("ship.vehicle")}</span>
@@ -95,9 +106,9 @@ function ShipGroup({
             }}
           />
         </label>
-        <Button onClick={ship}>
+        <Button variant={short > 0 ? "outline" : "default"} onClick={ship}>
           <Truck />
-          {t("ship.confirm")}
+          {t(short > 0 ? "ws.ship.confirmShort" : "ship.confirm")}
         </Button>
       </div>
     </section>

@@ -241,13 +241,7 @@ export interface FulfillmentRequest {
  * сотрудник подходит, прикладывает бейдж и работает. Сборка и размещение
  * остаются на ТСД — там человек ходит по складу, а не стоит у стола.
  */
-export type WorkstationKind = "pack" | "receiving" | "marking" | "returns" | "shipping";
-
-/**
- * Вкладка рабочего места. Процессы склада живут здесь, а не в меню кабинета:
- * работу делают за столом по бейджу, кабинет нужен для контроля.
- */
-export type StationTab = "receiving" | "picking" | "pack" | "shipping" | "log";
+export type WorkstationKind = "pack" | "receiving" | "picking" | "marking" | "returns" | "shipping";
 
 /**
  * Отметка в журнале сотрудника. Журнал собирается из того, что человек и так

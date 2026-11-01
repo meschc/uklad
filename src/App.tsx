@@ -8,7 +8,7 @@ import { useDeepLink } from "@/lib/useDeepLink";
 import { useT } from "@/lib/i18n";
 import { SideNav } from "@/components/nav/SideNav";
 import { navFor } from "@/components/nav/navItems";
-import type { AppView, StationTab } from "@/lib/types";
+import type { AppView } from "@/lib/types";
 import { ChatWatcher } from "@/components/chat/ChatWatcher";
 import { Toast } from "@/components/editor/Toast";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -124,20 +124,17 @@ export default function App() {
   // только рабочее место, куда бы ни вела ссылка. Отвязать его можно бейджем
   // руководителя на самом столе или с экрана «Устройства» с другого компьютера.
   const kiosk = useEditor((s) => boundDevice(s) !== null) && role === "warehouse";
-  // Приёмка и сборка были отдельными экранами, теперь это вкладки рабочего
-  // места. Старая ссылка (`?view=receiving`) ведёт на нужную вкладку.
-  const stationTab = role === "warehouse" ? STATION_VIEWS[appView] : undefined;
+  const legacyStation = role === "warehouse" && STATION_VIEWS.has(appView);
   const view =
-    kiosk || stationTab
+    kiosk || legacyStation
       ? "workstation"
       : ACCOUNT_VIEWS.has(appView) || allowed.includes(appView)
         ? appView
         : allowed[0];
 
   useEffect(() => {
-    if (stationTab) useEditor.getState().openStation(stationTab);
-    else if (view !== appView) useEditor.getState().goToView(view);
-  }, [view, appView, stationTab]);
+    if (view !== appView) useEditor.getState().goToView(view);
+  }, [view, appView]);
 
   if (IS_HEATMAP) {
     return (
@@ -206,11 +203,11 @@ export default function App() {
   );
 }
 
-/** Бывшие экраны процессов → вкладка рабочего места. */
-const STATION_VIEWS: Partial<Record<AppView, StationTab>> = {
-  receiving: "receiving",
-  picking: "picking",
-};
+/**
+ * Бывшие экраны процессов: приёмка и сборка теперь живут на рабочем месте,
+ * а старая ссылка (`?view=receiving`) должна вести туда же, а не в никуда.
+ */
+const STATION_VIEWS = new Set<AppView>(["receiving", "picking"]);
 
 /** Экраны уровня аккаунта: живут вне контекста конкретного склада. */
 const ACCOUNT_VIEWS = new Set<AppView>(["login", "dashboard", "profile"]);
