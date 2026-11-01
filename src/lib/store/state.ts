@@ -582,8 +582,6 @@ export interface SessionSlice {
   setRole: (role: UserRole) => void;
   /** Вошли паролем на сервере: роль и компания приходят оттуда. */
   startServerSession: (email: string, role: UserRole, orgId: string) => void;
-  /** Сессии больше нет (выход или истекла): обратно к экрану входа. */
-  endSession: () => void;
 }
 
 // --- Переписка склада с продавцами -------------------------------------------

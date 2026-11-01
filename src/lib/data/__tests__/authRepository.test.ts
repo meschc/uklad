@@ -106,4 +106,17 @@ describe("authRepository", () => {
     ).toEqual({ orgId: "o2", role: "warehouse" });
     expect(roleOf({ kind: "password", orgs: [], current: null })).toBeNull();
   });
+
+  it("401 на запрос с сессией — сессии нет; на вход паролем — нет", async () => {
+    const { authRepository } = await load();
+    const { setUnauthorizedHandler } = await import("../api");
+    const gone = vi.fn();
+    setUnauthorizedHandler(gone);
+    vi.stubGlobal("fetch", reply(401, { ok: false, error: "bad_credentials" }));
+    await authRepository.login("a@b.ru", "x".repeat(10));
+    expect(gone).not.toHaveBeenCalled();
+    await authRepository.me();
+    expect(gone).toHaveBeenCalledTimes(1);
+    setUnauthorizedHandler(null);
+  });
 });

@@ -38,7 +38,13 @@ export function ServerLoginForm({ onDemo }: { onDemo: () => void }) {
   const [touched, setTouched] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<MsgKey | null>(null);
-  const [notice, setNotice] = useState<MsgKey | null>(null);
+  // Выход не дошёл до сервера (`leaveServerSession("offline")`): говорим прямо,
+  // что на сервере сессия ещё жива, — человек на чужом компьютере должен это знать.
+  const [notice, setNotice] = useState<MsgKey | null>(() =>
+    new URLSearchParams(window.location.search).get("logout") === "offline"
+      ? "login.loggedOutOffline"
+      : null,
+  );
 
   const needsPassword = step === "signIn" || step === "signUp" || step === "resetCode";
   const needsCode = step === "verify" || step === "resetCode";

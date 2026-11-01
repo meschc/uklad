@@ -153,14 +153,14 @@ test("регистрация создаёт компанию и владельц
   assert.ok(rows.every((s) => !s.h.includes(r.token)));
 });
 
-test("регистрация без названия компании: компания зовётся почтой", { skip: SKIP }, async () => {
+test("регистрация без названия компании: «Новая компания», не почта", { skip: SKIP }, async () => {
   const body = owner("noname@sklad.ru");
   delete body.company;
   const r = await signup(body, "10.0.0.40");
   assert.equal(r.status, 200);
   const me = await call("/api/auth/me", { cookie: r.token });
   assert.equal(me.status, 200);
-  assert.equal(me.json.orgs[0].name, "noname@sklad.ru");
+  assert.equal(me.json.orgs[0].name, "Новая компания");
   assert.equal(me.json.orgs[0].warehouse, true);
 });
 

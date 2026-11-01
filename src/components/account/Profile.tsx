@@ -12,6 +12,7 @@ import {
   User,
 } from "lucide-react";
 import { authRepository } from "@/lib/data/authRepository";
+import { leaveServerSession } from "@/lib/store/leave";
 import { PERSIST_KEY, selectRole, useEditor } from "@/lib/store";
 import { removeLocal } from "@/lib/safeStorage";
 import { isValidInn, lookupCompany } from "@/lib/company";
@@ -63,12 +64,13 @@ export function Profile() {
   const goToEditor = useEditor((s) => s.goToEditor);
   const goToLogin = useEditor((s) => s.goToLogin);
   const serverSession = useEditor((s) => s.session.source === "server");
-  const endSession = useEditor((s) => s.endSession);
-  // Выход с сервера закрывает сессию и там: кука без записи в базе ничего не
-  // открывает. Сбой связи выход не держит — экран входа всё равно откроется.
-  const logout = () => {
+  // Выход с сервера закрывает сессию и там. Не дошёл — на этом устройстве
+  // человек всё равно выходит, а экран входа честно говорит, что на сервере
+  // сессия ещё жива.
+  const logout = async () => {
     if (!serverSession) return goToLogin();
-    void authRepository.logout().finally(endSession);
+    const res = await authRepository.logout();
+    leaveServerSession(res.ok ? undefined : "offline");
   };
   const resetHints = useEditor((s) => s.resetHints);
   const tariff = useEditor((s) => s.subscription.tariff);

@@ -70,12 +70,4 @@ export const createSessionSlice: SliceCreator<SessionSlice> = (set, get) => ({
     }));
     get().setRole(role);
   },
-
-  endSession: () =>
-    set((s) => ({
-      session: makeSession(s.session.user.role, s.warehouse.id),
-      appView: "login",
-      selection: [],
-      activeShelf: null,
-    })),
 });

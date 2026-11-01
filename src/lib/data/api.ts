@@ -17,6 +17,28 @@ const BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
 /** Есть ли у сборки сервер кабинета. Нет — вход и данные остаются в браузере. */
 export const hasCabinetServer = BASE !== "";
 
+/**
+ * Запросы без сессии: на них 401 значит «не тот пароль или код», а не «сессия
+ * кончилась». Всё остальное с ответом 401 — сессии больше нет.
+ */
+const PUBLIC_PATHS = new Set([
+  "/auth/register",
+  "/auth/verify",
+  "/auth/resend",
+  "/auth/reset/request",
+  "/auth/reset",
+  "/auth/login",
+  "/auth/logout",
+  "/auth/badge",
+]);
+
+let onUnauthorized: (() => void) | null = null;
+
+/** Кто узнаёт, что сессии больше нет. Ставит кабинет, пока вход серверный. */
+export function setUnauthorizedHandler(handler: (() => void) | null) {
+  onUnauthorized = handler;
+}
+
 /** Ответ сервера: код и разобранное тело (`{}`, если тела нет или оно не JSON). */
 export interface ApiResponse {
   status: number;
@@ -47,5 +69,6 @@ export async function apiRequest(
   } catch {
     // пустое тело или не JSON — смысл несёт код ответа
   }
+  if (res.status === 401 && !PUBLIC_PATHS.has(path)) onUnauthorized?.();
   return { status: res.status, body: parsed };
 }

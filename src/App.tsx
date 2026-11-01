@@ -7,6 +7,8 @@ import { applyTheme, systemTheme } from "@/lib/theme";
 import { useDeepLink } from "@/lib/useDeepLink";
 import { useT } from "@/lib/i18n";
 import { authRepository } from "@/lib/data/authRepository";
+import { setUnauthorizedHandler } from "@/lib/data/api";
+import { leaveServerSession } from "@/lib/store/leave";
 import { SideNav } from "@/components/nav/SideNav";
 import { navFor } from "@/components/nav/navItems";
 import type { AppView } from "@/lib/types";
@@ -127,20 +129,24 @@ export default function App() {
     document.documentElement.lang = language;
   }, [language]);
 
-  // Вход через сервер живёт в куке, а стор помнит только пометку о нём. При
-  // открытии кабинета спрашиваем сервер, жива ли сессия: истекла или закрыта
-  // с другого устройства — обратно на вход, а не в данные без хозяина. Сбой
-  // связи сессию не гасит: пусть человек работает, проверим при следующем
-  // открытии.
+  // Вход через сервер живёт в куке, а стор помнит только пометку о нём.
+  // Правило одно: любой ответ 401 на запрос с сессией — сессии больше нет
+  // (истекла, отозвана, сменён пароль), и кабинет уходит на вход со стиранием
+  // данных (`leaveServerSession`). Чтобы долго открытая вкладка узнала об
+  // отзыве, не дожидаясь запроса, сессия сверяется при открытии кабинета и
+  // каждый раз, когда вкладка снова на экране. Сбой связи сессию не гасит.
   const serverSession = useEditor((s) => s.session.source === "server");
   useEffect(() => {
     if (!serverSession) return;
-    let alive = true;
-    void authRepository.me().then((res) => {
-      if (alive && res.ok && res.data === null) useEditor.getState().endSession();
-    });
+    setUnauthorizedHandler(() => leaveServerSession());
+    const check = () => {
+      if (document.visibilityState === "visible") void authRepository.me();
+    };
+    check();
+    document.addEventListener("visibilitychange", check);
     return () => {
-      alive = false;
+      setUnauthorizedHandler(null);
+      document.removeEventListener("visibilitychange", check);
     };
   }, [serverSession]);
 

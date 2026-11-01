@@ -51,6 +51,7 @@ const CODES_PER_HOUR = 5;
 const CODES_PER_DAY = 10;
 
 const BADGE_PREFIX = "UKB-";
+const DEFAULT_COMPANY = "Новая компания";
 const EMAIL_RE = /^[^\s@]{1,64}@[^\s@]{1,255}\.[^\s@]{2,}$/;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -177,9 +178,10 @@ function createAuth({ pool, cfg, send, readBody, log, mail }) {
       .trim()
       .toLowerCase();
     // Название компании не входит в форму регистрации: это профиль, а не
-    // пропуск (решение по кабинету). Пока его не задали, компания зовётся
-    // почтой владельца — её же видит он сам, и только он.
-    const company = (String(b.company ?? "").trim() || email).slice(0, 200);
+    // пропуск (решение по кабинету). Пока его не задали — «Новая компания».
+    // Не почта: название видят партнёры по договору, в чате и документах, а
+    // личную почту человек контрагентам не отдавал.
+    const company = String(b.company ?? "").trim() || DEFAULT_COMPANY;
     // Без согласия на обработку данных регистрироваться нельзя (152-ФЗ).
     if (
       !EMAIL_RE.test(email) ||
