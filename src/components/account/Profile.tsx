@@ -50,6 +50,9 @@ const CONFIRM_CODE_LENGTH = 6;
 /** Какая строка сейчас правится. */
 type FieldId = "name" | "email" | "inn" | "org" | "details";
 
+/** Выбор языка скрыт: английского кабинета пока нет. */
+const SHOW_LANGUAGE = false;
+
 export function Profile() {
   const profile = useEditor((s) => s.profile);
   const account = useEditor((s) => s.account);
@@ -439,18 +442,21 @@ export function Profile() {
                   onClick={() => updateProfile({ theme: "dark" })}
                 />
               </div>
-              <div className={card({ pad: "none", className: "overflow-hidden" })}>
-                <Row icon={<Globe className="size-4" />} label={t("profile.language")}>
-                  <Segmented<Lang>
-                    value={profile.language}
-                    onChange={(language) => updateProfile({ language })}
-                    options={[
-                      { value: "ru", label: t("profile.lang.ru") },
-                      { value: "en", label: t("profile.lang.en") },
-                    ]}
-                  />
-                </Row>
-              </div>
+              {/* Выбор языка скрыт до перевода кабинета (Кирилл, 31 окт). */}
+              {SHOW_LANGUAGE && (
+                <div className={card({ pad: "none", className: "overflow-hidden" })}>
+                  <Row icon={<Globe className="size-4" />} label={t("profile.language")}>
+                    <Segmented<Lang>
+                      value={profile.language}
+                      onChange={(language) => updateProfile({ language })}
+                      options={[
+                        { value: "ru", label: t("profile.lang.ru") },
+                        { value: "en", label: t("profile.lang.en") },
+                      ]}
+                    />
+                  </Row>
+                </div>
+              )}
             </Section>
 
             <Section title={t("profile.section.notify")}>
