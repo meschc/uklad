@@ -18,6 +18,7 @@
 const { checkPassword } = require("./password");
 const { createRateLimit, clientIp } = require("../rateLimit");
 const { deletionLetter } = require("./letters");
+const { FAIL_WINDOW_MS, FAIL_PAIR, FAIL_EMAIL } = require("./auth");
 
 function createAccount({ pool, auth, send, cfg, log }) {
   const { readJson, tokenHash, clearCookie, deliver } = auth;
@@ -49,7 +50,21 @@ function createAccount({ pool, auth, send, cfg, log }) {
     const hash = tokenHash(req);
     const me = hash && (await mine(hash));
     if (!me) return send(res, 401, { ok: false });
+    // Сессию могли украсть: подбор пароля здесь ограничен так же, как на
+    // входе, — 5 неудач на аккаунт с адреса за 15 минут, и неудачи общие с
+    // входом (`auth.login_failures`), а не отдельный счётчик.
+    const ip = clientIp(req, cfg.trustProxy);
+    const since = new Date(Date.now() - FAIL_WINDOW_MS);
+    const { rows: f } = await pool.query(`SELECT * FROM auth.failures($1, $2, $3)`, [
+      me.email,
+      ip,
+      since,
+    ]);
+    if (f[0].pair >= FAIL_PAIR || f[0].email >= FAIL_EMAIL) {
+      return send(res, 429, { ok: false, error: "locked" }, { "Retry-After": "900" });
+    }
     if (!(await checkPassword(b.password, me.password_hash))) {
+      await pool.query(`SELECT auth.note_failure($1, $2)`, [me.email, ip]);
       return send(res, 403, { ok: false, error: "bad_password" });
     }
     const { rows } = await pool.query(`SELECT auth.request_deletion($1) AS at`, [hash]);

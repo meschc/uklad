@@ -535,4 +535,4 @@ function createAuth({ pool, cfg, send, readBody, log, mail }) {
   };
 }
 
-module.exports = { maskAddress, createAuth, BADGE_PREFIX };
+module.exports = { maskAddress, createAuth, BADGE_PREFIX, FAIL_WINDOW_MS, FAIL_PAIR, FAIL_EMAIL };

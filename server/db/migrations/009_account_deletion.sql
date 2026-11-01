@@ -4,8 +4,8 @@
 -- время человек может войти и отменить его, ошибка или угнанная сессия не
 -- стирают компанию сразу. Через 30 дней `auth.purge_deleted` обезличивает
 -- аккаунт: почта и пароль заменяются заглушкой, имя и фото в карточках
--- стираются, а компания, где больше никого не осталось, гаснет вместе со
--- снимком кабинета. История других компаний (сообщения, приёмки) остаётся,
+-- стираются, а компания, где не осталось ни одного руководителя с паролем,
+-- гаснет вместе со снимком кабинета. История других компаний (сообщения, приёмки) остаётся,
 -- автором в ней будет «Удалённый сотрудник» (002, members).
 --
 -- Это единственное место, где строки удаляются физически: срок хранения
@@ -80,43 +80,85 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = auth, pg_temp AS $$
 $$;
 
 -- Ежесуточно: аккаунты, у которых вышли 30 дней, обезличиваются.
+--
+-- Каждый аккаунт — своя подтранзакция: одна неожиданная строка (внешний
+-- ключ, данные старой версии) не должна откатывать всех остальных, иначе
+-- никого не обезличат ни этой ночью, ни следующей, а срок по закону идёт.
+-- Ошибка уходит в журнал сервера (WARNING), остальные продолжаются.
+--
+-- Строку аккаунта берём `FOR UPDATE SKIP LOCKED` и проверяем срок ещё раз
+-- уже под блокировкой: человек, нажавший «Отменить удаление» в эту секунду,
+-- либо успевает (строка занята — пропускаем, срок снят — пропускаем), либо
+-- ждёт конца чистки и получает «сессии нет». Обезличить того, кто успел
+-- отменить, нельзя.
+--
+-- Компания гаснет, когда в ней не осталось ни одного живого человека с
+-- паролем и правом «Сотрудники и роли»: управлять ею больше некому.
+-- Бейдж-сотрудники такой компании обезличиваются вместе с ней — их имена
+-- тоже персональные данные, а снимок кабинета с персоналом и ставками
+-- стирается.
+--
+-- Два экземпляра сервера не чистят одновременно: advisory-lock на время
+-- транзакции, второй просто уходит с нулём.
 CREATE FUNCTION auth.purge_deleted() RETURNS integer
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = auth, uklad, pg_temp AS $$
 DECLARE v_account uuid;
 DECLARE v_org uuid;
 DECLARE v_n integer := 0;
 BEGIN
+  IF NOT pg_try_advisory_xact_lock(hashtext('uklad.purge_deleted')) THEN
+    RETURN 0;
+  END IF;
   FOR v_account IN SELECT id FROM auth.accounts
     WHERE delete_requested_at < now() - interval '30 days' AND disabled_at IS NULL
   LOOP
-    PERFORM set_config('app.account_id', v_account::text, true);
-    FOR v_org IN SELECT m.org_id FROM uklad.members m WHERE m.account_id = v_account LOOP
-      PERFORM set_config('app.org_id', v_org::text, true);
-      DELETE FROM auth.telegram_links l USING uklad.members m
-      WHERE l.org_id = v_org AND l.member_id = m.id AND m.account_id = v_account;
-      DELETE FROM auth.telegram_codes t USING uklad.members m
-      WHERE t.org_id = v_org AND t.member_id = m.id AND m.account_id = v_account;
-      UPDATE uklad.members
-      SET deleted_at = coalesce(deleted_at, now()), status = 'disabled',
-          display_name = NULL, photo_url = NULL
-      WHERE org_id = v_org AND account_id = v_account;
-      -- Компания без живых людей гаснет, а её снимок кабинета (в нём
-      -- сотрудники, ставки, контрагенты) стирается.
-      IF NOT EXISTS (SELECT 1 FROM uklad.members m
-                     WHERE m.org_id = v_org AND m.deleted_at IS NULL) THEN
-        UPDATE uklad.orgs SET deleted_at = coalesce(deleted_at, now()) WHERE id = v_org;
-        DELETE FROM uklad.cabinet_snapshots WHERE org_id = v_org;
-      END IF;
-    END LOOP;
-    PERFORM set_config('app.org_id', '', true);
-    DELETE FROM auth.email_codes WHERE account_id = v_account;
-    DELETE FROM auth.sessions WHERE account_id = v_account;
-    UPDATE auth.accounts
-    SET email = 'deleted-' || id || '@deleted.invalid', password_hash = '!',
-        email_verified_at = NULL, disabled_at = now()
-    WHERE id = v_account;
-    PERFORM set_config('app.account_id', '', true);
-    v_n := v_n + 1;
+    BEGIN
+      PERFORM 1 FROM auth.accounts
+      WHERE id = v_account AND disabled_at IS NULL
+        AND delete_requested_at < now() - interval '30 days'
+      FOR UPDATE SKIP LOCKED;
+      CONTINUE WHEN NOT FOUND;
+
+      PERFORM set_config('app.account_id', v_account::text, true);
+      FOR v_org IN SELECT m.org_id FROM uklad.members m WHERE m.account_id = v_account LOOP
+        PERFORM set_config('app.org_id', v_org::text, true);
+        DELETE FROM auth.telegram_links l USING uklad.members m
+        WHERE l.org_id = v_org AND l.member_id = m.id AND m.account_id = v_account;
+        DELETE FROM auth.telegram_codes t USING uklad.members m
+        WHERE t.org_id = v_org AND t.member_id = m.id AND m.account_id = v_account;
+        UPDATE uklad.members
+        SET deleted_at = coalesce(deleted_at, now()), status = 'disabled',
+            display_name = NULL, photo_url = NULL
+        WHERE org_id = v_org AND account_id = v_account;
+        IF NOT EXISTS (
+          SELECT 1 FROM uklad.members m
+          JOIN uklad.roles r ON r.org_id = m.org_id AND r.id = m.role_id
+          JOIN auth.accounts a ON a.id = m.account_id
+          WHERE m.org_id = v_org AND m.deleted_at IS NULL AND a.disabled_at IS NULL
+            AND a.delete_requested_at IS NULL AND 'staff.manage' = ANY (r.permissions)
+        ) THEN
+          UPDATE uklad.members
+          SET deleted_at = coalesce(deleted_at, now()), status = 'disabled',
+              display_name = NULL, photo_url = NULL
+          WHERE org_id = v_org AND account_id IS NULL;
+          UPDATE uklad.orgs SET deleted_at = coalesce(deleted_at, now()) WHERE id = v_org;
+          DELETE FROM uklad.cabinet_snapshots WHERE org_id = v_org;
+        END IF;
+      END LOOP;
+      PERFORM set_config('app.org_id', '', true);
+      DELETE FROM auth.email_codes WHERE account_id = v_account;
+      DELETE FROM auth.sessions WHERE account_id = v_account;
+      -- Сама строка остаётся: заглушка вместо почты и дата `disabled_at`
+      -- и есть след того, что и когда обезличено.
+      UPDATE auth.accounts
+      SET email = 'deleted-' || id || '@deleted.invalid', password_hash = '!',
+          email_verified_at = NULL, disabled_at = now()
+      WHERE id = v_account;
+      PERFORM set_config('app.account_id', '', true);
+      v_n := v_n + 1;
+    EXCEPTION WHEN OTHERS THEN
+      RAISE WARNING 'purge_deleted: аккаунт % пропущен: %', v_account, SQLERRM;
+    END;
   END LOOP;
   RETURN v_n;
 END $$;

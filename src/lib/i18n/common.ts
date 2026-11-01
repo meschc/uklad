@@ -34,7 +34,7 @@ export const ru = {
   "account.delete": "Удалить аккаунт",
   "account.deleteOpen": "Удалить…",
   "account.deleteWhat":
-    "Удалим почту, пароль, имя и фото. Если в компании больше никого нет, сотрём и её: склады, товары, приёмки и заявки. Перед удалением скачайте архив выше.",
+    "Удалим почту, пароль, имя и фото. Если в компании не останется другого руководителя, сотрём и её: склады, товары, приёмки и заявки. Перед удалением скачайте архив выше.",
   "account.deleteGrace":
     "Удаление через 30 дней. До этого можно войти и отменить его. Все сессии закроются сразу.",
   "account.deletePassword": "Пароль от аккаунта",
@@ -322,7 +322,7 @@ export const en: Record<keyof typeof ru, string> = {
   "account.delete": "Delete account",
   "account.deleteOpen": "Delete…",
   "account.deleteWhat":
-    "We will delete your email, password, name and photo. If nobody else is left in the company, it is erased too: warehouses, products, receipts and requests. Download the archive above first.",
+    "We will delete your email, password, name and photo. If no other manager is left in the company, it is erased too: warehouses, products, receipts and requests. Download the archive above first.",
   "account.deleteGrace":
     "Deletion happens in 30 days. Until then you can sign in and cancel it. All sessions close right away.",
   "account.deletePassword": "Account password",

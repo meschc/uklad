@@ -176,3 +176,79 @@ test("выход на других устройствах оставляет э�
   assert.equal((await call("/api/auth/me", a)).status, 200);
   assert.equal((await call("/api/auth/me", { cookie: other.cookie })).status, 401);
 });
+
+test(
+  "пароль при удалении: 5 неудач на аккаунт — и пауза, как на входе",
+  { skip: SKIP },
+  async () => {
+    const a = await owner("del-g@sklad.ru", "10.0.2.5");
+    for (let i = 0; i < 5; i++) {
+      const r = await call("/api/auth/account/delete", {
+        ...a,
+        body: { password: `мимо-${i}-пароль` },
+      });
+      assert.equal(r.status, 403);
+    }
+    const locked = await call("/api/auth/account/delete", { ...a, body: { password: PW } });
+    assert.equal(locked.status, 429, "даже верный пароль ждёт окончания паузы");
+    assert.equal((await call("/api/auth/account", a)).json.deleteAt, null);
+  },
+);
+
+const role = async (org, name) =>
+  (await db.root.query(`SELECT id FROM uklad.roles WHERE org_id = $1 AND name = $2`, [org, name]))
+    .rows[0].id;
+
+const expire = (email) =>
+  db.root.query(
+    `UPDATE auth.accounts SET delete_requested_at = now() - interval '31 days' WHERE email = $1`,
+    [email],
+  );
+
+test(
+  "руководитель ушёл: бейдж-сотрудники обезличены, компания погашена",
+  { skip: SKIP },
+  async () => {
+    const a = await owner("del-d@sklad.ru", "10.0.2.6");
+    const { rows } = await db.root.query(
+      `INSERT INTO uklad.members (org_id, role_id, display_name, status)
+     VALUES ($1, $2, 'Иван', 'active') RETURNING id`,
+      [a.org, await role(a.org, "Кладовщик")],
+    );
+    await call("/api/auth/account/delete", { ...a, body: { password: PW } });
+    await expire("del-d@sklad.ru");
+    await account.purge();
+    const m = await db.root.query(
+      `SELECT display_name, deleted_at FROM uklad.members WHERE id = $1`,
+      [rows[0].id],
+    );
+    assert.equal(m.rows[0].display_name, null);
+    assert.ok(m.rows[0].deleted_at);
+    const org = await db.root.query(`SELECT deleted_at FROM uklad.orgs WHERE id = $1`, [a.org]);
+    assert.ok(org.rows[0].deleted_at);
+  },
+);
+
+test("есть другой руководитель с паролем — компания живёт", { skip: SKIP }, async () => {
+  const a = await owner("del-e@sklad.ru", "10.0.2.7");
+  await owner("del-f@sklad.ru", "10.0.2.7");
+  const other = await db.root.query(`SELECT id FROM auth.accounts WHERE email = 'del-f@sklad.ru'`);
+  await db.root.query(
+    `INSERT INTO uklad.members (org_id, account_id, role_id, display_name, status)
+     VALUES ($1, $2, $3, 'Пётр', 'active')`,
+    [a.org, other.rows[0].id, await role(a.org, "Начальник склада")],
+  );
+  await call("/api/cabinet/snapshot", {
+    ...a,
+    body: { version: 0, format: 8, data: { warehouse: { id: "wh", name: "живой" } } },
+  });
+  await call("/api/auth/account/delete", { ...a, body: { password: PW } });
+  await expire("del-e@sklad.ru");
+  await account.purge();
+  const org = await db.root.query(`SELECT deleted_at FROM uklad.orgs WHERE id = $1`, [a.org]);
+  assert.equal(org.rows[0].deleted_at, null);
+  const snap = await db.root.query(`SELECT 1 FROM uklad.cabinet_snapshots WHERE org_id = $1`, [
+    a.org,
+  ]);
+  assert.equal(snap.rows.length, 1);
+});
