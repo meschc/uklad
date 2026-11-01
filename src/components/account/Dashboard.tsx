@@ -3,6 +3,7 @@ import { useState } from "react";
 import { ArrowRight, Info, MapPin, Moon, Pencil, Plus, Settings, Sun } from "lucide-react";
 import { selectRole, useEditor } from "@/lib/store";
 import { BackupReminder } from "./BackupReminder";
+import { IntroCard } from "./IntroCard";
 import { allCells } from "@/lib/placement";
 import { addressKey } from "@/lib/address";
 import { planBounds } from "@/lib/planGeometry";
@@ -118,6 +119,8 @@ export function Dashboard() {
             </Button>
           </div>
         </header>
+
+        <IntroCard />
 
         {/* Пока складов нет, копировать нечего. */}
         {!readOnly && warehouses.length > 0 && <BackupReminder />}
