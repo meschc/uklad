@@ -1,11 +1,11 @@
 import { useState } from "react";
+import type { WorkstationKind } from "@/lib/types";
 import {
   ArrowLeft,
-  ListChecks,
+  History,
   LogOut,
   MonitorSmartphone,
   X,
-  Package,
   Printer,
   ScanLine,
   Scale,
@@ -13,45 +13,48 @@ import {
 import { boundDevice, useEditor } from "@/lib/store";
 import { workstationRepository } from "@/lib/data";
 import { isSessionLive } from "@/lib/workstation";
-import type { WorkstationKind } from "@/lib/types";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Segmented } from "@/components/ui/segmented";
+import { EmbeddedShell } from "@/components/fulfillment/embeddedShell";
+import { ReceivingScreen } from "@/components/fulfillment/ReceivingScreen";
+import { PickingScreen } from "@/components/fulfillment/PickingScreen";
+import { EmptyState } from "@/components/fulfillment/ScreenShell";
 import { BadgeLogin } from "./BadgeLogin";
 import { UnbindDevice } from "./UnbindDevice";
 import { ShiftMenu } from "./ShiftMenu";
 import { ShiftBar } from "./ShiftBar";
 import { PackStation } from "./PackStation";
+import { ShipStation } from "./ShipStation";
 import { StaffLog } from "./StaffLog";
 import { formatTime, useNow } from "./useNow";
 
 /**
  * Рабочее место у стола (узел карты cab-workstations): общий экран, за которым
- * сменяются люди. Вход — по QR-бейджу, дальше три вкладки: смена (она же меню
- * сотрудника на ТСД и телефоне — вёрстка одна, узкая), упаковка и свой журнал.
+ * сменяются люди. Сотрудник сканирует свой бейдж — и сразу попадает в задание
+ * своего стола: приёмка, сборка, упаковка или отгрузка. Других процессов он не
+ * видит, вкладок нет: человек делает одно дело, а меню процессов ему мешает.
  *
- * Пока сделан только стол упаковки. Остальные столы перечислены в шапке как
- * «скоро»: приёмка, маркировка, возвраты и отгрузка лягут в ту же рамку —
- * бейдж, смена и журнал у них общие, меняется только средняя вкладка.
+ * Какой это стол, знает привязанное устройство; на свободном компьютере
+ * процесс называют на входе. Смена и журнал — панелью справа: нужны пару раз
+ * за смену, а главный экран отдан товару. Кабинету остаются задания,
+ * документы и аналитика — контроль, а не работа.
  */
 
-type Tab = "pack" | "log";
-
-const STATIONS: WorkstationKind[] = ["pack", "receiving", "marking", "returns", "shipping"];
+type Panel = "shift" | "log" | null;
 
 export function WorkstationScreen() {
   const t = useT();
   const now = useNow();
   const session = useEditor((s) => s.stationSession);
   const staff = useEditor((s) => s.warehouse.staff);
-  const [tab, setTab] = useState<Tab>("pack");
-  const [shiftOpen, setShiftOpen] = useState(false);
   const device = useEditor(boundDevice);
+  const [panel, setPanel] = useState<Panel>(null);
   const [unbinding, setUnbinding] = useState(false);
 
   const live = isSessionLive(session, now);
   const member = live ? (staff ?? []).find((m) => m.id === session!.staffId) : undefined;
+  const station = session?.station ?? "pack";
 
   return (
     <div className="flex h-full flex-col bg-background">
@@ -74,26 +77,18 @@ export function WorkstationScreen() {
             {t("ws.exit")}
           </Button>
         )}
-        <div className="hidden min-w-0 flex-wrap items-center gap-1.5 2xl:flex">
-          {STATIONS.map((st) => (
-            <span
-              key={st}
-              className={cn(
-                "rounded-full px-2.5 py-1 text-xs",
-                st === "pack"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground",
-              )}
-            >
-              {t(`ws.station.${st}` as MsgKey)}
-              {st !== "pack" && ` · ${t("ws.soon")}`}
-            </span>
-          ))}
-        </div>
+        {member && (
+          // Процесс стола — заголовком: по нему видно, чьё это задание.
+          <h1 className="text-sm font-semibold">{t(`ws.station.${station}` as MsgKey)}</h1>
+        )}
         <Equipment />
         {member && (
           <div className="ml-auto flex items-center gap-4">
-            <ShiftBar staffId={member.id} onOpen={() => setShiftOpen(true)} />
+            <ShiftBar staffId={member.id} onOpen={() => setPanel("shift")} />
+            <Button variant="ghost" size="sm" onClick={() => setPanel("log")}>
+              <History />
+              {t("ws.tab.log")}
+            </Button>
             <div className="text-right">
               <p className="text-sm font-medium leading-tight">{member.name}</p>
               <p className="text-xs text-muted-foreground">
@@ -116,56 +111,92 @@ export function WorkstationScreen() {
         ) : !member ? (
           <BadgeLogin />
         ) : (
-          // Ширина одна на все вкладки: иначе полоса вкладок прыгает при
-          // переключении. Смена ушла в шапку — главное на экране товар.
           <div className="mx-auto flex max-w-5xl flex-col gap-5 px-4 py-6">
-            <Segmented<Tab>
-              value={tab}
-              onChange={setTab}
-              grow
-              size="md"
-              ariaLabel={t("ws.title")}
-              options={[
-                { value: "pack", label: t("ws.tab.pack"), icon: <Package /> },
-                { value: "log", label: t("ws.tab.log"), icon: <ListChecks /> },
-              ]}
+            <StationTask
+              station={station}
+              staffId={member.id}
+              onNeedShift={() => setPanel("shift")}
             />
-            {tab === "pack" && (
-              <PackStation staffId={member.id} onNeedShift={() => setShiftOpen(true)} />
-            )}
-            {tab === "log" && <StaffLog staffId={member.id} now={now} />}
           </div>
         )}
       </main>
 
-      {member && shiftOpen && (
-        // Смена — боковой панелью справа, а не вкладкой: она нужна пару раз за
-        // смену, а основной экран отдан товару.
+      {member && panel && (
+        // Смена и журнал — боковой панелью справа, а не вкладкой: они нужны
+        // пару раз за смену, а основной экран отдан товару.
         <div className="fixed inset-0 z-40 flex justify-end">
           <button
             type="button"
             aria-label={t("ws.panel.close")}
             className="absolute inset-0 cursor-default bg-black/30"
-            onClick={() => setShiftOpen(false)}
+            onClick={() => setPanel(null)}
           />
           <aside className="relative flex h-full w-full max-w-md animate-slide-in-right flex-col gap-4 overflow-y-auto bg-background p-5 shadow-2xl">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">{t("ws.tab.shift")}</h2>
+              <h2 className="text-lg font-semibold">
+                {t(panel === "shift" ? "ws.tab.shift" : "ws.history")}
+              </h2>
               <Button
                 variant="ghost"
                 size="sm"
                 aria-label={t("ws.panel.close")}
-                onClick={() => setShiftOpen(false)}
+                onClick={() => setPanel(null)}
               >
                 <X />
               </Button>
             </div>
-            <ShiftMenu member={member} now={now} />
+            {panel === "shift" ? (
+              <ShiftMenu member={member} now={now} />
+            ) : (
+              <StaffLog staffId={member.id} now={now} />
+            )}
           </aside>
         </div>
       )}
     </div>
   );
+}
+
+/**
+ * Задание стола. Приёмка и сборка — те же мастера, что были экранами кабинета,
+ * только без своей рамки: заголовок процесса уже в шапке.
+ */
+function StationTask({
+  station,
+  staffId,
+  onNeedShift,
+}: {
+  station: WorkstationKind;
+  staffId: string;
+  onNeedShift: () => void;
+}) {
+  const t = useT();
+  switch (station) {
+    case "receiving":
+      return (
+        <EmbeddedShell.Provider value={true}>
+          <ReceivingScreen staffId={staffId} />
+        </EmbeddedShell.Provider>
+      );
+    case "picking":
+      return (
+        <EmbeddedShell.Provider value={true}>
+          <PickingScreen autoStart />
+        </EmbeddedShell.Provider>
+      );
+    case "shipping":
+      return <ShipStation staffId={staffId} />;
+    case "pack":
+      return <PackStation staffId={staffId} onNeedShift={onNeedShift} />;
+    default:
+      return (
+        <EmptyState
+          icon={<MonitorSmartphone className="size-5" />}
+          title={t(`ws.station.${station}` as MsgKey)}
+          body={t("ws.soon")}
+        />
+      );
+  }
 }
 
 /**

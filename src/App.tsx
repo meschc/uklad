@@ -48,14 +48,8 @@ const LoginScreen = lazy(() =>
 const HeatmapView = lazy(() =>
   import("@/components/heatmap/HeatmapView").then((m) => ({ default: m.HeatmapView })),
 );
-const ReceivingScreen = lazy(() =>
-  import("@/components/fulfillment/ReceivingScreen").then((m) => ({ default: m.ReceivingScreen })),
-);
 const TasksScreen = lazy(() =>
   import("@/components/fulfillment/TasksScreen").then((m) => ({ default: m.TasksScreen })),
-);
-const PickingScreen = lazy(() =>
-  import("@/components/fulfillment/PickingScreen").then((m) => ({ default: m.PickingScreen })),
 );
 const OperationsScreen = lazy(() =>
   import("@/components/fulfillment/OperationsScreen").then((m) => ({
@@ -142,11 +136,13 @@ export default function App() {
   // только рабочее место, куда бы ни вела ссылка. Отвязать его можно бейджем
   // руководителя на самом столе или с экрана «Устройства» с другого компьютера.
   const kiosk = useEditor((s) => boundDevice(s) !== null) && role === "warehouse";
-  const view = kiosk
-    ? "workstation"
-    : ACCOUNT_VIEWS.has(appView) || allowed.includes(appView)
-      ? appView
-      : allowed[0];
+  const legacyStation = role === "warehouse" && STATION_VIEWS.has(appView);
+  const view =
+    kiosk || legacyStation
+      ? "workstation"
+      : ACCOUNT_VIEWS.has(appView) || allowed.includes(appView)
+        ? appView
+        : allowed[0];
 
   useEffect(() => {
     if (view !== appView) useEditor.getState().goToView(view);
@@ -219,6 +215,12 @@ export default function App() {
   );
 }
 
+/**
+ * Бывшие экраны процессов: приёмка и сборка теперь живут на рабочем месте,
+ * а старая ссылка (`?view=receiving`) должна вести туда же, а не в никуда.
+ */
+const STATION_VIEWS = new Set<AppView>(["receiving", "picking"]);
+
 /** Экраны уровня аккаунта: живут вне контекста конкретного склада. */
 const ACCOUNT_VIEWS = new Set<AppView>(["login", "dashboard", "profile"]);
 
@@ -247,12 +249,8 @@ function renderView(view: string) {
       return <Dashboard />;
     case "profile":
       return <Profile />;
-    case "receiving":
-      return <ReceivingScreen />;
     case "tasks":
       return <TasksScreen />;
-    case "picking":
-      return <PickingScreen />;
     case "operations":
       return <OperationsScreen />;
     case "staff":
