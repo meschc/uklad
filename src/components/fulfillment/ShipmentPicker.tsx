@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useContext, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   Check,
@@ -29,6 +29,7 @@ import { Button } from "@/components/ui/button";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { card } from "@/components/ui/card";
 import { EmptyState } from "./ScreenShell";
+import { EmbeddedShell } from "./embeddedShell";
 
 /**
  * Шаг 5.1 — выбор ожидаемой поставки.
@@ -50,7 +51,9 @@ export function ShipmentPicker({
   const [creating, setCreating] = useState(false);
 
   const open = shipments.filter((sh) => sh.status !== "closed");
-  const closed = shipments.filter((sh) => sh.status === "closed");
+  // За столом нужны только ожидаемые приёмки: закрытые — дело руководителя.
+  const atStation = useContext(EmbeddedShell);
+  const closed = atStation ? [] : shipments.filter((sh) => sh.status === "closed");
 
   if (creating) {
     return <ShipmentForm onDone={onPick} onCancel={() => setCreating(false)} />;

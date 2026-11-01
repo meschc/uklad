@@ -171,7 +171,7 @@ export function AsciiField({
     <div
       ref={ref}
       aria-hidden
-      className={cn("pointer-events-none absolute inset-0 overflow-hidden", className)}
+      className={cn("wh-ascii pointer-events-none absolute inset-0 overflow-hidden", className)}
     />
   );
 }

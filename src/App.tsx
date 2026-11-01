@@ -1,9 +1,9 @@
 import { Suspense, lazy, useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { isHeatmapWindow } from "@/lib/appViews";
+import { isEmbed, isHeatmapWindow } from "@/lib/appViews";
 import { boundDevice, selectRole, useEditor } from "@/lib/store";
-import { applyTheme } from "@/lib/theme";
+import { applyTheme, systemTheme } from "@/lib/theme";
 import { useDeepLink } from "@/lib/useDeepLink";
 import { useT } from "@/lib/i18n";
 import { SideNav } from "@/components/nav/SideNav";
@@ -48,14 +48,8 @@ const LoginScreen = lazy(() =>
 const HeatmapView = lazy(() =>
   import("@/components/heatmap/HeatmapView").then((m) => ({ default: m.HeatmapView })),
 );
-const ReceivingScreen = lazy(() =>
-  import("@/components/fulfillment/ReceivingScreen").then((m) => ({ default: m.ReceivingScreen })),
-);
 const TasksScreen = lazy(() =>
   import("@/components/fulfillment/TasksScreen").then((m) => ({ default: m.TasksScreen })),
-);
-const PickingScreen = lazy(() =>
-  import("@/components/fulfillment/PickingScreen").then((m) => ({ default: m.PickingScreen })),
 );
 const OperationsScreen = lazy(() =>
   import("@/components/fulfillment/OperationsScreen").then((m) => ({
@@ -113,8 +107,20 @@ export default function App() {
   // Тема и язык — глобально на <html> (ТЗ, разд. 3.3). Первый прогон повторяет
   // то, что уже сделал скрипт в app/index.html, — это нормально: он ставит тему
   // до отрисовки, а этот эффект держит её дальше, когда человек переключает.
+  // Встроенный в витрину кабинет (`?embed=1`) идёт за темой системы, как сама
+  // витрина, а не за сохранённой темой профиля (Кирилл 1 ноя): иначе на светлом
+  // лендинге открывались тёмные экраны того, кто когда-то включил тёмную тему в
+  // кабинете на этом же адресе. Профиль при этом не трогаем.
   useEffect(() => {
-    applyTheme(theme);
+    if (!isEmbed(window.location.search)) {
+      applyTheme(theme);
+      return;
+    }
+    const query = window.matchMedia("(prefers-color-scheme: dark)");
+    const sync = () => applyTheme(systemTheme());
+    sync();
+    query.addEventListener("change", sync);
+    return () => query.removeEventListener("change", sync);
   }, [theme]);
   useEffect(() => {
     document.documentElement.lang = language;
@@ -130,11 +136,13 @@ export default function App() {
   // только рабочее место, куда бы ни вела ссылка. Отвязать его можно бейджем
   // руководителя на самом столе или с экрана «Устройства» с другого компьютера.
   const kiosk = useEditor((s) => boundDevice(s) !== null) && role === "warehouse";
-  const view = kiosk
-    ? "workstation"
-    : ACCOUNT_VIEWS.has(appView) || allowed.includes(appView)
-      ? appView
-      : allowed[0];
+  const legacyStation = role === "warehouse" && STATION_VIEWS.has(appView);
+  const view =
+    kiosk || legacyStation
+      ? "workstation"
+      : ACCOUNT_VIEWS.has(appView) || allowed.includes(appView)
+        ? appView
+        : allowed[0];
 
   useEffect(() => {
     if (view !== appView) useEditor.getState().goToView(view);
@@ -207,6 +215,12 @@ export default function App() {
   );
 }
 
+/**
+ * Бывшие экраны процессов: приёмка и сборка теперь живут на рабочем месте,
+ * а старая ссылка (`?view=receiving`) должна вести туда же, а не в никуда.
+ */
+const STATION_VIEWS = new Set<AppView>(["receiving", "picking"]);
+
 /** Экраны уровня аккаунта: живут вне контекста конкретного склада. */
 const ACCOUNT_VIEWS = new Set<AppView>(["login", "dashboard", "profile"]);
 
@@ -235,12 +249,8 @@ function renderView(view: string) {
       return <Dashboard />;
     case "profile":
       return <Profile />;
-    case "receiving":
-      return <ReceivingScreen />;
     case "tasks":
       return <TasksScreen />;
-    case "picking":
-      return <PickingScreen />;
     case "operations":
       return <OperationsScreen />;
     case "staff":

@@ -10,11 +10,12 @@ import {
 } from "lucide-react";
 import { countUnread, selectRole, useEditor, visibleChatPartners } from "@/lib/store";
 import { applyOrder, entriesFor, entryKey, isGroup, moveItem, type NavLeaf } from "./navItems";
+import { useFlip } from "./useFlip";
 import type { AppView } from "@/lib/types";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { ReportProblemDialog } from "@/components/support/ReportProblemDialog";
-import { UkladIcon, UkladWordmark } from "@/components/brand/UkladLogo";
+import { UkladLockup } from "@/components/brand/UkladLockup";
 
 /** Свёрнуто ли меню — удобство одного человека, поэтому в localStorage, а не в сторе. */
 const COLLAPSED_KEY = "uklad-nav-collapsed";
@@ -40,10 +41,10 @@ function readOrder(): NavOrder {
   }
 }
 
-/** Что сейчас тащат: из какого списка и с какой позиции. */
+/** Что сейчас тащат: из какого списка и какую запись. */
 interface Drag {
   list: string;
-  index: number;
+  key: string;
 }
 
 /**
@@ -83,6 +84,7 @@ export function SideNav() {
   const [drag, setDrag] = useState<Drag | null>(null);
   const [reporting, setReporting] = useState(false);
   const [over, setOver] = useState<Drag | null>(null);
+  const flipRef = useFlip<HTMLElement>();
   const topKey = `${role}:top`;
   const entries = applyOrder(entriesFor(role), order[topKey], entryKey);
   const itemsOf = (groupId: string, items: NavLeaf[]) =>
@@ -98,25 +100,40 @@ export function SideNav() {
     }
   };
 
-  /** Свойства перетаскивания для строки `index` списка `list` из ключей `keys`. */
-  const dnd = (list: string, keys: string[], index: number) => ({
+  /**
+   * Порядок списка, каким его видно прямо сейчас: пока пункт тащат, он уже стоит
+   * там, куда ляжет, а соседи разъехались (их сдвиг проигрывает `useFlip`).
+   * Так место вставки видно целиком, а не полоской с одной стороны.
+   */
+  function preview<T>(list: string, items: T[], key: (x: T) => string): T[] {
+    if (!drag || !over || drag.list !== list || over.list !== list) return items;
+    const from = items.findIndex((x) => key(x) === drag.key);
+    const to = items.findIndex((x) => key(x) === over.key);
+    return from < 0 || to < 0 || from === to ? items : moveItem(items, from, to);
+  }
+
+  /** Свойства перетаскивания для записи `key` списка `list`, показанного как `keys`. */
+  const dnd = (list: string, keys: string[], key: string) => ({
     draggable: true,
+    "data-flip": `${list}/${key}`,
     onDragStart: (e: React.DragEvent) => {
       e.stopPropagation();
       e.dataTransfer.effectAllowed = "move";
-      setDrag({ list, index });
+      setDrag({ list, key });
     },
     onDragOver: (e: React.DragEvent) => {
       if (drag?.list !== list) return;
       e.preventDefault();
       e.stopPropagation();
-      if (over?.list !== list || over.index !== index) setOver({ list, index });
+      e.dataTransfer.dropEffect = "move";
+      if (key !== drag.key && (over?.list !== list || over.key !== key)) setOver({ list, key });
     },
     onDrop: (e: React.DragEvent) => {
       if (drag?.list !== list) return;
       e.preventDefault();
       e.stopPropagation();
-      if (drag.index !== index) saveOrder(list, moveItem(keys, drag.index, index));
+      // `keys` — уже показанный порядок, его и сохраняем.
+      saveOrder(list, keys);
       setDrag(null);
       setOver(null);
     },
@@ -125,18 +142,17 @@ export function SideNav() {
       setOver(null);
     },
     className: cn(
-      drag?.list === list && drag.index === index && "opacity-40",
-      over?.list === list &&
-        over.index === index &&
-        drag &&
-        drag.index !== index &&
-        (drag.index < index
-          ? "shadow-[0_2px_0_0_hsl(var(--primary))]"
-          : "shadow-[0_-2px_0_0_hsl(var(--primary))]"),
-      "rounded-lg",
+      "rounded-lg transition-[opacity,box-shadow,background-color] duration-150",
+      drag && drag.list !== list && "opacity-60",
+      // Перетаскиваемый пункт остаётся на месте вставки «пустой ячейкой» с
+      // пунктирной рамкой со всех сторон — туда он и ляжет.
+      drag?.list === list &&
+        drag.key === key &&
+        "bg-primary/5 opacity-60 outline-dashed outline-1 -outline-offset-1 outline-primary",
     ),
   });
-  const topKeys = entries.map(entryKey);
+  const shown = preview(topKey, entries, entryKey);
+  const topKeys = shown.map(entryKey);
 
   const [collapsed, setCollapsed] = useState(readCollapsed);
   // Раскрытые группы — набор, а не одна: человек держит открытыми те, куда
@@ -180,6 +196,7 @@ export function SideNav() {
 
   return (
     <nav
+      ref={flipRef}
       aria-label={t("nav.side.title")}
       className={cn(
         "flex shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-border bg-card px-2 py-3 transition-[width] duration-200",
@@ -193,15 +210,18 @@ export function SideNav() {
         onClick={goToDashboard}
         title={t("nav.side.toDashboard")}
         aria-label={t("nav.side.toDashboard")}
-        className="mb-2 flex h-10 cursor-pointer items-center gap-2.5 rounded-lg px-1.5 text-sm font-semibold tracking-tight hover:bg-accent"
+        className={cn(
+          "mb-2 flex h-10 cursor-pointer items-center rounded-lg hover:bg-accent",
+          collapsed ? "px-0.5" : "px-1.5",
+        )}
       >
-        {collapsed ? <UkladIcon className="h-6" /> : <UkladWordmark className="h-8" />}
+        <UkladLockup wordless={collapsed} />
       </button>
 
-      {entries.map((entry, index) => {
+      {shown.map((entry) => {
         if (!isGroup(entry)) {
           return (
-            <div key={entry.view} {...dnd(topKey, topKeys, index)}>
+            <div key={entry.view} {...dnd(topKey, topKeys, entry.view)}>
               <NavRow
                 icon={entry.icon}
                 label={t(entry.key)}
@@ -221,7 +241,7 @@ export function SideNav() {
         const badge = expanded ? 0 : entry.items.reduce((s, i) => s + badgeFor(i.view), 0);
 
         return (
-          <div key={entry.id} {...dnd(topKey, topKeys, index)}>
+          <div key={entry.id} {...dnd(topKey, topKeys, entryKey(entry))}>
             <div className="flex flex-col gap-0.5">
               <NavRow
                 icon={entry.icon}
@@ -239,13 +259,17 @@ export function SideNav() {
                     !collapsed && "ml-[1.15rem] border-l border-border pl-2",
                   )}
                 >
-                  {itemsOf(entry.id, entry.items).map((item, i, list) => (
+                  {preview(
+                    `${role}:${entry.id}`,
+                    itemsOf(entry.id, entry.items),
+                    (x) => x.view,
+                  ).map((item, _i, list) => (
                     <li
                       key={item.view}
                       {...dnd(
                         `${role}:${entry.id}`,
                         list.map((x) => x.view),
-                        i,
+                        item.view,
                       )}
                     >
                       <NavRow
