@@ -1,9 +1,9 @@
 import { Suspense, lazy, useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { isHeatmapWindow } from "@/lib/appViews";
+import { isEmbed, isHeatmapWindow } from "@/lib/appViews";
 import { boundDevice, selectRole, useEditor } from "@/lib/store";
-import { applyTheme } from "@/lib/theme";
+import { applyTheme, systemTheme } from "@/lib/theme";
 import { useDeepLink } from "@/lib/useDeepLink";
 import { useT } from "@/lib/i18n";
 import { SideNav } from "@/components/nav/SideNav";
@@ -107,8 +107,20 @@ export default function App() {
   // Тема и язык — глобально на <html> (ТЗ, разд. 3.3). Первый прогон повторяет
   // то, что уже сделал скрипт в app/index.html, — это нормально: он ставит тему
   // до отрисовки, а этот эффект держит её дальше, когда человек переключает.
+  // Встроенный в витрину кабинет (`?embed=1`) идёт за темой системы, как сама
+  // витрина, а не за сохранённой темой профиля (Кирилл 1 ноя): иначе на светлом
+  // лендинге открывались тёмные экраны того, кто когда-то включил тёмную тему в
+  // кабинете на этом же адресе. Профиль при этом не трогаем.
   useEffect(() => {
-    applyTheme(theme);
+    if (!isEmbed(window.location.search)) {
+      applyTheme(theme);
+      return;
+    }
+    const query = window.matchMedia("(prefers-color-scheme: dark)");
+    const sync = () => applyTheme(systemTheme());
+    sync();
+    query.addEventListener("change", sync);
+    return () => query.removeEventListener("change", sync);
   }, [theme]);
   useEffect(() => {
     document.documentElement.lang = language;
