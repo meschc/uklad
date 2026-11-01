@@ -58,6 +58,14 @@ export const createSessionSlice: SliceCreator<SessionSlice> = (set, get) => ({
 
   // Данные кабинета пока в браузере (переезд на сервер — по модулям), поэтому
   // после входа навигация та же, что у демо: `setRole` уводит на «свой» экран.
+  sessionLost: () =>
+    set((s) => ({
+      session: { ...s.session, source: undefined },
+      appView: "login",
+      selection: [],
+      activeShelf: null,
+    })),
+
   startServerSession: (email, role, orgId) => {
     set((s) => ({
       session: {

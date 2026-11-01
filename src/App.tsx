@@ -8,7 +8,6 @@ import { useDeepLink } from "@/lib/useDeepLink";
 import { useT } from "@/lib/i18n";
 import { authRepository } from "@/lib/data/authRepository";
 import { setUnauthorizedHandler } from "@/lib/data/api";
-import { leaveServerSession } from "@/lib/store/leave";
 import { SideNav } from "@/components/nav/SideNav";
 import { navFor } from "@/components/nav/navItems";
 import type { AppView } from "@/lib/types";
@@ -131,14 +130,18 @@ export default function App() {
 
   // Вход через сервер живёт в куке, а стор помнит только пометку о нём.
   // Правило одно: любой ответ 401 на запрос с сессией — сессии больше нет
-  // (истекла, отозвана, сменён пароль), и кабинет уходит на вход со стиранием
-  // данных (`leaveServerSession`). Чтобы долго открытая вкладка узнала об
-  // отзыве, не дожидаясь запроса, сессия сверяется при открытии кабинета и
-  // каждый раз, когда вкладка снова на экране. Сбой связи сессию не гасит.
+  // (истекла, отозвана, сменён пароль), и кабинет закрывается экраном входа.
+  // Данные при этом не стираются (`sessionLost`): других копий у них пока нет.
+  // Чтобы долго открытая вкладка узнала об отзыве, не дожидаясь запроса,
+  // сессия сверяется при открытии кабинета и каждый раз, когда вкладка снова
+  // на экране. Сбой связи сессию не гасит.
   const serverSession = useEditor((s) => s.session.source === "server");
+  // Данные компании без живого входа закрыты: ни ссылка на экран, ни демо не
+  // откроют их, пока владелец не войдёт.
+  const locked = useEditor((s) => !!s.session.orgId && s.session.source !== "server");
   useEffect(() => {
     if (!serverSession) return;
-    setUnauthorizedHandler(() => leaveServerSession());
+    setUnauthorizedHandler(() => useEditor.getState().sessionLost());
     const check = () => {
       if (document.visibilityState === "visible") void authRepository.me();
     };
@@ -161,8 +164,9 @@ export default function App() {
   // руководителя на самом столе или с экрана «Устройства» с другого компьютера.
   const kiosk = useEditor((s) => boundDevice(s) !== null) && role === "warehouse";
   const legacyStation = role === "warehouse" && STATION_VIEWS.has(appView);
-  const view =
-    kiosk || legacyStation
+  const view = locked
+    ? "login"
+    : kiosk || legacyStation
       ? "workstation"
       : ACCOUNT_VIEWS.has(appView) || allowed.includes(appView)
         ? appView
@@ -172,7 +176,7 @@ export default function App() {
     if (view !== appView) useEditor.getState().goToView(view);
   }, [view, appView]);
 
-  if (IS_HEATMAP) {
+  if (IS_HEATMAP && !locked) {
     return (
       <div className="h-full animate-fade-in">
         <Suspense fallback={<ScreenFallback />}>

@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, KeyRound, Lock, Mail, Store, Warehouse } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import type { UserRole } from "@/lib/types";
-import { authRepository, roleOf } from "@/lib/data/authRepository";
+import { authRepository, roleOf, type ServerMe } from "@/lib/data/authRepository";
+import { leaveServerSession } from "@/lib/store/leave";
 import type { Result } from "@/lib/data";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -28,6 +29,12 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 export function ServerLoginForm({ onDemo }: { onDemo: () => void }) {
   const t = useT();
   const startServerSession = useEditor((s) => s.startServerSession);
+  // Чьи данные сохранены на этом компьютере. Есть владелец — демо не
+  // предлагаем (оно открыло бы его склад без пароля), а вход другой компанией
+  // сначала предупреждает, что эти данные сотрутся.
+  const ownerOrgId = useEditor((s) => s.session.orgId);
+  const lastEmail = useEditor((s) => s.session.user.email);
+  const [switchTo, setSwitchTo] = useState<ReturnType<typeof roleOf>>(null);
 
   const [step, setStep] = useState<Step>("signIn");
   const [kind, setKind] = useState<UserRole>("warehouse");
@@ -65,14 +72,35 @@ export function ServerLoginForm({ onDemo }: { onDemo: () => void }) {
     setCode("");
   };
 
+  /** Кука жива: войти, если данные на компьютере свои или ничьи. */
+  const admit = (me: ServerMe, mail: string) => {
+    const who = roleOf(me);
+    if (!who) return setError("login.err.noOrg");
+    if (ownerOrgId && ownerOrgId !== who.orgId) return setSwitchTo(who);
+    startServerSession(mail, who.role, who.orgId);
+  };
+
   /** Вошли: узнать у сервера компанию и роль, дальше — как у демо. */
   const enter = async () => {
     const me = await authRepository.me();
     if (!me.ok) return setError(me.error);
-    const who = me.data && roleOf(me.data);
-    if (!who) return setError("login.err.noOrg");
-    startServerSession(email.trim().toLowerCase(), who.role, who.orgId);
+    if (!me.data) return setError("data.failed");
+    admit(me.data, email.trim().toLowerCase());
   };
+
+  // Открыли кабинет с живой кукой (после перезагрузки, после стирания чужих
+  // данных) — входим сразу, без пароля ещё раз.
+  const probed = useRef(false);
+  useEffect(() => {
+    if (probed.current) return;
+    probed.current = true;
+    // Выход не дошёл до сервера: кука, возможно, ещё жива — но человек вышел.
+    if (notice === "login.loggedOutOffline") return;
+    void authRepository.me().then((me) => {
+      if (me.ok && me.data) admit(me.data, lastEmail);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- одна проверка при открытии
+  }, []);
 
   /** Одна команда к серверу: ожидание на кнопке, отказ — строкой под формой. */
   async function run<T>(op: () => Promise<Result<T>>, then: (data: T) => Promise<void> | void) {
@@ -135,6 +163,28 @@ export function ServerLoginForm({ onDemo }: { onDemo: () => void }) {
     reset: "login.submit.sendCode",
     resetCode: "login.submit.newPassword",
   };
+
+  if (switchTo) {
+    // Вход другой компанией: данные прежней на этом компьютере сотрутся. Копию
+    // здесь не предлагаем — она отдала бы чужие данные вошедшему.
+    return (
+      <div className="flex w-full flex-col gap-3 rounded-2xl border border-border bg-card p-5 shadow-sm">
+        <p className="text-sm">{t("login.switch.body")}</p>
+        <Button variant="destructive" onClick={() => leaveServerSession()}>
+          {t("login.switch.confirm")}
+        </Button>
+        <Button
+          variant="ghost"
+          onClick={() => {
+            setSwitchTo(null);
+            void authRepository.logout();
+          }}
+        >
+          {t("login.switch.cancel")}
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -259,7 +309,7 @@ export function ServerLoginForm({ onDemo }: { onDemo: () => void }) {
             </Button>
           )}
 
-          {(step === "signIn" || step === "signUp") && (
+          {(step === "signIn" || step === "signUp") && !ownerOrgId && (
             <>
               <Button type="button" variant="outline" className="w-full" onClick={onDemo}>
                 {t("login.demo")}

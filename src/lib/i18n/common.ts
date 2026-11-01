@@ -123,6 +123,14 @@ export const ru = {
   "login.codeSent": "Отправили код на {email}. Письмо идёт до пары минут, проверьте и «Спам».",
   "login.codeResent": "Отправили новый код на {email}.",
   "login.code": "Код из письма",
+  "login.switch.body":
+    "На этом компьютере сохранены данные кабинета другой компании. Чтобы войти, их нужно стереть. Если они ваши, отмените и войдите той почтой, под которой их вели.",
+  "login.switch.confirm": "Стереть и войти",
+  "login.switch.cancel": "Отмена",
+  "profile.logoutWipe":
+    "Данные кабинета на этом компьютере будут стёрты. Сначала скачайте копию, если она нужна.",
+  "profile.logoutBackup": "Скачать копию",
+  "profile.logoutConfirm": "Выйти и стереть",
   "login.loggedOutOffline":
     "Вы вышли на этом устройстве, но сервер не ответил: там сессия ещё жива. Если компьютер чужой, войдите и выйдите снова, когда появится связь.",
   "login.newPassword": "Новый пароль",
@@ -347,6 +355,14 @@ export const en: Record<keyof typeof ru, string> = {
   "login.codeSent": "We sent a code to {email}. It can take a couple of minutes; check Spam too.",
   "login.codeResent": "We sent a new code to {email}.",
   "login.code": "Code from the email",
+  "login.switch.body":
+    "This computer holds cabinet data of another company. To sign in, it has to be erased. If it's yours, cancel and sign in with the email you used for it.",
+  "login.switch.confirm": "Erase and sign in",
+  "login.switch.cancel": "Cancel",
+  "profile.logoutWipe":
+    "Cabinet data on this computer will be erased. Download a copy first if you need it.",
+  "profile.logoutBackup": "Download a copy",
+  "profile.logoutConfirm": "Sign out and erase",
   "login.loggedOutOffline":
     "You're signed out on this device, but the server didn't respond, so the session is still alive there. On a shared computer, sign in and out again once you're back online.",
   "login.newPassword": "New password",
