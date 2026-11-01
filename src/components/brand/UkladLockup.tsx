@@ -15,11 +15,24 @@ import { LOGO_BLUE, UkladIcon } from "./UkladLogo";
 export function UkladAppTile({
   tone = "blue",
   className,
+  image,
 }: {
   tone?: "blue" | "white";
   className?: string;
+  /** Свой логотип вместо знака Уклада (логотип компании из профиля). */
+  image?: string;
 }) {
   const onBlue = tone === "white";
+  if (image) {
+    return (
+      <img
+        src={image}
+        alt=""
+        aria-hidden
+        className={cn("size-9 shrink-0 rounded-[10px] object-cover", className)}
+      />
+    );
+  }
   return (
     <span
       aria-hidden
@@ -41,19 +54,21 @@ export function UkladLockup({
   tone = "blue",
   wordless = false,
   className,
+  image,
 }: {
   label?: string;
   tone?: "blue" | "white";
   wordless?: boolean;
   className?: string;
+  image?: string;
 }) {
   return (
-    <span className={cn("flex items-center gap-2.5", className)}>
-      <UkladAppTile tone={tone} />
+    <span className={cn("flex min-w-0 items-center gap-2.5", className)}>
+      <UkladAppTile tone={tone} image={image} />
       {!wordless && (
         <span
           className={cn(
-            "text-[21px] font-semibold leading-none tracking-[-0.03em]",
+            "truncate text-[21px] font-semibold leading-none tracking-[-0.03em]",
             tone === "white" ? "text-white" : "text-foreground",
           )}
         >
