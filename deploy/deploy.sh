@@ -11,6 +11,12 @@ cd "$(dirname "$0")"
 git -C .. pull --ff-only
 TAG=$(git -C .. rev-parse --short HEAD)
 
+# Пароли базы кабинета: каких нет в .env — генерируются здесь, на сервере, и
+# никуда не уходят. Уже заданные не трогаются: роли в базе созданы с ними.
+for v in SUPERUSER OWNER APP NOTIFIER; do
+  grep -q "^PG_${v}_PASSWORD=." .env || echo "PG_${v}_PASSWORD=$(openssl rand -hex 32)" >> .env
+done
+
 # Копия базы перед выкладкой: новая версия может поменять её схему.
 [ -f data/uklad.db ] && ./backup.sh
 
