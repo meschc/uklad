@@ -47,6 +47,7 @@ export function LeadSubmit({
   lead,
   idle,
   mailIdle,
+  sentNote,
   blocker = null,
   type = "button",
   onClick,
@@ -62,6 +63,11 @@ export function LeadSubmit({
    * его теряет, а человек обязан видеть охват именно в момент нажатия.
    */
   mailIdle?: string;
+  /**
+   * Что сказать после отправки, если «ответим в рабочие часы» неправда: на
+   * заявку демо отвечает не человек, а письмо со ссылкой — сразу.
+   */
+  sentNote?: string;
   /** Чего не хватает для отправки. Пока не пусто — кнопка заблокирована. */
   blocker?: string | null;
   /** Контакты отправляются формой — там нужна встроенная проверка полей. */
@@ -87,7 +93,7 @@ export function LeadSubmit({
   };
 
   const note = () => {
-    if (state === "sent") return t(T.sentNote, { mail: ORG.email });
+    if (state === "sent") return sentNote ?? t(T.sentNote, { mail: ORG.email });
     if (state === "mailed") return t(T.mailedNote, { mail: ORG.email });
     if (state === "failed") return t(T.failedNote, { mail: ORG.email });
     if (state === "sending") return null;

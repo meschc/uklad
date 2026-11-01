@@ -3,6 +3,8 @@ import { ru, useT, type Copy } from "../../lib/copy";
 import { Reveal } from "../Reveal";
 import { CELL_QR_PATH, CELL_QR_SIZE } from "./cellQr";
 import { ConnectForm } from "./ConnectForm";
+import { DemoForm } from "./DemoForm";
+import { Segmented } from "@/components/ui/segmented";
 import { CHAT_HOURS, OFFER, freeMonthsTitle, monthsWordsRu } from "../../data/offer";
 
 const T = {
@@ -16,6 +18,10 @@ const T = {
   open: ru(`на связи до ${CHAT_HOURS.to}:00`),
   closed: ru(`ответим в рабочее время с ${CHAT_HOURS.from}:00`),
   label: ru("Заявка на подключение"),
+  demoLabel: ru("Заявка на демо"),
+  modes: ru("Что нужно"),
+  modeConnect: ru("Подключить склад"),
+  modeDemo: ru("Посмотреть демо"),
   cell: ru("A-01-01-01"),
   cellNote: ru("Первая ячейка вашего склада в Укладе"),
   qr: ru("QR-код ячейки A-01-01-01"),
@@ -59,6 +65,35 @@ function moscowNow() {
 export function FinalConnect() {
   const t = useT();
   const [now, setNow] = useState<ReturnType<typeof moscowNow> | null>(null);
+  // Кнопки «Демо» на странице ведут сюда же, якорем `#demo`: демо открывает
+  // только ссылка из письма, поэтому вместо кабинета — заявка на неё.
+  const [mode, setMode] = useState<"connect" | "demo">("connect");
+  const [expired, setExpired] = useState(false);
+
+  useEffect(() => {
+    // Из таймера, как и часы ниже: синхронный setState в эффекте перерисовал
+    // бы секцию второй раз подряд. На сборке окна нет — там всегда «подключить».
+    const sync = () => {
+      if (window.location.hash === "#demo") setMode("demo");
+    };
+    const first = window.setTimeout(() => {
+      sync();
+      setExpired(new URLSearchParams(window.location.search).get("demo") === "expired");
+    }, 0);
+    // Ссылки на свою страницу витрина прокручивает сама, через `pushState`
+    // (`useLinkNavigation`), и `hashchange` при этом не приходит: ловим клик.
+    const onClick = (e: MouseEvent) => {
+      const a = (e.target as Element | null)?.closest?.("a");
+      if (a && new URL(a.href, window.location.href).hash === "#demo") setMode("demo");
+    };
+    window.addEventListener("hashchange", sync);
+    document.addEventListener("click", onClick);
+    return () => {
+      window.clearTimeout(first);
+      window.removeEventListener("hashchange", sync);
+      document.removeEventListener("click", onClick);
+    };
+  }, []);
 
   useEffect(() => {
     // Первый замер тоже из таймера: синхронный setState в эффекте
@@ -99,6 +134,7 @@ export function FinalConnect() {
         id="connect"
         className="mt-16 scroll-mt-4 rounded-t-[24px] bg-[var(--wh-blue)] text-white sm:rounded-t-[32px]"
       >
+        <span id="demo" aria-hidden className="block scroll-mt-4" />
         {/* Поверх общей с подвалом ASCII-сцены (её рисует `WarehousesFooter`). */}
         <div className="relative z-[1] mx-auto max-w-[1280px] px-5 pt-16 sm:px-10 sm:pt-24">
           <div className="grid grid-cols-1 gap-14 lg:grid-cols-2 lg:gap-20">
@@ -136,7 +172,7 @@ export function FinalConnect() {
               <div className="flex items-center justify-between gap-4 px-5 py-6 sm:px-8">
                 <div className="min-w-0">
                   <p className="text-xs font-semibold uppercase tracking-[0.06em] text-muted-foreground">
-                    {t(T.label)}
+                    {t(mode === "demo" ? T.demoLabel : T.label)}
                   </p>
                   <p className="mt-1.5 font-mono text-[22px] font-medium text-[var(--wh-blue)]">
                     {t(T.cell)}
@@ -160,7 +196,25 @@ export function FinalConnect() {
                 <span className="absolute -left-8 -top-[13px] block size-6 rounded-full bg-[var(--wh-blue)]" />
                 <span className="absolute -right-8 -top-[13px] block size-6 rounded-full bg-[var(--wh-blue)]" />
               </div>
-              <ConnectForm idPrefix="final" className="px-5 pb-8 pt-7 sm:px-8" />
+              <div className="px-5 pb-8 pt-7 sm:px-8">
+                <Segmented
+                  size="md"
+                  grow
+                  ariaLabel={t(T.modes)}
+                  className="mb-5"
+                  value={mode}
+                  onChange={setMode}
+                  options={[
+                    { value: "connect", label: t(T.modeConnect) },
+                    { value: "demo", label: t(T.modeDemo) },
+                  ]}
+                />
+                {mode === "demo" ? (
+                  <DemoForm idPrefix="final-demo" expired={expired} />
+                ) : (
+                  <ConnectForm idPrefix="final" />
+                )}
+              </div>
             </Reveal>
           </div>
         </div>

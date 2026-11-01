@@ -81,6 +81,15 @@ export function hasUnsyncedChanges(): boolean {
   return readMeta()?.dirty === true;
 }
 
+/**
+ * Лежит ли в браузере копия кабинета компании. Пока лежит, демо по ссылке не
+ * открывается: под демо-пропуском человек увидел бы не демо, а чужой склад
+ * (вход кончился, `sessionLost`, а данные остались).
+ */
+export function holdsCompanyCopy(): boolean {
+  return Boolean(readMeta()?.orgId);
+}
+
 /** Есть ли отложенная копия — правки, проигравшие свежему снимку. */
 export function hasDeferredCopy(): boolean {
   return readLocal(BEFORE_SYNC_KEY) !== null;

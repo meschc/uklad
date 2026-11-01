@@ -310,7 +310,7 @@ export function ServerLoginForm() {
             <p className="text-center text-xs text-muted-foreground">
               {t("login.demoByRequest")}
               <br />
-              <a href="/#connect" className="underline">
+              <a href="/#demo" className="underline">
                 {t("login.demoRequest")}
               </a>
             </p>
