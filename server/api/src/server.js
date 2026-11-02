@@ -506,14 +506,16 @@ function main() {
   // Админка на отдельном порту: наружу он открыт только на 127.0.0.1
   // сервера, вход — SSH-туннелем (deploy/admin-tunnel.sh).
   let admin;
-  if (cfg.adminOrigin.startsWith("https://")) {
+  if (cfg.adminOrigin) {
     const { createAdminApp } = require("./admin/app");
     admin = http.createServer(createAdminApp({ cfg, db: db.raw }));
     admin.requestTimeout = 15_000;
     admin.headersTimeout = 10_000;
     admin.listen(cfg.adminPort, () => console.log(`[uklad] админка слушает порт ${cfg.adminPort}`));
   } else {
-    console.log("[uklad] админка выключена: не задан ADMIN_ORIGIN (https://…)");
+    console.log(
+      "[uklad] админка выключена: не задан ADMIN_ORIGIN (https://… или http://localhost для туннеля)",
+    );
   }
 
   const stop = () => {
