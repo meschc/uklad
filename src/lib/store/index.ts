@@ -10,7 +10,7 @@ import { PRODUCT_CATEGORIES } from "../types";
 import type { CellAddress, Floor, Product, UserRole, Warehouse } from "../types";
 import type { EditorState } from "./state";
 import { fieldValueKey } from "./helpers";
-import { SEED_FIELD_VALUES, seedStaff } from "./seed";
+import { SEED_FIELD_VALUES, seedOwnProducts, seedStaff } from "./seed";
 import { seedHistory } from "./seedHistory";
 import { createAccountSlice } from "./account.slice";
 import { createIntegrationsSlice } from "./integrations.slice";
@@ -347,7 +347,23 @@ if (!HAD_PERSISTED)
       if (prod && field) fieldValues[fieldValueKey(prod.id, field.id)] = fv.value;
     }
 
-    return { activeFloorId: floor.id, placements, fieldValues };
+    // Остальные демо-склады получают свои позиции и раскладывают их у себя:
+    // без этого они показывали общий каталог при пустых полках («0%»).
+    const catalog = s.products.filter((p) => !p.warehouseId);
+    const own: Product[] = [];
+    s.otherWarehouses.forEach((w, i) => {
+      const prefix = ["КЛ", "ШР"][i] ?? `СК${i + 1}`;
+      const items = seedOwnProducts(w, catalog, prefix, i === 0 ? 40 : 120, () => uid("prod"));
+      Object.assign(placements, autoPlace(w, items, placements));
+      own.push(...items);
+    });
+
+    return {
+      activeFloorId: floor.id,
+      products: [...s.products, ...own],
+      placements,
+      fieldValues,
+    };
   });
 
 // История работы склада — тоже только при первом запуске: поставки, приёмки,
@@ -365,7 +381,15 @@ if (!HAD_PERSISTED) {
     }));
   }
   const s = useEditor.getState();
-  useEditor.setState(seedHistory(s.warehouse, s.products, s.placements));
+  // История — только активного склада: свои позиции остальных демо-складов
+  // (с `warehouseId`) в его поставки и заявки попасть не должны.
+  useEditor.setState(
+    seedHistory(
+      s.warehouse,
+      s.products.filter((p) => !p.warehouseId),
+      s.placements,
+    ),
+  );
   // История правок не должна начинаться со снимка «до посева»: демо-данные —
   // это стартовое состояние, а не правка пользователя.
   useEditor.setState({ past: [], future: [] });

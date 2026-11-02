@@ -14,6 +14,7 @@ import { ProductDialog } from "@/components/table/ProductDialog";
 import { ScreenShell } from "./ScreenShell";
 import { type ScanStatus } from "./ScanField";
 import { ShipmentPicker } from "./ShipmentPicker";
+import { isSenior } from "@/lib/docFlow";
 import { DiscrepancyAlert } from "./DiscrepancyAlert";
 import { BoxStep } from "./receiving/BoxStep";
 import { CargoStep } from "./receiving/CargoStep";
@@ -57,6 +58,9 @@ export function ReceivingScreen({ staffId: badgeStaffId }: { staffId?: string } 
   const pallets = useEditor((s) => s.pallets);
   const shipments = useEditor((s) => s.expectedShipments);
   const staff = useEditor((s) => s.warehouse.staff ?? []);
+  // За столом по бейджу поставку заводит только старший смены; руководитель
+  // в кабинете (бейджа нет) — всегда.
+  const canCreateShipment = !badgeStaffId || isSenior(staff.find((m) => m.id === badgeStaffId));
   const twoStage = useEditor((s) => !!s.serviceSettings.twoStageReceiving);
   const [stage, setStage] = useState<"cargo" | "items">("cargo");
 
@@ -445,6 +449,7 @@ export function ReceivingScreen({ staffId: badgeStaffId }: { staffId?: string } 
             <CargoStep staffId={staffId} t={t} />
           ) : (
             <ShipmentPicker
+              canCreate={canCreateShipment}
               onPick={(id) => go({ shipmentId: id, received: 0, step: "pallet" })}
               onFreeform={() => go({ shipmentId: null, received: 0, step: "pallet" })}
             />

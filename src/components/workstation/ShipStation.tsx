@@ -98,6 +98,7 @@ function ShipGroup({
         <label className="flex min-w-0 flex-1 flex-col gap-1 text-sm">
           <span className="text-muted-foreground">{t("ship.vehicle")}</span>
           <Input
+            className="h-9"
             value={vehicle}
             placeholder={t("ship.vehiclePlaceholder")}
             onChange={(e) => setVehicle(e.target.value)}

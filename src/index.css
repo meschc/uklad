@@ -431,3 +431,24 @@
    `src/site/site.css`. Смешивать нельзя: правило приложения прячет всё, кроме
    `.print-root`, а на витрине такого блока нет, и общий файл превращал любую
    печать сайта в пустые листы. */
+
+/* Смена товара за столом упаковки: новая карточка появляется мягко, а не
+   щёлкает на месте предыдущей. При «меньше движения» — без анимации. */
+@keyframes ws-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.ws-in {
+  animation: ws-in 220ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ws-in {
+    animation: none;
+  }
+}
