@@ -55,11 +55,19 @@ export function WorkstationScreen() {
   const staff = useEditor((s) => s.warehouse.staff);
   const device = useEditor(boundDevice);
   const openDisputes = useEditor((s) => s.disputes.filter((d) => !d.resolution).length);
-  const [panel, setPanel] = useState<Panel>(null);
+  const [opened, setOpened] = useState<{ panel: Panel; owner?: string }>({ panel: null });
   const [unbinding, setUnbinding] = useState(false);
 
   const live = isSessionLive(session, now);
   const member = live ? (staff ?? []).find((m) => m.id === session!.staffId) : undefined;
+
+  // Панель принадлежит тому, кто её открыл: кончилась смена, вышел или вошёл
+  // другой по бейджу — для него она закрыта, иначе следующий за столом увидит
+  // чужое. Хранить владельца, а не сбрасывать эффектом, дешевле и без лишнего
+  // рендера.
+  const panel: Panel = opened.owner === member?.id ? opened.panel : null;
+  const setPanel = (p: Panel) => setOpened({ panel: p, owner: member?.id });
+
   const station = session?.station ?? "pack";
 
   return (

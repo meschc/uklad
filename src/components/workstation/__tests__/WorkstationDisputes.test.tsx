@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, test } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useEditor } from "@/lib/store";
 import { WorkstationScreen } from "../WorkstationScreen";
@@ -54,5 +54,32 @@ describe("«Спорные» за столом", () => {
     render(<WorkstationScreen />);
 
     expect(screen.queryByRole("button", { name: /Спорные/ })).toBeNull();
+  });
+
+  test("панель закрывается, когда за столом меняется сотрудник", async () => {
+    login("Старший смены");
+    render(<WorkstationScreen />);
+    await userEvent.click(screen.getByRole("button", { name: /Спорные\s*1/ }));
+    expect(screen.getByRole("button", { name: /Вернуть/ })).toBeTruthy();
+
+    // Старший вышел, за стол встал рядовой сотрудник.
+    act(() => {
+      const s = useEditor.getState();
+      useEditor.setState({
+        warehouse: {
+          ...s.warehouse,
+          staff: [{ id: "m2", name: "Другой", role: "Упаковщик" }] as never,
+        },
+        stationSession: {
+          staffId: "m2",
+          station: "pack",
+          startedAt: Date.now(),
+          expiresAt: Date.now() + 3_600_000,
+        },
+      });
+    });
+
+    expect(screen.queryByRole("button", { name: /Вернуть/ })).toBeNull();
+    expect(screen.queryByText("Недостача")).toBeNull();
   });
 });
