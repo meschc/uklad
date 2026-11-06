@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   findByCode,
   findProduct,
+  generateBoxBarcode,
+  generatePalletBarcode,
   isLoadUnit,
   matchesProductCode,
   normalizeCode,
@@ -159,5 +161,21 @@ describe("isLoadUnit", () => {
   it("машина и чужие коды — нет", () => {
     expect(isLoadUnit(vehicleCode("А123ВС77"))).toBe(false);
     expect(isLoadUnit("4601234567890")).toBe(false);
+  });
+});
+
+describe("номер тары без нулей слева", () => {
+  it("пишется короче: UK-BOX-123", () => {
+    expect(generateBoxBarcode(123)).toBe("UK-BOX-123");
+    expect(generatePalletBarcode(1)).toBe("UK-PLT-1");
+  });
+
+  it("старый ярлык с нулями находит новый номер и наоборот", () => {
+    expect(findByCode([box("UK-BOX-000012")], "UK-BOX-12")?.barcode).toBe("UK-BOX-000012");
+    expect(findByCode([box("UK-BOX-12")], "uk-box-000012")?.barcode).toBe("UK-BOX-12");
+  });
+
+  it("не путает 12 и 120", () => {
+    expect(findByCode([box("UK-BOX-120")], "UK-BOX-12")).toBeUndefined();
   });
 });

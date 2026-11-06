@@ -13,6 +13,7 @@ import {
 import { boundDevice, useEditor } from "@/lib/store";
 import { workstationRepository } from "@/lib/data";
 import { isSessionLive } from "@/lib/workstation";
+import { sizeLabel, useLabelPrinter } from "@/lib/labelPrinter";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,7 @@ import { UnbindDevice } from "./UnbindDevice";
 import { ShiftMenu } from "./ShiftMenu";
 import { ShiftBar } from "./ShiftBar";
 import { PackStation } from "./PackStation";
+import { PrinterPanel } from "./PrinterPanel";
 import { ShipStation } from "./ShipStation";
 import { StaffLog } from "./StaffLog";
 import { formatTime, useNow } from "./useNow";
@@ -41,7 +43,7 @@ import { formatTime, useNow } from "./useNow";
  * документы и аналитика — контроль, а не работа.
  */
 
-type Panel = "shift" | "log" | null;
+type Panel = "shift" | "log" | "printer" | null;
 
 export function WorkstationScreen() {
   const t = useT();
@@ -81,7 +83,7 @@ export function WorkstationScreen() {
           // Процесс стола — заголовком: по нему видно, чьё это задание.
           <h1 className="text-sm font-semibold">{t(`ws.station.${station}` as MsgKey)}</h1>
         )}
-        <Equipment />
+        <Equipment onPrinter={() => setPanel("printer")} canOpen={!!member} />
         {member && (
           <div className="ml-auto flex items-center gap-4">
             <ShiftBar staffId={member.id} onOpen={() => setPanel("shift")} />
@@ -134,7 +136,13 @@ export function WorkstationScreen() {
           <aside className="relative flex h-full w-full max-w-md animate-slide-in-right flex-col gap-4 overflow-y-auto bg-background p-5 shadow-2xl">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">
-                {t(panel === "shift" ? "ws.tab.shift" : "ws.history")}
+                {t(
+                  panel === "shift"
+                    ? "ws.tab.shift"
+                    : panel === "printer"
+                      ? "ws.printer.title"
+                      : "ws.history",
+                )}
               </h2>
               <Button
                 variant="ghost"
@@ -147,6 +155,8 @@ export function WorkstationScreen() {
             </div>
             {panel === "shift" ? (
               <ShiftMenu member={member} now={now} />
+            ) : panel === "printer" ? (
+              <PrinterPanel />
             ) : (
               <StaffLog staffId={member.id} now={now} />
             )}
@@ -204,29 +214,48 @@ function StationTask({
  * клавиатура. Принтер и весы честно помечены «не подключено», а рисовать
  * зелёные лампочки впрок нельзя. Камеру стола не показываем, пока её нет.
  */
-function Equipment() {
+function Equipment({ onPrinter, canOpen }: { onPrinter: () => void; canOpen: boolean }) {
   const t = useT();
+  const printer = useLabelPrinter();
+  // «Настроен» — не «подключён»: браузер принтер не видит, мы знаем только
+  // имя и ленту, которые назвал сотрудник.
+  const printerSet = printer.name !== "";
   const items: { key: MsgKey; icon: typeof ScanLine; ready: boolean }[] = [
     { key: "ws.equip.scanner", icon: ScanLine, ready: true },
-    { key: "ws.equip.printer", icon: Printer, ready: false },
     { key: "ws.equip.scales", icon: Scale, ready: false },
   ];
+  const dot = (ready: boolean) => (
+    <span
+      className={cn("size-1.5 rounded-full", ready ? "bg-emerald-500" : "bg-muted-foreground/40")}
+    />
+  );
   return (
     <ul className="hidden flex-wrap items-center gap-3 text-xs text-muted-foreground md:flex">
-      {items.map(({ key, icon: Icon, ready }) => (
-        <li
-          key={key}
-          className="flex items-center gap-1"
-          title={t(ready ? "ws.equip.ready" : "ws.equip.off")}
-        >
+      {items.slice(0, 1).map(({ key, icon: Icon, ready }) => (
+        <li key={key} className="flex items-center gap-1" title={t("ws.equip.ready")}>
           <Icon className="size-3.5" />
           {t(key)}
-          <span
-            className={cn(
-              "size-1.5 rounded-full",
-              ready ? "bg-emerald-500" : "bg-muted-foreground/40",
-            )}
-          />
+          {dot(ready)}
+        </li>
+      ))}
+      <li>
+        <button
+          type="button"
+          disabled={!canOpen}
+          onClick={onPrinter}
+          title={t(printerSet ? "ws.equip.printerSet" : "ws.equip.off")}
+          className="flex items-center gap-1 rounded hover:text-foreground disabled:cursor-default disabled:hover:text-muted-foreground"
+        >
+          <Printer className="size-3.5" />
+          {printerSet ? `${printer.name} · ${sizeLabel(printer)}` : t("ws.equip.printer")}
+          {dot(printerSet)}
+        </button>
+      </li>
+      {items.slice(1).map(({ key, icon: Icon, ready }) => (
+        <li key={key} className="flex items-center gap-1" title={t("ws.equip.off")}>
+          <Icon className="size-3.5" />
+          {t(key)}
+          {dot(ready)}
         </li>
       ))}
     </ul>

@@ -1,7 +1,8 @@
 import { parseHonestSignMock } from "@/lib/barcode";
-import type { LabelElement, LabelTemplate } from "@/lib/types";
+import { planLabel, splitCode } from "@/lib/labelLayout";
+import type { LabelTemplate } from "@/lib/types";
 import { useT } from "@/lib/i18n";
-import { clamp, cn } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { QrSvg } from "@/components/table/QrSvg";
 import { Code128Svg } from "@/components/table/Code128Svg";
 
@@ -10,28 +11,16 @@ import { Code128Svg } from "@/components/table/Code128Svg";
  * их было два, предпросмотр начал бы врать в тот же день, когда кто-то поправил
  * только одну из копий.
  *
- * Раскладка — по логистической этикетке GS1, три блока подряд:
+ * Геометрия считается в `lib/labelLayout.ts` (там же правила, что и когда
+ * скрывается). Здесь только вёрстка: код во всю короткую сторону, номер
+ * крупно, мелкий префикс «UK-BOX», служебные строки разнесены по краям.
  *
- *   1. информация  — знак компании, что за место, склад, обработка («Хрупкое»);
- *   2. интерпретация — то же, что в коде, но человеческими глазами: номер
- *      места в партии, КИЗ, дата;
- *   3. код — QR или Code128, внизу (вертикально) или слева (горизонтально).
- *
- * Порядок не декоративный: кладовщик читает сверху вниз, сканер целится в
- * нижний край, а «Место 3 из 12» — то, по чему на приёмке считают, вся ли
- * партия доехала.
- *
- * Размеры — в миллиметрах, как на ленте. Кегль привязан к КОРОТКОЙ стороне:
- * на ленте 43×25 те же 10 px были бы простынёй, а на 100×150 — муравьями.
- *
- * Место под код задаётся долей (`codeScale`), но текст забирает своё первым:
- * блок кода умеет сжиматься (`flex: 0 1 …`), поэтому даже на 100 % ничего не
- * выдавливается за край наклейки.
+ * Размеры — в миллиметрах, как на ленте.
  */
 
-export type LabelKind = "box" | "pallet";
+export type LabelKind = "box" | "pallet" | "custom";
 
-const MM = (v: number) => `${v}mm`;
+const MM = (v: number) => `${v.toFixed(2)}mm`;
 
 export function LabelCard({
   tpl,
@@ -41,6 +30,9 @@ export function LabelCard({
   /** Номер места в партии и её размер — элемент "seq". */
   index = 1,
   total = 1,
+  /** Свои строки (стол упаковки: товар, заказ). Идут после названия склада. */
+  lines = [],
+  headline,
   className,
 }: {
   tpl: LabelTemplate;
@@ -49,104 +41,141 @@ export function LabelCard({
   warehouseName: string;
   index?: number;
   total?: number;
+  lines?: string[];
+  /** Крупная подпись над номером: получатель на этикетке отправления. */
+  headline?: string;
   className?: string;
 }) {
   const t = useT();
-  const has = (e: LabelElement) => tpl.elements.includes(e);
-  const horizontal = tpl.layout === "horizontal";
-
-  // Кегль от короткой стороны: 40 мм принято за единицу (лента 58×40).
-  const minSide = Math.min(tpl.widthMm, tpl.heightMm);
-  const f = clamp(minSide / 40, 0.7, 1.8);
-  const px = (n: number) => `${(n * f).toFixed(1)}px`;
-  const pad = `${(minSide * 0.05).toFixed(1)}mm`;
-
-  const title = kind === "box" ? t("labels.kind.box") : t("labels.kind.pallet");
-  const showHeader = has("logo") || has("title") || has("fragile");
-
-  // Склад и дата — одной строкой через точку: две отдельные строки на ленте
-  // 58 мм съедали высоту, ничего не добавляя.
-  const meta = [
+  const has = (e: LabelTemplate["elements"][number]) => e === "title" || tpl.elements.includes(e);
+  const { prefix, number } = splitCode(code);
+  const title =
+    kind === "box" ? t("labels.kind.box") : kind === "pallet" ? t("labels.kind.pallet") : "";
+  const infoAll = [
     has("warehouse") ? warehouseName : null,
-    has("date") ? new Date().toLocaleDateString() : null,
-  ].filter(Boolean);
+    ...lines,
+    has("note") ? (tpl.note ?? null) : null,
+    has("mark") ? `${t("labels.markPrefix")} ${markFor(code)}` : null,
+  ].filter((x): x is string => !!x);
+  const plan = planLabel({
+    widthMm: tpl.widthMm,
+    heightMm: tpl.heightMm,
+    layout: tpl.layout,
+    codeType: tpl.codeType,
+    elements: tpl.elements,
+    digits: number.length,
+    extraLines: lines.length,
+    headline: !!headline,
+    headlineWord: headline ? Math.max(...headline.split(/\s+/).map((w) => w.length)) : 0,
+    headlineLen: headline?.length ?? 0,
+    infoMaxLen: Math.max(0, ...infoAll.map((l) => l.length)),
+  });
+  const { show, horizontal } = plan;
 
-  const info = (
-    <>
-      {showHeader && (
-        <div className="flex w-full shrink-0 items-center gap-1" style={{ fontSize: px(8) }}>
-          {has("logo") && tpl.logoUrl && (
-            <img
-              src={tpl.logoUrl}
-              alt=""
-              className="shrink-0 object-contain"
-              style={{ height: px(11), maxWidth: "40%" }}
-            />
-          )}
-          {has("title") && (
-            <span className="min-w-0 flex-1 truncate font-bold uppercase leading-none tracking-wide">
-              {title}
-            </span>
-          )}
-          {has("fragile") && (
-            <span
-              className="ml-auto shrink-0 rounded-sm border border-black font-bold uppercase leading-none"
-              style={{ padding: `${px(2)} ${px(3)}` }}
-            >
-              {t("labels.fragile")}
-            </span>
-          )}
-        </div>
-      )}
+  const info = infoAll.slice(0, plan.infoCount);
 
-      {(has("seq") || meta.length > 0 || has("mark") || has("note")) && (
-        <div className="flex w-full shrink-0 flex-col leading-tight">
-          {has("seq") && (
-            <span className="font-bold tabular-nums" style={{ fontSize: px(9) }}>
-              {t("labels.seq", { n: index, total })}
-            </span>
-          )}
-          {meta.length > 0 && (
-            <span className="truncate" style={{ fontSize: px(7) }}>
-              {meta.join(" · ")}
-            </span>
-          )}
-          {has("note") && tpl.note && (
-            <span className="truncate font-medium" style={{ fontSize: px(7) }}>
-              {tpl.note}
-            </span>
-          )}
-          {has("mark") && (
-            <span className="break-all font-mono leading-tight" style={{ fontSize: px(5.5) }}>
-              {t("labels.markPrefix")} {markFor(code)}
-            </span>
-          )}
-        </div>
-      )}
-    </>
-  );
+  const small = { fontSize: MM(plan.smallMm) };
 
-  const codeBlock = (
-    <div
-      className="flex min-h-0 min-w-0 flex-col items-center justify-center"
-      // Доля своя, но сжаться блок обязан: текст выше по приоритету.
-      style={{ flex: `0 1 ${tpl.codeScale * 100}%` }}
-    >
-      <div className="flex min-h-0 w-full flex-1 items-center justify-center">
-        {tpl.codeType === "qr" ? (
-          <QrSvg code={code} fit showCode={false} />
-        ) : (
-          <Code128Svg code={code} fit />
-        )}
-      </div>
-      {has("code") && (
+  const numberBlock = show.number && (
+    <div className={cn("flex min-w-0 gap-[0.6mm]", horizontal ? "flex-col" : "items-start")}>
+      {horizontal && prefix && (
         <span
-          className="w-full shrink-0 truncate text-center font-mono font-semibold leading-none tracking-wide"
-          style={{ fontSize: px(9), paddingTop: px(2) }}
+          className="truncate font-mono leading-none text-neutral-600"
+          style={{ fontSize: MM(plan.prefixMm) }}
         >
-          {code}
+          {prefix}
         </span>
       )}
+      <span
+        className="min-w-0 flex-1 whitespace-nowrap font-mono font-bold leading-none tabular-nums"
+        style={{ fontSize: MM(plan.numberMm) }}
+      >
+        {number}
+      </span>
+      {!horizontal && prefix && (
+        <span
+          className="shrink-0 font-mono leading-none text-neutral-500"
+          style={{ fontSize: MM(plan.prefixMm), writingMode: "vertical-rl" }}
+        >
+          {prefix}
+        </span>
+      )}
+    </div>
+  );
+
+  const header = show.header && (
+    <div className="flex min-w-0 items-center gap-2" style={small}>
+      {has("logo") && tpl.logoUrl && (
+        <img
+          src={tpl.logoUrl}
+          alt=""
+          className="shrink-0 object-contain"
+          style={{ height: MM(plan.smallMm * 2) }}
+        />
+      )}
+      {has("title") && title && <span className="truncate font-bold uppercase">{title}</span>}
+    </div>
+  );
+
+  const infoBlock = info.length > 0 && (
+    <div className="flex min-w-0 flex-col leading-tight" style={{ fontSize: MM(plan.infoMm) }}>
+      {info.map((l, i) => (
+        <span key={i} className="whitespace-nowrap font-mono">
+          {l}
+        </span>
+      ))}
+    </div>
+  );
+
+  const headlineBlock = show.headline && headline && (
+    <span
+      className="min-w-0 font-bold leading-[1.1]"
+      style={{ fontSize: MM(plan.headlineMm), textWrap: "balance" }}
+    >
+      {headline}
+    </span>
+  );
+
+  // Нижняя строка по макету Кирилла: три колонки, серое — служебное.
+  const [dm, yr] = [
+    new Date().toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" }),
+    String(new Date().getFullYear()),
+  ];
+  const footer = show.footer && (
+    <div
+      className="grid min-w-0 grid-cols-[1fr_auto_1fr] items-end gap-x-1 leading-none"
+      style={small}
+    >
+      <span className="justify-self-start whitespace-nowrap tabular-nums text-neutral-500">
+        {show.seq && (
+          <>
+            <sup className="align-[0.4em] text-[0.85em]">{index}</sup>
+            <span className="text-[1.1em]">/</span>
+            {total}
+          </>
+        )}
+      </span>
+      <span className="justify-self-center">
+        {show.fragile && (
+          <span
+            className="flex items-center gap-[0.5mm] whitespace-nowrap border border-black uppercase"
+            style={{ padding: `${MM(plan.smallMm * 0.12)} ${MM(plan.smallMm * 0.3)}` }}
+          >
+            <span className="text-[0.75em]">⇈</span>
+            {t("labels.fragile")}
+            <span className="text-[0.75em]">⇈</span>
+          </span>
+        )}
+      </span>
+      <span className="justify-self-end text-right tabular-nums leading-[1.05] text-neutral-500">
+        {show.date && (
+          <>
+            {dm}
+            <br />
+            {yr}
+          </>
+        )}
+      </span>
     </div>
   );
 
@@ -154,27 +183,35 @@ export function LabelCard({
     <div
       className={cn(
         "print-label flex overflow-hidden border border-neutral-300 bg-white text-black",
-        horizontal ? "flex-row items-stretch gap-1" : "flex-col",
+        horizontal ? "flex-row" : "flex-col",
         className,
       )}
-      style={{ width: MM(tpl.widthMm), height: MM(tpl.heightMm), padding: pad }}
+      style={{
+        width: MM(tpl.widthMm),
+        height: MM(tpl.heightMm),
+        padding: MM(plan.padMm),
+        gap: MM(plan.gapMm),
+      }}
     >
-      {horizontal ? (
-        <>
-          {codeBlock}
-          {/* В строке у текста нет собственной ширины — без базиса он схлопнулся
-              бы в полоску, как только коду задали 100 %. Базис задаёт нижнюю
-              границу колонки, а сжимаются обе стороны пропорционально. */}
-          <div className="flex min-w-0 flex-col justify-center gap-0.5" style={{ flex: "1 1 38%" }}>
-            {info}
-          </div>
-        </>
-      ) : (
-        <>
-          <div className="flex w-full shrink-0 flex-col gap-0.5">{info}</div>
-          {codeBlock}
-        </>
-      )}
+      <div className="shrink-0" style={{ width: MM(plan.code.w), height: MM(plan.code.h) }}>
+        {tpl.codeType === "qr" ? (
+          <QrSvg code={code} fit showCode={false} quiet={0} />
+        ) : (
+          <Code128Svg code={code} fit />
+        )}
+      </div>
+      {/* Остаток делится «по краям»: номер вверху, служебная строка внизу,
+          а не всё в одну кучу посередине. */}
+      <div
+        className="flex min-h-0 min-w-0 flex-1 flex-col justify-between"
+        style={{ gap: MM(plan.smallMm * 0.5) }}
+      >
+        {header}
+        {headlineBlock}
+        {numberBlock}
+        {infoBlock}
+        {footer}
+      </div>
     </div>
   );
 }

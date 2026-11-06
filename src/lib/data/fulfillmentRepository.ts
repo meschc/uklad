@@ -28,6 +28,7 @@ export interface FulfillmentRepository {
   listEvents: () => Promise<Result<ReceivingEvent[]>>;
 
   createBox: () => Promise<Result<Box>>;
+  markLabelsPrinted: (kind: "box" | "pallet", codes: string[]) => Promise<Result<void>>;
   placeBox: (boxId: string, addr: CellAddress) => Promise<Result<void>>;
   createPallet: () => Promise<Result<Pallet>>;
   attachBox: (boxId: string, palletId: string) => Promise<Result<void>>;
@@ -57,6 +58,7 @@ export function createFulfillmentRepository(port: StorePort = storePort): Fulfil
       readList(() => port.get().receivingEvents, isReceivingEvent, "receivingEvents"),
 
     createBox: () => attempt(() => port.get().createBox()),
+    markLabelsPrinted: (kind, codes) => attempt(() => port.get().markLabelsPrinted(kind, codes)),
     placeBox: (boxId, addr) => attempt(() => port.get().placeBox(boxId, addr)),
     createPallet: () => attempt(() => port.get().createPallet()),
     attachBox: (boxId, palletId) => attempt(() => port.get().attachBoxToPallet(boxId, palletId)),
