@@ -204,6 +204,8 @@ export const ru = {
   "recv.pick.emptyTitle": "Ожидаемых поставок нет",
   "recv.pick.emptyBody":
     "Создайте поставку из выгрузки 1С, МойСклад или по универсальному шаблону — либо примите товар без сверки.",
+  "recv.pick.emptyBodyWorker":
+    "Поставку заводит старший смены. Как только она появится, она будет в этом списке.",
   "recv.pick.create": "Новая поставка",
   "recv.pick.freeform": "Принять без сверки",
   "recv.pick.freeformHint":
@@ -549,6 +551,8 @@ export const en: Record<keyof typeof ru, string> = {
   "recv.pick.emptyTitle": "No expected shipments",
   "recv.pick.emptyBody":
     "Create one from a 1C or MoySklad export, from the universal template — or receive goods without reconciliation.",
+  "recv.pick.emptyBodyWorker":
+    "A shift lead creates shipments. Once one appears, it will be listed here.",
   "recv.pick.create": "New shipment",
   "recv.pick.freeform": "Receive without reconciliation",
   "recv.pick.freeformHint":

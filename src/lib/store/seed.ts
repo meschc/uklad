@@ -1,5 +1,6 @@
 import { nowMs, uid } from "../utils";
 import { buildCatalog } from "../catalog";
+import { generateEan13 } from "../barcode";
 import type {
   Account,
   CategoryField,
@@ -665,6 +666,7 @@ export function seedWarehousePoor(): Warehouse {
     manager: { ...staff[0] },
     partners: [{ id: uid("ptn"), name: "ИП Сухарев В. П.", contact: "+7 921 411-06-90" }],
     spec: seedSpecPoor(),
+    ownCatalog: true,
     storageRatePerCell: 4,
     floors: [{ id: uid("floor"), name: "Этаж 1", modules }],
   };
@@ -725,6 +727,7 @@ export function seedWarehousePremium(): Warehouse {
       { id: uid("ptn"), name: "ООО «ДетскийМир Опт»", contact: "wh@dmopt.ru" },
     ],
     spec: seedSpecPremium(),
+    ownCatalog: true,
     storageRatePerCell: 38,
     floors: [
       floor("Этаж 1", cells),
@@ -756,3 +759,32 @@ export const SEED_FIELD_VALUES: { sku: string; field: string; value: string }[] 
   { sku: "УК-2005", field: "Гарантия, мес", value: "24" },
   { sku: "УК-2010", field: "Гарантия, мес", value: "12" },
 ];
+
+/**
+ * Свой товар для демо-складов, кроме первого. Общий каталог из 237 позиций
+ * лежит на активном складе; остальные склады видели его же, но с пустыми
+ * полками, и карточка показывала «0%» при сотнях товаров. Теперь у каждого
+ * свои позиции: копии части каталога со своим артикулом, штрихкодом,
+ * партнёром склада и `warehouseId`. Раскладывает их вызывающий (`autoPlace`).
+ */
+export function seedOwnProducts(
+  warehouse: Warehouse,
+  catalog: Product[],
+  skuPrefix: string,
+  count: number,
+  newId: () => string,
+): Product[] {
+  const partners = warehouse.partners ?? [];
+  // Берём через одного, чтобы в выборку попали все категории, а не первая.
+  const step = Math.max(1, Math.floor(catalog.length / count));
+  const picked: Product[] = [];
+  for (let i = 0; i < catalog.length && picked.length < count; i += step) picked.push(catalog[i]);
+  return picked.map((p, i) => ({
+    ...p,
+    id: newId(),
+    sku: p.sku.replace(/^[^-]*-/, `${skuPrefix}-`),
+    barcode: generateEan13(),
+    partnerId: partners.length ? partners[i % partners.length].id : undefined,
+    warehouseId: warehouse.id,
+  }));
+}
