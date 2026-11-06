@@ -40,6 +40,8 @@ const { whoseBadge, answerCheck, CHECKS_PER_MINUTE } = require("./deskBadges");
 const DESK_TTL_MS = 180 * 86_400_000;
 const DEVICE_RE = /^[A-Za-z0-9_-]{1,100}$/;
 const WRITES_PER_MINUTE = 30;
+// Вход по бейджу за столом живёт 12 часов — как `SESSION_TTL_MS` в браузере.
+const SHIFT_TTL_MS = 12 * 3_600_000;
 // Должности руководства — те же, что в кабинете (`MANAGER_ROLE`, lib/workstation.ts).
 const MANAGER_ROLE = /управля|заместител|руковод|директор|manager/i;
 
@@ -74,23 +76,92 @@ const byId = (list) =>
  * Журнал смен — основа зарплаты, поэтому со стола он только дописывается:
  * прежние записи остаются как были, новые добавляются в конец.
  */
-function appendOnly(current, incoming) {
+function appendOnly(current, incoming, allow = () => true) {
   const known = byId(current);
   const added = (Array.isArray(incoming) ? incoming : []).filter(
-    (x) => isObject(x) && typeof x.id === "string" && !known.has(x.id),
+    (x) => isObject(x) && typeof x.id === "string" && !known.has(x.id) && allow(x),
   );
   return [...(Array.isArray(current) ? current : []), ...added];
+}
+
+/**
+ * Кто за столом по данным сервера (миграция 012): `staff` — отсканировал
+ * бейдж и не ушёл, `prev` — стоял до него последние 10 минут (его отметки
+ * ещё могут догонять сервер). Руководитель ли — по должности в снимке.
+ */
+function deskPeople(current, who) {
+  const staff = Array.isArray(current?.warehouse?.staff) ? current.warehouse.staff : [];
+  const roleOf = (id) => String(staff.find((m) => isObject(m) && m.id === id)?.role ?? "");
+  const present = new Set([who?.staff, who?.prev].filter(Boolean));
+  return {
+    present,
+    staff: who?.staff ?? null,
+    isManager: Boolean(who?.staff) && MANAGER_ROLE.test(roleOf(who.staff)),
+  };
+}
+
+/** Порядок статуса заявки: назад со стола — только «в работе» → «новая». */
+const REQUEST_FLOW = ["new", "in_progress", "done", "shipped"];
+/** Что стол вправе менять в заявке: ход работы, а не её суть. */
+const REQUEST_WORK = [
+  "status",
+  "startedAt",
+  "pickedQty",
+  "partial",
+  "shipmentId",
+  "shippedAt",
+  "packedAt",
+  "packedBy",
+  "updatedAt",
+];
+
+/**
+ * Заявки со стола. Заявку заводит и отменяет продавец или руководитель, а
+ * не стол: новых и удалённых стол не делает. У существующей меняется только
+ * ход работы — статус, собрано, упаковано, уехало. Товар, количество,
+ * назначение, машина и бронь остаются как были: иначе за столом можно было
+ * бы «уменьшить» заказ под недостачу. Уехавшая и отменённая заявка не
+ * меняется вовсе. Упаковал — тот, кто за столом.
+ */
+function mergeRequests(current, incoming, people) {
+  if (!Array.isArray(incoming)) return current;
+  const next = byId(incoming);
+  return (Array.isArray(current) ? current : []).map((r) => {
+    const n = isObject(r) ? next.get(r.id) : undefined;
+    if (!n || r.status === "shipped" || r.status === "cancelled") return r;
+    const out = { ...r };
+    for (const f of REQUEST_WORK) {
+      if (f in n) out[f] = n[f];
+      else delete out[f];
+    }
+    const from = REQUEST_FLOW.indexOf(r.status);
+    const to = REQUEST_FLOW.indexOf(out.status);
+    const back = to < from && !(r.status === "in_progress" && out.status === "new");
+    if (to < 0 || back) out.status = r.status;
+    const qty = Number(r.qty) || 0;
+    if (out.pickedQty !== undefined) {
+      const picked = Number(out.pickedQty);
+      out.pickedQty = Number.isFinite(picked) ? Math.min(Math.max(0, picked), qty) : r.pickedQty;
+    }
+    if (out.packedBy !== r.packedBy && !people.present.has(out.packedBy)) {
+      out.packedBy = r.packedBy;
+      out.packedAt = r.packedAt;
+    }
+    return out;
+  });
 }
 
 /**
  * Спорное со стола: новое добавляется, открытое можно решить (старший решает
  * за столом), решённое не меняется — решение старшего не перепишешь.
  */
-function mergeDisputes(current, incoming) {
+function mergeDisputes(current, incoming, people) {
   const next = byId(incoming);
   const kept = (Array.isArray(current) ? current : []).map((d) => {
     const n = isObject(d) ? next.get(d.id) : undefined;
     if (!n || d.resolution || !n.resolution) return d;
+    // Решает руководитель, который сейчас за столом, и только от своего имени.
+    if (!people.isManager || n.resolvedBy !== people.staff) return d;
     return {
       ...d,
       resolution: n.resolution,
@@ -106,7 +177,8 @@ function mergeDisputes(current, incoming) {
     for (const f of ["resolution", "resolvedAt", "resolvedBy", "note"]) delete open[f];
     return open;
   });
-  return appendOnly(kept, fresh);
+  // Завести спорное может только тот, кто за столом.
+  return appendOnly(kept, fresh, (d) => people.present.has(d.raisedBy));
 }
 
 /** Чего стол не видит вовсе: переписка, подключения, чужие склады. */
@@ -147,14 +219,22 @@ function forDesk(data) {
   return out;
 }
 
-/** Запись стола: разрешённое — из запроса, остальное — из текущего снимка. */
-function mergeDeskWrite(current, incoming) {
+/**
+ * Запись стола: разрешённое — из запроса, остальное — из текущего снимка.
+ * `who` — кто за столом по данным сервера (`auth.desk_staff`): отметки смены
+ * и спорное принимаются только от него, заявки — только ходом работы.
+ */
+function mergeDeskWrite(current, incoming, who = {}) {
+  const people = deskPeople(current, who);
   const out = { ...current };
   for (const key of DESK_WRITES) {
     if (key in incoming) out[key] = incoming[key];
   }
-  out.staffEvents = appendOnly(current.staffEvents, incoming.staffEvents);
-  out.disputes = mergeDisputes(current.disputes, incoming.disputes);
+  out.requests = mergeRequests(current.requests, incoming.requests, people);
+  out.staffEvents = appendOnly(current.staffEvents, incoming.staffEvents, (e) =>
+    people.present.has(e.staffId),
+  );
+  out.disputes = mergeDisputes(current.disputes, incoming.disputes, people);
   return out;
 }
 
@@ -312,7 +392,11 @@ function createDesks({ auth, cfg, send, log }) {
       // другой — работа стола легла бы поверх чужого склада; пусть стол
       // сначала заберёт свежий снимок.
       if (data.warehouse?.id !== cur.data.warehouse?.id) return { conflict: cur.version };
-      const merged = JSON.stringify(mergeDeskWrite(cur.data, data));
+      const people = await c.query(`SELECT staff_ref, prev_staff_ref FROM auth.desk_staff($1)`, [
+        deskHash(req),
+      ]);
+      const who = { staff: people.rows[0]?.staff_ref, prev: people.rows[0]?.prev_staff_ref };
+      const merged = JSON.stringify(mergeDeskWrite(cur.data, data, who));
       const upd = await c.query(
         `UPDATE uklad.cabinet_snapshots
          SET previous = data, data = $1::jsonb, format = $2, version = version + 1,
@@ -336,11 +420,32 @@ function createDesks({ auth, cfg, send, log }) {
     if (!b) return;
     const out = await withDesk(req, async (c, d) => {
       if (!checks.take(d.orgId)) return { limited: true };
-      return { staffRef: await whoseBadge(c, b.code) };
+      const staffRef = await whoseBadge(c, b.code);
+      // Узнанный бейдж — это «встал за стол»: дальше запись стола сверяется
+      // с ним 12 часов, как и вход по бейджу в браузере.
+      if (staffRef) {
+        await c.query(`SELECT auth.desk_set_staff($1, $2, $3::interval)`, [
+          deskHash(req),
+          staffRef,
+          `${SHIFT_TTL_MS / 1000} seconds`,
+        ]);
+      }
+      return { staffRef };
     });
     if (!out) return gone(res);
     if (out.limited) return limited(res);
     return answerCheck(res, send, out.staffRef);
+  }
+
+  /** Сотрудник вышел со стола: его отметки дальше не принимаются. */
+  async function leave(req, res) {
+    const out = await withDesk(req, async (c) => {
+      await c.query(`SELECT auth.desk_set_staff($1, NULL, '0 seconds'::interval)`, [deskHash(req)]);
+      return true;
+    });
+    // Пропуск погашен — уходить уже неоткуда; 401 тут ничего бы не добавил.
+    if (!out) return send(res, 200, { ok: true, desk: false });
+    return send(res, 200, { ok: true });
   }
 
   async function unbind(req, res) {
@@ -377,6 +482,7 @@ function createDesks({ auth, cfg, send, log }) {
     "POST /api/cabinet/snapshot": saveSnapshot,
     "POST /api/cabinet/badges/check": checkBadge,
     "POST /api/desk/unbind": unbind,
+    "POST /api/desk/leave": leave,
   };
   // Куда стол не ходит: весь кабинет. Заявки с витрины и демо — не наши.
   const CABINET = /^\/api\/(auth|cabinet|staff|chat|telegram|desk|company|account)\//;

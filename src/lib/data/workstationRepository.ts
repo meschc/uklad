@@ -60,7 +60,13 @@ export function createWorkstationRepository(
       if (!res.ok) return res;
       return res.data ? ok(res.data) : fail("ws.badgeUnknown");
     },
-    logout: () => attempt(() => port.get().stationLogout()),
+    logout: async () => {
+      // На сервере стол сначала говорит «я ушёл»: иначе его отметки ещё
+      // 12 часов принимались бы за этого сотрудника. Сбой связи выход не
+      // держит — человек уходит от стола в любом случае.
+      if (onServer(port)) await desks.leave();
+      return attempt(() => port.get().stationLogout());
+    },
     mark: async (type, reason) => {
       const res = await attempt(() => port.get().markShift(type, reason));
       if (!res.ok) return res;
