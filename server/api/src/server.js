@@ -469,6 +469,8 @@ function main() {
     setInterval(account.purge, DAY_MS).unref();
     const { createSnapshot } = require("./cabinet/snapshot");
     const snapshot = createSnapshot({ auth, send, log: console });
+    const { createDeskBadges } = require("./cabinet/deskBadges");
+    const deskBadges = createDeskBadges({ auth, send, log: console });
     // Реквизиты по ИНН: без DADATA_API_KEY маршрут отвечает 503, профиль
     // сохраняет ИНН и пишет, что справочник не подключён.
     const { createCompanyLookup } = require("./cabinet/company");
@@ -483,6 +485,7 @@ function main() {
         (await auth.handle(req, res, url)) ||
         (await account.handle(req, res, url)) ||
         (await snapshot.handle(req, res, url)) ||
+        (await deskBadges.handle(req, res, url)) ||
         (await company.handle(req, res, url)) ||
         (await chat.handle(req, res, url)) ||
         (await telegram.handle(req, res, url)),

@@ -5,7 +5,6 @@ import { groupRequestsByTarget } from "@/lib/fulfillment";
 import { isLoadUnit, parseVehicle, vehicleCode } from "@/lib/barcode";
 import { beep } from "@/lib/beep";
 import type { FulfillmentRequest } from "@/lib/types";
-import { DEMO_BADGES } from "@/lib/workstation";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -15,6 +14,7 @@ import { QrSvg } from "@/components/table/QrSvg";
 import { EmptyState } from "@/components/fulfillment/ScreenShell";
 import { ScanField } from "@/components/fulfillment/ScanField";
 import { ScanBanner, type BannerTone } from "./ScanBanner";
+import { useDemoHints } from "./useDemoHints";
 
 /**
  * Отгрузка за столом: собранные заявки одного назначения уезжают одной
@@ -96,6 +96,7 @@ function ShipGroup({
   items: FulfillmentRequest[];
   staffId: string;
 }) {
+  const demoHints = useDemoHints();
   const t = useT();
   const products = useEditor((s) => s.products);
   const boxes = useEditor((s) => s.boxes);
@@ -172,7 +173,7 @@ function ShipGroup({
       />
       <ScanBanner tone={banner.tone}>{banner.tone === "idle" ? idle : banner.text}</ScanBanner>
 
-      {DEMO_BADGES && demo.length > 0 && (
+      {demoHints && demo.length > 0 && (
         <div className="flex flex-col gap-2">
           <p className="text-xs text-muted-foreground">
             <span className="font-semibold text-foreground">{t("ws.demo.title")}</span> ·{" "}

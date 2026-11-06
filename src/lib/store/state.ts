@@ -701,6 +701,8 @@ export interface WorkstationSlice {
   revokeDevice: (id: string) => void;
   /** Отвязать этот браузер — только по бейджу руководителя, иначе null. */
   unbindThisDevice: (managerBadge: string) => boolean;
+  /** То же по сотруднику, которого назвал сервер по бейджу. */
+  unbindAs: (staffId: string) => boolean;
   /**
    * Журнал сотрудников: отметки смены, сканы и упаковки (узел cab-staff-log).
    * Время упаковки каждой штуки по сотруднику — это контроль выработки, то есть
@@ -716,6 +718,8 @@ export interface WorkstationSlice {
    * принадлежит никому из персонала активного склада.
    */
   badgeLogin: (code: string, station: WorkstationKind) => string | null;
+  /** Открыть вход за сотрудника, которого назвал сервер по бейджу; чужой — null. */
+  openStation: (staffId: string, station: WorkstationKind) => string | null;
   stationLogout: () => void;
   /**
    * Отметка смены вошедшего сотрудника. Недопустимый переход (перерыв без

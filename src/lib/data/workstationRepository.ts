@@ -1,5 +1,6 @@
 import type { ItemScan } from "../packing";
 import type { Device, IdleReason, ShiftMark, StaffEvent, WorkstationKind } from "../types";
+import { onServer, serverBadges, type BadgeServer } from "./badgeRepository";
 import { isStaffEvent } from "./guards";
 import { readList, storePort, type StorePort } from "./repository";
 import { attempt, fail, ok, type Result } from "./result";
@@ -35,13 +36,24 @@ export interface WorkstationRepository {
   packFinish: () => Promise<Result<void>>;
 }
 
-export function createWorkstationRepository(port: StorePort = storePort): WorkstationRepository {
+export function createWorkstationRepository(
+  port: StorePort = storePort,
+  badges: BadgeServer = serverBadges,
+): WorkstationRepository {
+  // На сервере код проверяет сервер (секрет, а не id), и срез получает уже
+  // сотрудника; в демо срез разбирает код сам.
   return {
     events: async (staffId) => {
       const all = await readList(() => port.get().staffEvents, isStaffEvent, "staffEvents");
       return all.ok ? ok(all.data.filter((e) => e.staffId === staffId)) : all;
     },
     login: async (code, station) => {
+      if (onServer(port)) {
+        const who = await badges.check(code);
+        if (!who.ok) return who;
+        const id = who.data && port.get().openStation(who.data, station);
+        return id ? ok(id) : fail("ws.badgeUnknown");
+      }
       const res = await attempt(() => port.get().badgeLogin(code, station));
       if (!res.ok) return res;
       return res.data ? ok(res.data) : fail("ws.badgeUnknown");
@@ -63,6 +75,13 @@ export function createWorkstationRepository(port: StorePort = storePort): Workst
     },
     revokeDevice: (id) => attempt(() => port.get().revokeDevice(id)),
     unbindDevice: async (code) => {
+      if (onServer(port)) {
+        const who = await badges.check(code);
+        if (!who.ok) return who;
+        return who.data && port.get().unbindAs(who.data)
+          ? ok(undefined)
+          : fail("ws.device.notManager");
+      }
       const res = await attempt(() => port.get().unbindThisDevice(code));
       if (!res.ok) return res;
       return res.data ? ok(undefined) : fail("ws.device.notManager");

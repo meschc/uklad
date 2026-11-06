@@ -236,7 +236,7 @@ export function StaffScreen() {
                   <th className="px-3 py-2 text-right font-medium">{t("staff.wlUnits")}</th>
                   <th className="px-3 py-2 text-right font-medium">{t("staff.wlTrips")}</th>
                   <th className="px-3 py-2 font-medium">{t("staff.wlLast")}</th>
-                  <th className="w-10 px-3 py-2" />
+                  <th className="w-20 px-3 py-2" />
                 </tr>
               </thead>
               <tbody>

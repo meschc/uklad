@@ -1,13 +1,14 @@
 import { useState } from "react";
-import { AtSign, Check, Phone, Trash2, UserRound } from "lucide-react";
+import { AtSign, Check, IdCard, Phone, Trash2, UserRound } from "lucide-react";
 import type { StaffMember } from "@/lib/types";
 import type { StaffWorkload } from "@/lib/fulfillment";
 import { useEditor } from "@/lib/store";
-import { staffRepository } from "@/lib/data";
+import { badgeRepository, staffRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
 import type { TFunc } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { PersonForm, draftToMember, type PersonDraft } from "./PersonForm";
+import { BadgePanel } from "./BadgePanel";
 
 /**
  * Строка сотрудника: просмотр, правка на месте, удаление.
@@ -52,7 +53,14 @@ export function StaffRow({
   const save = useCommand((patch: Partial<Omit<StaffMember, "id">>) =>
     staffRepository.update(m.id, patch),
   );
-  const remove = useCommand(() => staffRepository.remove(m.id));
+  // Ушедший сотрудник не должен входить за стол старым бейджем: на сервере
+  // бейдж гаснет до удаления, и если погасить не вышло, человек остаётся.
+  const remove = useCommand(async () => {
+    const off = await badgeRepository.revoke(m.id);
+    return off.ok ? staffRepository.remove(m.id) : off;
+  });
+  const issue = useCommand(() => badgeRepository.issue(m.id));
+  const [badge, setBadge] = useState<string | null>(null);
 
   const submit = async () => {
     const res = await save.run(draftToMember(form));
@@ -147,18 +155,34 @@ export function StaffRow({
         {load?.lastAt ? new Date(load.lastAt).toLocaleDateString() : t("staff.wlNever")}
       </td>
       <td className="px-3 py-2">
-        <button
-          onClick={async () => {
-            const res = await remove.run();
-            if (!res.ok) showToast(res.error);
-          }}
-          disabled={remove.pending}
-          title={t("staff.remove")}
-          aria-label={t("staff.remove")}
-          className="flex size-7 items-center justify-center rounded text-muted-foreground opacity-0 transition hover:text-destructive focus-visible:opacity-100 disabled:pointer-events-none disabled:opacity-30 group-hover:opacity-100"
-        >
-          <Trash2 className="size-3.5" />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={async () => {
+              const res = await issue.run();
+              if (res.ok) setBadge(res.data);
+              else showToast(res.error);
+            }}
+            disabled={issue.pending}
+            title={t("staff.badge.issue")}
+            aria-label={t("staff.badge.issue")}
+            className="flex size-7 items-center justify-center rounded text-muted-foreground transition hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
+          >
+            <IdCard className="size-3.5" />
+          </button>
+          {badge && <BadgePanel member={m} code={badge} onClose={() => setBadge(null)} t={t} />}
+          <button
+            onClick={async () => {
+              const res = await remove.run();
+              if (!res.ok) showToast(res.error);
+            }}
+            disabled={remove.pending}
+            title={t("staff.remove")}
+            aria-label={t("staff.remove")}
+            className="flex size-7 items-center justify-center rounded text-muted-foreground opacity-0 transition hover:text-destructive focus-visible:opacity-100 disabled:pointer-events-none disabled:opacity-30 group-hover:opacity-100"
+          >
+            <Trash2 className="size-3.5" />
+          </button>
+        </div>
       </td>
     </tr>
   );
