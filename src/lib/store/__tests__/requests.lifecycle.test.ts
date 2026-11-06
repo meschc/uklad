@@ -292,6 +292,38 @@ describe("shipRequests", () => {
     });
   });
 
+  it("записывает в рейс паллеты и короба, которые погрузили", () => {
+    // Arrange
+    const store = makeRequestsStore({
+      requests: [makeRequest({ id: "r1", productId: "p1", qty: 1, status: "done", note: "Тула" })],
+      shipments: [],
+      showToast: vi.fn(),
+    });
+
+    // Act
+    store
+      .getState()
+      .shipRequests(["r1"], { vehicle: "А123ВС", units: ["UK-PLT-000001", "UK-BOX-000002"] });
+
+    // Assert
+    expect(store.getState().shipments[0].units).toEqual(["UK-PLT-000001", "UK-BOX-000002"]);
+  });
+
+  it("без погрузки по кодам поле units не появляется", () => {
+    // Arrange
+    const store = makeRequestsStore({
+      requests: [makeRequest({ id: "r1", productId: "p1", qty: 1, status: "done" })],
+      shipments: [],
+      showToast: vi.fn(),
+    });
+
+    // Act
+    store.getState().shipRequests(["r1"], { vehicle: "А123ВС", units: [] });
+
+    // Assert
+    expect(store.getState().shipments[0].units).toBeUndefined();
+  });
+
   it("возвращает null и не создаёт рейс, когда отгружать нечего", () => {
     // Arrange
     const showToast = vi.fn();

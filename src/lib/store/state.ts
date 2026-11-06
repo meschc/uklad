@@ -569,7 +569,7 @@ export interface RequestsSlice {
    */
   shipRequests: (
     requestIds: string[],
-    info?: { vehicle?: string; staffId?: string },
+    info?: { vehicle?: string; staffId?: string; units?: string[] },
   ) => string | null;
 }
 
