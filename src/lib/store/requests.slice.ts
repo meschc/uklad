@@ -1,7 +1,17 @@
 import { nowMs, uid } from "../utils";
 import { addressKey } from "../address";
-import type { FulfillmentRequest, Shipment } from "../types";
+import { isOrderSource, type FulfillmentRequest, type Shipment } from "../types";
 import type { RequestsSlice, SliceCreator } from "./state";
+
+const MAX_EXTERNAL_ID = 64;
+
+function orderOrigin(
+  source: unknown,
+  externalId: string | undefined,
+): Pick<FulfillmentRequest, "source" | "externalId"> {
+  if (!isOrderSource(source) || source === "manual") return {};
+  return { source, externalId: externalId?.trim().slice(0, MAX_EXTERNAL_ID) || undefined };
+}
 
 /**
  * Заявки продавца на отгрузку и переключатель роли.
@@ -38,6 +48,10 @@ export const createRequestsSlice: SliceCreator<RequestsSlice> = (set, get) => ({
         qty: Math.max(1, Math.round(it.qty)),
         note: it.note?.trim() || undefined,
         vehicle: it.vehicle?.trim() || undefined,
+        // «Своя» заявка источника не хранит: пусто и значит «вручную». Номер
+        // заказа живёт только вместе с принятой площадкой и не длиннее 64
+        // знаков: он уходит в снимок компании и в localStorage.
+        ...orderOrigin(it.source, it.externalId),
         truckDate,
         status: "new",
         createdAt: now,

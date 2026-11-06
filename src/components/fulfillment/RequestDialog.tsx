@@ -4,11 +4,13 @@ import { X } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { requestsRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
-import { canReserve, stockByProduct } from "@/lib/fulfillment";
-import { useT } from "@/lib/i18n";
+import { canReserve, findDuplicateOrder, stockByProduct } from "@/lib/fulfillment";
+import { useT, type MsgKey } from "@/lib/i18n";
 import { matchesQuery, normalizeQuery } from "@/lib/productSearch";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
+import { Segmented } from "@/components/ui/segmented";
+import { ORDER_SOURCES, type OrderSource } from "@/lib/types";
 import { Modal, Field } from "./Modal";
 
 /** Сколько подсказок показываем: список под полем, а не второй каталог. */
@@ -44,6 +46,8 @@ export function RequestDialog({
   const [query, setQuery] = useState("");
   const [note, setNote] = useState("");
   const [vehicle, setVehicle] = useState("");
+  const [source, setSource] = useState<OrderSource>("manual");
+  const [externalId, setExternalId] = useState("");
   const [truck, setTruck] = useState("");
 
   const chosen = new Set(lines.map((l) => l.productId));
@@ -61,6 +65,7 @@ export function RequestDialog({
   // поставку — вопрос, который решается до создания заявки, а не после.
   const stock = useMemo(() => stockByProduct(placements, boxes), [placements, boxes]);
   const short = lines.filter((l) => (stock.get(l.productId)?.qty ?? 0) < qtyOf(l.qty));
+  const duplicate = findDuplicateOrder(requests, source, externalId);
   const reservable = short.some((l) => canReserve(l.productId, qtyOf(l.qty), shipments, requests));
 
   // Создание идёт через репозиторий, а не через действие стора напрямую: это и
@@ -73,6 +78,8 @@ export function RequestDialog({
         qty: qtyOf(l.qty),
         note: note.trim() || undefined,
         vehicle: vehicle.trim() || undefined,
+        source,
+        externalId: source === "manual" ? undefined : externalId.trim() || undefined,
       })),
       truck ? new Date(truck).getTime() : undefined,
     );
@@ -215,6 +222,34 @@ export function RequestDialog({
 
       {/* Машину часто организует сам продавец — тогда складу не нужно
           выяснять номер по телефону в момент погрузки. */}
+      <Field label={t("seller.source")}>
+        <Segmented
+          size="md"
+          value={source}
+          onChange={setSource}
+          ariaLabel={t("seller.source")}
+          options={ORDER_SOURCES.map((s) => ({
+            value: s,
+            label: t(`order.source.${s}` as MsgKey),
+          }))}
+        />
+      </Field>
+      {source !== "manual" && (
+        <Field label={t("seller.externalId")}>
+          <Input
+            value={externalId}
+            onChange={(e) => setExternalId(e.target.value)}
+            placeholder={t("seller.externalIdPlaceholder")}
+            className="h-9"
+          />
+          {duplicate && (
+            <p role="alert" className="mt-1 text-xs text-orange-600">
+              {t("seller.externalIdDuplicate")}
+            </p>
+          )}
+        </Field>
+      )}
+
       <Field label={t("seller.vehicle")}>
         <Input
           value={vehicle}
