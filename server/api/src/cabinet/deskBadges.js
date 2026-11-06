@@ -37,6 +37,30 @@ const sha256 = (s) => createHash("sha256").update(s).digest();
 /** Тот же круг, что у снимка: персонал и журнал смен видит руководитель. */
 const mayUse = (ctx) => Boolean(ctx.accountId) && ctx.can("staff.manage");
 
+/**
+ * Чей бейдж внутри текущей компании транзакции: id сотрудника или `null`.
+ * Регистр префикса не важен — дешёвые сканеры его меняют; секрет — как есть.
+ * Общий для руководителя (кабинет) и стола (`desks.js`).
+ */
+async function whoseBadge(c, code) {
+  const raw = String(code ?? "").trim();
+  const secret = raw.toUpperCase().startsWith(BADGE_PREFIX) ? raw.slice(BADGE_PREFIX.length) : "";
+  if (!SECRET_RE.test(secret)) return null;
+  const { rows } = await c.query(
+    `SELECT staff_ref FROM uklad.desk_badges
+     WHERE org_id = uklad.current_org() AND secret_hash = $1 AND revoked_at IS NULL`,
+    [sha256(secret)],
+  );
+  return rows[0]?.staff_ref ?? null;
+}
+
+/** Ответ проверки: чужой или погашенный — 404, а не 401: сессия жива. */
+function answerCheck(res, send, staffRef) {
+  return staffRef
+    ? send(res, 200, { ok: true, staffRef })
+    : send(res, 404, { ok: false, error: "bad_badge" });
+}
+
 function createDeskBadges({ auth, send, log }) {
   const { withSession, readJson } = auth;
   const checks = createRateLimit({
@@ -98,25 +122,12 @@ function createDeskBadges({ auth, send, log }) {
   async function check(req, res) {
     const b = await readJson(req, res);
     if (!b) return;
-    const raw = String(b.code ?? "").trim();
-    // Регистр префикса не важен: дешёвые сканеры его меняют. Секрет — как есть.
-    const secret = raw.toUpperCase().startsWith(BADGE_PREFIX) ? raw.slice(BADGE_PREFIX.length) : "";
     const out = await withSession(req, async (c, ctx) => {
       if (!mayUse(ctx)) return FORBIDDEN;
       if (!checks.take(ctx.orgId)) return LIMITED;
-      if (!SECRET_RE.test(secret)) return { staffRef: null };
-      const { rows } = await c.query(
-        `SELECT staff_ref FROM uklad.desk_badges
-         WHERE org_id = uklad.current_org() AND secret_hash = $1 AND revoked_at IS NULL`,
-        [sha256(secret)],
-      );
-      return { staffRef: rows[0]?.staff_ref ?? null };
+      return { staffRef: await whoseBadge(c, b.code) };
     });
-    return reply(res, out, (r) =>
-      r.staffRef
-        ? send(res, 200, { ok: true, staffRef: r.staffRef })
-        : send(res, 404, { ok: false, error: "bad_badge" }),
-    );
+    return reply(res, out, (r) => answerCheck(res, send, r.staffRef));
   }
 
   const routes = {
@@ -141,4 +152,4 @@ function createDeskBadges({ auth, send, log }) {
   return { handle };
 }
 
-module.exports = { createDeskBadges, BADGE_PREFIX };
+module.exports = { createDeskBadges, whoseBadge, answerCheck, BADGE_PREFIX, CHECKS_PER_MINUTE };

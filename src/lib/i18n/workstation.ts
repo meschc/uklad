@@ -99,7 +99,7 @@ export const ru = {
     "Компьютеры и ТСД у рабочих мест. На привязанном устройстве открыт только вход по бейджу — без кабинета и левого меню.",
   "devices.bindTitle": "Привязать этот компьютер",
   "devices.bindHint":
-    "Заведите устройство, сидя за ним: этот браузер сразу станет рабочим местом, а отвязать его можно только бейджем руководителя.",
+    "Заведите устройство, сидя за ним: этот браузер сразу станет рабочим местом. Ваш вход в кабинет на нём закончится — дальше здесь входят только по бейджам, а отвязать стол можно бейджем руководителя.",
   "devices.name": "Название",
   "devices.namePlaceholder": "Упаковка, стол 3",
   "devices.station": "Рабочее место",
@@ -374,7 +374,7 @@ export const en: Record<keyof typeof ru, string> = {
     "Computers and handhelds at workstations. A bound device only shows badge sign-in — no cabinet, no side menu.",
   "devices.bindTitle": "Bind this computer",
   "devices.bindHint":
-    "Add the device while sitting at it: this browser becomes a workstation right away, and only a manager's badge can unbind it.",
+    "Add the device while sitting at it: this browser becomes a workstation right away. Your account signs out on it — from then on people sign in with badges only, and a manager's badge unbinds it.",
   "devices.name": "Name",
   "devices.namePlaceholder": "Packing, desk 3",
   "devices.station": "Workstation",
