@@ -8,9 +8,9 @@
  *   · узнать сотрудника по бейджу;
  *   · прочитать снимок кабинета без ставок, контактов, подключений, переписки
  *     и чужих складов;
- *   · записать работу склада: всё, что стол менять не вправе (персонал, план,
- *     цены, тариф, подключения, другие склады), сервер берёт из текущего
- *     снимка, а не из запроса;
+ *   · записать работу склада по разрешённому списку (`DESK_WRITES`); журнал
+ *     смен только дописывается, решённое спорное не меняется, всё прочее
+ *     сервер берёт из текущего снимка;
  *   · отвязаться бейджем руководителя.
  * Остальные маршруты кабинета со столом отвечают 403 — не 401, чтобы стол не
  * принял это за потерю входа.
@@ -44,35 +44,75 @@ const WRITES_PER_MINUTE = 30;
 const MANAGER_ROLE = /управля|заместител|руковод|директор|manager/i;
 
 /**
- * Части снимка, которые стол не меняет: при записи сервер берёт их из
- * текущего снимка. `warehouse` — это план, персонал со ставками и паспорт
- * склада; работа склада (тара, заявки, рейсы, журнал смен) лежит рядом.
+ * Что стол вправе записать — разрешённый список, а не запретный: новый домен
+ * кабинета для стола закрыт, пока его сюда не впишут. Это работа склада у
+ * стола: приёмка, тара, паллеты, сборка (заявки, остатки в ячейках), рейсы,
+ * задания. Всё остальное — персонал и план (`warehouse`), товары и их
+ * продавцы, документы, цены, тариф, подключения, другие склады — сервер
+ * берёт из текущего снимка.
  */
-const KEEP_ON_WRITE = [
-  "warehouse",
-  "otherWarehouses",
-  "warehouseData",
-  "activeFloorId",
-  "categories",
-  "categoryFields",
-  "templates",
-  "layoutTemplates",
-  "account",
-  "addressing",
-  "chats",
-  "integrations",
-  "labelTemplates",
-  "breakPolicy",
-  "devices",
-  "serviceSettings",
-  "subscription",
+const DESK_WRITES = [
+  "expectedShipments",
+  "receivingEvents",
+  "boxes",
+  "pallets",
+  "boxSeq",
+  "palletSeq",
+  "receiving",
+  "requests",
+  "shipments",
+  "tasks",
+  "placements",
 ];
+
+const byId = (list) =>
+  new Map((Array.isArray(list) ? list : []).filter(isObject).map((x) => [x.id, x]));
+
+/**
+ * Журнал смен — основа зарплаты, поэтому со стола он только дописывается:
+ * прежние записи остаются как были, новые добавляются в конец.
+ */
+function appendOnly(current, incoming) {
+  const known = byId(current);
+  const added = (Array.isArray(incoming) ? incoming : []).filter(
+    (x) => isObject(x) && typeof x.id === "string" && !known.has(x.id),
+  );
+  return [...(Array.isArray(current) ? current : []), ...added];
+}
+
+/**
+ * Спорное со стола: новое добавляется, открытое можно решить (старший решает
+ * за столом), решённое не меняется — решение старшего не перепишешь.
+ */
+function mergeDisputes(current, incoming) {
+  const next = byId(incoming);
+  const kept = (Array.isArray(current) ? current : []).map((d) => {
+    const n = isObject(d) ? next.get(d.id) : undefined;
+    if (!n || d.resolution || !n.resolution) return d;
+    return {
+      ...d,
+      resolution: n.resolution,
+      resolvedAt: n.resolvedAt,
+      resolvedBy: n.resolvedBy,
+      note: n.note,
+    };
+  });
+  return appendOnly(kept, incoming);
+}
 
 /** Чего стол не видит вовсе: переписка, подключения, чужие склады. */
 const HIDE_ON_READ = { chats: {}, integrations: {}, otherWarehouses: [], warehouseData: {} };
 
 const sha256 = (s) => createHash("sha256").update(s).digest();
 const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
+
+/** Продавец для стола: имя без контакта. */
+function deskPartner(p) {
+  if (!isObject(p)) return p;
+  const out = { ...p };
+  delete out.contact;
+  return out;
+}
 
 /** Сотрудник для стола: имя, должность и фото — без ставки и контактов. */
 function deskStaff(m) {
@@ -87,19 +127,25 @@ function deskStaff(m) {
 /** Снимок глазами стола. */
 function forDesk(data) {
   const out = { ...data, ...HIDE_ON_READ };
-  if (isObject(data.warehouse) && Array.isArray(data.warehouse.staff)) {
-    out.warehouse = { ...data.warehouse, staff: data.warehouse.staff.map(deskStaff) };
+  if (isObject(data.warehouse)) {
+    const w = data.warehouse;
+    out.warehouse = {
+      ...w,
+      ...(Array.isArray(w.staff) ? { staff: w.staff.map(deskStaff) } : {}),
+      ...(Array.isArray(w.partners) ? { partners: w.partners.map(deskPartner) } : {}),
+    };
   }
   return out;
 }
 
-/** Запись стола: работа склада из запроса, остальное — из текущего снимка. */
+/** Запись стола: разрешённое — из запроса, остальное — из текущего снимка. */
 function mergeDeskWrite(current, incoming) {
-  const out = { ...incoming };
-  for (const key of KEEP_ON_WRITE) {
-    if (key in current) out[key] = current[key];
-    else delete out[key];
+  const out = { ...current };
+  for (const key of DESK_WRITES) {
+    if (key in incoming) out[key] = incoming[key];
   }
+  out.staffEvents = appendOnly(current.staffEvents, incoming.staffEvents);
+  out.disputes = mergeDisputes(current.disputes, incoming.disputes);
   return out;
 }
 
@@ -261,10 +307,10 @@ function createDesks({ auth, cfg, send, log }) {
       const upd = await c.query(
         `UPDATE uklad.cabinet_snapshots
          SET previous = data, data = $1::jsonb, format = $2, version = version + 1,
-             updated_at = now(), updated_by = NULL
+             updated_at = now(), updated_by = NULL, updated_by_desk = $3
          WHERE org_id = uklad.current_org()
          RETURNING version`,
-        [merged, format],
+        [merged, format, d.deskId],
       );
       return { version: upd.rows[0].version };
     });
@@ -350,4 +396,4 @@ function createDesks({ auth, cfg, send, log }) {
   return { handle, cookieName: COOKIE };
 }
 
-module.exports = { createDesks, forDesk, mergeDeskWrite, KEEP_ON_WRITE };
+module.exports = { createDesks, forDesk, mergeDeskWrite, DESK_WRITES };

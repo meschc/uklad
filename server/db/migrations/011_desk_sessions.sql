@@ -31,6 +31,10 @@ CREATE TABLE auth.desk_sessions (
 CREATE UNIQUE INDEX desk_sessions_one_live ON auth.desk_sessions (org_id, device_ref)
   WHERE revoked_at IS NULL;
 
+-- Какой стол записал снимок последним: `updated_by` — сотрудник, у стола
+-- его нет. Руководитель, записав снимок, это поле очищает.
+ALTER TABLE uklad.cabinet_snapshots ADD COLUMN updated_by_desk uuid;
+
 -- Сделать стол. Компанию и руководителя берём из транзакции: их поставил
 -- `auth.resolve` по сессии с паролем, а право staff.manage проверил сервер.
 CREATE FUNCTION auth.open_desk(p_device text, p_name text, p_token bytea, p_ttl interval)
@@ -61,9 +65,15 @@ BEGIN
   SELECT x.* INTO d FROM auth.desk_sessions x
   WHERE x.token_hash = p_token AND x.revoked_at IS NULL AND x.expires_at > now();
   IF NOT FOUND THEN RETURN; END IF;
+  -- Компания видна только из неё самой (RLS), поэтому сначала ставим её, а
+  -- потом проверяем: удалённая компания (009) гасит и свои столы.
+  PERFORM set_config('app.org_id', d.org_id::text, true);
+  IF NOT EXISTS (SELECT 1 FROM uklad.orgs o WHERE o.id = d.org_id AND o.deleted_at IS NULL) THEN
+    PERFORM set_config('app.org_id', '', true);
+    RETURN;
+  END IF;
   UPDATE auth.desk_sessions x SET last_seen_at = now()
   WHERE x.id = d.id AND x.last_seen_at < now() - interval '1 minute';
-  PERFORM set_config('app.org_id', d.org_id::text, true);
   RETURN QUERY SELECT d.id, d.org_id, d.device_ref;
 END $$;
 

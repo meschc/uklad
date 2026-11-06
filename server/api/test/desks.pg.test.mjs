@@ -105,7 +105,19 @@ const staff = () => [
   { id: "stf-ivan", name: "Иван", role: "Упаковщик", hourlyRate: 300, email: "i@x.ru" },
 ];
 const cabinetData = () => ({
-  warehouse: { id: "wh_1", name: "Мезонин", staff: staff() },
+  warehouse: {
+    id: "wh_1",
+    name: "Мезонин",
+    staff: staff(),
+    partners: [{ id: "p1", name: "ООО Ромашка", contact: "+7 999 000-00-00" }],
+  },
+  products: [{ id: "pr1", partnerId: "p1" }],
+  docRecords: [{ id: "d1", kind: "shipment", confirmed: true }],
+  staffEvents: [{ id: "e1", staffId: "stf-ivan", type: "shift_start", at: 1 }],
+  disputes: [
+    { id: "q1", kind: "shortage", resolution: "returned" },
+    { id: "q2", kind: "extra" },
+  ],
   otherWarehouses: [{ id: "wh_2", name: "Второй", staff: staff() }],
   boxes: [{ id: "b1" }],
   chats: { c1: { text: "секрет" } },
@@ -166,6 +178,8 @@ test("стол: вход руководителя гаснет, стол вид�
     assert.equal(m.phone, undefined);
     assert.equal(m.email, undefined);
   }
+  assert.equal(snap.data.warehouse.partners[0].contact, undefined);
+  assert.equal(snap.data.warehouse.partners[0].name, "ООО Ромашка");
   assert.deepEqual(snap.data.chats, {});
   assert.deepEqual(snap.data.otherWarehouses, []);
 
@@ -186,6 +200,20 @@ test("стол пишет работу склада, но не персонал,
     boxes: [{ id: "b1" }, { id: "b2" }],
     chats: {},
     subscription: { plan: "operator" },
+    // Товар продавца p1 перекинут другому, документ «исправлен».
+    products: [{ id: "pr1", partnerId: "p2" }],
+    docRecords: [],
+    // Часы смены переписаны, плюс честная новая отметка.
+    staffEvents: [
+      { id: "e1", staffId: "stf-ivan", type: "shift_start", at: 999 },
+      { id: "e2", staffId: "stf-ivan", type: "break_start", at: 2 },
+    ],
+    // Решённое спорное «перерешено», открытое решено, добавлено новое.
+    disputes: [
+      { id: "q1", kind: "shortage", resolution: "written_off" },
+      { id: "q2", kind: "extra", resolution: "moved", resolvedBy: "stf-boss" },
+      { id: "q3", kind: "not_in_tote" },
+    ],
   };
   const saved = await call("/api/cabinet/snapshot", {
     desk,
@@ -207,6 +235,24 @@ test("стол пишет работу склада, но не персонал,
   assert.equal(data.warehouse.staff[0].hourlyRate, 900);
   assert.equal(data.otherWarehouses.length, 1);
   assert.equal(data.chats.c1.text, "секрет");
+  assert.equal(data.products[0].partnerId, "p1");
+  assert.equal(data.docRecords.length, 1);
+  assert.deepEqual(
+    data.staffEvents.map((e) => [e.id, e.at]),
+    [
+      ["e1", 1],
+      ["e2", 2],
+    ],
+  );
+  const disputes = Object.fromEntries(data.disputes.map((d) => [d.id, d]));
+  assert.equal(disputes.q1.resolution, "returned");
+  assert.equal(disputes.q2.resolution, "moved");
+  assert.ok(disputes.q3);
+  const { rows: by } = await db.root.query(
+    `SELECT updated_by_desk FROM uklad.cabinet_snapshots WHERE org_id = $1`,
+    [a.org],
+  );
+  assert.ok(by[0].updated_by_desk);
 
   // Работа другого склада поверх этого не ложится.
   const other = await call("/api/cabinet/snapshot", {
@@ -254,8 +300,12 @@ test("стол чужой компании бейдж не узнаёт", { skip
   const { ivan } = await company("desk-e@sklad.ru", "10.0.3.5");
   const { a: b } = await company("desk-f@sklad.ru", "10.0.3.6");
   const deskB = await makeDesk(b);
+  assert.equal((await call("/api/auth/me", { desk: deskB })).status, 200);
   assert.equal(
     (await call("/api/cabinet/badges/check", { desk: deskB, body: { code: ivan } })).status,
     404,
   );
+  // Удалённая компания гасит свои столы.
+  await db.root.query(`UPDATE uklad.orgs SET deleted_at = now() WHERE id = $1`, [b.org]);
+  assert.equal((await call("/api/auth/me", { desk: deskB })).status, 401);
 });

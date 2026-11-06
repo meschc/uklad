@@ -101,7 +101,7 @@ function createSnapshot({ auth, send, log }) {
       const { rows } = await c.query(
         `UPDATE uklad.cabinet_snapshots
          SET previous = data, data = $1::jsonb, format = $2, version = version + 1,
-             updated_at = now(), updated_by = $3
+             updated_at = now(), updated_by = $3, updated_by_desk = NULL
          WHERE org_id = uklad.current_org() AND version = $4
          RETURNING version`,
         [data, format, ctx.memberId, version],
