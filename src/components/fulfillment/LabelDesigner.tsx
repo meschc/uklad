@@ -145,7 +145,8 @@ export function LabelDesigner({
             // inline-flex всё равно тянется по поперечной оси flex-колонки,
             // и справа от двух кнопок остаётся мёртвая серая полоса.
             className="self-start"
-            value={draft.layout}
+            // Показываем по сторонам ленты, как и печатаем (см. labelLayout).
+            value={draft.widthMm > draft.heightMm ? "horizontal" : "vertical"}
             onChange={setLayout}
             options={[
               {

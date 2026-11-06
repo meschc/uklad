@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/segmented";
 import { Input } from "@/components/ui/input";
 import { eyebrow } from "@/components/ui/eyebrow";
-import { card } from "@/components/ui/card";
 import { labelNumber } from "@/lib/barcode";
 import { LabelCard, type LabelKind } from "./LabelCard";
 import { printLabels } from "@/lib/printLabels";
@@ -222,7 +221,7 @@ export function LabelsScreen() {
 
   return (
     <ScreenShell title={t("labels.title")} subtitle={t("labels.subtitle")} wide>
-      <div className={card({ className: "flex flex-wrap items-end gap-x-6 gap-y-4" })}>
+      <div className="flex flex-wrap items-end gap-x-6 gap-y-4">
         <Segmented
           size="md"
           value={kind}
@@ -292,8 +291,8 @@ export function LabelsScreen() {
       {/* Настройки сверху, предпросмотр снизу. Колонками они не уживались:
           наклейка 58×40 занимает ладонь, а рядом с ней пустовала половина
           экрана — при том что настройки внизу той же колонки не помещались. */}
-      <div className="flex flex-col gap-4">
-        <div className={card()}>
+      <div className="flex flex-col gap-8">
+        <div>
           <LabelDesigner
             draft={draft}
             onChange={(patch) => setDraft((d) => ({ ...d, ...patch }))}
@@ -307,7 +306,7 @@ export function LabelsScreen() {
           />
         </div>
 
-        <div className={card({ className: "flex flex-col gap-3" })}>
+        <div className="flex flex-col gap-3">
           <div className="flex items-baseline justify-between gap-2">
             <h3 className={eyebrow()}>{t("labels.preview")}</h3>
             <span className="text-xs tabular-nums text-muted-foreground">
@@ -317,7 +316,7 @@ export function LabelsScreen() {
               })}
             </span>
           </div>
-          <div className="flex flex-wrap items-start justify-center gap-4 rounded-lg bg-muted/40 p-4">
+          <div className="flex flex-wrap items-start gap-4">
             <LabelCard
               tpl={previewTpl}
               code={previewCode}
