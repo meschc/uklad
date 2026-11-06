@@ -15,12 +15,14 @@ import {
 import type { PackSession } from "@/lib/types";
 import { DEMO_BADGES } from "@/lib/workstation";
 import { useT, type MsgKey } from "@/lib/i18n";
+import { sizeLabel, useLabelPrinter } from "@/lib/labelPrinter";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { card } from "@/components/ui/card";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { QrSvg } from "@/components/table/QrSvg";
 import { ScanField, type ScanStatus } from "@/components/fulfillment/ScanField";
+import { PrintableLabel } from "./PrintableLabel";
 import { shortId } from "./useNow";
 
 export type PackResult = ReturnType<typeof packSummary> & { source: string; target: string };
@@ -342,8 +344,11 @@ function feedbackFor(r: ItemScan, nameOf: (id: string) => string): Feedback {
  */
 function LabelBlock({ code, title, lines }: { code: string; title: string; lines: string[] }) {
   const t = useT();
+  const printer = useLabelPrinter();
+  const size = sizeLabel(printer);
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-dashed border-primary p-3">
+      <PrintableLabel code={code} lines={lines} printer={printer} />
       <p className="flex items-center gap-2 text-sm font-medium text-primary">
         <Tag className="size-4" />
         {title}
@@ -358,7 +363,11 @@ function LabelBlock({ code, title, lines }: { code: string; title: string; lines
               {l}
             </p>
           ))}
-          <p className="mt-1 text-xs text-muted-foreground">{t("ws.run.printerOff")}</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {printer.name
+              ? t("ws.run.printerOn", { name: printer.name, size })
+              : t("ws.run.printerSizeOnly", { size })}
+          </p>
           <Button variant="outline" size="sm" className="mt-2" onClick={() => window.print()}>
             <Printer />
             {t("ws.run.print")}
