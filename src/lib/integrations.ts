@@ -394,3 +394,12 @@ export const INTEGRATION_CATEGORIES: {
   { id: "delivery", key: "integr.cat.delivery" },
   { id: "gov", key: "integr.cat.gov" },
 ];
+
+/**
+ * Поля подключений, которые нельзя класть в снимок кабинета на сервере
+ * (`store/serverSync.ts`): там они лежали бы открытым JSON в базе и её копиях.
+ * Берутся из пометки `secret` у полей — новое секретное поле попадёт сюда само.
+ */
+export const SECRET_INTEGRATION_FIELDS: ReadonlySet<keyof IntegrationConfig> = new Set(
+  INTEGRATIONS.flatMap((i) => i.fields.filter((f) => f.secret).map((f) => f.id)),
+);

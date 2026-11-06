@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { safeImageUrl } from "../image";
-import { persist } from "zustand/middleware";
+import { createJSONStorage, persist, type StateStorage } from "zustand/middleware";
+import { isEmbed } from "../appViews";
 import { uid } from "../utils";
 import { hasLocal } from "../safeStorage";
 import { buildCatalog } from "../catalog";
@@ -122,7 +123,21 @@ type PersistedState = {
  * Было ли сохранённое состояние на момент загрузки. Если да — демо-раздачу
  * размещений НЕ применяем (иначе она перезатёрла бы реальные данные польз.).
  */
-const HAD_PERSISTED = hasLocal(PERSIST_KEY);
+/**
+ * Превью кабинета на витрине (`?embed=1`) живёт в памяти, а не в хранилище
+ * сайта: оно всегда показывает свежий демо-склад, не трогает сохранение
+ * настоящего кабинета на этом же адресе и не показывает его данные, если
+ * человек когда-то входил в кабинет из этого браузера.
+ */
+const EMBED = typeof window !== "undefined" && isEmbed(window.location.search);
+const memory = new Map<string, string>();
+const memoryStorage: StateStorage = {
+  getItem: (k) => memory.get(k) ?? null,
+  setItem: (k, v) => void memory.set(k, v),
+  removeItem: (k) => void memory.delete(k),
+};
+
+const HAD_PERSISTED = !EMBED && hasLocal(PERSIST_KEY);
 
 export const useEditor = create<EditorState>()(
   persist(
@@ -153,6 +168,7 @@ export const useEditor = create<EditorState>()(
     {
       name: PERSIST_KEY,
       version: PERSIST_VERSION,
+      ...(EMBED ? { storage: createJSONStorage(() => memoryStorage) } : {}),
       // v1 → v2: модель «проход как объект» заменена на «пол как проход».
       // Проходы больше нельзя ни создать, ни увидеть, но их прямоугольники
       // остаются в старых сохранениях — ловят наложение в overlap.ts и висят

@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { isEmbed, isHeatmapWindow } from "@/lib/appViews";
@@ -6,6 +6,10 @@ import { boundDevice, selectRole, useEditor } from "@/lib/store";
 import { applyTheme, systemTheme } from "@/lib/theme";
 import { useDeepLink } from "@/lib/useDeepLink";
 import { useT } from "@/lib/i18n";
+import { authRepository } from "@/lib/data/authRepository";
+import { hasCabinetServer, setUnauthorizedHandler } from "@/lib/data/api";
+import { holdsCompanyCopy, startServerSync } from "@/lib/store/serverSync";
+import { demoRepository } from "@/lib/data/demoRepository";
 import { SideNav } from "@/components/nav/SideNav";
 import { navFor } from "@/components/nav/navItems";
 import type { AppView } from "@/lib/types";
@@ -93,6 +97,28 @@ const ChatScreen = lazy(() =>
 // Отдельное окно тепловой карты (`window.open` из TopBar): признак — в URL,
 // вычисляется один раз при загрузке страницы.
 const IS_HEATMAP = isHeatmapWindow(window.location.search);
+const IS_EMBED = isEmbed(window.location.search);
+
+/**
+ * Открыт ли этому браузеру демо-кабинет. Спрашиваем один раз при загрузке и
+ * только в сборке с сервером, когда входа нет: вошедшему пропуск не нужен.
+ * Сбой связи демо не открывает — закрытая дверь безопаснее.
+ */
+function useDemoPass(signedIn: boolean): "checking" | "open" | "closed" {
+  const ask = hasCabinetServer && !signedIn && !holdsCompanyCopy();
+  const [state, setState] = useState<"checking" | "open" | "closed">(ask ? "checking" : "closed");
+  useEffect(() => {
+    if (!ask) return;
+    let live = true;
+    void demoRepository.pass().then((res) => {
+      if (live) setState(res.ok && res.data ? "open" : "closed");
+    });
+    return () => {
+      live = false;
+    };
+  }, [ask]);
+  return ask ? state : "closed";
+}
 
 export default function App() {
   const appView = useEditor((s) => s.appView);
@@ -126,6 +152,50 @@ export default function App() {
     document.documentElement.lang = language;
   }, [language]);
 
+  // Вход через сервер живёт в куке, а стор помнит только пометку о нём.
+  // Правило одно: любой ответ 401 на запрос с сессией — сессии больше нет
+  // (истекла, отозвана, сменён пароль), и кабинет закрывается экраном входа.
+  // Данные при этом не стираются (`sessionLost`): других копий у них пока нет.
+  // Чтобы долго открытая вкладка узнала об отзыве, не дожидаясь запроса,
+  // сессия сверяется при открытии кабинета и каждый раз, когда вкладка снова
+  // на экране. Сбой связи сессию не гасит.
+  const serverSession = useEditor((s) => s.session.source === "server");
+  // Данные компании без живого входа закрыты: ни ссылка на экран, ни демо не
+  // откроют их, пока владелец не войдёт.
+  // В сборке с сервером кабинет без входа закрыт целиком: демо открывается
+  // только по ссылке из письма-заявки, а не ссылкой на экран. Ссылка оставляет
+  // браузеру куку-пропуск, кабинет спрашивает о ней сервер (`demoRepository`).
+  // Пока в браузере лежит копия компании, демо не открывается: под ним
+  // оказался бы не демо-склад, а её данные.
+  // Превью на витрине (`?embed=1`) — исключение: это снимок демо-склада в
+  // памяти, нажать и ввести там ничего нельзя (`main.tsx`), так что кабинетом
+  // в обход заявки он не служит, а чужих данных в нём нет (`store/index.ts`).
+  const demo = useDemoPass(serverSession || IS_EMBED);
+  const locked = useEditor((s) =>
+    IS_EMBED
+      ? false
+      : hasCabinetServer
+        ? s.session.source !== "server" && (demo !== "open" || !!s.session.orgId)
+        : !!s.session.orgId && s.session.source !== "server",
+  );
+  // Данные вошедшей компании живут на сервере: загрузка при входе и запись
+  // правок сами (`serverSync.ts`, ADR 0010).
+  const syncOrg = useEditor((s) => (s.session.source === "server" ? s.session.orgId : undefined));
+  useEffect(() => (syncOrg ? startServerSync(syncOrg) : undefined), [syncOrg]);
+  useEffect(() => {
+    if (!serverSession) return;
+    setUnauthorizedHandler(() => useEditor.getState().sessionLost());
+    const check = () => {
+      if (document.visibilityState === "visible") void authRepository.me();
+    };
+    check();
+    document.addEventListener("visibilitychange", check);
+    return () => {
+      setUnauthorizedHandler(null);
+      document.removeEventListener("visibilitychange", check);
+    };
+  }, [serverSession]);
+
   // Роль ограничивает набор экранов: продавец не должен попасть в редактор
   // структуры склада, даже если состояние восстановилось из localStorage.
   // Экраны уровня аккаунта доступны всегда: их нет в рельсе (в кабинет ведёт
@@ -137,18 +207,36 @@ export default function App() {
   // руководителя на самом столе или с экрана «Устройства» с другого компьютера.
   const kiosk = useEditor((s) => boundDevice(s) !== null) && role === "warehouse";
   const legacyStation = role === "warehouse" && STATION_VIEWS.has(appView);
-  const view =
-    kiosk || legacyStation
-      ? "workstation"
-      : ACCOUNT_VIEWS.has(appView) || allowed.includes(appView)
-        ? appView
-        : allowed[0];
+  // Склада у компании ещё нет: рабочим экранам показывать нечего, кабинет
+  // стоит на главной с карточкой «Новый склад».
+  const noWarehouse = useEditor((s) => s.warehouse.placeholder === true);
+  const view = locked
+    ? "login"
+    : noWarehouse && !ACCOUNT_VIEWS.has(appView)
+      ? "dashboard"
+      : kiosk || legacyStation
+        ? "workstation"
+        : ACCOUNT_VIEWS.has(appView) || allowed.includes(appView)
+          ? appView
+          : allowed[0];
 
   useEffect(() => {
-    if (view !== appView) useEditor.getState().goToView(view);
-  }, [view, appView]);
+    // Пока сервер не ответил про пропуск, экран не трогаем: иначе демо
+    // открылось бы на экране входа, куда его успело увести ожидание.
+    if (demo !== "checking" && view !== appView) useEditor.getState().goToView(view);
+  }, [view, appView, demo]);
+  // Пришёл по ссылке из письма, а сохранение помнит экран входа с прошлого
+  // визита без пропуска — открываем кабинет. Вход по прямой ссылке
+  // (`?view=login`, так ведёт и выход) остаётся входом.
+  useEffect(() => {
+    if (demo !== "open" || useEditor.getState().appView !== "login") return;
+    if (new URLSearchParams(window.location.search).get("view") === "login") return;
+    useEditor.getState().goToView("dashboard");
+  }, [demo]);
 
-  if (IS_HEATMAP) {
+  if (demo === "checking") return <ScreenFallback />;
+
+  if (IS_HEATMAP && !locked) {
     return (
       <div className="h-full animate-fade-in">
         <Suspense fallback={<ScreenFallback />}>
@@ -186,7 +274,7 @@ export default function App() {
     <>
       {/* За столом сообщения продавцов не всплывают: экран общий, переписка
           — дело руководителя. */}
-      {!kiosk && <ChatWatcher />}
+      {!kiosk && !locked && <ChatWatcher />}
       <Toast />
     </>
   );
