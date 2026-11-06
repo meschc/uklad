@@ -1,5 +1,5 @@
 import { isLoadUnit, normalizeCode } from "./barcode";
-import type { OutboundBox } from "./types";
+import type { FulfillmentRequest, OutboundBox, Product } from "./types";
 
 /**
  * Короба отгрузки как данные — чистые правила.
@@ -93,6 +93,53 @@ export function expectedOutbound(
   return list.filter((b) => !b.shipmentId && b.requestIds.some((r) => ids.has(r)));
 }
 
+/** Продавец товара: `partnerId`, у товара самого склада — пустая строка. */
+function sellerOf(products: readonly Product[], productId: string): string {
+  return products.find((p) => p.id === productId)?.partnerId ?? "";
+}
+
+/** Продавцы, чей товар в этих строках. */
+export function sellersOf(lines: readonly PackedLine[], products: readonly Product[]): Set<string> {
+  return new Set(lines.filter((l) => l.qty > 0).map((l) => sellerOf(products, l.productId)));
+}
+
+/** Назначения заявок короба (как группирует погрузка — по тексту адреса). */
+export function destinationsOf(
+  requestIds: readonly string[],
+  requests: readonly FulfillmentRequest[],
+): Set<string> {
+  const ids = new Set(requestIds);
+  return new Set(requests.filter((r) => ids.has(r.id)).map((r) => r.note?.trim() || ""));
+}
+
+export type PackTargetProblem = "tote_mixed_seller" | "target_other_seller" | "target_other_target";
+
+/**
+ * Можно ли паковать эту тару в этот короб отгрузки. Решение Кирилла (24.10):
+ * один короб — один продавец, иначе короб и рейс не разделить между
+ * продавцами в счёте. Назначение у короба тоже одно: короб едет одной машиной.
+ * Проверяется до первой штуки, а не при закрытии тары: переупаковывать
+ * готовое дороже, чем взять другой короб.
+ */
+export function packTargetProblem(input: {
+  open: OutboundBox | undefined;
+  toteLines: readonly PackedLine[];
+  /** Назначения заказов тары; пусто — тара без заказов (FBO). */
+  toteTargets: readonly string[];
+  products: readonly Product[];
+  requests: readonly FulfillmentRequest[];
+}): PackTargetProblem | null {
+  const tote = sellersOf(input.toteLines, input.products);
+  if (tote.size > 1) return "tote_mixed_seller";
+  if (!input.open) return null;
+  const inBox = sellersOf(input.open.lines, input.products);
+  if ([...tote].some((s) => inBox.size > 0 && !inBox.has(s))) return "target_other_seller";
+  const boxTargets = destinationsOf(input.open.requestIds, input.requests);
+  if (boxTargets.size > 0 && input.toteTargets.some((t) => !boxTargets.has(t)))
+    return "target_other_target";
+  return null;
+}
+
 export type LoadScan =
   | { kind: "ok"; code: string; box?: OutboundBox }
   | { kind: "dup"; code: string }
@@ -100,7 +147,9 @@ export type LoadScan =
   /** Короб уже уехал другим рейсом. */
   | { kind: "shipped"; code: string }
   /** Короб другого назначения: в нём только чужие заявки. */
-  | { kind: "foreign"; code: string; box: OutboundBox };
+  | { kind: "foreign"; code: string; box: OutboundBox }
+  /** В коробе заявки и этой машины, и другой: целиком не уедет ни одной. */
+  | { kind: "mixed"; code: string; box: OutboundBox };
 
 /**
  * Разобрать скан на погрузке. Паллеты и коробы без записи (тара с приёмки,
@@ -124,8 +173,9 @@ export function classifyLoadScan(
   const ids = new Set(requestIds);
   // Короб без заявок — поставка без заказов (FBO): назначения у него нет,
   // проверить нечем, принимаем.
-  if (box.requestIds.length > 0 && !box.requestIds.some((r) => ids.has(r)))
-    return { kind: "foreign", code, box };
+  const mine = box.requestIds.filter((r) => ids.has(r)).length;
+  if (box.requestIds.length > 0 && mine === 0) return { kind: "foreign", code, box };
+  if (mine < box.requestIds.length) return { kind: "mixed", code, box };
   return { kind: "ok", code, box };
 }
 

@@ -4,9 +4,10 @@ import {
   classifyLoadScan,
   expectedOutbound,
   missingOutbound,
+  packTargetProblem,
   shipOutbound,
 } from "../outbound";
-import type { OutboundBox } from "../types";
+import type { FulfillmentRequest, OutboundBox, Product } from "../types";
 
 /**
  * Короба отгрузки как данные. Ошибка здесь молчит: короб на Тулу уезжает в
@@ -165,5 +166,74 @@ describe("погрузка по коробам", () => {
     const byCode = Object.fromEntries(out.map((b) => [b.code, b]));
     expect(byCode["UK-OUT-TULA01"]).toMatchObject({ shipmentId: "ship7", shippedAt: 99 });
     expect(byCode["UK-OUT-SAMA01"].shipmentId).toBeUndefined();
+  });
+});
+
+describe("один короб — один продавец и одно назначение", () => {
+  const products = [
+    { id: "pA", partnerId: "A" },
+    { id: "pA2", partnerId: "A" },
+    { id: "pB", partnerId: "B" },
+  ] as Product[];
+  const requests = [
+    { id: "rT", note: "Тула" },
+    { id: "rS", note: " Самара " },
+  ] as FulfillmentRequest[];
+  const boxA = box({ lines: [{ productId: "pA", qty: 2 }], requestIds: ["rT"] });
+
+  it("не пускает в короб продавца A тару продавца B", () => {
+    expect(
+      packTargetProblem({
+        open: boxA,
+        toteLines: [{ productId: "pB", qty: 1 }],
+        toteTargets: ["Тула"],
+        products,
+        requests,
+      }),
+    ).toBe("target_other_seller");
+  });
+
+  it("не берёт тару, где товар разных продавцов", () => {
+    expect(
+      packTargetProblem({
+        open: undefined,
+        toteLines: [
+          { productId: "pA", qty: 1 },
+          { productId: "pB", qty: 1 },
+        ],
+        toteTargets: [],
+        products,
+        requests,
+      }),
+    ).toBe("tote_mixed_seller");
+  });
+
+  it("не дописывает в короб на Тулу заказы на Самару", () => {
+    expect(
+      packTargetProblem({
+        open: boxA,
+        toteLines: [{ productId: "pA2", qty: 1 }],
+        toteTargets: ["Самара"],
+        products,
+        requests,
+      }),
+    ).toBe("target_other_target");
+  });
+
+  it("тот же продавец и то же назначение — можно, новый короб — тоже", () => {
+    const same = {
+      toteLines: [{ productId: "pA2", qty: 1 }],
+      toteTargets: ["Тула"],
+      products,
+      requests,
+    };
+    expect(packTargetProblem({ ...same, open: boxA })).toBeNull();
+    expect(packTargetProblem({ ...same, open: undefined })).toBeNull();
+  });
+
+  it("смешанный по назначениям короб не уезжает ни одной машиной", () => {
+    const mixed = box({ code: "UK-OUT-MIX001", requestIds: ["rT", "rS"] });
+    expect(classifyLoadScan([mixed], ["rT"], [], "UK-OUT-MIX001").kind).toBe("mixed");
+    expect(classifyLoadScan([mixed], ["rS"], [], "UK-OUT-MIX001").kind).toBe("mixed");
   });
 });

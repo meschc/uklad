@@ -70,6 +70,7 @@ export const ru = {
   "ws.ship.foreign": "{code} едет не сюда: в нём заявки на «{target}»",
   "ws.ship.waiting": "Ждут погрузки: {n}",
   "ws.ship.allLoaded": "Все короба этого назначения в машине.",
+  "ws.ship.mixed": "В {code} заказы и на другое назначение. Отнесите его старшему на переупаковку",
   "ws.ship.confirmMissing": "Отгрузить без коробов: {n}",
   "ws.panel.close": "Закрыть",
   "ws.device.nameEmpty": "Назовите устройство — по имени столы и различают",
@@ -156,6 +157,10 @@ export const ru = {
   "ws.tote.unknown": "Такой тары нет среди коробов склада",
   "ws.tote.empty": "Эта тара пустая — упаковывать из неё нечего",
   "ws.tote.targetBad": "Короб отгрузки должен быть другим, не той же тарой",
+  "ws.tote.mixedSeller":
+    "В таре товар разных продавцов. Отнесите её старшему: в один короб отгрузки кладут товар одного продавца",
+  "ws.tote.otherSeller": "В этом коробе отгрузки товар другого продавца. Возьмите новый короб",
+  "ws.tote.otherTarget": "Этот короб отгрузки едет на другое назначение. Возьмите новый короб",
   "ws.demo.title": "Демо",
   "ws.demo.hint": "нажмите на код вместо скана",
   "ws.demo.label": "этикетка напечатана",
@@ -351,6 +356,8 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.ship.foreign": "{code} doesn't go here: it holds requests for “{target}”",
   "ws.ship.waiting": "Still to load: {n}",
   "ws.ship.allLoaded": "Every box for this destination is on the truck.",
+  "ws.ship.mixed":
+    "{code} also holds orders for another destination. Take it to the supervisor to repack",
   "ws.ship.confirmMissing": "Ship without boxes: {n}",
   "ws.panel.close": "Close",
   "ws.device.nameEmpty": "Name the device — that is how desks are told apart",
@@ -439,6 +446,10 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.tote.unknown": "No such tote among warehouse boxes",
   "ws.tote.empty": "This tote is empty — nothing to pack",
   "ws.tote.targetBad": "The outbound box must differ from the source tote",
+  "ws.tote.mixedSeller":
+    "The tote holds goods of different sellers. Take it to the supervisor: one outbound box holds one seller's goods",
+  "ws.tote.otherSeller": "This outbound box already holds another seller's goods. Take a new box",
+  "ws.tote.otherTarget": "This outbound box goes to another destination. Take a new box",
   "ws.demo.title": "Demo",
   "ws.demo.hint": "click a code instead of scanning",
   "ws.demo.label": "label printed",

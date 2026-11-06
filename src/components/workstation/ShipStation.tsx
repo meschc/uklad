@@ -165,6 +165,8 @@ function ShipGroup({
           t("ws.ship.foreign", { code: res.code, target: dest || t("ws.ship.noTarget") }),
         );
       }
+      case "mixed":
+        return flash("error", t("ws.ship.mixed", { code: res.code }));
       case "ok":
         setUnits((u) => [...u, res.code]);
         return flash(
