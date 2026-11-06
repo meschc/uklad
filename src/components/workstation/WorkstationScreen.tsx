@@ -3,6 +3,7 @@ import type { WorkstationKind } from "@/lib/types";
 import {
   ArrowLeft,
   History,
+  Gavel,
   LogOut,
   MonitorSmartphone,
   X,
@@ -13,6 +14,7 @@ import {
 import { boundDevice, useEditor } from "@/lib/store";
 import { workstationRepository } from "@/lib/data";
 import { isSessionLive } from "@/lib/workstation";
+import { isSenior } from "@/lib/docFlow";
 import { sizeLabel, useLabelPrinter } from "@/lib/labelPrinter";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -29,6 +31,7 @@ import { PackStation } from "./PackStation";
 import { PrinterPanel } from "./PrinterPanel";
 import { ShipStation } from "./ShipStation";
 import { StaffLog } from "./StaffLog";
+import { DisputesScreen } from "./DisputesScreen";
 import { formatTime, useNow } from "./useNow";
 
 /**
@@ -43,7 +46,7 @@ import { formatTime, useNow } from "./useNow";
  * документы и аналитика — контроль, а не работа.
  */
 
-type Panel = "shift" | "log" | "printer" | null;
+type Panel = "shift" | "log" | "printer" | "disputes" | null;
 
 export function WorkstationScreen() {
   const t = useT();
@@ -51,11 +54,20 @@ export function WorkstationScreen() {
   const session = useEditor((s) => s.stationSession);
   const staff = useEditor((s) => s.warehouse.staff);
   const device = useEditor(boundDevice);
-  const [panel, setPanel] = useState<Panel>(null);
+  const openDisputes = useEditor((s) => s.disputes.filter((d) => !d.resolution).length);
+  const [opened, setOpened] = useState<{ panel: Panel; owner?: string }>({ panel: null });
   const [unbinding, setUnbinding] = useState(false);
 
   const live = isSessionLive(session, now);
   const member = live ? (staff ?? []).find((m) => m.id === session!.staffId) : undefined;
+
+  // Панель принадлежит тому, кто её открыл: кончилась смена, вышел или вошёл
+  // другой по бейджу — для него она закрыта, иначе следующий за столом увидит
+  // чужое. Хранить владельца, а не сбрасывать эффектом, дешевле и без лишнего
+  // рендера.
+  const panel: Panel = opened.owner === member?.id ? opened.panel : null;
+  const setPanel = (p: Panel) => setOpened({ panel: p, owner: member?.id });
+
   const station = session?.station ?? "pack";
 
   return (
@@ -87,6 +99,19 @@ export function WorkstationScreen() {
         {member && (
           <div className="ml-auto flex items-center gap-4">
             <ShiftBar staffId={member.id} onOpen={() => setPanel("shift")} />
+            {isSenior(member) && (
+              // Спорное решает старший, не отходя от стола: тара с недостачей
+              // приходит к нему, и счётчик виден сразу.
+              <Button variant="ghost" size="sm" onClick={() => setPanel("disputes")}>
+                <Gavel />
+                {t("disputes.title")}
+                {openDisputes > 0 && (
+                  <span className="rounded-full bg-orange-500 px-1.5 text-xs font-semibold text-white tabular-nums">
+                    {openDisputes}
+                  </span>
+                )}
+              </Button>
+            )}
             <Button variant="ghost" size="sm" onClick={() => setPanel("log")}>
               <History />
               {t("ws.tab.log")}
@@ -133,7 +158,13 @@ export function WorkstationScreen() {
             className="absolute inset-0 cursor-default bg-black/30"
             onClick={() => setPanel(null)}
           />
-          <aside className="relative flex h-full w-full max-w-md animate-slide-in-right flex-col gap-4 overflow-y-auto bg-background p-5 shadow-2xl">
+          <aside
+            className={cn(
+              "relative flex h-full w-full animate-slide-in-right flex-col gap-4 overflow-y-auto bg-background p-5 shadow-2xl",
+              // Спорные — список с кнопками решения: ему нужна ширина шире смены.
+              panel === "disputes" ? "max-w-2xl" : "max-w-md",
+            )}
+          >
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">
                 {t(
@@ -141,7 +172,9 @@ export function WorkstationScreen() {
                     ? "ws.tab.shift"
                     : panel === "printer"
                       ? "ws.printer.title"
-                      : "ws.history",
+                      : panel === "disputes"
+                        ? "disputes.title"
+                        : "ws.history",
                 )}
               </h2>
               <Button
@@ -157,6 +190,10 @@ export function WorkstationScreen() {
               <ShiftMenu member={member} now={now} />
             ) : panel === "printer" ? (
               <PrinterPanel />
+            ) : panel === "disputes" ? (
+              <EmbeddedShell.Provider value={true}>
+                <DisputesScreen />
+              </EmbeddedShell.Provider>
             ) : (
               <StaffLog staffId={member.id} now={now} />
             )}
