@@ -471,6 +471,10 @@ function main() {
     const snapshot = createSnapshot({ auth, send, log: console });
     const { createDeskBadges } = require("./cabinet/deskBadges");
     const deskBadges = createDeskBadges({ auth, send, log: console });
+    // Стол первым: со своей кукой он отвечает за вход и снимок сам, а в
+    // остальной кабинет его не пускает.
+    const { createDesks } = require("./cabinet/desks");
+    const desks = createDesks({ auth, cfg, send, log: console });
     // Реквизиты по ИНН: без DADATA_API_KEY маршрут отвечает 503, профиль
     // сохраняет ИНН и пишет, что справочник не подключён.
     const { createCompanyLookup } = require("./cabinet/company");
@@ -482,6 +486,7 @@ function main() {
     });
     cabinet = {
       handle: async (req, res, url) =>
+        (await desks.handle(req, res, url)) ||
         (await auth.handle(req, res, url)) ||
         (await account.handle(req, res, url)) ||
         (await snapshot.handle(req, res, url)) ||

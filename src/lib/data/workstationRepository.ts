@@ -1,6 +1,7 @@
 import type { ItemScan } from "../packing";
 import type { Device, IdleReason, ShiftMark, StaffEvent, WorkstationKind } from "../types";
 import { onServer, serverBadges, type BadgeServer } from "./badgeRepository";
+import { serverDesks, type DeskServer } from "./deskServer";
 import { isStaffEvent } from "./guards";
 import { readList, storePort, type StorePort } from "./repository";
 import { attempt, fail, ok, type Result } from "./result";
@@ -39,6 +40,7 @@ export interface WorkstationRepository {
 export function createWorkstationRepository(
   port: StorePort = storePort,
   badges: BadgeServer = serverBadges,
+  desks: DeskServer = serverDesks,
 ): WorkstationRepository {
   // На сервере код проверяет сервер (секрет, а не id), и срез получает уже
   // сотрудника; в демо срез разбирает код сам.
@@ -71,11 +73,35 @@ export function createWorkstationRepository(
     },
     addDevice: async (name, station) => {
       if (!name.trim()) return fail("ws.device.nameEmpty");
-      return attempt(() => port.get().addDevice(name, station));
+      const made = await attempt(() => port.get().addDevice(name, station));
+      if (!made.ok || !onServer(port)) return made;
+      // На сервере компьютер становится столом по-настоящему: вход
+      // руководителя здесь гаснет, остаётся пропуск стола с узким правом.
+      const opened = await desks.open(made.data.id, made.data.name);
+      if (opened.ok) return made;
+      port.get().revokeDevice(made.data.id);
+      return opened;
     },
-    revokeDevice: (id) => attempt(() => port.get().revokeDevice(id)),
+    revokeDevice: async (id) => {
+      if (onServer(port)) {
+        const off = await desks.revoke(id);
+        if (!off.ok) return off;
+      }
+      return attempt(() => port.get().revokeDevice(id));
+    },
     unbindDevice: async (code) => {
       if (onServer(port)) {
+        const desk = await desks.unbind(code);
+        if (!desk.ok) return desk;
+        if (desk.data === false) return fail("ws.device.notManager");
+        if (desk.data === true) {
+          // Пропуск стола погашен: этот браузер снова обычный, и дальше
+          // в него входят паролем — экран входа, данные на месте.
+          const s = port.get();
+          if (s.thisDeviceId) s.revokeDevice(s.thisDeviceId);
+          s.sessionLost();
+          return ok(undefined);
+        }
         const who = await badges.check(code);
         if (!who.ok) return who;
         return who.data && port.get().unbindAs(who.data)

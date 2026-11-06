@@ -527,6 +527,9 @@ function createAuth({ pool, cfg, send, readBody, log, mail }) {
     handle,
     withSession,
     readJson,
+    // Транзакция без сессии входа — для стола (`desks.js`): компанию там
+    // ставит своя функция базы по пропуску стола.
+    tx,
     purge,
     cookieName: COOKIE,
     tokenHash,
