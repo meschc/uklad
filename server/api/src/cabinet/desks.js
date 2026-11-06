@@ -97,7 +97,14 @@ function mergeDisputes(current, incoming) {
       note: n.note,
     };
   });
-  return appendOnly(kept, incoming);
+  // Новое спорное приходит только открытым: списать в обход «сначала
+  // открыто, потом решение старшего» одной записью нельзя.
+  const fresh = (Array.isArray(incoming) ? incoming : []).filter(isObject).map((d) => {
+    const open = { ...d };
+    for (const f of ["resolution", "resolvedAt", "resolvedBy", "note"]) delete open[f];
+    return open;
+  });
+  return appendOnly(kept, fresh);
 }
 
 /** Чего стол не видит вовсе: переписка, подключения, чужие склады. */

@@ -213,6 +213,7 @@ test("стол пишет работу склада, но не персонал,
       { id: "q1", kind: "shortage", resolution: "written_off" },
       { id: "q2", kind: "extra", resolution: "moved", resolvedBy: "stf-boss" },
       { id: "q3", kind: "not_in_tote" },
+      { id: "q4", kind: "shortage", resolution: "written_off", resolvedBy: "stf-ivan" },
     ],
   };
   const saved = await call("/api/cabinet/snapshot", {
@@ -248,6 +249,9 @@ test("стол пишет работу склада, но не персонал,
   assert.equal(disputes.q1.resolution, "returned");
   assert.equal(disputes.q2.resolution, "moved");
   assert.ok(disputes.q3);
+  // Новое приходит только открытым.
+  assert.equal(disputes.q4.resolution, undefined);
+  assert.equal(disputes.q4.resolvedBy, undefined);
   const { rows: by } = await db.root.query(
     `SELECT updated_by_desk FROM uklad.cabinet_snapshots WHERE org_id = $1`,
     [a.org],
