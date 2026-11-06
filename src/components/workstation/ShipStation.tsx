@@ -7,7 +7,6 @@ import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { card } from "@/components/ui/card";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { EmptyState } from "@/components/fulfillment/ScreenShell";
 
@@ -70,7 +69,7 @@ function ShipGroup({
     );
 
   return (
-    <section className={card({ className: "flex flex-col gap-3" })}>
+    <section className="flex flex-col gap-3 border-t border-border pt-4 first:border-t-0 first:pt-0">
       <div className="flex items-baseline justify-between gap-3">
         <h3 className="text-sm font-semibold">{target}</h3>
         <span className={eyebrow({ tone: "muted" })}>

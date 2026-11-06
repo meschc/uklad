@@ -18,7 +18,6 @@ import { useT, type MsgKey } from "@/lib/i18n";
 import { beep } from "@/lib/beep";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { card } from "@/components/ui/card";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { QrSvg } from "@/components/table/QrSvg";
 import { ScanField, type ScanStatus } from "@/components/fulfillment/ScanField";
@@ -197,10 +196,7 @@ export function PackRun({
         )}
 
         {unit && product ? (
-          <div
-            key={unit.labelCode}
-            className={card({ className: "ws-in grid gap-6 md:grid-cols-2" })}
-          >
+          <div key={unit.labelCode} className="ws-in grid gap-6 pt-2 md:grid-cols-2">
             {/* Картинка крупно: упаковщик сверяет, что в руках то же, что на фото. */}
             {product.imageUrl ? (
               <img
@@ -238,10 +234,7 @@ export function PackRun({
             </div>
           </div>
         ) : orderLabel ? (
-          <div
-            key={orderLabel.labelCode}
-            className={card({ className: "ws-in flex flex-col gap-4" })}
-          >
+          <div key={orderLabel.labelCode} className="ws-in flex flex-col gap-4 pt-2">
             <p className="text-2xl font-semibold">
               {t("ws.run.orderLabel", { id: shortId(orderLabel.orderId) })}
             </p>
@@ -249,11 +242,7 @@ export function PackRun({
             <LabelBlock code={orderLabel.labelCode} title={t("ws.run.labelPrinted")} />
           </div>
         ) : (
-          <div
-            className={card({
-              className: "flex min-h-40 flex-col items-center justify-center gap-2 text-center",
-            })}
-          >
+          <div className="flex min-h-40 flex-col items-center justify-center gap-2 text-center">
             <p className="text-2xl font-semibold">{t("ws.run.next")}</p>
           </div>
         )}
@@ -264,7 +253,7 @@ export function PackRun({
           <h3 className={eyebrow({ tone: "muted", size: "xs" })}>
             {t("ws.run.tote")} · <span className="font-mono normal-case">{box.barcode}</span>
           </h3>
-          <ul className={card({ pad: "none", className: "divide-y divide-border" })}>
+          <ul className="flex flex-col divide-y divide-border">
             {[...contents].map(([id, total]) => {
               const left = remaining.get(id) ?? 0;
               return (
@@ -313,10 +302,7 @@ export function PackRun({
       </div>
 
       {handoff && (
-        <div
-          role="alert"
-          className="flex flex-col gap-3 rounded-xl border-2 border-orange-500 bg-orange-500/10 p-4"
-        >
+        <div role="alert" className="flex flex-col gap-3 rounded-xl bg-orange-500/10 p-4">
           <p className="flex items-center gap-2 text-lg font-semibold">
             <TriangleAlert className="size-5 text-orange-500" />
             {t("ws.handoff.title")}
@@ -421,7 +407,7 @@ function feedbackFor(r: ItemScan, nameOf: (id: string) => string): Feedback {
 function LabelBlock({ code, title }: { code: string; title: string }) {
   const t = useT();
   return (
-    <div className="flex w-full flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-dashed border-primary px-3 py-2 text-sm">
+    <div className="flex w-full flex-wrap items-center gap-x-3 gap-y-1 py-1 text-sm">
       <Tag className="size-4 shrink-0 text-primary" />
       <span className="font-medium text-primary">{title}</span>
       <span className="font-mono text-xs text-muted-foreground">{code}</span>
@@ -457,7 +443,7 @@ function LastItemPanel({ session }: { session: PackSession }) {
     return <p className="text-sm text-muted-foreground">{t("ws.run.lastNone")}</p>;
   }
   return (
-    <div className={card({ pad: "sm", className: "flex items-center gap-4" })}>
+    <div className="flex items-center gap-4">
       {product.imageUrl ? (
         <img src={product.imageUrl} alt="" className="size-16 shrink-0 rounded-lg object-cover" />
       ) : (
@@ -492,7 +478,7 @@ function DemoCodes({
   const t = useT();
   if (codes.length === 0) return null;
   return (
-    <div className="flex flex-col gap-2 rounded-xl border border-dashed border-border p-3">
+    <div className="flex flex-col gap-2">
       <p className="text-xs text-muted-foreground">
         <span className="font-semibold text-foreground">{t("ws.demo.title")}</span> ·{" "}
         {t("ws.demo.hint")}
