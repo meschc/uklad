@@ -69,6 +69,8 @@ export function SideNav() {
   const appView = useEditor((s) => s.appView);
   const goToView = useEditor((s) => s.goToView);
   const goToDashboard = useEditor((s) => s.goToDashboard);
+  const warehouseName = useEditor((s) => s.warehouse?.name);
+  const orgLogo = useEditor((s) => s.account.orgLogo);
   const role = useEditor(selectRole);
   const theme = useEditor((s) => s.profile.theme);
   const updateProfile = useEditor((s) => s.updateProfile);
@@ -215,7 +217,13 @@ export function SideNav() {
           collapsed ? "px-0.5" : "px-1.5",
         )}
       >
-        <UkladLockup wordless={collapsed} />
+        <UkladLockup
+          wordless={collapsed}
+          // В меню — название склада, где человек работает; свой логотип
+          // компании, если он загружен в профиле, заменяет знак Уклада.
+          label={warehouseName || "Уклад"}
+          image={orgLogo}
+        />
       </button>
 
       {shown.map((entry) => {
