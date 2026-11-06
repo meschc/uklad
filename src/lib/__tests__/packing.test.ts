@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { create, type StateCreator } from "zustand";
 import { createWorkstationSlice } from "../store/workstation.slice";
-import type { EditorState, WorkstationSlice } from "../store/state";
+import { createDisputesSlice } from "../store/disputes.slice";
+import type { DisputesSlice, EditorState, WorkstationSlice } from "../store/state";
 import { badgeCode } from "../workstation";
 import { boxesHolding, explainScan, toteOrders } from "../packing";
 import type { Box, FulfillmentRequest, Product } from "../types";
@@ -12,6 +13,8 @@ const slice = createWorkstationSlice as unknown as StateCreator<
   [],
   WorkstationSlice
 >;
+
+const disputes = createDisputesSlice as unknown as StateCreator<EditorState, [], [], DisputesSlice>;
 
 const prod = (id: string, barcode: string) =>
   ({ id, sku: `SKU-${id}`, barcode, name: id }) as Product;
@@ -29,6 +32,7 @@ function stand(lines: Box["lines"], requests: FulfillmentRequest[] = []) {
     (...a) =>
       ({
         ...slice(...a),
+        ...disputes(...a),
         warehouse: { staff: [{ id: "s1", name: "Упаковщик", role: "" }] },
         products: [
           prod("p1", "4600000000017"),
@@ -80,6 +84,21 @@ describe("стол упаковки от тары", () => {
     const types = s().staffEvents.map((e) => e.type);
     expect(types).toContain("pack_reject");
     expect(types).toContain("pack_error");
+  });
+
+  it("ошибка скана и недостача сами становятся спорным для старшего", () => {
+    const { s, packOne } = stand([{ productId: "p1", qty: 3 }]);
+    packOne("4600000000024");
+    s().packScanItem("4600000000024");
+    packOne("4600000000017");
+    s().packFinish();
+
+    const found = s().disputes.map((d) => [d.kind, d.productId, d.qty, d.raisedBy]);
+    // Лишний скан одного и того же — одна находка с количеством 2; недостача —
+    // то, что осталось в таре.
+    expect(found).toContainEqual(["not_in_tote", "p2", 2, "s1"]);
+    expect(found).toContainEqual(["shortage", "p1", 2, "s1"]);
+    expect(s().disputes.every((d) => d.toteCode === "UK-BOX-000001" && !d.resolution)).toBe(true);
   });
 
   it("несколько заказов в одной таре: штука находит свой, заказ закрывается своей этикеткой", () => {

@@ -248,6 +248,14 @@ export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get)
         staffEvents: [...s.staffEvents, log("pack_scan", res.productId)],
       });
     } else if (res.kind === "not_in_tote" || res.kind === "extra") {
+      // Ошибка скана не мешает работе: товар откладывают, а решает старший.
+      get().raiseDispute({
+        kind: res.kind,
+        boxId: box.id,
+        toteCode: box.barcode,
+        productId: res.productId,
+        raisedBy: ps.staffId,
+      });
       set({
         packSession: {
           ...ps,
@@ -363,6 +371,19 @@ export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get)
         (o.units === 1 || done.orderLabels.some((l) => l.orderId === o.id && l.confirmedAt)),
     );
     const packedIds = new Set(closed.flatMap((o) => o.requestIds));
+    // Недостачу сотрудник не оформляет: тара с остатком уходит старшему, а в
+    // системе остаётся запись — что не нашли, в какой таре и кто закрывал.
+    for (const [productId, qty] of remaining) {
+      if (qty > 0)
+        get().raiseDispute({
+          kind: "shortage",
+          boxId: box.id,
+          toteCode: box.barcode,
+          productId,
+          qty,
+          raisedBy: ps.staffId,
+        });
+    }
     set({
       boxes: s.boxes.map((b) =>
         b.id === box.id

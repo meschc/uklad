@@ -30,6 +30,7 @@ import { createRequestsSlice } from "./requests.slice";
 import { createSessionSlice, makeSession } from "./session.slice";
 import { createChatSlice } from "./chat.slice";
 import { createOperationsSlice } from "./operations.slice";
+import { createDisputesSlice } from "./disputes.slice";
 import { createDocsSlice } from "./docs.slice";
 import { createStaffSlice } from "./staff.slice";
 import { createSubscriptionSlice } from "./subscription.slice";
@@ -105,6 +106,8 @@ export function persistedState(s: EditorState) {
     docRecords: s.docRecords,
     thisDeviceId: s.thisDeviceId,
     tasks: s.tasks,
+    // Спорное ждёт решения старшего и обязано пережить перезагрузку.
+    disputes: s.disputes,
     serviceSettings: s.serviceSettings,
     // Тариф и настройки резервных копий: срок напоминания и дата последней
     // копии должны пережить перезагрузку, иначе напоминание врёт.
@@ -163,6 +166,7 @@ export const useEditor = create<EditorState>()(
       ...createSubscriptionSlice(...a),
       ...createWorkstationSlice(...a),
       ...createOperationsSlice(...a),
+      ...createDisputesSlice(...a),
       ...createDocsSlice(...a),
     }),
     {

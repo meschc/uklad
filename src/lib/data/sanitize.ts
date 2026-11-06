@@ -8,6 +8,7 @@ import {
   isDevice,
   isDocRecord,
   isStaffEvent,
+  isDispute,
   isTask,
   keepValid,
   type Guard,
@@ -35,6 +36,7 @@ const CHECKED: { key: string; guard: Guard<unknown> }[] = [
   { key: "devices", guard: isDevice as Guard<unknown> },
   { key: "docRecords", guard: isDocRecord as Guard<unknown> },
   { key: "tasks", guard: isTask as Guard<unknown> },
+  { key: "disputes", guard: isDispute as Guard<unknown> },
 ];
 
 function checkLists(obj: Record<string, unknown>, prefix: string) {

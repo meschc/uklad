@@ -274,6 +274,7 @@ export const ru = {
   "nav.side.lookup": "Что это?",
   "nav.side.integrations": "Интеграции",
   "nav.side.devices": "Устройства",
+  "nav.side.disputes": "Спорные",
 
   // --- Справка о новых возможностях ------------------------------------------
   "faq.crossDock.q": "Чем кроссдокинг отличается от обычной приёмки?",
@@ -562,6 +563,7 @@ export const en: Record<keyof typeof ru, string> = {
   "nav.side.lookup": "What is it?",
   "nav.side.integrations": "Integrations",
   "nav.side.devices": "Devices",
+  "nav.side.disputes": "Disputes",
 
   // --- Help on the new features -------------------------------------------------
   "faq.crossDock.q": "How is cross-docking different from normal receiving?",

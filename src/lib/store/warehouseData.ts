@@ -19,6 +19,8 @@ export const WAREHOUSE_DOMAINS = [
   "requests",
   "shipments",
   "tasks",
+  // Спорное тоже у каждого склада своё: недостача одного — не дело другого.
+  "disputes",
   // Какие услуги склад оказывает и почём — у каждого склада свои.
   "serviceSettings",
   // Компьютеры и ТСД стоят на конкретном складе: стол 3 одного склада — не
@@ -50,6 +52,7 @@ export function emptyWarehouseData(
     tasks: [],
     devices: [],
     docRecords: [],
+    disputes: [],
   };
 }
 

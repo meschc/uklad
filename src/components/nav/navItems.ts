@@ -7,6 +7,7 @@ import {
   ListChecks,
   MessagesSquare,
   MonitorSmartphone,
+  Scale,
   Plug,
   Printer,
   ScanSearch,
@@ -87,6 +88,8 @@ const WAREHOUSE_NAV: NavEntry[] = [
       { view: "staff", key: "nav.side.staff", icon: Users },
       // Компьютеры и ТСД у столов: какой стоит где и кто за ним.
       { view: "devices", key: "nav.side.devices", icon: MonitorSmartphone },
+      // Недостачи и ошибки скана, которые решает старший смены.
+      { view: "disputes", key: "nav.side.disputes", icon: Scale },
       { view: "operations", key: "nav.side.operations", icon: ListChecks },
       { view: "integrations", key: "nav.side.integrations", icon: Plug },
     ],

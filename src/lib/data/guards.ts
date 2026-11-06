@@ -12,6 +12,7 @@ import type {
   StaffEvent,
   StaffMember,
   WarehouseTask,
+  Dispute,
 } from "../types";
 
 /**
@@ -67,6 +68,13 @@ export const isReceivingEvent: Guard<ReceivingEvent> = (v): v is ReceivingEvent 
 export const isRequest: Guard<FulfillmentRequest> = (v): v is FulfillmentRequest =>
   hasId(v) && isStr(v.productId) && isNum(v.qty) && isStr(v.status);
 
+/** Спорное: вид, кто нашёл и когда; решённое обязано знать, кто и что решил. */
+export const isDispute: Guard<Dispute> = (v): v is Dispute => {
+  if (!hasId(v) || !isStr(v.kind) || !isStr(v.raisedBy) || !isNum(v.raisedAt) || !isNum(v.qty))
+    return false;
+  if (v.resolution === undefined) return true;
+  return isStr(v.resolution) && isStr(v.resolvedBy) && isNum(v.resolvedAt);
+};
 /** Устройство склада: имя, вид места и дата привязки. */
 export const isDevice: Guard<Device> = (v): v is Device =>
   hasId(v) && isStr(v.name) && isStr(v.station) && isNum(v.createdAt);

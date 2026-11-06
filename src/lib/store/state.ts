@@ -39,6 +39,9 @@ import type {
   ServiceSettings,
   TaskStatus,
   WarehouseTask,
+  Dispute,
+  DisputeKind,
+  DisputeResolution,
   RequestStatus,
   Session,
   ShipmentSource,
@@ -757,6 +760,25 @@ export interface DocsSlice {
   clearDocFocus: () => void;
 }
 
+export interface DisputesSlice {
+  /** Спорное по складу: недостачи и ошибки скана, ждущие решения старшего. */
+  disputes: Dispute[];
+  /**
+   * Завести спорное. Такое же открытое (тот же вид, тара и товар) не
+   * дублируется — растёт количество: десять раз пикнули лишнее, а находка одна.
+   */
+  raiseDispute: (input: {
+    kind: DisputeKind;
+    boxId?: string;
+    toteCode?: string;
+    productId?: string;
+    qty?: number;
+    raisedBy: string;
+  }) => string;
+  /** Решить. Уже решённое не трогаем: первое решение остаётся. */
+  resolveDispute: (id: string, resolution: DisputeResolution, by: string, note?: string) => boolean;
+}
+
 export interface OperationsSlice {
   /** Задания на операции склада: маркировка, упаковка, возвраты… */
   tasks: WarehouseTask[];
@@ -786,6 +808,7 @@ export type EditorState = AccountSlice &
   SubscriptionSlice &
   WorkstationSlice &
   OperationsSlice &
+  DisputesSlice &
   DocsSlice &
   SessionSlice &
   ChatSlice &

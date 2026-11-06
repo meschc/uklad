@@ -90,6 +90,11 @@ const DevicesScreen = lazy(() =>
     default: m.DevicesScreen,
   })),
 );
+const DisputesScreen = lazy(() =>
+  import("@/components/workstation/DisputesScreen").then((m) => ({
+    default: m.DisputesScreen,
+  })),
+);
 const ChatScreen = lazy(() =>
   import("@/components/chat/ChatScreen").then((m) => ({ default: m.ChatScreen })),
 );
@@ -363,6 +368,8 @@ function renderView(view: string) {
       return <WorkstationScreen />;
     case "devices":
       return <DevicesScreen />;
+    case "disputes":
+      return <DisputesScreen />;
     case "login":
       return <LoginScreen />;
     default:
