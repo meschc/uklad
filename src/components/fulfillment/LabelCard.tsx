@@ -47,7 +47,7 @@ export function LabelCard({
   className?: string;
 }) {
   const t = useT();
-  const has = (e: LabelTemplate["elements"][number]) => tpl.elements.includes(e);
+  const has = (e: LabelTemplate["elements"][number]) => e === "title" || tpl.elements.includes(e);
   const { prefix, number } = splitCode(code);
   const plan = planLabel({
     widthMm: tpl.widthMm,

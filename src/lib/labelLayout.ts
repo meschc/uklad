@@ -61,7 +61,8 @@ const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v
 const LINE = 1.25;
 
 export function planLabel(i: LabelPlanInput): LabelPlan {
-  const has = (e: LabelElement) => i.elements.includes(e);
+  // Заголовок («Тара» / «Паллета») печатается всегда: в настройках его нет.
+  const has = (e: LabelElement) => e === "title" || i.elements.includes(e);
   // Ориентацию решают стороны, а не поле шаблона: старые шаблоны хранят
   // «вертикально» при ленте 58×40, и код тогда сжимался до трети ширины.
   const horizontal =

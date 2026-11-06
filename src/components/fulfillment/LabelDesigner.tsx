@@ -38,7 +38,6 @@ const RARE: LabelElement[] = ["logo", "mark", "note"];
 
 const ELEMENTS: { id: LabelElement; key: MsgKey }[] = [
   { id: "logo", key: "labels.el.logo" },
-  { id: "title", key: "labels.el.title" },
   { id: "seq", key: "labels.el.seq" },
   { id: "code", key: "labels.el.code" },
   { id: "warehouse", key: "labels.el.warehouse" },
@@ -127,7 +126,14 @@ export function LabelDesigner({
     <div className="flex flex-col gap-5">
       {/* Шаблоны — сохранённые настройки печати, а не «дизайны»: у склада их
           два-три на все случаи, поэтому список плоский и всегда на виду. */}
-      <Block title={t("labels.templates")} icon={<LayoutTemplate />}>
+      <details className="group">
+        <summary className="mb-2 flex cursor-pointer list-none items-center gap-1.5 text-xs">
+          <LayoutTemplate className="size-3.5" />
+          <span className={eyebrow()}>{t("labels.templates")}</span>
+          <span className="text-muted-foreground">
+            · {templates.find((x) => x.id === selectedId)?.name ?? "—"}
+          </span>
+        </summary>
         <div className="flex flex-wrap gap-1.5">
           {templates.map((tpl) => (
             <button
@@ -147,7 +153,7 @@ export function LabelDesigner({
             </button>
           ))}
         </div>
-      </Block>
+      </details>
 
       {/* Лента и ориентация — одно решение: смена ориентации меняет стороны. */}
       <Block title={t("labels.size")} icon={<Ruler />}>
