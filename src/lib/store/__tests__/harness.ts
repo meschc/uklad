@@ -2,9 +2,11 @@ import { create, type StateCreator } from "zustand";
 import { createRequestsSlice } from "../requests.slice";
 import { createChatSlice } from "../chat.slice";
 import { createOperationsSlice } from "../operations.slice";
+import { createDisputesSlice } from "../disputes.slice";
 import { createFulfillmentSlice } from "../fulfillment.slice";
 import type {
   ChatSlice,
+  DisputesSlice,
   EditorState,
   FulfillmentSlice,
   OperationsSlice,
@@ -79,4 +81,16 @@ export function makeFlowStore(initial: Partial<EditorState> = {}) {
         ...initial,
       }) as EditorState,
   );
+}
+
+const disputesSlice = createDisputesSlice as unknown as StateCreator<
+  EditorState,
+  [],
+  [],
+  DisputesSlice
+>;
+
+/** Стенд спорного: срез читает и правит только свои `disputes` и `boxes`. */
+export function makeDisputesStore(initial: Partial<EditorState> = {}) {
+  return create<EditorState>()((...a) => ({ ...disputesSlice(...a), ...initial }) as EditorState);
 }

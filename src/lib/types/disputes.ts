@@ -1,0 +1,35 @@
+/**
+ * Спорное: то, что сотрудник у стола решить не вправе. Недостачу и ошибки скана
+ * он не оформляет сам — тара уходит старшему, а в системе остаётся запись, по
+ * которой видно, кто, когда и что нашёл. Решает старший смены.
+ */
+export type DisputeKind =
+  /** При закрытии тары в ней осталось то, что должны были упаковать. */
+  | "shortage"
+  /** Отсканировали товар, которого в таре нет. */
+  | "not_in_tote"
+  /** Товара больше, чем просили заказы. */
+  | "extra"
+  /** Товар, который по правилам склада упаковывать нельзя. */
+  | "not_packable";
+
+/** Что решил старший: вернуть на место, переложить в другую тару или списать. */
+export type DisputeResolution = "returned" | "moved" | "written_off";
+
+export interface Dispute {
+  id: string;
+  kind: DisputeKind;
+  /** Тара, с которой работали, и её код на момент находки. */
+  boxId?: string;
+  toteCode?: string;
+  productId?: string;
+  qty: number;
+  /** Кто нашёл (сотрудник у стола) и когда. */
+  raisedBy: string;
+  raisedAt: number;
+  /** Кто решил: id сотрудника или «manager» (руководитель из кабинета). */
+  resolvedBy?: string;
+  resolvedAt?: number;
+  resolution?: DisputeResolution;
+  note?: string;
+}
