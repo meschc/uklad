@@ -204,6 +204,42 @@ const SEQ_PAD = 6;
  */
 export const BOX_PREFIX = "UK-BOX-";
 export const PALLET_PREFIX = "UK-PLT-";
+/** QR машины: печатается один раз на машину и висит в кабине, номер — после префикса. */
+export const VEHICLE_PREFIX = "UK-VEH-";
+
+/** Код машины из её номера: пробелы и дефисы убираем, регистр — верхний. */
+export function vehicleCode(plate: string): string {
+  return VEHICLE_PREFIX + plate.replace(/[\s-]+/g, "").toUpperCase();
+}
+
+/**
+ * Номер машины из скана или ручного ввода. С префиксом — это QR машины; без
+ * него — номер, набранный руками (4–14 букв и цифр). Иначе `null`: скан
+ * товара или чужой код машиной не считаем.
+ */
+export function parseVehicle(raw: string): string | null {
+  const code = raw.trim().toUpperCase();
+  if (code.startsWith(VEHICLE_PREFIX)) {
+    const plate = code.slice(VEHICLE_PREFIX.length);
+    return plate.length >= 3 ? plate : null;
+  }
+  const plain = code.replace(/[\s-]+/g, "");
+  // И буква, и цифра: голые цифры — это штрихкод товара, а не номер машины.
+  return /^[A-ZА-ЯЁ0-9]{4,14}$/.test(plain) &&
+    /\d/.test(plain) &&
+    /[A-ZА-ЯЁ]/.test(plain) &&
+    !/^UK/.test(plain)
+    ? plain
+    : null;
+}
+
+/** Паллета или короб, который грузят в машину: код тары, а не товара. */
+export function isLoadUnit(raw: string): boolean {
+  const code = normalizeCode(raw);
+  return (
+    code.startsWith(BOX_PREFIX) || code.startsWith(PALLET_PREFIX) || code.startsWith("UK-OUT-")
+  );
+}
 
 export function generateBoxBarcode(seq: number): string {
   return BOX_PREFIX + String(Math.max(1, Math.round(seq))).padStart(SEQ_PAD, "0");

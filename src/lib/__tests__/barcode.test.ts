@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { findByCode, findProduct, matchesProductCode, normalizeCode } from "../barcode";
+import {
+  findByCode,
+  findProduct,
+  isLoadUnit,
+  matchesProductCode,
+  normalizeCode,
+  parseVehicle,
+  vehicleCode,
+} from "../barcode";
 
 /**
  * Поиск по отсканированному коду — то место, где ошибка не видна.
@@ -113,5 +121,43 @@ describe("normalizeCode", () => {
     expect(normalizeCode("ук-box-1")).toBe("UK-BOX-1");
     expect(normalizeCode("УK-BOX-1")).toBe("UK-BOX-1");
     expect(normalizeCode("yk-box-1")).toBe("UK-BOX-1");
+  });
+});
+
+/**
+ * Погрузка: стол ждёт то машину, то тару. Перепутать их нельзя — иначе скан
+ * короба молча станет «номером машины» и рейс уедет с чужим номером.
+ */
+describe("parseVehicle", () => {
+  it("читает QR машины и обратно собирает тот же номер", () => {
+    expect(parseVehicle(vehicleCode("А123ВС77"))).toBe("А123ВС77");
+  });
+
+  it("принимает номер, набранный руками", () => {
+    expect(parseVehicle(" а123вс77 ")).toBe("А123ВС77");
+  });
+
+  it("не принимает код тары и товара за машину", () => {
+    expect(parseVehicle("UK-BOX-000012")).toBeNull();
+    expect(parseVehicle("UK-PLT-000004")).toBeNull();
+    expect(parseVehicle("4601234567890")).toBeNull();
+  });
+
+  it("отвергает слишком короткое", () => {
+    expect(parseVehicle("UK-VEH-1")).toBeNull();
+    expect(parseVehicle("")).toBeNull();
+  });
+});
+
+describe("isLoadUnit", () => {
+  it("паллета, короб и короб отгрузки грузятся", () => {
+    expect(isLoadUnit("uk-plt-000004")).toBe(true);
+    expect(isLoadUnit(" UK-BOX-000012 ")).toBe(true);
+    expect(isLoadUnit("UK-OUT-000003")).toBe(true);
+  });
+
+  it("машина и чужие коды — нет", () => {
+    expect(isLoadUnit(vehicleCode("А123ВС77"))).toBe(false);
+    expect(isLoadUnit("4601234567890")).toBe(false);
   });
 });

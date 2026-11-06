@@ -189,6 +189,8 @@ export interface Shipment {
   /** Кто отгрузил (id сотрудника) и когда. */
   staffId?: string;
   shippedAt: number;
+  /** Коды паллет и коробов, отсканированных при погрузке (стол отгрузки). */
+  units?: string[];
 }
 
 /**

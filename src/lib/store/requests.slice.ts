@@ -255,6 +255,7 @@ export const createRequestsSlice: SliceCreator<RequestsSlice> = (set, get) => ({
       vehicle: info?.vehicle?.trim() || undefined,
       staffId: info?.staffId,
       shippedAt: at,
+      units: info?.units?.length ? [...info.units] : undefined,
     };
 
     set((s) => ({
