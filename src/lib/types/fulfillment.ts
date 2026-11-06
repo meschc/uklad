@@ -16,7 +16,7 @@ export interface BoxLine {
 /** Коробка приёмки: физический короб со своим ярлыком Code128. */
 export interface Box {
   id: string;
-  barcode: string; // Code128, формат УК-BOX-000123
+  barcode: string; // Code128, формат UK-BOX-123
   createdAt: number;
   lines: BoxLine[];
   palletId?: string;
@@ -29,12 +29,15 @@ export interface Box {
   shipmentId?: string;
   /** Где физически стоит коробка. Пока не размещена — undefined. */
   address?: CellAddress;
+  /** Когда ярлык напечатали в последний раз и сколько раз. Нет — не печатали. */
+  printedAt?: number;
+  printCount?: number;
 }
 
 /** Паллета: группа коробок под одним ярлыком. */
 export interface Pallet {
   id: string;
-  barcode: string; // формат УК-PLT-000045
+  barcode: string; // формат UK-PLT-45
   createdAt: number;
   boxIds: string[];
   /** Принята местом на грузовой приёмке и ещё не вскрыта. */
@@ -42,6 +45,8 @@ export interface Pallet {
   /** Поставка, с которой паллета приехала. */
   shipmentId?: string;
   address?: CellAddress;
+  printedAt?: number;
+  printCount?: number;
 }
 
 /**

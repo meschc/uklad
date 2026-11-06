@@ -27,6 +27,18 @@ export const UNIT_LABEL_PREFIX = "UK-LBL-";
 export const ORDER_LABEL_PREFIX = "UK-ORD-";
 export const TARGET_PREFIX = "UK-OUT-";
 
+/**
+ * Код этикетки отправления: один и тот же для одного назначения, сколько ни
+ * печатай. Случайный код при каждой печати дал бы на один адрес десяток
+ * разных этикеток. Хеш короткий: код набирают руками, если этикетка порвана.
+ */
+export function targetCode(destination: string): string {
+  let h = 5381;
+  for (const ch of destination.trim().toLowerCase())
+    h = (Math.imul(h, 33) + ch.charCodeAt(0)) >>> 0;
+  return `${TARGET_PREFIX}${h.toString(36).toUpperCase().padStart(6, "0").slice(-6)}`;
+}
+
 export function unitLabelCode(sessionId: string, seq: number): string {
   return `${UNIT_LABEL_PREFIX}${sessionId.slice(-4).toUpperCase()}-${String(seq).padStart(3, "0")}`;
 }

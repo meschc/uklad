@@ -120,6 +120,14 @@ export const createFulfillmentSlice: SliceCreator<FulfillmentSlice> = (set, get)
     return box;
   },
 
+  markLabelsPrinted: (kind, codes) => {
+    const set1 = new Set(codes);
+    const now = nowMs();
+    const mark = <T extends { barcode: string; printCount?: number }>(x: T): T =>
+      set1.has(x.barcode) ? { ...x, printedAt: now, printCount: (x.printCount ?? 0) + 1 } : x;
+    set((s) => (kind === "box" ? { boxes: s.boxes.map(mark) } : { pallets: s.pallets.map(mark) }));
+  },
+
   placeBox: (boxId, addr) =>
     set((s) => ({
       boxes: s.boxes.map((b) => (b.id === boxId ? { ...b, address: addr } : b)),

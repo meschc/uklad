@@ -16,6 +16,7 @@ export function QrSvg({
   ecc = "M",
   showCode = true,
   fit,
+  quiet = QR_QUIET_ZONE,
   className,
 }: {
   code: string;
@@ -28,15 +29,20 @@ export function QrSvg({
    * выделяет вёрстка, а не компонент.
    */
   fit?: boolean;
+  /**
+   * Тихая зона в модулях. На наклейке белые поля вокруг кода уже есть, поэтому
+   * там хватает двух: четыре стандартных отнимали четверть площади у самого кода.
+   */
+  quiet?: number;
   className?: string;
 }) {
   const { path, span } = useMemo(() => {
     const matrix = qrMatrix(code, ecc);
     return {
       path: qrPath(matrix),
-      span: matrix.length + QR_QUIET_ZONE * 2,
+      span: matrix.length + quiet * 2,
     };
-  }, [code, ecc]);
+  }, [code, ecc, quiet]);
 
   if (fit) {
     return (
@@ -48,7 +54,7 @@ export function QrSvg({
         role="img"
         aria-label={`QR ${code}`}
       >
-        <g transform={`translate(${QR_QUIET_ZONE} ${QR_QUIET_ZONE})`}>
+        <g transform={`translate(${quiet} ${quiet})`}>
           <path d={path} fill="#000" />
         </g>
       </svg>
@@ -66,7 +72,7 @@ export function QrSvg({
         aria-label={`QR ${code}`}
       >
         <rect width={span} height={span} fill="#fff" />
-        <g transform={`translate(${QR_QUIET_ZONE} ${QR_QUIET_ZONE})`}>
+        <g transform={`translate(${quiet} ${quiet})`}>
           <path d={path} fill="#000" />
         </g>
       </svg>

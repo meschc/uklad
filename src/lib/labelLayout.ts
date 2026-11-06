@@ -1,0 +1,174 @@
+import type { LabelCodeType, LabelElement, LabelLayout } from "./types";
+
+/**
+ * Раскладка наклейки в миллиметрах. Чистая функция, а не вёрстка внутри
+ * компонента: что поместится на ленте 43×25 и что нет, проверяется тестом, а
+ * не глазами на пробной печати.
+ *
+ * Правила (по разбору ярлыков 31.10.2026):
+ *  - поля фиксированные и малые, а не процент ленты;
+ *  - код занимает всю короткую сторону: вертикально — ширину, горизонтально —
+ *    высоту. Он самое важное на ярлыке, остальное делит остаток;
+ *  - номер под кодом крупный: при порванном QR его набирают руками, а префикс
+ *    «UK-BOX» мелкий — он у всех одинаковый;
+ *  - остаток распределяется по краям (номер сверху, служебное снизу), а не
+ *    сбивается в кучу; что не помещается, скрывается, а не обрезается.
+ */
+
+export interface LabelPlanInput {
+  widthMm: number;
+  heightMm: number;
+  layout: LabelLayout;
+  codeType: LabelCodeType;
+  elements: readonly LabelElement[];
+  /** Сколько цифр в большом номере: от этого зависит его кегль. */
+  digits: number;
+  /** Дополнительные строки (рабочее место: товар, заказ). */
+  extraLines?: number;
+  /** Крупная подпись над номером (получатель на этикетке отправления). */
+  headline?: boolean;
+}
+
+export interface LabelPlan {
+  horizontal: boolean;
+  padMm: number;
+  gapMm: number;
+  /** Блок кода. */
+  code: { w: number; h: number };
+  /** Остаток рядом с кодом. */
+  rest: { w: number; h: number };
+  /** Кегль мелкого текста и номера, мм. */
+  smallMm: number;
+  numberMm: number;
+  prefixMm: number;
+  /** Сколько информационных строк помещается (склад, свои строки, примечание, КИЗ — по порядку). */
+  infoCount: number;
+  show: {
+    headline: boolean;
+    header: boolean;
+    number: boolean;
+    footer: boolean;
+    seq: boolean;
+    date: boolean;
+    fragile: boolean;
+  };
+}
+
+const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+const LINE = 1.25;
+
+export function planLabel(i: LabelPlanInput): LabelPlan {
+  const has = (e: LabelElement) => i.elements.includes(e);
+  const horizontal = i.layout === "horizontal";
+  const minSide = Math.min(i.widthMm, i.heightMm);
+  const padMm = clamp(minSide * 0.03, 1, 2.5);
+  const gapMm = padMm;
+  const innerW = i.widthMm - padMm * 2;
+  const innerH = i.heightMm - padMm * 2;
+  const smallMm = clamp(minSide * 0.07, 1.8, 6);
+
+  // Блок кода. QR квадратный; линейный код вытянут и не отнимает у текста
+  // больше, чем нужно для уверенного чтения.
+  let code: { w: number; h: number };
+  if (i.codeType === "qr") {
+    const side = horizontal ? Math.min(innerH, innerW * 0.62) : Math.min(innerW, innerH * 0.68);
+    code = { w: side, h: side };
+  } else if (horizontal) {
+    code = { w: innerW * 0.5, h: innerH };
+  } else {
+    code = { w: innerW, h: Math.min(innerH * 0.4, innerW * 0.5) };
+  }
+
+  const rest = horizontal
+    ? { w: innerW - code.w - gapMm, h: innerH }
+    : { w: innerW, h: innerH - code.h - gapMm };
+
+  const small = smallMm * LINE;
+  const number = has("code");
+  // Вертикально мелкий префикс стоит сбоку от номера и отнимает ширину; горизонтально он над номером.
+  const widthPerMm = Math.max(i.digits, 1) * 0.62 + (horizontal ? 0 : 0.33);
+  const numberMm = number
+    ? clamp(
+        Math.min(rest.h * (horizontal ? 0.42 : 0.5), (rest.w - (horizontal ? 0 : 1)) / widthPerMm),
+        smallMm,
+        26,
+      )
+    : 0;
+  const prefixMm = Math.max(1.5, numberMm * 0.3);
+
+  // Что помещается в остаток. Номер важнее всего, потом служебная строка,
+  // потом информация; шапка (логотип, заголовок) — только на крупной ленте.
+  let free = rest.h - (number ? numberMm * 1.05 + (horizontal ? prefixMm * 1.1 : 0) : 0);
+  const gap = smallMm * 0.5;
+  const take = (need: number) => {
+    if (free >= need + gap) {
+      free -= need + gap;
+      return true;
+    }
+    return false;
+  };
+
+  const headline = !!i.headline && take(smallMm * 1.6 * 2);
+
+  // Служебная строка: «Хрупкое» важнее номера места, номер места важнее даты.
+  // Что не влезает в ширину, переносится на вторую строку; что не влезает и
+  // туда по высоте, пропадает целиком, а не обрезается.
+  const candidates: { key: "fragile" | "seq" | "date"; w: number }[] = [];
+  if (has("fragile")) candidates.push({ key: "fragile", w: smallMm * 5.4 });
+  if (has("seq")) candidates.push({ key: "seq", w: smallMm * (minSide < 50 ? 2.6 : 7.2) });
+  if (has("date") && (minSide >= 35 || !has("seq")))
+    candidates.push({ key: "date", w: smallMm * 4.4 });
+  const rowsFor = (items: { w: number }[]) => {
+    let rows = items.length ? 1 : 0;
+    let used = 0;
+    for (const it of items) {
+      if (used > 0 && used + it.w > rest.w) {
+        rows++;
+        used = 0;
+      }
+      used += it.w + smallMm * 0.5;
+    }
+    return rows;
+  };
+  let kept = candidates;
+  while (kept.length > 0 && !(rowsFor(kept) * small + gap <= free)) kept = kept.slice(0, -1);
+  const footerRows = rowsFor(kept);
+  if (footerRows > 0) free -= footerRows * small + gap;
+  const footer = kept.length > 0;
+  const infoLines =
+    (has("warehouse") ? 1 : 0) +
+    (has("note") ? 1 : 0) +
+    (i.extraLines ?? 0) +
+    (has("mark") ? 1 : 0);
+  let shownInfo = 0;
+  for (let n = 0; n < infoLines; n++) if (take(small * 0.9)) shownInfo++;
+  const header = (has("logo") || has("title")) && minSide >= 80 && take(small * 1.4);
+
+  return {
+    horizontal,
+    padMm,
+    gapMm,
+    code,
+    rest,
+    smallMm,
+    numberMm,
+    prefixMm,
+    infoCount: shownInfo,
+    show: {
+      headline,
+      header,
+      number,
+      footer,
+      seq: kept.some((k) => k.key === "seq"),
+      date: kept.some((k) => k.key === "date"),
+      fragile: kept.some((k) => k.key === "fragile"),
+    },
+  };
+}
+
+/** Делит код на мелкий префикс и крупный номер: «UK-BOX-1234» → «UK-BOX», «1234». */
+export function splitCode(code: string): { prefix: string; number: string } {
+  const at = code.lastIndexOf("-");
+  if (at <= 0 || at === code.length - 1) return { prefix: "", number: code };
+  return { prefix: code.slice(0, at), number: code.slice(at + 1) };
+}

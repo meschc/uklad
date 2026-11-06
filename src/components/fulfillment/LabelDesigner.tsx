@@ -1,8 +1,6 @@
 import { useRef } from "react";
 import { Barcode, QrCode, RectangleHorizontal, RectangleVertical, Trash2 } from "lucide-react";
 import {
-  LABEL_CODE_MAX,
-  LABEL_CODE_MIN,
   LABEL_LOGO_MAX_PX,
   LABEL_SIDE_MAX_MM,
   LABEL_SIDE_MIN_MM,
@@ -184,25 +182,6 @@ export function LabelDesigner({
           />
           <p className="text-xs leading-relaxed text-muted-foreground">
             {t(draft.codeType === "qr" ? "labels.code.qrHint" : "labels.code.barHint")}
-          </p>
-        </Block>
-
-        <Block title={t("labels.codeSize")}>
-          <div className="flex items-center gap-3">
-            <input
-              type="range"
-              min={LABEL_CODE_MIN * 100}
-              max={LABEL_CODE_MAX * 100}
-              value={Math.round(draft.codeScale * 100)}
-              onChange={(e) => onChange({ codeScale: Number(e.target.value) / 100 })}
-              className="h-1 flex-1 accent-[hsl(var(--primary))]"
-            />
-            <span className="w-10 text-right text-xs tabular-nums text-muted-foreground">
-              {Math.round(draft.codeScale * 100)}%
-            </span>
-          </div>
-          <p className="text-xs leading-relaxed text-muted-foreground">
-            {t("labels.codeSizeHint")}
           </p>
         </Block>
 
