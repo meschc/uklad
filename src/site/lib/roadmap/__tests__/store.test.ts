@@ -1,7 +1,10 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, test } from "vitest";
 import {
+  castVote,
   closeDialog,
+  loadComments,
+  postComment,
   logout,
   port,
   resetRoadmapStore,
@@ -57,6 +60,36 @@ describe("дорожная карта", () => {
     act(() => toggleVote("database"));
     await waitFor(() => expect(result.current.counts.database).toBe(0));
     expect(result.current.mine.has("database")).toBe(false);
+  });
+
+  test("стрелка вниз переставляет голос, итог меняется на два", async () => {
+    const { result } = renderHook(() => useRoadmap());
+    await login();
+
+    act(() => castVote("database", 1));
+    await waitFor(() => expect(result.current.counts.database).toBe(1));
+    act(() => castVote("database", -1));
+    await waitFor(() => expect(result.current.counts.database).toBe(-1));
+    expect(result.current.mine.get("database")).toBe(-1);
+
+    act(() => castVote("database", -1));
+    await waitFor(() => expect(result.current.counts.database).toBe(0));
+    expect(result.current.mine.has("database")).toBe(false);
+  });
+
+  test("комментарий пишет только вошедший и видит любой", async () => {
+    renderHook(() => useRoadmap());
+    expect(await postComment("database", "Нужно", null)).toMatchObject({
+      ok: false,
+      error: "auth",
+    });
+
+    await login();
+    const res = await postComment("database", "  Нужно скорее  ", null);
+    expect(res).toMatchObject({ ok: true, data: { text: "Нужно скорее", author: "Гость" } });
+
+    const read = await loadComments("database");
+    expect(read.ok && read.data).toHaveLength(1);
   });
 
   test("неверный код не пускает", async () => {

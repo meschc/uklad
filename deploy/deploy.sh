@@ -8,8 +8,37 @@
 set -eu
 cd "$(dirname "$0")"
 
-git -C .. pull --ff-only
+# Какой коммит выкладывать. Автовыкладка (.github/workflows/staging.yml)
+# передаёт через SSH ровно тот коммит, что прошёл CI; руками — свежий main.
+# Принимается только полный хэш, и только если он уже в origin/main.
+#
+# Слияние может заменить и этот файл, а shell читает скрипт по ходу работы.
+# Поэтому весь блок разбирается целиком (одна команда if), а после слияния
+# скрипт перезапускается с новой версии и этот шаг пропускает.
+if [ -z "${UKLAD_REEXEC:-}" ]; then
+  TARGET=${SSH_ORIGINAL_COMMAND:-}
+  git -C .. fetch --quiet origin main
+  if [ -n "$TARGET" ]; then
+    case "$TARGET" in *[!0-9a-f]*) echo "Не хэш коммита: отказ"; exit 1 ;; esac
+    [ ${#TARGET} -eq 40 ] || { echo "Не хэш коммита: отказ"; exit 1; }
+    git -C .. merge-base --is-ancestor "$TARGET" origin/main \
+      || { echo "Коммита $TARGET нет в main: отказ"; exit 1; }
+    git -C .. merge --ff-only "$TARGET"
+  else
+    git -C .. merge --ff-only origin/main
+  fi
+  UKLAD_REEXEC=1 exec "./$(basename "$0")"
+fi
 TAG=$(git -C .. rev-parse --short HEAD)
+
+# Пароли базы кабинета: каких нет в .env — генерируются здесь, на сервере, и
+# никуда не уходят. Уже заданные не трогаются: роли в базе созданы с ними.
+# Без перевода строки в конце .env пароль приклеился бы к последней строке.
+[ -z "$(tail -c1 .env)" ] || echo >> .env
+chmod 600 .env
+for v in SUPERUSER OWNER APP NOTIFIER; do
+  grep -q "^PG_${v}_PASSWORD=." .env || echo "PG_${v}_PASSWORD=$(openssl rand -hex 32)" >> .env
+done
 
 # Копия базы перед выкладкой: новая версия может поменять её схему.
 [ -f data/uklad.db ] && ./backup.sh

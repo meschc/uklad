@@ -5,11 +5,10 @@ import type { SessionSlice, SliceCreator } from "./state";
 /**
  * Сессия текущего пользователя (п.0.5).
  *
- * Реального входа с паролем здесь НЕТ и в этом пункте не появится: это тот же
- * локальный переключатель роли, что и был, только роль теперь живёт в
- * `session.user`, а не отдельным полем стора. Смысл ровно один — когда придёт
- * Supabase, поменяется способ получения сессии, а не десяток экранов, которые
- * спрашивают «кто я и что мне можно».
+ * Две сессии одной формы. Демо (`setRole`) — локальный переключатель роли без
+ * пароля. Сервер (`startServerSession`) — вход паролем: токен в куке `HttpOnly`,
+ * роль по компании. Экраны спрашивают «кто я и что мне можно» одинаково
+ * (`selectRole`) и не знают, откуда пришла сессия.
  */
 
 /** Мок-токен: локальная строка вместо JWT. В сеть, разумеется, не уходит. */
@@ -33,7 +32,7 @@ export function makeSession(role: UserRole, warehouseId: string): Session {
 /** Роль текущего пользователя — единственный правильный способ её спросить. */
 export const selectRole = (s: { session: Session }): UserRole => s.session.user.role;
 
-export const createSessionSlice: SliceCreator<SessionSlice> = (set) => ({
+export const createSessionSlice: SliceCreator<SessionSlice> = (set, get) => ({
   // Склад проставится при первой же смене роли; на старте важна только роль.
   session: makeSession("warehouse", ""),
 
@@ -56,4 +55,27 @@ export const createSessionSlice: SliceCreator<SessionSlice> = (set) => ({
       appView:
         s.otherWarehouses.length === 0 ? (role === "seller" ? "seller" : "editor") : "dashboard",
     })),
+
+  // Данные кабинета пока в браузере (переезд на сервер — по модулям), поэтому
+  // после входа навигация та же, что у демо: `setRole` уводит на «свой» экран.
+  sessionLost: () =>
+    set((s) => ({
+      session: { ...s.session, source: undefined },
+      appView: "login",
+      selection: [],
+      activeShelf: null,
+    })),
+
+  startServerSession: (email, role, orgId) => {
+    set((s) => ({
+      session: {
+        user: { ...s.session.user, id: orgId, email },
+        token: "cookie",
+        startedAt: nowMs(),
+        source: "server",
+        orgId,
+      },
+    }));
+    get().setRole(role);
+  },
 });

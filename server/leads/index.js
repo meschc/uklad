@@ -132,6 +132,11 @@ module.exports.handler = async function handler(event) {
     return reply(400, allowed, { ok: false });
   }
 
+  if (parsed.bot) {
+    console.error("[uklad] заявка похожа на бота: отправлена сразу после загрузки");
+    return reply(200, allowed, { ok: true });
+  }
+
   const { lead } = parsed;
   try {
     await sendLetter({

@@ -11,7 +11,8 @@
  * просьба, её проверяет база. Бейдж открывает ровно один склад.
  *
  * Маршруты:
- *   POST /api/auth/register — почта, пароль, компания, склад или селлер;
+ *   POST /api/auth/register — почта, пароль, склад или селлер, компания
+ *                             (необязательно);
  *                             сессии не даёт, шлёт код на почту
  *   POST /api/auth/verify   — почта и код из письма → вход
  *   POST /api/auth/resend   — прислать код подтверждения ещё раз
@@ -50,8 +51,17 @@ const CODES_PER_HOUR = 5;
 const CODES_PER_DAY = 10;
 
 const BADGE_PREFIX = "UKB-";
+const DEFAULT_COMPANY = "Новая компания";
 const EMAIL_RE = /^[^\s@]{1,64}@[^\s@]{1,255}\.[^\s@]{2,}$/;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Ответ и ошибка SMTP часто повторяют адрес целиком: в журнал — без него. */
+function maskAddress(text, address) {
+  return String(text ?? "")
+    .split(address)
+    .join("***")
+    .slice(0, 200);
+}
 
 const sha256 = (s) => createHash("sha256").update(s).digest();
 const newSecret = (bytes) => randomBytes(bytes).toString("base64url");
@@ -134,7 +144,7 @@ function createAuth({ pool, cfg, send, readBody, log, mail }) {
 
   // POST только с нашего сайта и только JSON: форма с чужого сайта не
   // пройдёт ни по Origin, ни по типу тела (CSRF).
-  async function readJson(req, res) {
+  async function readJson(req, res, maxBytes) {
     const origin = (req.headers.origin ?? "").replace(/\/+$/, "");
     if (!cfg.allowedOrigins.includes(origin)) {
       send(res, 403, { ok: false });
@@ -144,7 +154,7 @@ function createAuth({ pool, cfg, send, readBody, log, mail }) {
       send(res, 415, { ok: false });
       return null;
     }
-    const body = await readBody(req);
+    const body = await readBody(req, maxBytes);
     if (!body.ok) {
       send(res, 413, { ok: false }, { Connection: "close" });
       return null;
@@ -175,7 +185,11 @@ function createAuth({ pool, cfg, send, readBody, log, mail }) {
     const email = String(b.email ?? "")
       .trim()
       .toLowerCase();
-    const company = String(b.company ?? "").trim();
+    // Название компании не входит в форму регистрации: это профиль, а не
+    // пропуск (решение по кабинету). Пока его не задали — «Новая компания».
+    // Не почта: название видят партнёры по договору, в чате и документах, а
+    // личную почту человек контрагентам не отдавал.
+    const company = String(b.company ?? "").trim() || DEFAULT_COMPANY;
     // Без согласия на обработку данных регистрироваться нельзя (152-ФЗ).
     if (
       !EMAIL_RE.test(email) ||
@@ -221,11 +235,20 @@ function createAuth({ pool, cfg, send, readBody, log, mail }) {
     (await pool.query(`SELECT * FROM auth.code_target($1, $2)`, [email, purpose])).rows[0] ?? null;
 
   // Письмо уходит в фоне: ответ сайта не должен зависеть ни от почтового
-  // сервера, ни от того, было ли кому писать.
+  // сервера, ни от того, было ли кому писать. В журнал — ответ почтового
+  // сервера и номер письма: без них «не дошло» не отличить от «не ушло».
+  // Адрес — только доменом (152-ФЗ: в журнале не нужен).
   function deliver(to, letter) {
+    const domain = to.slice(to.lastIndexOf("@") + 1);
+    const clean = (text) => maskAddress(text, to);
     Promise.resolve()
       .then(() => mail.sendTo({ to, ...letter }))
-      .catch((e) => log.error("[uklad] письмо входа не ушло:", e.message));
+      .then((info) =>
+        log.info?.(
+          `[uklad] письмо входа принято почтой: @${domain} ${clean(info?.messageId)} ${clean(info?.response)}`,
+        ),
+      )
+      .catch((e) => log.error(`[uklad] письмо входа не ушло: @${domain}`, clean(e?.message)));
   }
 
   async function sendCode(accountId, email, purpose, target = null) {
@@ -498,7 +521,18 @@ function createAuth({ pool, cfg, send, readBody, log, mail }) {
   const purge = () => pool.query(`SELECT auth.purge()`).catch((e) => log.error(e.message));
 
   // `readJson` нужен соседним модулям кабинета (чат): та же защита от CSRF.
-  return { handle, withSession, readJson, purge, cookieName: COOKIE };
+  // `account.js` (удаление аккаунта, выход на других устройствах) работает с
+  // той же кукой, теми же письмами и той же проверкой пароля.
+  return {
+    handle,
+    withSession,
+    readJson,
+    purge,
+    cookieName: COOKIE,
+    tokenHash,
+    clearCookie,
+    deliver,
+  };
 }
 
-module.exports = { createAuth, BADGE_PREFIX };
+module.exports = { maskAddress, createAuth, BADGE_PREFIX, FAIL_WINDOW_MS, FAIL_PAIR, FAIL_EMAIL };

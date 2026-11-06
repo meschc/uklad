@@ -118,6 +118,13 @@ export function hasLeadsEndpoint(): boolean {
   return endpoint() !== "";
 }
 
+/**
+ * Когда страница открылась. Приёмник сверяет с этим, сколько человек провёл на
+ * странице до отправки: форму не заполнить быстрее пары секунд, а простой бот
+ * шлёт запрос сразу после загрузки (находка 4 аудита от 21.10).
+ */
+const OPENED_AT = Date.now();
+
 /** Адрес страницы, с которой ушла заявка. На сборке окна нет — там и заявок нет. */
 function pageUrl(): string {
   return typeof window === "undefined" ? "" : window.location.href;
@@ -173,6 +180,7 @@ function leadPayload(lead: Lead): Record<string, unknown> {
     consent: lead.consent,
     fields: Object.fromEntries(lead.fields.map((f) => [f.label, f.value.trim()])),
     message: leadText(lead),
+    elapsed: Date.now() - OPENED_AT,
   };
 }
 

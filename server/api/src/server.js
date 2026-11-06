@@ -20,9 +20,13 @@
  *   GET  /api/health      — жив ли сервер и база (для мониторинга)
  *   POST /api/leads       — заявка с формы (тело — `Lead` из `src/site/lib/leads.ts`)
  *   POST /api/support/reports — «Сообщить о проблеме» из кабинета (`src/lib/support/report.ts`)
- *   GET  /d/<токен>       — персональная демо-ссылка → кабинет
+ *   GET  /d/<токен>       — персональная демо-ссылка → кука-пропуск и кабинет
+ *   GET  /api/demo/pass   — открыт ли этому браузеру демо-кабинет
+ *   /api/auth/account*    — удаление аккаунта, выход на других устройствах
+ *                           (`cabinet/account.js`)
  *   /api/auth/*, /api/staff/* — вход в кабинет (`cabinet/auth.js`), если
  *                           задан DATABASE_URL (Postgres, `server/db`)
+ *   POST /api/company/lookup — реквизиты по ИНН (`cabinet/company.js`)
  *   /api/chat/*           — чат кабинета (`cabinet/chat.js`, `cabinet/telegram.js`)
  *   POST /api/telegram/webhook — обновления Телеграм-бота уведомлений
  *
@@ -71,6 +75,14 @@ function readEnv(env) {
     adminPort: num("ADMIN_PORT", 8081),
     adminOrigin: (env.ADMIN_ORIGIN ?? "").replace(/\/+$/, ""),
   };
+}
+
+function cookieValue(req, name) {
+  for (const part of (req.headers.cookie ?? "").split(";")) {
+    const [k, ...v] = part.trim().split("=");
+    if (k === name) return v.join("=");
+  }
+  return "";
 }
 
 function send(res, status, payload, headers = {}) {
@@ -188,6 +200,12 @@ function createApp({ cfg, db, mail, cabinet = null, now = () => new Date(), log 
     if (!parsed.ok) {
       log.error("[uklad] заявка не принята:", parsed.error);
       return send(res, 400, { ok: false }, cors);
+    }
+    // Слишком быстрая отправка (parseLead считает по `elapsed` из браузера):
+    // отвечаем «принято», в базу и на почту не пускаем.
+    if (parsed.bot) {
+      log.error("[uklad] заявка отброшена: отправлена слишком быстро");
+      return send(res, 200, { ok: true }, cors);
     }
     const { lead } = parsed;
     const t = now();
@@ -311,14 +329,42 @@ function createApp({ cfg, db, mail, cabinet = null, now = () => new Date(), log 
     return send(res, 200, { ok: true, id }, cors);
   }
 
-  function handleDemo(req, res, token) {
+  // Пропуск в демо — кука с тем же токеном, что в письме. Кабинет в сборке
+  // с сервером без входа закрыт целиком (`App.tsx`), и открывает его только
+  // ответ `GET /api/demo/pass`: ссылка на экран сама по себе демо не даёт.
+  // Локально по http браузер не сохранит куку с `Secure` и `__Host-`.
+  const demoLocal = !cfg.publicUrl.startsWith("https://");
+  const DEMO_COOKIE = demoLocal ? "uklad_demo" : "__Host-uklad_demo";
+  const demoAttrs = `Path=/; HttpOnly;${demoLocal ? "" : " Secure;"} SameSite=Lax`;
+
+  /** Живая демо-ссылка по токену: есть в базе и срок не вышел. */
+  function liveDemo(token, t) {
     const row = isToken(token) ? db.findDemo(token) : undefined;
+    return row && row.expires_at >= t.toISOString() ? row : undefined;
+  }
+
+  function handleDemo(req, res, token) {
     const t = now();
-    if (!row || row.expires_at < t.toISOString()) {
-      return send(res, 302, undefined, { Location: "/?demo=expired" });
+    const row = liveDemo(token, t);
+    if (!row) {
+      return send(res, 302, undefined, {
+        Location: "/?demo=expired#demo",
+        "Set-Cookie": `${DEMO_COOKIE}=; ${demoAttrs}; Max-Age=0`,
+      });
     }
     db.openDemo(token, t);
-    return send(res, 302, undefined, { Location: "/app/" });
+    const left = Math.max(1, Math.floor((Date.parse(row.expires_at) - t.getTime()) / 1000));
+    return send(res, 302, undefined, {
+      Location: "/app/",
+      "Set-Cookie": `${DEMO_COOKIE}=${token}; ${demoAttrs}; Max-Age=${left}`,
+    });
+  }
+
+  /** Есть ли у браузера живой пропуск в демо. Сам токен наружу не отдаём. */
+  function handleDemoPass(req, res) {
+    const row = liveDemo(cookieValue(req, DEMO_COOKIE), now());
+    if (!row) return send(res, 200, { ok: false });
+    return send(res, 200, { ok: true, until: row.expires_at });
   }
 
   return async function handler(req, res) {
@@ -332,9 +378,12 @@ function createApp({ cfg, db, mail, cabinet = null, now = () => new Date(), log 
       if (url.pathname === "/api/support/reports") return await handleReport(req, res);
       const demo = /^\/d\/([^/]+)\/?$/.exec(url.pathname);
       if (demo && req.method === "GET") return handleDemo(req, res, demo[1]);
+      if (url.pathname === "/api/demo/pass" && req.method === "GET") {
+        return handleDemoPass(req, res);
+      }
       if (cabinet && (await cabinet.handle(req, res, url))) return;
       // Кабинет без базы не работает: честный 503, а не «нет такого адреса».
-      if (!cabinet && /^\/api\/(auth|staff|chat|telegram)\//.test(url.pathname)) {
+      if (!cabinet && /^\/api\/(auth|staff|chat|telegram|cabinet|company)\//.test(url.pathname)) {
         return send(res, 503, { ok: false });
       }
       return send(res, 404, { ok: false });
@@ -414,9 +463,27 @@ function main() {
         log: console,
       }).start();
     }
+    const { createAccount } = require("./cabinet/account");
+    const account = createAccount({ pool, auth, send, cfg, log: console });
+    account.purge();
+    setInterval(account.purge, DAY_MS).unref();
+    const { createSnapshot } = require("./cabinet/snapshot");
+    const snapshot = createSnapshot({ auth, send, log: console });
+    // Реквизиты по ИНН: без DADATA_API_KEY маршрут отвечает 503, профиль
+    // сохраняет ИНН и пишет, что справочник не подключён.
+    const { createCompanyLookup } = require("./cabinet/company");
+    const company = createCompanyLookup({
+      auth,
+      send,
+      log: console,
+      token: process.env.DADATA_API_KEY,
+    });
     cabinet = {
       handle: async (req, res, url) =>
         (await auth.handle(req, res, url)) ||
+        (await account.handle(req, res, url)) ||
+        (await snapshot.handle(req, res, url)) ||
+        (await company.handle(req, res, url)) ||
         (await chat.handle(req, res, url)) ||
         (await telegram.handle(req, res, url)),
     };
@@ -436,16 +503,19 @@ function main() {
 
   server.listen(cfg.port, () => console.log(`[uklad] сервер слушает порт ${cfg.port}`));
 
-  // Админка на отдельном порту: Caddy пускает к нему только admin.<домен>.
+  // Админка на отдельном порту: наружу он открыт только на 127.0.0.1
+  // сервера, вход — SSH-туннелем (deploy/admin-tunnel.sh).
   let admin;
-  if (cfg.adminOrigin.startsWith("https://")) {
+  if (cfg.adminOrigin) {
     const { createAdminApp } = require("./admin/app");
     admin = http.createServer(createAdminApp({ cfg, db: db.raw }));
     admin.requestTimeout = 15_000;
     admin.headersTimeout = 10_000;
     admin.listen(cfg.adminPort, () => console.log(`[uklad] админка слушает порт ${cfg.adminPort}`));
   } else {
-    console.log("[uklad] админка выключена: не задан ADMIN_ORIGIN (https://…)");
+    console.log(
+      "[uklad] админка выключена: не задан ADMIN_ORIGIN (https://… или http://localhost для туннеля)",
+    );
   }
 
   const stop = () => {

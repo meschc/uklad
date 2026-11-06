@@ -13,6 +13,7 @@ import { c, useT } from "../../lib/copy";
 import { ORIGIN_TONE, STATUS_TONE, TRACK_TONE } from "./roadmapColors";
 import { useOverlay } from "../../lib/useOverlay";
 import { SidePanel } from "../frame/SidePanel";
+import { RoadmapComments } from "./RoadmapComments";
 
 const T = {
   close: c("Закрыть", "Close"),
@@ -23,7 +24,6 @@ const T = {
   releasedIn: c("Вышло в {version}", "Shipped in {version}"),
   unreleased: c("Готово, ждёт выпуска", "Done, awaiting release"),
   noDate: c("Без срока", "No date"),
-  discuss: c("Обсудить идею", "Discuss the idea"),
 };
 
 /**
@@ -105,13 +105,7 @@ export function RoadmapIdea({
           </dd>
         </dl>
 
-        <a
-          href="#ideas"
-          onClick={onClose}
-          className="mt-6 inline-flex h-10 items-center rounded-full bg-[var(--wh-blue)] px-5 text-sm font-medium text-[var(--wh-on-blue)] transition-colors hover:bg-[var(--wh-blue-deep)]"
-        >
-          {t(T.discuss)}
-        </a>
+        <RoadmapComments itemId={item.id} />
       </div>
     </SidePanel>
   );

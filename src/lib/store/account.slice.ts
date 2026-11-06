@@ -35,7 +35,7 @@ export const createAccountSlice: SliceCreator<AccountSlice> = (set, get) => ({
 
   allWarehouses: () => {
     const { warehouse, otherWarehouses } = get();
-    return [warehouse, ...otherWarehouses];
+    return warehouse.placeholder ? otherWarehouses : [warehouse, ...otherWarehouses];
   },
 
   goToDashboard: () => set({ appView: "dashboard" }),
@@ -86,7 +86,22 @@ export const createAccountSlice: SliceCreator<AccountSlice> = (set, get) => ({
 
   createWarehouse: (name, kind, address, coords) => {
     const wh = blankWarehouse(name.trim() || "Новый склад", kind, address.trim(), coords);
-    set((s) => ({ otherWarehouses: [...s.otherWarehouses, wh] }));
+    set((s) =>
+      // Первый склад компании встаёт на место заготовки — с её сотрудниками и
+      // партнёрами, если их успели завести. Данные склада (поставки, тара…)
+      // у заготовки пустые и остаются как есть.
+      s.warehouse.placeholder
+        ? {
+            warehouse: {
+              ...wh,
+              staff: s.warehouse.staff,
+              partners: s.warehouse.partners,
+              manager: s.warehouse.manager,
+            },
+            activeFloorId: wh.floors[0].id,
+          }
+        : { otherWarehouses: [...s.otherWarehouses, wh] },
+    );
     return wh.id;
   },
 
