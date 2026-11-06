@@ -381,3 +381,27 @@ describe("shipRequests", () => {
     expect(showToast).not.toHaveBeenCalled();
   });
 });
+
+describe("shipRequests и короба отгрузки", () => {
+  it("закрывает рейсом погруженные короба, а оставшийся у стола ждёт", () => {
+    // Arrange
+    const base = { lines: [], packedBy: ["s1"], createdAt: 1, updatedAt: 1 };
+    const store = makeRequestsStore({
+      requests: [makeRequest({ id: "r1", productId: "p1", qty: 1, status: "done", note: "Тула" })],
+      shipments: [],
+      outboundBoxes: [
+        { ...base, id: "o1", code: "UK-OUT-TULA01", requestIds: ["r1"] },
+        { ...base, id: "o2", code: "UK-OUT-TULA02", requestIds: ["r1"] },
+      ],
+      showToast: vi.fn(),
+    });
+
+    // Act
+    const shipmentId = store.getState().shipRequests(["r1"], { units: ["uk-out-tula01"] });
+
+    // Assert
+    const [loaded, left] = store.getState().outboundBoxes;
+    expect(loaded.shipmentId).toBe(shipmentId);
+    expect(left.shipmentId).toBeUndefined();
+  });
+});

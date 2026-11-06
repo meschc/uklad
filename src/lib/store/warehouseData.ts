@@ -28,6 +28,8 @@ export const WAREHOUSE_DOMAINS = [
   "devices",
   // Документы склада: накладная одного склада не бумага другого.
   "docRecords",
+  // Короба отгрузки стоят у столов своего склада и уезжают его машинами.
+  "outboundBoxes",
 ] as const;
 
 export type WarehouseData = Pick<EditorState, (typeof WAREHOUSE_DOMAINS)[number]>;
@@ -53,6 +55,7 @@ export function emptyWarehouseData(
     devices: [],
     docRecords: [],
     disputes: [],
+    outboundBoxes: [],
   };
 }
 

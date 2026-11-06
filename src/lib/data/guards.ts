@@ -13,6 +13,7 @@ import type {
   StaffMember,
   WarehouseTask,
   Dispute,
+  OutboundBox,
 } from "../types";
 
 /**
@@ -75,6 +76,15 @@ export const isDispute: Guard<Dispute> = (v): v is Dispute => {
   if (v.resolution === undefined) return true;
   return isStr(v.resolution) && isStr(v.resolvedBy) && isNum(v.resolvedAt);
 };
+/** Короб отгрузки: код, состав и заявки списками, дата создания. */
+export const isOutboundBox: Guard<OutboundBox> = (v): v is OutboundBox =>
+  hasId(v) &&
+  isStr(v.code) &&
+  Array.isArray(v.lines) &&
+  v.lines.every((l) => isRec(l) && isStr(l.productId) && isNum(l.qty)) &&
+  Array.isArray(v.requestIds) &&
+  Array.isArray(v.packedBy) &&
+  isNum(v.createdAt);
 /** Устройство склада: имя, вид места и дата привязки. */
 export const isDevice: Guard<Device> = (v): v is Device =>
   hasId(v) && isStr(v.name) && isStr(v.station) && isNum(v.createdAt);

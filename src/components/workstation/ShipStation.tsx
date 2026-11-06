@@ -2,7 +2,14 @@ import { useRef, useState, useEffect } from "react";
 import { Printer, Truck } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { groupRequestsByTarget } from "@/lib/fulfillment";
-import { isLoadUnit, parseVehicle, vehicleCode } from "@/lib/barcode";
+import { parseVehicle, vehicleCode } from "@/lib/barcode";
+import {
+  classifyLoadScan,
+  expectedOutbound,
+  missingOutbound,
+  openOutbound,
+  outboundUnits,
+} from "@/lib/outbound";
 import { beep } from "@/lib/beep";
 import type { FulfillmentRequest } from "@/lib/types";
 import { useT } from "@/lib/i18n";
@@ -22,6 +29,10 @@ import { useDemoHints } from "./useDemoHints";
  * или номер руками), затем скан каждой паллеты и короба, которые грузят,
  * «Завершить». Отгрузил тот, кто вошёл по бейджу. Машину, если её назвал
  * продавец, подставляем сами.
+ *
+ * Короба, упакованные на столе, известны по составу (`outboundBoxes`): чужой
+ * короб в эту машину не примем, а короб назначения, оставшийся у стола,
+ * покажем списком до «Завершить».
  */
 export function ShipStation({ staffId }: { staffId: string }) {
   const t = useT();
@@ -99,6 +110,8 @@ function ShipGroup({
   const demoHints = useDemoHints();
   const t = useT();
   const products = useEditor((s) => s.products);
+  const allRequests = useEditor((s) => s.requests);
+  const outbound = useEditor((s) => s.outboundBoxes);
   const boxes = useEditor((s) => s.boxes);
   const pallets = useEditor((s) => s.pallets);
   const shipRequests = useEditor((s) => s.shipRequests);
@@ -125,6 +138,10 @@ function ShipGroup({
 
   // Недостача — собрано меньше, чем заказано: такую машину не отправляют молча.
   const short = items.reduce((n, r) => n + Math.max(0, r.qty - (r.pickedQty ?? r.qty)), 0);
+  const ids = items.map((r) => r.id);
+  const expected = expectedOutbound(outbound ?? [], ids);
+  // Короб назначения, который не погрузили, — это заказы, которые не уедут.
+  const missing = missingOutbound(expected, units);
 
   const onScan = (raw: string) => {
     if (!vehicle) {
@@ -133,11 +150,30 @@ function ShipGroup({
       setVehicle(plate);
       return flash("ok", t("ws.ship.vehicleOk", { v: plate }));
     }
-    const code = raw.trim().toUpperCase();
-    if (!isLoadUnit(code)) return flash("error", t("ws.ship.notUnit", { code: raw }));
-    if (units.includes(code)) return flash("error", t("ws.ship.dup", { code }));
-    setUnits((u) => [...u, code]);
-    flash("ok", t("ws.ship.unitOk", { code }));
+    const res = classifyLoadScan(outbound ?? [], ids, units, raw);
+    switch (res.kind) {
+      case "not_unit":
+        return flash("error", t("ws.ship.notUnit", { code: raw }));
+      case "dup":
+        return flash("error", t("ws.ship.dup", { code: res.code }));
+      case "shipped":
+        return flash("error", t("ws.ship.unitShipped", { code: res.code }));
+      case "foreign": {
+        const dest = allRequests.find((r) => res.box.requestIds.includes(r.id))?.note?.trim();
+        return flash(
+          "error",
+          t("ws.ship.foreign", { code: res.code, target: dest || t("ws.ship.noTarget") }),
+        );
+      }
+      case "ok":
+        setUnits((u) => [...u, res.code]);
+        return flash(
+          "ok",
+          res.box
+            ? t("ws.ship.boxOk", { code: res.code, n: outboundUnits(res.box) })
+            : t("ws.ship.unitOk", { code: res.code }),
+        );
+    }
   };
 
   const finish = () =>
@@ -150,7 +186,13 @@ function ShipGroup({
   // Что можно «отсканировать» кликом, пока нет сканера под рукой: ровно то,
   // что стол ждёт сейчас — машину или тару для погрузки.
   const demo = vehicle
-    ? [...boxes.map((b) => b.barcode), ...pallets.map((p) => p.barcode)]
+    ? [
+        ...new Set([
+          ...missing.map((b) => b.code),
+          ...boxes.map((b) => b.barcode),
+          ...pallets.map((p) => p.barcode),
+        ]),
+      ]
         .filter((c) => !units.includes(c))
         .slice(0, 6)
         .map((c) => ({ code: c, hint: t("ws.ship.demoUnit") }))
@@ -229,15 +271,46 @@ function ShipGroup({
       </ul>
       {short > 0 && <p className="text-xs text-destructive">{t("ws.ship.short", { n: short })}</p>}
 
+      {missing.length > 0 && (
+        <div className="flex flex-col gap-1">
+          <h4 className={eyebrow({ tone: "muted", size: "xs" })}>
+            {t("ws.ship.waiting", { n: missing.length })}
+          </h4>
+          <ul className="flex flex-col gap-1 text-sm">
+            {missing.map((b) => (
+              <li key={b.id} className="flex justify-between gap-3">
+                <span className="font-mono">{b.code}</span>
+                <span className="tabular-nums text-muted-foreground">
+                  {t("ws.ship.boxUnits", { n: outboundUnits(b) })}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {expected.length > 0 && missing.length === 0 && (
+        <p className="text-sm text-muted-foreground">{t("ws.ship.allLoaded")}</p>
+      )}
+
       {units.length > 0 && (
         <div className="flex flex-col gap-1">
           <h4 className={eyebrow({ tone: "muted", size: "xs" })}>
             {t("ws.ship.loaded", { n: units.length })}
           </h4>
           <ul className="flex flex-wrap gap-x-4 gap-y-1 font-mono text-sm">
-            {units.map((u) => (
-              <li key={u}>{u}</li>
-            ))}
+            {units.map((u) => {
+              const box = openOutbound(outbound ?? [], u);
+              return (
+                <li key={u}>
+                  {u}
+                  {box && (
+                    <span className="ml-2 font-sans text-muted-foreground">
+                      {t("ws.ship.boxUnits", { n: outboundUnits(box) })}
+                    </span>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}
@@ -246,11 +319,16 @@ function ShipGroup({
         <Button
           size="lg"
           disabled={!vehicle || units.length === 0}
-          className={cn(short > 0 && "border-0 bg-orange-500 text-white hover:bg-orange-600")}
+          className={cn(
+            (short > 0 || missing.length > 0) &&
+              "border-0 bg-orange-500 text-white hover:bg-orange-600",
+          )}
           onClick={finish}
         >
           <Truck />
-          {t(short > 0 ? "ws.ship.confirmShort" : "ws.ship.finish")}
+          {missing.length > 0
+            ? t("ws.ship.confirmMissing", { n: missing.length })
+            : t(short > 0 ? "ws.ship.confirmShort" : "ws.ship.finish")}
         </Button>
       </div>
     </section>
