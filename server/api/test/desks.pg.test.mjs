@@ -198,6 +198,8 @@ test("стол пишет работу склада, но не персонал,
     },
     otherWarehouses: [],
     boxes: [{ id: "b1" }, { id: "b2" }],
+    // Короб отгрузки пишет упаковка за столом.
+    outboundBoxes: [{ id: "o1", code: "UK-OUT-TULA01" }],
     chats: {},
     subscription: { plan: "operator" },
     // Товар продавца p1 перекинут другому, документ «исправлен».
@@ -230,6 +232,10 @@ test("стол пишет работу склада, но не персонал,
   assert.deepEqual(
     data.boxes.map((b) => b.id),
     ["b1", "b2"],
+  );
+  assert.deepEqual(
+    data.outboundBoxes.map((b) => b.code),
+    ["UK-OUT-TULA01"],
   );
   assert.equal(data.subscription.plan, "start");
   assert.equal(data.warehouse.staff.length, 2);

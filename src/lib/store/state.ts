@@ -40,6 +40,7 @@ import type {
   TaskStatus,
   WarehouseTask,
   Dispute,
+  OutboundBox,
   OrderSource,
   DisputeKind,
   DisputeResolution,
@@ -577,6 +578,11 @@ export interface RequestsSlice {
     requestIds: string[],
     info?: { vehicle?: string; staffId?: string; units?: string[] },
   ) => string | null;
+  /**
+   * Короба отгрузки с составом: их пишет упаковка (`packFinish`), закрывает
+   * погрузка (`shipRequests`).
+   */
+  outboundBoxes: OutboundBox[];
 }
 
 // --- Сессия и наборы -----------------------------------------------------------

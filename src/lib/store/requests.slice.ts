@@ -1,5 +1,6 @@
 import { nowMs, uid } from "../utils";
 import { addressKey } from "../address";
+import { shipOutbound } from "../outbound";
 import { isOrderSource, type FulfillmentRequest, type Shipment } from "../types";
 import type { RequestsSlice, SliceCreator } from "./state";
 
@@ -23,6 +24,7 @@ function orderOrigin(
 export const createRequestsSlice: SliceCreator<RequestsSlice> = (set, get) => ({
   requests: [],
   shipments: [],
+  outboundBoxes: [],
 
   createRequest: (input) => {
     const now = nowMs();
@@ -274,6 +276,8 @@ export const createRequestsSlice: SliceCreator<RequestsSlice> = (set, get) => ({
 
     set((s) => ({
       shipments: [shipment, ...s.shipments],
+      // Погруженные короба уехали этим рейсом: их код свободен для нового.
+      outboundBoxes: shipOutbound(s.outboundBoxes ?? [], shipment.units ?? [], shipmentId, at),
       requests: s.requests.map((r) =>
         ids.has(r.id) && r.status === "done"
           ? {

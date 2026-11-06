@@ -63,6 +63,8 @@ const DESK_WRITES = [
   "shipments",
   "tasks",
   "placements",
+  // Короба отгрузки: состав пишет упаковка, закрывает погрузка — обе за столом.
+  "outboundBoxes",
 ];
 
 const byId = (list) =>

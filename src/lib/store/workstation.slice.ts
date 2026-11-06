@@ -20,6 +20,7 @@ import {
   toteRemaining,
   unitLabelCode,
 } from "../packing";
+import { addToOutbound, openOutbound, packTargetProblem } from "../outbound";
 import type { Device, PackSession, StaffEvent } from "../types";
 import type { EditorState, SliceCreator, WorkstationSlice } from "./state";
 
@@ -181,11 +182,20 @@ export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get)
 
   prepareDemoTote: () => {
     // Сборка в тару ещё не пишет, что положила, поэтому для демо тару собираем
-    // здесь: собранные заказы двух назначений в один короб, не разделяя их.
+    // здесь: собранные заказы одного продавца на одно назначение. Короб
+    // отгрузки смешивать нельзя (`packTargetProblem`), и демо не должно учить
+    // обратному.
+    const products = get().products;
+    const sellerOf = (id: string) => products.find((p) => p.id === id)?.partnerId ?? "";
     const ready = get().requests.filter((r) => r.status === "done" && !r.packedAt);
-    const targets = [...new Set(ready.map((r) => r.note?.trim() || ""))].slice(0, 2);
+    const first = ready[0];
+    if (!first) return null;
+    const target = first.note?.trim() || "";
+    const seller = sellerOf(first.productId);
     const lines = new Map<string, number>();
-    for (const r of ready.filter((x) => targets.includes(x.note?.trim() || ""))) {
+    for (const r of ready.filter(
+      (x) => (x.note?.trim() || "") === target && sellerOf(x.productId) === seller,
+    )) {
       const n = r.partial ? (r.pickedQty ?? 0) : r.qty;
       if (n > 0) lines.set(r.productId, (lines.get(r.productId) ?? 0) + n);
     }
@@ -211,6 +221,18 @@ export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get)
     if (toteContents(box).size === 0) return "ws.tote.empty";
     const target = normalizeCode(targetCode);
     if (!target || target === normalizeCode(box.barcode)) return "ws.tote.targetBad";
+    // Один короб — один продавец и одно назначение: смешанный короб нельзя ни
+    // честно выставить в счёт, ни отправить одной машиной.
+    const problem = packTargetProblem({
+      open: openOutbound(s.outboundBoxes ?? [], target),
+      toteLines: box.lines,
+      toteTargets: toteOrders(s.requests, box).map((o) => o.target ?? ""),
+      products: s.products,
+      requests: s.requests,
+    });
+    if (problem === "tote_mixed_seller") return "ws.tote.mixedSeller";
+    if (problem === "target_other_seller") return "ws.tote.otherSeller";
+    if (problem === "target_other_target") return "ws.tote.otherTarget";
     set({
       packSession: {
         id: uid("pack"),
@@ -391,7 +413,19 @@ export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get)
           raisedBy: ps.staffId,
         });
     }
+    // Что легло в короб отгрузки: подтверждённые этикетками штуки и закрытые
+    // заказы. По этому составу погрузка потом сверяет машину.
+    const packed = new Map<string, number>();
+    for (const u of done.units) packed.set(u.productId, (packed.get(u.productId) ?? 0) + 1);
     set({
+      outboundBoxes: addToOutbound(get().outboundBoxes ?? [], {
+        code: ps.targetCode,
+        lines: [...packed].map(([productId, qty]) => ({ productId, qty })),
+        requestIds: [...packedIds],
+        staffId: ps.staffId,
+        at: now,
+        newId: () => uid("out"),
+      }),
       boxes: s.boxes.map((b) =>
         b.id === box.id
           ? { ...b, lines: [...remaining].map(([productId, qty]) => ({ productId, qty })) }
