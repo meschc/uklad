@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   FileText,
   CalendarClock,
@@ -7,6 +7,7 @@ import {
   List,
   MapPin,
   Play,
+  Printer,
   ScanLine,
   Truck,
   X,
@@ -15,8 +16,10 @@ import { useEditor } from "@/lib/store";
 import { requestsRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
 import { formatAddress } from "@/lib/address";
+import { targetCode } from "@/lib/packing";
+import { useLabelPrinter } from "@/lib/labelPrinter";
 import { groupRequestsByTarget, stockByProduct } from "@/lib/fulfillment";
-import type { RequestStatus } from "@/lib/types";
+import type { LabelTemplate, RequestStatus } from "@/lib/types";
 import { useT, type TFunc } from "@/lib/i18n";
 import { cn, nowMs } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -25,6 +28,8 @@ import { ScreenShell, EmptyState } from "./ScreenShell";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { card } from "@/components/ui/card";
 import { RequestCalendar } from "./RequestCalendar";
+import { printLabels } from "@/lib/printLabels";
+import { LabelPrint } from "./LabelPrint";
 
 /**
  * «Задания» (п.7.3) — общий обзор заявок продавца во ВСЕХ статусах, включая
@@ -51,6 +56,25 @@ export function TasksScreen() {
   const trips = useEditor((s) => s.shipments);
   const openDoc = useEditor((s) => s.openDoc);
   const t = useT();
+
+  // Этикетка отправления: назначение, под которое печатаем. Печатная версия
+  // появляется в дереве после установки, поэтому печать запускает эффект.
+  const printer = useLabelPrinter();
+  const [labelTarget, setLabelTarget] = useState<string | null>(null);
+  useEffect(() => {
+    if (labelTarget) printLabels(() => setLabelTarget(null));
+  }, [labelTarget]);
+  const labelTpl: LabelTemplate = {
+    id: "target",
+    name: "target",
+    widthMm: printer.widthMm,
+    heightMm: printer.heightMm,
+    layout: printer.widthMm >= printer.heightMm ? "horizontal" : "vertical",
+    codeType: "qr",
+    elements: ["code"],
+    codeScale: 0.6,
+    createdAt: 0,
+  };
 
   // Смена статуса идёт через репозиторий (п.3.2.1). Здесь нет формы, которую
   // жалко потерять, и нет окна, куда встало бы сообщение, — поэтому отказ
@@ -190,6 +214,19 @@ export function TasksScreen() {
                     </span>
                   ))
                 )}
+                {g.target && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    title={t("tasks.printLabelHint", {
+                      size: `${printer.widthMm}×${printer.heightMm}`,
+                    })}
+                    onClick={() => setLabelTarget(g.target)}
+                  >
+                    <Printer />
+                    {t("tasks.printLabel")}
+                  </Button>
+                )}
                 {/* Погрузка: собранное по этому назначению уезжает одной
                     машиной. Грузят за столом отгрузки — кнопка ведёт туда. */}
                 {(() => {
@@ -316,6 +353,14 @@ export function TasksScreen() {
             </section>
           ))}
         </div>
+      )}
+      {labelTarget && (
+        <LabelPrint
+          tpl={labelTpl}
+          items={[{ code: targetCode(labelTarget), headline: labelTarget }]}
+          kind="custom"
+          warehouseName=""
+        />
       )}
     </ScreenShell>
   );

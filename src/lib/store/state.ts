@@ -488,6 +488,8 @@ export interface FulfillmentSlice {
 
   /** Новая коробка со свежим ярлыком Code128. Возвращает её. */
   createBox: () => Box;
+  /** Отметить ярлыки напечатанными: тара или паллеты по кодам. */
+  markLabelsPrinted: (kind: "box" | "pallet", codes: string[]) => void;
   /** Поставить коробку в ячейку. */
   placeBox: (boxId: string, addr: CellAddress) => void;
   createPallet: () => Pallet;

@@ -194,8 +194,12 @@ export function code128Modules(text: string): string | null {
   return parts.join("");
 }
 
-/** Ширина порядкового номера в ярлыке: UK-BOX-000123. */
-const SEQ_PAD = 6;
+/**
+ * Порядковый номер в ярлыке пишется без нулей слева: UK-BOX-123. Ярлык рвётся,
+ * и номер набирают руками — каждый лишний ноль там лишний шанс ошибиться.
+ * Старые ярлыки с нулями (UK-BOX-000123) продолжают находиться: см.
+ * `normalizeCode`.
+ */
 
 /**
  * Префиксы внутренних ярлыков — латиницей: код, набранный руками в чужой
@@ -242,11 +246,17 @@ export function isLoadUnit(raw: string): boolean {
 }
 
 export function generateBoxBarcode(seq: number): string {
-  return BOX_PREFIX + String(Math.max(1, Math.round(seq))).padStart(SEQ_PAD, "0");
+  return BOX_PREFIX + String(Math.max(1, Math.round(seq)));
 }
 
 export function generatePalletBarcode(seq: number): string {
-  return PALLET_PREFIX + String(Math.max(1, Math.round(seq))).padStart(SEQ_PAD, "0");
+  return PALLET_PREFIX + String(Math.max(1, Math.round(seq)));
+}
+
+/** Порядковый номер тары из кода: «UK-BOX-123» и «UK-BOX-000123» → 123. Не наш код — null. */
+export function labelNumber(code: string): number | null {
+  const m = /^UK-(?:BOX|PLT)-(\d+)$/.exec(normalizeCode(code));
+  return m ? Number(m[1]) : null;
 }
 
 /**
@@ -255,13 +265,17 @@ export function generatePalletBarcode(seq: number): string {
  * набрать руками, не переключив раскладку.
  */
 export function normalizeCode(raw: string): string {
-  return raw
-    .trim()
-    .toUpperCase()
-    .replace(/\s+/g, "")
-    .replace(/^УК-/, "UK-")
-    .replace(/^УK-/, "UK-")
-    .replace(/^YK-/, "UK-");
+  return (
+    raw
+      .trim()
+      .toUpperCase()
+      .replace(/\s+/g, "")
+      .replace(/^УК-/, "UK-")
+      .replace(/^УK-/, "UK-")
+      .replace(/^YK-/, "UK-")
+      // Нули слева в номере тары не значат ничего: UK-BOX-000012 и UK-BOX-12 — один ярлык.
+      .replace(/^(UK-(?:BOX|PLT)-)0+(?=\d)/, "$1")
+  );
 }
 
 /**
