@@ -15,12 +15,14 @@ import {
 import type { PackSession } from "@/lib/types";
 import { DEMO_BADGES } from "@/lib/workstation";
 import { useT, type MsgKey } from "@/lib/i18n";
+import { sizeLabel, useLabelPrinter } from "@/lib/labelPrinter";
 import { beep } from "@/lib/beep";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { QrSvg } from "@/components/table/QrSvg";
 import { ScanField, type ScanStatus } from "@/components/fulfillment/ScanField";
+import { PrintableLabel } from "./PrintableLabel";
 import { shortId } from "./useNow";
 
 export type PackResult = ReturnType<typeof packSummary> & { source: string; target: string };
@@ -406,8 +408,11 @@ function feedbackFor(r: ItemScan, nameOf: (id: string) => string): Feedback {
  */
 function LabelBlock({ code, title }: { code: string; title: string }) {
   const t = useT();
+  const printer = useLabelPrinter();
+  const size = sizeLabel(printer);
   return (
     <div className="flex w-full flex-wrap items-center gap-x-3 gap-y-1 py-1 text-sm">
+      <PrintableLabel code={code} lines={[]} printer={printer} />
       <Tag className="size-4 shrink-0 text-primary" />
       <span className="font-medium text-primary">{title}</span>
       <span className="font-mono text-xs text-muted-foreground">{code}</span>
@@ -415,6 +420,11 @@ function LabelBlock({ code, title }: { code: string; title: string }) {
         <Printer />
         {t("ws.run.print")}
       </Button>
+      <p className="basis-full text-xs text-muted-foreground">
+        {printer.name
+          ? t("ws.run.printerOn", { name: printer.name, size })
+          : t("ws.run.printerSizeOnly", { size })}
+      </p>
     </div>
   );
 }

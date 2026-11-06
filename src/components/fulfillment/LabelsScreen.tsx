@@ -1,16 +1,21 @@
 import { useMemo, useState } from "react";
-import { Layers, Loader2, Package, Printer } from "lucide-react";
+import { Check, Eye, Layers, Loader2, Package, Printer, Search, Tag } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { fulfillmentRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
-import type { LabelTemplate } from "@/lib/types";
+import type { LabelTemplate, Product } from "@/lib/types";
+import { useWarehouseProducts } from "@/lib/warehouseProducts";
 import { useT } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/segmented";
 import { Input } from "@/components/ui/input";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { card } from "@/components/ui/card";
+import { labelNumber } from "@/lib/barcode";
 import { LabelCard, type LabelKind } from "./LabelCard";
+import { printLabels } from "@/lib/printLabels";
+import { LabelPrint } from "./LabelPrint";
 import { LabelDesigner, type LabelDraft } from "./LabelDesigner";
 import { ScreenShell } from "./ScreenShell";
 
@@ -24,7 +29,11 @@ import { ScreenShell } from "./ScreenShell";
  * никому не нужно, а вот «не тот размер ленты» — ежедневная боль.
  */
 
-const MAX_BATCH = 100;
+type TareKind = Exclude<LabelKind, "custom">;
+
+const MAX_BATCH = 999;
+
+type Mode = TareKind | "product";
 
 const EMPTY_DRAFT: LabelDraft = {
   name: "",
@@ -70,10 +79,47 @@ export function LabelsScreen() {
   const saveTemplate = useEditor((s) => s.saveLabelTemplate);
   const removeTemplate = useEditor((s) => s.removeLabelTemplate);
 
-  const [kind, setKind] = useState<LabelKind>("box");
+  const [mode, setMode] = useState<Mode>("box");
+  const kind: TareKind = mode === "pallet" ? "pallet" : "box";
+  const isProduct = mode === "product";
+  const products = useWarehouseProducts();
+  const [query, setQuery] = useState("");
+  const [picked, setPicked] = useState<Product | null>(null);
   const [count, setCount] = useState(12);
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
   /** Коды текущей пачки — то, что уйдёт на печать. */
-  const [batch, setBatch] = useState<string[]>([]);
+  const [taraBatch, setBatch] = useState<string[]>([]);
+  const n = Math.max(1, Math.min(MAX_BATCH, Math.round(count)));
+  // Этикетки товара не создают номеров: это один и тот же штрихкод n раз.
+  const batch = useMemo(
+    () => (isProduct ? (picked ? Array<string>(n).fill(picked.barcode) : []) : taraBatch),
+    [isProduct, picked, n, taraBatch],
+  );
+
+  // Поиск по названию, артикулу (код производителя) и штрихкоду.
+  const found = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    return products
+      .filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          p.sku.toLowerCase().includes(q) ||
+          p.barcode.toLowerCase().includes(q),
+      )
+      .slice(0, 6);
+  }, [products, query]);
+  // Скан/ввод точного штрихкода или артикула выбирает товар сразу.
+  const pickExact = () => {
+    const q = query.trim().toLowerCase();
+    const hit = products.find((p) => p.barcode.toLowerCase() === q || p.sku.toLowerCase() === q);
+    const one = hit ?? (found.length === 1 ? found[0] : undefined);
+    if (one) {
+      setPicked(one);
+      setQuery("");
+    }
+  };
 
   const [selectedId, setSelectedId] = useState<string | null>(templates[0]?.id ?? null);
   const [draft, setDraft] = useState<LabelDraft>(
@@ -97,21 +143,34 @@ export function LabelsScreen() {
   const previewTpl: LabelTemplate = useMemo(
     () => ({
       ...draft,
+      elements: isProduct ? draft.elements.filter((e) => e !== "seq") : draft.elements,
       // Пустое поле размера в процессе набора не должно ронять предпросмотр.
       widthMm: draft.widthMm || 1,
       heightMm: draft.heightMm || 1,
       id: selectedId ?? "draft",
       createdAt: 0,
     }),
-    [draft, selectedId],
+    [draft, selectedId, isProduct],
   );
 
-  // Пустые наклейки прошлых пачек: тара без товара и без адреса ещё не в деле,
-  // её можно распечатать заново, не плодя новых номеров.
-  const unused =
-    kind === "box"
-      ? boxes.filter((b) => !b.address && b.lines.length === 0).map((b) => b.barcode)
-      : pallets.filter((p) => p.boxIds.length === 0).map((p) => p.barcode);
+  // Вся тара выбранного вида по возрастанию номера, со статусом печати.
+  const all = useMemo(() => {
+    const src = kind === "box" ? boxes : pallets;
+    return src
+      .map((x) => ({
+        code: x.barcode,
+        n: labelNumber(x.barcode),
+        printedAt: x.printedAt,
+        used:
+          kind === "box"
+            ? !!(x as (typeof boxes)[number]).address ||
+              (x as (typeof boxes)[number]).lines.length > 0
+            : (x as (typeof pallets)[number]).boxIds.length > 0,
+      }))
+      .sort((a, b) => (a.n ?? 0) - (b.n ?? 0));
+  }, [kind, boxes, pallets]);
+  const byCode = useMemo(() => new Map(all.map((x) => [x.code, x])), [all]);
+  const unprinted = all.filter((x) => !x.printedAt && !x.used);
 
   /**
    * Пачка номеров через репозиторий (п.3.2.1). Формы здесь нет — есть кнопка,
@@ -123,7 +182,7 @@ export function LabelsScreen() {
    * номерами существует, и отменять её значило бы потерять их из виду. Пачка
    * показывается неполной — человек допечатает недостающие.
    */
-  const create = useCommand(async (n: number, k: LabelKind) => {
+  const create = useCommand(async (n: number, k: TareKind) => {
     const codes: string[] = [];
     for (let i = 0; i < n; i++) {
       const res = await (k === "box"
@@ -139,10 +198,32 @@ export function LabelsScreen() {
   });
 
   const generate = async () => {
-    const n = Math.max(1, Math.min(MAX_BATCH, Math.round(count)));
     const res = await create.run(n, kind);
     if (res.ok) setBatch(res.data);
     else showToast(res.error);
+  };
+
+  /** Выбрать уже созданные номера «с … по …» — для перепечатки порванных. */
+  const pickRange = () => {
+    const a = Number(from.replace(/\D/g, ""));
+    const b = to.trim() ? Number(to.replace(/\D/g, "")) : a;
+    if (!a || !b) return;
+    const lo = Math.min(a, b);
+    const hi = Math.max(a, b);
+    const found = all.filter((x) => x.n !== null && x.n >= lo && x.n <= hi);
+    if (found.length === 0) return showToast("labels.rangeEmpty");
+    if (found.length > MAX_BATCH) return showToast("labels.tooMany");
+    setBatch(found.map((x) => x.code));
+  };
+
+  const pickUnprinted = () => setBatch(unprinted.slice(0, MAX_BATCH).map((x) => x.code));
+
+  const print = () => {
+    const codes = batch;
+    // У товара статуса «напечатан» нет: он не тара, а штрихкод из каталога.
+    printLabels(
+      isProduct ? undefined : () => void fulfillmentRepository.markLabelsPrinted(kind, codes),
+    );
   };
 
   const applyTemplate = (id: string) => {
@@ -170,86 +251,165 @@ export function LabelsScreen() {
   // Заглушка предпросмотра — латиницей, как настоящие номера: Code128 B
   // кириллицу не кодирует, и на «УК-…» предпросмотр показывал бы ошибку там,
   // где реальная печать сработает.
-  const previewCode = batch[0] ?? (kind === "box" ? "UK-BOX-000000" : "UK-PLT-000000");
+  const previewCode =
+    batch[0] ?? (isProduct ? "4600000000017" : kind === "box" ? "UK-BOX-1234" : "UK-PLT-1234");
+
+  const num = (v: string, set: (s: string) => void) => (
+    <Input
+      inputMode="numeric"
+      value={v}
+      onChange={(e) => set(e.target.value.replace(/\D/g, "").slice(0, 7))}
+      className="h-9 w-28 text-right tabular-nums"
+    />
+  );
 
   return (
     <ScreenShell title={t("labels.title")} subtitle={t("labels.subtitle")} wide>
-      {/* Размер страницы = размер наклейки: печать идёт на рулон, а не на A4.
-          Стиль живёт здесь, а не в index.css, потому что зависит от макета. */}
-      <style>{`@page { size: ${previewTpl.widthMm}mm ${previewTpl.heightMm}mm; margin: 0; }`}</style>
+      {/* Две колонки: слева настройки, справа то, что получится, и кнопка
+          печати. Правая колонка едет за прокруткой — наклейку видно, пока
+          крутишь настройки. */}
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] lg:items-start">
+        <div className="flex flex-col gap-4">
+          <div className={card({ className: "flex flex-wrap items-end gap-x-6 gap-y-4" })}>
+            <Segmented
+              size="md"
+              value={mode}
+              onChange={(k) => {
+                setMode(k);
+                setBatch([]);
+              }}
+              options={[
+                { value: "box" as Mode, label: t("labels.kind.box"), icon: <Package /> },
+                {
+                  value: "pallet" as Mode,
+                  label: t("labels.kind.pallet"),
+                  icon: <Layers />,
+                },
+                { value: "product" as Mode, label: t("labels.kind.product"), icon: <Tag /> },
+              ]}
+            />
 
-      <div className={card({ className: "flex flex-wrap items-end gap-3" })}>
-        <Segmented
-          size="md"
-          value={kind}
-          onChange={(k) => {
-            setKind(k);
-            setBatch([]);
-          }}
-          options={[
-            { value: "box" as LabelKind, label: t("labels.kind.box"), icon: <Package /> },
-            {
-              value: "pallet" as LabelKind,
-              label: t("labels.kind.pallet"),
-              icon: <Layers />,
-            },
-          ]}
-        />
+            {isProduct ? (
+              <>
+                <div className="flex min-w-48 flex-1 flex-col gap-1">
+                  <span className={eyebrow()}>{t("labels.kind.product")}</span>
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && pickExact()}
+                      placeholder={t("labels.searchProduct")}
+                      className="h-9 pl-8"
+                    />
+                  </div>
+                </div>
+                <div className="flex items-end gap-2">
+                  <label className="flex flex-col gap-1">
+                    <span className={eyebrow()}>{t("labels.count")}</span>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={MAX_BATCH}
+                      value={count}
+                      onChange={(e) => setCount(+e.target.value || 1)}
+                      className="h-9 w-24 text-right"
+                    />
+                  </label>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-end gap-2">
+                  <label className="flex flex-col gap-1">
+                    <span className={eyebrow()}>{t("labels.count")}</span>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={MAX_BATCH}
+                      value={count}
+                      onChange={(e) => setCount(+e.target.value || 1)}
+                      className="h-9 w-24 text-right"
+                    />
+                  </label>
+                  <Button className="h-9" onClick={() => void generate()} disabled={create.pending}>
+                    {create.pending && <Loader2 className="animate-spin" />}
+                    {create.pending ? t("data.busy") : t("labels.generate")}
+                  </Button>
+                </div>
 
-        <label className="flex flex-col gap-1">
-          <span className={eyebrow()}>{t("labels.count")}</span>
-          <Input
-            type="number"
-            min={1}
-            max={MAX_BATCH}
-            value={count}
-            onChange={(e) => setCount(+e.target.value || 1)}
-            className="h-9 w-24 text-right"
-          />
-        </label>
+                <div className="flex items-end gap-2">
+                  <label className="flex flex-col gap-1">
+                    <span className={eyebrow()}>{t("labels.from")}</span>
+                    {num(from, setFrom)}
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className={eyebrow()}>{t("labels.to")}</span>
+                    {num(to, setTo)}
+                  </label>
+                  <Button className="h-9" variant="outline" onClick={pickRange} disabled={!from}>
+                    {t("labels.pick")}
+                  </Button>
+                </div>
 
-        <Button className="h-9" onClick={() => void generate()} disabled={create.pending}>
-          {create.pending && <Loader2 className="animate-spin" />}
-          {create.pending ? t("data.busy") : t("labels.generate")}
-        </Button>
-        <Button
-          className="h-9"
-          variant="outline"
-          disabled={batch.length === 0}
-          onClick={() => window.print()}
-        >
-          <Printer className="size-3.5" />
-          {t("labels.print")}
-        </Button>
+                {unprinted.length > 0 && (
+                  <Button className="h-9" variant="ghost" onClick={pickUnprinted}>
+                    {t("labels.unprinted", { n: unprinted.length })}
+                  </Button>
+                )}
+              </>
+            )}
+            {isProduct && (query.trim() || picked) && (
+              <div className="flex basis-full flex-col gap-1">
+                {picked && !query.trim() && (
+                  <div className="flex items-center justify-between rounded-md bg-primary/10 px-2.5 py-1.5 text-xs text-primary">
+                    <span className="font-medium">{picked.name}</span>
+                    <span className="font-mono tabular-nums">{picked.barcode}</span>
+                  </div>
+                )}
+                {query.trim() && found.length === 0 && (
+                  <p className="text-xs text-muted-foreground">{t("labels.noProduct")}</p>
+                )}
+                {found.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => {
+                      setPicked(p);
+                      setQuery("");
+                    }}
+                    className="flex items-center justify-between gap-3 rounded-md bg-muted px-2.5 py-1.5 text-left text-xs hover:bg-accent"
+                  >
+                    <span className="truncate font-medium">{p.name}</span>
+                    <span className="shrink-0 font-mono tabular-nums text-muted-foreground">
+                      {p.sku} · {p.barcode}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
-        {unused.length > 0 && (
-          <Button className="h-9" variant="ghost" onClick={() => setBatch(unused)}>
-            {t("labels.reuse", { n: unused.length })}
-          </Button>
-        )}
-      </div>
-
-      {/* Настройки сверху, предпросмотр снизу. Колонками они не уживались:
-          наклейка 58×40 занимает ладонь, а рядом с ней пустовала половина
-          экрана — при том что настройки внизу той же колонки не помещались. */}
-      <div className="flex flex-col gap-4">
-        <div className={card()}>
-          <LabelDesigner
-            draft={draft}
-            onChange={(patch) => setDraft((d) => ({ ...d, ...patch }))}
-            templates={templates}
-            selectedId={selectedId}
-            onSelect={applyTemplate}
-            onSave={save}
-            onSaveAsNew={saveAsNew}
-            onDelete={remove}
-            dirty={dirty}
-          />
+          <div className={card()}>
+            <LabelDesigner
+              draft={draft}
+              onChange={(patch) => setDraft((d) => ({ ...d, ...patch }))}
+              templates={templates}
+              selectedId={selectedId}
+              onSelect={applyTemplate}
+              onSave={save}
+              onSaveAsNew={saveAsNew}
+              onDelete={remove}
+              dirty={dirty}
+            />
+          </div>
         </div>
 
-        <div className={card({ className: "flex flex-col gap-3" })}>
+        <div className={card({ className: "flex flex-col gap-3 lg:sticky lg:top-4" })}>
           <div className="flex items-baseline justify-between gap-2">
-            <h3 className={eyebrow()}>{t("labels.preview")}</h3>
+            <h3 className={cn(eyebrow(), "flex items-center gap-1.5")}>
+              <Eye className="size-3.5" />
+              {t("labels.preview")}
+            </h3>
             <span className="text-xs tabular-nums text-muted-foreground">
               {t("labels.previewScale", {
                 w: previewTpl.widthMm,
@@ -257,59 +417,71 @@ export function LabelsScreen() {
               })}
             </span>
           </div>
-          <div className="flex flex-wrap items-start justify-center gap-4 rounded-lg bg-muted/40 p-4">
+          <div className="flex flex-wrap items-start gap-4">
             <LabelCard
               tpl={previewTpl}
               code={previewCode}
-              kind={kind}
+              kind={isProduct ? "custom" : kind}
+              headline={isProduct ? picked?.name : undefined}
               warehouseName={warehouseName}
               index={1}
               total={batch.length || Math.max(1, Math.round(count))}
             />
           </div>
 
+          <Button disabled={batch.length === 0} onClick={print}>
+            <Printer className="size-3.5" />
+            {batch.length > 0 ? t("labels.printN", { n: batch.length }) : t("labels.print")}
+          </Button>
+
           {batch.length === 0 ? (
-            <p className="text-xs text-muted-foreground">{t("labels.hint")}</p>
+            <p className="text-xs text-muted-foreground">
+              {isProduct ? t("labels.pickProduct") : t("labels.hint")}
+            </p>
           ) : (
             <>
               <p className="text-xs text-muted-foreground">
                 {t("labels.ready", { n: batch.length })}
               </p>
-              <div className="flex max-h-[22rem] flex-wrap gap-3 overflow-y-auto scrollbar-thin">
-                {batch.map((code, i) => (
-                  <LabelCard
-                    key={code}
-                    tpl={previewTpl}
-                    code={code}
-                    kind={kind}
-                    warehouseName={warehouseName}
-                    index={i + 1}
-                    total={batch.length}
-                  />
-                ))}
-              </div>
+              {/* Список — не копии наклеек: проверить нужно номер и статус. */}
+              {!isProduct && (
+                <div className="grid max-h-60 grid-cols-[repeat(auto-fill,minmax(10.5rem,1fr))] gap-1.5 overflow-y-auto scrollbar-thin">
+                  {batch.map((code) => {
+                    const info = byCode.get(code);
+                    return (
+                      <div
+                        key={code}
+                        className="flex items-center justify-between gap-2 rounded-md bg-muted px-2 py-1 text-xs"
+                      >
+                        <span className="font-mono tabular-nums">{code}</span>
+                        {info?.printedAt ? (
+                          <span
+                            className="flex items-center gap-0.5 text-emerald-600"
+                            title={t("labels.printedAt", {
+                              date: new Date(info.printedAt).toLocaleDateString(),
+                            })}
+                          >
+                            <Check className="size-3" />
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">{t("labels.notPrinted")}</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </>
           )}
         </div>
       </div>
 
-      {/* Печатная версия: только наклейки, каждая — отдельной страницей. */}
-      {batch.length > 0 && (
-        <div className="print-root print-flow hidden print:block">
-          {batch.map((code, i) => (
-            <LabelCard
-              key={code}
-              tpl={previewTpl}
-              code={code}
-              kind={kind}
-              warehouseName={warehouseName}
-              index={i + 1}
-              total={batch.length}
-              className="border-0"
-            />
-          ))}
-        </div>
-      )}
+      <LabelPrint
+        tpl={previewTpl}
+        items={batch.map((code) => ({ code, headline: isProduct ? picked?.name : undefined }))}
+        kind={isProduct ? "custom" : kind}
+        warehouseName={warehouseName}
+      />
     </ScreenShell>
   );
 }

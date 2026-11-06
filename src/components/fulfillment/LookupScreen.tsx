@@ -1,6 +1,16 @@
-import { useState } from "react";
-import { Boxes, Grid3x3, Layers, MapPin, Package, ScanSearch, SearchX } from "lucide-react";
+import { useEffect, useState } from "react";
+import {
+  Boxes,
+  Grid3x3,
+  Layers,
+  MapPin,
+  Package,
+  Printer,
+  ScanSearch,
+  SearchX,
+} from "lucide-react";
 import { useEditor } from "@/lib/store";
+import { fulfillmentRepository } from "@/lib/data";
 import { cm, formatAddress } from "@/lib/address";
 import { lookup, type LookupLine, type LookupResult } from "@/lib/lookup";
 import { catLabel, useT, type TFunc } from "@/lib/i18n";
@@ -9,6 +19,8 @@ import { eyebrow } from "@/components/ui/eyebrow";
 import { card } from "@/components/ui/card";
 import { ScanField, type ScanStatus } from "./ScanField";
 import { ScreenShell, EmptyState } from "./ScreenShell";
+import { printLabels } from "@/lib/printLabels";
+import { LabelPrint } from "./LabelPrint";
 
 /**
  * «Что это?» — справка по любому коду склада (п.4).
@@ -28,7 +40,24 @@ export function LookupScreen() {
   const boxes = useEditor((s) => s.boxes);
   const pallets = useEditor((s) => s.pallets);
   const placements = useEditor((s) => s.placements);
+  const templates = useEditor((s) => s.labelTemplates);
   const [result, setResult] = useState<LookupResult | null>(null);
+
+  // Печать ярлыка найденной тары или паллеты тем же шаблоном, что и на экране
+  // «Наклейки»: порванный ярлык перепечатывают прямо отсюда.
+  const printable = result && (result.kind === "box" || result.kind === "pallet") ? result : null;
+  const [printing, setPrinting] = useState(false);
+  useEffect(() => {
+    if (!printing || !printable) return;
+    const kind = printable.kind;
+    const code = printedCode(printable);
+    printLabels(() => {
+      setPrinting(false);
+      void fulfillmentRepository.markLabelsPrinted(kind, [code]);
+    });
+    // Печать запускается один раз на нажатие: от результата поиска не зависим.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [printing]);
 
   const onScan = (code: string) => {
     setResult(
@@ -55,6 +84,21 @@ export function LookupScreen() {
         onSubmit={onScan}
       />
 
+      {printable && templates[0] && (
+        <Button className="self-start" variant="outline" onClick={() => setPrinting(true)}>
+          <Printer className="size-3.5" />
+          {t("lookup.printLabel")}
+        </Button>
+      )}
+      {printing && printable && templates[0] && (
+        <LabelPrint
+          tpl={templates[0]}
+          items={[{ code: printedCode(printable) }]}
+          kind={printable.kind as "box" | "pallet"}
+          warehouseName={warehouse.name}
+        />
+      )}
+
       {result === null ? (
         <EmptyState
           icon={<ScanSearch className="size-5" />}
@@ -66,6 +110,11 @@ export function LookupScreen() {
       )}
     </ScreenShell>
   );
+}
+
+/** Код найденной тары или паллеты. */
+function printedCode(r: Extract<LookupResult, { kind: "box" | "pallet" }>): string {
+  return r.kind === "box" ? r.box.barcode : r.pallet.barcode;
 }
 
 function ResultCard({ result, t }: { result: LookupResult; t: TFunc }) {
