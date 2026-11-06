@@ -4,7 +4,7 @@ import { X } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { requestsRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
-import { canReserve, stockByProduct } from "@/lib/fulfillment";
+import { canReserve, findDuplicateOrder, stockByProduct } from "@/lib/fulfillment";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { matchesQuery, normalizeQuery } from "@/lib/productSearch";
 import { cn } from "@/lib/utils";
@@ -65,6 +65,7 @@ export function RequestDialog({
   // поставку — вопрос, который решается до создания заявки, а не после.
   const stock = useMemo(() => stockByProduct(placements, boxes), [placements, boxes]);
   const short = lines.filter((l) => (stock.get(l.productId)?.qty ?? 0) < qtyOf(l.qty));
+  const duplicate = findDuplicateOrder(requests, source, externalId);
   const reservable = short.some((l) => canReserve(l.productId, qtyOf(l.qty), shipments, requests));
 
   // Создание идёт через репозиторий, а не через действие стора напрямую: это и
@@ -241,6 +242,11 @@ export function RequestDialog({
             placeholder={t("seller.externalIdPlaceholder")}
             className="h-9"
           />
+          {duplicate && (
+            <p role="alert" className="mt-1 text-xs text-orange-600">
+              {t("seller.externalIdDuplicate")}
+            </p>
+          )}
         </Field>
       )}
 

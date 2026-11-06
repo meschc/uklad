@@ -89,6 +89,8 @@ export const ru = {
   "seller.source": "Откуда заказ",
   "seller.externalId": "Номер заказа на площадке",
   "seller.externalIdPlaceholder": "Например, номер отправления",
+  "seller.externalIdDuplicate":
+    "Заявка с таким номером уже есть. Если создать ещё одну, заказ будут собирать и отгружать дважды.",
   "order.source.manual": "Свой",
   "order.source.ozon": "Ozon",
   "order.source.wildberries": "Wildberries",
@@ -195,6 +197,8 @@ export const en: Record<keyof typeof ru, string> = {
   "seller.source": "Order source",
   "seller.externalId": "Marketplace order number",
   "seller.externalIdPlaceholder": "For example, the shipment number",
+  "seller.externalIdDuplicate":
+    "A request with this number already exists. Creating another means the order will be picked and shipped twice.",
   "order.source.manual": "Own",
   "order.source.ozon": "Ozon",
   "order.source.wildberries": "Wildberries",

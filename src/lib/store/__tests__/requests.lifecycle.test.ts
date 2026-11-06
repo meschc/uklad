@@ -69,6 +69,24 @@ describe("createRequest / createRequests", () => {
     expect(none.externalId).toBeUndefined();
   });
 
+  it("номер заказа живёт только вместе с площадкой и обрезается до 64 знаков", () => {
+    // Arrange
+    const store = makeRequestsStore({ requests: [] });
+
+    // Act
+    store.getState().createRequests([
+      { productId: "p1", qty: 1, source: "manual", externalId: "123" },
+      { productId: "p2", qty: 1, externalId: "456" },
+      { productId: "p3", qty: 1, source: "wildberries", externalId: "x".repeat(200) },
+    ]);
+
+    // Assert
+    const [manual, none, wb] = store.getState().requests;
+    expect(manual.externalId).toBeUndefined();
+    expect(none.externalId).toBeUndefined();
+    expect(wb.externalId).toHaveLength(64);
+  });
+
   it("возвращает пустой список, когда создавать нечего, и не трогает стор", () => {
     // Arrange
     const store = makeRequestsStore({ requests: [] });

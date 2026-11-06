@@ -437,3 +437,21 @@ export function staffWorkload(
   }
   return map;
 }
+
+/**
+ * Заказ площадки, который уже есть среди неотменённых заявок. Один и тот же
+ * номер дважды — это две сборки и две отгрузки одного заказа, поэтому форма
+ * предупреждает, а не молчит. Номера сравниваем без регистра и пробелов по
+ * краям; своя заявка и пустой номер дублем не считаются.
+ */
+export function findDuplicateOrder(
+  requests: FulfillmentRequest[],
+  source: string | undefined,
+  externalId: string | undefined,
+): FulfillmentRequest | undefined {
+  const id = externalId?.trim().toLowerCase();
+  if (!source || source === "manual" || !id) return undefined;
+  return requests.find(
+    (r) => r.status !== "cancelled" && r.source === source && r.externalId?.toLowerCase() === id,
+  );
+}
