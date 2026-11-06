@@ -179,6 +179,16 @@ export const ru = {
   "staff.add": "Добавить сотрудника",
   "staff.save": "Добавить",
   "staff.remove": "Удалить сотрудника",
+  "staff.badge": "Бейдж",
+  "staff.badge.issue": "Выпустить бейдж",
+  "staff.badge.title": "Бейдж сотрудника",
+  "staff.badge.print": "Напечатать",
+  "staff.badge.revoke": "Погасить бейдж",
+  "staff.badge.revoked": "Бейдж погашен: за стол по нему больше не войти",
+  "staff.badge.once":
+    "Код показан один раз: напечатайте бейдж сейчас. Прежний бейдж сотрудника больше не пускает за стол. Потерял — выпустите новый.",
+  "staff.badge.demo":
+    "Демо: бейдж собран из номера сотрудника. В рабочем кабинете в нём случайный код, который можно погасить.",
   "staff.namePlaceholder": "Имя и фамилия",
   "staff.rolePlaceholder": "Должность",
   "staff.roleOther": "Другая должность…",
@@ -428,6 +438,16 @@ export const en: Record<keyof typeof ru, string> = {
   "staff.add": "Add a person",
   "staff.save": "Add",
   "staff.remove": "Remove person",
+  "staff.badge": "Badge",
+  "staff.badge.issue": "Issue badge",
+  "staff.badge.title": "Staff badge",
+  "staff.badge.print": "Print",
+  "staff.badge.revoke": "Revoke badge",
+  "staff.badge.revoked": "Badge revoked: it no longer opens a workstation",
+  "staff.badge.once":
+    "This code is shown only once: print the badge now. The person's previous badge no longer opens a workstation. Lost it? Issue a new one.",
+  "staff.badge.demo":
+    "Demo: the badge is built from the staff number. In a live account it holds a random code that can be revoked.",
   "staff.namePlaceholder": "First and last name",
   "staff.rolePlaceholder": "Position",
   "staff.roleOther": "Other position…",

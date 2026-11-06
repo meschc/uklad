@@ -3,7 +3,7 @@ import { BadgeCheck } from "lucide-react";
 import { boundDevice, useEditor } from "@/lib/store";
 import { workstationRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
-import { DEMO_BADGES, MANAGER_ROLE, badgeCode } from "@/lib/workstation";
+import { MANAGER_ROLE, badgeCode } from "@/lib/workstation";
 import type { WorkstationKind } from "@/lib/types";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { card } from "@/components/ui/card";
@@ -11,6 +11,7 @@ import { Segmented } from "@/components/ui/segmented";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { QrSvg } from "@/components/table/QrSvg";
 import { ScanField, type ScanStatus } from "@/components/fulfillment/ScanField";
+import { useDemoHints } from "./useDemoHints";
 
 /**
  * Вход по бейджу. Сканер «печатает» код в поле — тот же путь, что на приёмке.
@@ -24,6 +25,7 @@ import { ScanField, type ScanStatus } from "@/components/fulfillment/ScanField";
 const OPEN_STATIONS: WorkstationKind[] = ["receiving", "picking", "pack", "shipping"];
 
 export function BadgeLogin() {
+  const demoHints = useDemoHints();
   const t = useT();
   const allStaff = useEditor((s) => s.warehouse.staff) ?? [];
   // Руководство в процессах не работает — его бейджей среди демо нет. Войти
@@ -78,7 +80,7 @@ export function BadgeLogin() {
         onSubmit={(code) => void submit(code)}
       />
 
-      {DEMO_BADGES && (
+      {demoHints && (
         <section className="flex flex-col gap-2">
           <h2 className={eyebrow({ tone: "muted" })}>{t("ws.login.demo")}</h2>
           <p className="text-xs text-muted-foreground">{t("ws.login.demoHint")}</p>

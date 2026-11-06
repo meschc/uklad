@@ -3,11 +3,12 @@ import { MonitorX } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { workstationRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
-import { DEMO_BADGES, MANAGER_ROLE, badgeCode } from "@/lib/workstation";
+import { MANAGER_ROLE, badgeCode } from "@/lib/workstation";
 import { useT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { ScanField, type ScanStatus } from "@/components/fulfillment/ScanField";
+import { useDemoHints } from "./useDemoHints";
 
 /**
  * Отвязка стола на самом столе — бейджем руководителя. Упаковщик сам стол
@@ -17,6 +18,7 @@ import { ScanField, type ScanStatus } from "@/components/fulfillment/ScanField";
  * Бейджи руководства внизу — только для демо, как и на входе.
  */
 export function UnbindDevice({ onDone }: { onDone: () => void }) {
+  const demoHints = useDemoHints();
   const t = useT();
   const managers = (useEditor((s) => s.warehouse.staff) ?? []).filter((m) =>
     MANAGER_ROLE.test(m.role),
@@ -49,7 +51,7 @@ export function UnbindDevice({ onDone }: { onDone: () => void }) {
         onSubmit={(code) => void submit(code)}
       />
 
-      {DEMO_BADGES && managers.length > 0 && (
+      {demoHints && managers.length > 0 && (
         <section className="flex flex-col gap-2">
           <h2 className={eyebrow({ tone: "muted" })}>{t("ws.login.demo")}</h2>
           <div className="flex flex-wrap gap-2">

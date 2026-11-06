@@ -13,7 +13,6 @@ import {
   type ItemScan,
 } from "@/lib/packing";
 import type { PackSession } from "@/lib/types";
-import { DEMO_BADGES } from "@/lib/workstation";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { sizeLabel, useLabelPrinter } from "@/lib/labelPrinter";
 import { beep } from "@/lib/beep";
@@ -24,6 +23,7 @@ import { QrSvg } from "@/components/table/QrSvg";
 import { ScanField, type ScanStatus } from "@/components/fulfillment/ScanField";
 import { PrintableLabel } from "./PrintableLabel";
 import { shortId } from "./useNow";
+import { useDemoHints } from "./useDemoHints";
 
 export type PackResult = ReturnType<typeof packSummary> & { source: string; target: string };
 
@@ -41,6 +41,7 @@ export function PackRun({
   session: PackSession;
   onDone: (r: PackResult) => void;
 }) {
+  const demoHints = useDemoHints();
   const t = useT();
   const products = useEditor((s) => s.products);
   const requests = useEditor((s) => s.requests);
@@ -181,7 +182,7 @@ export function PackRun({
 
         {showLast && <LastItemPanel session={session} />}
 
-        {DEMO_BADGES && (
+        {demoHints && (
           <DemoCodes
             codes={
               closing

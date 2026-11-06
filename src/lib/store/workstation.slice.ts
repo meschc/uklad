@@ -26,12 +26,11 @@ import type { EditorState, SliceCreator, WorkstationSlice } from "./state";
 /**
  * Рабочее место по бейджу и журнал сотрудника.
  *
- * Сервера ещё нет, поэтому вход по бейджу — проверка, что такой сотрудник есть
- * в персонале склада, а сессия — запись в сторе. Когда появится backend,
- * бейдж станет одноразовым токеном, а журнал — таблицей; форма записей уже та.
- *
- * Для сервера: секрет бейджа вместо id (см. `badgeCode`), сессию 12 ч выдаёт и
- * проверяет сервер — `expiresAt` из localStorage правдой не считается.
+ * В демо бейдж — это id сотрудника (`badgeLogin` разбирает код сам). В сборке
+ * с сервером код проверяет сервер (секрет бейджа, миграция 010) и называет
+ * сотрудника, а срез только открывает вход за него (`openStation`). Сессия
+ * и журнал пока живут в снимке кабинета; таблицами они станут вместе с
+ * персоналом, и тогда `expiresAt` будет ставить сервер.
  * Журнал и ставка — персональные данные сотрудника: видны ему и руководителю
  * склада, продавцу — нет (экран рабочего места в рельсе продавца отсутствует).
  */
@@ -81,7 +80,11 @@ export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get)
 
   unbindThisDevice: (managerBadge) => {
     const staffId = parseBadge(managerBadge);
-    const member = staffId && (get().warehouse.staff ?? []).find((m) => m.id === staffId);
+    return staffId ? get().unbindAs(staffId) : false;
+  },
+
+  unbindAs: (staffId) => {
+    const member = (get().warehouse.staff ?? []).find((m) => m.id === staffId);
     if (!member || !MANAGER_ROLE.test(member.role)) return false;
     // Отвязанный стол перестаёт быть устройством склада и в списке остаётся
     // отключённым: по нему ещё видно, где и когда он работал.
@@ -98,7 +101,11 @@ export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get)
 
   badgeLogin: (code, station) => {
     const staffId = parseBadge(code);
-    const member = staffId && (get().warehouse.staff ?? []).find((m) => m.id === staffId);
+    return staffId ? get().openStation(staffId, station) : null;
+  },
+
+  openStation: (staffId, station) => {
+    const member = (get().warehouse.staff ?? []).find((m) => m.id === staffId);
     if (!member) return null;
     const now = nowMs();
     const device = boundDevice(get());
