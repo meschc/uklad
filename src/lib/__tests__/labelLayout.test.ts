@@ -90,3 +90,39 @@ describe("код этикетки отправления", () => {
     expect(targetCode("Леруа Мерлен")).toMatch(/^UK-OUT-[0-9A-Z]{6}$/);
   });
 });
+
+describe("planLabel: всё помещается в ленту", () => {
+  const sizes = [
+    [43, 25],
+    [58, 40],
+    [40, 58],
+    [58, 60],
+    [100, 70],
+    [100, 150],
+  ] as const;
+  for (const [w, h] of sizes) {
+    for (const codeType of ["qr", "barcode"] as const) {
+      it(`${w}×${h} ${codeType}: 13-значный номер и длинная подпись по ширине`, () => {
+        const p = planLabel({
+          widthMm: w,
+          heightMm: h,
+          layout: w > h ? "horizontal" : "vertical",
+          codeType,
+          elements: ["code", "seq", "warehouse"],
+          digits: 13,
+          headline: true,
+          headlineWord: 12,
+          headlineLen: 40,
+          infoMaxLen: 30,
+        });
+        const numberW = p.numberMm * 13 * 0.62;
+        expect(numberW).toBeLessThanOrEqual(p.rest.w + 0.01);
+        if (p.infoCount > 0) expect(p.infoMm * 30 * 0.62).toBeLessThanOrEqual(p.rest.w + 0.01);
+        if (p.show.headline) {
+          expect(p.headlineMm * 12 * 0.56).toBeLessThanOrEqual(p.rest.w + 0.01);
+          expect(p.headlineMm * 40 * 0.56).toBeLessThanOrEqual(2 * p.rest.w + 0.01);
+        }
+      });
+    }
+  }
+});

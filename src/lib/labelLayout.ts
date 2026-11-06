@@ -29,6 +29,10 @@ export interface LabelPlanInput {
   headline?: boolean;
   /** Длина самого длинного слова подписи: слово не рвём, а уменьшаем кегль. */
   headlineWord?: number;
+  /** Длина всей подписи в знаках: на две строки она тоже должна встать целиком. */
+  headlineLen?: number;
+  /** Длина самой длинной информационной строки (моноширинной). */
+  infoMaxLen?: number;
 }
 
 export interface LabelPlan {
@@ -41,6 +45,8 @@ export interface LabelPlan {
   rest: { w: number; h: number };
   /** Кегль мелкого текста и номера, мм. */
   smallMm: number;
+  /** Кегль информационных строк: сжимается, чтобы самая длинная встала целиком. */
+  infoMm: number;
   numberMm: number;
   headlineMm: number;
   prefixMm: number;
@@ -59,6 +65,10 @@ export interface LabelPlan {
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 const LINE = 1.25;
+/** Ширина знака Medeo Mono / Sans Bold в долях кегля (измерено). */
+const MONO = 0.62;
+const SANS_BOLD = 0.56;
+const elementsHave = (i: LabelPlanInput, e: LabelElement) => i.elements.includes(e);
 
 export function planLabel(i: LabelPlanInput): LabelPlan {
   // Заголовок («Тара» / «Паллета») печатается всегда: в настройках его нет.
@@ -78,7 +88,12 @@ export function planLabel(i: LabelPlanInput): LabelPlan {
   // больше, чем нужно для уверенного чтения.
   let code: { w: number; h: number };
   if (i.codeType === "qr") {
-    const side = horizontal ? Math.min(innerH, innerW * 0.62) : Math.min(innerW, innerH * 0.68);
+    let side = horizontal ? Math.min(innerH, innerW * 0.62) : Math.min(innerW, innerH * 0.68);
+    // Номер важнее размера кода: на узкой ленте код уступает ширину цифрам,
+    // чтобы они встали целиком хотя бы кеглем мелкого текста.
+    if (horizontal && i.digits > 0 && elementsHave(i, "code")) {
+      side = Math.min(side, innerW - gapMm - i.digits * MONO * smallMm);
+    }
     code = { w: side, h: side };
   } else if (horizontal) {
     code = { w: innerW * 0.5, h: innerH };
@@ -93,14 +108,22 @@ export function planLabel(i: LabelPlanInput): LabelPlan {
   const small = smallMm * LINE;
   const number = has("code");
   // Вертикально мелкий префикс стоит сбоку от номера и отнимает ширину; горизонтально он над номером.
-  const widthPerMm = Math.max(i.digits, 1) * 0.62 + (horizontal ? 0 : 0.33);
+  const widthPerMm = Math.max(i.digits, 1) * MONO + (horizontal ? 0 : 0.33);
+  const numberByWidth = (rest.w - (horizontal ? 0 : 1)) / widthPerMm;
+  // Нижняя граница «не мельче мелкого текста» не должна выталкивать номер за
+  // край: если по ширине не встаёт, побеждает ширина.
   const numberMm = number
     ? clamp(
-        Math.min(rest.h * (i.headline ? 0.3 : 0.42), (rest.w - (horizontal ? 0 : 1)) / widthPerMm),
-        smallMm,
+        Math.min(rest.h * (i.headline ? 0.3 : 0.42), numberByWidth),
+        Math.min(smallMm, numberByWidth),
         26,
       )
     : 0;
+  const infoFit = i.infoMaxLen ? rest.w / (i.infoMaxLen * MONO) : smallMm;
+  const infoMm = Math.min(smallMm, infoFit);
+  // Мельче 1,5 мм не читается: строка, которой не хватает ширины, пропадает
+  // целиком, а не обрезается.
+  const infoReadable = infoMm >= 1.5;
   const prefixMm = Math.max(1.5, numberMm * 0.3);
 
   // Что помещается в остаток. Номер важнее всего, потом служебная строка,
@@ -117,12 +140,22 @@ export function planLabel(i: LabelPlanInput): LabelPlan {
 
   // Кегль подписи — такой, чтобы самое длинное слово встало в строку целиком:
   // «Констан-тинова» с переносом посреди слова читается хуже мелкого шрифта.
+  const headlineFit = Math.min(
+    smallMm * 1.6,
+    rest.w / (Math.max(i.headlineWord ?? 1, 1) * SANS_BOLD),
+    (2 * rest.w * 0.85) / (Math.max(i.headlineLen ?? 1, 1) * SANS_BOLD),
+  );
   const headlineMm = clamp(
-    Math.min(smallMm * 1.6, rest.w / (Math.max(i.headlineWord ?? 1, 1) * 0.6)),
-    1.6,
+    Math.min(
+      smallMm * 1.6,
+      rest.w / (Math.max(i.headlineWord ?? 1, 1) * SANS_BOLD),
+      // Целиком на две строки, с запасом на перенос по словам.
+      (2 * rest.w * 0.85) / (Math.max(i.headlineLen ?? 1, 1) * SANS_BOLD),
+    ),
+    1.2,
     smallMm * 1.6,
   );
-  const headline = !!i.headline && take(headlineMm * 1.1 * 2);
+  const headline = !!i.headline && headlineFit >= 1.2 && take(headlineMm * 1.1 * 2);
 
   // Нижняя строка — три колонки, как в макете Кирилла (02.11): номер места
   // дробью слева, «Хрупкое» по центру, дата в две строки справа. Важность:
@@ -144,7 +177,7 @@ export function planLabel(i: LabelPlanInput): LabelPlan {
     (i.extraLines ?? 0) +
     (has("mark") ? 1 : 0);
   let shownInfo = 0;
-  for (let n = 0; n < infoLines; n++) if (take(small * 0.9)) shownInfo++;
+  for (let n = 0; n < infoLines && infoReadable; n++) if (take(small * 0.9)) shownInfo++;
   const header = (has("logo") || has("title")) && minSide >= 80 && take(small * 1.4);
 
   return {
@@ -154,6 +187,7 @@ export function planLabel(i: LabelPlanInput): LabelPlan {
     code,
     rest,
     smallMm,
+    infoMm,
     numberMm,
     headlineMm,
     prefixMm,

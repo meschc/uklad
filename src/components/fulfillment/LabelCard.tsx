@@ -49,6 +49,14 @@ export function LabelCard({
   const t = useT();
   const has = (e: LabelTemplate["elements"][number]) => e === "title" || tpl.elements.includes(e);
   const { prefix, number } = splitCode(code);
+  const title =
+    kind === "box" ? t("labels.kind.box") : kind === "pallet" ? t("labels.kind.pallet") : "";
+  const infoAll = [
+    has("warehouse") ? warehouseName : null,
+    ...lines,
+    has("note") ? (tpl.note ?? null) : null,
+    has("mark") ? `${t("labels.markPrefix")} ${markFor(code)}` : null,
+  ].filter((x): x is string => !!x);
   const plan = planLabel({
     widthMm: tpl.widthMm,
     heightMm: tpl.heightMm,
@@ -59,19 +67,12 @@ export function LabelCard({
     extraLines: lines.length,
     headline: !!headline,
     headlineWord: headline ? Math.max(...headline.split(/\s+/).map((w) => w.length)) : 0,
+    headlineLen: headline?.length ?? 0,
+    infoMaxLen: Math.max(0, ...infoAll.map((l) => l.length)),
   });
   const { show, horizontal } = plan;
 
-  const title =
-    kind === "box" ? t("labels.kind.box") : kind === "pallet" ? t("labels.kind.pallet") : "";
-  const info = [
-    has("warehouse") ? warehouseName : null,
-    ...lines,
-    has("note") ? (tpl.note ?? null) : null,
-    has("mark") ? `${t("labels.markPrefix")} ${markFor(code)}` : null,
-  ]
-    .filter((x): x is string => !!x)
-    .slice(0, plan.infoCount);
+  const info = infoAll.slice(0, plan.infoCount);
 
   const small = { fontSize: MM(plan.smallMm) };
 
@@ -86,7 +87,7 @@ export function LabelCard({
         </span>
       )}
       <span
-        className="min-w-0 flex-1 truncate font-mono font-bold leading-none tabular-nums"
+        className="min-w-0 flex-1 whitespace-nowrap font-mono font-bold leading-none tabular-nums"
         style={{ fontSize: MM(plan.numberMm) }}
       >
         {number}
@@ -117,9 +118,9 @@ export function LabelCard({
   );
 
   const infoBlock = info.length > 0 && (
-    <div className="flex min-w-0 flex-col leading-tight" style={small}>
+    <div className="flex min-w-0 flex-col leading-tight" style={{ fontSize: MM(plan.infoMm) }}>
       {info.map((l, i) => (
-        <span key={i} className="truncate font-mono">
+        <span key={i} className="whitespace-nowrap font-mono">
           {l}
         </span>
       ))}
@@ -128,7 +129,7 @@ export function LabelCard({
 
   const headlineBlock = show.headline && headline && (
     <span
-      className="line-clamp-2 min-w-0 font-bold leading-[1.1]"
+      className="min-w-0 font-bold leading-[1.1]"
       style={{ fontSize: MM(plan.headlineMm), textWrap: "balance" }}
     >
       {headline}
