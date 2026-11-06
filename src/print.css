@@ -61,6 +61,12 @@
     position: static;
     inset: auto;
   }
+  /* Рулон наклеек вынесен порталом прямо в body. Остальное убираем из потока
+     целиком, а не только прячем: иначе невидимый экран занимал бы место, и
+     первая наклейка печаталась бы после пустых страниц. */
+  body:has(> .print-flow) > :not(.print-flow) {
+    display: none;
+  }
   .print-label {
     break-inside: avoid;
     page-break-inside: avoid;

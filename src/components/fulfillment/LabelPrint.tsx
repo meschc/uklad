@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import type { LabelTemplate } from "@/lib/types";
 import { LabelCard, type LabelKind } from "./LabelCard";
 
@@ -21,7 +22,10 @@ export function LabelPrint({
   warehouseName: string;
 }) {
   if (items.length === 0) return null;
-  return (
+  // Прямо в <body>: печать прячет всех остальных детей body через display:none
+  // (см. print.css). Спрятанные visibility:hidden они бы занимали место, и
+  // наклейка уезжала бы на пустые страницы под невидимым экраном.
+  return createPortal(
     <div className="print-root print-flow hidden print:block">
       <style>{`@page { size: ${tpl.widthMm}mm ${tpl.heightMm}mm; margin: 0; }`}</style>
       {items.map((it, i) => (
@@ -38,6 +42,7 @@ export function LabelPrint({
           className="border-0"
         />
       ))}
-    </div>
+    </div>,
+    document.body,
   );
 }

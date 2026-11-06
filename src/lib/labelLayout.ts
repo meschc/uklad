@@ -62,7 +62,10 @@ const LINE = 1.25;
 
 export function planLabel(i: LabelPlanInput): LabelPlan {
   const has = (e: LabelElement) => i.elements.includes(e);
-  const horizontal = i.layout === "horizontal";
+  // Ориентацию решают стороны, а не поле шаблона: старые шаблоны хранят
+  // «вертикально» при ленте 58×40, и код тогда сжимался до трети ширины.
+  const horizontal =
+    i.widthMm > i.heightMm || (i.widthMm === i.heightMm && i.layout === "horizontal");
   const minSide = Math.min(i.widthMm, i.heightMm);
   const padMm = clamp(minSide * 0.03, 1, 2.5);
   const gapMm = padMm;
