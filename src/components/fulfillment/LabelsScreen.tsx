@@ -1,14 +1,16 @@
 import { useMemo, useState } from "react";
-import { Check, Layers, Loader2, Package, Printer } from "lucide-react";
+import { Check, Eye, Layers, Loader2, Package, Printer } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { fulfillmentRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
 import type { LabelTemplate } from "@/lib/types";
 import { useT } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/segmented";
 import { Input } from "@/components/ui/input";
 import { eyebrow } from "@/components/ui/eyebrow";
+import { card } from "@/components/ui/card";
 import { labelNumber } from "@/lib/barcode";
 import { LabelCard, type LabelKind } from "./LabelCard";
 import { printLabels } from "@/lib/printLabels";
@@ -221,7 +223,7 @@ export function LabelsScreen() {
 
   return (
     <ScreenShell title={t("labels.title")} subtitle={t("labels.subtitle")} wide>
-      <div className="flex flex-wrap items-end gap-x-6 gap-y-4">
+      <div className={card({ className: "flex flex-wrap items-end gap-x-6 gap-y-4" })}>
         <Segmented
           size="md"
           value={kind}
@@ -291,8 +293,8 @@ export function LabelsScreen() {
       {/* Настройки сверху, предпросмотр снизу. Колонками они не уживались:
           наклейка 58×40 занимает ладонь, а рядом с ней пустовала половина
           экрана — при том что настройки внизу той же колонки не помещались. */}
-      <div className="flex flex-col gap-8">
-        <div>
+      <div className="flex flex-col gap-4">
+        <div className={card()}>
           <LabelDesigner
             draft={draft}
             onChange={(patch) => setDraft((d) => ({ ...d, ...patch }))}
@@ -306,9 +308,12 @@ export function LabelsScreen() {
           />
         </div>
 
-        <div className="flex flex-col gap-3">
+        <div className={card({ className: "flex flex-col gap-3" })}>
           <div className="flex items-baseline justify-between gap-2">
-            <h3 className={eyebrow()}>{t("labels.preview")}</h3>
+            <h3 className={cn(eyebrow(), "flex items-center gap-1.5")}>
+              <Eye className="size-3.5" />
+              {t("labels.preview")}
+            </h3>
             <span className="text-xs tabular-nums text-muted-foreground">
               {t("labels.previewScale", {
                 w: previewTpl.widthMm,
@@ -341,7 +346,7 @@ export function LabelsScreen() {
                   return (
                     <div
                       key={code}
-                      className="flex items-center justify-between gap-2 rounded-md border border-border px-2 py-1 text-xs"
+                      className="flex items-center justify-between gap-2 rounded-md bg-muted px-2 py-1 text-xs"
                     >
                       <span className="font-mono tabular-nums">{code}</span>
                       {info?.printedAt ? (

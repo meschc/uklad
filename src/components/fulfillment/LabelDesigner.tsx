@@ -1,5 +1,14 @@
 import { useRef } from "react";
-import { Barcode, QrCode, RectangleHorizontal, RectangleVertical, Trash2 } from "lucide-react";
+import {
+  Barcode,
+  LayoutTemplate,
+  ListChecks,
+  QrCode,
+  Ruler,
+  RectangleHorizontal,
+  RectangleVertical,
+  Trash2,
+} from "lucide-react";
 import {
   LABEL_LOGO_MAX_PX,
   LABEL_SIDE_MAX_MM,
@@ -102,17 +111,17 @@ export function LabelDesigner({
     <div className="flex flex-col gap-4">
       {/* Шаблоны — сохранённые настройки печати, а не «дизайны»: у склада их
           два-три на все случаи, поэтому список плоский и всегда на виду. */}
-      <Block title={t("labels.templates")}>
+      <Block title={t("labels.templates")} icon={<LayoutTemplate />}>
         <div className="flex flex-wrap gap-1.5">
           {templates.map((tpl) => (
             <button
               key={tpl.id}
               onClick={() => onSelect(tpl.id)}
               className={cn(
-                "rounded-md border px-2.5 py-1.5 text-left text-xs transition-colors",
+                "rounded-md px-2.5 py-1.5 text-left text-xs transition-colors",
                 tpl.id === selectedId
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "border-border text-muted-foreground hover:bg-accent hover:text-foreground",
+                  ? "bg-primary/10 text-primary"
+                  : "bg-muted text-muted-foreground hover:bg-accent hover:text-foreground",
               )}
             >
               <span className="block font-medium">{tpl.name}</span>
@@ -163,7 +172,7 @@ export function LabelDesigner({
           />
         </Block>
 
-        <Block title={t("labels.codeType")}>
+        <Block title={t("labels.codeType")} icon={<QrCode />}>
           <Segmented
             className="self-start"
             value={draft.codeType}
@@ -186,7 +195,7 @@ export function LabelDesigner({
           </p>
         </Block>
 
-        <Block title={t("labels.size")}>
+        <Block title={t("labels.size")} icon={<Ruler />}>
           <div className="flex flex-wrap gap-1.5">
             {LABEL_SIZE_PRESETS.map((p) => {
               // Пресеты показываем в текущей ориентации: на альбомной ленте
@@ -228,7 +237,11 @@ export function LabelDesigner({
           </div>
         </Block>
 
-        <Block title={t("labels.elements")} className="sm:col-span-2 xl:col-span-3">
+        <Block
+          title={t("labels.elements")}
+          icon={<ListChecks />}
+          className="sm:col-span-2 xl:col-span-3"
+        >
           <div className="grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2 xl:grid-cols-3">
             {ELEMENTS.map((el) => (
               <label key={el.id} className="flex cursor-pointer items-center gap-2 text-xs">
@@ -253,7 +266,7 @@ export function LabelDesigner({
           )}
 
           {draft.elements.includes("logo") && (
-            <div className="flex flex-wrap items-center gap-2 rounded-md border border-border p-2">
+            <div className="flex flex-wrap items-center gap-2">
               {draft.logoUrl ? (
                 <img
                   src={draft.logoUrl}
@@ -342,16 +355,21 @@ function readLogo(file: File): Promise<string> {
 
 function Block({
   title,
+  icon,
   className,
   children,
 }: {
   title: string;
+  icon?: React.ReactNode;
   className?: string;
   children: React.ReactNode;
 }) {
   return (
     <section className={cn("flex min-w-0 flex-col gap-1.5", className)}>
-      <h3 className={eyebrow()}>{title}</h3>
+      <h3 className={cn(eyebrow(), "flex items-center gap-1.5 [&>svg]:size-3.5")}>
+        {icon}
+        {title}
+      </h3>
       {children}
     </section>
   );
