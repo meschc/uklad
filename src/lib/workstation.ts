@@ -77,6 +77,10 @@ export const DEMO_BADGES = import.meta.env.VITE_DEMO !== "0";
 
 export const MANAGER_ROLE = /управля|заместител|руковод|директор|manager/i;
 
+/** Старший смены и руководство: им можно заводить поставки, приёмщику — нет. */
+export const SENIOR_ROLE =
+  /старш|начальник|senior|lead|управля|заместител|руковод|директор|manager/i;
+
 /** Сколько живёт отмена случайной отметки (нажал перерыв локтем). */
 export const MARK_UNDO_MS = 5_000;
 

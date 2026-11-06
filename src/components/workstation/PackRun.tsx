@@ -13,7 +13,6 @@ import {
   type ItemScan,
 } from "@/lib/packing";
 import type { PackSession } from "@/lib/types";
-import { DEMO_BADGES } from "@/lib/workstation";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -22,6 +21,8 @@ import { eyebrow } from "@/components/ui/eyebrow";
 import { QrSvg } from "@/components/table/QrSvg";
 import { ScanField, type ScanStatus } from "@/components/fulfillment/ScanField";
 import { shortId } from "./useNow";
+import { ScanFlash } from "./ScanFlash";
+import { beep, type Flash, type FlashKind } from "./scanFeedback";
 
 export type PackResult = ReturnType<typeof packSummary> & { source: string; target: string };
 
@@ -46,6 +47,7 @@ export function PackRun({
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [showLast, setShowLast] = useState(false);
   const [closing, setClosing] = useState(false);
+  const [flash, setFlash] = useState<Flash>(null);
 
   if (!box) return null;
   const contents = toteContents(box);
@@ -57,37 +59,44 @@ export function PackRun({
   const summary = packSummary(session, box);
   const nameOf = (id: string) => products.find((p) => p.id === id)?.name ?? id;
 
+  const report = (f: Feedback) => {
+    const kind: FlashKind = f?.status === "error" ? "error" : "ok";
+    setFeedback(f);
+    setFlash((prev) => ({ kind, n: (prev?.n ?? 0) + 1 }));
+    beep(kind);
+  };
+
   const onScan = async (code: string) => {
     if (closing) {
       // Закрытие подтверждается сканом короба: упакованное не уедет в чужой.
       if (code.trim().toUpperCase() === session.targetCode.toUpperCase()) return void finish();
-      return setFeedback({ status: "error", key: "ws.chk.closeWrong", box: session.targetCode });
+      return report({ status: "error", key: "ws.chk.closeWrong", box: session.targetCode });
     }
     const mistake = explainScan(session, box, products, code);
-    if (mistake) return setFeedback({ status: "error", key: `ws.chk.${mistake}` });
+    if (mistake) return report({ status: "error", key: `ws.chk.${mistake}` });
     if (label) {
       const res = await workstationRepository.packLabel(code);
-      if (res.ok) return setFeedback(null);
+      if (res.ok) return report(null);
       // Не этикетка, а товар — значит, этикетку ещё не наклеили.
       const item = await workstationRepository.packItem(code);
-      return setFeedback({
+      return report({
         status: "error",
         key:
           item.ok && item.data.kind === "label_pending" ? "ws.run.label_pending" : "ws.label.wrong",
       });
     }
     const res = await workstationRepository.packItem(code);
-    if (!res.ok) return setFeedback({ status: "error", key: res.error });
+    if (!res.ok) return report({ status: "error", key: res.error });
     if (res.data.kind === "not_in_tote") {
       const where = boxesHolding(useEditor.getState().boxes, res.data.productId, box.id);
-      return setFeedback({
+      return report({
         status: "error",
         key: where.length ? "ws.run.not_in_tote" : "ws.run.not_in_toteNowhere",
         name: nameOf(res.data.productId),
         box: where.slice(0, 3).join(", ") + (where.length > 3 ? " …" : ""),
       });
     }
-    setFeedback(feedbackFor(res.data, nameOf));
+    report(feedbackFor(res.data, nameOf));
   };
 
   const finish = async () => {
@@ -104,36 +113,26 @@ export function PackRun({
 
   return (
     <div className="flex flex-col gap-6">
+      <ScanFlash flash={flash} onDone={() => setFlash(null)} />
       <section className="flex flex-col gap-4">
-        <ScanField
-          label={t("ws.run.scan")}
-          status={feedback?.status ?? "idle"}
-          hint={
-            feedback?.key.startsWith("ws.run.not_in_tote")
-              ? undefined
-              : feedback
-                ? t(feedback.key, { name: feedback.name ?? "", box: feedback.box ?? "" })
-                : t("ws.run.nextHint")
-          }
-          actionLabel={t(label ? "ws.act.confirm" : "ws.act.pack")}
-          onSubmit={(c) => void onScan(c)}
-        />
-
-        {DEMO_BADGES && (
-          <DemoCodes
-            codes={
-              closing
-                ? [{ code: session.targetCode, hint: t("ws.demo.target") }]
-                : label
-                  ? [{ code: label, hint: t("ws.demo.label") }]
-                  : [...remaining.keys()].map((id) => ({
-                      code: products.find((p) => p.id === id)?.barcode ?? id,
-                      hint: nameOf(id),
-                    }))
-            }
-            onScan={(c) => void onScan(c)}
-          />
-        )}
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="min-w-0 flex-1 basis-80">
+            <ScanField
+              label={t("ws.run.scan")}
+              status={feedback?.status ?? "idle"}
+              hint={
+                feedback?.key.startsWith("ws.run.not_in_tote")
+                  ? undefined
+                  : feedback
+                    ? t(feedback.key, { name: feedback.name ?? "", box: feedback.box ?? "" })
+                    : t("ws.run.nextHint")
+              }
+              actionLabel={t(label ? "ws.act.confirm" : "ws.act.pack")}
+              onSubmit={(c) => void onScan(c)}
+            />
+          </div>
+          <LastItem session={session} open={showLast} onToggle={() => setShowLast((v) => !v)} />
+        </div>
 
         {feedback?.key.startsWith("ws.run.not_in_tote") && (
           <div
@@ -147,28 +146,28 @@ export function PackRun({
           </div>
         )}
 
-        <LastItem session={session} open={showLast} onToggle={() => setShowLast((v) => !v)} />
-
         {unit && product ? (
           <div className={card({ className: "flex flex-col gap-4" })}>
-            <div className="flex items-start gap-4">
-              {product.imageUrl ? (
-                <img
-                  src={product.imageUrl}
-                  alt=""
-                  className="size-48 shrink-0 rounded-xl object-cover"
-                />
-              ) : (
-                <span className="flex size-48 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
-                  <Package className="size-20" />
-                </span>
-              )}
-              <div className="min-w-0">
-                <p className="text-4xl font-semibold leading-tight tracking-tight">
+            {product.imageUrl ? (
+              <img
+                src={product.imageUrl}
+                alt=""
+                className="h-72 w-full rounded-xl object-contain md:h-96"
+              />
+            ) : (
+              <span className="flex h-72 w-full items-center justify-center rounded-xl bg-muted text-muted-foreground md:h-96">
+                <Package className="size-32" />
+              </span>
+            )}
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="min-w-0 rounded-xl bg-muted/50 p-4">
+                <p className="text-3xl font-semibold leading-tight tracking-tight">
                   {product.name}
                 </p>
                 <p className="mt-1 font-mono text-base text-muted-foreground">{product.sku}</p>
-                <p className="mt-2 text-xl font-semibold tabular-nums">
+              </div>
+              <div className="min-w-0 rounded-xl bg-muted/50 p-4">
+                <p className="text-3xl font-semibold tabular-nums">
                   {t("ws.run.unitOf", { i: doneOfProduct, n: contents.get(product.id) ?? 0 })}
                 </p>
                 {order && (
@@ -185,7 +184,7 @@ export function PackRun({
             />
             <Button
               variant="outline"
-              className="self-start hover:border-destructive hover:bg-destructive hover:text-destructive-foreground"
+              className="self-start border-amber-500/60 bg-amber-400/20 text-amber-900 hover:border-amber-500 hover:bg-amber-400 hover:text-amber-950 dark:text-amber-200"
               onClick={() => void workstationRepository.packReject()}
             >
               <Ban />
@@ -336,35 +335,28 @@ function feedbackFor(r: ItemScan, nameOf: (id: string) => string): Feedback {
 }
 
 /**
- * Этикетка, которая «вышла из принтера». Принтер ещё не подключён: печать идёт
- * окном браузера, а код этикетки виден крупно — его и сканируют после того, как
- * наклеили. С подключённым принтером она будет печататься сама, без кнопки.
+ * Этикетка только печатается: на экране её не показываем — работнику нужен
+ * товар, а не картинка. Пока принтер не подключён, печать идёт окном браузера,
+ * а код этикетки спрятан под «Код» — его сканируют после того, как наклеили.
  */
-function LabelBlock({ code, title, lines }: { code: string; title: string; lines: string[] }) {
+function LabelBlock({ code, title }: { code: string; title: string; lines?: string[] }) {
   const t = useT();
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-dashed border-primary p-3">
-      <p className="flex items-center gap-2 text-sm font-medium text-primary">
+    <div className="flex flex-wrap items-center gap-3 rounded-lg border border-dashed border-primary px-3 py-2 text-sm">
+      <p className="flex items-center gap-2 font-medium text-primary">
         <Tag className="size-4" />
         {title}
       </p>
-      <div className="flex items-center gap-4">
-        <div className="rounded bg-white p-2 text-black">
+      <Button variant="outline" size="sm" onClick={() => window.print()}>
+        <Printer />
+        {t("ws.run.print")}
+      </Button>
+      <details className="text-xs text-muted-foreground">
+        <summary className="cursor-pointer">{t("ws.run.labelCode")}</summary>
+        <div className="mt-2 inline-block rounded bg-white p-2 text-black">
           <QrSvg code={code} size={88} />
         </div>
-        <div className="min-w-0 text-sm">
-          {lines.map((l) => (
-            <p key={l} className="truncate">
-              {l}
-            </p>
-          ))}
-          <p className="mt-1 text-xs text-muted-foreground">{t("ws.run.printerOff")}</p>
-          <Button variant="outline" size="sm" className="mt-2" onClick={() => window.print()}>
-            <Printer />
-            {t("ws.run.print")}
-          </Button>
-        </div>
-      </div>
+      </details>
     </div>
   );
 }
@@ -429,40 +421,6 @@ function LastItem({
         ) : (
           <p className="text-sm text-muted-foreground">{t("ws.run.lastNone")}</p>
         ))}
-    </div>
-  );
-}
-
-/**
- * Демо-коды: сканера под рукой нет — клик по коду делает то же, что скан.
- * Показывает ровно то, что сейчас ждёт стол: товар из тары, напечатанную
- * этикетку или короб отгрузки при закрытии. На сервере плашки нет.
- */
-function DemoCodes({
-  codes,
-  onScan,
-}: {
-  codes: { code: string; hint: string }[];
-  onScan: (code: string) => void;
-}) {
-  const t = useT();
-  if (codes.length === 0) return null;
-  return (
-    <div className="flex flex-col gap-2 rounded-xl border border-dashed border-border p-3">
-      <p className="text-xs text-muted-foreground">
-        <span className="font-semibold text-foreground">{t("ws.demo.title")}</span> ·{" "}
-        {t("ws.demo.hint")}
-      </p>
-      <ul className="flex flex-wrap gap-2">
-        {codes.slice(0, 8).map(({ code, hint }) => (
-          <li key={code}>
-            <Button variant="outline" size="sm" onClick={() => onScan(code)} title={hint}>
-              <span className="font-mono">{code}</span>
-              <span className="max-w-40 truncate text-muted-foreground">{hint}</span>
-            </Button>
-          </li>
-        ))}
-      </ul>
     </div>
   );
 }

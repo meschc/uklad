@@ -14,6 +14,7 @@ import { ProductDialog } from "@/components/table/ProductDialog";
 import { ScreenShell } from "./ScreenShell";
 import { type ScanStatus } from "./ScanField";
 import { ShipmentPicker } from "./ShipmentPicker";
+import { SENIOR_ROLE } from "@/lib/workstation";
 import { DiscrepancyAlert } from "./DiscrepancyAlert";
 import { BoxStep } from "./receiving/BoxStep";
 import { CargoStep } from "./receiving/CargoStep";
@@ -445,6 +446,10 @@ export function ReceivingScreen({ staffId: badgeStaffId }: { staffId?: string } 
             <CargoStep staffId={staffId} t={t} />
           ) : (
             <ShipmentPicker
+              canCreate={
+                !badgeStaffId ||
+                SENIOR_ROLE.test(staff.find((m) => m.id === badgeStaffId)?.role ?? "")
+              }
               onPick={(id) => go({ shipmentId: id, received: 0, step: "pallet" })}
               onFreeform={() => go({ shipmentId: null, received: 0, step: "pallet" })}
             />
