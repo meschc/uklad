@@ -1,4 +1,4 @@
-import type { FulfillmentRequest, RequestStatus } from "../types";
+import type { FulfillmentRequest, OrderSource, RequestStatus } from "../types";
 import { isRequest } from "./guards";
 import { pickOne, readList, storePort, type Repository, type StorePort } from "./repository";
 import { attempt, type Result } from "./result";
@@ -11,6 +11,8 @@ export interface RequestsRepository extends Repository<FulfillmentRequest> {
       qty: number;
       note?: string;
       vehicle?: string;
+      source?: OrderSource;
+      externalId?: string;
       kitId?: string;
     }[],
     truckDate?: number,

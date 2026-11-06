@@ -1,6 +1,6 @@
 import { nowMs, uid } from "../utils";
 import { addressKey } from "../address";
-import type { FulfillmentRequest, Shipment } from "../types";
+import { isOrderSource, type FulfillmentRequest, type Shipment } from "../types";
 import type { RequestsSlice, SliceCreator } from "./state";
 
 /**
@@ -38,6 +38,9 @@ export const createRequestsSlice: SliceCreator<RequestsSlice> = (set, get) => ({
         qty: Math.max(1, Math.round(it.qty)),
         note: it.note?.trim() || undefined,
         vehicle: it.vehicle?.trim() || undefined,
+        // «Своя» заявка источника не хранит: пусто и значит «вручную».
+        source: isOrderSource(it.source) && it.source !== "manual" ? it.source : undefined,
+        externalId: it.externalId?.trim() || undefined,
         truckDate,
         status: "new",
         createdAt: now,

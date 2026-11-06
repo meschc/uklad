@@ -48,6 +48,27 @@ describe("createRequest / createRequests", () => {
     expect(store.getState().requests[0].productId).toBe("p1");
   });
 
+  it("хранит источник площадки и её номер заказа, «свой» источник не записывает", () => {
+    // Arrange
+    const store = makeRequestsStore({ requests: [] });
+
+    // Act
+    store.getState().createRequests([
+      { productId: "p1", qty: 1, source: "ozon", externalId: "  12345-0001  " },
+      { productId: "p2", qty: 1, source: "manual" },
+      { productId: "p3", qty: 1, source: "avito" as never },
+      { productId: "p4", qty: 1 },
+    ]);
+
+    // Assert: пакет встаёт в список в том порядке, в каком введён.
+    const [ozon, manual, unknown, none] = store.getState().requests;
+    expect(ozon).toMatchObject({ source: "ozon", externalId: "12345-0001" });
+    expect(manual.source).toBeUndefined();
+    expect(unknown.source).toBeUndefined();
+    expect(none.source).toBeUndefined();
+    expect(none.externalId).toBeUndefined();
+  });
+
   it("возвращает пустой список, когда создавать нечего, и не трогает стор", () => {
     // Arrange
     const store = makeRequestsStore({ requests: [] });

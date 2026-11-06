@@ -206,6 +206,18 @@ export interface Shipment {
  * который уже лежит на складе, и таких заявок за месяц десятки. Со стыком
  * витрины у неё нет ничего общего — стык проходит через `ExpectedShipment`.
  */
+/**
+ * Откуда заказ. Пока без интеграции: продавец указывает руками, а когда
+ * подключатся API площадок, источник и номер придут сами. Значения совпадают с
+ * идентификаторами площадок в `integrations.ts`.
+ */
+export const ORDER_SOURCES = ["manual", "ozon", "wildberries", "yandex-market"] as const;
+export type OrderSource = (typeof ORDER_SOURCES)[number];
+
+export function isOrderSource(v: unknown): v is OrderSource {
+  return typeof v === "string" && (ORDER_SOURCES as readonly string[]).includes(v);
+}
+
 export interface FulfillmentRequest {
   id: string;
   productId: string;
@@ -220,6 +232,9 @@ export interface FulfillmentRequest {
    * вывоз, и складу не нужно выяснять это по телефону в момент погрузки.
    */
   vehicle?: string;
+  /** Откуда заказ и его номер на площадке; пусто — заявка продавца «своя». */
+  source?: OrderSource;
+  externalId?: string;
   status: RequestStatus;
   createdAt: number;
   updatedAt: number;

@@ -16,7 +16,8 @@ import { requestsRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
 import { downloadSheet } from "@/lib/sheets";
 import { groupRequestsByTarget } from "@/lib/fulfillment";
-import { useT, type TFunc } from "@/lib/i18n";
+import { useT, type MsgKey, type TFunc } from "@/lib/i18n";
+import { isOrderSource } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/segmented";
 import { Input } from "@/components/ui/input";
@@ -198,6 +199,14 @@ function RequestsTab({ t }: { t: TFunc }) {
                         </td>
                         <td className="px-3 py-2">
                           <StatusBadge status={r.status} partial={r.partial} t={t} />
+                          {r.source && (
+                            <div className="mt-0.5 text-2xs text-muted-foreground">
+                              {isOrderSource(r.source)
+                                ? t(`order.source.${r.source}` as MsgKey)
+                                : r.source}
+                              {r.externalId ? ` · ${r.externalId}` : ""}
+                            </div>
+                          )}
                           {/* Продавцу важно не «собрано», а «уехало»: под
                               статусом показываем дату вывоза и машину. */}
                           {r.status === "shipped" && (

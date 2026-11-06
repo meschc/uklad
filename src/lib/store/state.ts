@@ -40,6 +40,7 @@ import type {
   TaskStatus,
   WarehouseTask,
   Dispute,
+  OrderSource,
   DisputeKind,
   DisputeResolution,
   RequestStatus,
@@ -541,6 +542,8 @@ export interface RequestsSlice {
       qty: number;
       note?: string;
       vehicle?: string;
+      source?: OrderSource;
+      externalId?: string;
     }[],
     truckDate?: number,
   ) => string[];
