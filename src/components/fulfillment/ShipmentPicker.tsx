@@ -42,9 +42,12 @@ import { EmbeddedShell } from "./embeddedShell";
 export function ShipmentPicker({
   onPick,
   onFreeform,
+  canCreate = true,
 }: {
   onPick: (shipmentId: string) => void;
   onFreeform: () => void;
+  /** Поставку заводит старший смены: у приёмщика кнопки нет, он берёт заведённую. */
+  canCreate?: boolean;
 }) {
   const shipments = useEditor((s) => s.expectedShipments);
   const t = useT();
@@ -65,12 +68,14 @@ export function ShipmentPicker({
         <EmptyState
           icon={<PackageSearch className="size-5" />}
           title={t("recv.pick.emptyTitle")}
-          body={t("recv.pick.emptyBody")}
+          body={t(canCreate ? "recv.pick.emptyBody" : "recv.pick.emptyBodyWorker")}
           action={
-            <Button size="sm" onClick={() => setCreating(true)}>
-              <Plus className="size-3.5" />
-              {t("recv.pick.create")}
-            </Button>
+            canCreate ? (
+              <Button size="sm" onClick={() => setCreating(true)}>
+                <Plus className="size-3.5" />
+                {t("recv.pick.create")}
+              </Button>
+            ) : undefined
           }
         />
       ) : (
@@ -82,7 +87,7 @@ export function ShipmentPicker({
       )}
 
       <div className="flex flex-wrap items-center gap-2">
-        {open.length > 0 && (
+        {canCreate && open.length > 0 && (
           <Button size="sm" variant="outline" onClick={() => setCreating(true)}>
             <Plus className="size-3.5" />
             {t("recv.pick.create")}

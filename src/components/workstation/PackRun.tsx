@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Ban, History, Package, Printer, Tag, UserRound } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Ban, Check, History, Package, Printer, Tag, TriangleAlert, UserRound } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { workstationRepository } from "@/lib/data";
 import {
@@ -16,9 +16,9 @@ import type { PackSession } from "@/lib/types";
 import { DEMO_BADGES } from "@/lib/workstation";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { sizeLabel, useLabelPrinter } from "@/lib/labelPrinter";
+import { beep } from "@/lib/beep";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { card } from "@/components/ui/card";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { QrSvg } from "@/components/table/QrSvg";
 import { ScanField, type ScanStatus } from "@/components/fulfillment/ScanField";
@@ -48,6 +48,25 @@ export function PackRun({
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [showLast, setShowLast] = useState(false);
   const [closing, setClosing] = useState(false);
+  // Недостача идёт к старшему, а не оформляется сама: сначала показываем, чего нет.
+  const [handoff, setHandoff] = useState(false);
+  // Зелёная вспышка «принято»: гаснет сама, ошибка остаётся до следующего скана.
+  const [okText, setOkText] = useState<string | null>(null);
+  const okTimer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(okTimer.current), []);
+  const flashOk = (text: string) => {
+    beep("ok");
+    setFeedback(null);
+    setOkText(text);
+    window.clearTimeout(okTimer.current);
+    okTimer.current = window.setTimeout(() => setOkText(null), 2200);
+  };
+  const flashError = (f: NonNullable<Feedback>) => {
+    beep("error");
+    window.clearTimeout(okTimer.current);
+    setOkText(null);
+    setFeedback(f);
+  };
 
   if (!box) return null;
   const contents = toteContents(box);
@@ -63,33 +82,35 @@ export function PackRun({
     if (closing) {
       // Закрытие подтверждается сканом короба: упакованное не уедет в чужой.
       if (code.trim().toUpperCase() === session.targetCode.toUpperCase()) return void finish();
-      return setFeedback({ status: "error", key: "ws.chk.closeWrong", box: session.targetCode });
+      return flashError({ status: "error", key: "ws.chk.closeWrong", box: session.targetCode });
     }
     const mistake = explainScan(session, box, products, code);
-    if (mistake) return setFeedback({ status: "error", key: `ws.chk.${mistake}` });
+    if (mistake) return flashError({ status: "error", key: `ws.chk.${mistake}` });
     if (label) {
       const res = await workstationRepository.packLabel(code);
-      if (res.ok) return setFeedback(null);
+      if (res.ok) return flashOk(t("ws.ok.label"));
       // Не этикетка, а товар — значит, этикетку ещё не наклеили.
       const item = await workstationRepository.packItem(code);
-      return setFeedback({
+      return flashError({
         status: "error",
         key:
           item.ok && item.data.kind === "label_pending" ? "ws.run.label_pending" : "ws.label.wrong",
       });
     }
     const res = await workstationRepository.packItem(code);
-    if (!res.ok) return setFeedback({ status: "error", key: res.error });
+    if (!res.ok) return flashError({ status: "error", key: res.error });
     if (res.data.kind === "not_in_tote") {
       const where = boxesHolding(useEditor.getState().boxes, res.data.productId, box.id);
-      return setFeedback({
+      return flashError({
         status: "error",
         key: where.length ? "ws.run.not_in_tote" : "ws.run.not_in_toteNowhere",
         name: nameOf(res.data.productId),
         box: where.slice(0, 3).join(", ") + (where.length > 3 ? " …" : ""),
       });
     }
-    setFeedback(feedbackFor(res.data, nameOf));
+    const fb = feedbackFor(res.data, nameOf);
+    if (fb) return flashError(fb);
+    flashOk(t("ws.ok.item", { name: nameOf((res.data as { productId: string }).productId) }));
   };
 
   const finish = async () => {
@@ -104,22 +125,61 @@ export function PackRun({
     : 0;
   const order = unit?.orderId ? orders.find((o) => o.id === unit.orderId) : undefined;
 
+  const idleText = closing ? t("ws.idle.close") : label ? t("ws.idle.label") : t("ws.idle.item");
+  const missing = [...remaining].filter(([, n]) => n > 0);
+  const isError = feedback?.status === "error";
+  const bannerText = isError
+    ? t(feedback.key, { name: feedback.name ?? "", box: feedback.box ?? "" })
+    : okText
+      ? okText
+      : feedback
+        ? t(feedback.key, { name: feedback.name ?? "", box: feedback.box ?? "" })
+        : idleText;
+
   return (
-    <div className="flex flex-col gap-6">
-      <section className="flex flex-col gap-4">
-        <ScanField
-          label={t("ws.run.scan")}
-          status={feedback?.status ?? "idle"}
-          hint={
-            feedback?.key.startsWith("ws.run.not_in_tote")
-              ? undefined
-              : feedback
-                ? t(feedback.key, { name: feedback.name ?? "", box: feedback.box ?? "" })
-                : t("ws.run.nextHint")
-          }
-          actionLabel={t(label ? "ws.act.confirm" : "ws.act.pack")}
-          onSubmit={(c) => void onScan(c)}
-        />
+    <div className="flex flex-col gap-5">
+      <section className="flex flex-col gap-3">
+        <div className="flex items-end gap-3">
+          <div className="min-w-0 flex-1">
+            <ScanField
+              label={t("ws.run.scan")}
+              status={isError ? "error" : okText ? "ok" : "idle"}
+              actionLabel={t(label ? "ws.act.confirm" : "ws.act.pack")}
+              onSubmit={(c) => void onScan(c)}
+            />
+          </div>
+          <Button variant="ghost" className="shrink-0" onClick={() => setShowLast((v) => !v)}>
+            <History />
+            {showLast ? t("ws.run.lastHide") : t("ws.run.last")}
+          </Button>
+        </div>
+
+        {/* Результат скана читается краем глаза: зелёное — принято, красное —
+            стоп. Текст дублирует цвет для тех, кто всё же смотрит. */}
+        <div
+          role={isError ? "alert" : "status"}
+          className={cn(
+            "flex min-h-14 items-center gap-3 rounded-xl px-4 py-3 text-xl font-semibold transition-colors duration-200",
+            isError
+              ? "bg-destructive text-destructive-foreground"
+              : okText
+                ? "bg-emerald-600 text-white"
+                : "bg-muted text-muted-foreground",
+          )}
+        >
+          {isError ? (
+            feedback.key.startsWith("ws.run.not_in_tote") ? (
+              <UserRound className="size-6 shrink-0" />
+            ) : (
+              <TriangleAlert className="size-6 shrink-0" />
+            )
+          ) : okText ? (
+            <Check className="size-6 shrink-0" />
+          ) : null}
+          <span className="min-w-0 leading-snug">{bannerText}</span>
+        </div>
+
+        {showLast && <LastItemPanel session={session} />}
 
         {DEMO_BADGES && (
           <DemoCodes
@@ -137,83 +197,55 @@ export function PackRun({
           />
         )}
 
-        {feedback?.key.startsWith("ws.run.not_in_tote") && (
-          <div
-            role="alert"
-            className="flex items-start gap-3 rounded-xl border-2 border-destructive bg-destructive/10 p-4"
-          >
-            <UserRound className="mt-0.5 size-6 shrink-0 text-destructive" />
-            <p className="text-lg font-semibold leading-snug">
-              {t(feedback.key, { name: feedback.name ?? "", box: feedback.box ?? "" })}
-            </p>
-          </div>
-        )}
-
-        <LastItem session={session} open={showLast} onToggle={() => setShowLast((v) => !v)} />
-
         {unit && product ? (
-          <div className={card({ className: "flex flex-col gap-4" })}>
-            <div className="flex items-start gap-4">
-              {product.imageUrl ? (
-                <img
-                  src={product.imageUrl}
-                  alt=""
-                  className="size-48 shrink-0 rounded-xl object-cover"
-                />
-              ) : (
-                <span className="flex size-48 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
-                  <Package className="size-20" />
-                </span>
+          <div key={unit.labelCode} className="ws-in grid gap-6 pt-2 md:grid-cols-2">
+            {/* Картинка крупно: упаковщик сверяет, что в руках то же, что на фото. */}
+            {product.imageUrl ? (
+              <img
+                src={product.imageUrl}
+                alt=""
+                className="aspect-square w-full max-h-[28rem] rounded-xl object-cover"
+              />
+            ) : (
+              <span className="flex aspect-square w-full max-h-[28rem] items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                <Package className="size-32" />
+              </span>
+            )}
+            <div className="flex min-w-0 flex-col gap-3">
+              <p className="text-4xl font-semibold leading-tight tracking-tight">{product.name}</p>
+              <p className="font-mono text-base text-muted-foreground">{product.sku}</p>
+              <p className="text-3xl font-semibold tabular-nums">
+                {t("ws.run.unitOf", { i: doneOfProduct, n: contents.get(product.id) ?? 0 })}
+              </p>
+              {order && (
+                <p className="text-sm text-muted-foreground">
+                  {t("ws.run.forOrder", { id: shortId(order.id), target: order.target ?? "—" })}
+                </p>
               )}
-              <div className="min-w-0">
-                <p className="text-4xl font-semibold leading-tight tracking-tight">
-                  {product.name}
-                </p>
-                <p className="mt-1 font-mono text-base text-muted-foreground">{product.sku}</p>
-                <p className="mt-2 text-xl font-semibold tabular-nums">
-                  {t("ws.run.unitOf", { i: doneOfProduct, n: contents.get(product.id) ?? 0 })}
-                </p>
-                {order && (
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {t("ws.run.forOrder", { id: shortId(order.id), target: order.target ?? "—" })}
-                  </p>
-                )}
+              <div className="mt-auto flex flex-col items-start gap-3">
+                <LabelBlock code={unit.labelCode} title={t("ws.run.labelPrinted")} />
+                {/* Брак — средняя по опасности: жёлтая, красная оставлена для необратимого. */}
+                <Button
+                  className="bg-amber-400 text-black shadow-sm hover:bg-amber-500"
+                  onClick={() => void workstationRepository.packReject()}
+                >
+                  <Ban />
+                  {t("ws.run.defect")}
+                </Button>
               </div>
             </div>
-            <LabelBlock
-              code={unit.labelCode}
-              title={t("ws.run.labelPrinted")}
-              lines={[product.name, order ? shortId(order.id) : product.sku]}
-            />
-            <Button
-              variant="outline"
-              className="self-start hover:border-destructive hover:bg-destructive hover:text-destructive-foreground"
-              onClick={() => void workstationRepository.packReject()}
-            >
-              <Ban />
-              {t("ws.run.defect")}
-            </Button>
           </div>
         ) : orderLabel ? (
-          <div className={card({ className: "flex flex-col gap-4" })}>
+          <div key={orderLabel.labelCode} className="ws-in flex flex-col gap-4 pt-2">
             <p className="text-2xl font-semibold">
               {t("ws.run.orderLabel", { id: shortId(orderLabel.orderId) })}
             </p>
             <p className="text-sm text-muted-foreground">{t("ws.run.orderLabelHint")}</p>
-            <LabelBlock
-              code={orderLabel.labelCode}
-              title={t("ws.run.labelPrinted")}
-              lines={[orders.find((o) => o.id === orderLabel.orderId)?.target ?? "—"]}
-            />
+            <LabelBlock code={orderLabel.labelCode} title={t("ws.run.labelPrinted")} />
           </div>
         ) : (
-          <div
-            className={card({
-              className: "flex min-h-40 flex-col items-center justify-center gap-2 text-center",
-            })}
-          >
+          <div className="flex min-h-40 flex-col items-center justify-center gap-2 text-center">
             <p className="text-2xl font-semibold">{t("ws.run.next")}</p>
-            <p className="text-sm text-muted-foreground">{t("ws.run.nextHint")}</p>
           </div>
         )}
       </section>
@@ -223,7 +255,7 @@ export function PackRun({
           <h3 className={eyebrow({ tone: "muted", size: "xs" })}>
             {t("ws.run.tote")} · <span className="font-mono normal-case">{box.barcode}</span>
           </h3>
-          <ul className={card({ pad: "none", className: "divide-y divide-border" })}>
+          <ul className="flex flex-col divide-y divide-border">
             {[...contents].map(([id, total]) => {
               const left = remaining.get(id) ?? 0;
               return (
@@ -271,6 +303,36 @@ export function PackRun({
         </div>
       </div>
 
+      {handoff && (
+        <div role="alert" className="flex flex-col gap-3 rounded-xl bg-orange-500/10 p-4">
+          <p className="flex items-center gap-2 text-lg font-semibold">
+            <TriangleAlert className="size-5 text-orange-500" />
+            {t("ws.handoff.title")}
+          </p>
+          <p className="text-sm">{t("ws.handoff.body", { box: box.barcode })}</p>
+          <ul className="flex flex-col gap-1 text-base font-medium">
+            {missing.map(([id, n]) => (
+              <li key={id}>{t("ws.handoff.line", { name: nameOf(id), n })}</li>
+            ))}
+          </ul>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              className="bg-orange-500 text-white hover:bg-orange-600"
+              onClick={() => {
+                setHandoff(false);
+                setClosing(true);
+                setFeedback({ status: "idle", key: "ws.chk.closeBody", box: session.targetCode });
+              }}
+            >
+              {t("ws.handoff.confirm")}
+            </Button>
+            <Button variant="ghost" onClick={() => setHandoff(false)}>
+              {t("ws.chk.closeCancel")}
+            </Button>
+          </div>
+        </div>
+      )}
+
       <footer className="flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-border pt-4">
         {/* Счётчики — второстепенное: упаковщик смотрит на товар, а не на цифры. */}
         <dl className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground">
@@ -300,10 +362,12 @@ export function PackRun({
             size="lg"
             variant={summary.shortage > 0 ? "outline" : "default"}
             className={cn(
-              summary.shortage > 0 && "hover:border-amber-500 hover:bg-amber-500 hover:text-white",
+              summary.shortage > 0 && "border-0 bg-orange-500 text-white hover:bg-orange-600",
             )}
             disabled={!!label}
             onClick={() => {
+              // Недостача: сначала старшему, потом закрытие.
+              if (summary.shortage > 0) return setHandoff(true);
               setClosing(true);
               setFeedback({ status: "idle", key: "ws.chk.closeBody", box: session.targetCode });
             }}
@@ -339,41 +403,28 @@ function feedbackFor(r: ItemScan, nameOf: (id: string) => string): Feedback {
 
 /**
  * Этикетка, которая «вышла из принтера». Принтер ещё не подключён: печать идёт
- * окном браузера, а код этикетки виден крупно — его и сканируют после того, как
- * наклеили. С подключённым принтером она будет печататься сама, без кнопки.
+ * окном браузера, а код виден мелко — на сервере этикетка печатается сама, и
+ * картинку этикетки на экране показывать незачем.
  */
-function LabelBlock({ code, title, lines }: { code: string; title: string; lines: string[] }) {
+function LabelBlock({ code, title }: { code: string; title: string }) {
   const t = useT();
   const printer = useLabelPrinter();
   const size = sizeLabel(printer);
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-dashed border-primary p-3">
-      <PrintableLabel code={code} lines={lines} printer={printer} />
-      <p className="flex items-center gap-2 text-sm font-medium text-primary">
-        <Tag className="size-4" />
-        {title}
+    <div className="flex w-full flex-wrap items-center gap-x-3 gap-y-1 py-1 text-sm">
+      <PrintableLabel code={code} lines={[]} printer={printer} />
+      <Tag className="size-4 shrink-0 text-primary" />
+      <span className="font-medium text-primary">{title}</span>
+      <span className="font-mono text-xs text-muted-foreground">{code}</span>
+      <Button variant="ghost" size="sm" className="ml-auto" onClick={() => window.print()}>
+        <Printer />
+        {t("ws.run.print")}
+      </Button>
+      <p className="basis-full text-xs text-muted-foreground">
+        {printer.name
+          ? t("ws.run.printerOn", { name: printer.name, size })
+          : t("ws.run.printerSizeOnly", { size })}
       </p>
-      <div className="flex items-center gap-4">
-        <div className="rounded bg-white p-2 text-black">
-          <QrSvg code={code} size={88} />
-        </div>
-        <div className="min-w-0 text-sm">
-          {lines.map((l) => (
-            <p key={l} className="truncate">
-              {l}
-            </p>
-          ))}
-          <p className="mt-1 text-xs text-muted-foreground">
-            {printer.name
-              ? t("ws.run.printerOn", { name: printer.name, size })
-              : t("ws.run.printerSizeOnly", { size })}
-          </p>
-          <Button variant="outline" size="sm" className="mt-2" onClick={() => window.print()}>
-            <Printer />
-            {t("ws.run.print")}
-          </Button>
-        </div>
-      </div>
     </div>
   );
 }
@@ -393,51 +444,31 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: boo
  * Последняя упакованная штука: упаковщик отвлёкся или не расслышал сигнал —
  * открыл и увидел, что именно и с какой этикеткой ушло в короб.
  */
-function LastItem({
-  session,
-  open,
-  onToggle,
-}: {
-  session: PackSession;
-  open: boolean;
-  onToggle: () => void;
-}) {
+function LastItemPanel({ session }: { session: PackSession }) {
   const t = useT();
   const products = useEditor((s) => s.products);
   const last = session.units.filter((u) => u.confirmedAt).at(-1);
   const product = last && products.find((p) => p.id === last.productId);
+  if (!last || !product) {
+    return <p className="text-sm text-muted-foreground">{t("ws.run.lastNone")}</p>;
+  }
   return (
-    <div className="flex flex-col gap-2">
-      <Button variant="ghost" size="sm" className="self-start" onClick={onToggle}>
-        <History />
-        {open ? t("ws.run.lastHide") : t("ws.run.last")}
-      </Button>
-      {open &&
-        (last && product ? (
-          <div className={card({ pad: "sm", className: "flex items-center gap-4" })}>
-            {product.imageUrl ? (
-              <img
-                src={product.imageUrl}
-                alt=""
-                className="size-16 shrink-0 rounded-lg object-cover"
-              />
-            ) : (
-              <span className="flex size-16 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-                <Package className="size-7" />
-              </span>
-            )}
-            <div className="min-w-0 flex-1">
-              <p className="text-lg font-semibold leading-tight">{product.name}</p>
-              <p className="font-mono text-sm text-muted-foreground">{product.sku}</p>
-              <p className="font-mono text-xs text-muted-foreground">{last.labelCode}</p>
-            </div>
-            <div className="rounded bg-white p-1.5">
-              <QrSvg code={last.labelCode} size={56} showCode={false} />
-            </div>
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">{t("ws.run.lastNone")}</p>
-        ))}
+    <div className="flex items-center gap-4">
+      {product.imageUrl ? (
+        <img src={product.imageUrl} alt="" className="size-16 shrink-0 rounded-lg object-cover" />
+      ) : (
+        <span className="flex size-16 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+          <Package className="size-7" />
+        </span>
+      )}
+      <div className="min-w-0 flex-1">
+        <p className="text-lg font-semibold leading-tight">{product.name}</p>
+        <p className="font-mono text-sm text-muted-foreground">{product.sku}</p>
+        <p className="font-mono text-xs text-muted-foreground">{last.labelCode}</p>
+      </div>
+      <div className="rounded bg-white p-1.5">
+        <QrSvg code={last.labelCode} size={56} showCode={false} />
+      </div>
     </div>
   );
 }
@@ -457,7 +488,7 @@ function DemoCodes({
   const t = useT();
   if (codes.length === 0) return null;
   return (
-    <div className="flex flex-col gap-2 rounded-xl border border-dashed border-border p-3">
+    <div className="flex flex-col gap-2">
       <p className="text-xs text-muted-foreground">
         <span className="font-semibold text-foreground">{t("ws.demo.title")}</span> ·{" "}
         {t("ws.demo.hint")}
