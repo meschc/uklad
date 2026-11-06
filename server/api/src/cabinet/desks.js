@@ -44,6 +44,11 @@ const WRITES_PER_MINUTE = 30;
 const SHIFT_TTL_MS = 12 * 3_600_000;
 // Должности руководства — те же, что в кабинете (`MANAGER_ROLE`, lib/workstation.ts).
 const MANAGER_ROLE = /управля|заместител|руковод|директор|manager/i;
+// Кто решает спорное — тот же «старший», что в кабинете (`SENIOR_ROLE`,
+// lib/docFlow.ts): старший смены и бригадир тоже. Тест сверяет оба выражения,
+// иначе решение старшего в браузере пройдёт, а сервер его молча не примет.
+const SENIOR_ROLE =
+  /старш|бригадир|начальник|управля|заместител|руковод|директор|senior|lead|manager/i;
 
 /**
  * Что стол вправе записать — разрешённый список, а не запретный: новый домен
@@ -87,7 +92,7 @@ function appendOnly(current, incoming, allow = () => true) {
 /**
  * Кто за столом по данным сервера (миграция 012): `staff` — отсканировал
  * бейдж и не ушёл, `prev` — стоял до него последние 10 минут (его отметки
- * ещё могут догонять сервер). Руководитель ли — по должности в снимке.
+ * ещё могут догонять сервер). Старший ли — по должности в снимке.
  */
 function deskPeople(current, who) {
   const staff = Array.isArray(current?.warehouse?.staff) ? current.warehouse.staff : [];
@@ -96,7 +101,7 @@ function deskPeople(current, who) {
   return {
     present,
     staff: who?.staff ?? null,
-    isManager: Boolean(who?.staff) && MANAGER_ROLE.test(roleOf(who.staff)),
+    isSenior: Boolean(who?.staff) && SENIOR_ROLE.test(roleOf(who.staff)),
   };
 }
 
@@ -160,8 +165,15 @@ function mergeDisputes(current, incoming, people) {
   const kept = (Array.isArray(current) ? current : []).map((d) => {
     const n = isObject(d) ? next.get(d.id) : undefined;
     if (!n || d.resolution || !n.resolution) return d;
-    // Решает руководитель, который сейчас за столом, и только от своего имени.
-    if (!people.isManager || n.resolvedBy !== people.staff) return d;
+    // Решает старший, который сейчас за столом, и только от своего имени.
+    if (!people.isSenior || n.resolvedBy !== people.staff) return d;
+    // Списание — с причиной и не тем, кто нашёл (как в кабинете, #71):
+    // иначе свою же недостачу можно списать в одиночку.
+    if (
+      n.resolution === "written_off" &&
+      (n.resolvedBy === d.raisedBy || !String(n.note ?? "").trim())
+    )
+      return d;
     return {
       ...d,
       resolution: n.resolution,
@@ -511,4 +523,4 @@ function createDesks({ auth, cfg, send, log }) {
   return { handle, cookieName: COOKIE };
 }
 
-module.exports = { createDesks, forDesk, mergeDeskWrite, DESK_WRITES };
+module.exports = { createDesks, forDesk, mergeDeskWrite, DESK_WRITES, SENIOR_ROLE };

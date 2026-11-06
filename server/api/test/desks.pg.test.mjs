@@ -103,6 +103,7 @@ const PLAN = { plan: "start" };
 const staff = () => [
   { id: "stf-boss", name: "Игорь", role: "Управляющий склада", hourlyRate: 900, phone: "+7 900" },
   { id: "stf-ivan", name: "Иван", role: "Упаковщик", hourlyRate: 300, email: "i@x.ru" },
+  { id: "stf-olga", name: "Ольга", role: "Старший смены", hourlyRate: 500 },
 ];
 const cabinetData = () => ({
   warehouse: {
@@ -175,7 +176,7 @@ test("стол: вход руководителя гаснет, стол вид�
   const people = snap.data.warehouse.staff;
   assert.deepEqual(
     people.map((m) => m.name),
-    ["Игорь", "Иван"],
+    ["Игорь", "Иван", "Ольга"],
   );
   for (const m of people) {
     assert.equal(m.hourlyRate, undefined);
@@ -254,7 +255,7 @@ test("стол пишет работу склада, но не персонал,
     ["UK-OUT-TULA01"],
   );
   assert.equal(data.subscription.plan, "start");
-  assert.equal(data.warehouse.staff.length, 2);
+  assert.equal(data.warehouse.staff.length, 3);
   assert.equal(data.warehouse.staff[0].hourlyRate, 900);
   assert.equal(data.otherWarehouses.length, 1);
   assert.equal(data.chats.c1.text, "секрет");
@@ -342,6 +343,8 @@ test(
   { skip: SKIP },
   async () => {
     const { a, ivan } = await company("desk-g@sklad.ru", "10.0.3.7");
+    const olga = (await call("/api/cabinet/badges/issue", { ...a, body: { staffRef: "stf-olga" } }))
+      .json.code;
     const desk = await makeDesk(a);
     const snapshot = async () =>
       (
@@ -408,12 +411,38 @@ test(
     assert.equal(req.r2.status, "shipped");
     assert.equal(data.disputes.find((d) => d.id === "q2").resolution, undefined);
 
+    // Старший смены решает за столом — как и в кабинете (`SENIOR_ROLE`).
+    // Свою же находку он не списывает, и списание без причины не проходит.
+    await call("/api/cabinet/badges/check", { desk, body: { code: olga } });
+    data = await write({
+      ...base,
+      disputes: [
+        { id: "q2", kind: "extra", resolution: "moved", resolvedBy: "stf-olga" },
+        { id: "q6", kind: "shortage", qty: 1, raisedBy: "stf-olga", raisedAt: 9 },
+      ],
+    });
+    assert.equal(data.disputes.find((d) => d.id === "q2").resolution, "moved");
+    data = await write({
+      ...base,
+      disputes: [
+        {
+          id: "q6",
+          kind: "shortage",
+          raisedBy: "stf-olga",
+          resolution: "written_off",
+          resolvedBy: "stf-olga",
+          note: "не нашли",
+        },
+      ],
+    });
+    assert.equal(data.disputes.find((d) => d.id === "q6").resolution, undefined);
+
     // Ушёл со стола: он больше не «за столом», но отметки, набранные до ухода,
     // ещё 10 минут догоняют сервер.
     assert.equal((await call("/api/desk/leave", { desk, body: {} })).status, 200);
     data = await write({
       ...base,
-      staffEvents: [{ id: "n4", staffId: "stf-ivan", type: "shift_end", at: 8 }],
+      staffEvents: [{ id: "n4", staffId: "stf-olga", type: "shift_end", at: 8 }],
     });
     assert.ok(
       data.staffEvents.some((e) => e.id === "n4"),
