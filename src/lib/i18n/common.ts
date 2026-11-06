@@ -69,6 +69,7 @@ export const ru = {
   "dash.card.open": "Открыть",
   "dash.card.active": "Активный",
   "dash.card.fill": "заполнен на {p}%",
+  "dash.card.empty": "остатков пока нет",
   "dash.kind.mezzanine": "Мезонин",
   "dash.kind.port": "Порт",
 
@@ -358,6 +359,7 @@ export const en: Record<keyof typeof ru, string> = {
   "dash.card.open": "Open",
   "dash.card.active": "Active",
   "dash.card.fill": "{p}% filled",
+  "dash.card.empty": "no stock yet",
   "dash.kind.mezzanine": "Mezzanine",
   "dash.kind.port": "Port",
 

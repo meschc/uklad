@@ -248,10 +248,10 @@ function WarehouseCard({
           <div>
             <div className="mb-1 flex items-center justify-between text-xs">
               <span className="text-muted-foreground">
-                {t("dash.card.fill", { p: stats.fill })}
+                {stats.occupied ? t("dash.card.fill", { p: stats.fill }) : t("dash.card.empty")}
               </span>
               <span className="font-medium tabular-nums">
-                {stats.occupied}/{stats.cells}
+                {stats.occupied ? `${stats.occupied}/${stats.cells}` : stats.cells}
               </span>
             </div>
             <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
