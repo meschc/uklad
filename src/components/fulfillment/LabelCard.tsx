@@ -58,6 +58,7 @@ export function LabelCard({
     digits: number.length,
     extraLines: lines.length,
     headline: !!headline,
+    headlineWord: headline ? Math.max(...headline.split(/\s+/).map((w) => w.length)) : 0,
   });
   const { show, horizontal } = plan;
 
@@ -133,9 +134,8 @@ export function LabelCard({
 
   const headlineBlock = show.headline && headline && (
     <span
-      lang="ru"
-      className="line-clamp-2 min-w-0 break-words font-bold leading-[1.1]"
-      style={{ fontSize: MM(plan.smallMm * 1.6), hyphens: "auto" }}
+      className="line-clamp-2 min-w-0 font-bold leading-[1.1]"
+      style={{ fontSize: MM(plan.headlineMm), textWrap: "balance" }}
     >
       {headline}
     </span>

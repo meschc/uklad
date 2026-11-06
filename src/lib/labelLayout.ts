@@ -27,6 +27,8 @@ export interface LabelPlanInput {
   extraLines?: number;
   /** Крупная подпись над номером (получатель на этикетке отправления). */
   headline?: boolean;
+  /** Длина самого длинного слова подписи: слово не рвём, а уменьшаем кегль. */
+  headlineWord?: number;
 }
 
 export interface LabelPlan {
@@ -40,6 +42,7 @@ export interface LabelPlan {
   /** Кегль мелкого текста и номера, мм. */
   smallMm: number;
   numberMm: number;
+  headlineMm: number;
   prefixMm: number;
   /** Сколько информационных строк помещается (склад, свои строки, примечание, КИЗ — по порядку). */
   infoCount: number;
@@ -89,7 +92,10 @@ export function planLabel(i: LabelPlanInput): LabelPlan {
   const widthPerMm = Math.max(i.digits, 1) * 0.62 + (horizontal ? 0 : 0.33);
   const numberMm = number
     ? clamp(
-        Math.min(rest.h * (horizontal ? 0.42 : 0.5), (rest.w - (horizontal ? 0 : 1)) / widthPerMm),
+        Math.min(
+          rest.h * (i.headline ? 0.3 : horizontal ? 0.42 : 0.5),
+          (rest.w - (horizontal ? 0 : 1)) / widthPerMm,
+        ),
         smallMm,
         26,
       )
@@ -108,7 +114,14 @@ export function planLabel(i: LabelPlanInput): LabelPlan {
     return false;
   };
 
-  const headline = !!i.headline && take(smallMm * 1.6 * 2);
+  // Кегль подписи — такой, чтобы самое длинное слово встало в строку целиком:
+  // «Констан-тинова» с переносом посреди слова читается хуже мелкого шрифта.
+  const headlineMm = clamp(
+    Math.min(smallMm * 1.6, rest.w / (Math.max(i.headlineWord ?? 1, 1) * 0.6)),
+    1.6,
+    smallMm * 1.6,
+  );
+  const headline = !!i.headline && take(headlineMm * 1.1 * 2);
 
   // Служебная строка: «Хрупкое» важнее номера места, номер места важнее даты.
   // Что не влезает в ширину, переносится на вторую строку; что не влезает и
@@ -130,10 +143,14 @@ export function planLabel(i: LabelPlanInput): LabelPlan {
     }
     return rows;
   };
+  // Рамка «Хрупкое» выше строки текста; больше двух строк — уже не строка, а
+  // кучка, поэтому третья не заводится.
+  const rowH = smallMm * (has("fragile") ? 1.6 : 1.3);
   let kept = candidates;
-  while (kept.length > 0 && !(rowsFor(kept) * small + gap <= free)) kept = kept.slice(0, -1);
+  while (kept.length > 0 && (rowsFor(kept) > 2 || rowsFor(kept) * rowH + gap > free))
+    kept = kept.slice(0, -1);
   const footerRows = rowsFor(kept);
-  if (footerRows > 0) free -= footerRows * small + gap;
+  if (footerRows > 0) free -= footerRows * rowH + gap;
   const footer = kept.length > 0;
   const infoLines =
     (has("warehouse") ? 1 : 0) +
@@ -152,6 +169,7 @@ export function planLabel(i: LabelPlanInput): LabelPlan {
     rest,
     smallMm,
     numberMm,
+    headlineMm,
     prefixMm,
     infoCount: shownInfo,
     show: {
