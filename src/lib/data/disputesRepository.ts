@@ -22,6 +22,11 @@ export function createDisputesRepository(port: StorePort = storePort): DisputesR
   return {
     list: () => readList(() => port.get().disputes, isDispute, "disputes"),
     resolve: async (id, resolution, by, note) => {
+      if (resolution === "written_off") {
+        if (!note?.trim()) return fail("disputes.noteRequired");
+        const d = port.get().disputes.find((x) => x.id === id);
+        if (d && d.raisedBy === by) return fail("disputes.selfWriteOff");
+      }
       const res = await attempt(() => port.get().resolveDispute(id, resolution, by, note));
       if (!res.ok) return res;
       return res.data ? ok(undefined) : fail("disputes.resolveFailed");

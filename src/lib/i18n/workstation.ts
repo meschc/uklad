@@ -89,6 +89,11 @@ export const ru = {
   "disputes.manager": "руководитель",
   "disputes.done": "Решено",
   "disputes.resolveFailed": "Не удалось сохранить решение, попробуйте ещё раз",
+  "disputes.reason": "Причина списания",
+  "disputes.confirmWriteOff": "Списать безвозвратно",
+  "disputes.cancel": "Отмена",
+  "disputes.noteRequired": "Для списания укажите причину",
+  "disputes.selfWriteOff": "Недостачу, которую нашли вы, списывает другой старший",
   "devices.title": "Устройства",
   "devices.lead":
     "Компьютеры и ТСД у рабочих мест. На привязанном устройстве открыт только вход по бейджу — без кабинета и левого меню.",
@@ -344,6 +349,11 @@ export const en: Record<keyof typeof ru, string> = {
   "disputes.manager": "manager",
   "disputes.done": "Resolved",
   "disputes.resolveFailed": "Could not save the decision, please try again",
+  "disputes.reason": "Write-off reason",
+  "disputes.confirmWriteOff": "Write off for good",
+  "disputes.cancel": "Cancel",
+  "disputes.noteRequired": "Enter a reason for the write-off",
+  "disputes.selfWriteOff": "A shortage you found must be written off by another supervisor",
   "devices.title": "Devices",
   "devices.lead":
     "Computers and handhelds at workstations. A bound device only shows badge sign-in — no cabinet, no side menu.",

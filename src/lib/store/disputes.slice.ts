@@ -46,6 +46,9 @@ export const createDisputesSlice: SliceCreator<DisputesSlice> = (set, get) => ({
   resolveDispute: (id, resolution, by, note) => {
     const d = get().disputes.find((x) => x.id === id);
     if (!d || d.resolution) return false;
+    // Списание — необратимая потеря чужого товара: нужна причина, и решает не
+    // тот, кто сам нашёл недостачу (четыре глаза).
+    if (resolution === "written_off" && (!note?.trim() || d.raisedBy === by)) return false;
     const now = nowMs();
     set((s) => ({
       disputes: s.disputes.map((x) =>

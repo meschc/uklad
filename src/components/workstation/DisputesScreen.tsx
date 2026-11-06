@@ -1,5 +1,8 @@
+import { useState } from "react";
 import { Scale } from "lucide-react";
 import { useEditor } from "@/lib/store";
+import { selectRole } from "@/lib/store/session.slice";
+import { isSessionLive } from "@/lib/workstation";
 import { disputesRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
 import { isSenior } from "@/lib/docFlow";
@@ -7,8 +10,13 @@ import type { Dispute, DisputeKind, DisputeResolution } from "@/lib/types";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { EmptyState, ScreenShell } from "@/components/fulfillment/ScreenShell";
+import { useNow } from "./useNow";
+
+/** Поле причины открывается под рукой: сразу в него и печатают. */
+const focusOnMount = (el: HTMLInputElement | null) => el?.focus();
 
 const KIND_KEY: Record<DisputeKind, MsgKey> = {
   shortage: "disputes.kind.shortage",
@@ -46,9 +54,19 @@ export function DisputesScreen() {
   const session = useEditor((s) => s.stationSession);
   const resolve = useCommand(disputesRepository.resolve);
 
-  const badgeStaff = session ? staff.find((m) => m.id === session.staffId) : undefined;
-  // Из кабинета (без бейджа) решает руководитель; у стола — только старший.
-  const canResolve = !badgeStaff || isSenior(badgeStaff);
+  const role = useEditor(selectRole);
+  const now = useNow();
+  const [writing, setWriting] = useState<string | null>(null);
+  const [reason, setReason] = useState("");
+
+  // Решает тот, кто явно вправе: руководитель склада из кабинета (роль склада,
+  // бейджа нет) или сотрудник на должности старшего с живым входом по бейджу.
+  // Просроченный вход и роль продавца кнопок не дают, а не «открывают по
+  // умолчанию».
+  const live = isSessionLive(session, now);
+  const badgeStaff = live ? staff.find((m) => m.id === session!.staffId) : undefined;
+  const canResolve =
+    role === "warehouse" && (session ? !!badgeStaff && isSenior(badgeStaff) : true);
   const by = badgeStaff?.id ?? "manager";
 
   const open = disputes.filter((d) => !d.resolution);
@@ -74,22 +92,55 @@ export function DisputesScreen() {
               className="flex flex-wrap items-center justify-between gap-4 border-t border-border py-4 first:border-t-0 first:pt-0"
             >
               <Line d={d} name={nameOf(d.productId)} who={who(d.raisedBy)} />
-              {canResolve && (
-                <div className="flex flex-wrap gap-2">
-                  <Button variant="outline" onClick={() => void resolve.run(d.id, "returned", by)}>
-                    {t("disputes.act.returned")}
-                  </Button>
-                  <Button variant="outline" onClick={() => void resolve.run(d.id, "moved", by)}>
-                    {t("disputes.act.moved")}
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    onClick={() => void resolve.run(d.id, "written_off", by)}
+              {canResolve &&
+                (writing === d.id ? (
+                  <form
+                    className="flex flex-wrap items-center gap-2"
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      const res = await resolve.run(d.id, "written_off", by, reason);
+                      if (res.ok) {
+                        setWriting(null);
+                        setReason("");
+                      }
+                    }}
                   >
-                    {t("disputes.act.written_off")}
-                  </Button>
-                </div>
-              )}
+                    <Input
+                      ref={focusOnMount}
+                      className="h-9 w-64"
+                      value={reason}
+                      placeholder={t("disputes.reason")}
+                      onChange={(e) => setReason(e.target.value)}
+                    />
+                    <Button type="submit" variant="destructive" disabled={!reason.trim()}>
+                      {t("disputes.confirmWriteOff")}
+                    </Button>
+                    <Button type="button" variant="ghost" onClick={() => setWriting(null)}>
+                      {t("disputes.cancel")}
+                    </Button>
+                  </form>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => void resolve.run(d.id, "returned", by)}
+                    >
+                      {t("disputes.act.returned")}
+                    </Button>
+                    <Button variant="outline" onClick={() => void resolve.run(d.id, "moved", by)}>
+                      {t("disputes.act.moved")}
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={() => {
+                        setReason("");
+                        setWriting(d.id);
+                      }}
+                    >
+                      {t("disputes.act.written_off")}
+                    </Button>
+                  </div>
+                ))}
             </li>
           ))}
         </ul>
@@ -114,6 +165,7 @@ export function DisputesScreen() {
                 </span>
                 <span>
                   {t(RES_KEY[d.resolution!])} · {who(d.resolvedBy!)} · {fmt(d.resolvedAt!)}
+                  {d.note ? ` · ${d.note}` : ""}
                 </span>
               </li>
             ))}

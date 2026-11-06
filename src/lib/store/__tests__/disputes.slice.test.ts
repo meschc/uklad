@@ -72,12 +72,29 @@ describe("disputes.slice", () => {
       .getState()
       .raiseDispute({ kind: "shortage", boxId: "b1", productId: "p1", qty: 2, raisedBy: "s1" });
 
-    store.getState().resolveDispute(id, "written_off", "boss");
+    store.getState().resolveDispute(id, "written_off", "boss", "пересчитали, не нашли");
 
     expect(store.getState().boxes[0].lines).toEqual([
       { productId: "p1", qty: 3 },
       { productId: "p2", qty: 3 },
     ]);
+  });
+
+  it("списать без причины нельзя: решение не записывается", () => {
+    const store = makeDisputesStore();
+    const id = store.getState().raiseDispute({ kind: "shortage", productId: "p1", raisedBy: "s1" });
+
+    expect(store.getState().resolveDispute(id, "written_off", "boss")).toBe(false);
+    expect(store.getState().resolveDispute(id, "written_off", "boss", "   ")).toBe(false);
+    expect(store.getState().disputes[0].resolution).toBeUndefined();
+  });
+
+  it("нашедший сам недостачу не списывает, но может вернуть", () => {
+    const store = makeDisputesStore();
+    const id = store.getState().raiseDispute({ kind: "shortage", productId: "p1", raisedBy: "s1" });
+
+    expect(store.getState().resolveDispute(id, "written_off", "s1", "потерялась")).toBe(false);
+    expect(store.getState().resolveDispute(id, "returned", "s1")).toBe(true);
   });
 
   it("возврат и перекладывание остаток не трогают", () => {
