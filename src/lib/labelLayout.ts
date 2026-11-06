@@ -92,10 +92,7 @@ export function planLabel(i: LabelPlanInput): LabelPlan {
   const widthPerMm = Math.max(i.digits, 1) * 0.62 + (horizontal ? 0 : 0.33);
   const numberMm = number
     ? clamp(
-        Math.min(
-          rest.h * (i.headline ? 0.3 : horizontal ? 0.42 : 0.5),
-          (rest.w - (horizontal ? 0 : 1)) / widthPerMm,
-        ),
+        Math.min(rest.h * (i.headline ? 0.3 : 0.42), (rest.w - (horizontal ? 0 : 1)) / widthPerMm),
         smallMm,
         26,
       )
@@ -123,34 +120,19 @@ export function planLabel(i: LabelPlanInput): LabelPlan {
   );
   const headline = !!i.headline && take(headlineMm * 1.1 * 2);
 
-  // Служебная строка: «Хрупкое» важнее номера места, номер места важнее даты.
-  // Что не влезает в ширину, переносится на вторую строку; что не влезает и
-  // туда по высоте, пропадает целиком, а не обрезается.
+  // Нижняя строка — три колонки, как в макете Кирилла (02.11): номер места
+  // дробью слева, «Хрупкое» по центру, дата в две строки справа. Важность:
+  // «Хрупкое» > номер места > дата; что не влезает по ширине, пропадает целиком.
   const candidates: { key: "fragile" | "seq" | "date"; w: number }[] = [];
-  if (has("fragile")) candidates.push({ key: "fragile", w: smallMm * 5.4 });
-  if (has("seq")) candidates.push({ key: "seq", w: smallMm * (minSide < 50 ? 2.6 : 7.2) });
-  if (has("date") && (minSide >= 35 || !has("seq")))
-    candidates.push({ key: "date", w: smallMm * 4.4 });
-  const rowsFor = (items: { w: number }[]) => {
-    let rows = items.length ? 1 : 0;
-    let used = 0;
-    for (const it of items) {
-      if (used > 0 && used + it.w > rest.w) {
-        rows++;
-        used = 0;
-      }
-      used += it.w + smallMm * 0.5;
-    }
-    return rows;
-  };
-  // Рамка «Хрупкое» выше строки текста; больше двух строк — уже не строка, а
-  // кучка, поэтому третья не заводится.
-  const rowH = smallMm * (has("fragile") ? 1.6 : 1.3);
+  if (has("fragile")) candidates.push({ key: "fragile", w: smallMm * 7 });
+  if (has("seq")) candidates.push({ key: "seq", w: smallMm * 3.2 });
+  if (has("date")) candidates.push({ key: "date", w: smallMm * 3.2 });
+  const rowH = smallMm * (has("date") ? 2.2 : 1.6);
+  const width = (items: { w: number }[]) =>
+    items.reduce((sum, it) => sum + it.w, 0) + smallMm * Math.max(0, items.length - 1);
   let kept = candidates;
-  while (kept.length > 0 && (rowsFor(kept) > 2 || rowsFor(kept) * rowH + gap > free))
-    kept = kept.slice(0, -1);
-  const footerRows = rowsFor(kept);
-  if (footerRows > 0) free -= footerRows * rowH + gap;
+  while (kept.length > 0 && (width(kept) > rest.w || rowH + gap > free)) kept = kept.slice(0, -1);
+  if (kept.length > 0) free -= rowH + gap;
   const footer = kept.length > 0;
   const infoLines =
     (has("warehouse") ? 1 : 0) +

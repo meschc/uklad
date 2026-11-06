@@ -64,7 +64,6 @@ export function LabelCard({
 
   const title =
     kind === "box" ? t("labels.kind.box") : kind === "pallet" ? t("labels.kind.pallet") : "";
-  const compact = Math.min(tpl.widthMm, tpl.heightMm) < 50;
   const info = [
     has("warehouse") ? warehouseName : null,
     ...lines,
@@ -75,11 +74,6 @@ export function LabelCard({
     .slice(0, plan.infoCount);
 
   const small = { fontSize: MM(plan.smallMm) };
-  const date = new Date().toLocaleDateString("ru-RU", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "2-digit",
-  });
 
   const numberBlock = show.number && (
     <div className={cn("flex min-w-0 gap-[0.6mm]", horizontal ? "flex-col" : "items-start")}>
@@ -141,25 +135,46 @@ export function LabelCard({
     </span>
   );
 
+  // Нижняя строка по макету Кирилла: три колонки, серое — служебное.
+  const [dm, yr] = [
+    new Date().toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" }),
+    String(new Date().getFullYear()),
+  ];
   const footer = show.footer && (
     <div
-      className="flex min-w-0 flex-wrap items-end justify-between gap-x-1 gap-y-[0.3mm] leading-none"
+      className="grid min-w-0 grid-cols-[1fr_auto_1fr] items-end gap-x-1 leading-none"
       style={small}
     >
-      {show.seq && (
-        <span className="shrink-0 font-bold tabular-nums">
-          {compact ? `${index}/${total}` : t("labels.seq", { n: index, total })}
-        </span>
-      )}
-      {show.fragile && (
-        <span
-          className="shrink-0 border border-black font-bold uppercase"
-          style={{ padding: `${MM(plan.smallMm * 0.15)} ${MM(plan.smallMm * 0.4)}` }}
-        >
-          {t("labels.fragile")}
-        </span>
-      )}
-      {show.date && <span className="shrink-0 tabular-nums text-neutral-600">{date}</span>}
+      <span className="justify-self-start whitespace-nowrap tabular-nums text-neutral-500">
+        {show.seq && (
+          <>
+            <sup className="align-[0.4em] text-[0.85em]">{index}</sup>
+            <span className="text-[1.1em]">/</span>
+            {total}
+          </>
+        )}
+      </span>
+      <span className="justify-self-center">
+        {show.fragile && (
+          <span
+            className="flex items-center gap-[0.5mm] whitespace-nowrap border border-black uppercase"
+            style={{ padding: `${MM(plan.smallMm * 0.12)} ${MM(plan.smallMm * 0.3)}` }}
+          >
+            <span className="text-[0.75em]">⇈</span>
+            {t("labels.fragile")}
+            <span className="text-[0.75em]">⇈</span>
+          </span>
+        )}
+      </span>
+      <span className="justify-self-end text-right tabular-nums leading-[1.05] text-neutral-500">
+        {show.date && (
+          <>
+            {dm}
+            <br />
+            {yr}
+          </>
+        )}
+      </span>
     </div>
   );
 
@@ -179,7 +194,7 @@ export function LabelCard({
     >
       <div className="shrink-0" style={{ width: MM(plan.code.w), height: MM(plan.code.h) }}>
         {tpl.codeType === "qr" ? (
-          <QrSvg code={code} fit showCode={false} quiet={2} />
+          <QrSvg code={code} fit showCode={false} quiet={0} />
         ) : (
           <Code128Svg code={code} fit />
         )}
