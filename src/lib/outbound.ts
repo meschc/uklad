@@ -93,9 +93,14 @@ export function expectedOutbound(
   return list.filter((b) => !b.shipmentId && b.requestIds.some((r) => ids.has(r)));
 }
 
-/** Продавец товара: `partnerId`, у товара самого склада — пустая строка. */
+/**
+ * Продавец товара: `partnerId`, у товара самого склада — пустая строка.
+ * Товар, которого нет в каталоге (удалили), — отдельный неизвестный продавец:
+ * иначе он тихо смешался бы с товаром склада.
+ */
 function sellerOf(products: readonly Product[], productId: string): string {
-  return products.find((p) => p.id === productId)?.partnerId ?? "";
+  const p = products.find((x) => x.id === productId);
+  return p ? (p.partnerId ?? "") : `?${productId}`;
 }
 
 /** Продавцы, чей товар в этих строках. */
@@ -135,6 +140,11 @@ export function packTargetProblem(input: {
   const inBox = sellersOf(input.open.lines, input.products);
   if ([...tote].some((s) => inBox.size > 0 && !inBox.has(s))) return "target_other_seller";
   const boxTargets = destinationsOf(input.open.requestIds, input.requests);
+  // Поставка без заказов (FBO) и заказы с адресом едут разными машинами:
+  // в один короб их не кладут.
+  const boxFbo = input.open.requestIds.length === 0 && input.open.lines.length > 0;
+  const toteFbo = input.toteTargets.length === 0;
+  if (boxFbo !== toteFbo && (boxFbo || boxTargets.size > 0)) return "target_other_target";
   if (boxTargets.size > 0 && input.toteTargets.some((t) => !boxTargets.has(t)))
     return "target_other_target";
   return null;

@@ -231,6 +231,29 @@ describe("один короб — один продавец и одно назн
     expect(packTargetProblem({ ...same, open: undefined })).toBeNull();
   });
 
+  it("удалённый из каталога товар не смешивается с товаром склада", () => {
+    const own = box({ lines: [{ productId: "pOwn", qty: 1 }], requestIds: [] });
+    expect(
+      packTargetProblem({
+        open: own,
+        toteLines: [{ productId: "удалён", qty: 1 }],
+        toteTargets: [],
+        products: [...products, { id: "pOwn" } as Product],
+        requests,
+      }),
+    ).toBe("target_other_seller");
+  });
+
+  it("поставка без заказов и заказы с адресом не ложатся в один короб", () => {
+    const fbo = box({ lines: [{ productId: "pA", qty: 1 }], requestIds: [] });
+    const base = { toteLines: [{ productId: "pA2", qty: 1 }], products, requests };
+    expect(packTargetProblem({ ...base, open: boxA, toteTargets: [] })).toBe("target_other_target");
+    expect(packTargetProblem({ ...base, open: fbo, toteTargets: ["Тула"] })).toBe(
+      "target_other_target",
+    );
+    expect(packTargetProblem({ ...base, open: fbo, toteTargets: [] })).toBeNull();
+  });
+
   it("смешанный по назначениям короб не уезжает ни одной машиной", () => {
     const mixed = box({ code: "UK-OUT-MIX001", requestIds: ["rT", "rS"] });
     expect(classifyLoadScan([mixed], ["rT"], [], "UK-OUT-MIX001").kind).toBe("mixed");
