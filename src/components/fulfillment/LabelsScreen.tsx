@@ -223,92 +223,84 @@ export function LabelsScreen() {
 
   return (
     <ScreenShell title={t("labels.title")} subtitle={t("labels.subtitle")} wide>
-      <div className={card({ className: "flex flex-wrap items-end gap-x-6 gap-y-4" })}>
-        <Segmented
-          size="md"
-          value={kind}
-          onChange={(k) => {
-            setKind(k);
-            setBatch([]);
-          }}
-          options={[
-            { value: "box" as TareKind, label: t("labels.kind.box"), icon: <Package /> },
-            {
-              value: "pallet" as TareKind,
-              label: t("labels.kind.pallet"),
-              icon: <Layers />,
-            },
-          ]}
-        />
-
-        <div className="flex items-end gap-2">
-          <label className="flex flex-col gap-1">
-            <span className={eyebrow()}>{t("labels.count")}</span>
-            <Input
-              type="number"
-              min={1}
-              max={MAX_BATCH}
-              value={count}
-              onChange={(e) => setCount(+e.target.value || 1)}
-              className="h-9 w-24 text-right"
+      {/* Две колонки: слева настройки, справа то, что получится, и кнопка
+          печати. Правая колонка едет за прокруткой — наклейку видно, пока
+          крутишь настройки. */}
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] lg:items-start">
+        <div className="flex flex-col gap-4">
+          <div className={card({ className: "flex flex-wrap items-end gap-x-6 gap-y-4" })}>
+            <Segmented
+              size="md"
+              value={kind}
+              onChange={(k) => {
+                setKind(k);
+                setBatch([]);
+              }}
+              options={[
+                { value: "box" as TareKind, label: t("labels.kind.box"), icon: <Package /> },
+                {
+                  value: "pallet" as TareKind,
+                  label: t("labels.kind.pallet"),
+                  icon: <Layers />,
+                },
+              ]}
             />
-          </label>
-          <Button className="h-9" onClick={() => void generate()} disabled={create.pending}>
-            {create.pending && <Loader2 className="animate-spin" />}
-            {create.pending ? t("data.busy") : t("labels.generate")}
-          </Button>
+
+            <div className="flex items-end gap-2">
+              <label className="flex flex-col gap-1">
+                <span className={eyebrow()}>{t("labels.count")}</span>
+                <Input
+                  type="number"
+                  min={1}
+                  max={MAX_BATCH}
+                  value={count}
+                  onChange={(e) => setCount(+e.target.value || 1)}
+                  className="h-9 w-24 text-right"
+                />
+              </label>
+              <Button className="h-9" onClick={() => void generate()} disabled={create.pending}>
+                {create.pending && <Loader2 className="animate-spin" />}
+                {create.pending ? t("data.busy") : t("labels.generate")}
+              </Button>
+            </div>
+
+            <div className="flex items-end gap-2">
+              <label className="flex flex-col gap-1">
+                <span className={eyebrow()}>{t("labels.from")}</span>
+                {num(from, setFrom)}
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className={eyebrow()}>{t("labels.to")}</span>
+                {num(to, setTo)}
+              </label>
+              <Button className="h-9" variant="outline" onClick={pickRange} disabled={!from}>
+                {t("labels.pick")}
+              </Button>
+            </div>
+
+            {unprinted.length > 0 && (
+              <Button className="h-9" variant="ghost" onClick={pickUnprinted}>
+                {t("labels.unprinted", { n: unprinted.length })}
+              </Button>
+            )}
+          </div>
+
+          <div className={card()}>
+            <LabelDesigner
+              draft={draft}
+              onChange={(patch) => setDraft((d) => ({ ...d, ...patch }))}
+              templates={templates}
+              selectedId={selectedId}
+              onSelect={applyTemplate}
+              onSave={save}
+              onSaveAsNew={saveAsNew}
+              onDelete={remove}
+              dirty={dirty}
+            />
+          </div>
         </div>
 
-        <div className="flex items-end gap-2">
-          <label className="flex flex-col gap-1">
-            <span className={eyebrow()}>{t("labels.from")}</span>
-            {num(from, setFrom)}
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className={eyebrow()}>{t("labels.to")}</span>
-            {num(to, setTo)}
-          </label>
-          <Button className="h-9" variant="outline" onClick={pickRange} disabled={!from}>
-            {t("labels.pick")}
-          </Button>
-        </div>
-
-        {unprinted.length > 0 && (
-          <Button className="h-9" variant="ghost" onClick={pickUnprinted}>
-            {t("labels.unprinted", { n: unprinted.length })}
-          </Button>
-        )}
-
-        <Button
-          className="ml-auto h-9"
-          variant="outline"
-          disabled={batch.length === 0}
-          onClick={print}
-        >
-          <Printer className="size-3.5" />
-          {batch.length > 0 ? t("labels.printN", { n: batch.length }) : t("labels.print")}
-        </Button>
-      </div>
-
-      {/* Настройки сверху, предпросмотр снизу. Колонками они не уживались:
-          наклейка 58×40 занимает ладонь, а рядом с ней пустовала половина
-          экрана — при том что настройки внизу той же колонки не помещались. */}
-      <div className="flex flex-col gap-4">
-        <div className={card()}>
-          <LabelDesigner
-            draft={draft}
-            onChange={(patch) => setDraft((d) => ({ ...d, ...patch }))}
-            templates={templates}
-            selectedId={selectedId}
-            onSelect={applyTemplate}
-            onSave={save}
-            onSaveAsNew={saveAsNew}
-            onDelete={remove}
-            dirty={dirty}
-          />
-        </div>
-
-        <div className={card({ className: "flex flex-col gap-3" })}>
+        <div className={card({ className: "flex flex-col gap-3 lg:sticky lg:top-4" })}>
           <div className="flex items-baseline justify-between gap-2">
             <h3 className={cn(eyebrow(), "flex items-center gap-1.5")}>
               <Eye className="size-3.5" />
@@ -331,6 +323,11 @@ export function LabelsScreen() {
               total={batch.length || Math.max(1, Math.round(count))}
             />
           </div>
+
+          <Button disabled={batch.length === 0} onClick={print}>
+            <Printer className="size-3.5" />
+            {batch.length > 0 ? t("labels.printN", { n: batch.length }) : t("labels.print")}
+          </Button>
 
           {batch.length === 0 ? (
             <p className="text-xs text-muted-foreground">{t("labels.hint")}</p>

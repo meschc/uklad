@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import {
   Barcode,
+  ChevronRight,
   LayoutTemplate,
   ListChecks,
   QrCode,
@@ -31,6 +32,9 @@ import { eyebrow } from "@/components/ui/eyebrow";
  * реквизитов. Отдельным файлом от экрана — экран отвечает за пачку и печать,
  * конструктор за один макет.
  */
+
+/** Редко меняемые реквизиты — живут под «Дополнительно». */
+const RARE: LabelElement[] = ["logo", "mark", "note"];
 
 const ELEMENTS: { id: LabelElement; key: MsgKey }[] = [
   { id: "logo", key: "labels.el.logo" },
@@ -107,8 +111,20 @@ export function LabelDesigner({
     }
   };
 
+  const checkbox = (el: { id: LabelElement; key: MsgKey }) => (
+    <label key={el.id} className="flex cursor-pointer items-center gap-2 text-xs">
+      <input
+        type="checkbox"
+        checked={draft.elements.includes(el.id)}
+        onChange={() => toggle(el.id)}
+        className="size-3.5 accent-[hsl(var(--primary))]"
+      />
+      {t(el.key)}
+    </label>
+  );
+
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
       {/* Шаблоны — сохранённые настройки печати, а не «дизайны»: у склада их
           два-три на все случаи, поэтому список плоский и всегда на виду. */}
       <Block title={t("labels.templates")} icon={<LayoutTemplate />}>
@@ -133,27 +149,48 @@ export function LabelDesigner({
         </div>
       </Block>
 
-      {/* Настройки идут строкой, а не колонкой: панель теперь во всю ширину
-          экрана, и вытянутый столбик из девяти блоков в ней читался бы хуже,
-          чем сетка. Колонок три, а не четыре: на четырёх ячейка становится
-          уже переключателя «Вертикально / Горизонтально», и тот наезжает на
-          соседний блок — сегменты не переносятся по словам. */}
-      <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">
-        <Block title={t("labels.name")}>
+      {/* Лента и ориентация — одно решение: смена ориентации меняет стороны. */}
+      <Block title={t("labels.size")} icon={<Ruler />}>
+        <div className="flex flex-wrap gap-1.5">
+          {LABEL_SIZE_PRESETS.map((p) => {
+            // Пресеты показываем в текущей ориентации: на альбомной ленте
+            // «58×40» и «40×58» — это одна и та же лента, повёрнутая иначе.
+            const w = draft.layout === "horizontal" ? Math.max(p.w, p.h) : p.w;
+            const h = draft.layout === "horizontal" ? Math.min(p.w, p.h) : p.h;
+            const active = draft.widthMm === w && draft.heightMm === h;
+            return (
+              <button
+                key={`${p.w}x${p.h}`}
+                onClick={() => onChange({ widthMm: w, heightMm: h })}
+                className={cn(
+                  "rounded-md px-2 py-1 text-xs tabular-nums transition-colors",
+                  active
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {w}×{h}
+              </button>
+            );
+          })}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
           <Input
-            value={draft.name}
-            onChange={(e) => onChange({ name: e.target.value })}
-            placeholder={t("labels.namePlaceholder")}
-            className="h-8 text-sm"
+            value={draft.widthMm || ""}
+            inputMode="numeric"
+            onChange={(e) => setSide("widthMm", e.target.value)}
+            className="h-8 w-20 text-right text-sm tabular-nums"
           />
-        </Block>
-
-        <Block title={t("labels.layout")}>
+          <span className="text-xs text-muted-foreground">×</span>
+          <Input
+            value={draft.heightMm || ""}
+            inputMode="numeric"
+            onChange={(e) => setSide("heightMm", e.target.value)}
+            className="h-8 w-20 text-right text-sm tabular-nums"
+          />
+          <span className="text-xs text-muted-foreground">{t("labels.mm")}</span>
           <Segmented
-            // Без self-start контрол растягивается на всю ячейку сетки:
-            // inline-flex всё равно тянется по поперечной оси flex-колонки,
-            // и справа от двух кнопок остаётся мёртвая серая полоса.
-            className="self-start"
+            className="ml-auto"
             // Показываем по сторонам ленты, как и печатаем (см. labelLayout).
             value={draft.widthMm > draft.heightMm ? "horizontal" : "vertical"}
             onChange={setLayout}
@@ -170,90 +207,48 @@ export function LabelDesigner({
               },
             ]}
           />
-        </Block>
+        </div>
+      </Block>
 
-        <Block title={t("labels.codeType")} icon={<QrCode />}>
-          <Segmented
-            className="self-start"
-            value={draft.codeType}
-            onChange={(codeType) => onChange({ codeType })}
-            options={[
-              {
-                value: "qr" as LabelCodeType,
-                label: t("labels.code.qr"),
-                icon: <QrCode />,
-              },
-              {
-                value: "barcode" as LabelCodeType,
-                label: t("labels.code.barcode"),
-                icon: <Barcode />,
-              },
-            ]}
-          />
-          <p className="text-xs leading-relaxed text-muted-foreground">
-            {t(draft.codeType === "qr" ? "labels.code.qrHint" : "labels.code.barHint")}
-          </p>
-        </Block>
+      {/* Каждый день нужны шесть реквизитов; остальное (логотип, КИЗ, своя
+          строка, тип кода) меняют раз в год — они свёрнуты. */}
+      <Block title={t("labels.elements")} icon={<ListChecks />}>
+        <div className="grid grid-cols-1 gap-x-6 gap-y-1.5 sm:grid-cols-2">
+          {ELEMENTS.filter((el) => !RARE.includes(el.id)).map(checkbox)}
+        </div>
+      </Block>
 
-        <Block title={t("labels.size")} icon={<Ruler />}>
-          <div className="flex flex-wrap gap-1.5">
-            {LABEL_SIZE_PRESETS.map((p) => {
-              // Пресеты показываем в текущей ориентации: на альбомной ленте
-              // «58×40» и «40×58» — это одна и та же лента, повёрнутая иначе.
-              const w = draft.layout === "horizontal" ? Math.max(p.w, p.h) : p.w;
-              const h = draft.layout === "horizontal" ? Math.min(p.w, p.h) : p.h;
-              const active = draft.widthMm === w && draft.heightMm === h;
-              return (
-                <button
-                  key={`${p.w}x${p.h}`}
-                  onClick={() => onChange({ widthMm: w, heightMm: h })}
-                  className={cn(
-                    "rounded-md px-2 py-1 text-xs tabular-nums transition-colors",
-                    active
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {w}×{h}
-                </button>
-              );
-            })}
-          </div>
-          <div className="flex items-center gap-2">
-            <Input
-              value={draft.widthMm || ""}
-              inputMode="numeric"
-              onChange={(e) => setSide("widthMm", e.target.value)}
-              className="h-8 w-20 text-right text-sm tabular-nums"
+      <details className="group flex flex-col gap-3">
+        <summary className="flex cursor-pointer list-none items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground">
+          <ChevronRight className="size-3.5 transition-transform group-open:rotate-90" />
+          {t("labels.advanced")}
+        </summary>
+        <div className="mt-3 flex flex-col gap-4">
+          <Block title={t("labels.codeType")} icon={<QrCode />}>
+            <Segmented
+              className="self-start"
+              value={draft.codeType}
+              onChange={(codeType) => onChange({ codeType })}
+              options={[
+                {
+                  value: "qr" as LabelCodeType,
+                  label: t("labels.code.qr"),
+                  icon: <QrCode />,
+                },
+                {
+                  value: "barcode" as LabelCodeType,
+                  label: t("labels.code.barcode"),
+                  icon: <Barcode />,
+                },
+              ]}
             />
-            <span className="text-xs text-muted-foreground">×</span>
-            <Input
-              value={draft.heightMm || ""}
-              inputMode="numeric"
-              onChange={(e) => setSide("heightMm", e.target.value)}
-              className="h-8 w-20 text-right text-sm tabular-nums"
-            />
-            <span className="text-xs text-muted-foreground">{t("labels.mm")}</span>
-          </div>
-        </Block>
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              {t(draft.codeType === "qr" ? "labels.code.qrHint" : "labels.code.barHint")}
+            </p>
+          </Block>
 
-        <Block
-          title={t("labels.elements")}
-          icon={<ListChecks />}
-          className="sm:col-span-2 xl:col-span-3"
-        >
-          <div className="grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2 xl:grid-cols-3">
-            {ELEMENTS.map((el) => (
-              <label key={el.id} className="flex cursor-pointer items-center gap-2 text-xs">
-                <input
-                  type="checkbox"
-                  checked={draft.elements.includes(el.id)}
-                  onChange={() => toggle(el.id)}
-                  className="size-3.5 accent-[hsl(var(--primary))]"
-                />
-                {t(el.key)}
-              </label>
-            ))}
+          <div className="grid grid-cols-1 gap-x-6 gap-y-1.5 sm:grid-cols-2">
+            {ELEMENTS.filter((el) => RARE.includes(el.id)).map(checkbox)}
           </div>
 
           {draft.elements.includes("note") && (
@@ -296,10 +291,18 @@ export function LabelDesigner({
               )}
             </div>
           )}
-        </Block>
-      </div>
+        </div>
+      </details>
 
-      <div className="flex flex-wrap gap-2">
+      {/* Сохранение одной строкой: имя шаблона нужно только ему. */}
+      <div className="flex flex-wrap items-center gap-2">
+        <Input
+          value={draft.name}
+          onChange={(e) => onChange({ name: e.target.value })}
+          placeholder={t("labels.namePlaceholder")}
+          aria-label={t("labels.name")}
+          className="h-8 min-w-40 flex-1 text-sm"
+        />
         <Button size="sm" disabled={!dirty || !draft.name.trim()} onClick={onSave}>
           {t("labels.save")}
         </Button>
