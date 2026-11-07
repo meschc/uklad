@@ -36,6 +36,7 @@ import { createStaffSlice } from "./staff.slice";
 import { createSubscriptionSlice } from "./subscription.slice";
 import { createWorkstationSlice } from "./workstation.slice";
 import { sanitizeDomains } from "../data/sanitize";
+import { PERSIST_KEY, persistStorage } from "./persistStorage";
 
 /**
  * Сборка стора из срезов (slices pattern). Каждый срез — отдельный файл рядом;
@@ -49,7 +50,7 @@ export { countUnread, selectSellerPartnerId, visibleChatPartners } from "./chat.
 export type { GoodsConflict, EditorState } from "./state";
 
 /** Ключ автосохранения в localStorage (ТЗ: изменения сохраняются сами). */
-export const PERSIST_KEY = "uklad-store-v1";
+export { PERSIST_KEY };
 
 /** Версия персиста: её же пишет резервная копия (`lib/backup.ts`). */
 export const PERSIST_VERSION = 8;
@@ -175,7 +176,8 @@ export const useEditor = create<EditorState>()(
     {
       name: PERSIST_KEY,
       version: PERSIST_VERSION,
-      ...(EMBED ? { storage: createJSONStorage(() => memoryStorage) } : {}),
+      // Сохранение сжато и пишется не чаще раза в секунду (`persistStorage.ts`).
+      storage: createJSONStorage(() => (EMBED ? memoryStorage : persistStorage)),
       // v1 → v2: модель «проход как объект» заменена на «пол как проход».
       // Проходы больше нельзя ни создать, ни увидеть, но их прямоугольники
       // остаются в старых сохранениях — ловят наложение в overlap.ts и висят

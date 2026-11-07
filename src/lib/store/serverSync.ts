@@ -4,6 +4,7 @@ import { SECRET_INTEGRATION_FIELDS } from "../integrations";
 import { diffCabinet, splitCabinet, type Split } from "../data/cabinetRows";
 import { snapshotRepository } from "../data/snapshotRepository";
 import { readLocal, writeLocal } from "../safeStorage";
+import { readSaved, writeSaved } from "./persistStorage";
 import { PERSIST_KEY, PERSIST_VERSION, persistedState, useEditor } from "./index";
 import { blankWarehouse } from "./seed";
 import { emptyWarehouseData } from "./warehouseData";
@@ -134,7 +135,7 @@ export function hasDeferredCopy(): boolean {
  */
 export function deferredCopyFile(): { fileName: string; text: string } | null {
   try {
-    const raw = JSON.parse(readLocal(BEFORE_SYNC_KEY) ?? "null") as {
+    const raw = JSON.parse(readSaved(BEFORE_SYNC_KEY) ?? "null") as {
       state?: Record<string, unknown>;
       version?: number;
       savedAt?: number;
@@ -241,7 +242,12 @@ export function blankCabinet(current: Persisted, email: string): Persisted {
 
 /** Заменить копию в браузере и перезапустить кабинет на ней. */
 function replaceWith(state: Record<string, unknown>, format: number, meta: SyncMeta) {
-  writeLocal(PERSIST_KEY, JSON.stringify({ state, version: format }));
+  try {
+    writeSaved(PERSIST_KEY, JSON.stringify({ state, version: format }));
+  } catch (err) {
+    // Как раньше с `writeLocal`: сбой записи не останавливает вход, но виден.
+    console.warn("[uklad] копия сервера не записалась на устройство", err);
+  }
   writeMeta(meta);
   window.location.reload();
 }
@@ -357,10 +363,16 @@ export function startServerSync(orgId: string): () => void {
     // откладываем: это может быть единственная их копия.
     const deferIfNeeded = () => {
       if (meta && !meta.dirty) return;
-      writeLocal(
-        BEFORE_SYNC_KEY,
-        JSON.stringify({ state: current, version: PERSIST_VERSION, savedAt: Date.now() }),
-      );
+      try {
+        writeSaved(
+          BEFORE_SYNC_KEY,
+          JSON.stringify({ state: current, version: PERSIST_VERSION, savedAt: Date.now() }),
+        );
+      } catch (err) {
+        // Отложить негде (хранилище переполнено). Выход тогда копию не
+        // предложит: `hasDeferredCopy` видит только записанное.
+        console.warn("[uklad] данные до входа не отложились", err);
+      }
       try {
         sessionStorage.setItem(NOTE_KEY, rejected ?? "conflict");
       } catch {

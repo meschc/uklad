@@ -16,7 +16,7 @@ import { leaveServerSession } from "@/lib/store/leave";
 import { flushServerSync, hasDeferredCopy } from "@/lib/store/serverSync";
 import { downloadBackup, downloadDeferredCopy } from "./backupDownload";
 import { PERSIST_KEY, selectRole, useEditor } from "@/lib/store";
-import { removeLocal } from "@/lib/safeStorage";
+import { removeSaved } from "@/lib/store/persistStorage";
 import { isValidInn } from "@/lib/company";
 import { companyRepository } from "@/lib/data/companyRepository";
 import type { Lang } from "@/lib/types";
@@ -118,7 +118,7 @@ export function Profile() {
    * приложения, — и второй его копии в интерфейсе быть не должно.
    */
   const resetDemoData = () => {
-    removeLocal(PERSIST_KEY);
+    removeSaved(PERSIST_KEY);
     window.location.reload();
   };
   const [draft, setDraft] = useState(() => draftOf());
