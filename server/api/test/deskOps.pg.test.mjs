@@ -510,6 +510,9 @@ test(
   { skip: SKIP },
   async () => {
     const { a, ivan } = await company("ops-r@sklad.ru", "10.0.5.8");
+    // Бейдж старшего — до стола: заведённый стол гасит вход руководителя.
+    const olga = (await call("/api/cabinet/badges/issue", { ...a, body: { staffRef: "stf-olga" } }))
+      .json.code;
     const cell = { floorId: "f1", moduleId: "m1", shelfIndex: 0, cellIndex: 2 };
     const base = cabinetData();
     const data = {
@@ -602,9 +605,57 @@ test(
         .map((d) => [d.id, d.qty, d.raisedBy]),
       [["ovr-ev-recv-extra", 2, "stf-ivan"]],
     );
+
+    // Старший возвращает лишнее поставщику за столом. Тара уже на полке —
+    // списание всё равно снимает с неё, а журнал движений подписан старшим.
+    await call("/api/cabinet/badges/check", { desk, body: { code: olga } });
+    const seen = (await call("/api/cabinet/snapshot", { desk })).json.snapshot;
+    const off = {
+      ...seen.data,
+      boxes: seen.data.boxes.map((b) =>
+        b.id === "b5" ? { ...b, lines: [{ productId: "pr1", qty: 4 }] } : b,
+      ),
+      disputes: seen.data.disputes.map((d) =>
+        d.id === "ovr-ev-recv-extra"
+          ? {
+              ...d,
+              resolution: "written_off",
+              resolvedBy: "stf-olga",
+              resolvedAt: Date.now(),
+              note: "водитель забрал",
+            }
+          : d,
+      ),
+    };
+    const w = await call("/api/cabinet/snapshot", {
+      desk,
+      body: { version: seen.version, format: 8, data: off },
+    });
+    assert.equal(w.status, 200);
+    const after = await serverEvents("ops-r@sklad.ru", a.org);
+    assert.deepEqual(after.snap.data.boxes.find((b) => b.id === "b5").lines, [
+      { productId: "pr1", qty: 4 },
+    ]);
+    assert.equal(
+      after.snap.data.disputes.find((d) => d.id === "ovr-ev-recv-extra").resolution,
+      "written_off",
+    );
+    const offMoves = await db.root.query(
+      `SELECT place_kind, place_ref, delta, staff_ref FROM uklad.stock_moves
+       WHERE org_id = $1 AND staff_ref = 'stf-olga' ORDER BY 1, 2`,
+      [a.org],
+    );
+    assert.deepEqual(
+      offMoves.rows.map((m) => [m.place_kind, m.place_ref, m.delta]),
+      [
+        ["box", "b5", -2],
+        ["box_at", "f1/m1/0/2#b5", -2],
+      ],
+    );
     const moves = await db.root.query(
       `SELECT place_kind, place_ref, sum(delta)::int AS d, min(staff_ref) AS who
        FROM uklad.stock_moves WHERE org_id = $1 AND desk_id IS NOT NULL
+         AND staff_ref = 'stf-ivan'
        GROUP BY 1, 2 ORDER BY 1, 2`,
       [a.org],
     );

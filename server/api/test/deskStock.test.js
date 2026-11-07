@@ -512,3 +512,76 @@ test("приёмка откатилась сверкой — её «лишнее
   assert.deepEqual(mismatch, ["p2"]);
   assert.equal(data.disputes.filter((d) => d.kind === "receive_overage").length, 0);
 });
+
+test("id «лишнего» занят сервером: стол не подложит под него своё спорное", () => {
+  const cur = {
+    ...base(),
+    expectedShipments: [
+      { id: "s1", lines: [{ id: "l1", productId: "p2", expectedQty: 1, receivedQty: 0 }] },
+    ],
+  };
+  const inc = {
+    ...withBoxes(cur, cur.boxes[0].lines, [{ productId: "p2", qty: 5 }]),
+    receivingEvents: [
+      {
+        id: "e1",
+        productId: "p2",
+        qty: 3,
+        boxId: "t1",
+        staffId: "stf-ivan",
+        timestamp: 5,
+        expectedShipmentLineId: "l1",
+      },
+    ],
+    disputes: [
+      ...cur.disputes,
+      {
+        id: "ovr-e1",
+        kind: "shortage",
+        productId: "p2",
+        qty: 9,
+        raisedBy: "stf-ivan",
+        raisedAt: 5,
+      },
+    ],
+  };
+  const { data } = mergeDeskWrite(cur, inc, who);
+  const d = data.disputes.filter((x) => x.id === "ovr-e1");
+  assert.deepEqual(
+    d.map((x) => [x.kind, x.qty]),
+    [["receive_overage", 2]],
+  );
+});
+
+test("лишнее списывают с тары, даже если она уже стоит в ячейке", () => {
+  const open = {
+    id: "ovr-e1",
+    kind: "receive_overage",
+    boxId: "b1",
+    productId: "p1",
+    qty: 2,
+    raisedBy: "stf-ivan",
+    raisedAt: 5,
+  };
+  const cur = { ...base(), disputes: [open] };
+  // b1 стоит на месте «A»; в нём 5, списываем 2.
+  const r = mergeDeskWrite(
+    cur,
+    {
+      ...withBoxes(cur, [{ productId: "p1", qty: 3 }], cur.boxes[1].lines),
+      disputes: [
+        {
+          ...open,
+          resolution: "written_off",
+          resolvedBy: "stf-olga",
+          resolvedAt: 9,
+          note: "вернули",
+        },
+      ],
+    },
+    { staff: "stf-olga" },
+  );
+  assert.deepEqual(r.mismatch, []);
+  assert.deepEqual(r.data.boxes[0].lines, [{ productId: "p1", qty: 3 }]);
+  assert.equal(r.data.boxes[0].address, "A");
+});

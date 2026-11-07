@@ -260,7 +260,12 @@ function mergeDisputes(current, incoming, people) {
   return appendOnly(
     kept,
     fresh,
-    (d) => people.present.has(d.raisedBy) && d.kind !== "receive_overage",
+    // Id `ovr-…` тоже занят сервером: иначе стол заранее подложил бы своё
+    // спорное под id будущего «лишнего».
+    (d) =>
+      people.present.has(d.raisedBy) &&
+      d.kind !== "receive_overage" &&
+      !String(d.id).startsWith("ovr-"),
   );
 }
 
