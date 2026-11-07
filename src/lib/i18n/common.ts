@@ -177,6 +177,8 @@ export const ru = {
     "На сервере была более новая версия кабинета, открыли её. Ваши незаписанные правки отложены в копию на этом устройстве.",
   "sync.stockRejected":
     "Сервер не принял движение товара: оно не сошлось с приёмкой, сборкой и упаковкой. Открыли данные с сервера, ваши правки отложены в копию на этом устройстве. Покажите это старшему смены.",
+  "sync.productsRejected":
+    "Сервер не удалил больше половины товаров одной записью: так выглядит сбой, а не работа. Открыли каталог с сервера, ваши правки отложены в копию на этом устройстве. Удалите товары частями.",
   "profile.logoutUnsynced":
     "Часть правок ещё не дошла до сервера и при выходе пропадёт. Скачайте копию, если она нужна.",
   "login.switch.body":
@@ -470,6 +472,8 @@ export const en: Record<keyof typeof ru, string> = {
     "The server had a newer version of the cabinet, so we opened it. Your unsaved changes were set aside in a copy on this device.",
   "sync.stockRejected":
     "The server didn't accept the stock movement: it doesn't match receiving, picking and packing. We opened the server data, and your changes were set aside in a copy on this device. Show this to the shift lead.",
+  "sync.productsRejected":
+    "The server didn't remove more than half of the products in one save: that looks like a failure, not work. We opened the catalog from the server, and your changes were set aside in a copy on this device. Delete the products in parts.",
   "profile.logoutUnsynced":
     "Some changes haven't reached the server yet and will be lost when you sign out. Download a copy if you need it.",
   "login.switch.body":

@@ -21,7 +21,11 @@ export interface Snapshot {
  * `stock` — сервер не принял движение товара со стола (сверка остатков,
  * `cabinet/deskStock.js`): остальное записано, копию нужно забрать заново.
  */
-export type SaveOutcome = { saved: number } | { conflict: number; stock?: boolean };
+/**
+ * `rejected` — сервер отказал не из-за версии: `stock` — движение товара со
+ * стола не сошлось, `products` — запись убрала бы больше половины каталога.
+ */
+export type SaveOutcome = { saved: number } | { conflict: number; rejected?: "stock" | "products" };
 
 export const snapshotRepository = {
   /** Снимок компании. `null` — компания ещё ничего не сохраняла. */
@@ -55,7 +59,8 @@ export const snapshotRepository = {
     if (status === 409)
       return ok({
         conflict: typeof body.version === "number" ? body.version : 0,
-        ...(body.error === "stock_mismatch" ? { stock: true } : {}),
+        ...(body.error === "stock_mismatch" ? { rejected: "stock" as const } : {}),
+        ...(body.error === "products_mass_delete" ? { rejected: "products" as const } : {}),
       });
     if (status === 413) return fail("sync.err.tooBig");
     if (status === 403) return fail("sync.err.forbidden");

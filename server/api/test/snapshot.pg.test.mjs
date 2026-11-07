@@ -226,3 +226,156 @@ test(
     assert.equal(read.json.snapshot.data.warehouse.name, "ставки");
   },
 );
+
+test(
+  "товары живут в таблице: туда и обратно без потерь, корзина, журнал, чужие не видны",
+  { skip: SKIP },
+  async () => {
+    const a = await owner("snap-p@sklad.ru", "10.0.1.8");
+    const b = await owner("snap-q@sklad.ru", "10.0.1.9");
+    const cup = {
+      id: "p-cup",
+      sku: "CUP-1",
+      barcode: "4600000000017",
+      name: "Кружка",
+      category: "Посуда",
+      widthCm: 9,
+      heightCm: 10.5,
+      depthCm: 9,
+      partnerId: "prt-1",
+      warehouseId: "wh_1",
+      // Поле, которого нет в колонках, и поле не того типа — не теряются.
+      color: "синий",
+      weightKg: "0,4",
+    };
+    const tee = { id: "p-tee", sku: "", name: "Футболка", category: "Одежда", widthCm: 30 };
+    const snap = (products, version, mark = "склад") => ({
+      ...a,
+      body: { version, format: 8, data: { ...data(mark), products } },
+    });
+
+    assert.equal((await call("/api/cabinet/snapshot", snap([cup, tee], 0))).status, 200);
+    // Список не того вида — отказ, а не тихая потеря товаров.
+    const bad = await call("/api/cabinet/snapshot", {
+      ...a,
+      body: { version: 1, format: 8, data: { ...data("x"), products: { cup } } },
+    });
+    assert.equal(bad.status, 400);
+
+    const stored = await db.root.query(
+      `SELECT data FROM uklad.cabinet_snapshots WHERE org_id = $1`,
+      [a.org],
+    );
+    assert.equal(stored.rows[0].data.products, undefined);
+    const read = await call("/api/cabinet/snapshot", a);
+    assert.deepEqual(read.json.snapshot.data.products, [cup, tee]);
+
+    // Правка одной карточки трогает одну строку; пропавшая — в корзину.
+    const log = async () =>
+      (
+        await db.root.query(`SELECT count(*)::int AS n FROM uklad.stock_log WHERE org_id = $1`, [
+          a.org,
+        ])
+      ).rows[0].n;
+    const before = await log();
+    const renamed = { ...cup, name: "Кружка большая" };
+    assert.equal((await call("/api/cabinet/snapshot", snap([renamed, tee], 1))).status, 200);
+    assert.equal(await log(), before + 1);
+    assert.equal((await call("/api/cabinet/snapshot", snap([tee], 2))).status, 200);
+    const gone = await db.root.query(
+      `SELECT name, deleted_at FROM uklad.products WHERE org_id = $1 AND ref = 'p-cup'`,
+      [a.org],
+    );
+    assert.equal(gone.rows[0].name, "Кружка большая");
+    assert.ok(gone.rows[0].deleted_at);
+    assert.deepEqual((await call("/api/cabinet/snapshot", a)).json.snapshot.data.products, [tee]);
+
+    // Устаревшая версия не трогает и товары.
+    assert.equal((await call("/api/cabinet/snapshot", snap([], 1))).status, 409);
+    assert.equal((await call("/api/cabinet/snapshot", a)).json.snapshot.data.products.length, 1);
+
+    // Вернулся — из корзины та же строка, а не вторая.
+    assert.equal((await call("/api/cabinet/snapshot", snap([renamed, tee], 3))).status, 200);
+    const rows = await db.root.query(
+      `SELECT count(*)::int AS n FROM uklad.products WHERE org_id = $1 AND ref = 'p-cup'`,
+      [a.org],
+    );
+    assert.equal(rows.rows[0].n, 1);
+
+    // Чужая компания своих товаров не видит, а тот же id у неё — своя строка.
+    const other = await call("/api/cabinet/snapshot", {
+      ...b,
+      body: {
+        version: 0,
+        format: 8,
+        data: { ...data("чужой"), products: [{ ...cup, name: "Их" }] },
+      },
+    });
+    assert.equal(other.status, 200);
+    const theirs = (await call("/api/cabinet/snapshot", b)).json.snapshot.data.products;
+    assert.deepEqual(
+      theirs.map((p) => p.name),
+      ["Их"],
+    );
+    const mine = (await call("/api/cabinet/snapshot", a)).json.snapshot.data.products;
+    assert.deepEqual(
+      mine.map((p) => p.name),
+      ["Кружка большая", "Футболка"],
+    );
+  },
+);
+
+test(
+  "пустой список не уносит каталог в корзину: больше половины разом — 409",
+  { skip: SKIP },
+  async () => {
+    const a = await owner("snap-r@sklad.ru", "10.0.1.12");
+    const cards = Array.from({ length: 20 }, (_, i) => ({
+      id: `p${i}`,
+      sku: `S${i}`,
+      name: `Т${i}`,
+    }));
+    const save = (version, products) =>
+      call("/api/cabinet/snapshot", {
+        ...a,
+        body: { version, format: 8, data: { ...data("склад"), products } },
+      });
+    assert.equal((await save(0, cards)).status, 200);
+    // Сбой клиента: стор пустой — сервер не принимает и снимок не двигает.
+    const wiped = await save(1, []);
+    assert.equal(wiped.status, 409);
+    assert.equal(wiped.json.error, "products_mass_delete");
+    assert.equal(wiped.json.version, 1);
+    assert.equal((await call("/api/cabinet/snapshot", a)).json.snapshot.data.products.length, 20);
+    // Половина — можно: человек удаляет частями.
+    assert.equal((await save(1, cards.slice(10))).status, 200);
+    // Девять из десяти разом — можно, а последний — как обычно.
+    assert.equal((await save(2, cards.slice(19))).status, 200);
+    assert.equal((await save(3, [])).status, 200);
+    assert.deepEqual((await call("/api/cabinet/snapshot", a)).json.snapshot.data.products, []);
+  },
+);
+
+test(
+  "каталог не стирается целиком и маленьким: пять товаров разом — 409",
+  { skip: SKIP },
+  async () => {
+    const a = await owner("snap-s@sklad.ru", "10.0.1.13");
+    const cards = Array.from({ length: 5 }, (_, i) => ({
+      id: `p${i}`,
+      sku: `S${i}`,
+      name: `Т${i}`,
+    }));
+    const save = (version, products) =>
+      call("/api/cabinet/snapshot", {
+        ...a,
+        body: { version, format: 8, data: { ...data("склад"), products } },
+      });
+    assert.equal((await save(0, cards)).status, 200);
+    const wiped = await save(1, []);
+    assert.equal(wiped.status, 409);
+    assert.equal(wiped.json.error, "products_mass_delete");
+    assert.equal((await save(1, cards.slice(3))).status, 200);
+    assert.equal((await save(2, [])).status, 200);
+  },
+);

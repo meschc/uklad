@@ -112,7 +112,7 @@ const cabinetData = () => ({
     staff: staff(),
     partners: [{ id: "p1", name: "ООО Ромашка", contact: "+7 999 000-00-00" }],
   },
-  products: [{ id: "pr1", partnerId: "p1" }],
+  products: [{ id: "pr1", sku: "A-1", name: "Кружка", partnerId: "p1" }],
   docRecords: [{ id: "d1", kind: "shipment", confirmed: true }],
   staffEvents: [{ id: "e1", staffId: "stf-ivan", type: "shift_start", at: 1 }],
   disputes: [
@@ -259,7 +259,13 @@ test("стол пишет работу склада, но не персонал,
   assert.equal(data.warehouse.staff[0].hourlyRate, 900);
   assert.equal(data.otherWarehouses.length, 1);
   assert.equal(data.chats.c1.text, "секрет");
-  assert.equal(data.products[0].partnerId, "p1");
+  // Товары живут в таблице (миграция 013): стол их не переписал.
+  assert.equal(data.products, undefined);
+  const card = await db.root.query(
+    `SELECT partner_ref FROM uklad.products WHERE org_id = $1 AND ref = 'pr1'`,
+    [a.org],
+  );
+  assert.equal(card.rows[0].partner_ref, "p1");
   assert.equal(data.docRecords.length, 1);
   assert.deepEqual(
     data.staffEvents.map((e) => [e.id, e.at]),

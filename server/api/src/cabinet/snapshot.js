@@ -19,6 +19,10 @@
  * Маршруты:
  *   GET  /api/cabinet/snapshot — снимок компании или `snapshot: null`
  *   POST /api/cabinet/snapshot — { version, format, data }; version 0 — первая запись
+ *
+ * Товары в снимке не хранятся (миграция 013): кабинет присылает и получает
+ * их в составе снимка, а сервер раскладывает по строкам `uklad.products` —
+ * со своей корзиной и журналом правок.
  */
 /* global require, module */
 /* eslint-disable @typescript-eslint/no-require-imports */
@@ -36,6 +40,48 @@ const LIMITED = Symbol("limited");
 /** Снимок — весь кабинет: только руководитель, вошедший паролем. */
 const mayUse = (ctx) => Boolean(ctx.accountId) && ctx.can("staff.manage");
 
+/** Снимок с товарами компании из таблицы — то, что видит кабинет. */
+async function withProducts(c, data) {
+  const { rows } = await c.query(`SELECT uklad.load_products() AS products`);
+  return { ...data, products: rows[0].products };
+}
+
+/** Снимок без товаров — то, что хранится в `cabinet_snapshots`. */
+function withoutProducts(data) {
+  const out = { ...data };
+  delete out.products;
+  return out;
+}
+
+/**
+ * Убирает ли запись больше половины живого каталога. Так выглядит сбой
+ * (пустой стор после ошибки), а не работа человека: из корзины в кабинете
+ * пока не восстановить, поэтому такую запись сервер не принимает. Большой
+ * каталог удаляется частями, и весь сразу — только из одного-двух товаров.
+ */
+async function massDelete(c, data) {
+  if (!Array.isArray(data.products)) return false;
+  const refs = data.products.map((p) => p?.id).filter((id) => typeof id === "string");
+  const { rows } = await c.query(
+    `SELECT count(*)::int AS live,
+            count(*) FILTER (WHERE NOT (ref = ANY($1::text[])))::int AS gone
+     FROM uklad.products WHERE org_id = uklad.current_org() AND deleted_at IS NULL`,
+    [refs],
+  );
+  const { live, gone } = rows[0];
+  if (gone * 2 <= live) return false;
+  // Разом можно убрать до девяти, но не весь каталог: «ноль из пяти» — тоже
+  // похоже на сбой. Последние один-два товара удаляются как обычно, иначе их
+  // нельзя было бы удалить вовсе.
+  return gone >= 10 || (gone === live && live >= 3);
+}
+
+/** Товары из присланного снимка — в таблицу. Нет поля — товары не трогаем. */
+async function storeProducts(c, data) {
+  if (!("products" in data)) return;
+  await c.query(`SELECT uklad.save_products($1::jsonb)`, [JSON.stringify(data.products)]);
+}
+
 function createSnapshot({ auth, send, log }) {
   const { withSession, readJson } = auth;
   const writes = createRateLimit({
@@ -50,7 +96,8 @@ function createSnapshot({ auth, send, log }) {
         `SELECT version, format, data, updated_at FROM uklad.cabinet_snapshots
          WHERE org_id = uklad.current_org()`,
       );
-      return rows[0] ?? false;
+      if (!rows[0]) return false;
+      return { ...rows[0], data: await withProducts(c, rows[0].data) };
     });
     if (out === null) return send(res, 401, { ok: false });
     if (out === FORBIDDEN) return send(res, 403, { ok: false });
@@ -78,14 +125,16 @@ function createSnapshot({ auth, send, log }) {
       format < 1 ||
       !b.data ||
       typeof b.data !== "object" ||
-      Array.isArray(b.data)
+      Array.isArray(b.data) ||
+      ("products" in b.data && !Array.isArray(b.data.products))
     ) {
       return send(res, 400, { ok: false, error: "bad_request" });
     }
-    const data = JSON.stringify(b.data);
+    const data = JSON.stringify(withoutProducts(b.data));
     const out = await withSession(req, async (c, ctx) => {
       if (!mayUse(ctx)) return FORBIDDEN;
       if (!writes.take(ctx.orgId)) return LIMITED;
+      if (await massDelete(c, b.data)) return { conflict: true, products: true };
       // Первая запись: строки ещё нет. Двое одновременно — второй получит
       // конфликт ключа и ответ 409, а не вторую строку.
       if (version === 0) {
@@ -96,7 +145,9 @@ function createSnapshot({ auth, send, log }) {
            RETURNING version`,
           [format, data, ctx.memberId],
         );
-        return rows[0] ? { version: rows[0].version } : { conflict: true };
+        if (!rows[0]) return { conflict: true };
+        await storeProducts(c, b.data);
+        return { version: rows[0].version };
       }
       const { rows } = await c.query(
         `UPDATE uklad.cabinet_snapshots
@@ -106,7 +157,10 @@ function createSnapshot({ auth, send, log }) {
          RETURNING version`,
         [data, format, ctx.memberId, version],
       );
-      return rows[0] ? { version: rows[0].version } : { conflict: true };
+      // Версия не сошлась — товары тоже не трогаем: запись целиком не прошла.
+      if (!rows[0]) return { conflict: true };
+      await storeProducts(c, b.data);
+      return { version: rows[0].version };
     });
     if (out === null) return send(res, 401, { ok: false });
     if (out === FORBIDDEN) return send(res, 403, { ok: false });
@@ -118,7 +172,8 @@ function createSnapshot({ auth, send, log }) {
         );
         return rows[0]?.version ?? 0;
       });
-      return send(res, 409, { ok: false, error: "conflict", version: current ?? 0 });
+      const error = out.products ? "products_mass_delete" : "conflict";
+      return send(res, 409, { ok: false, error, version: current ?? 0 });
     }
     return send(res, 200, { ok: true, version: out.version });
   }
@@ -144,4 +199,4 @@ function createSnapshot({ auth, send, log }) {
   return { handle };
 }
 
-module.exports = { createSnapshot, MAX_SNAPSHOT_BYTES };
+module.exports = { createSnapshot, MAX_SNAPSHOT_BYTES, withProducts, withoutProducts };
