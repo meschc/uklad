@@ -570,9 +570,16 @@ export interface RequestsSlice {
    */
   /**
    * Снять единицу с места в заявку. `toteId` — тара сборки: снятое ложится в
-   * неё, и упаковщик потом берёт заказ из этой тары.
+   * неё, и упаковщик потом берёт заказ из этой тары. `by` — сотрудник за
+   * столом: снятая штука ложится в его журнал (`pick_scan`).
    */
-  recordPick: (id: string, productId: string, addr: CellAddress, toteId?: string) => number;
+  recordPick: (
+    id: string,
+    productId: string,
+    addr: CellAddress,
+    toteId?: string,
+    by?: string,
+  ) => number;
   /** Закрыть заявку: полностью или частично (собрали меньше запрошенного). */
   completeRequest: (id: string, partial?: boolean) => void;
   /**

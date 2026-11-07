@@ -47,7 +47,9 @@ export function ShiftMenu({ member, now }: { member: StaffMember; now: number })
 
   const state = shiftState(events, member.id);
   const lastMark = events
-    .filter((e) => e.staffId === member.id && !e.type.startsWith("pack_"))
+    .filter(
+      (e) => e.staffId === member.id && !e.type.startsWith("pack_") && !e.type.startsWith("pick_"),
+    )
     .at(-1);
   const today = workedMs(events, member.id, startOfDay(now), now);
   const month = workedMs(events, member.id, startOfMonth(now), now);

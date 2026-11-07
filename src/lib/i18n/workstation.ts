@@ -40,6 +40,7 @@ export const ru = {
   "ws.opRejected": "Сервер не принял отметку смены. Отсканируйте бейдж и отметьтесь ещё раз",
   "ws.opPending": "Не отправлено: {n}",
   "ws.opPackRejected": "Сервер не принял упаковку этой тары. Позовите старшего",
+  "ws.opPickRejected": "Сервер не принял сборку этой заявки. Позовите старшего",
   "ws.opLost": "Сервер не принял отметки смены: {n}. Скажите руководителю",
   "ws.opPendingHint": "Нет связи с сервером. Работа сохранена здесь и уйдёт сама",
 
@@ -294,6 +295,7 @@ export const ru = {
   "ws.ev.pack_reject": "Брак",
   "ws.ev.pack_label": "Упаковал, этикетка",
   "ws.ev.pack_done": "Закрыл тару",
+  "ws.ev.pick_scan": "Снял с полки в тару",
 };
 
 export const en: Record<keyof typeof ru, string> = {
@@ -333,6 +335,7 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.opRejected": "The server didn't accept the shift mark. Scan your badge and mark again",
   "ws.opPending": "Not sent: {n}",
   "ws.opPackRejected": "The server didn't accept packing of this tote. Call a senior",
+  "ws.opPickRejected": "The server didn't accept picking for this request. Call a senior",
   "ws.opLost": "The server rejected shift marks: {n}. Tell your manager",
   "ws.opPendingHint":
     "No connection to the server. Your work is kept here and will be sent automatically",
@@ -588,4 +591,5 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.ev.pack_reject": "Defect",
   "ws.ev.pack_label": "Packed, label",
   "ws.ev.pack_done": "Closed tote",
+  "ws.ev.pick_scan": "Picked into tote",
 };

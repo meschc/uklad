@@ -422,3 +422,85 @@ test(
     );
   },
 );
+
+test(
+  "сборка операцией: полка → тара, движения за сотрудником, лишнего не снять",
+  { skip: SKIP },
+  async () => {
+    const { a, ivan } = await company("ops-g@sklad.ru", "10.0.5.7");
+    const cell = { floorId: "f1", moduleId: "m1", shelfIndex: 0, cellIndex: 0 };
+    const data = {
+      ...cabinetData(),
+      boxes: [
+        { id: "b1", barcode: "UK-BOX-1", address: cell, lines: [{ productId: "pr1", qty: 3 }] },
+        { id: "t1", barcode: "UK-BOX-7", lines: [] },
+      ],
+      requests: [{ id: "r1", productId: "pr1", qty: 2, status: "new", note: "Тула" }],
+    };
+    const saved = await call("/api/cabinet/snapshot", {
+      ...a,
+      body: { version: 1, format: 8, data },
+    });
+    assert.equal(saved.status, 200);
+    const desk = await makeDesk(a);
+    await call("/api/cabinet/badges/check", { desk, body: { code: ivan } });
+
+    const unit = (i) => ({
+      key: `key-pick-${i}xxx`,
+      kind: "pick_unit",
+      body: {
+        eventId: `ev-pick-${i}`,
+        staffId: "stf-ivan",
+        at: Date.now() - 500,
+        requestId: "r1",
+        productId: "pr1",
+        toteId: "t1",
+        cell,
+      },
+    });
+    const done = {
+      key: "key-pick-done",
+      kind: "pick_done",
+      body: { eventId: "ev-pick-done", staffId: "stf-ivan", at: Date.now() - 400, requestId: "r1" },
+    };
+    const r = await ops(desk, [unit(1), unit(2), unit(3), done]);
+    assert.deepEqual(
+      r.json.results.map((x) => [x.key, x.status, x.reason ?? null]),
+      [
+        ["key-pick-1xxx", "applied", null],
+        ["key-pick-2xxx", "applied", null],
+        // Третья штука сверх заявки: с полки не снимается.
+        ["key-pick-3xxx", "flagged", "stock"],
+        ["key-pick-done", "applied", null],
+      ],
+    );
+
+    const { snap } = await serverEvents("ops-g@sklad.ru", a.org);
+    const box = Object.fromEntries(snap.data.boxes.map((b) => [b.id, b.lines]));
+    assert.deepEqual(box.b1, [{ productId: "pr1", qty: 1 }]);
+    assert.deepEqual(box.t1, [{ productId: "pr1", qty: 2 }]);
+    const req = snap.data.requests.find((x) => x.id === "r1");
+    assert.deepEqual([req.status, req.pickedQty, req.toteId], ["done", 2, "t1"]);
+    assert.deepEqual(
+      snap.data.staffEvents.filter((e) => e.type === "pick_scan").map((e) => [e.id, e.staffId]),
+      [
+        ["ev-pick-1", "stf-ivan"],
+        ["ev-pick-2", "stf-ivan"],
+      ],
+    );
+    const moves = await db.root.query(
+      `SELECT place_kind, place_ref, sum(delta)::int AS d, min(staff_ref) AS who
+       FROM uklad.stock_moves WHERE org_id = $1 AND desk_id IS NOT NULL
+       GROUP BY 1, 2 ORDER BY 1, 2`,
+      [a.org],
+    );
+    assert.deepEqual(
+      moves.rows.map((m) => [m.place_kind, m.place_ref, m.d, m.who]),
+      [
+        ["box", "b1", -2, "stf-ivan"],
+        ["box", "t1", 2, "stf-ivan"],
+        ["box_at", "f1/m1/0/0#b1", -2, "stf-ivan"],
+      ],
+    );
+  },
+);

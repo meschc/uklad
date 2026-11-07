@@ -1,12 +1,19 @@
 import type { ItemScan } from "../packing";
-import type { Device, IdleReason, ShiftMark, StaffEvent, WorkstationKind } from "../types";
+import type {
+  CellAddress,
+  Device,
+  IdleReason,
+  ShiftMark,
+  StaffEvent,
+  WorkstationKind,
+} from "../types";
 import { onServer, serverBadges, type BadgeServer } from "./badgeRepository";
 import { serverDesks, type DeskServer } from "./deskServer";
 import { isStaffEvent } from "./guards";
 import { deskOps, type OpQueue } from "./opQueue";
 import { readList, storePort, type StorePort } from "./repository";
 import { attempt, fail, ok, type Result } from "./result";
-import { nowMs } from "../utils";
+import { nowMs, uid } from "../utils";
 
 /**
  * Рабочее место и журнал сотрудника (п.0.4). Здесь появится сеть: вход по
@@ -37,6 +44,19 @@ export interface WorkstationRepository {
   packLabel: (code: string) => Promise<Result<void>>;
   packReject: () => Promise<Result<void>>;
   packFinish: () => Promise<Result<void>>;
+  /**
+   * Снять штуку с места в тару под заявку. Ответ — сколько собрано теперь;
+   * не изменилось — снять было нечего (пустое место, чужая тара, заявка уже
+   * собрана).
+   */
+  pickUnit: (
+    requestId: string,
+    productId: string,
+    addr: CellAddress,
+    toteId?: string,
+  ) => Promise<Result<number>>;
+  /** Заявка собрана: целиком или частично (меньше запрошенного, явно). */
+  pickDone: (requestId: string, partial: boolean) => Promise<Result<void>>;
 }
 
 export function createWorkstationRepository(
@@ -200,6 +220,44 @@ export function createWorkstationRepository(
       return res.data ? ok(undefined) : fail("ws.label.wrong");
     },
     packReject: () => attempt(() => queuePack(() => port.get().packRejectPending())),
+    // Сборка на сервере уходит операциями (`cabinet/deskPick.js`): стор уже
+    // снял штуку, очередь донесёт факт «откуда, куда, под какую заявку».
+    pickUnit: (requestId, productId, addr, toteId) =>
+      attempt(() => {
+        const s = port.get();
+        const by = s.stationSession?.staffId;
+        const before = s.requests.find((r) => r.id === requestId)?.pickedQty ?? 0;
+        const known = new Set(s.staffEvents.map((e) => e.id));
+        const now = s.recordPick(requestId, productId, addr, toteId, by);
+        if (now === before || !by || !onServer(port)) return now;
+        const ev = port.get().staffEvents.find((e) => !known.has(e.id) && e.type === "pick_scan");
+        if (ev && toteId) {
+          ops.enqueue("pick_unit", {
+            eventId: ev.id,
+            staffId: by,
+            at: ev.at,
+            requestId,
+            productId,
+            toteId,
+            cell: addr,
+          });
+        }
+        return now;
+      }),
+    pickDone: (requestId, partial) =>
+      attempt(() => {
+        port.get().completeRequest(requestId, partial);
+        const by = port.get().stationSession?.staffId;
+        if (by && onServer(port)) {
+          ops.enqueue("pick_done", {
+            eventId: uid("pd"),
+            staffId: by,
+            at: nowMs(),
+            requestId,
+            partial,
+          });
+        }
+      }),
     packFinish: async () => {
       const res = await attempt(() => port.get().packFinish());
       if (!res.ok) return res;

@@ -304,7 +304,8 @@ export type StaffEventType =
   | "pack_error"
   | "pack_reject"
   | "pack_label"
-  | "pack_done";
+  | "pack_done"
+  | "pick_scan";
 
 /** Отметки, которые ставит сам сотрудник: смена, перерыв, простой. */
 export type ShiftMark = Extract<

@@ -100,7 +100,7 @@ export const createRequestsSlice: SliceCreator<RequestsSlice> = (set, get) => ({
    * размещения) и увеличиваем счётчик заявки. Списание обязательно — иначе
    * занятость росла бы при приёмке и никогда не падала при отгрузке (см. 2.1).
    */
-  recordPick: (id, productId, addr, toteId) => {
+  recordPick: (id, productId, addr, toteId, by) => {
     const s = get();
     const req = s.requests.find((r) => r.id === id);
     if (!req) return 0;
@@ -129,7 +129,26 @@ export const createRequestsSlice: SliceCreator<RequestsSlice> = (set, get) => ({
     if (!taken) return req.pickedQty ?? 0;
 
     const picked = Math.min(req.qty, (req.pickedQty ?? 0) + taken);
+    const at = nowMs();
+    const tote = toteId ? s.boxes.find((b) => b.id === toteId) : undefined;
     set((st) => ({
+      // Кто снял, что и в какую тару — в журнал сотрудника, до секунды.
+      ...(by
+        ? {
+            staffEvents: [
+              ...st.staffEvents,
+              {
+                id: uid("sev"),
+                staffId: by,
+                type: "pick_scan" as const,
+                at,
+                station: "picking" as const,
+                productId,
+                ...(tote ? { code: tote.barcode } : {}),
+              },
+            ],
+          }
+        : {}),
       requests: st.requests.map((r) =>
         r.id === id
           ? { ...r, pickedQty: picked, updatedAt: nowMs(), ...(toteId ? { toteId } : {}) }
