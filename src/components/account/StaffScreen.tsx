@@ -18,6 +18,8 @@ import { card } from "@/components/ui/card";
 import { PartnersSection } from "./PartnersSection";
 import { PersonForm, draftToMember, type PersonDraft } from "./PersonForm";
 import { StaffRow } from "./StaffRow";
+import { useWithArchive } from "@/lib/store/archive";
+import { ArchiveNote } from "@/components/fulfillment/ArchiveNote";
 
 /**
  * Склад и персонал (п.6, 24, 25): контакты склада, ответственное лицо отдельной
@@ -48,8 +50,9 @@ export function StaffScreen() {
 
   const staff = warehouse.staff ?? [];
   // Нагрузка считается из фактов приёмки и отгрузки (см. fulfillment.ts).
-  const events = useEditor((s) => s.receivingEvents);
-  const trips = useEditor((s) => s.shipments);
+  // Нагрузка за всё время — с архивом старше 45 дней (`store/archive.ts`).
+  const events = useWithArchive("receivingEvents");
+  const trips = useWithArchive("shipments");
   const workload = useMemo(() => staffWorkload(events, trips), [events, trips]);
   const [draft, setDraft] = useState<PersonDraft | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
@@ -143,6 +146,7 @@ export function StaffScreen() {
       subtitle={t("staff.subtitle", { name: warehouse.name })}
       wide
     >
+      <ArchiveNote />
       {/* Люди первыми: кто работает, по какой ставке и сколько сделал —
           одна таблица, а не список и отдельная «нагрузка» под ним. */}
       <section className="flex flex-col gap-3">

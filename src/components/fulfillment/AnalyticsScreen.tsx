@@ -23,6 +23,8 @@ import { eyebrow } from "@/components/ui/eyebrow";
 import { card } from "@/components/ui/card";
 import { ScreenShell } from "./ScreenShell";
 import { BarChart, Donut, FillBar, StatCard } from "./charts";
+import { useWithArchive } from "@/lib/store/archive";
+import { ArchiveNote } from "./ArchiveNote";
 
 /**
  * Дашборд склада (п.9). Считаем только то, что реально есть в сторе после
@@ -38,11 +40,12 @@ export function AnalyticsScreen() {
   const warehouse = useEditor((s) => s.warehouse);
   const placements = useEditor((s) => s.placements);
   const boxes = useEditor((s) => s.boxes);
-  const events = useEditor((s) => s.receivingEvents);
-  const requests = useEditor((s) => s.requests);
+  // Отчёт за всё время: живое из стора и архив старше 45 дней с сервера.
+  const events = useWithArchive("receivingEvents");
+  const requests = useWithArchive("requests");
   const shipments = useEditor((s) => s.expectedShipments);
   // Рейсы = сколько раз машина уехала со склада.
-  const trips = useEditor((s) => s.shipments).length;
+  const trips = useWithArchive("shipments").length;
   // «Старт» на сайте — «основные показатели»: верхний ряд чисел без графиков
   // и разбивок. Расчёт тот же, режется только показ.
   const full = useEditor((s) => TARIFF_FEATURES[s.subscription.tariff].fullAnalytics);
@@ -67,6 +70,7 @@ export function AnalyticsScreen() {
 
   return (
     <ScreenShell title={t("an.title")} subtitle={t("an.subtitle")} wide>
+      <ArchiveNote />
       {/* Верхний ряд: четыре числа, отвечающие на четыре разных вопроса */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <StatCard

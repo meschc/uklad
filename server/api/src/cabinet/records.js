@@ -16,6 +16,11 @@
  *
  * Строки не удаляются: пропавшая из списка уходит в корзину (`deleted_at`),
  * вернувшаяся — из неё.
+ *
+ * Законченная работа старше `ARCHIVE_DAYS` уходит в архив (миграция 022,
+ * `archiveRecords`): кабинет её не получает, запись её не трогает, отчёты
+ * читают её отдельно (`loadArchive`). Все проверки и счёт строк ниже — по
+ * живым неархивным строкам.
  */
 /* global module */
 
@@ -45,6 +50,10 @@ const COMPANY_LISTS = ["staffEvents"];
 const COMPANY = "";
 const MARK = "$rows";
 const MAX_REF = 200;
+/** Сколько дней законченная работа остаётся в кабинете, прежде чем уйти в архив. */
+const ARCHIVE_DAYS = 45;
+/** Строк архива за один ответ. */
+const ARCHIVE_PAGE = 2000;
 
 const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 const isRef = (v) => typeof v === "string" && v.length > 0 && v.length <= MAX_REF;
@@ -177,7 +186,7 @@ function lostLists(prevDoc, next) {
 async function loadRecords(c, doc, domains = null) {
   const { rows } = await c.query(
     `SELECT warehouse_ref AS w, domain AS d, data FROM uklad.cabinet_records
-     WHERE org_id = uklad.current_org() AND deleted_at IS NULL
+     WHERE org_id = uklad.current_org() AND deleted_at IS NULL AND archived_at IS NULL
        AND ($1::text[] IS NULL OR domain = ANY($1::text[]))
      ORDER BY warehouse_ref, domain, position`,
     [domains],
@@ -191,7 +200,8 @@ async function liveCounts(c, slots) {
     `SELECT s.w, s.d, count(r.ref)::int AS n
      FROM jsonb_to_recordset($1::jsonb) AS s(w text, d text)
      LEFT JOIN uklad.cabinet_records r ON r.org_id = uklad.current_org()
-       AND r.deleted_at IS NULL AND r.warehouse_ref = s.w AND r.domain = s.d
+       AND r.deleted_at IS NULL AND r.archived_at IS NULL
+       AND r.warehouse_ref = s.w AND r.domain = s.d
      GROUP BY s.w, s.d`,
     [JSON.stringify(slots)],
   );
@@ -219,7 +229,7 @@ async function massGone(c, items, slots) {
               WHERE k.w = r.warehouse_ref AND k.d = r.domain AND k.ref = r.ref))::int AS gone
      FROM uklad.cabinet_records r
      JOIN slot s ON s.w = r.warehouse_ref AND s.d = r.domain
-     WHERE r.org_id = uklad.current_org() AND r.deleted_at IS NULL
+     WHERE r.org_id = uklad.current_org() AND r.deleted_at IS NULL AND r.archived_at IS NULL
        AND r.domain = ANY($3::text[])
      GROUP BY r.warehouse_ref, r.domain`,
     [JSON.stringify(items.map(({ w, d, ref }) => ({ w, d, ref }))), JSON.stringify(slots), GUARDED],
@@ -236,7 +246,7 @@ async function inlineDrops(c, inline) {
   for (const { w, d, list } of inline) {
     const { rows } = await c.query(
       `SELECT ref FROM uklad.cabinet_records
-       WHERE org_id = uklad.current_org() AND deleted_at IS NULL
+       WHERE org_id = uklad.current_org() AND deleted_at IS NULL AND archived_at IS NULL
          AND warehouse_ref = $1 AND domain = $2`,
       [w, d],
     );
@@ -263,7 +273,34 @@ async function massRemoved(c, remove) {
   return heavy.some((x) => x.n * 2 > (live.get(`${x.w}\u0000${x.d}`) ?? 0));
 }
 
-/** Новое и изменённое — в строки; неизменное не переписывается, корзина — назад. */
+/**
+ * Есть ли среди присланных строк архивная, но с другим содержимым. История
+ * не переписывается: архивная отметка смены — это часы и деньги, решённое
+ * спорное не открывается снова. Такую запись сервер не принимает (409), а
+ * копия забирает свежие данные.
+ */
+async function archivedChanged(c, items) {
+  if (items.length === 0) return false;
+  const { rows } = await c.query(
+    `SELECT 1 FROM uklad.cabinet_records r
+     JOIN jsonb_to_recordset($1::jsonb) AS t(w text, d text, ref text, data jsonb)
+       ON r.warehouse_ref = t.w AND r.domain = t.d AND r.ref = t.ref
+     WHERE r.org_id = uklad.current_org() AND r.deleted_at IS NULL
+       AND r.archived_at IS NOT NULL AND r.data IS DISTINCT FROM t.data
+     LIMIT 1`,
+    [JSON.stringify(items.map(({ w, d, ref, data }) => ({ w, d, ref, data })))],
+  );
+  return rows.length > 0;
+}
+
+/**
+ * Новое и изменённое — в строки; неизменное не переписывается, корзина —
+ * назад. Архивная строка возвращается из архива, только если пришла такой
+ * же, как лежит (копию на другом устройстве открыли до архивации: иначе её
+ * счёт строк не сходился бы с сервером, и каждая правка уходила бы целиком).
+ * Изменённая архивная строка не трогается вовсе — её отсекает
+ * `archivedChanged` до записи, а здесь страховка.
+ */
 async function upsertRecords(c, items) {
   await c.query(
     `INSERT INTO uklad.cabinet_records AS r (org_id, warehouse_ref, domain, ref, position, data)
@@ -271,9 +308,11 @@ async function upsertRecords(c, items) {
      FROM jsonb_to_recordset($1::jsonb) AS t(w text, d text, ref text, pos integer, data jsonb)
      ORDER BY w, d, ref, pos
      ON CONFLICT (org_id, warehouse_ref, domain, ref) DO UPDATE SET
-       position = excluded.position, data = excluded.data, deleted_at = NULL, updated_at = now()
-     WHERE r.deleted_at IS NOT NULL
-        OR (r.position, r.data) IS DISTINCT FROM (excluded.position, excluded.data)`,
+       position = excluded.position, data = excluded.data, deleted_at = NULL,
+       archived_at = NULL, updated_at = now()
+     WHERE (r.archived_at IS NULL AND (r.deleted_at IS NOT NULL
+             OR (r.position, r.data) IS DISTINCT FROM (excluded.position, excluded.data)))
+        OR (r.archived_at IS NOT NULL AND r.data IS NOT DISTINCT FROM excluded.data)`,
     [JSON.stringify(items)],
   );
 }
@@ -293,7 +332,7 @@ async function removeRecords(c, remove) {
 /**
  * Строки кабинета → база. Новое добавляется, изменённое переписывается (и
  * только оно), пропавшее из разложенного списка уходит в корзину,
- * вернувшееся — из неё.
+ * вернувшееся — из неё. Архив кабинет не получает — и его не теряет.
  */
 async function storeRecords(c, items, slots) {
   await upsertRecords(c, items);
@@ -303,7 +342,7 @@ async function storeRecords(c, items, slots) {
      slot AS (SELECT w, d FROM jsonb_to_recordset($2::jsonb) AS t(w text, d text))
      UPDATE uklad.cabinet_records r SET deleted_at = now(), updated_at = now()
      FROM slot s
-     WHERE r.org_id = uklad.current_org() AND r.deleted_at IS NULL
+     WHERE r.org_id = uklad.current_org() AND r.deleted_at IS NULL AND r.archived_at IS NULL
        AND s.w = r.warehouse_ref AND s.d = r.domain
        AND NOT EXISTS (SELECT 1 FROM keep k
                        WHERE k.w = r.warehouse_ref AND k.d = r.domain AND k.ref = r.ref)`,
@@ -311,7 +350,86 @@ async function storeRecords(c, items, slots) {
   );
 }
 
+/**
+ * Законченная работа старше `days` дней → в архив. Законченная — значит,
+ * склад к ней больше не вернётся: заявка уехала или отменена, поставка
+ * закрыта, задание сделано, спорное решено, короб уехал, документ
+ * подтверждён. Рейсы и журнал смен — факты, они законченные сразу. Приёмка
+ * ждёт, пока закроется её поставка: по ней собирается лист приёмки. Тара и
+ * паллеты в архив не уходят — это вещи склада, их используют снова.
+ * Возвращает, сколько строк ушло.
+ */
+async function archiveRecords(c, days = ARCHIVE_DAYS) {
+  const { rowCount } = await c.query(
+    `UPDATE uklad.cabinet_records r SET archived_at = now()
+     WHERE r.org_id = uklad.current_org() AND r.deleted_at IS NULL AND r.archived_at IS NULL
+       AND r.updated_at < now() - make_interval(days => $1::int)
+       AND CASE r.domain
+         WHEN 'requests' THEN r.data->>'status' IN ('shipped', 'cancelled')
+         WHEN 'expectedShipments' THEN r.data->>'status' = 'closed'
+         WHEN 'tasks' THEN r.data->>'status' IN ('done', 'cancelled')
+         WHEN 'disputes' THEN r.data ? 'resolvedAt'
+         WHEN 'outboundBoxes' THEN r.data ? 'shippedAt'
+         WHEN 'docRecords' THEN r.data->>'status' = 'confirmed'
+         WHEN 'shipments' THEN true
+         WHEN 'staffEvents' THEN true
+         WHEN 'receivingEvents' THEN NOT EXISTS (
+           SELECT 1 FROM uklad.cabinet_records s,
+             jsonb_array_elements(CASE WHEN jsonb_typeof(s.data->'lines') = 'array'
+                                       THEN s.data->'lines' ELSE '[]'::jsonb END) AS l
+           WHERE s.org_id = r.org_id AND s.warehouse_ref = r.warehouse_ref
+             AND s.domain = 'expectedShipments' AND s.deleted_at IS NULL
+             AND s.archived_at IS NULL AND s.data->>'status' IS DISTINCT FROM 'closed'
+             AND l->>'id' = r.data->>'expectedShipmentLineId')
+         ELSE false
+       END`,
+    [days],
+  );
+  return rowCount;
+}
+
+/**
+ * Пополнить архив, если сегодня этого ещё не делали. Чаще раза в сутки
+ * незачем: окно меряется днями, а каждое пополнение заставляет открытые на
+ * других устройствах копии один раз записаться целиком.
+ */
+async function archiveDaily(c, days = ARCHIVE_DAYS) {
+  const { rows } = await c.query(
+    `UPDATE uklad.cabinet_snapshots SET archive_checked_at = now()
+     WHERE org_id = uklad.current_org()
+       AND (archive_checked_at IS NULL OR archive_checked_at < now() - interval '1 day')
+     RETURNING 1`,
+  );
+  return rows[0] ? archiveRecords(c, days) : 0;
+}
+
+/**
+ * Архив — страницей по `ARCHIVE_PAGE` строк: `{ w, d, ref, pos, data }`.
+ * `after` — ключ последней строки прошлой страницы (`{ w, d, ref }`).
+ * Возвращает строки и ключ для следующей страницы (`null` — всё).
+ */
+async function loadArchive(c, after = null, limit = ARCHIVE_PAGE) {
+  const { rows } = await c.query(
+    `SELECT warehouse_ref AS w, domain AS d, ref, position AS pos, data
+     FROM uklad.cabinet_records
+     WHERE org_id = uklad.current_org() AND deleted_at IS NULL AND archived_at IS NOT NULL
+       AND ($1::text IS NULL OR (warehouse_ref, domain, ref) > ($1, $2, $3))
+     ORDER BY warehouse_ref, domain, ref
+     LIMIT $4`,
+    [after?.w ?? null, after?.d ?? null, after?.ref ?? null, limit + 1],
+  );
+  const more = rows.length > limit;
+  const page = more ? rows.slice(0, limit) : rows;
+  const last = page[page.length - 1];
+  return { rows: page, next: more ? { w: last.w, d: last.d, ref: last.ref } : null };
+}
+
 module.exports = {
+  ARCHIVE_DAYS,
+  archivedChanged,
+  archiveRecords,
+  archiveDaily,
+  loadArchive,
   WAREHOUSE_LISTS,
   COMPANY_LISTS,
   splitRecords,

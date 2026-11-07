@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Segmented } from "@/components/ui/segmented";
 import { card } from "@/components/ui/card";
 import { EmptyState } from "./ScreenShell";
+import { useWithArchive } from "@/lib/store/archive";
+import { ArchiveNote } from "./ArchiveNote";
 
 /**
  * Вкладки «Услуги» и «Отчёт» экрана операций. Вынесены отдельно: это
@@ -102,12 +104,13 @@ const DAY = 24 * 60 * 60 * 1000;
 export function ReportPanel() {
   const t = useT();
   const settings = useEditor((s) => s.serviceSettings);
-  const tasks = useEditor((s) => s.tasks);
+  // Счёт за всё время — с архивом старше 45 дней (`store/archive.ts`).
+  const tasks = useWithArchive("tasks");
   const pallets = useEditor((s) => s.pallets);
   const boxes = useEditor((s) => s.boxes);
-  const receivingEvents = useEditor((s) => s.receivingEvents);
-  const requests = useEditor((s) => s.requests);
-  const shipments = useEditor((s) => s.shipments);
+  const receivingEvents = useWithArchive("receivingEvents");
+  const requests = useWithArchive("requests");
+  const shipments = useWithArchive("shipments");
   const products = useEditor((s) => s.products);
   const partners = useEditor((s) => s.warehouse.partners);
   const [period, setPeriod] = useState<Period>("30");
@@ -125,6 +128,7 @@ export function ReportPanel() {
 
   return (
     <div className="flex flex-col gap-4">
+      {period === "all" && <ArchiveNote />}
       <div className="flex flex-wrap items-center gap-3">
         <Segmented
           value={period}

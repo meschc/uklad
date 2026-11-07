@@ -577,3 +577,47 @@ test(
     assert.equal((await call("/api/desk/leave", { cookie: boss, body: {} })).status, 404);
   },
 );
+
+test(
+  "архивная отметка со стола: изменённая — отказ, архив цел; та же — проходит",
+  { skip: SKIP },
+  async () => {
+    const { a, ivan } = await company("desk-arch@sklad.ru", "10.0.3.40");
+    // Отметка e1 ушла в архив.
+    await db.root.query(
+      `UPDATE uklad.cabinet_records SET updated_at = now() - interval '60 days'
+       WHERE org_id = $1 AND ref = 'e1'`,
+      [a.org],
+    );
+    assert.equal((await call("/api/cabinet/snapshot", a)).json.snapshot.data.staffEvents.length, 0);
+    const desk = await makeDesk(a);
+    await call("/api/cabinet/badges/check", { desk, body: { code: ivan } });
+    const seen = await call("/api/cabinet/snapshot", { desk });
+    const version = seen.json.snapshot.version;
+    const work = (events) => ({ ...seen.json.snapshot.data, staffEvents: events });
+    const forged = await call("/api/cabinet/snapshot", {
+      desk,
+      body: {
+        version,
+        format: 8,
+        data: work([{ id: "e1", staffId: "stf-ivan", type: "shift_start", at: 999 }]),
+      },
+    });
+    assert.equal(forged.status, 409);
+    const kept = await db.root.query(
+      `SELECT data->>'at' AS at, archived_at IS NOT NULL AS archived
+       FROM uklad.cabinet_records WHERE org_id = $1 AND ref = 'e1'`,
+      [a.org],
+    );
+    assert.deepEqual(kept.rows[0], { at: "1", archived: true });
+    const same = await call("/api/cabinet/snapshot", {
+      desk,
+      body: {
+        version,
+        format: 8,
+        data: work([{ id: "e1", staffId: "stf-ivan", type: "shift_start", at: 1 }]),
+      },
+    });
+    assert.equal(same.status, 200);
+  },
+);

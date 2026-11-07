@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ClipboardList, PackageCheck, Pencil, Printer, Truck } from "lucide-react";
 import { useEditor } from "@/lib/store";
+import { useWithArchive } from "@/lib/store/archive";
 import { buildPickDoc, buildReceivingDoc, type DocModel } from "@/lib/documents";
 import { discrepancyDoc, docEntries, resolveDoc, type DocSources } from "@/lib/docFlow";
 import { groupRequestsByTarget } from "@/lib/fulfillment";
@@ -12,6 +13,7 @@ import { Segmented } from "@/components/ui/segmented";
 import { DocumentSheet } from "./DocumentSheet";
 import { DocPanel } from "./DocPanel";
 import { ScreenShell, EmptyState } from "./ScreenShell";
+import { ArchiveNote } from "./ArchiveNote";
 
 /**
  * Документы склада (п.12): лист сборки, накладная на отгрузку, лист приёмки и
@@ -55,13 +57,14 @@ export function DocumentsScreen() {
   const t = useT();
   const warehouse = useEditor((s) => s.warehouse);
   const products = useEditor((s) => s.products);
-  const requests = useEditor((s) => s.requests);
-  const shipments = useEditor((s) => s.shipments);
-  const expected = useEditor((s) => s.expectedShipments);
+  // Документы прошлых операций — с архивом старше 45 дней (`store/archive.ts`).
+  const requests = useWithArchive("requests");
+  const shipments = useWithArchive("shipments");
+  const expected = useWithArchive("expectedShipments");
   const placements = useEditor((s) => s.placements);
   const boxes = useEditor((s) => s.boxes);
-  const events = useEditor((s) => s.receivingEvents);
-  const records = useEditor((s) => s.docRecords);
+  const events = useWithArchive("receivingEvents");
+  const records = useWithArchive("docRecords");
   const focus = useEditor((s) => s.docFocus);
 
   const [tab, setTab] = useState<Tab>(focus?.kind ?? "pick");
@@ -166,6 +169,7 @@ export function DocumentsScreen() {
 
   return (
     <ScreenShell title={t("doc.title")} subtitle={t("doc.subtitle")} wide>
+      <ArchiveNote />
       <style>{`@page { size: A4 portrait; margin: 0; }`}</style>
 
       {/* Без общей рамки: переключатели и действия стоят прямо на экране. */}
