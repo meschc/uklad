@@ -1,5 +1,5 @@
 import { nowMs, uid } from "../utils";
-import { generateBoxBarcode, generatePalletBarcode } from "../barcode";
+import { generateBoxBarcode, generatePalletBarcode, labelNumber } from "../barcode";
 import { EMPTY_RECEIVING, resumeProgress } from "../receiving";
 import { mergeCargo } from "../cargo";
 import type { Box, ExpectedShipment, Pallet, ReceivingEvent } from "../types";
@@ -149,28 +149,50 @@ export const createFulfillmentSlice: SliceCreator<FulfillmentSlice> = (set, get)
    * Места заводятся одним `set`: паллеты, короба и отметка в поставке. По
    * частям отмена оставила бы поставку с принятыми местами, которых нет.
    */
-  acceptCargo: ({ shipmentId, pallets, boxes, declaredPallets, declaredBoxes, staffId }) => {
-    const now = nowMs();
-    const nP = Math.max(0, Math.round(pallets) || 0);
-    const nB = Math.max(0, Math.round(boxes) || 0);
+  acceptCargo: ({
+    shipmentId,
+    pallets,
+    boxes,
+    declaredPallets,
+    declaredBoxes,
+    staffId,
+    made,
+    at,
+  }) => {
+    const now = at ?? nowMs();
+    const nP = made ? made.pallets.length : Math.max(0, Math.round(pallets) || 0);
+    const nB = made ? made.boxes.length : Math.max(0, Math.round(boxes) || 0);
     let pSeq = get().palletSeq;
     let bSeq = get().boxSeq;
-    const newPallets: Pallet[] = Array.from({ length: nP }, () => ({
-      id: uid("plt"),
-      barcode: generatePalletBarcode(++pSeq),
-      createdAt: now,
-      boxIds: [],
-      sealed: true,
-      shipmentId,
-    }));
-    const newBoxes: Box[] = Array.from({ length: nB }, () => ({
-      id: uid("box"),
-      barcode: generateBoxBarcode(++bSeq),
-      createdAt: now,
-      lines: [],
-      sealed: true,
-      shipmentId,
-    }));
+    // Номер с сервера: свой счётчик догоняет его, чтобы следующая тара не
+    // получила уже выданный код.
+    const take = (code: string, seq: number) => Math.max(seq, labelNumber(code) ?? 0);
+    const newPallets: Pallet[] = Array.from({ length: nP }, (_, i) => {
+      const given = made?.pallets[i];
+      const barcode = given ? given.barcode : generatePalletBarcode(++pSeq);
+      if (given) pSeq = take(barcode, pSeq);
+      return {
+        id: given?.id ?? uid("plt"),
+        barcode,
+        createdAt: now,
+        boxIds: [],
+        sealed: true,
+        shipmentId,
+      };
+    });
+    const newBoxes: Box[] = Array.from({ length: nB }, (_, i) => {
+      const given = made?.boxes[i];
+      const barcode = given ? given.barcode : generateBoxBarcode(++bSeq);
+      if (given) bSeq = take(barcode, bSeq);
+      return {
+        id: given?.id ?? uid("box"),
+        barcode,
+        createdAt: now,
+        lines: [],
+        sealed: true,
+        shipmentId,
+      };
+    });
     const intake = {
       declaredPallets:
         declaredPallets == null ? undefined : Math.max(0, Math.round(declaredPallets)),

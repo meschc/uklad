@@ -767,3 +767,71 @@ test(
     ]);
   },
 );
+
+test(
+  "грузовая приёмка операцией: номера мест выдаёт сервер, повтор ключа — те же места",
+  { skip: SKIP },
+  async () => {
+    const { a, ivan } = await company("ops-k@sklad.ru", "10.0.5.10");
+    const data = {
+      ...cabinetData(),
+      // Другой стол уже взял номер 40, а счётчик в снимке отстал.
+      pallets: [{ id: "pl0", barcode: "UK-PLT-40", boxIds: [] }],
+      boxes: [{ id: "b1", barcode: "UK-BOX-7", lines: [] }],
+      palletSeq: 3,
+      boxSeq: 7,
+      expectedShipments: [{ id: "s1", status: "pending", lines: [] }],
+    };
+    const saved = await call("/api/cabinet/snapshot", {
+      ...a,
+      body: { version: 1, format: 8, data },
+    });
+    assert.equal(saved.status, 200);
+    const desk = await makeDesk(a);
+    await call("/api/cabinet/badges/check", { desk, body: { code: ivan } });
+    const cargo = {
+      key: "key-cargo-1xx",
+      kind: "recv_cargo",
+      body: {
+        eventId: "cargo-1",
+        staffId: "stf-ivan",
+        at: Date.now() - 500,
+        shipmentId: "s1",
+        pallets: 2,
+        boxes: 1,
+        declaredPallets: 3,
+      },
+    };
+    const made = {
+      pallets: [
+        { id: "cargo-1-p0", barcode: "UK-PLT-41" },
+        { id: "cargo-1-p1", barcode: "UK-PLT-42" },
+      ],
+      boxes: [{ id: "cargo-1-b0", barcode: "UK-BOX-8" }],
+    };
+    let r = await ops(desk, [cargo]);
+    assert.deepEqual(r.json.results, [{ key: "key-cargo-1xx", status: "applied", made }]);
+    // Ответ потерялся, стол повторяет тем же ключом — те же места, не новые.
+    r = await ops(desk, [cargo]);
+    assert.deepEqual(r.json.results, [
+      { key: "key-cargo-1xx", status: "applied", duplicate: true, made },
+    ]);
+    // Тот же ключ с другим событием отвечает местами первой операции, а не
+    // чужими; новая операция с чужим событием — отказ, мест не выдаёт.
+    const other = { ...cargo, body: { ...cargo.body, eventId: "cargo-x" } };
+    r = await ops(desk, [other]);
+    assert.deepEqual(r.json.results[0].made, made);
+    r = await ops(desk, [{ ...cargo, key: "key-cargo-2xx" }]);
+    assert.deepEqual(r.json.results, [{ key: "key-cargo-2xx", status: "flagged", reason: "bad" }]);
+    const { snap } = await serverEvents("ops-k@sklad.ru", a.org);
+    assert.equal(snap.data.pallets.length, 3);
+    assert.deepEqual([snap.data.palletSeq, snap.data.boxSeq], [42, 8]);
+    const sh = snap.data.expectedShipments[0];
+    assert.equal(sh.status, "receiving");
+    assert.deepEqual(
+      [sh.cargo.pallets, sh.cargo.boxes, sh.cargo.declaredPallets, sh.cargo.staffId],
+      [2, 1, 3, "stf-ivan"],
+    );
+    assert.ok(snap.data.boxes.find((b) => b.id === "cargo-1-b0").sealed);
+  },
+);

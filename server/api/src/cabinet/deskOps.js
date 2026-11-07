@@ -17,7 +17,7 @@
  * приёмка (`deskReceive.js`).
  */
 
-/* global module, require */
+/* global module, require, Buffer */
 /* eslint-disable @typescript-eslint/no-require-imports */
 
 const { applyPackEvent, applyPackDone } = require("./deskPack");
@@ -28,6 +28,8 @@ const {
   applyRecvPlace,
   applyRecvAttach,
   applyRecvClose,
+  applyRecvCargo,
+  cargoMade,
 } = require("./deskReceive");
 const { applyShipRun, applyDisputeResolve } = require("./deskShip");
 
@@ -43,7 +45,14 @@ const SHIFT_TYPES = new Set([
 ]);
 const PACK_KINDS = new Set(["pack_event", "pack_done"]);
 const PICK_KINDS = new Set(["pick_unit", "pick_done"]);
-const RECV_KINDS = new Set(["recv_open", "recv_unit", "recv_place", "recv_attach", "recv_close"]);
+const RECV_KINDS = new Set([
+  "recv_open",
+  "recv_unit",
+  "recv_place",
+  "recv_attach",
+  "recv_close",
+  "recv_cargo",
+]);
 const SHIP_KINDS = new Set(["ship_run", "dispute_resolve"]);
 const NOW_ONLY = new Set(["dispute_resolve"]);
 /** Работа с товаром: правка снимка проходит сверку остатков. */
@@ -57,6 +66,7 @@ const WORK = new Map([
   ["recv_place", applyRecvPlace],
   ["recv_attach", applyRecvAttach],
   ["recv_close", applyRecvClose],
+  ["recv_cargo", applyRecvCargo],
   ["ship_run", applyShipRun],
   ["dispute_resolve", applyDisputeResolve],
 ]);
@@ -291,7 +301,9 @@ function cleanBody(body) {
   if (isObject(body.cell)) out.cell = body.cell;
   if (typeof body.partial === "boolean") out.partial = body.partial;
   if (Number.isInteger(body.ms)) out.ms = body.ms;
-  if (Number.isInteger(body.qty)) out.qty = body.qty;
+  for (const k of ["qty", "pallets", "boxes", "declaredPallets", "declaredBoxes"]) {
+    if (Number.isInteger(body[k])) out[k] = body[k];
+  }
   return out;
 }
 
@@ -312,7 +324,7 @@ async function runDeskOps(c, deskId, ops, who, now, deps = {}) {
   if (!cur) return { conflict: 0 };
   const keys = [...new Set(ops.map((op) => op.key))];
   const seen = await c.query(
-    `SELECT op_key, status, reason FROM uklad.desk_ops
+    `SELECT op_key, status, reason, kind, body FROM uklad.desk_ops
      WHERE org_id = uklad.current_org() AND desk_id = $2 AND op_key = ANY($1::text[])`,
     [keys, deskId],
   );
@@ -341,6 +353,14 @@ async function runDeskOps(c, deskId, ops, who, now, deps = {}) {
   const packing = fresh.some((op) => WORK.has(op.kind));
   const base = packing && deps.withProducts ? await deps.withProducts(c, cur.data) : cur.data;
   const applied = applyDeskOps(base, fresh, who, now, received, deps.verify ?? null);
+  // Снимок, который не влезет в лимит, не пишем вовсе — ни снимок, ни журнал
+  // операций: стол получает понятный отказ, а не 500.
+  const payload = applied.changed
+    ? JSON.stringify(packing ? deps.withoutProducts(applied.data) : applied.data)
+    : null;
+  if (payload && deps.maxBytes && Buffer.byteLength(payload) > deps.maxBytes) {
+    return { tooLarge: true };
+  }
   if (applied.results.length > 0) {
     await c.query(
       `INSERT INTO uklad.desk_ops (org_id, op_key, desk_id, staff_ref, kind, body,
@@ -374,7 +394,7 @@ async function runDeskOps(c, deskId, ops, who, now, deps = {}) {
            updated_at = now(), updated_by = NULL, updated_by_desk = $2
        WHERE org_id = uklad.current_org()
        RETURNING version`,
-      [JSON.stringify(packing ? deps.withoutProducts(applied.data) : applied.data), deskId],
+      [payload, deskId],
     );
     version = upd.rows[0].version;
     if (packing && deps.recordMoves) {
@@ -392,11 +412,19 @@ async function runDeskOps(c, deskId, ops, who, now, deps = {}) {
     const duplicate = Boolean(old) || answered.has(op.key);
     answered.add(op.key);
     const reason = old ? old.reason : first.reason;
+    const status = old?.status ?? first.status;
     return {
       key: op.key,
-      status: old?.status ?? first.status,
+      status,
       ...(reason ? { reason } : {}),
       ...(duplicate ? { duplicate: true } : {}),
+      // Грузовая приёмка: номера мест выдал сервер, по ним стол печатает
+      // ярлыки. Повтор ключа отвечает теми же местами.
+      // Повтор ключа отвечает по телу первой операции, а не по присланному:
+      // иначе другим eventId можно было бы получить чужие места.
+      ...((old ? old.kind : op.kind) === "recv_cargo" && status === "applied"
+        ? { made: cargoMade(applied.data, old ? old.body : first.op.body) }
+        : {}),
     };
   });
   return { results, before: cur.version, version };
