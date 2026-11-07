@@ -103,6 +103,7 @@ const PLAN = { plan: "start" };
 const staff = () => [
   { id: "stf-boss", name: "Игорь", role: "Управляющий склада", hourlyRate: 900, phone: "+7 900" },
   { id: "stf-ivan", name: "Иван", role: "Упаковщик", hourlyRate: 300, email: "i@x.ru" },
+  { id: "stf-olga", name: "Ольга", role: "Старший смены", hourlyRate: 500 },
 ];
 const cabinetData = () => ({
   warehouse: {
@@ -120,6 +121,10 @@ const cabinetData = () => ({
   ],
   otherWarehouses: [{ id: "wh_2", name: "Второй", staff: staff() }],
   boxes: [{ id: "b1" }],
+  requests: [
+    { id: "r1", productId: "pr1", qty: 5, status: "in_progress", note: "Тула" },
+    { id: "r2", productId: "pr1", qty: 1, status: "shipped", note: "Тула" },
+  ],
   chats: { c1: { text: "секрет" } },
   subscription: PLAN,
 });
@@ -171,7 +176,7 @@ test("стол: вход руководителя гаснет, стол вид�
   const people = snap.data.warehouse.staff;
   assert.deepEqual(
     people.map((m) => m.name),
-    ["Игорь", "Иван"],
+    ["Игорь", "Иван", "Ольга"],
   );
   for (const m of people) {
     assert.equal(m.hourlyRate, undefined);
@@ -188,8 +193,11 @@ test("стол: вход руководителя гаснет, стол вид�
 });
 
 test("стол пишет работу склада, но не персонал, тариф и чужие склады", { skip: SKIP }, async () => {
-  const { a } = await company("desk-b@sklad.ru", "10.0.3.2");
+  const { a, boss, ivan } = await company("desk-b@sklad.ru", "10.0.3.2");
   const desk = await makeDesk(a);
+  // За стол встал Иван, потом руководитель: Иван ещё 10 минут «только что был».
+  await call("/api/cabinet/badges/check", { desk, body: { code: ivan } });
+  await call("/api/cabinet/badges/check", { desk, body: { code: boss } });
   const forged = {
     warehouse: {
       id: "wh_1",
@@ -209,13 +217,22 @@ test("стол пишет работу склада, но не персонал,
     staffEvents: [
       { id: "e1", staffId: "stf-ivan", type: "shift_start", at: 999 },
       { id: "e2", staffId: "stf-ivan", type: "break_start", at: 2 },
+      // Смена за того, кого за столом не было.
+      { id: "e3", staffId: "stf-ghost", type: "shift_start", at: 3 },
     ],
     // Решённое спорное «перерешено», открытое решено, добавлено новое.
     disputes: [
       { id: "q1", kind: "shortage", resolution: "written_off" },
       { id: "q2", kind: "extra", resolution: "moved", resolvedBy: "stf-boss" },
-      { id: "q3", kind: "not_in_tote" },
-      { id: "q4", kind: "shortage", resolution: "written_off", resolvedBy: "stf-ivan" },
+      { id: "q3", kind: "not_in_tote", raisedBy: "stf-ivan" },
+      {
+        id: "q4",
+        kind: "shortage",
+        raisedBy: "stf-ivan",
+        resolution: "written_off",
+        resolvedBy: "stf-ivan",
+      },
+      { id: "q5", kind: "extra", raisedBy: "stf-ghost" },
     ],
   };
   const saved = await call("/api/cabinet/snapshot", {
@@ -238,7 +255,7 @@ test("стол пишет работу склада, но не персонал,
     ["UK-OUT-TULA01"],
   );
   assert.equal(data.subscription.plan, "start");
-  assert.equal(data.warehouse.staff.length, 2);
+  assert.equal(data.warehouse.staff.length, 3);
   assert.equal(data.warehouse.staff[0].hourlyRate, 900);
   assert.equal(data.otherWarehouses.length, 1);
   assert.equal(data.chats.c1.text, "секрет");
@@ -255,6 +272,7 @@ test("стол пишет работу склада, но не персонал,
   assert.equal(disputes.q1.resolution, "returned");
   assert.equal(disputes.q2.resolution, "moved");
   assert.ok(disputes.q3);
+  assert.equal(disputes.q5, undefined);
   // Новое приходит только открытым.
   assert.equal(disputes.q4.resolution, undefined);
   assert.equal(disputes.q4.resolvedBy, undefined);
@@ -319,3 +337,121 @@ test("стол чужой компании бейдж не узнаёт", { skip
   await db.root.query(`UPDATE uklad.orgs SET deleted_at = now() WHERE id = $1`, [b.org]);
   assert.equal((await call("/api/auth/me", { desk: deskB })).status, 401);
 });
+
+test(
+  "смена стола: заявки только ходом работы, решения — руководителя, уход",
+  { skip: SKIP },
+  async () => {
+    const { a, ivan } = await company("desk-g@sklad.ru", "10.0.3.7");
+    const olga = (await call("/api/cabinet/badges/issue", { ...a, body: { staffRef: "stf-olga" } }))
+      .json.code;
+    const desk = await makeDesk(a);
+    const snapshot = async () =>
+      (
+        await db.root.query(`SELECT version, data FROM uklad.cabinet_snapshots WHERE org_id = $1`, [
+          a.org,
+        ])
+      ).rows[0];
+    const write = async (data) => {
+      const { version } = await snapshot();
+      const r = await call("/api/cabinet/snapshot", { desk, body: { version, format: 8, data } });
+      assert.equal(r.status, 200);
+      return (await snapshot()).data;
+    };
+    const base = { warehouse: { id: "wh_1" } };
+
+    // Пока никто не отсканировал бейдж, отметки смены со стола не принимаются.
+    let data = await write({
+      ...base,
+      staffEvents: [{ id: "n1", staffId: "stf-ivan", type: "shift_start", at: 5 }],
+    });
+    assert.deepEqual(
+      data.staffEvents.map((e) => e.id),
+      ["e1"],
+    );
+
+    await call("/api/cabinet/badges/check", { desk, body: { code: ivan } });
+    data = await write({
+      ...base,
+      staffEvents: [
+        { id: "n2", staffId: "stf-ivan", type: "shift_start", at: 6 },
+        { id: "n3", staffId: "stf-boss", type: "shift_start", at: 6 },
+      ],
+      requests: [
+        // Суть заявки «поправлена» под недостачу, ход работы — честный.
+        {
+          id: "r1",
+          productId: "pr9",
+          qty: 1,
+          note: "Самара",
+          status: "done",
+          pickedQty: 40,
+          packedAt: 7,
+          packedBy: "stf-ivan",
+        },
+        // Уехавшую вернуть нельзя, новую стол не заводит.
+        { id: "r2", productId: "pr1", qty: 1, status: "new", note: "Тула" },
+        { id: "r3", productId: "pr1", qty: 99, status: "new" },
+      ],
+      // Упаковщик решает спорное — не его решение.
+      disputes: [{ id: "q2", kind: "extra", resolution: "moved", resolvedBy: "stf-ivan" }],
+    });
+    assert.deepEqual(
+      data.staffEvents.map((e) => e.id),
+      ["e1", "n2"],
+    );
+    const req = Object.fromEntries(data.requests.map((r) => [r.id, r]));
+    assert.deepEqual(Object.keys(req).sort(), ["r1", "r2"]);
+    assert.equal(req.r1.productId, "pr1");
+    assert.equal(req.r1.qty, 5);
+    assert.equal(req.r1.note, "Тула");
+    assert.equal(req.r1.status, "done");
+    assert.equal(req.r1.pickedQty, 5);
+    assert.equal(req.r1.packedBy, "stf-ivan");
+    assert.equal(req.r2.status, "shipped");
+    assert.equal(data.disputes.find((d) => d.id === "q2").resolution, undefined);
+
+    // Старший смены решает за столом — как и в кабинете (`SENIOR_ROLE`).
+    // Свою же находку он не списывает, и списание без причины не проходит.
+    await call("/api/cabinet/badges/check", { desk, body: { code: olga } });
+    data = await write({
+      ...base,
+      disputes: [
+        { id: "q2", kind: "extra", resolution: "moved", resolvedBy: "stf-olga" },
+        { id: "q6", kind: "shortage", qty: 1, raisedBy: "stf-olga", raisedAt: 9 },
+      ],
+    });
+    assert.equal(data.disputes.find((d) => d.id === "q2").resolution, "moved");
+    data = await write({
+      ...base,
+      disputes: [
+        {
+          id: "q6",
+          kind: "shortage",
+          raisedBy: "stf-olga",
+          resolution: "written_off",
+          resolvedBy: "stf-olga",
+          note: "не нашли",
+        },
+      ],
+    });
+    assert.equal(data.disputes.find((d) => d.id === "q6").resolution, undefined);
+
+    // Ушёл со стола: он больше не «за столом», но отметки, набранные до ухода,
+    // ещё 10 минут догоняют сервер.
+    assert.equal((await call("/api/desk/leave", { desk, body: {} })).status, 200);
+    data = await write({
+      ...base,
+      staffEvents: [{ id: "n4", staffId: "stf-olga", type: "shift_end", at: 8 }],
+    });
+    assert.ok(
+      data.staffEvents.some((e) => e.id === "n4"),
+      "10 минут после ухода — ещё принимаем",
+    );
+
+    // Выход под входом руководителя (не стол) — не маршрут стола: 404, а не
+    // 401, который закрыл бы кабинет руководителя.
+    const boss = await login("desk-g@sklad.ru");
+    assert.equal((await call("/api/desk/leave", { cookie: boss, body: {} })).status, 404);
+  },
+);

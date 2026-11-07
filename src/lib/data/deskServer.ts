@@ -20,6 +20,12 @@ export interface DeskServer {
    * руководителя), отвязывать надо по-старому.
    */
   unbind: (code: string) => Promise<Result<boolean | null>>;
+  /**
+   * Сотрудник вышел со стола: сервер перестаёт принимать отметки за него.
+   * Не стол (рабочее место под входом руководителя) — у сервера такого
+   * маршрута нет, ответ 404, и выход идёт как обычно.
+   */
+  leave: () => Promise<Result<void>>;
 }
 
 export const serverDesks: DeskServer = {
@@ -45,5 +51,10 @@ export const serverDesks: DeskServer = {
     if (status === 404 && body.error === "not_manager") return ok(false);
     if (status === 429 || status >= 500) return fail("data.failed");
     return ok(null);
+  },
+  leave: async () => {
+    const res = await attempt(() => apiRequest("POST", "/desk/leave", {}));
+    if (!res.ok) return res;
+    return res.data.status === 200 ? ok(undefined) : fail("data.failed");
   },
 };

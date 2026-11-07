@@ -22,6 +22,7 @@ function fakePort(server: boolean, over: Partial<EditorState> = {}): StorePort {
     addDevice: vi.fn((name: string) => ({ id: "dev-1", name, station: "pack", createdAt: 1 })),
     revokeDevice: vi.fn(),
     sessionLost: vi.fn(),
+    stationLogout: vi.fn(),
     thisDeviceId: "dev-1",
     ...over,
   } as unknown as EditorState;
@@ -47,6 +48,7 @@ function legacyDesks(over: Partial<DeskServer> = {}): DeskServer {
     open: vi.fn(async () => ok(undefined)),
     revoke: vi.fn(async () => ok(undefined)),
     unbind: vi.fn(async () => ok(null)),
+    leave: vi.fn(async () => ok(undefined)),
     ...over,
   };
 }
@@ -175,5 +177,29 @@ describe("workstationRepository: стол с пропуском на серве�
     const repo = createWorkstationRepository(port, fakeServer(), desks);
     expect((await repo.revokeDevice("dev-7")).ok).toBe(false);
     expect(port.get().revokeDevice).not.toHaveBeenCalled();
+  });
+});
+
+describe("workstationRepository: выход со стола", () => {
+  it("на сервере стол говорит «ушёл», и только потом закрывает вход", async () => {
+    const port = fakePort(true);
+    const desks = legacyDesks();
+    const repo = createWorkstationRepository(port, fakeServer(), desks);
+    expect(await repo.logout()).toEqual({ ok: true, data: undefined });
+    expect(desks.leave).toHaveBeenCalledOnce();
+    expect(port.get().stationLogout).toHaveBeenCalledOnce();
+  });
+
+  it("сбой связи выход не держит, а в демо сервер не зовём", async () => {
+    const down = legacyDesks({ leave: vi.fn(async () => fail("data.failed")) });
+    const onServer = fakePort(true);
+    await createWorkstationRepository(onServer, fakeServer(), down).logout();
+    expect(onServer.get().stationLogout).toHaveBeenCalledOnce();
+
+    const demo = fakePort(false);
+    const desks = legacyDesks();
+    await createWorkstationRepository(demo, fakeServer(), desks).logout();
+    expect(desks.leave).not.toHaveBeenCalled();
+    expect(demo.get().stationLogout).toHaveBeenCalledOnce();
   });
 });
