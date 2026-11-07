@@ -21,6 +21,8 @@
  *   POST /api/cabinet/snapshot — { version, format, data }; version 0 — первая запись
  *   POST /api/cabinet/snapshot/changes — только изменённое поверх версии:
  *     { version, format, doc, slots, upsert, remove, products? } (`saveChanges`)
+ *   GET  /api/cabinet/history?after=… — архив законченной работы страницами
+ *     (`history`): `{ rows: [{ w, d, ref, pos, data }], next }`
  *
  * Товары в снимке не хранятся (миграция 013): кабинет присылает и получает
  * их в составе снимка, а сервер раскладывает по строкам `uklad.products` —
@@ -49,6 +51,8 @@ const {
   upsertRecords,
   removeRecords,
   isRef,
+  archiveDaily,
+  loadArchive,
 } = require("./records");
 
 // Пустой кабинет — единицы килобайт, демо со всей историей — около мегабайта.
@@ -183,6 +187,9 @@ function createSnapshot({ auth, send, log }) {
          WHERE org_id = uklad.current_org()`,
       );
       if (!rows[0]) return false;
+      // Законченное старше окна — в архив, до того как собрать кабинет: так
+      // браузер держит живую работу и последние недели, а не всю историю.
+      await archiveDaily(c);
       return { ...rows[0], data: await loadCabinet(c, rows[0].data) };
     });
     if (out === null) return send(res, 401, { ok: false });
@@ -373,7 +380,42 @@ function createSnapshot({ auth, send, log }) {
     return send(res, 200, { ok: true, version: out.version });
   }
 
+  /**
+   * Архив законченной работы — для отчётов за долгий период. Только тем же,
+   * кому весь кабинет. Страница — `ARCHIVE_PAGE` строк, `after` — ключ из
+   * `next` прошлой страницы.
+   */
+  async function history(req, res, url) {
+    let after = null;
+    const raw = url.searchParams.get("after");
+    if (raw !== null) {
+      try {
+        after = JSON.parse(Buffer.from(raw, "base64url").toString("utf8"));
+      } catch {
+        after = undefined;
+      }
+      if (
+        !isObject(after) ||
+        typeof after.w !== "string" ||
+        after.w.length > 200 ||
+        !LISTS.has(after.d) ||
+        !isRef(after.ref)
+      ) {
+        return send(res, 400, { ok: false, error: "bad_request" });
+      }
+    }
+    const out = await withSession(req, async (c, ctx) => {
+      if (!mayUse(ctx)) return FORBIDDEN;
+      return loadArchive(c, after);
+    });
+    if (out === null) return send(res, 401, { ok: false });
+    if (out === FORBIDDEN) return send(res, 403, { ok: false });
+    const next = out.next && Buffer.from(JSON.stringify(out.next)).toString("base64url");
+    return send(res, 200, { ok: true, rows: out.rows, next });
+  }
+
   const routes = {
+    "GET /api/cabinet/history": history,
     "GET /api/cabinet/snapshot": load,
     "POST /api/cabinet/snapshot": save,
     "POST /api/cabinet/snapshot/changes": saveChanges,

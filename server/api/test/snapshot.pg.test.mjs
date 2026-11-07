@@ -783,3 +783,109 @@ test(
     assert.equal((await call("/api/cabinet/snapshot", a)).json.snapshot.data.requests.length, 6);
   },
 );
+
+test(
+  "окно истории: законченное старше 45 дней — в архив, запись его не теряет, отчёт читает",
+  { skip: SKIP },
+  async () => {
+    const a = await owner("snap-arch@sklad.ru", "10.0.1.30");
+    const shipped = { id: "r1", status: "shipped" };
+    const open = { id: "r2", status: "new" };
+    const fresh = { id: "r3", status: "shipped" };
+    const closed = { id: "s1", status: "closed", lines: [{ id: "l1" }] };
+    const receiving = { id: "s2", status: "receiving", lines: [{ id: "l2" }] };
+    const evClosed = { id: "e1", expectedShipmentLineId: "l1" };
+    const evOpen = { id: "e2", expectedShipmentLineId: "l2" };
+    const box = { id: "b1", lines: [] };
+    const cab = (extra = {}) => ({
+      ...data("склад"),
+      requests: [fresh, open, shipped],
+      expectedShipments: [receiving, closed],
+      receivingEvents: [evClosed, evOpen],
+      boxes: [box],
+      staffEvents: [{ id: "st1", kind: "shift_start" }],
+      ...extra,
+    });
+    await call("/api/cabinet/snapshot", { ...a, body: { version: 0, format: 8, data: cab() } });
+    // Состарить всё, кроме свежей заявки.
+    await db.root.query(
+      `UPDATE uklad.cabinet_records SET updated_at = now() - interval '60 days'
+       WHERE org_id = $1 AND ref <> 'r3'`,
+      [a.org],
+    );
+
+    const read = (await call("/api/cabinet/snapshot", a)).json.snapshot;
+    assert.deepEqual(read.data.requests, [fresh, open]);
+    assert.deepEqual(read.data.expectedShipments, [receiving]);
+    // Приёмка открытой поставки остаётся: по ней собирается лист приёмки.
+    assert.deepEqual(read.data.receivingEvents, [evOpen]);
+    assert.deepEqual(read.data.boxes, [box]);
+    assert.deepEqual(read.data.staffEvents, []);
+
+    const hist = await call("/api/cabinet/history", a);
+    assert.equal(hist.status, 200);
+    assert.equal(hist.json.next, null);
+    assert.deepEqual(hist.json.rows.map((r) => `${r.w}/${r.d}/${r.ref}`).sort(), [
+      "/staffEvents/st1",
+      "wh_1/expectedShipments/s1",
+      "wh_1/receivingEvents/e1",
+      "wh_1/requests/r1",
+    ]);
+
+    // Запись целиком без архива — архив цел, в корзину не ушёл.
+    const window = read.data;
+    const w1 = await call("/api/cabinet/snapshot", {
+      ...a,
+      body: { version: read.version, format: 8, data: { ...window, requests: [fresh, open] } },
+    });
+    assert.equal(w1.status, 200);
+    const trashed = await db.root.query(
+      `SELECT count(*)::int AS n FROM uklad.cabinet_records WHERE org_id = $1 AND deleted_at IS NOT NULL`,
+      [a.org],
+    );
+    assert.equal(trashed.rows[0].n, 0);
+    assert.equal((await call("/api/cabinet/history", a)).json.rows.length, 4);
+
+    // Копия, открытая до архивации, прислала архивную заявку — та вернулась.
+    const stale = await call("/api/cabinet/snapshot", {
+      ...a,
+      body: {
+        version: w1.json.version,
+        format: 8,
+        data: { ...window, requests: [fresh, open, shipped] },
+      },
+    });
+    assert.equal(stale.status, 200);
+    const back = (await call("/api/cabinet/snapshot", a)).json.snapshot.data.requests;
+    assert.deepEqual(back, [fresh, open, shipped]);
+
+    // Архив — только раз в сутки: вернувшаяся заявка в архив сразу не уходит.
+    await db.root.query(
+      `UPDATE uklad.cabinet_records SET updated_at = now() - interval '60 days' WHERE org_id = $1`,
+      [a.org],
+    );
+    assert.equal((await call("/api/cabinet/snapshot", a)).json.snapshot.data.requests.length, 3);
+
+    // Страницы и чужой ключ.
+    assert.equal((await call("/api/cabinet/history?after=%%%", a)).status, 400);
+    const { loadArchive } = require("../src/cabinet/records.js");
+    const { asOrg } = await import("../../db/test/helpers.js");
+    const pages = await asOrg(db.pool, a.org, async (c) => {
+      const p1 = await loadArchive(c, null, 2);
+      const p2 = await loadArchive(c, p1.next, 2);
+      return [p1, p2];
+    });
+    assert.equal(pages[0].rows.length, 2);
+    assert.ok(pages[0].next);
+    assert.equal(pages[1].next, null);
+    assert.equal(pages[0].rows.length + pages[1].rows.length, 3);
+  },
+);
+
+test("архив чужой компании не виден, без входа — 401", { skip: SKIP }, async () => {
+  const b = await owner("snap-arch-b@sklad.ru", "10.0.1.31");
+  const hist = await call("/api/cabinet/history", b);
+  assert.equal(hist.status, 200);
+  assert.deepEqual(hist.json.rows, []);
+  assert.equal((await call("/api/cabinet/history")).status, 401);
+});
