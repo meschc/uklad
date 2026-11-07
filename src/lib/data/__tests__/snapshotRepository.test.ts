@@ -41,6 +41,28 @@ describe("snapshotRepository", () => {
     expect(await snapshotRepository.save(2, 8, {})).toMatchObject({ error: "sync.err.network" });
   });
 
+  it("только изменённое: свой адрес, расхождение — не конфликт, а запись целиком", async () => {
+    const { snapshotRepository } = await load();
+    const changes = { doc: {}, slots: [], upsert: [], remove: [] };
+    const fetch = reply(200, { ok: true, version: 4 });
+    vi.stubGlobal("fetch", fetch);
+    expect(await snapshotRepository.saveChanges(3, 8, changes)).toEqual({
+      ok: true,
+      data: { saved: 4 },
+    });
+    expect(fetch.mock.calls[0][0]).toMatch(/\/cabinet\/snapshot\/changes$/);
+    vi.stubGlobal("fetch", reply(409, { ok: false, error: "diverged", version: 3 }));
+    expect(await snapshotRepository.saveChanges(3, 8, changes)).toEqual({
+      ok: true,
+      data: { diverged: true },
+    });
+    vi.stubGlobal("fetch", reply(409, { ok: false, error: "records_mass_delete", version: 3 }));
+    expect(await snapshotRepository.saveChanges(3, 8, changes)).toEqual({
+      ok: true,
+      data: { conflict: 3, rejected: "records" },
+    });
+  });
+
   it("чтение: пусто — null; компания уходит заголовком", async () => {
     const { snapshotRepository, setApiOrg } = await load();
     const fetch = reply(200, { ok: true, snapshot: null });

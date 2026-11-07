@@ -133,14 +133,42 @@ function hasMarks(data) {
   return found;
 }
 
-/** Документ из базы → кабинет целиком: списки со строк. */
-async function loadRecords(c, doc) {
+/** Списки-метки документа: «склад\0список» → сколько записей в нём. */
+function marksOf(doc) {
+  const out = new Map();
+  eachList(doc, (holder, key, wh) => {
+    if (isMark(holder[key])) out.set(`${wh}\u0000${key}`, holder[key][MARK]);
+  });
+  return out;
+}
+
+/**
+ * Документ из базы → кабинет целиком: списки со строк. `domains` — собрать
+ * только эти списки (журналу движений нужна одна тара), остальные метки
+ * станут пустыми списками.
+ */
+async function loadRecords(c, doc, domains = null) {
   const { rows } = await c.query(
     `SELECT warehouse_ref AS w, domain AS d, data FROM uklad.cabinet_records
      WHERE org_id = uklad.current_org() AND deleted_at IS NULL
+       AND ($1::text[] IS NULL OR domain = ANY($1::text[]))
      ORDER BY warehouse_ref, domain, position`,
+    [domains],
   );
   return assembleRecords(doc, rows);
+}
+
+/** Сколько живых строк в каждом из списков: «склад\0список» → число. */
+async function liveCounts(c, slots) {
+  const { rows } = await c.query(
+    `SELECT s.w, s.d, count(r.ref)::int AS n
+     FROM jsonb_to_recordset($1::jsonb) AS s(w text, d text)
+     LEFT JOIN uklad.cabinet_records r ON r.org_id = uklad.current_org()
+       AND r.deleted_at IS NULL AND r.warehouse_ref = s.w AND r.domain = s.d
+     GROUP BY s.w, s.d`,
+    [JSON.stringify(slots)],
+  );
+  return new Map(rows.map((r) => [`${r.w}\u0000${r.d}`, r.n]));
 }
 
 /** Списки, которые не теряют записи в ходе работы: заявка отменяется, а не удаляется. */
@@ -173,11 +201,24 @@ async function massGone(c, items, slots) {
 }
 
 /**
- * Строки кабинета → база. Новое добавляется, изменённое переписывается (и
- * только оно), пропавшее из разложенного списка уходит в корзину,
- * вернувшееся — из неё.
+ * Уводит ли правка (`remove` — `{ w, d, ref }`) в корзину больше половины
+ * живого списка — то же правило, что у записи целиком.
  */
-async function storeRecords(c, items, slots) {
+async function massRemoved(c, remove) {
+  const by = new Map();
+  for (const r of remove) {
+    if (!GUARDED.includes(r.d)) continue;
+    const k = `${r.w}\u0000${r.d}`;
+    by.set(k, { w: r.w, d: r.d, n: (by.get(k)?.n ?? 0) + 1 });
+  }
+  const heavy = [...by.values()].filter((x) => x.n >= 3);
+  if (heavy.length === 0) return false;
+  const live = await liveCounts(c, heavy);
+  return heavy.some((x) => x.n * 2 > (live.get(`${x.w}\u0000${x.d}`) ?? 0));
+}
+
+/** Новое и изменённое — в строки; неизменное не переписывается, корзина — назад. */
+async function upsertRecords(c, items) {
   await c.query(
     `INSERT INTO uklad.cabinet_records AS r (org_id, warehouse_ref, domain, ref, position, data)
      SELECT DISTINCT ON (w, d, ref) uklad.current_org(), w, d, ref, pos, data
@@ -189,6 +230,27 @@ async function storeRecords(c, items, slots) {
         OR (r.position, r.data) IS DISTINCT FROM (excluded.position, excluded.data)`,
     [JSON.stringify(items)],
   );
+}
+
+/** Убранное из списков — в корзину. */
+async function removeRecords(c, remove) {
+  if (remove.length === 0) return;
+  await c.query(
+    `UPDATE uklad.cabinet_records r SET deleted_at = now(), updated_at = now()
+     FROM jsonb_to_recordset($1::jsonb) AS t(w text, d text, ref text)
+     WHERE r.org_id = uklad.current_org() AND r.deleted_at IS NULL
+       AND r.warehouse_ref = t.w AND r.domain = t.d AND r.ref = t.ref`,
+    [JSON.stringify(remove.map(({ w, d, ref }) => ({ w, d, ref })))],
+  );
+}
+
+/**
+ * Строки кабинета → база. Новое добавляется, изменённое переписывается (и
+ * только оно), пропавшее из разложенного списка уходит в корзину,
+ * вернувшееся — из неё.
+ */
+async function storeRecords(c, items, slots) {
+  await upsertRecords(c, items);
   await c.query(
     `WITH keep AS MATERIALIZED (
        SELECT w, d, ref FROM jsonb_to_recordset($1::jsonb) AS t(w text, d text, ref text)),
@@ -213,4 +275,10 @@ module.exports = {
   loadRecords,
   storeRecords,
   massGone,
+  massRemoved,
+  marksOf,
+  liveCounts,
+  upsertRecords,
+  removeRecords,
+  isRef,
 };

@@ -1,6 +1,7 @@
 import { setApiOrg } from "../data/api";
 import { makeBackup } from "../backup";
 import { SECRET_INTEGRATION_FIELDS } from "../integrations";
+import { diffCabinet, splitCabinet, type Split } from "../data/cabinetRows";
 import { snapshotRepository } from "../data/snapshotRepository";
 import { readLocal, writeLocal } from "../safeStorage";
 import { PERSIST_KEY, PERSIST_VERSION, persistedState, useEditor } from "./index";
@@ -261,6 +262,10 @@ export function startServerSync(orgId: string): () => void {
   // старте (тосты, выбор этажа) иначе поднял бы версию без единой правки.
   let booted = false;
   let rejected: "stock" | "products" | "records" | null = null;
+  // Что лежит на сервере на версии `version`, разложенное по строкам: от
+  // него считается правка «только изменённое». Нет его или версия другая
+  // (стол сдвинул её операциями) — пишем кабинет целиком.
+  let base: { version: number; split: Split } | null = null;
 
   /** Снимок не для этой роли: не пишем и не повторяем, говорим один раз. */
   const forbid = () => {
@@ -288,7 +293,15 @@ export function startServerSync(orgId: string): () => void {
         if (meta.dirty) writeMeta({ ...meta, dirty: false });
         return true;
       }
-      const res = await snapshotRepository.save(meta.version, PERSIST_VERSION, data);
+      const next = splitCabinet(data);
+      const changes = base && meta.version > 0 && base.version === meta.version ? base : null;
+      const res = changes
+        ? await snapshotRepository.saveChanges(
+            meta.version,
+            PERSIST_VERSION,
+            diffCabinet(changes.split, next, data.products),
+          )
+        : await snapshotRepository.save(meta.version, PERSIST_VERSION, data);
       if (!res.ok) {
         writeMeta({ ...meta, dirty: true });
         if (res.error === "sync.err.forbidden") forbid();
@@ -297,6 +310,14 @@ export function startServerSync(orgId: string): () => void {
         if (res.error === "sync.err.badData" || res.error === "sync.err.tooBig") {
           useEditor.getState().showToast(res.error);
         }
+        return false;
+      }
+      if ("diverged" in res.data) {
+        // Правка считалась не от того, что на сервере: ничего не записано,
+        // сразу пишем кабинет целиком.
+        base = null;
+        writeMeta({ ...meta, dirty: true });
+        schedule(0);
         return false;
       }
       if ("conflict" in res.data) {
@@ -309,6 +330,7 @@ export function startServerSync(orgId: string): () => void {
         return false;
       }
       lastSent = text;
+      base = { version: res.data.saved, split: next };
       writeMeta({ orgId, version: res.data.saved, dirty: false });
       return true;
     }).finally(() => {
@@ -364,6 +386,7 @@ export function startServerSync(orgId: string): () => void {
       // Незаписанное с прошлого раза сравниваем с тем, что на сервере, а не
       // с собой — иначе оно так и не уйдёт.
       lastSent = meta.dirty ? JSON.stringify(snap.data) : JSON.stringify(companyPart(current));
+      base = { version: snap.version, split: splitCabinet(snap.data) };
       booted = true;
       if (meta.dirty) void flush();
       return;

@@ -621,3 +621,103 @@ test(
     assert.deepEqual((await call("/api/cabinet/snapshot", a)).json.snapshot.data.requests, []);
   },
 );
+
+test(
+  "только изменённое: строки поверх версии, расхождение — diverged, без записи",
+  { skip: SKIP },
+  async () => {
+    const { splitRecords } = require("../src/cabinet/records.js");
+    const a = await owner("snap-ch@sklad.ru", "10.0.1.24");
+    const r1 = { id: "r1", qty: 1 };
+    const r2 = { id: "r2", qty: 2 };
+    const full = (requests, boxes = []) => ({ ...data("склад"), requests, boxes });
+    assert.equal(
+      (
+        await call("/api/cabinet/snapshot", {
+          ...a,
+          body: { version: 0, format: 8, data: full([r2, r1]) },
+        })
+      ).status,
+      200,
+    );
+    /** Правка от `before` к `after`, как её считает кабинет. */
+    const changes = (version, before, after, extra = {}) => {
+      const was = new Map(splitRecords(before).items.map((r) => [`${r.d}/${r.ref}`, r]));
+      const now = splitRecords(after);
+      const upsert = now.items.filter((r) => {
+        const old = was.get(`${r.d}/${r.ref}`);
+        return !old || JSON.stringify(old.data) !== JSON.stringify(r.data) || old.pos !== r.pos;
+      });
+      const left = new Set(now.items.map((r) => `${r.d}/${r.ref}`));
+      const remove = [...was.values()]
+        .filter((r) => !left.has(`${r.d}/${r.ref}`))
+        .map(({ w, d, ref }) => ({ w, d, ref }));
+      const doc = { ...now.doc };
+      delete doc.products;
+      return {
+        ...a,
+        body: { version, format: 8, doc, slots: now.slots, upsert, remove, ...extra },
+      };
+    };
+    const at = "/api/cabinet/snapshot/changes";
+    const since = (await db.root.query(`SELECT now() AS t`)).rows[0].t;
+    const r3 = { id: "r3", qty: 3 };
+    const box = { id: "b1", lines: [{ productId: "p1", qty: 2 }] };
+    const ok = await call(at, changes(1, full([r2, r1]), full([r3, r2, r1], [box])));
+    assert.equal(ok.status, 200);
+    assert.equal(ok.json.version, 2);
+    const read = (await call("/api/cabinet/snapshot", a)).json.snapshot.data;
+    assert.deepEqual(read.requests, [r3, r2, r1]);
+    assert.deepEqual(read.boxes, [box]);
+    const touched = await db.root.query(
+      `SELECT ref FROM uklad.cabinet_records WHERE org_id = $1 AND updated_at > $2 ORDER BY ref`,
+      [a.org, since],
+    );
+    assert.deepEqual(
+      touched.rows.map((r) => r.ref),
+      ["b1", "r3"],
+    );
+    // Тара — в журнал движений, как при записи целиком.
+    const moves = await db.root.query(
+      `SELECT count(*)::int AS n FROM uklad.stock_moves WHERE org_id = $1 AND place_ref = 'b1'`,
+      [a.org],
+    );
+    assert.equal(moves.rows[0].n, 1);
+
+    // Копия считала правку не от того: метка не сходится со строками.
+    const wrong = changes(2, full([r3, r2, r1], [box]), full([r3, r1], [box]));
+    wrong.body.remove = [];
+    const div = await call(at, wrong);
+    assert.equal(div.status, 409);
+    assert.equal(div.json.error, "diverged");
+    assert.equal((await call("/api/cabinet/snapshot", a)).json.snapshot.version, 2);
+    assert.equal((await call("/api/cabinet/snapshot", a)).json.snapshot.data.requests.length, 3);
+
+    // Устаревшая версия — конфликт; чужая форма — 400.
+    assert.equal((await call(at, changes(1, full([r3, r2, r1]), full([r1])))).status, 409);
+    const forged = changes(2, full([r3, r2, r1], [box]), full([r3, r2, r1], [box]));
+    forged.body.slots = [{ w: "wh_1", d: "requests" }];
+    forged.body.upsert = [{ w: "wh_1", d: "requests", ref: "r9", pos: 0, data: { id: "r1" } }];
+    assert.equal((await call(at, forged)).status, 400);
+    const noMark = changes(2, full([r3, r2, r1], [box]), full([r3, r2, r1], [box]));
+    noMark.body.slots = [{ w: "wh_1", d: "pallets" }];
+    assert.equal((await call(at, noMark)).status, 400);
+
+    // Больше половины разом — отказ, как у записи целиком.
+    const wipe = await call(at, changes(2, full([r3, r2, r1], [box]), full([], [box])));
+    assert.equal(wipe.status, 409);
+    assert.equal(wipe.json.error, "records_mass_delete");
+
+    // Товары — только когда пришли.
+    const withProducts = changes(2, full([r3, r2, r1], [box]), full([r3, r2, r1], [box]), {
+      products: [{ id: "p1", sku: "A", name: "Кружка" }],
+    });
+    assert.equal((await call(at, withProducts)).status, 200);
+    const last = (await call("/api/cabinet/snapshot", a)).json.snapshot;
+    assert.deepEqual(
+      last.data.products.map((p) => p.name),
+      ["Кружка"],
+    );
+    assert.equal(last.data.requests.length, 3);
+  },
+);
