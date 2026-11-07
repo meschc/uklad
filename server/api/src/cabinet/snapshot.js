@@ -53,6 +53,25 @@ function withoutProducts(data) {
   return out;
 }
 
+/**
+ * Убирает ли запись больше половины живого каталога. Так выглядит сбой
+ * (пустой стор после ошибки), а не работа человека: из корзины в кабинете
+ * пока не восстановить, поэтому такую запись сервер не принимает. Каталог до
+ * десяти товаров удаляется как угодно, большой — частями.
+ */
+async function massDelete(c, data) {
+  if (!Array.isArray(data.products)) return false;
+  const refs = data.products.map((p) => p?.id).filter((id) => typeof id === "string");
+  const { rows } = await c.query(
+    `SELECT count(*)::int AS live,
+            count(*) FILTER (WHERE NOT (ref = ANY($1::text[])))::int AS gone
+     FROM uklad.products WHERE org_id = uklad.current_org() AND deleted_at IS NULL`,
+    [refs],
+  );
+  const { live, gone } = rows[0];
+  return gone >= 10 && gone * 2 > live;
+}
+
 /** Товары из присланного снимка — в таблицу. Нет поля — товары не трогаем. */
 async function storeProducts(c, data) {
   if (!("products" in data)) return;
@@ -111,6 +130,7 @@ function createSnapshot({ auth, send, log }) {
     const out = await withSession(req, async (c, ctx) => {
       if (!mayUse(ctx)) return FORBIDDEN;
       if (!writes.take(ctx.orgId)) return LIMITED;
+      if (await massDelete(c, b.data)) return { conflict: true, products: true };
       // Первая запись: строки ещё нет. Двое одновременно — второй получит
       // конфликт ключа и ответ 409, а не вторую строку.
       if (version === 0) {
@@ -148,7 +168,8 @@ function createSnapshot({ auth, send, log }) {
         );
         return rows[0]?.version ?? 0;
       });
-      return send(res, 409, { ok: false, error: "conflict", version: current ?? 0 });
+      const error = out.products ? "products_mass_delete" : "conflict";
+      return send(res, 409, { ok: false, error, version: current ?? 0 });
     }
     return send(res, 200, { ok: true, version: out.version });
   }

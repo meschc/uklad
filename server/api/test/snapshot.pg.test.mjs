@@ -324,3 +324,34 @@ test(
     );
   },
 );
+
+test(
+  "пустой список не уносит каталог в корзину: больше половины разом — 409",
+  { skip: SKIP },
+  async () => {
+    const a = await owner("snap-r@sklad.ru", "10.0.1.12");
+    const cards = Array.from({ length: 20 }, (_, i) => ({
+      id: `p${i}`,
+      sku: `S${i}`,
+      name: `Т${i}`,
+    }));
+    const save = (version, products) =>
+      call("/api/cabinet/snapshot", {
+        ...a,
+        body: { version, format: 8, data: { ...data("склад"), products } },
+      });
+    assert.equal((await save(0, cards)).status, 200);
+    // Сбой клиента: стор пустой — сервер не принимает и снимок не двигает.
+    const wiped = await save(1, []);
+    assert.equal(wiped.status, 409);
+    assert.equal(wiped.json.error, "products_mass_delete");
+    assert.equal(wiped.json.version, 1);
+    assert.equal((await call("/api/cabinet/snapshot", a)).json.snapshot.data.products.length, 20);
+    // Половина — можно: человек удаляет частями.
+    assert.equal((await save(1, cards.slice(10))).status, 200);
+    // Маленький остаток (меньше десяти разом) удаляется весь.
+    assert.equal((await save(2, cards.slice(19))).status, 200);
+    assert.equal((await save(3, [])).status, 200);
+    assert.deepEqual((await call("/api/cabinet/snapshot", a)).json.snapshot.data.products, []);
+  },
+);

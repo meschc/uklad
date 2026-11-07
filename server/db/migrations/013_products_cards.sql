@@ -72,7 +72,7 @@ $$;
 -- Карточку без строкового id, артикула или названия кабинет и сам выбросит
 -- при чтении (`isProduct`), поэтому здесь она пропускается.
 CREATE FUNCTION uklad.save_products(p_cards jsonb) RETURNS void
-LANGUAGE plpgsql AS $$
+LANGUAGE plpgsql SET search_path = pg_catalog, uklad, pg_temp AS $$
 BEGIN
   IF jsonb_typeof(p_cards) IS DISTINCT FROM 'array' THEN
     RAISE EXCEPTION 'products must be an array' USING ERRCODE = 'invalid_parameter_value';
@@ -143,6 +143,22 @@ BEGIN
     AND NOT EXISTS (SELECT 1 FROM pg_temp.cards c WHERE c.ref = p.ref);
 END $$;
 
+-- Функции товаров вызывает только сервер (роль приложения), как и auth.*.
+REVOKE EXECUTE ON FUNCTION uklad.product_card(uklad.products), uklad.load_products(),
+  uklad.save_products(jsonb) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION uklad.product_card(uklad.products), uklad.load_products(),
+  uklad.save_products(jsonb) TO uklad_app;
+
+-- Карточки, которые перенос не возьмёт (нет строкового id, артикула или
+-- названия), не пропадают молча: они копируются сюда как были, а число
+-- пишется в вывод миграции. Кабинет такие и сам выбросил бы при чтении.
+CREATE SCHEMA IF NOT EXISTS meta;
+CREATE TABLE meta.products_013_backup (
+  org_id uuid NOT NULL,
+  card jsonb NOT NULL,
+  saved_at timestamptz NOT NULL DEFAULT now()
+);
+
 -- Перенос: товары каждой компании — из снимка в строки. Снимки закрыты RLS
 -- даже от владельца таблиц (FORCE), поэтому на время переноса защита снята,
 -- а компания для политик `uklad.products` ставится той же настройкой, что
@@ -151,7 +167,21 @@ ALTER TABLE uklad.cabinet_snapshots NO FORCE ROW LEVEL SECURITY;
 DO $$
 DECLARE
   s record;
+  skipped integer;
 BEGIN
+  INSERT INTO meta.products_013_backup (org_id, card)
+  SELECT cs.org_id, c
+  FROM uklad.cabinet_snapshots cs, jsonb_array_elements(cs.data->'products') c
+  WHERE jsonb_typeof(cs.data->'products') = 'array'
+    -- coalesce: у карточки без поля сравнение даёт NULL, а не «нет».
+    AND NOT coalesce(jsonb_typeof(c) = 'object'
+      AND jsonb_typeof(c->'id') = 'string' AND length(c->>'id') BETWEEN 1 AND 100
+      AND jsonb_typeof(c->'sku') = 'string' AND jsonb_typeof(c->'name') = 'string', false);
+  GET DIAGNOSTICS skipped = ROW_COUNT;
+  IF skipped > 0 THEN
+    RAISE NOTICE 'Товары: % карточек без id, артикула или названия сохранены в meta.products_013_backup', skipped;
+  END IF;
+
   FOR s IN SELECT org_id, data->'products' AS cards FROM uklad.cabinet_snapshots
            WHERE jsonb_typeof(data->'products') = 'array'
   LOOP
@@ -164,6 +194,9 @@ END $$;
 ALTER TABLE uklad.cabinet_snapshots FORCE ROW LEVEL SECURITY;
 
 -- Правка карточки — в журнал, как остатки: кто и что поменял, а удаление —
--- это запись с `deleted_at`, а не пропажа строки.
+-- это запись с `deleted_at`, а не пропажа строки. Триггер ставится после
+-- переноса намеренно: перенос — не правка, и журнал начинается с чистого
+-- листа; что было до него, хранит резервная копия базы (pg_dump перед
+-- миграцией, см. deploy/README).
 CREATE TRIGGER products_log AFTER INSERT OR UPDATE ON uklad.products
   FOR EACH ROW EXECUTE FUNCTION uklad.log_stock_change();

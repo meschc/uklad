@@ -353,6 +353,17 @@ docker compose exec api node api/src/admin/cli.js unlock почта@домен
 стартует только после успешных миграций и ходит в базу ролью приложения.
 Наружу база не открыта. Если `api` не поднялся — `docker compose logs migrate`.
 
+Перед выкладкой, которая несёт новые миграции, снимите копию базы — миграции
+идут только вперёд, и откатить перенос данных можно только из неё:
+
+```sh
+docker compose exec -T db pg_dump -U uklad_owner -Fc uklad > ~/uklad-$(date +%F).dump
+```
+
+Миграция 013 переносит товары из снимков кабинета в `uklad.products`;
+карточки без id, артикула или названия она откладывает в
+`meta.products_013_backup` и пишет их число в `docker compose logs migrate`.
+
 Том `pgdata` переживает пересборку и `docker compose down`. Стирает его
 только `docker compose down -v` — эту команду не выполнять.
 

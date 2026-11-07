@@ -228,7 +228,7 @@ export function startServerSync(orgId: string): () => void {
   // До сверки с сервером писать нечего и сравнивать не с чем: шум стора на
   // старте (тосты, выбор этажа) иначе поднял бы версию без единой правки.
   let booted = false;
-  let stockRejected = false;
+  let rejected: "stock" | "products" | null = null;
 
   /** Снимок не для этой роли: не пишем и не повторяем, говорим один раз. */
   const forbid = () => {
@@ -265,8 +265,9 @@ export function startServerSync(orgId: string): () => void {
       }
       if ("conflict" in res.data) {
         // Кто-то записал раньше нас: забираем свежее, своё откладываем.
-        // Сервер не принял движение товара — человеку говорим именно это.
-        if (res.data.stock) stockRejected = true;
+        // Сервер не принял движение товара или удаление каталога — человеку
+        // говорим именно это.
+        if (res.data.rejected) rejected = res.data.rejected;
         writeMeta({ ...meta, dirty: true });
         void boot();
         return false;
@@ -303,7 +304,7 @@ export function startServerSync(orgId: string): () => void {
         JSON.stringify({ state: current, version: PERSIST_VERSION, savedAt: Date.now() }),
       );
       try {
-        sessionStorage.setItem(NOTE_KEY, stockRejected ? "stock" : "conflict");
+        sessionStorage.setItem(NOTE_KEY, rejected ?? "conflict");
       } catch {
         // без пометки человек просто не увидит тост
       }
@@ -363,9 +364,14 @@ export function startServerSync(orgId: string): () => void {
 
   try {
     const note = sessionStorage.getItem(NOTE_KEY);
-    if (note === "conflict" || note === "stock") {
+    if (note === "conflict" || note === "stock" || note === "products") {
       sessionStorage.removeItem(NOTE_KEY);
-      useEditor.getState().showToast(note === "stock" ? "sync.stockRejected" : "sync.conflict");
+      const toast = {
+        conflict: "sync.conflict",
+        stock: "sync.stockRejected",
+        products: "sync.productsRejected",
+      } as const;
+      useEditor.getState().showToast(toast[note]);
     }
   } catch {
     // нет sessionStorage — нет и пометки
