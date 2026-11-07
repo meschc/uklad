@@ -120,7 +120,7 @@ const cabinetData = () => ({
     { id: "q2", kind: "extra" },
   ],
   otherWarehouses: [{ id: "wh_2", name: "Второй", staff: staff() }],
-  boxes: [{ id: "b1" }],
+  boxes: [{ id: "b1", lines: [{ productId: "pr1", qty: 5 }] }],
   requests: [
     { id: "r1", productId: "pr1", qty: 5, status: "in_progress", note: "Тула" },
     { id: "r2", productId: "pr1", qty: 1, status: "shipped", note: "Тула" },
@@ -205,7 +205,7 @@ test("стол пишет работу склада, но не персонал,
       staff: [{ id: "stf-x", name: "Чужой", hourlyRate: 1 }],
     },
     otherWarehouses: [],
-    boxes: [{ id: "b1" }, { id: "b2" }],
+    boxes: [{ id: "b1", lines: [{ productId: "pr1", qty: 5 }] }, { id: "b2" }],
     // Короб отгрузки пишет упаковка за столом.
     outboundBoxes: [{ id: "o1", code: "UK-OUT-TULA01" }],
     chats: {},
@@ -399,6 +399,9 @@ test(
         { id: "r2", productId: "pr1", qty: 1, status: "new", note: "Тула" },
         { id: "r3", productId: "pr1", qty: 99, status: "new" },
       ],
+      // Собранное снято с полки: иначе пять штук числились бы и в коробе, и
+      // в заявке.
+      boxes: [{ id: "b1", lines: [] }],
       // Упаковщик решает спорное — не его решение.
       disputes: [{ id: "q2", kind: "extra", resolution: "moved", resolvedBy: "stf-ivan" }],
     });

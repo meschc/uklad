@@ -162,16 +162,16 @@ describe("createFulfillmentRepository", () => {
     expect(res).toEqual({ ok: true, data: 0 });
   });
 
-  it("передаёт кроссдок вместе с поставкой и отдаёт, сколько ушло", async () => {
+  it("передаёт кроссдок с поставкой и тарой приёмки и отдаёт, сколько ушло", async () => {
     // Arrange
     const applyCrossDock = vi.fn(() => 3);
     const repo = createFulfillmentRepository(fakePort({ applyCrossDock }));
 
     // Act
-    const res = await repo.crossDock("prod-1", 5, "ship-1");
+    const res = await repo.crossDock("prod-1", 5, "ship-1", "box-1");
 
     // Assert
-    expect(applyCrossDock).toHaveBeenCalledWith("prod-1", 5, "ship-1");
+    expect(applyCrossDock).toHaveBeenCalledWith("prod-1", 5, "ship-1", "box-1");
     expect(res).toEqual({ ok: true, data: 3 });
   });
 

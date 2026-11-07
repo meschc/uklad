@@ -38,7 +38,12 @@ export interface FulfillmentRepository {
   openUnit: (id: string) => Promise<Result<void>>;
   receive: (input: ReceiveInput) => Promise<Result<string>>;
   /** Кроссдок (п.10.1): закрыть ждавшие заявки. Число — сколько ушло. */
-  crossDock: (productId: string, qty: number, shipmentId?: string) => Promise<Result<number>>;
+  crossDock: (
+    productId: string,
+    qty: number,
+    shipmentId?: string,
+    boxId?: string,
+  ) => Promise<Result<number>>;
 }
 
 export function createFulfillmentRepository(port: StorePort = storePort): FulfillmentRepository {
@@ -65,8 +70,8 @@ export function createFulfillmentRepository(port: StorePort = storePort): Fulfil
     acceptCargo: (input) => attempt(() => port.get().acceptCargo(input)),
     openUnit: (id) => attempt(() => port.get().openUnit(id)),
     receive: (input) => attempt(() => port.get().receiveProduct(input)),
-    crossDock: (productId, qty, shipmentId) =>
-      attempt(() => port.get().applyCrossDock(productId, qty, shipmentId)),
+    crossDock: (productId, qty, shipmentId, boxId) =>
+      attempt(() => port.get().applyCrossDock(productId, qty, shipmentId, boxId)),
   };
 }
 

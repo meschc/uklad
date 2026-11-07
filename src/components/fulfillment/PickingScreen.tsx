@@ -108,8 +108,11 @@ export function PickingScreen({ autoStart = false }: { autoStart?: boolean } = {
     setAddr(null);
     setScan({ status: "idle" });
     setSeenSerials(new Set());
-    // Прежняя тара не подходит этой заявке — просим другую, сказав почему.
-    const { box, problem } = toteFor(r, toteId);
+    // Начатая заявка продолжается в своей таре. Прежняя тара не подходит
+    // этой заявке — просим другую, сказав почему.
+    const want = (r.pickedQty ?? 0) > 0 && r.toteId ? r.toteId : toteId;
+    const { box, problem } = toteFor(r, want);
+    if (box && !problem) setToteId(want);
     if (box && problem) {
       setToteId(null);
       fail(TOTE_ERROR[problem]);

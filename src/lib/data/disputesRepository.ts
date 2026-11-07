@@ -1,3 +1,4 @@
+import { writeOffProblem } from "../disputes";
 import type { Dispute, DisputeResolution } from "../types";
 import { isDispute } from "./guards";
 import { readList, storePort, type StorePort } from "./repository";
@@ -26,6 +27,7 @@ export function createDisputesRepository(port: StorePort = storePort): DisputesR
         if (!note?.trim()) return fail("disputes.noteRequired");
         const d = port.get().disputes.find((x) => x.id === id);
         if (d && d.raisedBy === by) return fail("disputes.selfWriteOff");
+        if (d && writeOffProblem(port.get().boxes, d)) return fail("disputes.notInTote");
       }
       const res = await attempt(() => port.get().resolveDispute(id, resolution, by, note));
       if (!res.ok) return res;

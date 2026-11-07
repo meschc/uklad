@@ -279,7 +279,7 @@ export function ReceivingScreen({ staffId: badgeStaffId }: { staffId?: string } 
     // и поедет на место обычным путём.
     if (crossDock) {
       const sent = await run(() =>
-        fulfillmentRepository.crossDock(d.product.id, d.qty, shipment?.id),
+        fulfillmentRepository.crossDock(d.product.id, d.qty, shipment?.id, box.id),
       );
       // Провал разбора по заявкам не отменяет приёмку: товар уже принят и лежит
       // в таре. Дать «повторить» здесь было бы хуже отказа — приёмка записалась

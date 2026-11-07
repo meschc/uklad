@@ -1,4 +1,5 @@
 import { nowMs, uid } from "../utils";
+import { writeOffProblem } from "../disputes";
 import type { DisputesSlice, SliceCreator } from "./state";
 
 /**
@@ -49,6 +50,9 @@ export const createDisputesSlice: SliceCreator<DisputesSlice> = (set, get) => ({
     // Списание — необратимая потеря чужого товара: нужна причина, и решает не
     // тот, кто сам нашёл недостачу (четыре глаза).
     if (resolution === "written_off" && (!note?.trim() || d.raisedBy === by)) return false;
+    // Списать можно только то, что лежит в таре: иначе списание больше
+    // остатка — товар, который «ушёл», не уходя (`writeOffProblem`).
+    if (resolution === "written_off" && writeOffProblem(get().boxes, d)) return false;
     const now = nowMs();
     set((s) => ({
       disputes: s.disputes.map((x) =>
@@ -67,9 +71,7 @@ export const createDisputesSlice: SliceCreator<DisputesSlice> = (set, get) => ({
                 ? {
                     ...b,
                     lines: b.lines
-                      .map((l) =>
-                        l.productId === d.productId ? { ...l, qty: Math.max(0, l.qty - d.qty) } : l,
-                      )
+                      .map((l) => (l.productId === d.productId ? { ...l, qty: l.qty - d.qty } : l))
                       .filter((l) => l.qty > 0),
                   }
                 : b,

@@ -558,8 +558,9 @@ export interface RequestsSlice {
   /**
    * Кроссдокинг: принятый товар раздаётся ждущим заявкам, минуя полку.
    * Возвращает, сколько единиц ушло в заявки (остальное — на склад как обычно).
+   * `boxId` — тара приёмки, куда товар лёг: ушедшее в заявки из неё снимается.
    */
-  applyCrossDock: (productId: string, qty: number, shipmentId?: string) => number;
+  applyCrossDock: (productId: string, qty: number, shipmentId?: string, boxId?: string) => number;
   updateRequestStatus: (id: string, status: RequestStatus) => void;
   /** Взять заявку в работу (экран «Сборка»): статус + отметка времени. */
   startPicking: (id: string) => void;
