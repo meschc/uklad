@@ -96,30 +96,71 @@ const add = (m, k, n) => m.set(k, (m.get(k) ?? 0) + n);
  * Недостачу стол может отметить сам, если строка действительно не добрана:
  * она товара не создаёт.
  */
-function markReceived(shipments, events, known) {
+function receivedOver(shipments, events, known) {
   const lines = new Map();
   for (const s of list(shipments)) {
     for (const l of list(s.lines)) lines.set(l.id, l);
   }
   const got = new Map();
-  return events.map((e) => {
-    if (known.has(e.id)) return e;
+  const over = new Map();
+  for (const e of events) {
+    if (known.has(e.id)) continue;
     const line =
       typeof e.expectedShipmentLineId === "string" && lines.get(e.expectedShipmentLineId);
-    let over = !line || line.productId !== e.productId;
-    if (!over) {
-      const id = e.expectedShipmentLineId;
-      const was = got.has(id) ? got.get(id) : num(line.receivedQty);
-      got.set(id, was + e.qty);
-      over = was + e.qty > num(line.expectedQty);
+    if (!line || line.productId !== e.productId) {
+      over.set(e.id, e.qty);
+      continue;
     }
+    const id = e.expectedShipmentLineId;
+    const was = got.has(id) ? got.get(id) : num(line.receivedQty);
+    got.set(id, was + e.qty);
+    // Сверх строки — только то, что вышло за ожидаемое.
+    const extra = Math.min(e.qty, was + e.qty - num(line.expectedQty));
+    if (extra > 0) over.set(e.id, extra);
+  }
+  return over;
+}
+
+function markReceived(shipments, events, known) {
+  const over = receivedOver(shipments, events, known);
+  return events.map((e) => {
+    if (known.has(e.id)) return e;
     const rest = { ...e };
     delete rest.discrepancy;
-    if (over) return { ...rest, discrepancy: "overage" };
+    if (over.has(e.id)) return { ...rest, discrepancy: "overage" };
     return e.discrepancy === "shortage" ? { ...rest, discrepancy: "shortage" } : rest;
   });
 }
-const WRITE_OFF = new Set(["shortage", "not_packable"]);
+
+/**
+ * Лишнее с приёмки — спорным старшему (`receive_overage`): сколько вышло за
+ * строку поставки (без строки — всё принятое). Заводит его только сервер,
+ * id из события приёмки — повтор не задвоит. Старший оставляет товар на
+ * складе (`accepted`) или списывает — вернули поставщику.
+ */
+function overageDisputes(shipments, events, known, boxes, existing) {
+  const over = receivedOver(shipments, events, known);
+  const have = new Set(list(existing).map((d) => d.id));
+  const code = new Map(list(boxes).map((b) => [b.id, b.barcode]));
+  const out = [];
+  for (const e of events) {
+    const qty = over.get(e.id);
+    const id = `ovr-${e.id}`.slice(0, 100);
+    if (!qty || have.has(id)) continue;
+    out.push({
+      id,
+      kind: "receive_overage",
+      boxId: e.boxId,
+      ...(typeof code.get(e.boxId) === "string" ? { toteCode: code.get(e.boxId) } : {}),
+      productId: e.productId,
+      qty,
+      raisedBy: e.staffId,
+      raisedAt: e.timestamp,
+    });
+  }
+  return out;
+}
+const WRITE_OFF = new Set(["shortage", "not_packable", "receive_overage"]);
 
 /**
  * Свести остатки стола. `merged` — запись после остальных правил (заявки и
@@ -139,6 +180,13 @@ function mergeDeskStock(current, merged, people) {
       catalog.has(e.productId),
   );
   const knownEvents = byId(current.receivingEvents);
+  const overage = overageDisputes(
+    current.expectedShipments,
+    receivingEvents,
+    knownEvents,
+    merged.boxes,
+    [...list(current.disputes), ...list(merged.disputes)],
+  );
   receivingEvents = markReceived(current.expectedShipments, receivingEvents, knownEvents);
   const shipments = appendOnly(current.shipments, merged.shipments, (s) =>
     people.present.has(s.staffId),
@@ -146,6 +194,7 @@ function mergeDeskStock(current, merged, people) {
   const outboundBoxes = mergeOutbound(current.outboundBoxes, merged.outboundBoxes);
   const placements = mergePlacements(current.placements, merged.placements);
   const out = { receivingEvents, shipments, outboundBoxes, placements };
+  if (overage.length > 0) out.disputes = [...list(merged.disputes), ...overage];
 
   // По каждому товару: сколько ушло из тары и куда это могло уйти.
   const boxNet = linesBy(list(current.boxes), linesBy(list(merged.boxes)), -1);
@@ -231,4 +280,4 @@ const STOCK_KEYS = [
   "disputes",
 ];
 
-module.exports = { mergeDeskStock, markReceived, STOCK_KEYS };
+module.exports = { mergeDeskStock, markReceived, overageDisputes, STOCK_KEYS };

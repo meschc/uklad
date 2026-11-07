@@ -134,7 +134,8 @@ function keepDecisions(current, merged) {
     const n = isObject(d) ? next.get(d.id) : undefined;
     return n && !d.resolution && n.resolution && n.resolution !== "written_off" ? n : d;
   });
-  return appendOnly(kept, merged, (d) => !d.resolution);
+  // Лишнее с приёмки заводится вместе с приёмкой: откатилась она — нет и его.
+  return appendOnly(kept, merged, (d) => !d.resolution && d.kind !== "receive_overage");
 }
 
 /** Порядок статуса заявки: назад со стола — только «в работе» → «новая». */
@@ -209,6 +210,8 @@ function mergeRequests(current, incoming, people, boxes) {
  * Спорное со стола: новое добавляется, открытое можно решить (старший решает
  * за столом), решённое не меняется — решение старшего не перепишешь.
  */
+const OVERAGE_RES = new Set(["accepted", "written_off"]);
+
 function mergeDisputes(current, incoming, people) {
   const next = byId(incoming);
   const kept = (Array.isArray(current) ? current : []).map((was) => {
@@ -225,6 +228,9 @@ function mergeDisputes(current, incoming, people) {
         : was;
     if (!n.resolution) return grown;
     const d = grown;
+    // Лишнее с приёмки оставляют или списывают; «оставить» — только для него.
+    const overage = d.kind === "receive_overage";
+    if (overage ? !OVERAGE_RES.has(n.resolution) : n.resolution === "accepted") return d;
     // Решает старший, который сейчас за столом, и только от своего имени.
     if (!people.isSenior || n.resolvedBy !== people.staff) return d;
     // Списание — с причиной и не тем, кто нашёл (как в кабинете, #71):
@@ -249,8 +255,13 @@ function mergeDisputes(current, incoming, people) {
     for (const f of ["resolution", "resolvedAt", "resolvedBy", "note"]) delete open[f];
     return open;
   });
-  // Завести спорное может только тот, кто за столом.
-  return appendOnly(kept, fresh, (d) => people.present.has(d.raisedBy));
+  // Завести спорное может только тот, кто за столом. Лишнее с приёмки
+  // заводит сервер (`overageDisputes` в `deskStock.js`), не стол.
+  return appendOnly(
+    kept,
+    fresh,
+    (d) => people.present.has(d.raisedBy) && d.kind !== "receive_overage",
+  );
 }
 
 /** Чего стол не видит вовсе: переписка, подключения, чужие склады. */

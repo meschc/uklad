@@ -595,6 +595,13 @@ test(
         ["ev-recv-extra", 2, "stf-ivan", "overage"],
       ],
     );
+    // Лишнее — спорным старшему, заводит сервер.
+    assert.deepEqual(
+      snap.data.disputes
+        .filter((d) => d.kind === "receive_overage")
+        .map((d) => [d.id, d.qty, d.raisedBy]),
+      [["ovr-ev-recv-extra", 2, "stf-ivan"]],
+    );
     const moves = await db.root.query(
       `SELECT place_kind, place_ref, sum(delta)::int AS d, min(staff_ref) AS who
        FROM uklad.stock_moves WHERE org_id = $1 AND desk_id IS NOT NULL

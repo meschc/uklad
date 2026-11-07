@@ -6,6 +6,7 @@ import { isSessionLive } from "@/lib/workstation";
 import { disputesRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
 import { isSenior } from "@/lib/docFlow";
+import { resolutionsFor } from "@/lib/disputes";
 import type { Dispute, DisputeKind, DisputeResolution } from "@/lib/types";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -23,12 +24,20 @@ const KIND_KEY: Record<DisputeKind, MsgKey> = {
   not_in_tote: "disputes.kind.not_in_tote",
   extra: "disputes.kind.extra",
   not_packable: "disputes.kind.not_packable",
+  receive_overage: "disputes.kind.receive_overage",
 };
 
 const RES_KEY: Record<DisputeResolution, MsgKey> = {
   returned: "disputes.res.returned",
   moved: "disputes.res.moved",
   written_off: "disputes.res.written_off",
+  accepted: "disputes.res.accepted",
+};
+
+const ACT_KEY: Record<Exclude<DisputeResolution, "written_off">, MsgKey> = {
+  returned: "disputes.act.returned",
+  moved: "disputes.act.moved",
+  accepted: "disputes.act.accepted",
 };
 
 const fmt = (at: number) =>
@@ -121,15 +130,17 @@ export function DisputesScreen() {
                   </form>
                 ) : (
                   <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={() => void resolve.run(d.id, "returned", by)}
-                    >
-                      {t("disputes.act.returned")}
-                    </Button>
-                    <Button variant="outline" onClick={() => void resolve.run(d.id, "moved", by)}>
-                      {t("disputes.act.moved")}
-                    </Button>
+                    {resolutionsFor(d)
+                      .filter((r) => r !== "written_off")
+                      .map((r) => (
+                        <Button
+                          key={r}
+                          variant="outline"
+                          onClick={() => void resolve.run(d.id, r, by)}
+                        >
+                          {t(ACT_KEY[r])}
+                        </Button>
+                      ))}
                     <Button
                       variant="destructive"
                       onClick={() => {
@@ -137,7 +148,11 @@ export function DisputesScreen() {
                         setWriting(d.id);
                       }}
                     >
-                      {t("disputes.act.written_off")}
+                      {t(
+                        d.kind === "receive_overage"
+                          ? "disputes.act.overageOff"
+                          : "disputes.act.written_off",
+                      )}
                     </Button>
                   </div>
                 ))}
