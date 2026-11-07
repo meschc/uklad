@@ -337,6 +337,7 @@ export const ru = {
   "pick.tote.unknown": "Такой тары нет. Ярлыки тары печатаются на экране «Ярлыки».",
   "pick.tote.placed": "Этот короб стоит на месте хранения — возьмите пустую тару",
   "pick.tote.sealed": "Это невскрытое место с приёмки, а не тара",
+  "pick.tote.busy": "В этом коробе лежит товар не из сборки — возьмите пустую тару",
   "pick.tote.otherSeller": "В этой таре товар другого продавца — возьмите другую тару",
   "pick.tote.otherTarget": "В этой таре заказ на другое назначение — возьмите другую тару",
   "pick.tote.ok": "Собираем в тару {code}",
@@ -710,6 +711,7 @@ export const en: Record<keyof typeof ru, string> = {
   "pick.tote.unknown": "No such tote. Tote labels are printed on the Labels screen.",
   "pick.tote.placed": "This box sits in a storage location — take an empty tote",
   "pick.tote.sealed": "This is an unopened receiving unit, not a tote",
+  "pick.tote.busy": "This box holds goods that are not from picking — take an empty tote",
   "pick.tote.otherSeller": "This tote holds another seller's goods — take a different tote",
   "pick.tote.otherTarget":
     "This tote holds an order for another destination — take a different tote",

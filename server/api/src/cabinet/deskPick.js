@@ -33,6 +33,13 @@ const target = (r) => String(r.note ?? "").trim();
 /** Почему в эту тару нельзя (`pickToteProblem`): null — можно. */
 function toteProblem(data, tote, request) {
   if (tote.address || tote.sealed) return "tote";
+  // Тара сборки — пустая или та, в которую уже собирают открытые заявки:
+  // принятое и не разложенное в заказ не уходит (`pickToteProblem`).
+  const collecting = list(data.requests).some(
+    (r) =>
+      r.toteId === tote.id && !r.packedAt && r.status !== "shipped" && r.status !== "cancelled",
+  );
+  if (list(tote.lines).some((l) => Number(l.qty) > 0) && !collecting) return "tote";
   const partner = new Map(list(data.products).map((p) => [p.id, p.partnerId ?? ""]));
   const seller = (id) => (partner.has(id) ? partner.get(id) : `?${id}`);
   const own = seller(request.productId);

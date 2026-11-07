@@ -80,7 +80,17 @@ test("сверх заявки, с пустого места и в другую �
 });
 
 test("тара с чужим продавцом, другим назначением или на полке — нельзя", () => {
-  assert.equal(applyPickUnit(data(), unit({ toteId: "t9" }), "stf-ivan").flag, "mixed");
+  const seller = data();
+  seller.requests.push({
+    id: "r9",
+    productId: "p9",
+    qty: 1,
+    pickedQty: 1,
+    status: "in_progress",
+    toteId: "t9",
+    note: "Тула",
+  });
+  assert.equal(applyPickUnit(seller, unit({ toteId: "t9" }), "stf-ivan").flag, "mixed");
   const d = data();
   d.requests.push({
     id: "r2",
@@ -92,6 +102,25 @@ test("тара с чужим продавцом, другим назначени
   });
   assert.equal(applyPickUnit(d, unit(), "stf-ivan").flag, "mixed");
   assert.equal(applyPickUnit(data(), unit({ toteId: "b1" }), "stf-ivan").flag, "tote");
+});
+
+test("короб с принятым товаром без заявок — не тара сборки", () => {
+  // Свой продавец, своё назначение, но лежит не собранное, а принятое:
+  // в заказ оно уйти не должно, даже того же товара.
+  const d = data();
+  d.boxes[1].lines = [{ productId: "p1", qty: 3 }];
+  assert.equal(applyPickUnit(d, unit(), "stf-ivan").flag, "tote");
+  // Та же тара, когда в неё уже собирают открытую заявку, — можно.
+  d.requests.push({
+    id: "r0",
+    productId: "p1",
+    qty: 3,
+    pickedQty: 3,
+    status: "done",
+    toteId: "t1",
+    note: "Тула",
+  });
+  assert.equal(applyPickUnit(d, unit(), "stf-ivan").flag, undefined);
 });
 
 test("прямое размещение снимается, если в ячейке нет короба", () => {

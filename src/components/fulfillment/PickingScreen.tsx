@@ -40,6 +40,7 @@ type Step = "queue" | "tote" | "place" | "items";
 const TOTE_ERROR: Record<PickToteProblem, MsgKey> = {
   tote_placed: "pick.tote.placed",
   tote_sealed: "pick.tote.sealed",
+  tote_busy: "pick.tote.busy",
   tote_other_seller: "pick.tote.otherSeller",
   tote_other_target: "pick.tote.otherTarget",
 };
