@@ -399,6 +399,14 @@ test("стол не ходит в кабинет: бейджи, стол, чат
   assert.equal(again.status, 401);
   assert.equal((await call("/api/chat/threads", { desk })).status, 403);
   assert.equal((await call("/api/auth/account", { desk })).status, 403);
+  // «Только изменённое» — не для стола, но и не 403: иначе кабинет стола
+  // принял бы отказ за «снимок не для роли» и замолчал. Пишет целиком.
+  const changes = await call("/api/cabinet/snapshot/changes", {
+    desk,
+    body: { version: 1, format: 8, doc: {}, slots: [], upsert: [], remove: [] },
+  });
+  assert.equal(changes.status, 409);
+  assert.equal(changes.json.error, "diverged");
 });
 
 test("отвязка бейджем руководителя и отзыв с другого компьютера", { skip: SKIP }, async () => {
