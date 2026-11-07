@@ -57,6 +57,10 @@ export function ReceivingScreen({ staffId: badgeStaffId }: { staffId?: string } 
   const boxes = useEditor((s) => s.boxes);
   const pallets = useEditor((s) => s.pallets);
   const shipments = useEditor((s) => s.expectedShipments);
+  const requests = useEditor((s) => s.requests);
+  // Стол на сервере пишет приёмку операциями и новых тар не заводит: номер
+  // тары выдаёт счётчик склада, два стола получили бы один номер.
+  const deskOnServer = useEditor((s) => s.session.source === "server" && !!s.stationSession);
   const staff = useEditor((s) => s.warehouse.staff ?? []);
   // За столом по бейджу поставку заводит только старший смены; руководитель
   // в кабинете (бейджа нет) — всегда.
@@ -243,6 +247,16 @@ export function ReceivingScreen({ staffId: badgeStaffId }: { staffId?: string } 
       // Тара уже стоит на месте: открывать её заново — почти всегда промах
       // мимо нужного ярлыка, и молча доливать в неё товар нельзя.
       fail("recv.box.placed", { addr: formatAddress(warehouse, found.address) ?? "" });
+      return;
+    }
+    // В тару сборки не принимают: принятое смешалось бы с заказом. Сервер
+    // такую приёмку тоже не примет (`deskReceive.js`).
+    const picking = requests.some(
+      (r) =>
+        r.toteId === found.id && !r.packedAt && r.status !== "shipped" && r.status !== "cancelled",
+    );
+    if (picking) {
+      fail("recv.box.picking");
       return;
     }
     if (found.sealed) void fulfillmentRepository.openUnit(found.id);
@@ -462,7 +476,7 @@ export function ReceivingScreen({ staffId: badgeStaffId }: { staffId?: string } 
           status={scan.status}
           busy={busy}
           onScan={onScanPallet}
-          onNew={() => void onNewPallet()}
+          onNew={deskOnServer ? undefined : () => void onNewPallet()}
           onSkip={() => go({ step: "box" })}
           t={t}
         />
@@ -478,7 +492,7 @@ export function ReceivingScreen({ staffId: badgeStaffId }: { staffId?: string } 
           status={scan.status}
           busy={busy}
           onScan={onScanBox}
-          onNew={() => void onNewBox()}
+          onNew={deskOnServer ? undefined : () => void onNewBox()}
           onClosePallet={closePallet}
           t={t}
         />

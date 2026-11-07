@@ -504,3 +504,96 @@ test(
     );
   },
 );
+
+test(
+  "приёмка операциями: место вскрыто → в тару → на полку, движения за сотрудником",
+  { skip: SKIP },
+  async () => {
+    const { a, ivan } = await company("ops-r@sklad.ru", "10.0.5.8");
+    const cell = { floorId: "f1", moduleId: "m1", shelfIndex: 0, cellIndex: 2 };
+    const base = cabinetData();
+    const data = {
+      ...base,
+      warehouse: { ...base.warehouse, floors: [{ id: "f1", modules: [{ id: "m1" }] }] },
+      boxes: [{ id: "b5", barcode: "UK-BOX-5", lines: [], sealed: true, shipmentId: "s1" }],
+      expectedShipments: [
+        {
+          id: "s1",
+          status: "pending",
+          lines: [{ id: "l1", productId: "pr1", expectedQty: 4, receivedQty: 0 }],
+        },
+      ],
+      receivingEvents: [],
+    };
+    const saved = await call("/api/cabinet/snapshot", {
+      ...a,
+      body: { version: 1, format: 8, data },
+    });
+    assert.equal(saved.status, 200);
+    const desk = await makeDesk(a);
+    await call("/api/cabinet/badges/check", { desk, body: { code: ivan } });
+
+    const at = Date.now() - 500;
+    const op = (key, kind, body) => ({
+      key: `key-recv-${key}`,
+      kind,
+      body: { eventId: `ev-recv-${key}`, staffId: "stf-ivan", at, ...body },
+    });
+    const recv = (key) =>
+      op(key, "recv_unit", {
+        eventId: "ev-recv-unit",
+        productId: "pr1",
+        qty: 4,
+        boxId: "b5",
+        shipmentId: "s1",
+        lineId: "l1",
+      });
+    const r = await ops(desk, [
+      // До вскрытия в место не принять.
+      recv("early"),
+      op("open", "recv_open", { unitId: "b5" }),
+      recv("unit"),
+      // Тот же факт другим ключом (очередь и снимок) — второй раз не ляжет.
+      recv("again"),
+      op("place", "recv_place", { boxId: "b5", cell }),
+      op("close", "recv_close", { shipmentId: "s1" }),
+    ]);
+    assert.deepEqual(
+      r.json.results.map((x) => [x.key, x.status, x.reason ?? null]),
+      [
+        ["key-recv-early", "flagged", "tote"],
+        ["key-recv-open", "applied", null],
+        ["key-recv-unit", "applied", null],
+        ["key-recv-again", "applied", null],
+        ["key-recv-place", "applied", null],
+        ["key-recv-close", "applied", null],
+      ],
+    );
+
+    const { snap } = await serverEvents("ops-r@sklad.ru", a.org);
+    const box = snap.data.boxes.find((b) => b.id === "b5");
+    assert.deepEqual(
+      [box.sealed, box.lines, box.address],
+      [undefined, [{ productId: "pr1", qty: 4 }], cell],
+    );
+    const sh = snap.data.expectedShipments[0];
+    assert.deepEqual([sh.status, sh.lines[0].receivedQty], ["closed", 4]);
+    assert.deepEqual(
+      snap.data.receivingEvents.map((e) => [e.id, e.qty, e.staffId]),
+      [["ev-recv-unit", 4, "stf-ivan"]],
+    );
+    const moves = await db.root.query(
+      `SELECT place_kind, place_ref, sum(delta)::int AS d, min(staff_ref) AS who
+       FROM uklad.stock_moves WHERE org_id = $1 AND desk_id IS NOT NULL
+       GROUP BY 1, 2 ORDER BY 1, 2`,
+      [a.org],
+    );
+    assert.deepEqual(
+      moves.rows.map((m) => [m.place_kind, m.place_ref, m.d, m.who]),
+      [
+        ["box", "b5", 4, "stf-ivan"],
+        ["box_at", "f1/m1/0/2#b5", 4, "stf-ivan"],
+      ],
+    );
+  },
+);

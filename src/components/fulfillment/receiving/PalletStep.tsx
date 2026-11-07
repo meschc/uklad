@@ -21,7 +21,8 @@ export function PalletStep({
   status: ScanStatus;
   busy: boolean;
   onScan: (raw: string) => void;
-  onNew: () => void;
+  /** Нет — новую тару здесь не заводят: ярлыки печатаются заранее. */
+  onNew?: () => void;
   onSkip: () => void;
   t: TFunc;
 }) {
@@ -34,10 +35,12 @@ export function PalletStep({
         onSubmit={onScan}
       />
       <div className="flex flex-wrap gap-2">
-        <Button variant="outline" onClick={onNew} disabled={busy}>
-          <Layers className="size-3.5" />
-          {t("recv.pallet.new")}
-        </Button>
+        {onNew && (
+          <Button variant="outline" onClick={onNew} disabled={busy}>
+            <Layers className="size-3.5" />
+            {t("recv.pallet.new")}
+          </Button>
+        )}
         <Button onClick={onSkip}>
           <SkipForward className="size-3.5" />
           {t("recv.pallet.skip")}

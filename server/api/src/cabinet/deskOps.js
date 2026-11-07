@@ -13,8 +13,8 @@
  * хранится в журнале операций, но в снимок не идёт. Отказ всем запросом
  * (400) — только для того, что не похоже на операцию вовсе.
  *
- * Здесь отметки смены, упаковка (`deskPack.js`) и сборка (`deskPick.js`).
- * Приёмка переедет сюда же, и вместе с ней стол перестанет писать снимок.
+ * Здесь отметки смены, упаковка (`deskPack.js`), сборка (`deskPick.js`) и
+ * приёмка (`deskReceive.js`).
  */
 
 /* global module, require */
@@ -22,6 +22,13 @@
 
 const { applyPackEvent, applyPackDone } = require("./deskPack");
 const { applyPickUnit, applyPickDone } = require("./deskPick");
+const {
+  applyRecvUnit,
+  applyRecvOpen,
+  applyRecvPlace,
+  applyRecvAttach,
+  applyRecvClose,
+} = require("./deskReceive");
 
 const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 
@@ -35,14 +42,20 @@ const SHIFT_TYPES = new Set([
 ]);
 const PACK_KINDS = new Set(["pack_event", "pack_done"]);
 const PICK_KINDS = new Set(["pick_unit", "pick_done"]);
+const RECV_KINDS = new Set(["recv_open", "recv_unit", "recv_place", "recv_attach", "recv_close"]);
 /** Работа с товаром: правка снимка проходит сверку остатков. */
 const WORK = new Map([
   ["pack_event", applyPackEvent],
   ["pack_done", applyPackDone],
   ["pick_unit", applyPickUnit],
   ["pick_done", applyPickDone],
+  ["recv_open", applyRecvOpen],
+  ["recv_unit", applyRecvUnit],
+  ["recv_place", applyRecvPlace],
+  ["recv_attach", applyRecvAttach],
+  ["recv_close", applyRecvClose],
 ]);
-const KINDS = new Set(["shift_mark", "shift_undo", ...PACK_KINDS, ...PICK_KINDS]);
+const KINDS = new Set(["shift_mark", "shift_undo", ...PACK_KINDS, ...PICK_KINDS, ...RECV_KINDS]);
 /**
  * Окно отмены по часам сервера: как в кабинете (`MARK_UNDO_MS`) плюс запас
  * на сеть. Отмена, застрявшая в очереди дольше, помечается.
@@ -126,7 +139,7 @@ function applyDeskOps(data, ops, who, now, received = new Map(), verify = null) 
       continue;
     }
     if (WORK.has(op.kind)) {
-      // Упаковка и сборка — только за время, пока человек стоит за столом.
+      // Упаковка, сборка и приёмка — только за время, пока человек стоит за столом.
       if (body.at < shift.from - SKEW_MS || body.at > shift.to + SKEW_MS) {
         flag(op, "backdated");
         continue;
@@ -232,6 +245,12 @@ function cleanBody(body) {
     "outboundCode",
     "code",
     "requestId",
+    "boxId",
+    "palletId",
+    "unitId",
+    "shipmentId",
+    "lineId",
+    "discrepancy",
   ]) {
     if (typeof body[k] === "string") out[k] = body[k].slice(0, 200);
   }
@@ -244,6 +263,7 @@ function cleanBody(body) {
   if (isObject(body.cell)) out.cell = body.cell;
   if (typeof body.partial === "boolean") out.partial = body.partial;
   if (Number.isInteger(body.ms)) out.ms = body.ms;
+  if (Number.isInteger(body.qty)) out.qty = body.qty;
   return out;
 }
 
@@ -288,7 +308,7 @@ async function runDeskOps(c, deskId, ops, who, now, deps = {}) {
     );
     for (const row of r.rows) received.set(row.id, new Date(row.at).getTime());
   }
-  // Упаковке и сборке нужен каталог (продавец товара, сверка остатков): он в таблице
+  // Работе с товаром нужен каталог (продавец товара, сверка остатков): он в таблице
   // товаров (миграция 013), а не в снимке.
   const packing = fresh.some((op) => WORK.has(op.kind));
   const base = packing && deps.withProducts ? await deps.withProducts(c, cur.data) : cur.data;

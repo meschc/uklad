@@ -188,3 +188,66 @@ describe("createFulfillmentRepository", () => {
     expect(res.ok).toBe(true);
   });
 });
+
+describe("приёмка со стола на сервере уходит операциями", () => {
+  const queue = () => ({
+    enqueue: vi.fn(),
+    flush: vi.fn(async () => {}),
+    pending: () => ({ count: 0, since: null }),
+    subscribe: () => () => {},
+  });
+  const cell = { floorId: "f1", moduleId: "m1", shelfIndex: 0, cellIndex: 1 };
+  // Тот же объект, что у стора: действие правит его, репозиторий читает его же.
+  const desk = (state: Partial<EditorState>, server = true) =>
+    fakePort(
+      Object.assign(state, {
+        session: { source: server ? "server" : "local" } as EditorState["session"],
+        stationSession: {
+          staffId: "stf-ivan",
+          station: "receiving",
+        } as EditorState["stationSession"],
+      }),
+    );
+
+  it("принятое уходит тем же id события, что в журнале приёмки, с числом из стора", async () => {
+    const q = queue();
+    const state: Partial<EditorState> = {
+      receivingEvents: [],
+      receiveProduct: vi.fn(() => {
+        state.receivingEvents = [
+          { id: "recv_1", productId: "p1", qty: 2, boxId: "b1", timestamp: 7 },
+        ] as EditorState["receivingEvents"];
+        return "recv_1";
+      }),
+      placeBox: vi.fn(),
+      openUnit: vi.fn(),
+    };
+    const repo = createFulfillmentRepository(desk(state), q);
+    await repo.openUnit("b1");
+    await repo.receive({ productId: "p1", qty: 2.4, boxId: "b1", shipmentId: "s1", lineId: "l1" });
+    await repo.placeBox("b1", cell);
+    expect(q.enqueue.mock.calls.map((c) => c[0])).toEqual(["recv_open", "recv_unit", "recv_place"]);
+    expect(q.enqueue.mock.calls[1][1]).toEqual({
+      eventId: "recv_1",
+      staffId: "stf-ivan",
+      at: 7,
+      productId: "p1",
+      qty: 2,
+      boxId: "b1",
+      shipmentId: "s1",
+      lineId: "l1",
+      discrepancy: undefined,
+    });
+    expect(q.enqueue.mock.calls[2][1]).toMatchObject({ boxId: "b1", cell, staffId: "stf-ivan" });
+  });
+
+  it("в демо и в кабинете без стола очереди нет", async () => {
+    const q = queue();
+    await createFulfillmentRepository(desk({ openUnit: vi.fn() }, false), q).openUnit("b1");
+    await createFulfillmentRepository(
+      fakePort({ session: { source: "server" } as EditorState["session"], openUnit: vi.fn() }),
+      q,
+    ).openUnit("b1");
+    expect(q.enqueue).not.toHaveBeenCalled();
+  });
+});

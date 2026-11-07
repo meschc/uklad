@@ -24,7 +24,8 @@ export function BoxStep({
   status: ScanStatus;
   busy: boolean;
   onScan: (raw: string) => void;
-  onNew: () => void;
+  /** Нет — новую тару здесь не заводят: ярлыки печатаются заранее. */
+  onNew?: () => void;
   onClosePallet: () => void;
   t: TFunc;
 }) {
@@ -38,10 +39,12 @@ export function BoxStep({
         onSubmit={onScan}
       />
       <div className="flex flex-wrap gap-2">
-        <Button variant="outline" onClick={onNew} disabled={busy}>
-          <Plus className="size-3.5" />
-          {t("recv.box.new")}
-        </Button>
+        {onNew && (
+          <Button variant="outline" onClick={onNew} disabled={busy}>
+            <Plus className="size-3.5" />
+            {t("recv.box.new")}
+          </Button>
+        )}
         {pallet && (
           <Button onClick={onClosePallet}>
             <Layers className="size-3.5" />
