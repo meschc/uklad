@@ -175,6 +175,8 @@ export const ru = {
   "sync.err.tooBig": "Данные кабинета слишком большие для одной записи. Напишите в поддержку.",
   "sync.conflict":
     "На сервере была более новая версия кабинета, открыли её. Ваши незаписанные правки отложены в копию на этом устройстве.",
+  "sync.stockRejected":
+    "Сервер не принял движение товара: оно не сошлось с приёмкой, сборкой и упаковкой. Открыли данные с сервера, ваши правки отложены в копию на этом устройстве. Покажите это старшему смены.",
   "profile.logoutUnsynced":
     "Часть правок ещё не дошла до сервера и при выходе пропадёт. Скачайте копию, если она нужна.",
   "login.switch.body":
@@ -466,6 +468,8 @@ export const en: Record<keyof typeof ru, string> = {
   "sync.err.tooBig": "The cabinet data is too large for a single save. Please contact support.",
   "sync.conflict":
     "The server had a newer version of the cabinet, so we opened it. Your unsaved changes were set aside in a copy on this device.",
+  "sync.stockRejected":
+    "The server didn't accept the stock movement: it doesn't match receiving, picking and packing. We opened the server data, and your changes were set aside in a copy on this device. Show this to the shift lead.",
   "profile.logoutUnsynced":
     "Some changes haven't reached the server yet and will be lost when you sign out. Download a copy if you need it.",
   "login.switch.body":

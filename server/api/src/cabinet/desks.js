@@ -107,6 +107,29 @@ function deskPeople(current, who) {
   };
 }
 
+/** Отметки, которые не зависят от движения товара. */
+const SHIFT_EVENTS = new Set([
+  "shift_start",
+  "shift_end",
+  "break_start",
+  "break_end",
+  "idle_start",
+  "idle_end",
+]);
+
+/**
+ * После отката остатков: спорное как на сервере, но решения без списания
+ * («переложили», «вернули») и новое открытое сохраняются.
+ */
+function keepDecisions(current, merged) {
+  const next = byId(merged);
+  const kept = (Array.isArray(current) ? current : []).map((d) => {
+    const n = isObject(d) ? next.get(d.id) : undefined;
+    return n && !d.resolution && n.resolution && n.resolution !== "written_off" ? n : d;
+  });
+  return appendOnly(kept, merged, (d) => !d.resolution);
+}
+
 /** Порядок статуса заявки: назад со стола — только «в работе» → «новая». */
 const REQUEST_FLOW = ["new", "in_progress", "done", "shipped"];
 /** Что стол вправе менять в заявке: ход работы, а не её суть. */
@@ -150,6 +173,11 @@ function mergeRequests(current, incoming, people) {
       const picked = Number(out.pickedQty);
       out.pickedQty = Number.isFinite(picked) ? Math.min(Math.max(0, picked), qty) : r.pickedQty;
     }
+    // Собранное со стола только растёт: «вернул из сборки» и «собрал снова»
+    // давали бы товар в таре из ничего. Отменяет сборку руководитель.
+    if ((Number(out.pickedQty) || 0) < (Number(r.pickedQty) || 0)) {
+      out.pickedQty = r.pickedQty;
+    }
     if (out.packedBy !== r.packedBy && !people.present.has(out.packedBy)) {
       out.packedBy = r.packedBy;
       out.packedAt = r.packedAt;
@@ -168,12 +196,12 @@ function mergeDisputes(current, incoming, people) {
     const n = isObject(was) ? next.get(was.id) : undefined;
     if (!n || was.resolution) return was;
     // Та же недостача в той же таре копится в одном спорном (`raiseDispute`):
-    // открытое может только вырасти и только при ком-то за столом.
+    // открытое может только вырасти и только от того, кто его завёл.
     const grown =
       Number.isInteger(n.qty) &&
       n.qty > (Number(was.qty) || 0) &&
       n.qty <= 100_000 &&
-      people.present.size > 0
+      people.present.has(was.raisedBy)
         ? { ...was, qty: n.qty }
         : was;
     if (!n.resolution) return grown;
@@ -265,10 +293,18 @@ function mergeDeskWrite(current, incoming, who = {}) {
   const stock = mergeDeskStock(current, out, people);
   Object.assign(out, stock.out);
   if (stock.mismatch.length > 0) {
+    const decided = out.disputes;
     for (const key of STOCK_KEYS) {
       if (key in current) out[key] = current[key];
       else delete out[key];
     }
+    // Пики оплачиваются по журналу: упаковка, которой нет в данных, не
+    // оплачивается. Остаются отметки смены, перерывов и простоя.
+    out.staffEvents = appendOnly(current.staffEvents, out.staffEvents, (e) =>
+      SHIFT_EVENTS.has(e.type),
+    );
+    // Решения старшего, кроме списания, от остатков не зависят — оставляем.
+    out.disputes = keepDecisions(current.disputes, decided);
   }
   return { data: out, mismatch: stock.mismatch };
 }

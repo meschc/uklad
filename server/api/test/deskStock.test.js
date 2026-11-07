@@ -22,6 +22,7 @@ function base() {
         { id: "stf-petr", role: "Кладовщик" },
       ],
     },
+    products: [{ id: "p1" }, { id: "p2" }, { id: "p3" }],
     boxes: [
       { id: "b1", barcode: "UK-BOX-1", lines: [{ productId: "p1", qty: 5 }], address: "A" },
       { id: "t1", barcode: "UK-BOX-2", lines: [{ productId: "p2", qty: 2 }] },
@@ -64,12 +65,19 @@ test("товар из ничего: тара растёт без приёмки 
   const cur = base();
   const inc = {
     ...withBoxes(cur, [{ productId: "p1", qty: 9 }], cur.boxes[1].lines),
-    staffEvents: [{ id: "s1", staffId: "stf-ivan", type: "shift_start", at: 1 }],
+    staffEvents: [
+      { id: "s1", staffId: "stf-ivan", type: "shift_start", at: 1 },
+      { id: "s2", staffId: "stf-ivan", type: "pack_label", at: 2 },
+    ],
   };
   const { data, mismatch } = mergeDeskWrite(cur, inc, who);
   assert.deepEqual(mismatch, ["p1"]);
   assert.equal(data.boxes[0].lines[0].qty, 5);
-  assert.equal(data.staffEvents.length, 1);
+  // Пик без упаковки в данных не оплачивается: остаётся только отметка смены.
+  assert.deepEqual(
+    data.staffEvents.map((e) => e.id),
+    ["s1"],
+  );
 });
 
 test("приёмка за отсутствующего не засчитывается, и тара с ней не растёт", () => {
@@ -197,8 +205,54 @@ test("стол не ставит товар в ячейку, но снимает
 
 test("открытое спорное копит количество, но не уменьшается", () => {
   const cur = base();
+  // Чужую недостачу (завёл Пётр) упаковщик не раздувает.
   const more = { ...cur, disputes: [{ ...cur.disputes[0], qty: 3 }] };
-  assert.equal(mergeDeskWrite(cur, more, who).data.disputes[0].qty, 3);
+  assert.equal(mergeDeskWrite(cur, more, who).data.disputes[0].qty, 2);
   const less = { ...cur, disputes: [{ ...cur.disputes[0], qty: 1 }] };
   assert.equal(mergeDeskWrite(cur, less, who).data.disputes[0].qty, 2);
+  // Растит тот, кто завёл: чужую недостачу перед списанием не раздуть.
+  const own = { ...cur, disputes: [{ ...cur.disputes[0], raisedBy: "stf-ivan" }] };
+  const grown = { ...own, disputes: [{ ...own.disputes[0], qty: 4 }] };
+  assert.equal(mergeDeskWrite(own, grown, who).data.disputes[0].qty, 4);
+});
+
+test("«вернул из сборки и собрал снова» не создаёт товар: собранное не убывает", () => {
+  const cur = { ...base(), requests: [{ ...base().requests[0], pickedQty: 3 }] };
+  const back = {
+    ...withBoxes(cur, [{ productId: "p1", qty: 8 }], cur.boxes[1].lines),
+    requests: [{ ...cur.requests[0], pickedQty: 0 }],
+  };
+  const res = mergeDeskWrite(cur, back, who);
+  assert.deepEqual(res.mismatch, ["p1"]);
+  assert.equal(res.data.requests[0].pickedQty, 3);
+});
+
+test("приёмка товара не из каталога не засчитывается", () => {
+  const cur = base();
+  const inc = {
+    ...cur,
+    boxes: [...cur.boxes, { id: "b9", barcode: "UK-BOX-9", lines: [{ productId: "px", qty: 3 }] }],
+    receivingEvents: [
+      { id: "e1", productId: "px", qty: 3, boxId: "b9", staffId: "stf-ivan", timestamp: 1 },
+    ],
+  };
+  const res = mergeDeskWrite(cur, inc, who);
+  assert.deepEqual(res.mismatch, ["px"]);
+  assert.equal(res.data.receivingEvents.length, 0);
+});
+
+test("при откате решение старшего без списания сохраняется", () => {
+  const cur = {
+    ...base(),
+    disputes: [
+      { id: "d2", kind: "extra", boxId: "b1", productId: "p1", qty: 1, raisedBy: "stf-petr" },
+    ],
+  };
+  const inc = {
+    ...withBoxes(cur, [{ productId: "p1", qty: 9 }], cur.boxes[1].lines),
+    disputes: [{ ...cur.disputes[0], resolution: "moved", resolvedBy: "stf-olga", resolvedAt: 3 }],
+  };
+  const res = mergeDeskWrite(cur, inc, { staff: "stf-olga" });
+  assert.deepEqual(res.mismatch, ["p1"]);
+  assert.equal(res.data.disputes[0].resolution, "moved");
 });

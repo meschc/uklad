@@ -22,7 +22,8 @@
  * собранным растут вместе.
  *
  * Отдельно, по записям:
- *   · события приёмки только дописываются, и только за того, кто за столом;
+ *   · события приёмки только дописываются, только за того, кто за столом, и
+ *     только на товар из каталога;
  *   · рейсы только дописываются: уехавшее не перепишешь;
  *   · уехавший короб отгрузки не меняется, открытый не удаляется и не худеет;
  *   · размещение стол может только снять (сборка с ячейки), а не поставить.
@@ -87,6 +88,7 @@ const add = (m, k, n) => m.set(k, (m.get(k) ?? 0) + n);
  * стол пишет по своим правилам, и товары, по которым движение не сошлось.
  */
 function mergeDeskStock(current, merged, people) {
+  const catalog = new Set(list(current.products).map((p) => p.id));
   const receivingEvents = appendOnly(
     current.receivingEvents,
     merged.receivingEvents,
@@ -95,7 +97,7 @@ function mergeDeskStock(current, merged, people) {
       Number.isInteger(e.qty) &&
       e.qty > 0 &&
       e.qty <= 100_000 &&
-      typeof e.productId === "string",
+      catalog.has(e.productId),
   );
   const shipments = appendOnly(current.shipments, merged.shipments, (s) =>
     people.present.has(s.staffId),
