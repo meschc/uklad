@@ -73,7 +73,12 @@ export interface ToteOrder {
  */
 export function toteOrders(requests: readonly FulfillmentRequest[], box: Box): ToteOrder[] {
   const contents = toteContents(box);
-  const ready = requests.filter((r) => r.status === "done" && !r.packedAt);
+  const open = requests.filter((r) => r.status === "done" && !r.packedAt);
+  // Заявка помнит свою тару (`toteId`): заказ из другой тары сюда не лёг,
+  // даже если товар тот же — иначе тара Тулы закрыла бы заказ Казани. По
+  // составу угадываем только заявки, собранные без тары (старые).
+  const own = open.filter((r) => r.toteId === box.id);
+  const ready = own.length > 0 ? own : open.filter((r) => !r.toteId);
   const left = new Map(contents);
   const out: ToteOrder[] = [];
   for (const g of groupRequestsByTarget(ready)) {

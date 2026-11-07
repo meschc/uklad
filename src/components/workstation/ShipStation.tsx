@@ -10,6 +10,7 @@ import {
   missingOutbound,
   openOutbound,
   outboundUnits,
+  planLoad,
 } from "@/lib/outbound";
 import { beep } from "@/lib/beep";
 import type { FulfillmentRequest } from "@/lib/types";
@@ -142,6 +143,10 @@ function ShipGroup({
   const expected = expectedOutbound(outbound ?? [], ids);
   // Короб назначения, который не погрузили, — это заказы, которые не уедут.
   const missing = missingOutbound(expected, units);
+  // Уезжает заявка, только если все её короба в машине; короб, где есть и
+  // остающаяся заявка, рейс не пропустит — его несут старшему.
+  const plan = planLoad(outbound ?? [], ids, units);
+  const staying = items.length - plan.going.length;
 
   const onScan = (raw: string) => {
     if (!vehicle) {
@@ -150,6 +155,13 @@ function ShipGroup({
       setVehicle(plate);
       return flash("ok", t("ws.ship.vehicleOk", { v: plate }));
     }
+    // Тара на хранении (на полке или невскрытое место приёмки) в машину не
+    // едет: по документам уехало бы то, что стоит на складе.
+    const code = raw.trim().toUpperCase();
+    const stored = [...boxes, ...pallets].find(
+      (x) => x.barcode.toUpperCase() === code && (x.address || x.sealed),
+    );
+    if (stored) return flash("error", t("ws.ship.stored", { code }));
     const res = classifyLoadScan(outbound ?? [], ids, units, raw);
     switch (res.kind) {
       case "not_unit":
@@ -191,8 +203,8 @@ function ShipGroup({
     ? [
         ...new Set([
           ...missing.map((b) => b.code),
-          ...boxes.map((b) => b.barcode),
-          ...pallets.map((p) => p.barcode),
+          ...boxes.filter((b) => !b.address && !b.sealed).map((b) => b.barcode),
+          ...pallets.filter((p) => !p.address && !p.sealed).map((p) => p.barcode),
         ]),
       ]
         .filter((c) => !units.includes(c))
@@ -290,6 +302,7 @@ function ShipGroup({
           </ul>
         </div>
       )}
+      {plan.split && <p className="text-sm text-destructive">{t("ws.ship.split")}</p>}
       {expected.length > 0 && missing.length === 0 && (
         <p className="text-sm text-muted-foreground">{t("ws.ship.allLoaded")}</p>
       )}
@@ -320,7 +333,7 @@ function ShipGroup({
       <div>
         <Button
           size="lg"
-          disabled={!vehicle || units.length === 0}
+          disabled={!vehicle || units.length === 0 || plan.split || plan.going.length === 0}
           className={cn(
             (short > 0 || missing.length > 0) &&
               "border-0 bg-orange-500 text-white hover:bg-orange-600",
@@ -328,8 +341,8 @@ function ShipGroup({
           onClick={finish}
         >
           <Truck />
-          {missing.length > 0
-            ? t("ws.ship.confirmMissing", { n: missing.length })
+          {staying > 0
+            ? t("ws.ship.confirmMissing", { n: staying })
             : t(short > 0 ? "ws.ship.confirmShort" : "ws.ship.finish")}
         </Button>
       </div>

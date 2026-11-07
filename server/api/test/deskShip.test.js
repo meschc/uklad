@@ -90,6 +90,40 @@ test("в машину не кладут чужой короб, уехавший 
   assert.equal(applyShipRun(data(), run({ units: ["ПОЛКА-1"] }), "stf-ivan").flag, "bad");
 });
 
+test("заявка не уезжает без своего короба, тара с хранения в рейс не попадает", () => {
+  // r9 в коробе UK-OUT-9, который остался у стола: Тула уезжает, r9 ждёт.
+  const two = data();
+  two.requests[3].note = "Тула";
+  const r = applyShipRun(two, run({ requestIds: ["r1", "r2", "r9"] }), "stf-ivan");
+  assert.deepEqual(r.data.shipments[0].requestIds, ["r1", "r2"]);
+  assert.equal(r.data.requests[3].status, "done");
+  // Ни одна заявка без короба не уедет — рейса нет.
+  assert.equal(
+    applyShipRun(two, run({ requestIds: ["r9"], units: ["UK-PLT-77"] }), "stf-ivan").flag,
+    "stock",
+  );
+  // У r1 второй короб у стола: первый уехал бы с половиной заказа.
+  const split = data();
+  split.outboundBoxes.push({ id: "o2", code: "UK-OUT-2", requestIds: ["r1"], lines: [] });
+  assert.equal(applyShipRun(split, run(), "stf-ivan").flag, "mixed");
+  assert.equal(
+    applyShipRun(split, run({ units: ["UK-OUT-1", "UK-OUT-2"] }), "stf-ivan").flag,
+    undefined,
+  );
+  // Тара на полке и невскрытое место — на хранении, их в машину не грузят.
+  const stored = data();
+  stored.boxes.push({ id: "t2", barcode: "UK-BOX-000002", address: { moduleId: "m1" }, lines: [] });
+  stored.pallets = [{ id: "pl1", barcode: "UK-PLT-000001", sealed: true, boxIds: [] }];
+  for (const u of ["UK-BOX-000002", "uk-plt-000001"]) {
+    assert.equal(applyShipRun(stored, run({ units: ["UK-OUT-1", u] }), "stf-ivan").flag, "bad");
+  }
+  // Паллета, собранная под отгрузку (не на хранении), едет как раньше.
+  assert.equal(
+    applyShipRun(stored, run({ units: ["UK-OUT-1", "UK-PLT-000777"] }), "stf-ivan").flag,
+    undefined,
+  );
+});
+
 test("решение спорного: только старший, списание с причиной и не тем, кто нашёл", () => {
   const body = (over) => ({ eventId: "dr-1", at: AT, disputeId: "d1", ...over });
   assert.equal(

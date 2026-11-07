@@ -1,6 +1,6 @@
 import { nowMs, uid } from "../utils";
 import { addressKey } from "../address";
-import { shipOutbound } from "../outbound";
+import { planLoad, shipOutbound } from "../outbound";
 import { isOrderSource, type Box, type FulfillmentRequest, type Shipment } from "../types";
 import type { RequestsSlice, SliceCreator } from "./state";
 
@@ -293,8 +293,17 @@ export const createRequestsSlice: SliceCreator<RequestsSlice> = (set, get) => ({
 
   shipRequests: (requestIds, info) => {
     const ids = new Set(requestIds);
-    const ready = get().requests.filter((r) => ids.has(r.id) && r.status === "done");
+    const done = get().requests.filter((r) => ids.has(r.id) && r.status === "done");
     // Отгружаем только собранное: «в работе» и «новые» физически ещё на полках.
+    // Заявка, чей короб отгрузки остался у стола, ждёт следующей машины.
+    const plan = planLoad(
+      get().outboundBoxes ?? [],
+      done.map((r) => r.id),
+      info?.units ?? [],
+    );
+    if (plan.split) return null;
+    const leaving = new Set(plan.going);
+    const ready = done.filter((r) => leaving.has(r.id));
     if (!ready.length) return null;
 
     const shipmentId = uid("ship");
@@ -315,7 +324,7 @@ export const createRequestsSlice: SliceCreator<RequestsSlice> = (set, get) => ({
       // Погруженные короба уехали этим рейсом: их код свободен для нового.
       outboundBoxes: shipOutbound(s.outboundBoxes ?? [], shipment.units ?? [], shipmentId, at),
       requests: s.requests.map((r) =>
-        ids.has(r.id) && r.status === "done"
+        leaving.has(r.id)
           ? {
               ...r,
               status: "shipped",

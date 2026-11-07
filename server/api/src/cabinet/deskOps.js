@@ -45,6 +45,7 @@ const PACK_KINDS = new Set(["pack_event", "pack_done"]);
 const PICK_KINDS = new Set(["pick_unit", "pick_done"]);
 const RECV_KINDS = new Set(["recv_open", "recv_unit", "recv_place", "recv_attach", "recv_close"]);
 const SHIP_KINDS = new Set(["ship_run", "dispute_resolve"]);
+const NOW_ONLY = new Set(["dispute_resolve"]);
 /** Работа с товаром: правка снимка проходит сверку остатков. */
 const WORK = new Map([
   ["pack_event", applyPackEvent],
@@ -153,6 +154,12 @@ function applyDeskOps(data, ops, who, now, received = new Map(), verify = null) 
       // Упаковка, сборка и приёмка — только за время, пока человек стоит за столом.
       if (body.at < shift.from - SKEW_MS || body.at > shift.to + SKEW_MS) {
         flag(op, "backdated");
+        continue;
+      }
+      // Решение старшего — только от того, кто за столом сейчас: младший не
+      // может назваться старшим, который только что отошёл.
+      if (NOW_ONLY.has(op.kind) && staffRef !== who.staff) {
+        flag(op, "not_yours");
         continue;
       }
       const before = { ...state, staffEvents: events };

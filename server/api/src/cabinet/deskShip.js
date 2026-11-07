@@ -48,32 +48,54 @@ function applyShipRun(data, body, staffRef) {
   if (ready.length === 0) return { flag: "stock" };
   // Одна машина — одно назначение.
   if (new Set(ready.map(target)).size > 1) return { flag: "mixed" };
-  const going = new Set(ready.map((r) => r.id));
 
   const outbound = list(data.outboundBoxes);
+  const reqsOf = (b) => (Array.isArray(b.requestIds) ? b.requestIds : []);
+  const open = outbound.filter((b) => !b.shipmentId);
+  const loaded = new Set(units);
+  // Тара на хранении (на полке или невскрытое место приёмки) в машину не
+  // едет: по документам уехало бы то, что стоит на складе.
+  const stored = [...list(data.boxes), ...list(data.pallets)].filter((x) => x.address || x.sealed);
   for (const u of units) {
-    const open = outbound.find((b) => !b.shipmentId && code(b.code) === u);
-    if (!open) {
-      // Уехавший короб второй раз не грузят.
-      if (outbound.some((b) => b.shipmentId && code(b.code) === u)) return { flag: "mixed" };
-      continue;
+    if (stored.some((x) => code(x.barcode) === u)) return { flag: "bad" };
+    // Уехавший короб второй раз не грузят.
+    const isOpen = open.some((b) => code(b.code) === u);
+    if (!isOpen && outbound.some((b) => b.shipmentId && code(b.code) === u)) {
+      return { flag: "mixed" };
     }
-    const reqs = Array.isArray(open.requestIds) ? open.requestIds : [];
-    // Короб без заявок — поставка без заказов (FBO), проверить нечем.
-    if (reqs.length > 0 && !reqs.every((r) => going.has(r))) return { flag: "mixed" };
+  }
+  // Короб другого назначения или с несобранным заказом в машину не кладут.
+  const readyIds = new Set(ready.map((r) => r.id));
+  for (const b of open) {
+    if (loaded.has(code(b.code)) && !reqsOf(b).every((r) => readyIds.has(r))) {
+      return { flag: "mixed" };
+    }
+  }
+  // Заявка уезжает, только если все её открытые короба отгрузки в машине
+  // (`planLoad`): иначе продавец увидит «Уехало», а короб останется у стола.
+  // Остальные ждут следующей машины.
+  const leaving = ready.filter((r) =>
+    open.every((b) => !reqsOf(b).includes(r.id) || loaded.has(code(b.code))),
+  );
+  const going = new Set(leaving.map((r) => r.id));
+  if (going.size === 0) return { flag: "stock" };
+  // Погруженный короб — только свой целиком: чужой и с остающимся заказом не
+  // уедет. Короб без заявок — поставка без заказов (FBO), проверить нечем.
+  for (const b of open) {
+    if (!loaded.has(code(b.code))) continue;
+    if (!reqsOf(b).every((r) => going.has(r))) return { flag: "mixed" };
   }
 
   const at = body.at;
   const shipment = {
     id: body.eventId,
     destination: target(ready[0]),
-    requestIds: ready.map((r) => r.id),
+    requestIds: leaving.map((r) => r.id),
     vehicle,
     staffId: staffRef,
     shippedAt: at,
     units,
   };
-  const loaded = new Set(units);
   return {
     data: {
       ...data,

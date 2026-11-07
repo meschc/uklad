@@ -138,6 +138,17 @@ describe("стол упаковки от тары", () => {
     const { s } = stand([{ productId: "p1", qty: 2 }], requests);
     expect(toteOrders(requests, s().boxes[0])).toEqual([]);
   });
+
+  it("тара закрывает только заказы, собранные в неё, даже если товар тот же", () => {
+    const { s } = stand([{ productId: "p1", qty: 3 }], []);
+    const tote = s().boxes[0];
+    const requests = [
+      // Казань собрана в другую тару: тот же товар, но это не её заказ.
+      req({ id: "kzn", note: "Казань", productId: "p1", qty: 2, toteId: "box-other" }),
+      req({ id: "tula", note: "Тула", productId: "p1", qty: 3, toteId: tote.id }),
+    ];
+    expect(toteOrders(requests, tote).map((o) => o.requestIds)).toEqual([["tula"]]);
+  });
 });
 
 describe("товар не из этой тары", () => {
