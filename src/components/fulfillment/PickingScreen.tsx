@@ -12,7 +12,7 @@ import { useEditor } from "@/lib/store";
 import { addressKey, formatAddress, parseAddress } from "@/lib/address";
 import { stockAt, stockByProduct } from "@/lib/fulfillment";
 import { findByCode, matchesProductCode, parseHonestSignMock } from "@/lib/barcode";
-import type { CellAddress, FulfillmentRequest, Product } from "@/lib/types";
+import type { Box, CellAddress, FulfillmentRequest, Product } from "@/lib/types";
 import { useT, type MsgKey, type TFunc } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,8 @@ import { eyebrow } from "@/components/ui/eyebrow";
 import { card } from "@/components/ui/card";
 import { ScreenShell, EmptyState } from "./ScreenShell";
 import { ScanField, type ScanStatus } from "./ScanField";
+import { pickToteProblem, type PickToteProblem } from "@/lib/packing";
+import { useDemoHints } from "@/components/workstation/useDemoHints";
 
 /**
  * Экран «Сборка» (п.8) — зеркало приёмки по духу, но с обратной строгостью:
@@ -32,7 +34,14 @@ import { ScanField, type ScanStatus } from "./ScanField";
  * не делает, и список «Задания» показывает честную картину.
  */
 
-type Step = "queue" | "place" | "items";
+type Step = "queue" | "tote" | "place" | "items";
+
+const TOTE_ERROR: Record<PickToteProblem, MsgKey> = {
+  tote_placed: "pick.tote.placed",
+  tote_sealed: "pick.tote.sealed",
+  tote_other_seller: "pick.tote.otherSeller",
+  tote_other_target: "pick.tote.otherTarget",
+};
 
 /**
  * `autoStart` — режим стола: вместо очереди из всех заявок сборщику выпадает
@@ -50,6 +59,11 @@ export function PickingScreen({ autoStart = false }: { autoStart?: boolean } = {
   const recordPick = useEditor((s) => s.recordPick);
   const completeRequest = useEditor((s) => s.completeRequest);
   const goToView = useEditor((s) => s.goToView);
+  const createBox = useEditor((s) => s.createBox);
+  const demoHints = useDemoHints();
+  // Тара сборки живёт между заявками: сборщик идёт с одной тарой, пока она
+  // подходит (тот же продавец и назначение).
+  const [toteId, setToteId] = useState<string | null>(null);
 
   const [step, setStep] = useState<Step>("queue");
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -81,13 +95,41 @@ export function PickingScreen({ autoStart = false }: { autoStart?: boolean } = {
   const ok = (key: MsgKey, vars?: Record<string, string | number>) =>
     setScan({ status: "ok", msg: t(key, vars) });
 
+  const toteFor = (r: FulfillmentRequest, id: string | null) => {
+    const box = id ? boxes.find((b) => b.id === id) : undefined;
+    if (!box) return { box: undefined, problem: null };
+    return { box, problem: pickToteProblem({ tote: box, request: r, requests, products }) };
+  };
+  const tote = toteId ? boxes.find((b) => b.id === toteId) : undefined;
+
   const open = (r: FulfillmentRequest) => {
     startPicking(r.id);
     setActiveId(r.id);
     setAddr(null);
     setScan({ status: "idle" });
     setSeenSerials(new Set());
-    setStep("place");
+    // Прежняя тара не подходит этой заявке — просим другую, сказав почему.
+    const { box, problem } = toteFor(r, toteId);
+    if (box && problem) {
+      setToteId(null);
+      fail(TOTE_ERROR[problem]);
+    }
+    setStep(box && !problem ? "place" : "tote");
+  };
+
+  const takeTote = (box: Box) => {
+    if (!active) return;
+    const problem = pickToteProblem({ tote: box, request: active, requests, products });
+    if (problem) return fail(TOTE_ERROR[problem]);
+    setToteId(box.id);
+    ok("pick.tote.ok", { code: box.barcode });
+    setStep(addr ? "items" : "place");
+  };
+
+  const onScanTote = (raw: string) => {
+    const box = findByCode(boxes, raw);
+    if (!box) return fail("pick.tote.unknown");
+    takeTote(box);
   };
 
   const backToQueue = () => {
@@ -144,7 +186,7 @@ export function PickingScreen({ autoStart = false }: { autoStart?: boolean } = {
       setSeenSerials((prev) => new Set(prev).add(mark.serial));
     }
     const before = active.pickedQty ?? 0;
-    const now = recordPick(active.id, active.productId, addr);
+    const now = recordPick(active.id, active.productId, addr, toteId ?? undefined);
     if (now === before) {
       fail("pick.item.empty");
       return;
@@ -287,6 +329,33 @@ export function PickingScreen({ autoStart = false }: { autoStart?: boolean } = {
             addr={addr ? (formatAddress(warehouse, addr) ?? undefined) : undefined}
             t={t}
           />
+
+          {step === "tote" && (
+            <>
+              <ScanField
+                label={t("pick.tote.label")}
+                hint={t("pick.tote.hint")}
+                placeholder="UK-BOX-…"
+                status={scan.status}
+                minLength={3}
+                onSubmit={onScanTote}
+              />
+              {demoHints && (
+                <Button size="sm" variant="outline" onClick={() => takeTote(createBox())}>
+                  {t("pick.tote.demoNew")}
+                </Button>
+              )}
+            </>
+          )}
+
+          {step !== "tote" && tote && (
+            <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+              <span className="font-mono">{t("pick.tote.current", { code: tote.barcode })}</span>
+              <Button size="sm" variant="ghost" onClick={() => setStep("tote")}>
+                {t("pick.tote.change")}
+              </Button>
+            </div>
+          )}
 
           {step === "place" && (
             <>

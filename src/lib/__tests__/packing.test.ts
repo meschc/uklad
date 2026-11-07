@@ -4,7 +4,7 @@ import { createWorkstationSlice } from "../store/workstation.slice";
 import { createDisputesSlice } from "../store/disputes.slice";
 import type { DisputesSlice, EditorState, WorkstationSlice } from "../store/state";
 import { badgeCode } from "../workstation";
-import { boxesHolding, explainScan, toteOrders } from "../packing";
+import { boxesHolding, explainScan, pickToteProblem, toteOrders } from "../packing";
 import type { Box, FulfillmentRequest, Product } from "../types";
 
 const slice = createWorkstationSlice as unknown as StateCreator<
@@ -167,5 +167,57 @@ describe("защита от ошибок упаковщика", () => {
     const used = s().packSession!.units[0].labelCode;
     expect(explainScan(s().packSession!, s().boxes[0], s().products, used)).toBe("label_not_item");
     expect(explainScan(s().packSession!, s().boxes[0], s().products, "4600000000017")).toBeNull();
+  });
+});
+
+describe("тара сборки", () => {
+  const products = [
+    { id: "pA", partnerId: "A" },
+    { id: "pA2", partnerId: "A" },
+    { id: "pB", partnerId: "B" },
+  ] as Product[];
+  const tote = (lines: Box["lines"], patch: Partial<Box> = {}) =>
+    ({ id: "t1", barcode: "UK-BOX-7", createdAt: 0, lines, ...patch }) as Box;
+  const req = (id: string, productId: string, note: string, patch = {}) =>
+    ({
+      id,
+      productId,
+      qty: 1,
+      note,
+      status: "in_progress",
+      createdAt: 0,
+      ...patch,
+    }) as FulfillmentRequest;
+
+  it("пустая тара подходит любой заявке, короб на полке и невскрытое место — нет", () => {
+    const r = req("r1", "pA", "Тула");
+    expect(pickToteProblem({ tote: tote([]), request: r, requests: [r], products })).toBeNull();
+    expect(
+      pickToteProblem({
+        tote: tote([], { address: { floorId: "f", rowId: "r", section: 1, shelf: 1 } as never }),
+        request: r,
+        requests: [r],
+        products,
+      }),
+    ).toBe("tote_placed");
+    expect(
+      pickToteProblem({ tote: tote([], { sealed: true }), request: r, requests: [r], products }),
+    ).toBe("tote_sealed");
+  });
+
+  it("в одной таре — один продавец и одно назначение", () => {
+    const inTote = req("r0", "pA", "Тула", { pickedQty: 1, toteId: "t1" });
+    const t = tote([{ productId: "pA", qty: 1 }]);
+    const sameAll = req("r1", "pA2", "Тула");
+    const otherSeller = req("r2", "pB", "Тула");
+    const otherTarget = req("r3", "pA2", "Самара");
+    const all = [inTote, sameAll, otherSeller, otherTarget];
+    expect(pickToteProblem({ tote: t, request: sameAll, requests: all, products })).toBeNull();
+    expect(pickToteProblem({ tote: t, request: otherSeller, requests: all, products })).toBe(
+      "tote_other_seller",
+    );
+    expect(pickToteProblem({ tote: t, request: otherTarget, requests: all, products })).toBe(
+      "tote_other_target",
+    );
   });
 });

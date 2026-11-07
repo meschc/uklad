@@ -567,7 +567,11 @@ export interface RequestsSlice {
    * Отметить собранную единицу и списать её с места. Возвращает, сколько
    * собрано всего по заявке.
    */
-  recordPick: (id: string, productId: string, addr: CellAddress) => number;
+  /**
+   * Снять единицу с места в заявку. `toteId` — тара сборки: снятое ложится в
+   * неё, и упаковщик потом берёт заказ из этой тары.
+   */
+  recordPick: (id: string, productId: string, addr: CellAddress, toteId?: string) => number;
   /** Закрыть заявку: полностью или частично (собрали меньше запрошенного). */
   completeRequest: (id: string, partial?: boolean) => void;
   /**

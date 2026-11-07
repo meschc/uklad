@@ -193,6 +193,27 @@ describe("recordPick", () => {
     expect(store.getState().requests[0].pickedQty).toBe(1);
   });
 
+  it("кладёт снятое в тару сборки и помечает заявку этой тарой", () => {
+    // Arrange: снятое с полки не исчезает — оно едет к столу упаковки.
+    const shelf = makeBox({ address: ADDR, lines: [{ productId: "p1", qty: 4 }] });
+    const tote = makeBox({ id: "tote1", lines: [] });
+    const store = makeRequestsStore({
+      requests: [makeRequest({ id: "r1", productId: "p1", qty: 3 })],
+      boxes: [shelf, tote],
+      placements: {},
+      removeFromBox: () => 1,
+    });
+
+    // Act
+    store.getState().recordPick("r1", "p1", ADDR, "tote1");
+    store.getState().recordPick("r1", "p1", ADDR, "tote1");
+
+    // Assert
+    const after = store.getState();
+    expect(after.boxes.find((b) => b.id === "tote1")?.lines).toEqual([{ productId: "p1", qty: 2 }]);
+    expect(after.requests[0]).toMatchObject({ pickedQty: 2, toteId: "tote1" });
+  });
+
   it("списывает прямое размещение, когда коробки на месте нет", () => {
     // Arrange
     const clearPlacement = vi.fn();

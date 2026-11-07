@@ -16,6 +16,11 @@
  *     ≤ D ≤
  *   Δ коробов отгрузки + max(0, Δ собранного) + списано + снято размещений.
  *
+ * Собранное в тару (у заявки есть `toteId`) в эти границы не входит: штука
+ * осталась в коробах, только переехала с полки в тару. Зато прирост
+ * собранного в тару должен найтись приростом в этой таре (или в коробе
+ * отгрузки, если упаковали в той же записи).
+ *
  * Левая граница не даёт создать товар (в таре или в коробе отгрузки) из
  * ничего, правая — убрать его без следа. Перекладывание между тарами сумму не
  * меняет. Кроссдок проходит: принятое сразу закрывает заявки, и тара с
@@ -112,11 +117,29 @@ function mergeDeskStock(current, merged, people) {
   const received = new Map();
   const knownEvents = byId(current.receivingEvents);
   for (const e of receivingEvents) if (!knownEvents.has(e.id)) add(received, e.productId, e.qty);
+  // Собранное без тары уходит из коробов («снято в заявку»), собранное в
+  // тару остаётся в коробах: полка −1, тара +1. Поэтому второе не даёт
+  // права убрать товар, а должно найтись в таре (или уже в коробе отгрузки).
   const picked = new Map();
+  const pickedToTote = new Map();
+  const totes = new Set();
   const before = byId(current.requests);
   for (const r of list(merged.requests)) {
     const d = num(r.pickedQty) - num(before.get(r.id)?.pickedQty);
-    if (d) add(picked, r.productId, d);
+    if (!d) continue;
+    if (r.toteId) {
+      add(pickedToTote, r.productId, d);
+      totes.add(r.toteId);
+    } else add(picked, r.productId, d);
+  }
+  const toteGain = new Map();
+  const wasBox = byId(current.boxes);
+  for (const b of list(merged.boxes)) {
+    if (!totes.has(b.id)) continue;
+    const was = linesBy(wasBox.has(b.id) ? [wasBox.get(b.id)] : []);
+    for (const [p, q] of linesBy([b])) {
+      if (q > (was.get(p) ?? 0)) add(toteGain, p, q - (was.get(p) ?? 0));
+    }
   }
   const writtenOff = new Map();
   const wasOpen = byId(current.disputes);
@@ -131,7 +154,13 @@ function mergeDeskStock(current, merged, people) {
     if (!(p in placements)) unplaced.set(p, 1);
   }
 
-  const ids = new Set([...boxNet.keys(), ...outNet.keys(), ...received.keys(), ...picked.keys()]);
+  const ids = new Set([
+    ...boxNet.keys(),
+    ...outNet.keys(),
+    ...received.keys(),
+    ...picked.keys(),
+    ...pickedToTote.keys(),
+  ]);
   const mismatch = [];
   for (const p of ids) {
     const left = (received.get(p) ?? 0) - (boxNet.get(p) ?? 0);
@@ -140,7 +169,8 @@ function mergeDeskStock(current, merged, people) {
     // Снятое с ячейки могло лечь в тару сборки: это не товар из ничего.
     const lo = o + Math.min(0, pk) - (unplaced.get(p) ?? 0);
     const hi = o + Math.max(0, pk) + (writtenOff.get(p) ?? 0) + (unplaced.get(p) ?? 0);
-    if (o < 0 || left < lo || left > hi) mismatch.push(p);
+    const intoTote = (pickedToTote.get(p) ?? 0) > (toteGain.get(p) ?? 0) + Math.max(0, o);
+    if (o < 0 || left < lo || left > hi || intoTote) mismatch.push(p);
   }
   return { out, mismatch };
 }

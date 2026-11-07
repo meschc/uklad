@@ -253,3 +253,40 @@ export function explainScan(
   if (products.some((p) => matchesProductCode(p, raw))) return "product_not_label";
   return null;
 }
+
+export type PickToteProblem =
+  "tote_placed" | "tote_sealed" | "tote_other_seller" | "tote_other_target";
+
+/**
+ * Можно ли собирать эту заявку в эту тару. Тара сборки — короб без места на
+ * складе: короб на полке — это хранение, а не тара. В одной таре — один
+ * продавец и одно назначение, как и в коробе отгрузки (`packTargetProblem`):
+ * иначе на столе упаковки её не разложить ни в один короб.
+ */
+export function pickToteProblem(input: {
+  tote: Box;
+  request: FulfillmentRequest;
+  requests: readonly FulfillmentRequest[];
+  products: readonly Product[];
+}): PickToteProblem | null {
+  const { tote, request, requests, products } = input;
+  if (tote.address) return "tote_placed";
+  if (tote.sealed) return "tote_sealed";
+  const sellerOf = (id: string) => {
+    const p = products.find((x) => x.id === id);
+    return p ? (p.partnerId ?? "") : `?${id}`;
+  };
+  const inTote = [...toteContents(tote).keys()];
+  if (inTote.some((p) => sellerOf(p) !== sellerOf(request.productId))) return "tote_other_seller";
+  // Назначение тары — у заявок, собранных в неё и ещё не упакованных.
+  const target = request.note?.trim() || "";
+  const other = requests.some(
+    (r) =>
+      r.toteId === tote.id &&
+      !r.packedAt &&
+      r.status !== "shipped" &&
+      r.status !== "cancelled" &&
+      (r.note?.trim() || "") !== target,
+  );
+  return other ? "tote_other_target" : null;
+}

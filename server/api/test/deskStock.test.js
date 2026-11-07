@@ -110,6 +110,21 @@ test("сборка: снятое с полки ушло в собранное п
   assert.equal(data.requests[0].pickedQty, 1);
 });
 
+test("сборка в тару: с полки в тару сборки и в собранное по заявке", () => {
+  const cur = base();
+  const inc = {
+    ...withBoxes(cur, [{ productId: "p1", qty: 4 }], [...cur.boxes[1].lines]),
+    boxes: [
+      { ...cur.boxes[0], lines: [{ productId: "p1", qty: 4 }] },
+      { ...cur.boxes[1], lines: [...cur.boxes[1].lines, { productId: "p1", qty: 1 }] },
+    ],
+    requests: [{ ...cur.requests[0], pickedQty: 1, toteId: "t1" }],
+  };
+  const { data, mismatch } = mergeDeskWrite(cur, inc, who);
+  assert.deepEqual(mismatch, []);
+  assert.equal(data.requests[0].toteId, "t1");
+});
+
 test("упаковка: из тары в короб отгрузки — проходит; короб из ничего — нет", () => {
   const cur = base();
   const out = [
@@ -255,4 +270,112 @@ test("при откате решение старшего без списани�
   const res = mergeDeskWrite(cur, inc, { staff: "stf-olga" });
   assert.deepEqual(res.mismatch, ["p1"]);
   assert.equal(res.data.disputes[0].resolution, "moved");
+});
+
+/** Сборка в тару: полка b1 −take, тара t1 +put, собрано +picked (с тарой). */
+function pickIntoTote(cur, { take = 1, put = 1, picked = 1, toteId = "t1" } = {}) {
+  const shelf = cur.boxes[0].lines[0].qty;
+  return {
+    ...cur,
+    boxes: [
+      { ...cur.boxes[0], lines: [{ productId: "p1", qty: shelf - take }] },
+      { ...cur.boxes[1], lines: [...cur.boxes[1].lines, { productId: "p1", qty: put }] },
+    ],
+    requests: [{ ...cur.requests[0], pickedQty: picked, toteId }],
+  };
+}
+
+test("сборка в тару: подделки дают расхождение", () => {
+  const cur = base();
+  // (а) в таре +1, с полки ничего не сняли.
+  assert.deepEqual(mergeDeskWrite(cur, pickIntoTote(cur, { take: 0 }), who).mismatch, ["p1"]);
+  // (б) в таре +1, собранное не выросло.
+  const noPick = { ...pickIntoTote(cur, { take: 0 }), requests: cur.requests };
+  assert.deepEqual(mergeDeskWrite(cur, noPick, who).mismatch, ["p1"]);
+  // (в) с полки −1, в таре +1, а собрано +2.
+  assert.deepEqual(mergeDeskWrite(cur, pickIntoTote(cur, { picked: 2 }), who).mismatch, ["p1"]);
+  // Собрал в тару и одну штуку «потерял» с полки: собранное в тару права
+  // убрать товар не даёт.
+  assert.deepEqual(mergeDeskWrite(cur, pickIntoTote(cur, { take: 2 }), who).mismatch, ["p1"]);
+});
+
+test("тару сборки сервер проверяет сам", () => {
+  const cur = base();
+  // Короб с местом хранения — не тара: toteId не принимается, и тогда
+  // собранное считается снятым в заявку (как до тары).
+  const shelfAsTote = pickIntoTote(cur, { toteId: "b1" });
+  assert.equal(mergeDeskWrite(cur, shelfAsTote, who).data.requests[0].toteId, undefined);
+  // После упаковки тару заявки не переписать.
+  const packed = {
+    ...cur,
+    requests: [{ ...cur.requests[0], pickedQty: 3, packedAt: 5, toteId: "t1" }],
+  };
+  const moved = { ...packed, requests: [{ ...packed.requests[0], toteId: "t9" }] };
+  assert.equal(mergeDeskWrite(packed, moved, who).data.requests[0].toteId, "t1");
+});
+
+test("вся цепочка: приёмка → сборка в тару → упаковка → рейс; остаток = принято − уехало", () => {
+  const step = (cur, inc) => {
+    const r = mergeDeskWrite(cur, inc, who);
+    assert.deepEqual(r.mismatch, []);
+    return r.data;
+  };
+  let s = {
+    ...base(),
+    boxes: [
+      { ...base().boxes[0], lines: [] },
+      { ...base().boxes[1], lines: [] },
+    ],
+  };
+  // Приняли 5 на полку.
+  s = step(s, {
+    ...s,
+    boxes: [{ ...s.boxes[0], lines: [{ productId: "p1", qty: 5 }] }, s.boxes[1]],
+    receivingEvents: [
+      { id: "e1", productId: "p1", qty: 5, boxId: "b1", staffId: "stf-ivan", timestamp: 1 },
+    ],
+  });
+  // Собрали 3 в тару по одной.
+  for (let n = 1; n <= 3; n += 1) {
+    s = step(s, {
+      ...s,
+      boxes: [
+        { ...s.boxes[0], lines: [{ productId: "p1", qty: 5 - n }] },
+        { ...s.boxes[1], lines: [{ productId: "p1", qty: n }] },
+      ],
+      requests: [
+        { ...s.requests[0], pickedQty: n, toteId: "t1", status: n === 3 ? "done" : "in_progress" },
+      ],
+    });
+  }
+  // Упаковали тару в короб отгрузки.
+  s = step(s, {
+    ...s,
+    boxes: [s.boxes[0], { ...s.boxes[1], lines: [] }],
+    outboundBoxes: [
+      { id: "o1", code: "UK-OUT-A", lines: [{ productId: "p1", qty: 3 }], requestIds: ["r1"] },
+    ],
+    requests: [{ ...s.requests[0], packedAt: 9, packedBy: "stf-ivan" }],
+  });
+  // Рейс увёз короб.
+  s = step(s, {
+    ...s,
+    outboundBoxes: [{ ...s.outboundBoxes[0], shipmentId: "sh1", shippedAt: 10 }],
+    shipments: [
+      { id: "sh1", destination: "", requestIds: ["r1"], staffId: "stf-ivan", shippedAt: 10 },
+    ],
+  });
+  const inBoxes = s.boxes.flatMap((b) => b.lines).reduce((n, l) => n + l.qty, 0);
+  const gone = s.outboundBoxes
+    .filter((b) => b.shipmentId)
+    .flatMap((b) => b.lines)
+    .reduce((n, l) => n + l.qty, 0);
+  assert.equal(inBoxes, 5 - 3);
+  assert.equal(gone, 3);
+  // Двойного счёта нет: собранное (3) не дало права снять ещё что-то с полки.
+  const steal = {
+    ...s,
+    boxes: [{ ...s.boxes[0], lines: [{ productId: "p1", qty: 1 }] }, s.boxes[1]],
+  };
+  assert.deepEqual(mergeDeskWrite(s, steal, who).mismatch, ["p1"]);
 });
