@@ -271,6 +271,8 @@ function applyRecvClose(data, body) {
 }
 
 const MAX_UNITS = 200;
+/** Мест на поставку без накладной; по накладной — до двух её объёмов. */
+const MAX_PER_SHIPMENT = 300;
 const count = (v) => (Number.isInteger(v) && v >= 0 && v <= MAX_UNITS ? v : null);
 const declared = (v) =>
   v === undefined ? undefined : Number.isInteger(v) && v >= 0 && v <= 100_000 ? v : null;
@@ -311,9 +313,11 @@ function applyRecvCargo(data, body, staffRef) {
   const bIds = cargoIds(body.eventId, nB, "b");
   const pallets = list(data.pallets);
   const boxes = list(data.boxes);
-  // Повтор: места этого события уже заведены (ответ первой попытки потерялся).
+  // Места этого события уже есть — значит, их завела другая операция: повтор
+  // своей сервер узнаёт по ключу и сюда не пускает. Ответить местами чужого
+  // события — второй комплект ярлыков на те же коды.
   if (pallets.some((p) => pIds.includes(p.id)) || boxes.some((b) => bIds.includes(b.id))) {
-    return { data };
+    return { flag: "bad" };
   }
   const at = body.at;
   let pSeq = nextSeq(data.palletSeq, pallets, "UK-PLT-");
@@ -329,6 +333,11 @@ function applyRecvCargo(data, body, staffRef) {
   const newPallets = pIds.map((id) => unit(id, `UK-PLT-${++pSeq}`, { boxIds: [] }));
   const newBoxes = bIds.map((id) => unit(id, `UK-BOX-${++bSeq}`, { lines: [] }));
   const prev = isObject(shipment.cargo) ? shipment.cargo : null;
+  // Мест у поставки не больше разумного: пустые места товара не создают, но
+  // раздувают снимок, и кабинет компании перестал бы сохраняться.
+  const total = (Number(prev?.pallets) || 0) + (Number(prev?.boxes) || 0) + nP + nB;
+  const said = (dP ?? prev?.declaredPallets ?? 0) + (dB ?? prev?.declaredBoxes ?? 0);
+  if (total > Math.max(2 * said, MAX_PER_SHIPMENT)) return { flag: "bad" };
   const cargo = {
     declaredPallets: dP ?? prev?.declaredPallets,
     declaredBoxes: dB ?? prev?.declaredBoxes,

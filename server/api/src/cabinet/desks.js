@@ -588,10 +588,12 @@ function createDesks({ auth, cfg, send, log }) {
         withProducts,
         withoutProducts,
         recordMoves,
+        maxBytes: MAX_SNAPSHOT_BYTES,
       });
     });
     if (!out) return gone(res);
     if (out.limited) return limited(res);
+    if (out.tooLarge) return send(res, 413, { ok: false, error: "too_large" });
     // Снимка ещё нет: класть отметки некуда, его заводит руководитель.
     if (out.conflict !== undefined) return send(res, 409, { ok: false, error: "no_snapshot" });
     return send(res, 200, { ok: true, ...out });

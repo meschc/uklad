@@ -288,7 +288,9 @@ async function sendToServer(ops: DeskOp[]): Promise<SendOutcome> {
     });
     if (res.status === 200) return { kind: "ok", results: res.results };
     if (res.status === 404) return { kind: "drop", lost: false };
-    if (res.status === 400) return { kind: "drop", lost: true };
+    // 413 — снимок компании упёрся в лимит: повтор не поможет, человек
+    // узнаёт, сколько не дошло.
+    if (res.status === 400 || res.status === 413) return { kind: "drop", lost: true };
     return { kind: "retry" };
   } catch {
     return { kind: "retry" };

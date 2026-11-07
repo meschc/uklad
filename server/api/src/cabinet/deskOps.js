@@ -17,7 +17,7 @@
  * приёмка (`deskReceive.js`).
  */
 
-/* global module, require */
+/* global module, require, Buffer */
 /* eslint-disable @typescript-eslint/no-require-imports */
 
 const { applyPackEvent, applyPackDone } = require("./deskPack");
@@ -324,7 +324,7 @@ async function runDeskOps(c, deskId, ops, who, now, deps = {}) {
   if (!cur) return { conflict: 0 };
   const keys = [...new Set(ops.map((op) => op.key))];
   const seen = await c.query(
-    `SELECT op_key, status, reason FROM uklad.desk_ops
+    `SELECT op_key, status, reason, kind, body FROM uklad.desk_ops
      WHERE org_id = uklad.current_org() AND desk_id = $2 AND op_key = ANY($1::text[])`,
     [keys, deskId],
   );
@@ -353,6 +353,14 @@ async function runDeskOps(c, deskId, ops, who, now, deps = {}) {
   const packing = fresh.some((op) => WORK.has(op.kind));
   const base = packing && deps.withProducts ? await deps.withProducts(c, cur.data) : cur.data;
   const applied = applyDeskOps(base, fresh, who, now, received, deps.verify ?? null);
+  // Снимок, который не влезет в лимит, не пишем вовсе — ни снимок, ни журнал
+  // операций: стол получает понятный отказ, а не 500.
+  const payload = applied.changed
+    ? JSON.stringify(packing ? deps.withoutProducts(applied.data) : applied.data)
+    : null;
+  if (payload && deps.maxBytes && Buffer.byteLength(payload) > deps.maxBytes) {
+    return { tooLarge: true };
+  }
   if (applied.results.length > 0) {
     await c.query(
       `INSERT INTO uklad.desk_ops (org_id, op_key, desk_id, staff_ref, kind, body,
@@ -386,7 +394,7 @@ async function runDeskOps(c, deskId, ops, who, now, deps = {}) {
            updated_at = now(), updated_by = NULL, updated_by_desk = $2
        WHERE org_id = uklad.current_org()
        RETURNING version`,
-      [JSON.stringify(packing ? deps.withoutProducts(applied.data) : applied.data), deskId],
+      [payload, deskId],
     );
     version = upd.rows[0].version;
     if (packing && deps.recordMoves) {
@@ -412,8 +420,10 @@ async function runDeskOps(c, deskId, ops, who, now, deps = {}) {
       ...(duplicate ? { duplicate: true } : {}),
       // Грузовая приёмка: номера мест выдал сервер, по ним стол печатает
       // ярлыки. Повтор ключа отвечает теми же местами.
-      ...(op.kind === "recv_cargo" && status === "applied"
-        ? { made: cargoMade(applied.data, op.body) }
+      // Повтор ключа отвечает по телу первой операции, а не по присланному:
+      // иначе другим eventId можно было бы получить чужие места.
+      ...((old ? old.kind : op.kind) === "recv_cargo" && status === "applied"
+        ? { made: cargoMade(applied.data, old ? old.body : first.op.body) }
         : {}),
     };
   });

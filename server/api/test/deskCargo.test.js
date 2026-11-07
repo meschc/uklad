@@ -54,8 +54,9 @@ test("места получают номера после самого стар�
     at: AT,
     staffId: "stf-ivan",
   });
-  // Повтор того же события — ничего нового.
-  assert.equal(applyRecvCargo(r.data, body(), "stf-ivan").data, r.data);
+  // Новая операция с тем же событием — это чужие места: второй комплект
+  // ярлыков на те же коды не выдаём. Свой повтор сервер узнаёт по ключу.
+  assert.equal(applyRecvCargo(r.data, body(), "stf-ivan").flag, "bad");
 });
 
 test("закрытая поставка, ноль мест и мусор в числах — отказ", () => {
@@ -68,7 +69,37 @@ test("закрытая поставка, ноль мест и мусор в чи
     { pallets: 201 },
     { declaredBoxes: "3" },
     { eventId: "x".repeat(81) },
+    // Мест больше двух объёмов накладной (и больше 300) не бывает.
+    { pallets: 200, boxes: 101, declaredPallets: 1 },
   ]) {
     assert.equal(applyRecvCargo(data(), body(over), "stf-ivan").flag, "bad", JSON.stringify(over));
   }
+});
+
+test("по накладной мест можно до двух её объёмов", () => {
+  const big = body({ pallets: 200, boxes: 200, declaredBoxes: 400 });
+  assert.equal(applyRecvCargo(data(), big, "stf-ivan").flag, undefined);
+});
+
+test("снимок, который не влезет в лимит, не пишется вовсе — ни снимок, ни журнал", async () => {
+  const { runDeskOps } = require("../src/cabinet/deskOps");
+  const writes = [];
+  const c = {
+    query: async (sql) => {
+      if (/FROM uklad\.cabinet_snapshots/.test(sql))
+        return { rows: [{ version: 1, data: data() }] };
+      if (/SELECT op_key/.test(sql)) return { rows: [] };
+      writes.push(sql);
+      return { rows: [] };
+    },
+  };
+  const op = { key: "key-cargo-big", kind: "recv_cargo", body: { ...body(), staffId: "stf-ivan" } };
+  const who = { staff: "stf-ivan", staffSince: AT - 60_000 };
+  const out = await runDeskOps(c, "desk-1", [op], who, AT, {
+    maxBytes: 100,
+    withProducts: async (_c, d) => d,
+    withoutProducts: (d) => d,
+  });
+  assert.deepEqual(out, { tooLarge: true });
+  assert.deepEqual(writes, []);
 });

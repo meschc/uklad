@@ -816,6 +816,13 @@ test(
     assert.deepEqual(r.json.results, [
       { key: "key-cargo-1xx", status: "applied", duplicate: true, made },
     ]);
+    // Тот же ключ с другим событием отвечает местами первой операции, а не
+    // чужими; новая операция с чужим событием — отказ, мест не выдаёт.
+    const other = { ...cargo, body: { ...cargo.body, eventId: "cargo-x" } };
+    r = await ops(desk, [other]);
+    assert.deepEqual(r.json.results[0].made, made);
+    r = await ops(desk, [{ ...cargo, key: "key-cargo-2xx" }]);
+    assert.deepEqual(r.json.results, [{ key: "key-cargo-2xx", status: "flagged", reason: "bad" }]);
     const { snap } = await serverEvents("ops-k@sklad.ru", a.org);
     assert.equal(snap.data.pallets.length, 3);
     assert.deepEqual([snap.data.palletSeq, snap.data.boxSeq], [42, 8]);
