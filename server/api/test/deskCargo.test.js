@@ -110,6 +110,11 @@ test("снимок у потолка — предупреждение нам с 
   const log = { warn: (m) => said.push(m) };
   warnNearLimit(log, "org-1", 0.5 * MAX_SNAPSHOT_BYTES);
   assert.deepEqual(said, []);
-  warnNearLimit(log, "org-1", 0.75 * MAX_SNAPSHOT_BYTES);
+  warnNearLimit(log, "org-1", 0.75 * MAX_SNAPSHOT_BYTES, 1_000);
   assert.deepEqual(said, ["[uklad] снимок компании org-1 заполнен на 75% лимита записи"]);
+  // Следующая запись в тот же час — тишина, через час — снова.
+  warnNearLimit(log, "org-1", 0.8 * MAX_SNAPSHOT_BYTES, 1_000 + 60_000);
+  assert.equal(said.length, 1);
+  warnNearLimit(log, "org-1", 0.8 * MAX_SNAPSHOT_BYTES, 1_000 + 3_600_000);
+  assert.equal(said.length, 2);
 });

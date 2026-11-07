@@ -39,8 +39,13 @@ const NEAR_LIMIT = 0.7;
  * Снимок компании подбирается к лимиту записи: дальше у неё перестанет
  * сохраняться работа. Это знаем мы, по журналу сервера, за недели до отказа.
  */
-function warnNearLimit(log, orgId, bytes) {
+const warned = new Map();
+const WARN_EVERY_MS = 60 * 60 * 1000;
+function warnNearLimit(log, orgId, bytes, now = Date.now()) {
   if (bytes < NEAR_LIMIT * MAX_SNAPSHOT_BYTES) return;
+  // Раз в час на компанию: стол пишет сотни раз в час, журнал не засоряем.
+  if (now - (warned.get(orgId) ?? -Infinity) < WARN_EVERY_MS) return;
+  warned.set(orgId, now);
   const pct = Math.round((bytes / MAX_SNAPSHOT_BYTES) * 100);
   log.warn?.(`[uklad] снимок компании ${orgId} заполнен на ${pct}% лимита записи`);
 }
