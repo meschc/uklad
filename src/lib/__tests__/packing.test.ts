@@ -211,6 +211,18 @@ describe("тара сборки", () => {
     ).toBe("tote_sealed");
   });
 
+  it("короб с товаром без открытых заявок — не тара сборки", () => {
+    const r = req("r1", "pA", "Тула");
+    const t = tote([{ productId: "pA", qty: 3 }]);
+    expect(pickToteProblem({ tote: t, request: r, requests: [r], products })).toBe("tote_busy");
+    // Заявки с этой тарой уже упакованы или уехали — их товар не «собирается».
+    const packed = req("r0", "pA", "Тула", { toteId: "t1", packedAt: 5 });
+    const gone = req("r2", "pA", "Тула", { toteId: "t1", status: "shipped" });
+    expect(pickToteProblem({ tote: t, request: r, requests: [r, packed, gone], products })).toBe(
+      "tote_busy",
+    );
+  });
+
   it("в одной таре — один продавец и одно назначение", () => {
     const inTote = req("r0", "pA", "Тула", { pickedQty: 1, toteId: "t1" });
     const t = tote([{ productId: "pA", qty: 1 }]);

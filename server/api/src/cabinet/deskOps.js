@@ -13,14 +13,15 @@
  * хранится в журнале операций, но в снимок не идёт. Отказ всем запросом
  * (400) — только для того, что не похоже на операцию вовсе.
  *
- * Здесь отметки смены и упаковка (`deskPack.js`). Сборка и приёмка переедут
- * сюда же по одной, и вместе с последней стол перестанет писать снимок.
+ * Здесь отметки смены, упаковка (`deskPack.js`) и сборка (`deskPick.js`).
+ * Приёмка переедет сюда же, и вместе с ней стол перестанет писать снимок.
  */
 
 /* global module, require */
 /* eslint-disable @typescript-eslint/no-require-imports */
 
 const { applyPackEvent, applyPackDone } = require("./deskPack");
+const { applyPickUnit, applyPickDone } = require("./deskPick");
 
 const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 
@@ -33,7 +34,15 @@ const SHIFT_TYPES = new Set([
   "idle_end",
 ]);
 const PACK_KINDS = new Set(["pack_event", "pack_done"]);
-const KINDS = new Set(["shift_mark", "shift_undo", ...PACK_KINDS]);
+const PICK_KINDS = new Set(["pick_unit", "pick_done"]);
+/** Работа с товаром: правка снимка проходит сверку остатков. */
+const WORK = new Map([
+  ["pack_event", applyPackEvent],
+  ["pack_done", applyPackDone],
+  ["pick_unit", applyPickUnit],
+  ["pick_done", applyPickDone],
+]);
+const KINDS = new Set(["shift_mark", "shift_undo", ...PACK_KINDS, ...PICK_KINDS]);
 /**
  * Окно отмены по часам сервера: как в кабинете (`MARK_UNDO_MS`) плюс запас
  * на сеть. Отмена, застрявшая в очереди дольше, помечается.
@@ -116,15 +125,14 @@ function applyDeskOps(data, ops, who, now, received = new Map(), verify = null) 
       flag(op, "bad");
       continue;
     }
-    if (PACK_KINDS.has(op.kind)) {
-      // Упаковка — только за время, пока человек стоит за столом.
+    if (WORK.has(op.kind)) {
+      // Упаковка и сборка — только за время, пока человек стоит за столом.
       if (body.at < shift.from - SKEW_MS || body.at > shift.to + SKEW_MS) {
         flag(op, "backdated");
         continue;
       }
       const before = { ...state, staffEvents: events };
-      const apply = op.kind === "pack_event" ? applyPackEvent : applyPackDone;
-      const r = apply(before, body, staffRef);
+      const r = WORK.get(op.kind)(before, body, staffRef);
       if (r.flag) {
         flag(op, r.flag);
         continue;
@@ -223,6 +231,7 @@ function cleanBody(body) {
     "outboundId",
     "outboundCode",
     "code",
+    "requestId",
   ]) {
     if (typeof body[k] === "string") out[k] = body[k].slice(0, 200);
   }
@@ -232,6 +241,8 @@ function cleanBody(body) {
     if (Array.isArray(body[k])) out[k] = body[k];
   }
   if (isObject(body.dispute)) out.dispute = body.dispute;
+  if (isObject(body.cell)) out.cell = body.cell;
+  if (typeof body.partial === "boolean") out.partial = body.partial;
   if (Number.isInteger(body.ms)) out.ms = body.ms;
   return out;
 }
@@ -277,9 +288,9 @@ async function runDeskOps(c, deskId, ops, who, now, deps = {}) {
     );
     for (const row of r.rows) received.set(row.id, new Date(row.at).getTime());
   }
-  // Упаковке нужен каталог (продавец товара, сверка остатков): он в таблице
+  // Упаковке и сборке нужен каталог (продавец товара, сверка остатков): он в таблице
   // товаров (миграция 013), а не в снимке.
-  const packing = fresh.some((op) => PACK_KINDS.has(op.kind));
+  const packing = fresh.some((op) => WORK.has(op.kind));
   const base = packing && deps.withProducts ? await deps.withProducts(c, cur.data) : cur.data;
   const applied = applyDeskOps(base, fresh, who, now, received, deps.verify ?? null);
   if (applied.results.length > 0) {

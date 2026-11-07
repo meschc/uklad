@@ -20,7 +20,16 @@ import { readLocal, writeLocal } from "../safeStorage";
  * остаётся в шапке.
  */
 
-export type DeskOpKind = "shift_mark" | "shift_undo" | "pack_event" | "pack_done";
+export type DeskOpKind =
+  "shift_mark" | "shift_undo" | "pack_event" | "pack_done" | "pick_unit" | "pick_done";
+const KINDS: readonly DeskOpKind[] = [
+  "shift_mark",
+  "shift_undo",
+  "pack_event",
+  "pack_done",
+  "pick_unit",
+  "pick_done",
+];
 export interface DeskOpBody {
   eventId: string;
   staffId: string;
@@ -40,6 +49,10 @@ export interface DeskOpBody {
   lines?: { productId: string; qty: number }[];
   requestIds?: string[];
   shortages?: { id: string; productId: string; qty: number }[];
+  // Сборка (`pick_unit`, `pick_done`).
+  requestId?: string;
+  cell?: { floorId: string; moduleId: string; shelfIndex: number; cellIndex: number };
+  partial?: boolean;
 }
 export interface DeskOp {
   key: string;
@@ -103,7 +116,7 @@ const isOpLike = (x: unknown): x is DeskOp => {
   const op = x as DeskOp;
   return (
     typeof op.key === "string" &&
-    ["shift_mark", "shift_undo", "pack_event", "pack_done"].includes(op.kind) &&
+    KINDS.includes(op.kind) &&
     !!op.body &&
     typeof op.body.at === "number"
   );
@@ -231,7 +244,10 @@ const randomKey = () => {
 async function sayFlagged(kinds: DeskOpKind[]) {
   const { useEditor } = await import("../store");
   const packing = kinds.some((k) => k === "pack_event" || k === "pack_done");
-  useEditor.getState().showToast(packing ? "ws.opPackRejected" : "ws.opRejected");
+  const picking = kinds.some((k) => k === "pick_unit" || k === "pick_done");
+  useEditor
+    .getState()
+    .showToast(packing ? "ws.opPackRejected" : picking ? "ws.opPickRejected" : "ws.opRejected");
 }
 
 async function sayLost(n: number) {

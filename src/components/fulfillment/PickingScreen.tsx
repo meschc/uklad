@@ -9,6 +9,7 @@ import {
   ScanLine,
 } from "lucide-react";
 import { useEditor } from "@/lib/store";
+import { workstationRepository } from "@/lib/data/workstationRepository";
 import { addressKey, formatAddress, parseAddress } from "@/lib/address";
 import { stockAt, stockByProduct } from "@/lib/fulfillment";
 import { findByCode, matchesProductCode, parseHonestSignMock } from "@/lib/barcode";
@@ -39,6 +40,7 @@ type Step = "queue" | "tote" | "place" | "items";
 const TOTE_ERROR: Record<PickToteProblem, MsgKey> = {
   tote_placed: "pick.tote.placed",
   tote_sealed: "pick.tote.sealed",
+  tote_busy: "pick.tote.busy",
   tote_other_seller: "pick.tote.otherSeller",
   tote_other_target: "pick.tote.otherTarget",
 };
@@ -56,8 +58,6 @@ export function PickingScreen({ autoStart = false }: { autoStart?: boolean } = {
   const placements = useEditor((s) => s.placements);
   const boxes = useEditor((s) => s.boxes);
   const startPicking = useEditor((s) => s.startPicking);
-  const recordPick = useEditor((s) => s.recordPick);
-  const completeRequest = useEditor((s) => s.completeRequest);
   const goToView = useEditor((s) => s.goToView);
   const createBox = useEditor((s) => s.createBox);
   const demoHints = useDemoHints();
@@ -169,7 +169,7 @@ export function PickingScreen({ autoStart = false }: { autoStart?: boolean } = {
 
   // --- 8.3 поштучный скан товара --------------------------------------------
 
-  const onScanItem = (raw: string) => {
+  const onScanItem = async (raw: string) => {
     if (!active || !addr || !product) return;
     const mark = parseHonestSignMock(raw);
     const matches =
@@ -189,14 +189,20 @@ export function PickingScreen({ autoStart = false }: { autoStart?: boolean } = {
       setSeenSerials((prev) => new Set(prev).add(mark.serial));
     }
     const before = active.pickedQty ?? 0;
-    const now = recordPick(active.id, active.productId, addr, toteId ?? undefined);
+    const res = await workstationRepository.pickUnit(
+      active.id,
+      active.productId,
+      addr,
+      toteId ?? undefined,
+    );
+    const now = res.ok ? res.data : before;
     if (now === before) {
       fail("pick.item.empty");
       return;
     }
     if (now >= active.qty) {
       // 8.4 — собрано ровно запрошенное: заявка закрывается сама.
-      completeRequest(active.id, false);
+      void workstationRepository.pickDone(active.id, false);
       ok("pick.item.completed", { n: now });
       setStep("queue");
       setActiveId(null);
@@ -397,7 +403,7 @@ export function PickingScreen({ autoStart = false }: { autoStart?: boolean } = {
                     <Button
                       size="sm"
                       onClick={() => {
-                        completeRequest(active.id, true);
+                        void workstationRepository.pickDone(active.id, true);
                         setConfirmPartial(false);
                         backToQueue();
                       }}

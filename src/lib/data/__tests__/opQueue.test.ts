@@ -203,6 +203,41 @@ describe("workstationRepository: отметки смены операциями"
     expect(q.enqueue).toHaveBeenCalledWith("pack_done", facts);
   });
 
+  it("снятая штука на сервере уходит фактом сборки, пустой скан — нет", async () => {
+    const q = fakeQueue();
+    const p = port(true);
+    const cell = { floorId: "f1", moduleId: "m1", shelfIndex: 0, cellIndex: 0 };
+    const st = p.get() as unknown as Record<string, unknown> & { staffEvents: StaffEvent[] };
+    st.stationSession = { staffId: "stf-ivan", station: "picking" };
+    let picked = 0;
+    st.requests = [{ id: "r1", productId: "p1", qty: 2, pickedQty: 0 }];
+    st.recordPick = vi.fn((_id: string, productId: string) => {
+      if (picked >= 1) return picked;
+      picked += 1;
+      (st.requests as { pickedQty: number }[])[0].pickedQty = picked;
+      st.staffEvents = [
+        ...st.staffEvents,
+        { id: "sev_pick", staffId: "stf-ivan", type: "pick_scan", at: 9, productId },
+      ];
+      return picked;
+    });
+    const repo = createWorkstationRepository(p, badges, desks, q);
+    expect(await repo.pickUnit("r1", "p1", cell, "t1")).toEqual({ ok: true, data: 1 });
+    expect(st.recordPick).toHaveBeenCalledWith("r1", "p1", cell, "t1", "stf-ivan");
+    expect(q.enqueue).toHaveBeenCalledWith("pick_unit", {
+      eventId: "sev_pick",
+      staffId: "stf-ivan",
+      at: 9,
+      requestId: "r1",
+      productId: "p1",
+      toteId: "t1",
+      cell,
+    });
+    // Снять было нечего — серверу сообщать не о чем.
+    await repo.pickUnit("r1", "p1", cell, "t1");
+    expect(q.enqueue).toHaveBeenCalledTimes(1);
+  });
+
   it("в демо очереди нет", async () => {
     const q = fakeQueue();
     const repo = createWorkstationRepository(port(false), badges, desks, q);
