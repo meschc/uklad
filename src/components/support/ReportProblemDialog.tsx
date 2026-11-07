@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { CheckCircle2, LifeBuoy, X } from "lucide-react";
 import { PERSIST_KEY, useEditor } from "@/lib/store";
+import { readSaved } from "@/lib/store/persistStorage";
 import { useT } from "@/lib/i18n";
 import { useCommand } from "@/lib/useCommand";
 import {
@@ -35,7 +36,7 @@ import { Backdrop } from "@/components/ui/backdrop";
 
 function savedState(): unknown | null {
   try {
-    const raw = localStorage.getItem(PERSIST_KEY);
+    const raw = readSaved(PERSIST_KEY);
     return raw ? ((JSON.parse(raw) as { state?: unknown }).state ?? null) : null;
   } catch {
     return null;

@@ -68,6 +68,9 @@ React 18 + TypeScript + Vite 6 · Zustand 4 (`persist`) · Tailwind + shadcn/ui
   https://claude.ai/artifact/Tadqydujk1gJrKcysRePzm, правится вместе с кодом
   (см. «Соглашения»).
 - **Данные только в localStorage**, ключ `uklad-store-v1`, версия персиста 8.
+  Сохранение сжато (`lib/storeCodec.ts`) и пишется не чаще раза в секунду
+  (`store/persistStorage.ts`); мимо стора — только `writeSaved`/`removeSaved`/
+  `readSaved`, сырой `localStorage.getItem` его не прочитает.
   Второй «аккаунт» (продавец) — это режим просмотра тех же данных, а не сеть.
 - **Весь доступ к данным — через `lib/data/*Repository.ts`**, а не напрямую в
   localStorage. Сегодня внутри тот же Zustand, сигнатуры уже асинхронные:

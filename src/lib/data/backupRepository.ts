@@ -1,5 +1,6 @@
 import { backupFileName, makeBackup, parseBackup } from "../backup";
 import { PERSIST_KEY, PERSIST_VERSION, persistedState } from "../store";
+import { writeSaved } from "../store/persistStorage";
 import { TARIFF_FEATURES } from "../tariff";
 import { storePort, type StorePort } from "./repository";
 import { attempt, fail, type Result } from "./result";
@@ -36,7 +37,9 @@ export const BEFORE_RESTORE_KEY = `${PERSIST_KEY}.before-restore`;
 const localTarget: PersistTarget = {
   // Не `writeLocal`: тот молчит при сбое, а здесь отказ записи — это
   // несостоявшееся восстановление, о котором человек должен узнать.
-  write: (key, value) => localStorage.setItem(key, value),
+  // Сжатым, как пишет стор (`persistStorage.ts`): отложенная запись стора
+  // после этого не ляжет поверх восстановленного.
+  write: (key, value) => writeSaved(key, value),
 };
 
 export function createBackupRepository(
