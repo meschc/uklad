@@ -90,21 +90,25 @@ function eachList(data, visit) {
 }
 
 /**
- * Кабинет → документ с метками и строки. Строка — `{ w, d, ref, pos, data }`:
- * склад, список, id записи, место в списке и сама запись.
+ * Кабинет → документ с метками, строки и разложенные списки. Строка —
+ * `{ w, d, ref, pos, data }`: склад, список, id записи, место в списке и сама
+ * запись; список (`slots`) — `{ w, d }`. Корзина работает только внутри
+ * разложенных списков: список, оставшийся документом, своих строк не теряет.
  */
 function splitRecords(data) {
   const items = [];
+  const slots = [];
   const doc = eachList(data, (holder, key, wh) => {
     const list = holder[key];
     if (!rowable(list)) return;
+    slots.push({ w: wh, d: key });
     const from = NEWEST_FIRST.has(key) ? -list.length : 0;
     list.forEach((item, i) =>
       items.push({ w: wh, d: key, ref: item.id, pos: from + i, data: item }),
     );
     holder[key] = { [MARK]: list.length };
   });
-  return { doc, items };
+  return { doc, items, slots };
 }
 
 /** Документ с метками и строки базы → кабинет целиком. */
@@ -139,11 +143,41 @@ async function loadRecords(c, doc) {
   return assembleRecords(doc, rows);
 }
 
+/** Списки, которые не теряют записи в ходе работы: заявка отменяется, а не удаляется. */
+const GUARDED = ["requests", "shipments", "receivingEvents", "staffEvents", "disputes"];
+
+/**
+ * Уводит ли запись в корзину больше половины живого списка (и не меньше
+ * трёх записей). Так выглядит сбой — пустой стор после ошибки, — а не работа
+ * человека: из корзины в кабинете не вернуть, поэтому такую запись сервер не
+ * принимает, как массовое удаление товаров.
+ */
+async function massGone(c, items, slots) {
+  if (slots.length === 0) return false;
+  const { rows } = await c.query(
+    `WITH keep AS MATERIALIZED (
+       SELECT w, d, ref FROM jsonb_to_recordset($1::jsonb) AS t(w text, d text, ref text)),
+     slot AS (SELECT w, d FROM jsonb_to_recordset($2::jsonb) AS t(w text, d text))
+     SELECT count(*)::int AS live,
+            count(*) FILTER (WHERE NOT EXISTS (
+              SELECT 1 FROM keep k
+              WHERE k.w = r.warehouse_ref AND k.d = r.domain AND k.ref = r.ref))::int AS gone
+     FROM uklad.cabinet_records r
+     JOIN slot s ON s.w = r.warehouse_ref AND s.d = r.domain
+     WHERE r.org_id = uklad.current_org() AND r.deleted_at IS NULL
+       AND r.domain = ANY($3::text[])
+     GROUP BY r.warehouse_ref, r.domain`,
+    [JSON.stringify(items.map(({ w, d, ref }) => ({ w, d, ref }))), JSON.stringify(slots), GUARDED],
+  );
+  return rows.some(({ live, gone }) => gone >= 3 && gone * 2 > live);
+}
+
 /**
  * Строки кабинета → база. Новое добавляется, изменённое переписывается (и
- * только оно), пропавшее уходит в корзину, вернувшееся — из неё.
+ * только оно), пропавшее из разложенного списка уходит в корзину,
+ * вернувшееся — из неё.
  */
-async function storeRecords(c, items) {
+async function storeRecords(c, items, slots) {
   await c.query(
     `INSERT INTO uklad.cabinet_records AS r (org_id, warehouse_ref, domain, ref, position, data)
      SELECT DISTINCT ON (w, d, ref) uklad.current_org(), w, d, ref, pos, data
@@ -157,12 +191,15 @@ async function storeRecords(c, items) {
   );
   await c.query(
     `WITH keep AS MATERIALIZED (
-       SELECT w, d, ref FROM jsonb_to_recordset($1::jsonb) AS t(w text, d text, ref text))
+       SELECT w, d, ref FROM jsonb_to_recordset($1::jsonb) AS t(w text, d text, ref text)),
+     slot AS (SELECT w, d FROM jsonb_to_recordset($2::jsonb) AS t(w text, d text))
      UPDATE uklad.cabinet_records r SET deleted_at = now(), updated_at = now()
+     FROM slot s
      WHERE r.org_id = uklad.current_org() AND r.deleted_at IS NULL
+       AND s.w = r.warehouse_ref AND s.d = r.domain
        AND NOT EXISTS (SELECT 1 FROM keep k
                        WHERE k.w = r.warehouse_ref AND k.d = r.domain AND k.ref = r.ref)`,
-    [JSON.stringify(items.map(({ w, d, ref }) => ({ w, d, ref })))],
+    [JSON.stringify(items.map(({ w, d, ref }) => ({ w, d, ref }))), JSON.stringify(slots)],
   );
 }
 
@@ -175,4 +212,5 @@ module.exports = {
   isMark,
   loadRecords,
   storeRecords,
+  massGone,
 };

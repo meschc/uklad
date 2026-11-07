@@ -595,3 +595,29 @@ test(
     ]);
   },
 );
+
+test(
+  "пустой список не уносит работу склада в корзину: больше половины разом — 409",
+  { skip: SKIP },
+  async () => {
+    const a = await owner("snap-z@sklad.ru", "10.0.1.23");
+    const reqs = ["r1", "r2", "r3", "r4"].map((id) => ({ id }));
+    const write = (requests, version) =>
+      call("/api/cabinet/snapshot", {
+        ...a,
+        body: { version, format: 8, data: { ...data("x"), requests } },
+      });
+    assert.equal((await write(reqs, 0)).status, 200);
+    // Пустой стор после сбоя: отказ, строки целы.
+    const wiped = await write([], 1);
+    assert.equal(wiped.status, 409);
+    assert.equal(wiped.json.error, "records_mass_delete");
+    assert.equal((await call("/api/cabinet/snapshot", a)).json.snapshot.data.requests.length, 4);
+    // Одну-две за раз — обычная работа.
+    assert.equal((await write(reqs.slice(1), 1)).status, 200);
+    assert.equal((await write(reqs.slice(2), 2)).status, 200);
+    // Две последние — меньше трёх, удаляются.
+    assert.equal((await write([], 3)).status, 200);
+    assert.deepEqual((await call("/api/cabinet/snapshot", a)).json.snapshot.data.requests, []);
+  },
+);

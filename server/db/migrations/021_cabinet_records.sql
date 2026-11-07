@@ -37,11 +37,17 @@ CREATE POLICY cabinet_records_own ON uklad.cabinet_records
 GRANT SELECT, INSERT, UPDATE ON uklad.cabinet_records TO uklad_app;
 
 -- Удаление компании (миграция 009) стирает её снимок — вместе с ним уходят
--- и строки: в них адреса получателей и журнал смен.
+-- и строки: в них адреса получателей и журнал смен. FORCE действует и на
+-- владельца, поэтому компания для политики ставится явно (на случай, если
+-- снимок стирают без неё), а прежняя возвращается.
 CREATE FUNCTION uklad.drop_cabinet_records() RETURNS trigger
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = uklad, pg_temp AS $$
+DECLARE
+  was text := current_setting('app.org_id', true);
 BEGIN
+  PERFORM set_config('app.org_id', OLD.org_id::text, true);
   DELETE FROM uklad.cabinet_records WHERE org_id = OLD.org_id;
+  PERFORM set_config('app.org_id', coalesce(was, ''), true);
   RETURN OLD;
 END $$;
 REVOKE EXECUTE ON FUNCTION uklad.drop_cabinet_records() FROM PUBLIC;

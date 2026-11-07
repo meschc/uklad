@@ -549,7 +549,7 @@ function createDesks({ auth, cfg, send, log }) {
          RETURNING version`,
         [merged, format, d.deskId],
       );
-      await storeRecords(c, split.items);
+      await storeRecords(c, split.items, split.slots);
       // Остатки не сошлись: остальное записано, но копия стола уже не
       // совпадает с сервером — пусть заберёт свежий снимок, как при конфликте.
       await recordMoves(c, full, write.data, upd.rows[0].version, {

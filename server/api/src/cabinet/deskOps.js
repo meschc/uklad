@@ -400,7 +400,7 @@ async function runDeskOps(c, deskId, ops, who, now, deps = {}) {
       [payload, deskId],
     );
     version = upd.rows[0].version;
-    if (split.items && deps.storeRecords) await deps.storeRecords(c, split.items);
+    if (split.items && deps.storeRecords) await deps.storeRecords(c, split.items, split.slots);
     if (packing && deps.recordMoves) {
       await deps.recordMoves(c, base, applied.data, version, {
         deskId,

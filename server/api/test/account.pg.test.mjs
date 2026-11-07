@@ -150,6 +150,11 @@ test(
         data: { warehouse: { id: "wh", name: "секрет" }, requests: [{ id: "r1", to: "адрес" }] },
       },
     });
+    const had = await db.root.query(
+      `SELECT count(*)::int AS n FROM uklad.cabinet_records WHERE org_id = $1`,
+      [a.org],
+    );
+    assert.equal(had.rows[0].n, 1, "заявка легла строкой");
     await call("/api/auth/account/delete", { ...a, body: { password: PW } });
     // Ещё не срок: уборка ничего не трогает.
     await account.purge();

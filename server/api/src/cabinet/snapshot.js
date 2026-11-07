@@ -30,7 +30,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { createRateLimit } = require("../rateLimit");
 const { recordMoves, invalidWork } = require("./moves");
-const { splitRecords, loadRecords, storeRecords, hasMarks } = require("./records");
+const { splitRecords, loadRecords, storeRecords, hasMarks, massGone } = require("./records");
 
 // Пустой кабинет — единицы килобайт, демо со всей историей — около мегабайта.
 // Восемь — с запасом, но не столько, чтобы одним запросом забить диск.
@@ -169,7 +169,10 @@ function createSnapshot({ auth, send, log }) {
     const out = await withSession(req, async (c, ctx) => {
       if (!mayUse(ctx)) return FORBIDDEN;
       if (!writes.take(ctx.orgId)) return LIMITED;
-      if (await massDelete(c, b.data)) return { conflict: true, products: true };
+      if (await massDelete(c, b.data)) return { conflict: true, error: "products_mass_delete" };
+      if (await massGone(c, split.items, split.slots)) {
+        return { conflict: true, error: "records_mass_delete" };
+      }
       // Первая запись: строки ещё нет. Двое одновременно — второй получит
       // конфликт ключа и ответ 409, а не вторую строку.
       if (version === 0) {
@@ -182,7 +185,7 @@ function createSnapshot({ auth, send, log }) {
         );
         if (!rows[0]) return { conflict: true };
         await storeProducts(c, b.data);
-        await storeRecords(c, split.items);
+        await storeRecords(c, split.items, split.slots);
         await recordMoves(c, {}, b.data, rows[0].version, { memberId: ctx.memberId });
         return { version: rows[0].version, orgId: ctx.orgId };
       }
@@ -200,7 +203,7 @@ function createSnapshot({ auth, send, log }) {
       // движений считает, что прибыло и убыло.
       const before = await loadRecords(c, rows[0].previous);
       await storeProducts(c, b.data);
-      await storeRecords(c, split.items);
+      await storeRecords(c, split.items, split.slots);
       // Что где прибыло и убыло — в журнал движений, с тем, кто записал.
       await recordMoves(c, before, b.data, rows[0].version, {
         memberId: ctx.memberId,
@@ -217,7 +220,7 @@ function createSnapshot({ auth, send, log }) {
         );
         return rows[0]?.version ?? 0;
       });
-      const error = out.products ? "products_mass_delete" : "conflict";
+      const error = out.error ?? "conflict";
       return send(res, 409, { ok: false, error, version: current ?? 0 });
     }
     // Потолок теперь — размер одной записи кабинета целиком, а не документа.

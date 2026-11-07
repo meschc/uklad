@@ -260,7 +260,7 @@ export function startServerSync(orgId: string): () => void {
   // До сверки с сервером писать нечего и сравнивать не с чем: шум стора на
   // старте (тосты, выбор этажа) иначе поднял бы версию без единой правки.
   let booted = false;
-  let rejected: "stock" | "products" | null = null;
+  let rejected: "stock" | "products" | "records" | null = null;
 
   /** Снимок не для этой роли: не пишем и не повторяем, говорим один раз. */
   const forbid = () => {
@@ -400,12 +400,13 @@ export function startServerSync(orgId: string): () => void {
 
   try {
     const note = sessionStorage.getItem(NOTE_KEY);
-    if (note === "conflict" || note === "stock" || note === "products") {
+    if (note === "conflict" || note === "stock" || note === "products" || note === "records") {
       sessionStorage.removeItem(NOTE_KEY);
       const toast = {
         conflict: "sync.conflict",
         stock: "sync.stockRejected",
         products: "sync.productsRejected",
+        records: "sync.recordsRejected",
       } as const;
       useEditor.getState().showToast(toast[note]);
     }
