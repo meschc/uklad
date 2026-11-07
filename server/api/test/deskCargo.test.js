@@ -97,8 +97,8 @@ test("снимок, который не влезет в лимит, не пиш�
   const who = { staff: "stf-ivan", staffSince: AT - 60_000 };
   const out = await runDeskOps(c, "desk-1", [op], who, AT, {
     maxBytes: 100,
-    withProducts: async (_c, d) => d,
-    withoutProducts: (d) => d,
+    load: async (_c, d) => d,
+    split: (d) => ({ doc: d, items: [] }),
   });
   assert.deepEqual(out, { tooLarge: true });
   assert.deepEqual(writes, []);

@@ -22,12 +22,15 @@
  *
  * Товары в снимке не хранятся (миграция 013): кабинет присылает и получает
  * их в составе снимка, а сервер раскладывает по строкам `uklad.products` —
- * со своей корзиной и журналом правок.
+ * со своей корзиной и журналом правок. Так же — работа склада (миграция 021,
+ * `records.js`): заявки, приёмка, тара, рейсы и журнал смен лежат строками
+ * `uklad.cabinet_records`, в документе от них остаются метки.
  */
 /* global require, module, Buffer */
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { createRateLimit } = require("../rateLimit");
 const { recordMoves, invalidWork } = require("./moves");
+const { splitRecords, loadRecords, storeRecords, hasMarks } = require("./records");
 
 // Пустой кабинет — единицы килобайт, демо со всей историей — около мегабайта.
 // Восемь — с запасом, но не столько, чтобы одним запросом забить диск.
@@ -58,17 +61,28 @@ const LIMITED = Symbol("limited");
 /** Снимок — весь кабинет: только руководитель, вошедший паролем. */
 const mayUse = (ctx) => Boolean(ctx.accountId) && ctx.can("staff.manage");
 
-/** Снимок с товарами компании из таблицы — то, что видит кабинет. */
-async function withProducts(c, data) {
+/**
+ * Документ компании из базы → кабинет целиком, как его видит браузер:
+ * товары — из таблицы, работа склада — со строк.
+ */
+async function loadCabinet(c, doc) {
   const { rows } = await c.query(`SELECT uklad.load_products() AS products`);
-  return { ...data, products: rows[0].products };
+  return { ...(await loadRecords(c, doc)), products: rows[0].products };
 }
 
-/** Снимок без товаров — то, что хранится в `cabinet_snapshots`. */
+/** Снимок без товаров. */
 function withoutProducts(data) {
   const out = { ...data };
   delete out.products;
   return out;
+}
+
+/**
+ * Кабинет → что хранится в `cabinet_snapshots` (`doc`: без товаров, с
+ * метками вместо списков) и строки работы склада (`items`).
+ */
+function splitCabinet(data) {
+  return splitRecords(withoutProducts(data));
 }
 
 /**
@@ -115,7 +129,7 @@ function createSnapshot({ auth, send, log }) {
          WHERE org_id = uklad.current_org()`,
       );
       if (!rows[0]) return false;
-      return { ...rows[0], data: await withProducts(c, rows[0].data) };
+      return { ...rows[0], data: await loadCabinet(c, rows[0].data) };
     });
     if (out === null) return send(res, 401, { ok: false });
     if (out === FORBIDDEN) return send(res, 403, { ok: false });
@@ -145,11 +159,13 @@ function createSnapshot({ auth, send, log }) {
       typeof b.data !== "object" ||
       Array.isArray(b.data) ||
       ("products" in b.data && !Array.isArray(b.data.products)) ||
-      invalidWork(b.data)
+      invalidWork(b.data) ||
+      hasMarks(b.data)
     ) {
       return send(res, 400, { ok: false, error: "bad_request" });
     }
-    const data = JSON.stringify(withoutProducts(b.data));
+    const split = splitCabinet(b.data);
+    const data = JSON.stringify(split.doc);
     const out = await withSession(req, async (c, ctx) => {
       if (!mayUse(ctx)) return FORBIDDEN;
       if (!writes.take(ctx.orgId)) return LIMITED;
@@ -166,6 +182,7 @@ function createSnapshot({ auth, send, log }) {
         );
         if (!rows[0]) return { conflict: true };
         await storeProducts(c, b.data);
+        await storeRecords(c, split.items);
         await recordMoves(c, {}, b.data, rows[0].version, { memberId: ctx.memberId });
         return { version: rows[0].version, orgId: ctx.orgId };
       }
@@ -179,9 +196,13 @@ function createSnapshot({ auth, send, log }) {
       );
       // Версия не сошлась — товары тоже не трогаем: запись целиком не прошла.
       if (!rows[0]) return { conflict: true };
+      // Прежний кабинет целиком — пока строки ещё старые: по нему журнал
+      // движений считает, что прибыло и убыло.
+      const before = await loadRecords(c, rows[0].previous);
       await storeProducts(c, b.data);
+      await storeRecords(c, split.items);
       // Что где прибыло и убыло — в журнал движений, с тем, кто записал.
-      await recordMoves(c, rows[0].previous, b.data, rows[0].version, {
+      await recordMoves(c, before, b.data, rows[0].version, {
         memberId: ctx.memberId,
       });
       return { version: rows[0].version, orgId: ctx.orgId };
@@ -199,7 +220,9 @@ function createSnapshot({ auth, send, log }) {
       const error = out.products ? "products_mass_delete" : "conflict";
       return send(res, 409, { ok: false, error, version: current ?? 0 });
     }
-    warnNearLimit(log, out.orgId, Buffer.byteLength(data));
+    // Потолок теперь — размер одной записи кабинета целиком, а не документа.
+    const sent = Number(req.headers["content-length"]) || Buffer.byteLength(JSON.stringify(b.data));
+    warnNearLimit(log, out.orgId, sent);
     return send(res, 200, { ok: true, version: out.version });
   }
 
@@ -228,6 +251,8 @@ module.exports = {
   createSnapshot,
   MAX_SNAPSHOT_BYTES,
   warnNearLimit,
-  withProducts,
-  withoutProducts,
+  loadCabinet,
+  splitCabinet,
+  storeRecords,
+  hasMarks,
 };

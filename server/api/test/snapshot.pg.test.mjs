@@ -454,3 +454,144 @@ test(
     }
   },
 );
+
+test(
+  "работа склада живёт строками: туда и обратно без потерь, корзина, чужие не видны",
+  { skip: SKIP },
+  async () => {
+    const a = await owner("snap-w@sklad.ru", "10.0.1.20");
+    const b = await owner("snap-x@sklad.ru", "10.0.1.21");
+    const work = (requests, staffEvents, version) => ({
+      ...a,
+      body: {
+        version,
+        format: 8,
+        data: {
+          ...data("склад"),
+          requests,
+          staffEvents,
+          boxes: [],
+          warehouseData: { wh_2: { requests: [{ id: "r9", qty: 9 }] } },
+        },
+      },
+    });
+    const r1 = { id: "r1", qty: 1, to: "Коледино" };
+    const r2 = { id: "r2", qty: 2, to: "Электросталь" };
+    const s1 = { id: "s1", type: "shift_start", at: 1 };
+    assert.equal((await call("/api/cabinet/snapshot", work([r2, r1], [s1], 0))).status, 200);
+
+    // В документе — метки, записи — строками.
+    const stored = await db.root.query(
+      `SELECT data FROM uklad.cabinet_snapshots WHERE org_id = $1`,
+      [a.org],
+    );
+    assert.deepEqual(stored.rows[0].data.requests, { $rows: 2 });
+    assert.deepEqual(stored.rows[0].data.warehouseData.wh_2.requests, { $rows: 1 });
+    const rows = async () =>
+      (
+        await db.root.query(
+          `SELECT warehouse_ref || '/' || domain || '/' || ref AS k, deleted_at IS NOT NULL AS gone
+           FROM uklad.cabinet_records WHERE org_id = $1 ORDER BY 1`,
+          [a.org],
+        )
+      ).rows;
+    assert.deepEqual(
+      (await rows()).map((r) => r.k),
+      ["/staffEvents/s1", "wh_1/requests/r1", "wh_1/requests/r2", "wh_2/requests/r9"],
+    );
+    const read = (await call("/api/cabinet/snapshot", a)).json.snapshot.data;
+    assert.deepEqual(read.requests, [r2, r1]);
+    assert.deepEqual(read.boxes, []);
+    assert.deepEqual(read.staffEvents, [s1]);
+    assert.deepEqual(read.warehouseData, { wh_2: { requests: [{ id: "r9", qty: 9 }] } });
+
+    // Новая заявка сверху переписывает одну строку, а не все.
+    const touched = async () =>
+      (
+        await db.root.query(
+          `SELECT ref FROM uklad.cabinet_records WHERE org_id = $1 AND updated_at > $2 ORDER BY ref`,
+          [a.org, since],
+        )
+      ).rows.map((r) => r.ref);
+    const since = (await db.root.query(`SELECT now() AS t`)).rows[0].t;
+    const r3 = { id: "r3", qty: 3 };
+    assert.equal((await call("/api/cabinet/snapshot", work([r3, r2, r1], [s1], 1))).status, 200);
+    assert.deepEqual(await touched(), ["r3"]);
+
+    // Пропавшая — в корзину, вернувшаяся — из неё той же строкой.
+    assert.equal((await call("/api/cabinet/snapshot", work([r3, r1], [s1], 2))).status, 200);
+    assert.deepEqual(
+      (await rows()).filter((r) => r.gone).map((r) => r.k),
+      ["wh_1/requests/r2"],
+    );
+    assert.deepEqual((await call("/api/cabinet/snapshot", a)).json.snapshot.data.requests, [
+      r3,
+      r1,
+    ]);
+    assert.equal((await call("/api/cabinet/snapshot", work([r3, r2, r1], [s1], 3))).status, 200);
+    assert.equal((await rows()).filter((r) => r.gone).length, 0);
+
+    // Устаревшая версия строк не трогает.
+    assert.equal((await call("/api/cabinet/snapshot", work([], [], 1))).status, 409);
+    assert.equal((await call("/api/cabinet/snapshot", a)).json.snapshot.data.requests.length, 3);
+
+    // Метки снаружи — не кабинет: отказ.
+    const marks = await call("/api/cabinet/snapshot", {
+      ...a,
+      body: { version: 4, format: 8, data: { ...data("x"), requests: { $rows: 0 } } },
+    });
+    assert.equal(marks.status, 400);
+
+    // Чужая компания с тем же id — своя строка, мои записи ей не видны.
+    const other = await call("/api/cabinet/snapshot", {
+      ...b,
+      body: { version: 0, format: 8, data: { ...data("чужой"), requests: [{ id: "r1" }] } },
+    });
+    assert.equal(other.status, 200);
+    assert.deepEqual((await call("/api/cabinet/snapshot", b)).json.snapshot.data.requests, [
+      { id: "r1" },
+    ]);
+  },
+);
+
+test(
+  "старый документ без меток читается как был и раскладывается при записи",
+  { skip: SKIP },
+  async () => {
+    const a = await owner("snap-y@sklad.ru", "10.0.1.22");
+    assert.equal(
+      (
+        await call("/api/cabinet/snapshot", {
+          ...a,
+          body: { version: 0, format: 8, data: data("x") },
+        })
+      ).status,
+      200,
+    );
+    // Документ, записанный до миграции 021: заявки прямо в нём.
+    await db.root.query(
+      `UPDATE uklad.cabinet_snapshots SET data = data || '{"requests":[{"id":"old"}]}'::jsonb
+     WHERE org_id = $1`,
+      [a.org],
+    );
+    const read = (await call("/api/cabinet/snapshot", a)).json.snapshot;
+    assert.deepEqual(read.data.requests, [{ id: "old" }]);
+    assert.equal(
+      (
+        await call("/api/cabinet/snapshot", {
+          ...a,
+          body: { version: read.version, format: 8, data: read.data },
+        })
+      ).status,
+      200,
+    );
+    const stored = await db.root.query(
+      `SELECT data->'requests' AS r FROM uklad.cabinet_snapshots WHERE org_id = $1`,
+      [a.org],
+    );
+    assert.deepEqual(stored.rows[0].r, { $rows: 1 });
+    assert.deepEqual((await call("/api/cabinet/snapshot", a)).json.snapshot.data.requests, [
+      { id: "old" },
+    ]);
+  },
+);

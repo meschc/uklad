@@ -18,6 +18,7 @@ const TABLES = [
   "conversations",
   "conversation_members",
   "messages",
+  "cabinet_records",
 ];
 
 let db, w;

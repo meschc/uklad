@@ -13,6 +13,21 @@ const SKIP = !process.env.PG_ADMIN_URL && "нет PG_ADMIN_URL";
 const ORIGIN = "https://u-klad.ru";
 const PW = "очень-длинный-пароль";
 let db, server, base, cookieName, deskCookieName;
+
+/** Кабинет компании, как его хранит сервер: документ со строками работы склада. */
+async function stored(org) {
+  const { assembleRecords } = require("../src/cabinet/records.js");
+  const doc = await db.root.query(
+    `SELECT version, data FROM uklad.cabinet_snapshots WHERE org_id = $1`,
+    [org],
+  );
+  const rows = await db.root.query(
+    `SELECT warehouse_ref AS w, domain AS d, data FROM uklad.cabinet_records
+     WHERE org_id = $1 AND deleted_at IS NULL ORDER BY warehouse_ref, domain, position`,
+    [org],
+  );
+  return { version: doc.rows[0].version, data: assembleRecords(doc.rows[0].data, rows.rows) };
+}
 const sent = [];
 
 before(async () => {
@@ -107,12 +122,7 @@ test(
     const desk = await makeDesk(a);
     await call("/api/cabinet/badges/check", { desk, body: { code: ivan } });
     const boss = await login("desk-h@sklad.ru");
-    const read = async () =>
-      (
-        await db.root.query(`SELECT version, data FROM uklad.cabinet_snapshots WHERE org_id = $1`, [
-          a.org,
-        ])
-      ).rows[0];
+    const read = () => stored(a.org);
     const start = await read();
     // Руководитель в кабинете перекладывает две штуки из b1 в тару t1.
     const moved = {
@@ -323,11 +333,7 @@ test("стол пишет работу склада, но не персонал,
   });
   assert.equal(saved.status, 200);
   assert.equal(saved.json.version, 2);
-  const { rows } = await db.root.query(
-    `SELECT data FROM uklad.cabinet_snapshots WHERE org_id = $1`,
-    [a.org],
-  );
-  const data = rows[0].data;
+  const { data } = await stored(a.org);
   assert.deepEqual(
     data.boxes.map((b) => b.id),
     ["b1", "b2"],
@@ -434,12 +440,7 @@ test(
     const olga = (await call("/api/cabinet/badges/issue", { ...a, body: { staffRef: "stf-olga" } }))
       .json.code;
     const desk = await makeDesk(a);
-    const snapshot = async () =>
-      (
-        await db.root.query(`SELECT version, data FROM uklad.cabinet_snapshots WHERE org_id = $1`, [
-          a.org,
-        ])
-      ).rows[0];
+    const snapshot = () => stored(a.org);
     const write = async (data) => {
       const { version } = await snapshot();
       const r = await call("/api/cabinet/snapshot", { desk, body: { version, format: 8, data } });

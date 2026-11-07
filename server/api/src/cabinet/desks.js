@@ -30,11 +30,18 @@
  *   POST /api/cabinet/badges/check — чей бейдж
  *   POST /api/desk/unbind          — { code } бейдж руководителя → стол отвязан
  */
-/* global require, module, Buffer */
+/* global require, module */
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { createHash, randomBytes } = require("node:crypto");
 const { createRateLimit } = require("../rateLimit");
-const { MAX_SNAPSHOT_BYTES, warnNearLimit, withProducts, withoutProducts } = require("./snapshot");
+const {
+  MAX_SNAPSHOT_BYTES,
+  warnNearLimit,
+  loadCabinet,
+  splitCabinet,
+  storeRecords,
+  hasMarks,
+} = require("./snapshot");
 const { whoseBadge, answerCheck, CHECKS_PER_MINUTE } = require("./deskBadges");
 const { mergeDeskStock, STOCK_KEYS } = require("./deskStock");
 const { recordMoves, diffMoves, invalidWork } = require("./moves");
@@ -470,7 +477,7 @@ function createDesks({ auth, cfg, send, log }) {
          WHERE org_id = uklad.current_org()`,
       );
       if (!rows[0]) return { row: null };
-      return { row: { ...rows[0], data: await withProducts(c, rows[0].data) } };
+      return { row: { ...rows[0], data: await loadCabinet(c, rows[0].data) } };
     });
     if (!out) return gone(res);
     if (!out.row) return send(res, 200, { ok: true, snapshot: null });
@@ -492,7 +499,8 @@ function createDesks({ auth, cfg, send, log }) {
       !Number.isInteger(format) ||
       format < 1 ||
       !isObject(data) ||
-      invalidWork(data)
+      invalidWork(data) ||
+      hasMarks(data)
     ) {
       return send(res, 400, { ok: false, error: "bad_request" });
     }
@@ -513,13 +521,14 @@ function createDesks({ auth, cfg, send, log }) {
       ]);
       const who = { staff: people.rows[0]?.staff_ref, prev: people.rows[0]?.prev_staff_ref };
       // Товары стол не пишет, но сверка приёмки ведётся по каталогу:
-      // он в таблице (миграция 013), а не в снимке.
-      const write = mergeDeskWrite(await withProducts(c, cur.data), data, who);
+      // он в таблице (миграция 013), а работа склада — строками (021).
+      const full = await loadCabinet(c, cur.data);
+      const write = mergeDeskWrite(full, data, who);
       // Снятая операцией отметка не возвращается старой записью снимка.
       const undone = await undoneMarks(c);
       if (undone.size > 0 && Array.isArray(write.data.staffEvents)) {
         const had = new Set(
-          (Array.isArray(cur.data.staffEvents) ? cur.data.staffEvents : []).map((e) => e?.id),
+          (Array.isArray(full.staffEvents) ? full.staffEvents : []).map((e) => e?.id),
         );
         write.data.staffEvents = write.data.staffEvents.filter(
           (e) => had.has(e?.id) || !undone.has(e?.id),
@@ -528,8 +537,10 @@ function createDesks({ auth, cfg, send, log }) {
       if (write.mismatch.length > 0) {
         log.warn?.(`[uklad] стол: остатки не сошлись по ${write.mismatch.length} товарам`);
       }
-      const merged = JSON.stringify(withoutProducts(write.data));
-      warnNearLimit(log, d.orgId, Buffer.byteLength(merged));
+      const split = splitCabinet(write.data);
+      const merged = JSON.stringify(split.doc);
+      // Потолок — запись кабинета целиком, которую шлёт стол.
+      warnNearLimit(log, d.orgId, Number(req.headers["content-length"]) || 0);
       const upd = await c.query(
         `UPDATE uklad.cabinet_snapshots
          SET previous = data, data = $1::jsonb, format = $2, version = version + 1,
@@ -538,9 +549,10 @@ function createDesks({ auth, cfg, send, log }) {
          RETURNING version`,
         [merged, format, d.deskId],
       );
+      await storeRecords(c, split.items);
       // Остатки не сошлись: остальное записано, но копия стола уже не
       // совпадает с сервером — пусть заберёт свежий снимок, как при конфликте.
-      await recordMoves(c, cur.data, write.data, upd.rows[0].version, {
+      await recordMoves(c, full, write.data, upd.rows[0].version, {
         deskId: d.deskId,
         // Прежний сотрудник принимается ещё 10 минут после ухода.
         staffRef: who.staff ?? who.prev,
@@ -586,8 +598,9 @@ function createDesks({ auth, cfg, send, log }) {
       };
       return runDeskOps(c, d.deskId, ops, who, Date.now(), {
         verify,
-        withProducts,
-        withoutProducts,
+        load: loadCabinet,
+        split: splitCabinet,
+        storeRecords,
         recordMoves,
         maxBytes: MAX_SNAPSHOT_BYTES,
       }).then((r) => ({ ...r, orgId: d.orgId }));
