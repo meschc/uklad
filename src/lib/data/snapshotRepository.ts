@@ -63,6 +63,7 @@ export const snapshotRepository = {
         ...(body.error === "products_mass_delete" ? { rejected: "products" as const } : {}),
       });
     if (status === 413) return fail("sync.err.tooBig");
+    if (status === 400) return fail("sync.err.badData");
     if (status === 403) return fail("sync.err.forbidden");
     return fail("sync.err.network");
   },

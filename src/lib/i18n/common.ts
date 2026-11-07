@@ -172,6 +172,8 @@ export const ru = {
   "login.emailHints": "Популярные почтовые сервисы",
   "sync.err.network":
     "Нет связи с сервером. Правки сохранены на этом устройстве и уйдут, когда связь вернётся.",
+  "sync.err.badData":
+    "Сервер не принял запись: в таре или коробе есть строка без товара или с дробным количеством. Правки хранятся на этом устройстве. Напишите в поддержку.",
   "sync.err.tooBig": "Данные кабинета слишком большие для одной записи. Напишите в поддержку.",
   "sync.conflict":
     "На сервере была более новая версия кабинета, открыли её. Ваши незаписанные правки отложены в копию на этом устройстве.",
@@ -467,6 +469,8 @@ export const en: Record<keyof typeof ru, string> = {
   "login.emailHints": "Popular email services",
   "sync.err.network":
     "Can't reach the server. Changes are saved on this device and will be sent once you're back online.",
+  "sync.err.badData":
+    "The server didn't accept the save: a tote or box has a line without a product or with a fractional quantity. Your changes are kept on this device. Please contact support.",
   "sync.err.tooBig": "The cabinet data is too large for a single save. Please contact support.",
   "sync.conflict":
     "The server had a newer version of the cabinet, so we opened it. Your unsaved changes were set aside in a copy on this device.",

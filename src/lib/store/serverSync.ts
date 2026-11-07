@@ -261,6 +261,10 @@ export function startServerSync(orgId: string): () => void {
         writeMeta({ ...meta, dirty: true });
         if (res.error === "sync.err.forbidden") forbid();
         else schedule(RETRY_MS);
+        // Сервер не принял данные — повтор не поможет, человеку нужно знать.
+        if (res.error === "sync.err.badData" || res.error === "sync.err.tooBig") {
+          useEditor.getState().showToast(res.error);
+        }
         return false;
       }
       if ("conflict" in res.data) {
