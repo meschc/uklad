@@ -589,11 +589,16 @@ function createDesks({ auth, cfg, send, log }) {
         withoutProducts,
         recordMoves,
         maxBytes: MAX_SNAPSHOT_BYTES,
-      });
+      }).then((r) => (r.tooLarge ? { ...r, orgId: d.orgId } : r));
     });
     if (!out) return gone(res);
     if (out.limited) return limited(res);
-    if (out.tooLarge) return send(res, 413, { ok: false, error: "too_large" });
+    if (out.tooLarge) {
+      // Снимок компании упёрся в потолок: дальше работа стола не сохраняется.
+      // Это должны увидеть мы, а не только стол тостом.
+      log.warn?.(`[uklad] стол: снимок компании ${out.orgId} больше лимита, операции не приняты`);
+      return send(res, 413, { ok: false, error: "too_large" });
+    }
     // Снимка ещё нет: класть отметки некуда, его заводит руководитель.
     if (out.conflict !== undefined) return send(res, 409, { ok: false, error: "no_snapshot" });
     return send(res, 200, { ok: true, ...out });
