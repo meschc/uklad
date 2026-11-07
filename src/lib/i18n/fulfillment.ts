@@ -380,6 +380,9 @@ export const ru = {
   // --- Приоритет отбора (п.10.2) ------------------------------------------------
   "insp.pickPriority": "Приоритет отбора",
   "insp.notPickable": "не отбирать отсюда",
+  "archive.loading": "Догружаем историю старше 45 дней. Пока числа только за последние недели.",
+  "archive.failed": "История старше 45 дней не загрузилась: числа только за последние недели.",
+  "archive.retry": "Повторить",
 };
 
 export const en: Record<keyof typeof ru, string> = {
@@ -757,4 +760,9 @@ export const en: Record<keyof typeof ru, string> = {
   // --- Pick priority (10.2) --------------------------------------------------------
   "insp.pickPriority": "Pick priority",
   "insp.notPickable": "do not pick from here",
+  "archive.loading":
+    "Loading history older than 45 days. For now the numbers cover the last weeks only.",
+  "archive.failed":
+    "History older than 45 days didn't load: the numbers cover the last weeks only.",
+  "archive.retry": "Try again",
 };
