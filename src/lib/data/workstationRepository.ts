@@ -64,6 +64,41 @@ export function createWorkstationRepository(
       ...(added.reason ? { reason: added.reason } : {}),
     });
   };
+  /**
+   * Упаковка на сервере уходит операциями (`cabinet/deskPack.js`): скан,
+   * этикетка и брак — записью журнала (со спорным, если скан его завёл),
+   * закрытие тары — фактами, по которым сервер сам повторит правку.
+   */
+  const queuePack = <T>(act: () => T): T => {
+    const s = port.get();
+    const toteId = s.packSession?.sourceBoxId;
+    const events = new Set(s.staffEvents.map((e) => e.id));
+    const disputes = new Map(s.disputes.map((d) => [d.id, d.qty]));
+    const out = act();
+    if (!onServer(port) || !toteId) return out;
+    const after = port.get();
+    const raised = after.disputes.find(
+      (d) => d.boxId === toteId && !d.resolution && disputes.get(d.id) !== d.qty,
+    );
+    for (const e of after.staffEvents) {
+      if (events.has(e.id) || !e.type.startsWith("pack_")) continue;
+      ops.enqueue("pack_event", {
+        eventId: e.id,
+        staffId: e.staffId,
+        type: e.type,
+        at: e.at,
+        toteId,
+        ...(e.code ? { code: e.code } : {}),
+        ...(e.productId ? { productId: e.productId } : {}),
+        ...(e.orderId ? { orderId: e.orderId } : {}),
+        ...(e.ms !== undefined ? { ms: Math.round(e.ms) } : {}),
+        ...(raised && raised.productId === e.productId
+          ? { dispute: { id: raised.id, kind: raised.kind, qty: raised.qty } }
+          : {}),
+      });
+    }
+    return out;
+  };
   const queueUndo = (before: readonly StaffEvent[], at: number) => {
     if (!onServer(port)) return;
     const left = new Set(port.get().staffEvents.map((e) => e.id));
@@ -158,14 +193,32 @@ export function createWorkstationRepository(
       if (!res.ok) return res;
       return res.data ? fail(res.data) : ok(undefined);
     },
-    packItem: (code) => attempt(() => port.get().packScanItem(code)),
+    packItem: (code) => attempt(() => queuePack(() => port.get().packScanItem(code))),
     packLabel: async (code) => {
-      const res = await attempt(() => port.get().packScanLabel(code));
+      const res = await attempt(() => queuePack(() => port.get().packScanLabel(code)));
       if (!res.ok) return res;
       return res.data ? ok(undefined) : fail("ws.label.wrong");
     },
-    packReject: () => attempt(() => port.get().packRejectPending()),
-    packFinish: () => attempt(() => port.get().packFinish()),
+    packReject: () => attempt(() => queuePack(() => port.get().packRejectPending())),
+    packFinish: async () => {
+      const res = await attempt(() => port.get().packFinish());
+      if (!res.ok) return res;
+      const f = res.data;
+      if (f && onServer(port)) {
+        ops.enqueue("pack_done", {
+          eventId: f.eventId,
+          staffId: f.staffId,
+          at: f.at,
+          toteId: f.toteId,
+          outboundCode: f.outboundCode,
+          ...(f.outboundId ? { outboundId: f.outboundId } : {}),
+          lines: f.lines,
+          requestIds: f.requestIds,
+          shortages: f.shortages,
+        });
+      }
+      return ok(undefined);
+    },
   };
 }
 

@@ -96,7 +96,7 @@ describe("opQueue", () => {
     const q = h.make();
     q.enqueue("shift_mark", body("ev1"));
     await q.flush();
-    expect(h.flagged).toHaveBeenCalledWith(["nobody"]);
+    expect(h.flagged).toHaveBeenCalledWith(["nobody"], ["shift_mark"]);
   });
 
   it("пришедшее во время отправки не теряется", async () => {
@@ -181,6 +181,26 @@ describe("workstationRepository: отметки смены операциями"
       "shift_undo",
       expect.objectContaining({ eventId: "sev_1", staffId: "stf-ivan" }),
     );
+  });
+
+  it("закрытие тары на сервере уходит фактами упаковки", async () => {
+    const q = fakeQueue();
+    const p = port(true);
+    const facts = {
+      eventId: "sev_done",
+      staffId: "stf-ivan",
+      at: 7,
+      toteId: "t1",
+      outboundCode: "UK-OUT-1",
+      outboundId: "out1",
+      lines: [{ productId: "p1", qty: 2 }],
+      requestIds: ["r1"],
+      shortages: [],
+    };
+    (p.get() as unknown as { packFinish: () => unknown }).packFinish = () => facts;
+    const repo = createWorkstationRepository(p, badges, desks, q);
+    await repo.packFinish();
+    expect(q.enqueue).toHaveBeenCalledWith("pack_done", facts);
   });
 
   it("в демо очереди нет", async () => {

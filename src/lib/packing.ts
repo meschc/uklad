@@ -127,6 +127,24 @@ export function isOrderComplete(session: PackSession, order: ToteOrder): boolean
   return [...order.need].every(([p, n]) => (have.get(p) ?? 0) >= n);
 }
 
+/**
+ * Что стол сообщает серверу, закрыв тару (`pack_done`, `cabinet/deskPack.js`):
+ * сервер сам повторяет правку снимка по этим фактам и сверяет остатки.
+ */
+export interface PackDoneFacts {
+  eventId: string;
+  staffId: string;
+  at: number;
+  toteId: string;
+  outboundCode: string;
+  /** Короб отгрузки, куда легло упакованное; нет — ничего не легло. */
+  outboundId: string | null;
+  lines: { productId: string; qty: number }[];
+  requestIds: string[];
+  /** Недостача: спорное и его итог по товару. */
+  shortages: { id: string; productId: string; qty: number }[];
+}
+
 export type ItemScan =
   | { kind: "ok"; productId: string; orderId?: string }
   /** Товар склада, но в этой таре его нет — отложить, разберётся старший. */

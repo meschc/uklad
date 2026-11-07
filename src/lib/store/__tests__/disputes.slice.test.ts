@@ -80,6 +80,16 @@ describe("disputes.slice", () => {
     ]);
   });
 
+  it("списание брака тоже убирает его из тары: до решения он на учёте", () => {
+    const box = makeBox({ id: "b1", lines: [{ productId: "p1", qty: 2 }] });
+    const store = makeDisputesStore({ boxes: [box] });
+    const id = store
+      .getState()
+      .raiseDispute({ kind: "not_packable", boxId: "b1", productId: "p1", raisedBy: "s1" });
+    store.getState().resolveDispute(id, "written_off", "boss", "мятая упаковка");
+    expect(store.getState().boxes[0].lines).toEqual([{ productId: "p1", qty: 1 }]);
+  });
+
   it("списать без причины нельзя: решение не записывается", () => {
     const store = makeDisputesStore();
     const id = store.getState().raiseDispute({ kind: "shortage", productId: "p1", raisedBy: "s1" });

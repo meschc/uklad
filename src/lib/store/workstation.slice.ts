@@ -362,6 +362,7 @@ export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get)
     const ps = s.packSession;
     const unit = ps?.units.find((u) => !u.confirmedAt);
     if (!ps || !unit) return;
+    const box = s.boxes.find((b) => b.id === ps.sourceBoxId);
     const now = nowMs();
     set({
       packSession: {
@@ -383,13 +384,27 @@ export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get)
         }),
       ],
     });
+    // Брак остаётся в таре на учёте и уходит старшему: списывает не
+    // упаковщик, иначе брак — способ тихо вынести товар.
+    if (box) {
+      get().raiseDispute({
+        kind: "not_packable",
+        boxId: box.id,
+        toteCode: box.barcode,
+        productId: unit.productId,
+        raisedBy: ps.staffId,
+      });
+    }
   },
 
   packFinish: () => {
     const s = get();
     const ps = s.packSession;
     const box = ps && s.boxes.find((b) => b.id === ps.sourceBoxId);
-    if (!ps || !box) return set({ packSession: null });
+    if (!ps || !box) {
+      set({ packSession: null });
+      return null;
+    }
     const now = nowMs();
     // Неподтверждённая штука в упаковку не легла — она остаётся в таре.
     const done: PackSession = { ...ps, units: ps.units.filter((u) => u.confirmedAt) };
@@ -402,21 +417,35 @@ export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get)
     const packedIds = new Set(closed.flatMap((o) => o.requestIds));
     // Недостачу сотрудник не оформляет: тара с остатком уходит старшему, а в
     // системе остаётся запись — что не нашли, в какой таре и кто закрывал.
+    const shortages: string[] = [];
     for (const [productId, qty] of remaining) {
       if (qty > 0)
-        get().raiseDispute({
-          kind: "shortage",
-          boxId: box.id,
-          toteCode: box.barcode,
-          productId,
-          qty,
-          raisedBy: ps.staffId,
-        });
+        shortages.push(
+          get().raiseDispute({
+            kind: "shortage",
+            boxId: box.id,
+            toteCode: box.barcode,
+            productId,
+            qty,
+            raisedBy: ps.staffId,
+          }),
+        );
     }
+    // Брак из тары не уходит: он на учёте, пока его не спишет старший.
+    const kept = new Map(remaining);
+    for (const r of ps.rejects)
+      if (r.reason === "defect") kept.set(r.productId, (kept.get(r.productId) ?? 0) + 1);
     // Что легло в короб отгрузки: подтверждённые этикетками штуки и закрытые
     // заказы. По этому составу погрузка потом сверяет машину.
     const packed = new Map<string, number>();
     for (const u of done.units) packed.set(u.productId, (packed.get(u.productId) ?? 0) + 1);
+    const doneEvent = event({
+      staffId: ps.staffId,
+      type: "pack_done",
+      at: now,
+      station: "pack",
+      code: box.barcode,
+    });
     set({
       outboundBoxes: addToOutbound(get().outboundBoxes ?? [], {
         code: ps.targetCode,
@@ -426,9 +455,9 @@ export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get)
         at: now,
         newId: () => uid("out"),
       }),
-      boxes: s.boxes.map((b) =>
+      boxes: get().boxes.map((b) =>
         b.id === box.id
-          ? { ...b, lines: [...remaining].map(([productId, qty]) => ({ productId, qty })) }
+          ? { ...b, lines: [...kept].map(([productId, qty]) => ({ productId, qty })) }
           : b,
       ),
       requests: s.requests.map((r) =>
@@ -436,17 +465,23 @@ export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get)
           ? { ...r, packedAt: now, packedBy: ps.staffId, updatedAt: now }
           : r,
       ),
-      staffEvents: [
-        ...s.staffEvents,
-        event({
-          staffId: ps.staffId,
-          type: "pack_done",
-          at: now,
-          station: "pack",
-          code: box.barcode,
-        }),
-      ],
+      staffEvents: [...get().staffEvents, doneEvent],
       packSession: null,
     });
+    const disputes = get().disputes;
+    return {
+      eventId: doneEvent.id,
+      staffId: ps.staffId,
+      at: now,
+      toteId: box.id,
+      outboundCode: ps.targetCode,
+      outboundId: openOutbound(get().outboundBoxes ?? [], ps.targetCode)?.id ?? null,
+      lines: [...packed].map(([productId, qty]) => ({ productId, qty })),
+      requestIds: [...packedIds],
+      shortages: shortages.flatMap((id) => {
+        const d = disputes.find((x) => x.id === id);
+        return d?.productId ? [{ id, productId: d.productId, qty: d.qty }] : [];
+      }),
+    };
   },
 });

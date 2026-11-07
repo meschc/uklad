@@ -20,7 +20,7 @@ import { readLocal, writeLocal } from "../safeStorage";
  * остаётся в шапке.
  */
 
-export type DeskOpKind = "shift_mark" | "shift_undo";
+export type DeskOpKind = "shift_mark" | "shift_undo" | "pack_event" | "pack_done";
 export interface DeskOpBody {
   eventId: string;
   staffId: string;
@@ -28,6 +28,18 @@ export interface DeskOpBody {
   type?: string;
   station?: string;
   reason?: string;
+  // Упаковка (`pack_event`, `pack_done`).
+  toteId?: string;
+  code?: string;
+  productId?: string;
+  orderId?: string;
+  ms?: number;
+  dispute?: { id: string; kind: string; qty: number };
+  outboundCode?: string;
+  outboundId?: string;
+  lines?: { productId: string; qty: number }[];
+  requestIds?: string[];
+  shortages?: { id: string; productId: string; qty: number }[];
 }
 export interface DeskOp {
   key: string;
@@ -78,7 +90,7 @@ export interface QueueDeps {
   read: () => string | null;
   write: (text: string) => void;
   /** Сервер пометил операции: сказать человеку один раз на пачку. */
-  onFlagged: (reasons: OpFlag[]) => void;
+  onFlagged: (reasons: OpFlag[], kinds: DeskOpKind[]) => void;
   /** Операции выброшены непринятыми: сказать человеку, сколько. */
   onLost: (count: number) => void;
   later: (fn: () => void, ms: number) => void;
@@ -91,7 +103,7 @@ const isOpLike = (x: unknown): x is DeskOp => {
   const op = x as DeskOp;
   return (
     typeof op.key === "string" &&
-    (op.kind === "shift_mark" || op.kind === "shift_undo") &&
+    ["shift_mark", "shift_undo", "pack_event", "pack_done"].includes(op.kind) &&
     !!op.body &&
     typeof op.body.at === "number"
   );
@@ -145,10 +157,14 @@ export function createOpQueue(deps: QueueDeps): OpQueue {
         save({ ops: rest, since: rest.length > 0 ? s.since : null });
         if (out.kind === "drop" && out.lost) deps.onLost(batch.length);
         if (out.kind === "ok") {
-          const flagged = out.results
-            .filter((r) => r.status === "flagged" && !r.duplicate)
-            .map((r) => r.reason as OpFlag);
-          if (flagged.length > 0) deps.onFlagged(flagged);
+          const flagged = out.results.filter((r) => r.status === "flagged" && !r.duplicate);
+          const kindOf = new Map(batch.map((op) => [op.key, op.kind]));
+          if (flagged.length > 0) {
+            deps.onFlagged(
+              flagged.map((r) => r.reason as OpFlag),
+              flagged.flatMap((r) => kindOf.get(r.key) ?? []),
+            );
+          }
         }
       }
     })().finally(() => {
@@ -212,9 +228,10 @@ const randomKey = () => {
  * дошёл или сотрудник сменился). Здесь отметка уже стоит, поэтому человеку
  * нужно сказать, что на сервере её нет.
  */
-async function sayFlagged() {
+async function sayFlagged(kinds: DeskOpKind[]) {
   const { useEditor } = await import("../store");
-  useEditor.getState().showToast("ws.opRejected");
+  const packing = kinds.some((k) => k === "pack_event" || k === "pack_done");
+  useEditor.getState().showToast(packing ? "ws.opPackRejected" : "ws.opRejected");
 }
 
 async function sayLost(n: number) {
@@ -226,7 +243,7 @@ export const deskOps: OpQueue = createOpQueue({
   send: sendToServer,
   read: () => readLocal(OPS_KEY),
   write: (text) => writeLocal(OPS_KEY, text),
-  onFlagged: () => void sayFlagged(),
+  onFlagged: (_reasons, kinds) => void sayFlagged(kinds),
   onLost: (n) => void sayLost(n),
   later: (fn, ms) => void setTimeout(fn, ms),
   now: () => Date.now(),

@@ -56,9 +56,12 @@ export const createDisputesSlice: SliceCreator<DisputesSlice> = (set, get) => ({
           ? { ...x, resolution, resolvedBy: by, resolvedAt: now, note: note?.trim() || undefined }
           : x,
       ),
-      // Списали недостачу — в таре этого товара больше нет.
+      // Списали недостачу или брак — в таре этого товара больше нет.
       boxes:
-        resolution === "written_off" && d.kind === "shortage" && d.boxId && d.productId
+        resolution === "written_off" &&
+        (d.kind === "shortage" || d.kind === "not_packable") &&
+        d.boxId &&
+        d.productId
           ? s.boxes.map((b) =>
               b.id === d.boxId
                 ? {
