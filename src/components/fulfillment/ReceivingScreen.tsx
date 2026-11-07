@@ -274,6 +274,18 @@ export function ReceivingScreen({ staffId: badgeStaffId }: { staffId?: string } 
   /** Товар уезжает в открытую тару; тара пока стоит на рампе, без адреса. */
   const putInBox = async (d: Draft) => {
     if (!box) return;
+    // Один продавец в таре и в поставке — то же правило проверит сервер
+    // (`deskReceive.js`): иначе товар уехал бы на полку под чужим ярлыком.
+    const sellerOf = (id: string) => products.find((p) => p.id === id)?.partnerId ?? "";
+    const own = sellerOf(d.product.id);
+    const supply = new Set((shipment?.lines ?? []).map((l) => sellerOf(l.productId)));
+    if (
+      (supply.size > 0 && !supply.has(own)) ||
+      box.lines.some((l) => l.qty > 0 && sellerOf(l.productId) !== own)
+    ) {
+      fail("recv.box.mixed");
+      return;
+    }
     const res = await run(() =>
       fulfillmentRepository.receive({
         productId: d.product.id,

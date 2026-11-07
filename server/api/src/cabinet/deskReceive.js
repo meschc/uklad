@@ -94,6 +94,8 @@ function applyRecvUnit(data, body, staffRef) {
   if (!isId(body.productId) || !isId(body.boxId) || !Number.isInteger(qty)) return { flag: "bad" };
   if (qty < 1 || qty > MAX_QTY) return { flag: "bad" };
   if (body.discrepancy !== undefined && !DISCREPANCY.has(body.discrepancy)) return { flag: "bad" };
+  // Само расхождение ставит сервер при записи (`markReceived` в
+  // `deskStock.js`): со стола принимается только отметка недостачи.
   if (!list(data.products).some((p) => p.id === body.productId)) return { flag: "bad" };
   const boxes = list(data.boxes);
   const box = boxes.find((b) => b.id === body.boxId);
@@ -110,6 +112,17 @@ function applyRecvUnit(data, body, staffRef) {
   if (body.lineId !== undefined) {
     const line = shipment && list(shipment.lines).find((l) => l.id === body.lineId);
     if (!line || line.productId !== body.productId) return { flag: "bad" };
+  }
+  // Один продавец: в поставке — товар её продавца, в таре приёмки — как в
+  // таре сборки (`pickToteProblem`). Иначе товар одного продавца уехал бы
+  // на полку под ярлыком другого.
+  const partner = new Map(list(data.products).map((p) => [p.id, p.partnerId ?? ""]));
+  const seller = (id) => (partner.has(id) ? partner.get(id) : `?${id}`);
+  const own = seller(body.productId);
+  const sellers = new Set(list(shipment?.lines).map((l) => seller(l.productId)));
+  if (sellers.size > 0 && !sellers.has(own)) return { flag: "mixed" };
+  if (list(box.lines).some((l) => Number(l.qty) > 0 && seller(l.productId) !== own)) {
+    return { flag: "mixed" };
   }
 
   const at = body.at;
@@ -173,8 +186,8 @@ function applyRecvOpen(data, body) {
 }
 
 /**
- * Есть ли такая ячейка на плане: этаж склада и модуль на каком-то этаже
- * (у этажа-алиаса модули источника, `Floor.aliasOf`).
+ * Есть ли такая ячейка на плане: модуль на указанном этаже, а у этажа-алиаса
+ * — на этаже-источнике (`Floor.aliasOf`).
  */
 function cellExists(data, cell) {
   if (!isObject(cell) || !isId(cell.floorId) || !isId(cell.moduleId)) return false;
@@ -183,10 +196,11 @@ function cellExists(data, cell) {
     return false;
   }
   const floors = isObject(data.warehouse) ? list(data.warehouse.floors) : [];
-  return (
-    floors.some((f) => f.id === cell.floorId) &&
-    floors.some((f) => list(f.modules).some((m) => m.id === cell.moduleId))
-  );
+  const floor = floors.find((f) => f.id === cell.floorId);
+  if (!floor) return false;
+  // Этаж-алиас зеркалит раскладку источника: модули ищем у источника.
+  const own = floor.aliasOf ? (floors.find((f) => f.id === floor.aliasOf) ?? floor) : floor;
+  return list(own.modules).some((m) => m.id === cell.moduleId);
 }
 
 const sameCell = (a, b) =>

@@ -28,7 +28,8 @@
  *
  * Отдельно, по записям:
  *   · события приёмки только дописываются, только за того, кто за столом, и
- *     только на товар из каталога;
+ *     только на товар из каталога; расхождение решает сервер (`markReceived`):
+ *     принятое без строки поставки или сверх ожидаемого — `overage`;
  *   · рейсы только дописываются: уехавшее не перепишешь;
  *   · уехавший короб отгрузки не меняется, открытый не удаляется и не худеет;
  *   · размещение стол может только снять (сборка с ячейки), а не поставить.
@@ -86,6 +87,38 @@ function mergePlacements(current, incoming) {
 }
 
 const add = (m, k, n) => m.set(k, (m.get(k) ?? 0) + n);
+
+/**
+ * Расхождение у новых событий приёмки ставит сервер, а не стол: приёмка —
+ * единственная дверь, через которую товар появляется. Принятое без строки
+ * поставки или сверх ожидаемого по строке (с тем, что уже принято на
+ * сервере) — `overage`, его видно в акте расхождений и в аналитике.
+ * Недостачу стол может отметить сам, если строка действительно не добрана:
+ * она товара не создаёт.
+ */
+function markReceived(shipments, events, known) {
+  const lines = new Map();
+  for (const s of list(shipments)) {
+    for (const l of list(s.lines)) lines.set(l.id, l);
+  }
+  const got = new Map();
+  return events.map((e) => {
+    if (known.has(e.id)) return e;
+    const line =
+      typeof e.expectedShipmentLineId === "string" && lines.get(e.expectedShipmentLineId);
+    let over = !line || line.productId !== e.productId;
+    if (!over) {
+      const id = e.expectedShipmentLineId;
+      const was = got.has(id) ? got.get(id) : num(line.receivedQty);
+      got.set(id, was + e.qty);
+      over = was + e.qty > num(line.expectedQty);
+    }
+    const rest = { ...e };
+    delete rest.discrepancy;
+    if (over) return { ...rest, discrepancy: "overage" };
+    return e.discrepancy === "shortage" ? { ...rest, discrepancy: "shortage" } : rest;
+  });
+}
 const WRITE_OFF = new Set(["shortage", "not_packable"]);
 
 /**
@@ -95,7 +128,7 @@ const WRITE_OFF = new Set(["shortage", "not_packable"]);
  */
 function mergeDeskStock(current, merged, people) {
   const catalog = new Set(list(current.products).map((p) => p.id));
-  const receivingEvents = appendOnly(
+  let receivingEvents = appendOnly(
     current.receivingEvents,
     merged.receivingEvents,
     (e) =>
@@ -105,6 +138,8 @@ function mergeDeskStock(current, merged, people) {
       e.qty <= 100_000 &&
       catalog.has(e.productId),
   );
+  const knownEvents = byId(current.receivingEvents);
+  receivingEvents = markReceived(current.expectedShipments, receivingEvents, knownEvents);
   const shipments = appendOnly(current.shipments, merged.shipments, (s) =>
     people.present.has(s.staffId),
   );
@@ -116,7 +151,6 @@ function mergeDeskStock(current, merged, people) {
   const boxNet = linesBy(list(current.boxes), linesBy(list(merged.boxes)), -1);
   const outNet = linesBy(list(current.outboundBoxes), linesBy(outboundBoxes), -1);
   const received = new Map();
-  const knownEvents = byId(current.receivingEvents);
   for (const e of receivingEvents) if (!knownEvents.has(e.id)) add(received, e.productId, e.qty);
   // Собранное без тары уходит из коробов («снято в заявку»), собранное в
   // тару остаётся в коробах: полка −1, тара +1. Поэтому второе не даёт
@@ -197,4 +231,4 @@ const STOCK_KEYS = [
   "disputes",
 ];
 
-module.exports = { mergeDeskStock, STOCK_KEYS };
+module.exports = { mergeDeskStock, markReceived, STOCK_KEYS };

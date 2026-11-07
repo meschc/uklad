@@ -154,3 +154,94 @@ test("тара на паллету и закрытие поставки — с �
   );
   assert.equal(applyRecvClose(c, { shipmentId: "s1", at: AT }).data, c);
 });
+
+test("один продавец: в поставке — её товар, в таре приёмки — товар одного продавца", () => {
+  const d = data();
+  d.products = [
+    { id: "p1", partnerId: "s1" },
+    { id: "p2", partnerId: "s2" },
+  ];
+  // Без строки, но в поставку продавца s1 — товар s2 нельзя.
+  assert.equal(
+    applyRecvUnit(d, unit({ productId: "p2", lineId: undefined }), "stf-ivan").flag,
+    "mixed",
+  );
+  // Свободная приёмка в тару, где уже лежит товар другого продавца.
+  d.boxes[0].lines = [{ productId: "p1", qty: 1 }];
+  assert.equal(
+    applyRecvUnit(
+      d,
+      unit({ productId: "p2", shipmentId: undefined, lineId: undefined }),
+      "stf-ivan",
+    ).flag,
+    "mixed",
+  );
+});
+
+test("ячейка — на указанном этаже или у источника этажа-алиаса", () => {
+  const d = data();
+  d.warehouse.floors.push(
+    { id: "f2", modules: [{ id: "m2" }] },
+    { id: "f3", aliasOf: "f1", modules: [] },
+  );
+  // Модуль другого этажа под этим этажом не найдётся на плане.
+  assert.equal(
+    applyRecvPlace(d, { boxId: "b1", cell: { ...CELL, moduleId: "m2" }, at: AT }).flag,
+    "bad",
+  );
+  const alias = { ...CELL, floorId: "f3" };
+  assert.deepEqual(
+    applyRecvPlace(d, { boxId: "b1", cell: alias, at: AT }).data.boxes[0].address,
+    alias,
+  );
+});
+
+test("расхождение ставит сервер: сверх строки и без поставки — overage, что бы ни прислал стол", () => {
+  const { markReceived } = require("../src/cabinet/deskStock");
+  const shipments = [
+    { id: "s1", lines: [{ id: "l1", productId: "p1", expectedQty: 10, receivedQty: 0 }] },
+  ];
+  const ev = (id, qty, over = {}) => ({
+    id,
+    productId: "p1",
+    qty,
+    expectedShipmentLineId: "l1",
+    ...over,
+  });
+  const out = markReceived(
+    shipments,
+    [
+      ev("old", 5),
+      ev("e1", 12, { discrepancy: "shortage" }),
+      ev("e2", 3, { expectedShipmentLineId: undefined }),
+      ev("e3", 1, { expectedShipmentLineId: "nope" }),
+    ],
+    new Map([["old", {}]]),
+  );
+  assert.deepEqual(
+    out.map((e) => [e.id, e.discrepancy ?? null]),
+    [
+      ["old", null],
+      ["e1", "overage"],
+      ["e2", "overage"],
+      ["e3", "overage"],
+    ],
+  );
+  // В пределах строки: недостачу стол отмечает сам, «лишнее» — нет.
+  const within = markReceived(
+    shipments,
+    [ev("a", 4, { discrepancy: "overage" }), ev("b", 6, { discrepancy: "shortage" })],
+    new Map(),
+  );
+  assert.deepEqual(
+    within.map((e) => e.discrepancy ?? null),
+    [null, "shortage"],
+  );
+  // Уже принятое на сервере идёт в счёт строки.
+  const later = markReceived(
+    [{ id: "s1", lines: [{ id: "l1", productId: "p1", expectedQty: 10, receivedQty: 9 }] }],
+    [ev("c", 2)],
+    new Map(),
+  );
+  assert.equal(later[0].discrepancy, "overage");
+});

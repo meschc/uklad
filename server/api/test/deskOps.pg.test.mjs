@@ -555,6 +555,15 @@ test(
       recv("unit"),
       // Тот же факт другим ключом (очередь и снимок) — второй раз не ляжет.
       recv("again"),
+      // Сверх строки: сервер сам ставит «лишнее», стол об этом не говорил.
+      op("extra", "recv_unit", {
+        eventId: "ev-recv-extra",
+        productId: "pr1",
+        qty: 2,
+        boxId: "b5",
+        shipmentId: "s1",
+        lineId: "l1",
+      }),
       op("place", "recv_place", { boxId: "b5", cell }),
       op("close", "recv_close", { shipmentId: "s1" }),
     ]);
@@ -565,6 +574,7 @@ test(
         ["key-recv-open", "applied", null],
         ["key-recv-unit", "applied", null],
         ["key-recv-again", "applied", null],
+        ["key-recv-extra", "applied", null],
         ["key-recv-place", "applied", null],
         ["key-recv-close", "applied", null],
       ],
@@ -574,13 +584,16 @@ test(
     const box = snap.data.boxes.find((b) => b.id === "b5");
     assert.deepEqual(
       [box.sealed, box.lines, box.address],
-      [undefined, [{ productId: "pr1", qty: 4 }], cell],
+      [undefined, [{ productId: "pr1", qty: 6 }], cell],
     );
     const sh = snap.data.expectedShipments[0];
-    assert.deepEqual([sh.status, sh.lines[0].receivedQty], ["closed", 4]);
+    assert.deepEqual([sh.status, sh.lines[0].receivedQty], ["closed", 6]);
     assert.deepEqual(
-      snap.data.receivingEvents.map((e) => [e.id, e.qty, e.staffId]),
-      [["ev-recv-unit", 4, "stf-ivan"]],
+      snap.data.receivingEvents.map((e) => [e.id, e.qty, e.staffId, e.discrepancy ?? null]),
+      [
+        ["ev-recv-unit", 4, "stf-ivan", null],
+        ["ev-recv-extra", 2, "stf-ivan", "overage"],
+      ],
     );
     const moves = await db.root.query(
       `SELECT place_kind, place_ref, sum(delta)::int AS d, min(staff_ref) AS who
@@ -591,8 +604,8 @@ test(
     assert.deepEqual(
       moves.rows.map((m) => [m.place_kind, m.place_ref, m.d, m.who]),
       [
-        ["box", "b5", 4, "stf-ivan"],
-        ["box_at", "f1/m1/0/2#b5", 4, "stf-ivan"],
+        ["box", "b5", 6, "stf-ivan"],
+        ["box_at", "f1/m1/0/2#b5", 6, "stf-ivan"],
       ],
     );
   },
