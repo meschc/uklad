@@ -37,6 +37,7 @@ const { createRateLimit } = require("../rateLimit");
 const { MAX_SNAPSHOT_BYTES, withProducts, withoutProducts } = require("./snapshot");
 const { whoseBadge, answerCheck, CHECKS_PER_MINUTE } = require("./deskBadges");
 const { mergeDeskStock, STOCK_KEYS } = require("./deskStock");
+const { recordMoves } = require("./moves");
 
 // Стол живёт, пока его не отвяжут; срок — страховка от забытого компьютера.
 const DESK_TTL_MS = 180 * 86_400_000;
@@ -497,6 +498,10 @@ function createDesks({ auth, cfg, send, log }) {
       );
       // Остатки не сошлись: остальное записано, но копия стола уже не
       // совпадает с сервером — пусть заберёт свежий снимок, как при конфликте.
+      await recordMoves(c, cur.data, write.data, upd.rows[0].version, {
+        deskId: d.deskId,
+        staffRef: who.staff,
+      });
       if (write.mismatch.length > 0) return { conflict: upd.rows[0].version, stock: true };
       return { version: upd.rows[0].version };
     });

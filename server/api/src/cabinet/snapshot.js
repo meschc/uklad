@@ -27,6 +27,7 @@
 /* global require, module */
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { createRateLimit } = require("../rateLimit");
+const { recordMoves } = require("./moves");
 
 // Пустой кабинет — единицы килобайт, демо со всей историей — около мегабайта.
 // Восемь — с запасом, но не столько, чтобы одним запросом забить диск.
@@ -147,6 +148,7 @@ function createSnapshot({ auth, send, log }) {
         );
         if (!rows[0]) return { conflict: true };
         await storeProducts(c, b.data);
+        await recordMoves(c, {}, b.data, rows[0].version, { memberId: ctx.memberId });
         return { version: rows[0].version };
       }
       const { rows } = await c.query(
@@ -154,12 +156,16 @@ function createSnapshot({ auth, send, log }) {
          SET previous = data, data = $1::jsonb, format = $2, version = version + 1,
              updated_at = now(), updated_by = $3, updated_by_desk = NULL
          WHERE org_id = uklad.current_org() AND version = $4
-         RETURNING version`,
+         RETURNING version, previous`,
         [data, format, ctx.memberId, version],
       );
       // Версия не сошлась — товары тоже не трогаем: запись целиком не прошла.
       if (!rows[0]) return { conflict: true };
       await storeProducts(c, b.data);
+      // Что где прибыло и убыло — в журнал движений, с тем, кто записал.
+      await recordMoves(c, rows[0].previous, b.data, rows[0].version, {
+        memberId: ctx.memberId,
+      });
       return { version: rows[0].version };
     });
     if (out === null) return send(res, 401, { ok: false });
