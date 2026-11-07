@@ -379,3 +379,78 @@ test(
     assert.equal((await save(2, [])).status, 200);
   },
 );
+
+test(
+  "журнал движений: что где прибыло и убыло, кто записал, чужим не видно",
+  { skip: SKIP },
+  async () => {
+    const a = await owner("snap-m@sklad.ru", "10.0.1.10");
+    const b = await owner("snap-n@sklad.ru", "10.0.1.11");
+    const work = (lines, outbound) => ({
+      ...data("склад"),
+      boxes: [{ id: "t1", barcode: "UK-BOX-1", lines }],
+      outboundBoxes: outbound,
+    });
+    const save = (who, version, d) =>
+      call("/api/cabinet/snapshot", { ...who, body: { version, format: 8, data: d } });
+    assert.equal((await save(a, 0, work([{ productId: "p1", qty: 3 }], []))).status, 200);
+    const packed = work(
+      [{ productId: "p1", qty: 1 }],
+      [{ id: "o1", code: "UK-OUT-1", lines: [{ productId: "p1", qty: 2 }] }],
+    );
+    assert.equal((await save(a, 1, packed)).status, 200);
+    // Та же запись ещё раз — движений нет.
+    assert.equal((await save(a, 2, packed)).status, 200);
+    // Устаревшая версия — ни снимка, ни движений.
+    assert.equal((await save(a, 1, work([], []))).status, 409);
+    assert.equal((await save(b, 0, work([{ productId: "p1", qty: 9 }], []))).status, 200);
+
+    const { rows } = await db.root.query(
+      `SELECT place_kind, place_ref, product_ref, delta, snapshot_version,
+            member_id IS NOT NULL AS signed
+     FROM uklad.stock_moves WHERE org_id = $1 ORDER BY snapshot_version, place_kind`,
+      [a.org],
+    );
+    assert.deepEqual(rows, [
+      {
+        place_kind: "box",
+        place_ref: "t1",
+        product_ref: "p1",
+        delta: 3,
+        snapshot_version: 1,
+        signed: true,
+      },
+      {
+        place_kind: "box",
+        place_ref: "t1",
+        product_ref: "p1",
+        delta: -2,
+        snapshot_version: 2,
+        signed: true,
+      },
+      {
+        place_kind: "outbound",
+        place_ref: "o1",
+        product_ref: "p1",
+        delta: 2,
+        snapshot_version: 2,
+        signed: true,
+      },
+    ]);
+    // Приложение журнал только читает и дописывает, и только свой.
+    const app = await db.pool.connect();
+    try {
+      await app.query("BEGIN");
+      await app.query(`SELECT set_config('app.org_id', $1, true)`, [b.org]);
+      const seen = await app.query(`SELECT delta FROM uklad.stock_moves`);
+      assert.deepEqual(seen.rows, [{ delta: 9 }]);
+      await assert.rejects(
+        app.query(`UPDATE uklad.stock_moves SET delta = 1`),
+        /permission denied/,
+      );
+      await app.query("ROLLBACK");
+    } finally {
+      app.release();
+    }
+  },
+);

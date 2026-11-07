@@ -479,6 +479,11 @@ test(
     assert.equal(after.version, before.version + 1);
     assert.ok(after.data.staffEvents.some((e) => e.id === "n5"));
     assert.ok(!(after.data.boxes ?? []).some((b) => b.id === "bx-fake"));
+    // Откаченная работа и в журнал движений не попала.
+    const fakeMoves = await db.root.query(
+      `SELECT count(*)::int AS n FROM uklad.stock_moves WHERE place_ref = 'bx-fake'`,
+    );
+    assert.equal(fakeMoves.rows[0].n, 0);
 
     // Выход под входом руководителя (не стол) — не маршрут стола: 404, а не
     // 401, который закрыл бы кабинет руководителя.

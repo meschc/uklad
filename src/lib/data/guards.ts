@@ -38,7 +38,14 @@ export type Guard<T> = (value: unknown) => value is T;
 export const isCellAddress: Guard<CellAddress> = (v): v is CellAddress =>
   isRec(v) && isStr(v.floorId) && isStr(v.moduleId) && isNum(v.shelfIndex) && isNum(v.cellIndex);
 
-const isBoxLine = (v: unknown): boolean => isRec(v) && isStr(v.productId) && isNum(v.qty);
+/**
+ * Строка тары или короба: товар и целое число штук. То же правило у сервера
+ * (`cabinet/moves.js`): строку с «1.5» или без товара он не запишет, и вся
+ * синхронизация встала бы на ней. Поэтому такая запись теряется здесь, с
+ * предупреждением в консоль, а не на сервере молча.
+ */
+const isBoxLine = (v: unknown): boolean =>
+  isRec(v) && isStr(v.productId) && v.productId !== "" && Number.isInteger(v.qty);
 
 export const isProduct: Guard<Product> = (v): v is Product =>
   hasId(v) && isStr(v.name) && isStr(v.sku);
@@ -81,7 +88,7 @@ export const isOutboundBox: Guard<OutboundBox> = (v): v is OutboundBox =>
   hasId(v) &&
   isStr(v.code) &&
   Array.isArray(v.lines) &&
-  v.lines.every((l) => isRec(l) && isStr(l.productId) && isNum(l.qty)) &&
+  v.lines.every(isBoxLine) &&
   Array.isArray(v.requestIds) &&
   Array.isArray(v.packedBy) &&
   isNum(v.createdAt);
