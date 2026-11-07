@@ -348,16 +348,19 @@ async function runDeskOps(c, deskId, ops, who, now, deps = {}) {
     );
     for (const row of r.rows) received.set(row.id, new Date(row.at).getTime());
   }
-  // Работе с товаром нужен каталог (продавец товара, сверка остатков): он в таблице
-  // товаров (миграция 013), а не в снимке.
+  // Кабинет целиком: каталог — из таблицы товаров (миграция 013), работа
+  // склада и журнал смен — со строк (миграция 021). Товары стол не пишет.
   const packing = fresh.some((op) => WORK.has(op.kind));
-  const base = packing && deps.withProducts ? await deps.withProducts(c, cur.data) : cur.data;
+  const base = deps.load ? await deps.load(c, cur.data) : cur.data;
   const applied = applyDeskOps(base, fresh, who, now, received, deps.verify ?? null);
   // Снимок, который не влезет в лимит, не пишем вовсе — ни снимок, ни журнал
   // операций: стол получает понятный отказ, а не 500.
-  const payload = applied.changed
-    ? JSON.stringify(packing ? deps.withoutProducts(applied.data) : applied.data)
+  const split = applied.changed
+    ? deps.split
+      ? deps.split(applied.data)
+      : { doc: applied.data, items: null }
     : null;
+  const payload = split ? JSON.stringify(split.doc) : null;
   if (payload && deps.maxBytes && Buffer.byteLength(payload) > deps.maxBytes) {
     return { tooLarge: true };
   }
@@ -397,8 +400,9 @@ async function runDeskOps(c, deskId, ops, who, now, deps = {}) {
       [payload, deskId],
     );
     version = upd.rows[0].version;
+    if (split.items && deps.storeRecords) await deps.storeRecords(c, split.items, split.slots);
     if (packing && deps.recordMoves) {
-      await deps.recordMoves(c, cur.data, applied.data, version, {
+      await deps.recordMoves(c, base, applied.data, version, {
         deskId,
         staffRef: who.staff ?? who.prev,
       });
