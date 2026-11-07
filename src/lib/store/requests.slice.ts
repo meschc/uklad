@@ -1,7 +1,7 @@
 import { nowMs, uid } from "../utils";
 import { addressKey } from "../address";
 import { shipOutbound } from "../outbound";
-import { isOrderSource, type FulfillmentRequest, type Shipment } from "../types";
+import { isOrderSource, type Box, type FulfillmentRequest, type Shipment } from "../types";
 import type { RequestsSlice, SliceCreator } from "./state";
 
 const MAX_EXTERNAL_ID = 64;
@@ -100,7 +100,7 @@ export const createRequestsSlice: SliceCreator<RequestsSlice> = (set, get) => ({
    * размещения) и увеличиваем счётчик заявки. Списание обязательно — иначе
    * занятость росла бы при приёмке и никогда не падала при отгрузке (см. 2.1).
    */
-  recordPick: (id, productId, addr) => {
+  recordPick: (id, productId, addr, toteId) => {
     const s = get();
     const req = s.requests.find((r) => r.id === id);
     if (!req) return 0;
@@ -124,8 +124,15 @@ export const createRequestsSlice: SliceCreator<RequestsSlice> = (set, get) => ({
     const picked = Math.min(req.qty, (req.pickedQty ?? 0) + taken);
     set((st) => ({
       requests: st.requests.map((r) =>
-        r.id === id ? { ...r, pickedQty: picked, updatedAt: nowMs() } : r,
+        r.id === id
+          ? { ...r, pickedQty: picked, updatedAt: nowMs(), ...(toteId ? { toteId } : {}) }
+          : r,
       ),
+      // Снятое с полки не исчезает, а едет к столу упаковки в таре сборки:
+      // иначе упаковщику нечего сканировать, а остатки не сходятся.
+      boxes: toteId
+        ? st.boxes.map((b) => (b.id === toteId ? addLine(b, productId, taken) : b))
+        : st.boxes,
     }));
     return picked;
   },
@@ -294,3 +301,14 @@ export const createRequestsSlice: SliceCreator<RequestsSlice> = (set, get) => ({
     return shipmentId;
   },
 });
+
+/** Положить штуки товара в тару. */
+function addLine(box: Box, productId: string, qty: number): Box {
+  const has = box.lines.some((l) => l.productId === productId);
+  return {
+    ...box,
+    lines: has
+      ? box.lines.map((l) => (l.productId === productId ? { ...l, qty: l.qty + qty } : l))
+      : [...box.lines, { productId, qty }],
+  };
+}

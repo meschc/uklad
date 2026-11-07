@@ -142,6 +142,7 @@ const REQUEST_WORK = [
   "shippedAt",
   "packedAt",
   "packedBy",
+  "toteId",
   "updatedAt",
 ];
 

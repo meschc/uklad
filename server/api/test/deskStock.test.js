@@ -110,6 +110,21 @@ test("сборка: снятое с полки ушло в собранное п
   assert.equal(data.requests[0].pickedQty, 1);
 });
 
+test("сборка в тару: с полки в тару сборки и в собранное по заявке", () => {
+  const cur = base();
+  const inc = {
+    ...withBoxes(cur, [{ productId: "p1", qty: 4 }], [...cur.boxes[1].lines]),
+    boxes: [
+      { ...cur.boxes[0], lines: [{ productId: "p1", qty: 4 }] },
+      { ...cur.boxes[1], lines: [...cur.boxes[1].lines, { productId: "p1", qty: 1 }] },
+    ],
+    requests: [{ ...cur.requests[0], pickedQty: 1, toteId: "t1" }],
+  };
+  const { data, mismatch } = mergeDeskWrite(cur, inc, who);
+  assert.deepEqual(mismatch, []);
+  assert.equal(data.requests[0].toteId, "t1");
+});
+
 test("упаковка: из тары в короб отгрузки — проходит; короб из ничего — нет", () => {
   const cur = base();
   const out = [
