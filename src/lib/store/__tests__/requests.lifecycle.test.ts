@@ -404,8 +404,34 @@ describe("shipRequests", () => {
 });
 
 describe("shipRequests и короба отгрузки", () => {
-  it("закрывает рейсом погруженные короба, а оставшийся у стола ждёт", () => {
+  it("закрывает рейсом погруженные короба, а заявка другого короба ждёт", () => {
     // Arrange
+    const base = { lines: [], packedBy: ["s1"], createdAt: 1, updatedAt: 1 };
+    const store = makeRequestsStore({
+      requests: [
+        makeRequest({ id: "r1", productId: "p1", qty: 1, status: "done", note: "Тула" }),
+        makeRequest({ id: "r2", productId: "p1", qty: 1, status: "done", note: "Тула" }),
+      ],
+      shipments: [],
+      outboundBoxes: [
+        { ...base, id: "o1", code: "UK-OUT-TULA01", requestIds: ["r1"] },
+        { ...base, id: "o2", code: "UK-OUT-TULA02", requestIds: ["r2"] },
+      ],
+      showToast: vi.fn(),
+    });
+
+    // Act
+    const shipmentId = store.getState().shipRequests(["r1", "r2"], { units: ["uk-out-tula01"] });
+
+    // Assert: r2 не «уехала» без своего короба.
+    const [loaded, left] = store.getState().outboundBoxes;
+    expect(loaded.shipmentId).toBe(shipmentId);
+    expect(left.shipmentId).toBeUndefined();
+    const status = Object.fromEntries(store.getState().requests.map((r) => [r.id, r.status]));
+    expect(status).toEqual({ r1: "shipped", r2: "done" });
+  });
+
+  it("не отправляет рейс, если заявка уехала бы без второго короба", () => {
     const base = { lines: [], packedBy: ["s1"], createdAt: 1, updatedAt: 1 };
     const store = makeRequestsStore({
       requests: [makeRequest({ id: "r1", productId: "p1", qty: 1, status: "done", note: "Тула" })],
@@ -417,12 +443,8 @@ describe("shipRequests и короба отгрузки", () => {
       showToast: vi.fn(),
     });
 
-    // Act
-    const shipmentId = store.getState().shipRequests(["r1"], { units: ["uk-out-tula01"] });
-
-    // Assert
-    const [loaded, left] = store.getState().outboundBoxes;
-    expect(loaded.shipmentId).toBe(shipmentId);
-    expect(left.shipmentId).toBeUndefined();
+    expect(store.getState().shipRequests(["r1"], { units: ["UK-OUT-TULA01"] })).toBeNull();
+    expect(store.getState().requests[0].status).toBe("done");
+    expect(store.getState().outboundBoxes.every((b) => !b.shipmentId)).toBe(true);
   });
 });

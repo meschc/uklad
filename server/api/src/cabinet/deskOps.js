@@ -29,6 +29,7 @@ const {
   applyRecvAttach,
   applyRecvClose,
 } = require("./deskReceive");
+const { applyShipRun, applyDisputeResolve } = require("./deskShip");
 
 const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 
@@ -43,6 +44,8 @@ const SHIFT_TYPES = new Set([
 const PACK_KINDS = new Set(["pack_event", "pack_done"]);
 const PICK_KINDS = new Set(["pick_unit", "pick_done"]);
 const RECV_KINDS = new Set(["recv_open", "recv_unit", "recv_place", "recv_attach", "recv_close"]);
+const SHIP_KINDS = new Set(["ship_run", "dispute_resolve"]);
+const NOW_ONLY = new Set(["dispute_resolve"]);
 /** Работа с товаром: правка снимка проходит сверку остатков. */
 const WORK = new Map([
   ["pack_event", applyPackEvent],
@@ -54,8 +57,17 @@ const WORK = new Map([
   ["recv_place", applyRecvPlace],
   ["recv_attach", applyRecvAttach],
   ["recv_close", applyRecvClose],
+  ["ship_run", applyShipRun],
+  ["dispute_resolve", applyDisputeResolve],
 ]);
-const KINDS = new Set(["shift_mark", "shift_undo", ...PACK_KINDS, ...PICK_KINDS, ...RECV_KINDS]);
+const KINDS = new Set([
+  "shift_mark",
+  "shift_undo",
+  ...PACK_KINDS,
+  ...PICK_KINDS,
+  ...RECV_KINDS,
+  ...SHIP_KINDS,
+]);
 /**
  * Окно отмены по часам сервера: как в кабинете (`MARK_UNDO_MS`) плюс запас
  * на сеть. Отмена, застрявшая в очереди дольше, помечается.
@@ -144,6 +156,12 @@ function applyDeskOps(data, ops, who, now, received = new Map(), verify = null) 
         flag(op, "backdated");
         continue;
       }
+      // Решение старшего — только от того, кто за столом сейчас: младший не
+      // может назваться старшим, который только что отошёл.
+      if (NOW_ONLY.has(op.kind) && staffRef !== who.staff) {
+        flag(op, "not_yours");
+        continue;
+      }
       const before = { ...state, staffEvents: events };
       const r = WORK.get(op.kind)(before, body, staffRef);
       if (r.flag) {
@@ -158,6 +176,12 @@ function applyDeskOps(data, ops, who, now, received = new Map(), verify = null) 
           continue;
         }
         next = w.data;
+        // Правило, которое знает только запись целиком (кто сейчас за
+        // столом): правка прошла сверку, но решение в неё не попало.
+        if (r.check && !r.check(next)) {
+          flag(op, "not_yours");
+          continue;
+        }
       }
       if (next !== before) {
         state = next;
@@ -251,12 +275,16 @@ function cleanBody(body) {
     "shipmentId",
     "lineId",
     "discrepancy",
+    "disputeId",
+    "resolution",
+    "note",
+    "vehicle",
   ]) {
     if (typeof body[k] === "string") out[k] = body[k].slice(0, 200);
   }
   // Состав упаковки нужен журналу целиком: по нему разбирают «куда делась
   // штука». Размер ограничен телом запроса.
-  for (const k of ["lines", "requestIds", "shortages"]) {
+  for (const k of ["lines", "requestIds", "shortages", "units"]) {
     if (Array.isArray(body[k])) out[k] = body[k];
   }
   if (isObject(body.dispute)) out.dispute = body.dispute;

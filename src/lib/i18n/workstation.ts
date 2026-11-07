@@ -42,6 +42,9 @@ export const ru = {
   "ws.opPackRejected": "Сервер не принял упаковку этой тары. Позовите старшего",
   "ws.opPickRejected": "Сервер не принял сборку этой заявки. Позовите старшего",
   "ws.opRecvRejected": "Сервер не принял приёмку этой тары. Позовите старшего",
+  "ws.opShipRejected": "Сервер не принял рейс. Машину не отпускайте — позовите старшего",
+  "ws.opDisputeRejected":
+    "Сервер не принял решение по спорному: решает старший, который сейчас за столом",
   "ws.opLost": "Сервер не принял отметки смены: {n}. Скажите руководителю",
   "ws.opPendingHint": "Нет связи с сервером. Работа сохранена здесь и уйдёт сама",
 
@@ -78,7 +81,10 @@ export const ru = {
   "ws.ship.waiting": "Ждут погрузки: {n}",
   "ws.ship.allLoaded": "Все короба этого назначения в машине.",
   "ws.ship.mixed": "В {code} заказы и на другое назначение. Отнесите его старшему на переупаковку",
-  "ws.ship.confirmMissing": "Отгрузить без коробов: {n}",
+  "ws.ship.confirmMissing": "Отгрузить погруженное, заказов останется: {n}",
+  "ws.ship.split":
+    "В машине короб с заказом, чей второй короб ещё у стола. Догрузите его — без него рейс не уйдёт",
+  "ws.ship.stored": "{code} стоит на хранении — в машину не грузят",
   "ws.panel.close": "Закрыть",
   "ws.device.nameEmpty": "Назовите устройство — по имени столы и различают",
   "ws.device.notManager": "Это не бейдж руководителя",
@@ -342,6 +348,8 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.opPackRejected": "The server didn't accept packing of this tote. Call a senior",
   "ws.opPickRejected": "The server didn't accept picking for this request. Call a senior",
   "ws.opRecvRejected": "The server didn't accept receiving into this box. Call a senior",
+  "ws.opShipRejected": "The server didn't accept the run. Hold the truck and call a senior",
+  "ws.opDisputeRejected": "The server didn't accept the decision: the senior at the desk decides",
   "ws.opLost": "The server rejected shift marks: {n}. Tell your manager",
   "ws.opPendingHint":
     "No connection to the server. Your work is kept here and will be sent automatically",
@@ -380,7 +388,10 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.ship.allLoaded": "Every box for this destination is on the truck.",
   "ws.ship.mixed":
     "{code} also holds orders for another destination. Take it to the supervisor to repack",
-  "ws.ship.confirmMissing": "Ship without boxes: {n}",
+  "ws.ship.confirmMissing": "Ship what is loaded, orders left: {n}",
+  "ws.ship.split":
+    "A loaded box holds an order whose other box is still at the desk. Load it too — the run won't leave without it",
+  "ws.ship.stored": "{code} is in storage — it does not go on the truck",
   "ws.panel.close": "Close",
   "ws.device.nameEmpty": "Name the device — that is how desks are told apart",
   "ws.device.notManager": "This is not a manager's badge",

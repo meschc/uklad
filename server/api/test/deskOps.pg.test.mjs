@@ -668,3 +668,102 @@ test(
     );
   },
 );
+
+test(
+  "рейс и решение старшего операциями: уехало своё, решает только старший",
+  { skip: SKIP },
+  async () => {
+    const { a, ivan } = await company("ops-s@sklad.ru", "10.0.5.9");
+    const olga = (await call("/api/cabinet/badges/issue", { ...a, body: { staffRef: "stf-olga" } }))
+      .json.code;
+    const data = {
+      ...cabinetData(),
+      boxes: [{ id: "b1", barcode: "UK-BOX-1", lines: [{ productId: "pr1", qty: 2 }] }],
+      requests: [
+        { id: "r1", productId: "pr1", qty: 1, status: "done", note: "Тула", toteId: "b0" },
+      ],
+      outboundBoxes: [
+        {
+          id: "o1",
+          code: "UK-OUT-1",
+          requestIds: ["r1"],
+          lines: [{ productId: "pr1", qty: 1 }],
+          packedBy: ["stf-ivan"],
+          createdAt: 1,
+        },
+      ],
+      shipments: [],
+      disputes: [
+        {
+          id: "q7",
+          kind: "shortage",
+          boxId: "b1",
+          productId: "pr1",
+          qty: 1,
+          raisedBy: "stf-ivan",
+          raisedAt: 1,
+        },
+      ],
+    };
+    const saved = await call("/api/cabinet/snapshot", {
+      ...a,
+      body: { version: 1, format: 8, data },
+    });
+    assert.equal(saved.status, 200);
+    const desk = await makeDesk(a);
+    await call("/api/cabinet/badges/check", { desk, body: { code: ivan } });
+    const at = Date.now() - 500;
+    const ship = {
+      key: "key-ship-1xxx",
+      kind: "ship_run",
+      body: {
+        eventId: "ship-1",
+        staffId: "stf-ivan",
+        at,
+        requestIds: ["r1"],
+        vehicle: "А123ВС77",
+        units: ["UK-OUT-1"],
+      },
+    };
+    const resolve = (key, staffId) => ({
+      key,
+      kind: "dispute_resolve",
+      body: {
+        eventId: `ev-${key}`,
+        staffId,
+        at,
+        disputeId: "q7",
+        resolution: "written_off",
+        note: "пересчитали",
+      },
+    });
+    // Грузчик решать не вправе.
+    let r = await ops(desk, [ship, resolve("key-res-ivan", "stf-ivan")]);
+    assert.deepEqual(
+      r.json.results.map((x) => [x.status, x.reason ?? null]),
+      [
+        ["applied", null],
+        ["flagged", "not_yours"],
+      ],
+    );
+    await call("/api/cabinet/badges/check", { desk, body: { code: olga } });
+    r = await ops(desk, [resolve("key-res-olga", "stf-olga")]);
+    assert.deepEqual(
+      r.json.results.map((x) => [x.status, x.reason ?? null]),
+      [["applied", null]],
+    );
+
+    const { snap } = await serverEvents("ops-s@sklad.ru", a.org);
+    assert.equal(snap.data.requests.find((x) => x.id === "r1").status, "shipped");
+    assert.deepEqual(
+      snap.data.shipments.map((s) => [s.id, s.staffId, s.vehicle]),
+      [["ship-1", "stf-ivan", "А123ВС77"]],
+    );
+    assert.equal(snap.data.outboundBoxes[0].shipmentId, "ship-1");
+    const q7 = snap.data.disputes.find((d) => d.id === "q7");
+    assert.deepEqual([q7.resolution, q7.resolvedBy], ["written_off", "stf-olga"]);
+    assert.deepEqual(snap.data.boxes.find((b) => b.id === "b1").lines, [
+      { productId: "pr1", qty: 1 },
+    ]);
+  },
+);

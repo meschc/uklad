@@ -4,6 +4,7 @@ import type { StaffEvent } from "../../types";
 import type { StorePort } from "../repository";
 import { createOpQueue, type DeskOp, type OpQueue, type SendOutcome } from "../opQueue";
 import { createWorkstationRepository } from "../workstationRepository";
+import { createDisputesRepository } from "../disputesRepository";
 import { ok } from "../result";
 
 /**
@@ -238,10 +239,71 @@ describe("workstationRepository: отметки смены операциями"
     expect(q.enqueue).toHaveBeenCalledTimes(1);
   });
 
+  it("рейс на сервере уходит фактом: заявки, места и машина из стора", async () => {
+    const q = fakeQueue();
+    const p = port(true);
+    const st = p.get() as unknown as Record<string, unknown>;
+    st.stationSession = { staffId: "stf-ivan", station: "shipping" };
+    st.shipments = [];
+    st.shipRequests = vi.fn(() => {
+      st.shipments = [
+        {
+          id: "ship_1",
+          requestIds: ["r1"],
+          vehicle: "А123ВС77",
+          units: ["UK-OUT-1"],
+          shippedAt: 11,
+        },
+      ];
+      return "ship_1";
+    });
+    const repo = createWorkstationRepository(p, badges, desks, q);
+    const info = { vehicle: "А123ВС77", staffId: "stf-ivan", units: ["UK-OUT-1"] };
+    expect(await repo.ship(["r1", "r2"], info)).toEqual({ ok: true, data: "ship_1" });
+    expect(q.enqueue).toHaveBeenCalledWith("ship_run", {
+      eventId: "ship_1",
+      staffId: "stf-ivan",
+      at: 11,
+      requestIds: ["r1"],
+      vehicle: "А123ВС77",
+      units: ["UK-OUT-1"],
+    });
+  });
+
   it("в демо очереди нет", async () => {
     const q = fakeQueue();
     const repo = createWorkstationRepository(port(false), badges, desks, q);
     await repo.mark("break_start");
     expect(q.enqueue).not.toHaveBeenCalled();
+  });
+});
+
+describe("disputesRepository: решение старшего за столом уходит операцией", () => {
+  const state = (station: string | null) => ({
+    session: { source: "server" },
+    stationSession: station ? { staffId: station, station: "pack" } : null,
+    boxes: [],
+    disputes: [{ id: "q1", kind: "shortage", raisedBy: "stf-ivan", qty: 1, raisedAt: 1 }],
+    resolveDispute: vi.fn(() => true),
+  });
+  const portOf = (st: object): StorePort => ({
+    get: () => st as unknown as EditorState,
+    set: () => {},
+  });
+
+  it("старший за столом — операция с его именем; руководитель из кабинета — снимком", async () => {
+    const q = fakeQueue();
+    await createDisputesRepository(portOf(state("stf-olga")), q).resolve(
+      "q1",
+      "returned",
+      "stf-olga",
+    );
+    expect(q.enqueue).toHaveBeenCalledWith(
+      "dispute_resolve",
+      expect.objectContaining({ disputeId: "q1", resolution: "returned", staffId: "stf-olga" }),
+    );
+    const q2 = fakeQueue();
+    await createDisputesRepository(portOf(state(null)), q2).resolve("q1", "returned", "manager");
+    expect(q2.enqueue).not.toHaveBeenCalled();
   });
 });

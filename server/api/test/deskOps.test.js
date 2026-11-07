@@ -226,3 +226,48 @@ test("задним числом: раньше, чем встал за стол, 
   );
   assert.deepEqual(statuses(r3), [["k-000006", "flagged", "backdated"]]);
 });
+
+test("решение старшего — только от того, кто за столом сейчас, а не от только что ушедшего", () => {
+  const data = {
+    staffEvents: [],
+    warehouse: {
+      staff: [
+        { id: "stf-ivan", role: "Грузчик" },
+        { id: "stf-olga", role: "Старший смены" },
+      ],
+    },
+    boxes: [{ id: "t1", lines: [{ productId: "p1", qty: 2 }] }],
+    disputes: [
+      { id: "d1", kind: "shortage", boxId: "t1", productId: "p1", qty: 2, raisedBy: "stf-ivan" },
+    ],
+  };
+  const op = {
+    key: "k-dr0001",
+    kind: "dispute_resolve",
+    body: {
+      eventId: "dr-1",
+      at: NOW - 1000,
+      staffId: "stf-olga",
+      disputeId: "d1",
+      resolution: "written_off",
+      note: "нет на складе",
+    },
+  };
+  // За столом Иван, Ольга отошла пять минут назад: назваться ею нельзя.
+  const who = {
+    staff: "stf-ivan",
+    staffSince: NOW - 60_000,
+    prev: "stf-olga",
+    prevSince: NOW - 3_600_000,
+    prevLeft: NOW - 300_000,
+  };
+  // Время — пока Ольга ещё стояла за столом, чтобы не спасла пометка «задним числом».
+  const early = { ...op, body: { ...op.body, at: NOW - 400_000 } };
+  const r = applyDeskOps(data, [early], who, NOW);
+  assert.deepEqual(statuses(r), [["k-dr0001", "flagged", "not_yours"]]);
+  assert.equal(r.data.disputes[0].resolution, undefined);
+  // Ольга за столом — решение проходит.
+  const ok = applyDeskOps(data, [op], { staff: "stf-olga", staffSince: NOW - 60_000 }, NOW);
+  assert.deepEqual(statuses(ok), [["k-dr0001", "applied", null]]);
+  assert.equal(ok.data.disputes[0].resolution, "written_off");
+});
