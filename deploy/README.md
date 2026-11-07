@@ -376,7 +376,8 @@ docker compose exec api node api/src/admin/cli.js unlock почта@домен
 - **Заявка не уходит, на сайте «не вышло»** — `docker compose logs api`:
   чаще всего неверный пароль приложения почты. Заявка при этом уже в базе.
 - **`permission denied` на `/data`** — не выполнен `chown 1000:1000 data`.
-- **CSP.** Заголовок политики пока в режиме «только отчёт». Неделю после
-  запуска смотрите консоль браузера на сайте; если там нет нарушений, в
-  `Caddyfile` замените `Content-Security-Policy-Report-Only` на
-  `Content-Security-Policy` и перезапустите `docker compose up -d --build`.
+- **CSP.** Политика строгая: браузер не исполнит скрипт, которого нет в
+  `script-src`. Если после правки `index.html` или `app/index.html` тема
+  перестала выбираться и в консоли «Refused to execute inline script» —
+  хэш в `Caddyfile` устарел. Новый печатает `npm test` (src/test/csp.test.ts);
+  после замены — `docker compose up -d --build`.
