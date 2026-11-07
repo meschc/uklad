@@ -704,6 +704,13 @@ function createDesks({ auth, cfg, send, log }) {
     const key = `${req.method} ${url.pathname}`;
     let route = managerRoutes[key];
     if (!route && fromDesk(req)) {
+      // «Только изменённое» — запись руководителя (шаг 2 потолка данных).
+      // Стол пишет снимком со сверкой: `diverged` — и кабинет стола сам
+      // пишет целиком, а не замолкает, приняв 403 за «снимок не для роли».
+      if (key === "POST /api/cabinet/snapshot/changes") {
+        send(res, 409, { ok: false, error: "diverged" });
+        return true;
+      }
       route = deskRoutes[key];
       if (!route && CABINET.test(url.pathname)) {
         send(res, 403, { ok: false, error: "desk" });
