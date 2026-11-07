@@ -764,7 +764,16 @@ test(
       assert.equal(res.json.error, "records_mass_delete");
     }
     assert.equal((await call("/api/cabinet/snapshot", a)).json.snapshot.data.requests.length, 5);
-    // Список с повтором id остаётся документом — это не пропажа.
+    // Повтор id без живых заявок — тот же способ стереть их: отказ.
+    const twins = full({ requests: [{ id: "x" }, { id: "x" }] });
+    const sly = await call("/api/cabinet/snapshot", {
+      ...a,
+      body: { version: 1, format: 8, data: twins },
+    });
+    assert.equal(sly.status, 409);
+    assert.equal(sly.json.error, "records_mass_delete");
+    assert.equal((await call("/api/cabinet/snapshot", a)).json.snapshot.data.requests.length, 5);
+    // Список с повтором id, где все живые заявки на месте, остаётся документом.
     const dup = full({ requests: [...reqs, { id: "r1", qty: 2 }] });
     assert.equal(
       (await call("/api/cabinet/snapshot", { ...a, body: { version: 1, format: 8, data: dup } }))

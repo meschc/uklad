@@ -43,6 +43,7 @@ const {
   massGone,
   massRemoved,
   lostLists,
+  inlineDrops,
   marksOf,
   liveCounts,
   upsertRecords,
@@ -231,8 +232,11 @@ function createSnapshot({ auth, send, log }) {
       const prev = await c.query(
         `SELECT data FROM uklad.cabinet_snapshots WHERE org_id = uklad.current_org() FOR UPDATE`,
       );
-      if (prev.rows[0] && lostLists(prev.rows[0].data, split.doc).missing.length > 0) {
-        return { conflict: true, error: "records_mass_delete" };
+      if (prev.rows[0]) {
+        const lost = lostLists(prev.rows[0].data, split.doc);
+        if (lost.missing.length > 0 || (await inlineDrops(c, lost.inline))) {
+          return { conflict: true, error: "records_mass_delete" };
+        }
       }
       // Первая запись: строки ещё нет. Двое одновременно — второй получит
       // конфликт ключа и ответ 409, а не вторую строку.

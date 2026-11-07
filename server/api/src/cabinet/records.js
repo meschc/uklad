@@ -145,7 +145,8 @@ function marksOf(doc) {
 /**
  * Списки, которые в прежнем документе лежали строками, а в новом кабинете
  * пропали, хотя их склад на месте: `missing` — ключа нет или там не список,
- * `inline` — список лежит в документе. Удалённый склад сюда не попадает.
+ * `inline` — список лежит в документе (`{ w, d, list }`). Удалённый склад
+ * сюда не попадает.
  * Пропавший список при чтении показал бы пустоту мимо защиты от массового
  * удаления — такую запись сервер не принимает.
  */
@@ -159,7 +160,11 @@ function lostLists(prevDoc, next) {
     if (!now.has(k)) continue;
     const v = now.get(k);
     if (isMark(v)) continue;
-    (Array.isArray(v) ? inline : missing).push(k);
+    if (!Array.isArray(v)) missing.push(k);
+    else {
+      const [w, d] = k.split("\u0000");
+      inline.push({ w, d, list: v });
+    }
   }
   return { missing, inline };
 }
@@ -220,6 +225,25 @@ async function massGone(c, items, slots) {
     [JSON.stringify(items.map(({ w, d, ref }) => ({ w, d, ref }))), JSON.stringify(slots), GUARDED],
   );
   return rows.some(({ live, gone }) => gone >= 3 && gone * 2 > live);
+}
+
+/**
+ * Список, оставшийся документом (повтор id), вместо разложенного: принять
+ * можно, только если в нём есть все живые записи — иначе это тот же способ
+ * стереть заявки мимо защиты от массового удаления.
+ */
+async function inlineDrops(c, inline) {
+  for (const { w, d, list } of inline) {
+    const { rows } = await c.query(
+      `SELECT ref FROM uklad.cabinet_records
+       WHERE org_id = uklad.current_org() AND deleted_at IS NULL
+         AND warehouse_ref = $1 AND domain = $2`,
+      [w, d],
+    );
+    const ids = new Set(list.map((x) => (isObject(x) ? x.id : undefined)));
+    if (rows.some((r) => !ids.has(r.ref))) return true;
+  }
+  return false;
 }
 
 /**
@@ -299,6 +323,7 @@ module.exports = {
   massGone,
   massRemoved,
   lostLists,
+  inlineDrops,
   marksOf,
   liveCounts,
   upsertRecords,
