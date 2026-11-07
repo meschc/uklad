@@ -57,6 +57,10 @@ export function ReceivingScreen({ staffId: badgeStaffId }: { staffId?: string } 
   const boxes = useEditor((s) => s.boxes);
   const pallets = useEditor((s) => s.pallets);
   const shipments = useEditor((s) => s.expectedShipments);
+  const requests = useEditor((s) => s.requests);
+  // Стол на сервере пишет приёмку операциями и новых тар не заводит: номер
+  // тары выдаёт счётчик склада, два стола получили бы один номер.
+  const deskOnServer = useEditor((s) => s.session.source === "server" && !!s.stationSession);
   const staff = useEditor((s) => s.warehouse.staff ?? []);
   // За столом по бейджу поставку заводит только старший смены; руководитель
   // в кабинете (бейджа нет) — всегда.
@@ -245,6 +249,16 @@ export function ReceivingScreen({ staffId: badgeStaffId }: { staffId?: string } 
       fail("recv.box.placed", { addr: formatAddress(warehouse, found.address) ?? "" });
       return;
     }
+    // В тару сборки не принимают: принятое смешалось бы с заказом. Сервер
+    // такую приёмку тоже не примет (`deskReceive.js`).
+    const picking = requests.some(
+      (r) =>
+        r.toteId === found.id && !r.packedAt && r.status !== "shipped" && r.status !== "cancelled",
+    );
+    if (picking) {
+      fail("recv.box.picking");
+      return;
+    }
     if (found.sealed) void fulfillmentRepository.openUnit(found.id);
     go({ boxId: found.id, step: "product" });
     ok(found.sealed ? "recv.sealed.opened" : "recv.box.opened", { code: found.barcode });
@@ -260,6 +274,18 @@ export function ReceivingScreen({ staffId: badgeStaffId }: { staffId?: string } 
   /** Товар уезжает в открытую тару; тара пока стоит на рампе, без адреса. */
   const putInBox = async (d: Draft) => {
     if (!box) return;
+    // Один продавец в таре и в поставке — то же правило проверит сервер
+    // (`deskReceive.js`): иначе товар уехал бы на полку под чужим ярлыком.
+    const sellerOf = (id: string) => products.find((p) => p.id === id)?.partnerId ?? "";
+    const own = sellerOf(d.product.id);
+    const supply = new Set((shipment?.lines ?? []).map((l) => sellerOf(l.productId)));
+    if (
+      (supply.size > 0 && !supply.has(own)) ||
+      box.lines.some((l) => l.qty > 0 && sellerOf(l.productId) !== own)
+    ) {
+      fail("recv.box.mixed");
+      return;
+    }
     const res = await run(() =>
       fulfillmentRepository.receive({
         productId: d.product.id,
@@ -462,7 +488,7 @@ export function ReceivingScreen({ staffId: badgeStaffId }: { staffId?: string } 
           status={scan.status}
           busy={busy}
           onScan={onScanPallet}
-          onNew={() => void onNewPallet()}
+          onNew={deskOnServer ? undefined : () => void onNewPallet()}
           onSkip={() => go({ step: "box" })}
           t={t}
         />
@@ -478,7 +504,7 @@ export function ReceivingScreen({ staffId: badgeStaffId }: { staffId?: string } 
           status={scan.status}
           busy={busy}
           onScan={onScanBox}
-          onNew={() => void onNewBox()}
+          onNew={deskOnServer ? undefined : () => void onNewBox()}
           onClosePallet={closePallet}
           t={t}
         />

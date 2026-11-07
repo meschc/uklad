@@ -21,7 +21,17 @@ import { readLocal, writeLocal } from "../safeStorage";
  */
 
 export type DeskOpKind =
-  "shift_mark" | "shift_undo" | "pack_event" | "pack_done" | "pick_unit" | "pick_done";
+  | "shift_mark"
+  | "shift_undo"
+  | "pack_event"
+  | "pack_done"
+  | "pick_unit"
+  | "pick_done"
+  | "recv_open"
+  | "recv_unit"
+  | "recv_place"
+  | "recv_attach"
+  | "recv_close";
 const KINDS: readonly DeskOpKind[] = [
   "shift_mark",
   "shift_undo",
@@ -29,6 +39,11 @@ const KINDS: readonly DeskOpKind[] = [
   "pack_done",
   "pick_unit",
   "pick_done",
+  "recv_open",
+  "recv_unit",
+  "recv_place",
+  "recv_attach",
+  "recv_close",
 ];
 export interface DeskOpBody {
   eventId: string;
@@ -53,6 +68,14 @@ export interface DeskOpBody {
   requestId?: string;
   cell?: { floorId: string; moduleId: string; shelfIndex: number; cellIndex: number };
   partial?: boolean;
+  // Приёмка (`recv_*`).
+  unitId?: string;
+  boxId?: string;
+  palletId?: string;
+  shipmentId?: string;
+  lineId?: string;
+  qty?: number;
+  discrepancy?: "shortage" | "overage";
 }
 export interface DeskOp {
   key: string;
@@ -245,9 +268,18 @@ async function sayFlagged(kinds: DeskOpKind[]) {
   const { useEditor } = await import("../store");
   const packing = kinds.some((k) => k === "pack_event" || k === "pack_done");
   const picking = kinds.some((k) => k === "pick_unit" || k === "pick_done");
+  const receiving = kinds.some((k) => k.startsWith("recv_"));
   useEditor
     .getState()
-    .showToast(packing ? "ws.opPackRejected" : picking ? "ws.opPickRejected" : "ws.opRejected");
+    .showToast(
+      packing
+        ? "ws.opPackRejected"
+        : picking
+          ? "ws.opPickRejected"
+          : receiving
+            ? "ws.opRecvRejected"
+            : "ws.opRejected",
+    );
 }
 
 async function sayLost(n: number) {
