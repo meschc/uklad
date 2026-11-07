@@ -34,7 +34,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { createHash, randomBytes } = require("node:crypto");
 const { createRateLimit } = require("../rateLimit");
-const { MAX_SNAPSHOT_BYTES } = require("./snapshot");
+const { MAX_SNAPSHOT_BYTES, withProducts, withoutProducts } = require("./snapshot");
 const { whoseBadge, answerCheck, CHECKS_PER_MINUTE } = require("./deskBadges");
 const { mergeDeskStock, STOCK_KEYS } = require("./deskStock");
 
@@ -438,7 +438,8 @@ function createDesks({ auth, cfg, send, log }) {
         `SELECT version, format, data, updated_at FROM uklad.cabinet_snapshots
          WHERE org_id = uklad.current_org()`,
       );
-      return { row: rows[0] ?? null };
+      if (!rows[0]) return { row: null };
+      return { row: { ...rows[0], data: await withProducts(c, rows[0].data) } };
     });
     if (!out) return gone(res);
     if (!out.row) return send(res, 200, { ok: true, snapshot: null });
@@ -479,11 +480,13 @@ function createDesks({ auth, cfg, send, log }) {
         deskHash(req),
       ]);
       const who = { staff: people.rows[0]?.staff_ref, prev: people.rows[0]?.prev_staff_ref };
-      const write = mergeDeskWrite(cur.data, data, who);
+      // Товары стол не пишет, но сверка приёмки ведётся по каталогу:
+      // он в таблице (миграция 013), а не в снимке.
+      const write = mergeDeskWrite(await withProducts(c, cur.data), data, who);
       if (write.mismatch.length > 0) {
         log.warn?.(`[uklad] стол: остатки не сошлись по ${write.mismatch.length} товарам`);
       }
-      const merged = JSON.stringify(write.data);
+      const merged = JSON.stringify(withoutProducts(write.data));
       const upd = await c.query(
         `UPDATE uklad.cabinet_snapshots
          SET previous = data, data = $1::jsonb, format = $2, version = version + 1,
