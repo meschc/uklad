@@ -274,10 +274,32 @@ async function massRemoved(c, remove) {
 }
 
 /**
- * Новое и изменённое — в строки; неизменное не переписывается, корзина и
- * архив — назад. Архивная строка приходит, когда копию на другом устройстве
- * открыли до архивации: иначе её счёт строк не сходился бы с сервером, и
- * каждая её правка уходила бы кабинетом целиком.
+ * Есть ли среди присланных строк архивная, но с другим содержимым. История
+ * не переписывается: архивная отметка смены — это часы и деньги, решённое
+ * спорное не открывается снова. Такую запись сервер не принимает (409), а
+ * копия забирает свежие данные.
+ */
+async function archivedChanged(c, items) {
+  if (items.length === 0) return false;
+  const { rows } = await c.query(
+    `SELECT 1 FROM uklad.cabinet_records r
+     JOIN jsonb_to_recordset($1::jsonb) AS t(w text, d text, ref text, data jsonb)
+       ON r.warehouse_ref = t.w AND r.domain = t.d AND r.ref = t.ref
+     WHERE r.org_id = uklad.current_org() AND r.deleted_at IS NULL
+       AND r.archived_at IS NOT NULL AND r.data IS DISTINCT FROM t.data
+     LIMIT 1`,
+    [JSON.stringify(items.map(({ w, d, ref, data }) => ({ w, d, ref, data })))],
+  );
+  return rows.length > 0;
+}
+
+/**
+ * Новое и изменённое — в строки; неизменное не переписывается, корзина —
+ * назад. Архивная строка возвращается из архива, только если пришла такой
+ * же, как лежит (копию на другом устройстве открыли до архивации: иначе её
+ * счёт строк не сходился бы с сервером, и каждая правка уходила бы целиком).
+ * Изменённая архивная строка не трогается вовсе — её отсекает
+ * `archivedChanged` до записи, а здесь страховка.
  */
 async function upsertRecords(c, items) {
   await c.query(
@@ -288,8 +310,9 @@ async function upsertRecords(c, items) {
      ON CONFLICT (org_id, warehouse_ref, domain, ref) DO UPDATE SET
        position = excluded.position, data = excluded.data, deleted_at = NULL,
        archived_at = NULL, updated_at = now()
-     WHERE r.deleted_at IS NOT NULL OR r.archived_at IS NOT NULL
-        OR (r.position, r.data) IS DISTINCT FROM (excluded.position, excluded.data)`,
+     WHERE (r.archived_at IS NULL AND (r.deleted_at IS NOT NULL
+             OR (r.position, r.data) IS DISTINCT FROM (excluded.position, excluded.data)))
+        OR (r.archived_at IS NOT NULL AND r.data IS NOT DISTINCT FROM excluded.data)`,
     [JSON.stringify(items)],
   );
 }
@@ -403,6 +426,7 @@ async function loadArchive(c, after = null, limit = ARCHIVE_PAGE) {
 
 module.exports = {
   ARCHIVE_DAYS,
+  archivedChanged,
   archiveRecords,
   archiveDaily,
   loadArchive,

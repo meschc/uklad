@@ -41,6 +41,7 @@ const {
   splitCabinet,
   storeRecords,
   hasMarks,
+  archivedChanged,
 } = require("./snapshot");
 const { whoseBadge, answerCheck, CHECKS_PER_MINUTE } = require("./deskBadges");
 const { mergeDeskStock, STOCK_KEYS } = require("./deskStock");
@@ -538,6 +539,9 @@ function createDesks({ auth, cfg, send, log }) {
         log.warn?.(`[uklad] стол: остатки не сошлись по ${write.mismatch.length} товарам`);
       }
       const split = splitCabinet(write.data);
+      // Архив стол не получает, и его id для сверки выглядят «новыми»:
+      // изменённая архивная отметка или спорное переписали бы историю.
+      if (await archivedChanged(c, split.items)) return { conflict: cur.version };
       const merged = JSON.stringify(split.doc);
       // Потолок — запись кабинета целиком, которую шлёт стол.
       warnNearLimit(log, d.orgId, Number(req.headers["content-length"]) || 0);

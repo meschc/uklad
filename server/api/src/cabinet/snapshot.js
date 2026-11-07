@@ -53,6 +53,7 @@ const {
   isRef,
   archiveDaily,
   loadArchive,
+  archivedChanged,
 } = require("./records");
 
 // Пустой кабинет — единицы килобайт, демо со всей историей — около мегабайта.
@@ -234,6 +235,8 @@ function createSnapshot({ auth, send, log }) {
       if (await massGone(c, split.items, split.slots)) {
         return { conflict: true, error: "records_mass_delete" };
       }
+      // Архив не переписывается: копия забирает свежие данные.
+      if (await archivedChanged(c, split.items)) return { conflict: true };
       // Список, лежавший строками, пропал вовсе (ключа нет, не список) —
       // кабинет показал бы пустоту, а массовое удаление этого не увидело бы.
       const prev = await c.query(
@@ -332,6 +335,7 @@ function createSnapshot({ auth, send, log }) {
       if (lost.missing.length + lost.inline.length > 0)
         return { conflict: true, error: "diverged" };
       if (await massRemoved(c, b.remove)) return { conflict: true, error: "records_mass_delete" };
+      if (await archivedChanged(c, b.upsert)) return { conflict: true };
       const before = await loadRecords(c, cur.data, MOVE_LISTS);
       await c.query(`SAVEPOINT changes`);
       await upsertRecords(c, b.upsert);
@@ -445,4 +449,5 @@ module.exports = {
   splitCabinet,
   storeRecords,
   hasMarks,
+  archivedChanged,
 };

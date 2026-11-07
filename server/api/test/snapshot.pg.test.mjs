@@ -859,6 +859,31 @@ test(
     const back = (await call("/api/cabinet/snapshot", a)).json.snapshot.data.requests;
     assert.deepEqual(back, [fresh, open, shipped]);
 
+    // Изменённая архивная строка историю не переписывает: отказ, архив цел.
+    await db.root.query(
+      `UPDATE uklad.cabinet_records SET archived_at = now() WHERE org_id = $1 AND ref = 'r1'`,
+      [a.org],
+    );
+    const ver = (await call("/api/cabinet/snapshot", a)).json.snapshot.version;
+    const edited = await call("/api/cabinet/snapshot", {
+      ...a,
+      body: {
+        version: ver,
+        format: 8,
+        data: { ...window, requests: [fresh, open, { ...shipped, status: "new" }] },
+      },
+    });
+    assert.equal(edited.status, 409);
+    const r1 = await db.root.query(
+      `SELECT data->>'status' AS s FROM uklad.cabinet_records WHERE org_id = $1 AND ref = 'r1'`,
+      [a.org],
+    );
+    assert.equal(r1.rows[0].s, "shipped");
+    await db.root.query(
+      `UPDATE uklad.cabinet_records SET archived_at = NULL WHERE org_id = $1 AND ref = 'r1'`,
+      [a.org],
+    );
+
     // Архив — только раз в сутки: вернувшаяся заявка в архив сразу не уходит.
     await db.root.query(
       `UPDATE uklad.cabinet_records SET updated_at = now() - interval '60 days' WHERE org_id = $1`,
