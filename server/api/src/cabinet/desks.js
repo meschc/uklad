@@ -30,11 +30,11 @@
  *   POST /api/cabinet/badges/check — чей бейдж
  *   POST /api/desk/unbind          — { code } бейдж руководителя → стол отвязан
  */
-/* global require, module */
+/* global require, module, Buffer */
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { createHash, randomBytes } = require("node:crypto");
 const { createRateLimit } = require("../rateLimit");
-const { MAX_SNAPSHOT_BYTES, withProducts, withoutProducts } = require("./snapshot");
+const { MAX_SNAPSHOT_BYTES, warnNearLimit, withProducts, withoutProducts } = require("./snapshot");
 const { whoseBadge, answerCheck, CHECKS_PER_MINUTE } = require("./deskBadges");
 const { mergeDeskStock, STOCK_KEYS } = require("./deskStock");
 const { recordMoves, diffMoves, invalidWork } = require("./moves");
@@ -529,6 +529,7 @@ function createDesks({ auth, cfg, send, log }) {
         log.warn?.(`[uklad] стол: остатки не сошлись по ${write.mismatch.length} товарам`);
       }
       const merged = JSON.stringify(withoutProducts(write.data));
+      warnNearLimit(log, d.orgId, Buffer.byteLength(merged));
       const upd = await c.query(
         `UPDATE uklad.cabinet_snapshots
          SET previous = data, data = $1::jsonb, format = $2, version = version + 1,
@@ -589,7 +590,7 @@ function createDesks({ auth, cfg, send, log }) {
         withoutProducts,
         recordMoves,
         maxBytes: MAX_SNAPSHOT_BYTES,
-      }).then((r) => (r.tooLarge ? { ...r, orgId: d.orgId } : r));
+      }).then((r) => ({ ...r, orgId: d.orgId }));
     });
     if (!out) return gone(res);
     if (out.limited) return limited(res);
@@ -601,7 +602,11 @@ function createDesks({ auth, cfg, send, log }) {
     }
     // Снимка ещё нет: класть отметки некуда, его заводит руководитель.
     if (out.conflict !== undefined) return send(res, 409, { ok: false, error: "no_snapshot" });
-    return send(res, 200, { ok: true, ...out });
+    if (out.bytes) warnNearLimit(log, out.orgId, out.bytes);
+    const answer = { ...out };
+    delete answer.bytes;
+    delete answer.orgId;
+    return send(res, 200, { ok: true, ...answer });
   }
 
   async function checkBadge(req, res) {

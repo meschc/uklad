@@ -103,3 +103,13 @@ test("снимок, который не влезет в лимит, не пиш�
   assert.deepEqual(out, { tooLarge: true });
   assert.deepEqual(writes, []);
 });
+
+test("снимок у потолка — предупреждение нам с компанией, до лимита — тишина", () => {
+  const { warnNearLimit, MAX_SNAPSHOT_BYTES } = require("../src/cabinet/snapshot");
+  const said = [];
+  const log = { warn: (m) => said.push(m) };
+  warnNearLimit(log, "org-1", 0.5 * MAX_SNAPSHOT_BYTES);
+  assert.deepEqual(said, []);
+  warnNearLimit(log, "org-1", 0.75 * MAX_SNAPSHOT_BYTES);
+  assert.deepEqual(said, ["[uklad] снимок компании org-1 заполнен на 75% лимита записи"]);
+});

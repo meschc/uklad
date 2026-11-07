@@ -245,3 +245,22 @@ test("расхождение ставит сервер: сверх строки 
   );
   assert.equal(later[0].discrepancy, "overage");
 });
+
+test("тара в ячейку: занятую другим товаром — нельзя, к тому же товару — можно", () => {
+  const busy = data();
+  busy.boxes[0].lines = [{ productId: "p1", qty: 2 }];
+  busy.boxes.push({ id: "b9", lines: [{ productId: "p2", qty: 1 }], address: CELL });
+  const place = (d) => applyRecvPlace(d, { boxId: "b1", cell: CELL, at: AT });
+  assert.equal(place(busy).flag, "busy");
+  // Товар лежит прямо в ячейке, без тары.
+  const direct = data();
+  direct.boxes[0].lines = [{ productId: "p1", qty: 2 }];
+  direct.placements = { p2: CELL };
+  assert.equal(place(direct).flag, "busy");
+  // Рядом тот же товар или пустая тара — докладка, не конфликт.
+  const same = data();
+  same.boxes[0].lines = [{ productId: "p1", qty: 2 }];
+  same.boxes.push({ id: "b8", lines: [{ productId: "p1", qty: 4 }], address: CELL });
+  same.boxes.push({ id: "b7", lines: [], address: CELL });
+  assert.equal(place(same).flag, undefined);
+});

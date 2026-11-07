@@ -427,7 +427,12 @@ async function runDeskOps(c, deskId, ops, who, now, deps = {}) {
         : {}),
     };
   });
-  return { results, before: cur.version, version };
+  return {
+    results,
+    before: cur.version,
+    version,
+    ...(payload ? { bytes: Buffer.byteLength(payload) } : {}),
+  };
 }
 
 /**
