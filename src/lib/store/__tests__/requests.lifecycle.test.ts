@@ -137,6 +137,16 @@ describe("updateRequestStatus / startPicking", () => {
     expect(store.getState().requests[0].startedAt).toBe(first);
   });
 
+  it("собранную заявку не отменить: снятое с полки не пропадёт «в заявке»", () => {
+    const store = makeRequestsStore({
+      requests: [
+        makeRequest({ id: "r1", productId: "p1", qty: 2, pickedQty: 1, status: "in_progress" }),
+      ],
+    });
+    store.getState().updateRequestStatus("r1", "cancelled");
+    expect(store.getState().requests[0].status).toBe("in_progress");
+  });
+
   it("отмена заявки снимает бронь под поставку", () => {
     // Arrange
     const line = makeShipmentLine({ productId: "p1", expectedQty: 10 });

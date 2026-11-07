@@ -79,6 +79,17 @@ export function DisputesScreen() {
   const by = badgeStaff?.id ?? "manager";
 
   const open = disputes.filter((d) => !d.resolution);
+  // Лишнее с приёмки списывают «вернули поставщику»: руководитель должен
+  // видеть, сколько так ушло, — иначе списание прячет пересорт и кражу.
+  const monthAgo = now - 30 * 24 * 3600 * 1000;
+  const overageOff = disputes
+    .filter(
+      (d) =>
+        d.kind === "receive_overage" &&
+        d.resolution === "written_off" &&
+        (d.resolvedAt ?? 0) >= monthAgo,
+    )
+    .reduce((n, d) => n + d.qty, 0);
   const done = disputes.filter((d) => d.resolution).slice(0, 20);
 
   const nameOf = (id?: string) => products.find((p) => p.id === id)?.name ?? "—";
@@ -87,6 +98,11 @@ export function DisputesScreen() {
 
   return (
     <ScreenShell title={t("disputes.title")} subtitle={t("disputes.lead")} wide>
+      {canResolve && overageOff > 0 && (
+        <p className="mb-4 text-sm text-muted-foreground">
+          {t("disputes.overageOff", { n: overageOff })}
+        </p>
+      )}
       {open.length === 0 ? (
         <EmptyState
           icon={<Scale className="size-5" />}

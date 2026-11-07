@@ -24,7 +24,7 @@
  * их в составе снимка, а сервер раскладывает по строкам `uklad.products` —
  * со своей корзиной и журналом правок.
  */
-/* global require, module */
+/* global require, module, Buffer */
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { createRateLimit } = require("../rateLimit");
 const { recordMoves, invalidWork } = require("./moves");
@@ -32,6 +32,23 @@ const { recordMoves, invalidWork } = require("./moves");
 // Пустой кабинет — единицы килобайт, демо со всей историей — около мегабайта.
 // Восемь — с запасом, но не столько, чтобы одним запросом забить диск.
 const MAX_SNAPSHOT_BYTES = 8 * 1024 * 1024;
+/** С какой доли лимита предупреждаем нас (не склад: его это только пугает). */
+const NEAR_LIMIT = 0.7;
+
+/**
+ * Снимок компании подбирается к лимиту записи: дальше у неё перестанет
+ * сохраняться работа. Это знаем мы, по журналу сервера, за недели до отказа.
+ */
+const warned = new Map();
+const WARN_EVERY_MS = 60 * 60 * 1000;
+function warnNearLimit(log, orgId, bytes, now = Date.now()) {
+  if (bytes < NEAR_LIMIT * MAX_SNAPSHOT_BYTES) return;
+  // Раз в час на компанию: стол пишет сотни раз в час, журнал не засоряем.
+  if (now - (warned.get(orgId) ?? -Infinity) < WARN_EVERY_MS) return;
+  warned.set(orgId, now);
+  const pct = Math.round((bytes / MAX_SNAPSHOT_BYTES) * 100);
+  log.warn?.(`[uklad] снимок компании ${orgId} заполнен на ${pct}% лимита записи`);
+}
 // Кабинет пишет не чаще раза в 5 секунд на человека; 30 записей в минуту на
 // компанию — запас на несколько устройств, но не на скрипт с мегабайтами.
 const WRITES_PER_MINUTE = 30;
@@ -150,7 +167,7 @@ function createSnapshot({ auth, send, log }) {
         if (!rows[0]) return { conflict: true };
         await storeProducts(c, b.data);
         await recordMoves(c, {}, b.data, rows[0].version, { memberId: ctx.memberId });
-        return { version: rows[0].version };
+        return { version: rows[0].version, orgId: ctx.orgId };
       }
       const { rows } = await c.query(
         `UPDATE uklad.cabinet_snapshots
@@ -167,7 +184,7 @@ function createSnapshot({ auth, send, log }) {
       await recordMoves(c, rows[0].previous, b.data, rows[0].version, {
         memberId: ctx.memberId,
       });
-      return { version: rows[0].version };
+      return { version: rows[0].version, orgId: ctx.orgId };
     });
     if (out === null) return send(res, 401, { ok: false });
     if (out === FORBIDDEN) return send(res, 403, { ok: false });
@@ -182,6 +199,7 @@ function createSnapshot({ auth, send, log }) {
       const error = out.products ? "products_mass_delete" : "conflict";
       return send(res, 409, { ok: false, error, version: current ?? 0 });
     }
+    warnNearLimit(log, out.orgId, Buffer.byteLength(data));
     return send(res, 200, { ok: true, version: out.version });
   }
 
@@ -206,4 +224,10 @@ function createSnapshot({ auth, send, log }) {
   return { handle };
 }
 
-module.exports = { createSnapshot, MAX_SNAPSHOT_BYTES, withProducts, withoutProducts };
+module.exports = {
+  createSnapshot,
+  MAX_SNAPSHOT_BYTES,
+  warnNearLimit,
+  withProducts,
+  withoutProducts,
+};

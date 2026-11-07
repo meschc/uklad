@@ -211,6 +211,25 @@ const sameCell = (a, b) =>
   a.cellIndex === b.cellIndex;
 
 /**
+ * Занята ли ячейка другим товаром (`buildOccupancy` + `onScanPlace`): в ней
+ * лежит товар, которого нет в этой таре, — напрямую или в другой таре. Тот же
+ * товар рядом — не конфликт, это докладка.
+ */
+function cellBusy(data, box, cell) {
+  const mine = new Set(list(box.lines).map((l) => l.productId));
+  const placements = isObject(data.placements) ? data.placements : {};
+  for (const [productId, addr] of Object.entries(placements)) {
+    if (sameCell(addr, cell) && !mine.has(productId)) return true;
+  }
+  return list(data.boxes).some(
+    (b) =>
+      b.id !== box.id &&
+      sameCell(b.address, cell) &&
+      list(b.lines).some((l) => Number(l.qty) > 0 && !mine.has(l.productId)),
+  );
+}
+
+/**
  * Закрытая тара встаёт в ячейку. Переставить уже стоящую тару стол не
  * может: это перемещение, и решает его не приёмка.
  */
@@ -221,6 +240,7 @@ function applyRecvPlace(data, body) {
   if (!box) return { flag: "bad" };
   if (box.address) return sameCell(box.address, body.cell) ? { data } : { flag: "tote" };
   if (box.sealed || collecting(data, box.id)) return { flag: "tote" };
+  if (cellBusy(data, box, body.cell)) return { flag: "busy" };
   const c = body.cell;
   const address = {
     floorId: c.floorId,

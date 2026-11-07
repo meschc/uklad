@@ -95,6 +95,7 @@ export const ru = {
   "disputes.lead":
     "Недостачи и ошибки скана. Сотрудник откладывает товар и несёт тару старшему, здесь старший решает.",
   "disputes.emptyTitle": "Спорного нет",
+  "disputes.overageOff": "Лишнего с приёмки списано за 30 дней: {n} шт.",
   "disputes.empty": "Недостачи и ошибки скана появятся здесь сами, как только сотрудник их найдёт.",
   "disputes.kind.shortage": "Недостача",
   "disputes.kind.not_in_tote": "Нет в таре",
@@ -402,6 +403,7 @@ export const en: Record<keyof typeof ru, string> = {
   "disputes.lead":
     "Shortages and scan errors. The worker sets the item aside and takes the tote to the supervisor, who decides here.",
   "disputes.emptyTitle": "No disputes",
+  "disputes.overageOff": "Receiving overage written off in 30 days: {n} pcs",
   "disputes.empty":
     "Shortages and scan errors show up here on their own as soon as a worker finds them.",
   "disputes.kind.shortage": "Shortage",

@@ -65,6 +65,10 @@ export const createRequestsSlice: SliceCreator<RequestsSlice> = (set, get) => ({
   },
 
   updateRequestStatus: (id, status) => {
+    // Собранное уже снято с полки: отмена молча оставила бы его «в заявке»,
+    // которой нет. Вернуть товар на место — решение старшего, не кнопка.
+    const cur = get().requests.find((r) => r.id === id);
+    if (status === "cancelled" && (cur?.pickedQty ?? 0) > 0) return;
     set((s) => ({
       requests: s.requests.map((r) => {
         if (r.id !== id) return r;
