@@ -143,6 +143,28 @@ function marksOf(doc) {
 }
 
 /**
+ * Списки, которые в прежнем документе лежали строками, а в новом кабинете
+ * пропали, хотя их склад на месте: `missing` — ключа нет или там не список,
+ * `inline` — список лежит в документе. Удалённый склад сюда не попадает.
+ * Пропавший список при чтении показал бы пустоту мимо защиты от массового
+ * удаления — такую запись сервер не принимает.
+ */
+function lostLists(prevDoc, next) {
+  const was = marksOf(prevDoc);
+  const now = new Map();
+  eachList(next, (holder, key, wh) => now.set(`${wh}\u0000${key}`, holder[key]));
+  const missing = [];
+  const inline = [];
+  for (const k of was.keys()) {
+    if (!now.has(k)) continue;
+    const v = now.get(k);
+    if (isMark(v)) continue;
+    (Array.isArray(v) ? inline : missing).push(k);
+  }
+  return { missing, inline };
+}
+
+/**
  * Документ из базы → кабинет целиком: списки со строк. `domains` — собрать
  * только эти списки (журналу движений нужна одна тара), остальные метки
  * станут пустыми списками.
@@ -276,6 +298,7 @@ module.exports = {
   storeRecords,
   massGone,
   massRemoved,
+  lostLists,
   marksOf,
   liveCounts,
   upsertRecords,

@@ -42,6 +42,7 @@ const {
   hasMarks,
   massGone,
   massRemoved,
+  lostLists,
   marksOf,
   liveCounts,
   upsertRecords,
@@ -225,6 +226,14 @@ function createSnapshot({ auth, send, log }) {
       if (await massGone(c, split.items, split.slots)) {
         return { conflict: true, error: "records_mass_delete" };
       }
+      // Список, лежавший строками, пропал вовсе (ключа нет, не список) —
+      // кабинет показал бы пустоту, а массовое удаление этого не увидело бы.
+      const prev = await c.query(
+        `SELECT data FROM uklad.cabinet_snapshots WHERE org_id = uklad.current_org() FOR UPDATE`,
+      );
+      if (prev.rows[0] && lostLists(prev.rows[0].data, split.doc).missing.length > 0) {
+        return { conflict: true, error: "records_mass_delete" };
+      }
       // Первая запись: строки ещё нет. Двое одновременно — второй получит
       // конфликт ключа и ответ 409, а не вторую строку.
       if (version === 0) {
@@ -305,6 +314,12 @@ function createSnapshot({ auth, send, log }) {
       if ("products" in b && (await massDelete(c, b))) {
         return { conflict: true, error: "products_mass_delete" };
       }
+      // Список, лежавший строками, обязан остаться меткой: иначе кабинет
+      // показал бы пустоту, не тронув строк. Пусть пишет себя целиком —
+      // там такую запись судит защита от массового удаления.
+      const lost = lostLists(cur.data, b.doc);
+      if (lost.missing.length + lost.inline.length > 0)
+        return { conflict: true, error: "diverged" };
       if (await massRemoved(c, b.remove)) return { conflict: true, error: "records_mass_delete" };
       const before = await loadRecords(c, cur.data, MOVE_LISTS);
       await c.query(`SAVEPOINT changes`);

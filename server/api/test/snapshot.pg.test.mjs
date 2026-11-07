@@ -721,3 +721,56 @@ test(
     assert.equal(last.data.requests.length, 3);
   },
 );
+
+test(
+  "список, лежавший строками, не пропадает мимо защиты: пустой или без ключа — отказ",
+  { skip: SKIP },
+  async () => {
+    const a = await owner("snap-lost@sklad.ru", "10.0.1.25");
+    const reqs = ["r1", "r2", "r3", "r4", "r5"].map((id) => ({ id }));
+    const full = (extra) => ({ ...data("x"), ...extra });
+    assert.equal(
+      (
+        await call("/api/cabinet/snapshot", {
+          ...a,
+          body: { version: 0, format: 8, data: full({ requests: reqs }) },
+        })
+      ).status,
+      200,
+    );
+    const docOf = async () =>
+      (await db.root.query(`SELECT data FROM uklad.cabinet_snapshots WHERE org_id = $1`, [a.org]))
+        .rows[0].data;
+    const at = "/api/cabinet/snapshot/changes";
+    const doc = await docOf();
+    for (const requests of [[], undefined, "нет"]) {
+      const d = { ...doc, requests };
+      if (requests === undefined) delete d.requests;
+      const res = await call(at, {
+        ...a,
+        body: { version: 1, format: 8, doc: d, slots: [], upsert: [], remove: [] },
+      });
+      assert.equal(res.status, 409);
+      assert.equal(res.json.error, "diverged");
+    }
+    // Запись целиком без ключа — тоже отказ; пустой список ловит массовое удаление.
+    const noKey = full({});
+    for (const d of [noKey, full({ requests: [] })]) {
+      const res = await call("/api/cabinet/snapshot", {
+        ...a,
+        body: { version: 1, format: 8, data: d },
+      });
+      assert.equal(res.status, 409);
+      assert.equal(res.json.error, "records_mass_delete");
+    }
+    assert.equal((await call("/api/cabinet/snapshot", a)).json.snapshot.data.requests.length, 5);
+    // Список с повтором id остаётся документом — это не пропажа.
+    const dup = full({ requests: [...reqs, { id: "r1", qty: 2 }] });
+    assert.equal(
+      (await call("/api/cabinet/snapshot", { ...a, body: { version: 1, format: 8, data: dup } }))
+        .status,
+      200,
+    );
+    assert.equal((await call("/api/cabinet/snapshot", a)).json.snapshot.data.requests.length, 6);
+  },
+);
