@@ -37,6 +37,10 @@ export const ru = {
   "ws.login.noStaff": "В персонале склада никого нет. Добавьте сотрудников на экране «Персонал».",
   "ws.badgeUnknown": "Бейдж не найден среди сотрудников склада",
   "ws.markRejected": "Эту отметку сейчас поставить нельзя",
+  "ws.opRejected": "Сервер не принял отметку смены. Отсканируйте бейдж и отметьтесь ещё раз",
+  "ws.opPending": "Не отправлено: {n}",
+  "ws.opLost": "Сервер не принял отметки смены: {n}. Скажите руководителю",
+  "ws.opPendingHint": "Нет связи с сервером. Работа сохранена здесь и уйдёт сама",
 
   "ws.tab.shift": "Смена",
   "ws.tab.log": "Журнал",
@@ -323,6 +327,11 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.login.noStaff": "No staff on this warehouse yet. Add people on the Staff screen.",
   "ws.badgeUnknown": "This badge doesn't belong to anyone on the warehouse staff",
   "ws.markRejected": "This mark can't be set right now",
+  "ws.opRejected": "The server didn't accept the shift mark. Scan your badge and mark again",
+  "ws.opPending": "Not sent: {n}",
+  "ws.opLost": "The server rejected shift marks: {n}. Tell your manager",
+  "ws.opPendingHint":
+    "No connection to the server. Your work is kept here and will be sent automatically",
 
   "ws.tab.shift": "Shift",
   "ws.tab.log": "Log",

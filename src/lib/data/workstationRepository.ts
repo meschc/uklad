@@ -3,8 +3,10 @@ import type { Device, IdleReason, ShiftMark, StaffEvent, WorkstationKind } from 
 import { onServer, serverBadges, type BadgeServer } from "./badgeRepository";
 import { serverDesks, type DeskServer } from "./deskServer";
 import { isStaffEvent } from "./guards";
+import { deskOps, type OpQueue } from "./opQueue";
 import { readList, storePort, type StorePort } from "./repository";
 import { attempt, fail, ok, type Result } from "./result";
+import { nowMs } from "../utils";
 
 /**
  * Рабочее место и журнал сотрудника (п.0.4). Здесь появится сеть: вход по
@@ -41,7 +43,33 @@ export function createWorkstationRepository(
   port: StorePort = storePort,
   badges: BadgeServer = serverBadges,
   desks: DeskServer = serverDesks,
+  ops: OpQueue = deskOps,
 ): WorkstationRepository {
+  /**
+   * Отметка смены на сервере уходит операцией (миграция 015): стор уже
+   * поставил её, очередь донесёт её с ключом повтора, даже если связь
+   * пропала. Запись снимка несёт её тоже — сервер узнает её по id.
+   */
+  const queueMark = (before: readonly StaffEvent[]) => {
+    if (!onServer(port)) return;
+    const known = new Set(before.map((e) => e.id));
+    const added = port.get().staffEvents.find((e) => !known.has(e.id));
+    if (!added) return;
+    ops.enqueue("shift_mark", {
+      eventId: added.id,
+      staffId: added.staffId,
+      type: added.type,
+      at: added.at,
+      ...(added.station ? { station: added.station } : {}),
+      ...(added.reason ? { reason: added.reason } : {}),
+    });
+  };
+  const queueUndo = (before: readonly StaffEvent[], at: number) => {
+    if (!onServer(port)) return;
+    const left = new Set(port.get().staffEvents.map((e) => e.id));
+    const gone = before.find((e) => !left.has(e.id));
+    if (gone) ops.enqueue("shift_undo", { eventId: gone.id, staffId: gone.staffId, at });
+  };
   // На сервере код проверяет сервер (секрет, а не id), и срез получает уже
   // сотрудника; в демо срез разбирает код сам.
   return {
@@ -68,14 +96,21 @@ export function createWorkstationRepository(
       return attempt(() => port.get().stationLogout());
     },
     mark: async (type, reason) => {
+      const before = port.get().staffEvents;
       const res = await attempt(() => port.get().markShift(type, reason));
       if (!res.ok) return res;
-      return res.data ? ok(undefined) : fail("ws.markRejected");
+      if (!res.data) return fail("ws.markRejected");
+      queueMark(before);
+      return ok(undefined);
     },
     undoMark: async () => {
+      const before = port.get().staffEvents;
+      const at = nowMs();
       const res = await attempt(() => port.get().undoShiftMark());
       if (!res.ok) return res;
-      return res.data ? ok(undefined) : fail("ws.markRejected");
+      if (!res.data) return fail("ws.markRejected");
+      queueUndo(before, at);
+      return ok(undefined);
     },
     addDevice: async (name, station) => {
       if (!name.trim()) return fail("ws.device.nameEmpty");
