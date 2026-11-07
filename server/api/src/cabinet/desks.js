@@ -154,7 +154,7 @@ const REQUEST_WORK = [
  * бы «уменьшить» заказ под недостачу. Уехавшая и отменённая заявка не
  * меняется вовсе. Упаковал — тот, кто за столом.
  */
-function mergeRequests(current, incoming, people) {
+function mergeRequests(current, incoming, people, boxes) {
   if (!Array.isArray(incoming)) return current;
   const next = byId(incoming);
   return (Array.isArray(current) ? current : []).map((r) => {
@@ -182,6 +182,17 @@ function mergeRequests(current, incoming, people) {
     if (out.packedBy !== r.packedBy && !people.present.has(out.packedBy)) {
       out.packedBy = r.packedBy;
       out.packedAt = r.packedAt;
+    }
+    // Тара сборки — короб этого склада без места хранения и не невскрытый;
+    // после упаковки заявка свою тару не меняет.
+    if (out.toteId !== r.toteId) {
+      const tote = (Array.isArray(boxes) ? boxes : []).find(
+        (b) => isObject(b) && b.id === out.toteId,
+      );
+      if (r.packedAt || !tote || tote.address || tote.sealed) {
+        if (r.toteId === undefined) delete out.toteId;
+        else out.toteId = r.toteId;
+      }
     }
     return out;
   });
@@ -284,7 +295,7 @@ function mergeDeskWrite(current, incoming, who = {}) {
   for (const key of DESK_WRITES) {
     if (key in incoming) out[key] = incoming[key];
   }
-  out.requests = mergeRequests(current.requests, incoming.requests, people);
+  out.requests = mergeRequests(current.requests, incoming.requests, people, out.boxes);
   out.staffEvents = appendOnly(current.staffEvents, incoming.staffEvents, (e) =>
     people.present.has(e.staffId),
   );
