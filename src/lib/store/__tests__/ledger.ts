@@ -1,3 +1,4 @@
+import { writesOffGoods } from "../../disputes";
 import type { EditorState } from "../state";
 
 /**
@@ -50,11 +51,7 @@ function place(s: Stock, m: Map<string, Balance>) {
   }
   for (const p of Object.keys(s.placements ?? {})) add(m, p, "stock", 1);
   for (const d of s.disputes ?? []) {
-    if (
-      d.resolution === "written_off" &&
-      (d.kind === "shortage" || d.kind === "not_packable") &&
-      d.productId
-    ) {
+    if (d.resolution === "written_off" && writesOffGoods(d) && d.productId) {
       add(m, d.productId, "gone", d.qty);
     }
   }
