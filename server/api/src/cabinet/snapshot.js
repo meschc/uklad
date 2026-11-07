@@ -19,6 +19,8 @@
  * Маршруты:
  *   GET  /api/cabinet/snapshot — снимок компании или `snapshot: null`
  *   POST /api/cabinet/snapshot — { version, format, data }; version 0 — первая запись
+ *   POST /api/cabinet/snapshot/changes — только изменённое поверх версии:
+ *     { version, format, doc, slots, upsert, remove, products? } (`saveChanges`)
  *
  * Товары в снимке не хранятся (миграция 013): кабинет присылает и получает
  * их в составе снимка, а сервер раскладывает по строкам `uklad.products` —
@@ -30,7 +32,24 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { createRateLimit } = require("../rateLimit");
 const { recordMoves, invalidWork } = require("./moves");
-const { splitRecords, loadRecords, storeRecords, hasMarks, massGone } = require("./records");
+const {
+  WAREHOUSE_LISTS,
+  COMPANY_LISTS,
+  splitRecords,
+  assembleRecords,
+  loadRecords,
+  storeRecords,
+  hasMarks,
+  massGone,
+  massRemoved,
+  lostLists,
+  inlineDrops,
+  marksOf,
+  liveCounts,
+  upsertRecords,
+  removeRecords,
+  isRef,
+} = require("./records");
 
 // Пустой кабинет — единицы килобайт, демо со всей историей — около мегабайта.
 // Восемь — с запасом, но не столько, чтобы одним запросом забить диск.
@@ -108,6 +127,41 @@ async function massDelete(c, data) {
   return gone >= 10 || (gone === live && live >= 3);
 }
 
+const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
+const LISTS = new Set([...WAREHOUSE_LISTS, ...COMPANY_LISTS]);
+/** Что из работы склада нужно журналу движений: тара и короба отгрузки. */
+const MOVE_LISTS = ["boxes", "outboundBoxes"];
+const slotKey = (x) => `${x.w}\u0000${x.d}`;
+const isSlot = (x) => isObject(x) && typeof x.w === "string" && x.w.length <= 200 && LISTS.has(x.d);
+
+/**
+ * Правка «только изменённое» неверной формы. Строка — своя запись своего
+ * списка (`data.id === ref`), список правки — метка в документе, тара
+ * проходит те же проверки, что в записи целиком.
+ */
+function badChanges(b) {
+  if (!Number.isInteger(b.version) || b.version < 1) return true;
+  if (!Number.isInteger(b.format) || b.format < 1) return true;
+  if (!isObject(b.doc) || "products" in b.doc) return true;
+  if ("products" in b && !Array.isArray(b.products)) return true;
+  if (![b.slots, b.upsert, b.remove].every(Array.isArray)) return true;
+  if (!b.slots.every(isSlot)) return true;
+  const slots = new Set(b.slots.map(slotKey));
+  const inSlot = (r) => isSlot(r) && slots.has(slotKey(r)) && isRef(r.ref);
+  if (
+    !b.upsert.every(
+      (r) => inSlot(r) && Number.isInteger(r.pos) && isObject(r.data) && r.data.id === r.ref,
+    )
+  ) {
+    return true;
+  }
+  if (!b.remove.every(inSlot)) return true;
+  const marks = marksOf(b.doc);
+  if (!b.slots.every((x) => marks.has(slotKey(x)))) return true;
+  // Тара и размещения — тем же правилом, что запись целиком.
+  return invalidWork(assembleRecords(b.doc, b.upsert));
+}
+
 /** Товары из присланного снимка — в таблицу. Нет поля — товары не трогаем. */
 async function storeProducts(c, data) {
   if (!("products" in data)) return;
@@ -173,6 +227,17 @@ function createSnapshot({ auth, send, log }) {
       if (await massGone(c, split.items, split.slots)) {
         return { conflict: true, error: "records_mass_delete" };
       }
+      // Список, лежавший строками, пропал вовсе (ключа нет, не список) —
+      // кабинет показал бы пустоту, а массовое удаление этого не увидело бы.
+      const prev = await c.query(
+        `SELECT data FROM uklad.cabinet_snapshots WHERE org_id = uklad.current_org() FOR UPDATE`,
+      );
+      if (prev.rows[0]) {
+        const lost = lostLists(prev.rows[0].data, split.doc);
+        if (lost.missing.length > 0 || (await inlineDrops(c, lost.inline))) {
+          return { conflict: true, error: "records_mass_delete" };
+        }
+      }
       // Первая запись: строки ещё нет. Двое одновременно — второй получит
       // конфликт ключа и ответ 409, а не вторую строку.
       if (version === 0) {
@@ -229,9 +294,89 @@ function createSnapshot({ auth, send, log }) {
     return send(res, 200, { ok: true, version: out.version });
   }
 
+  /**
+   * Только изменённое (шаг 2 потолка данных): документ компании без списков
+   * работы склада и строки, которые поменялись. Кабинет считает правку от
+   * того, что сервер отдал или принял на этой версии. Не сошлось — число
+   * строк в списке не равно метке — правка откатывается целиком, а кабинет
+   * получает `diverged` и пишет кабинет целиком.
+   */
+  async function saveChanges(req, res) {
+    const b = await readJson(req, res, MAX_SNAPSHOT_BYTES);
+    if (!b) return;
+    if (badChanges(b)) return send(res, 400, { ok: false, error: "bad_request" });
+    const doc = JSON.stringify(b.doc);
+    const out = await withSession(req, async (c, ctx) => {
+      if (!mayUse(ctx)) return FORBIDDEN;
+      if (!writes.take(ctx.orgId)) return LIMITED;
+      const { rows } = await c.query(
+        `SELECT version, data FROM uklad.cabinet_snapshots
+         WHERE org_id = uklad.current_org() FOR UPDATE`,
+      );
+      const cur = rows[0];
+      if (!cur || cur.version !== b.version) return { conflict: true };
+      if ("products" in b && (await massDelete(c, b))) {
+        return { conflict: true, error: "products_mass_delete" };
+      }
+      // Список, лежавший строками, обязан остаться меткой: иначе кабинет
+      // показал бы пустоту, не тронув строк. Пусть пишет себя целиком —
+      // там такую запись судит защита от массового удаления.
+      const lost = lostLists(cur.data, b.doc);
+      if (lost.missing.length + lost.inline.length > 0)
+        return { conflict: true, error: "diverged" };
+      if (await massRemoved(c, b.remove)) return { conflict: true, error: "records_mass_delete" };
+      const before = await loadRecords(c, cur.data, MOVE_LISTS);
+      await c.query(`SAVEPOINT changes`);
+      await upsertRecords(c, b.upsert);
+      await removeRecords(c, b.remove);
+      // Каждая метка документа — ровно столько живых строк. Иначе копия в
+      // браузере считала правку не от того, что лежит здесь.
+      const marks = marksOf(b.doc);
+      const live = await liveCounts(
+        c,
+        [...marks.keys()].map((k) => {
+          const [w, d] = k.split("\u0000");
+          return { w, d };
+        }),
+      );
+      if ([...marks].some(([k, n]) => live.get(k) !== n)) {
+        await c.query(`ROLLBACK TO SAVEPOINT changes`);
+        return { conflict: true, error: "diverged" };
+      }
+      const upd = await c.query(
+        `UPDATE uklad.cabinet_snapshots
+         SET previous = data, data = $1::jsonb, format = $2, version = version + 1,
+             updated_at = now(), updated_by = $3, updated_by_desk = NULL
+         WHERE org_id = uklad.current_org()
+         RETURNING version`,
+        [doc, b.format, ctx.memberId],
+      );
+      const version = upd.rows[0].version;
+      if ("products" in b) await storeProducts(c, b);
+      const after = await loadRecords(c, b.doc, MOVE_LISTS);
+      await recordMoves(c, before, after, version, { memberId: ctx.memberId });
+      return { version, orgId: ctx.orgId };
+    });
+    if (out === null) return send(res, 401, { ok: false });
+    if (out === FORBIDDEN) return send(res, 403, { ok: false });
+    if (out === LIMITED) return send(res, 429, { ok: false }, { "Retry-After": "30" });
+    if (out.conflict) {
+      const current = await withSession(req, async (c) => {
+        const { rows } = await c.query(
+          `SELECT version FROM uklad.cabinet_snapshots WHERE org_id = uklad.current_org()`,
+        );
+        return rows[0]?.version ?? 0;
+      });
+      return send(res, 409, { ok: false, error: out.error ?? "conflict", version: current ?? 0 });
+    }
+    warnNearLimit(log, out.orgId, Buffer.byteLength(doc));
+    return send(res, 200, { ok: true, version: out.version });
+  }
+
   const routes = {
     "GET /api/cabinet/snapshot": load,
     "POST /api/cabinet/snapshot": save,
+    "POST /api/cabinet/snapshot/changes": saveChanges,
   };
 
   /** Обработчик маршрутов снимка. `false` — маршрут не наш. */

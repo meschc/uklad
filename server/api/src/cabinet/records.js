@@ -133,14 +133,69 @@ function hasMarks(data) {
   return found;
 }
 
-/** Документ из базы → кабинет целиком: списки со строк. */
-async function loadRecords(c, doc) {
+/** Списки-метки документа: «склад\0список» → сколько записей в нём. */
+function marksOf(doc) {
+  const out = new Map();
+  eachList(doc, (holder, key, wh) => {
+    if (isMark(holder[key])) out.set(`${wh}\u0000${key}`, holder[key][MARK]);
+  });
+  return out;
+}
+
+/**
+ * Списки, которые в прежнем документе лежали строками, а в новом кабинете
+ * пропали, хотя их склад на месте: `missing` — ключа нет или там не список,
+ * `inline` — список лежит в документе (`{ w, d, list }`). Удалённый склад
+ * сюда не попадает.
+ * Пропавший список при чтении показал бы пустоту мимо защиты от массового
+ * удаления — такую запись сервер не принимает.
+ */
+function lostLists(prevDoc, next) {
+  const was = marksOf(prevDoc);
+  const now = new Map();
+  eachList(next, (holder, key, wh) => now.set(`${wh}\u0000${key}`, holder[key]));
+  const missing = [];
+  const inline = [];
+  for (const k of was.keys()) {
+    if (!now.has(k)) continue;
+    const v = now.get(k);
+    if (isMark(v)) continue;
+    if (!Array.isArray(v)) missing.push(k);
+    else {
+      const [w, d] = k.split("\u0000");
+      inline.push({ w, d, list: v });
+    }
+  }
+  return { missing, inline };
+}
+
+/**
+ * Документ из базы → кабинет целиком: списки со строк. `domains` — собрать
+ * только эти списки (журналу движений нужна одна тара), остальные метки
+ * станут пустыми списками.
+ */
+async function loadRecords(c, doc, domains = null) {
   const { rows } = await c.query(
     `SELECT warehouse_ref AS w, domain AS d, data FROM uklad.cabinet_records
      WHERE org_id = uklad.current_org() AND deleted_at IS NULL
+       AND ($1::text[] IS NULL OR domain = ANY($1::text[]))
      ORDER BY warehouse_ref, domain, position`,
+    [domains],
   );
   return assembleRecords(doc, rows);
+}
+
+/** Сколько живых строк в каждом из списков: «склад\0список» → число. */
+async function liveCounts(c, slots) {
+  const { rows } = await c.query(
+    `SELECT s.w, s.d, count(r.ref)::int AS n
+     FROM jsonb_to_recordset($1::jsonb) AS s(w text, d text)
+     LEFT JOIN uklad.cabinet_records r ON r.org_id = uklad.current_org()
+       AND r.deleted_at IS NULL AND r.warehouse_ref = s.w AND r.domain = s.d
+     GROUP BY s.w, s.d`,
+    [JSON.stringify(slots)],
+  );
+  return new Map(rows.map((r) => [`${r.w}\u0000${r.d}`, r.n]));
 }
 
 /** Списки, которые не теряют записи в ходе работы: заявка отменяется, а не удаляется. */
@@ -173,11 +228,43 @@ async function massGone(c, items, slots) {
 }
 
 /**
- * Строки кабинета → база. Новое добавляется, изменённое переписывается (и
- * только оно), пропавшее из разложенного списка уходит в корзину,
- * вернувшееся — из неё.
+ * Список, оставшийся документом (повтор id), вместо разложенного: принять
+ * можно, только если в нём есть все живые записи — иначе это тот же способ
+ * стереть заявки мимо защиты от массового удаления.
  */
-async function storeRecords(c, items, slots) {
+async function inlineDrops(c, inline) {
+  for (const { w, d, list } of inline) {
+    const { rows } = await c.query(
+      `SELECT ref FROM uklad.cabinet_records
+       WHERE org_id = uklad.current_org() AND deleted_at IS NULL
+         AND warehouse_ref = $1 AND domain = $2`,
+      [w, d],
+    );
+    const ids = new Set(list.map((x) => (isObject(x) ? x.id : undefined)));
+    if (rows.some((r) => !ids.has(r.ref))) return true;
+  }
+  return false;
+}
+
+/**
+ * Уводит ли правка (`remove` — `{ w, d, ref }`) в корзину больше половины
+ * живого списка — то же правило, что у записи целиком.
+ */
+async function massRemoved(c, remove) {
+  const by = new Map();
+  for (const r of remove) {
+    if (!GUARDED.includes(r.d)) continue;
+    const k = `${r.w}\u0000${r.d}`;
+    by.set(k, { w: r.w, d: r.d, n: (by.get(k)?.n ?? 0) + 1 });
+  }
+  const heavy = [...by.values()].filter((x) => x.n >= 3);
+  if (heavy.length === 0) return false;
+  const live = await liveCounts(c, heavy);
+  return heavy.some((x) => x.n * 2 > (live.get(`${x.w}\u0000${x.d}`) ?? 0));
+}
+
+/** Новое и изменённое — в строки; неизменное не переписывается, корзина — назад. */
+async function upsertRecords(c, items) {
   await c.query(
     `INSERT INTO uklad.cabinet_records AS r (org_id, warehouse_ref, domain, ref, position, data)
      SELECT DISTINCT ON (w, d, ref) uklad.current_org(), w, d, ref, pos, data
@@ -189,6 +276,27 @@ async function storeRecords(c, items, slots) {
         OR (r.position, r.data) IS DISTINCT FROM (excluded.position, excluded.data)`,
     [JSON.stringify(items)],
   );
+}
+
+/** Убранное из списков — в корзину. */
+async function removeRecords(c, remove) {
+  if (remove.length === 0) return;
+  await c.query(
+    `UPDATE uklad.cabinet_records r SET deleted_at = now(), updated_at = now()
+     FROM jsonb_to_recordset($1::jsonb) AS t(w text, d text, ref text)
+     WHERE r.org_id = uklad.current_org() AND r.deleted_at IS NULL
+       AND r.warehouse_ref = t.w AND r.domain = t.d AND r.ref = t.ref`,
+    [JSON.stringify(remove.map(({ w, d, ref }) => ({ w, d, ref })))],
+  );
+}
+
+/**
+ * Строки кабинета → база. Новое добавляется, изменённое переписывается (и
+ * только оно), пропавшее из разложенного списка уходит в корзину,
+ * вернувшееся — из неё.
+ */
+async function storeRecords(c, items, slots) {
+  await upsertRecords(c, items);
   await c.query(
     `WITH keep AS MATERIALIZED (
        SELECT w, d, ref FROM jsonb_to_recordset($1::jsonb) AS t(w text, d text, ref text)),
@@ -213,4 +321,12 @@ module.exports = {
   loadRecords,
   storeRecords,
   massGone,
+  massRemoved,
+  lostLists,
+  inlineDrops,
+  marksOf,
+  liveCounts,
+  upsertRecords,
+  removeRecords,
+  isRef,
 };
