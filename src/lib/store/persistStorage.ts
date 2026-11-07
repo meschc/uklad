@@ -1,6 +1,7 @@
 import type { StateStorage } from "zustand/middleware";
 import { packText, unpackText } from "../storeCodec";
 import { readLocal, removeLocal } from "../safeStorage";
+import { journal } from "../support/journal";
 
 /**
  * Хранилище сохранения кабинета: сжатое (`storeCodec.ts`) и не чаще раза в
@@ -35,7 +36,28 @@ function writeNow() {
     // Хранилище переполнено или запрещено: работа не теряется — она на
     // сервере, но копия на устройстве отстала. Это видно в консоли.
     console.warn("[uklad] сохранение кабинета на устройстве не записалось", err);
+    journal.record("error", "persist:write", String(err));
   }
+}
+
+/**
+ * Битое сохранение для стора — как первый запуск: демо-сборка посеяла бы
+ * демо-данные и первой же записью стёрла бы битое навсегда. Поэтому сырую
+ * строку сначала откладываем рядом (`<ключ>.broken`) — разобрать её можно
+ * потом, — и пишем в журнал поддержки.
+ */
+function readKeepingBroken(key: string): string | null {
+  const raw = readLocal(key);
+  const text = unpackText(raw);
+  if (raw !== null && text === null) {
+    journal.record("error", "persist:broken", key);
+    try {
+      localStorage.setItem(`${key}.broken`, raw);
+    } catch {
+      // не влезло — остаётся запись в журнале
+    }
+  }
+  return text;
 }
 
 if (typeof window !== "undefined") {
@@ -46,7 +68,7 @@ if (typeof window !== "undefined") {
 }
 
 export const persistStorage: StateStorage = {
-  getItem: (key) => unpackText(readLocal(key)),
+  getItem: (key) => readKeepingBroken(key),
   setItem: (key, value) => {
     if (frozen) return;
     pending = { key, value };
@@ -60,7 +82,7 @@ export const persistStorage: StateStorage = {
 
 /** Прочитать сохранение (или отложенную копию) — сжатое или старое. */
 export function readSaved(key: string): string | null {
-  return unpackText(readLocal(key));
+  return readKeepingBroken(key);
 }
 
 /**
@@ -68,11 +90,13 @@ export function readSaved(key: string): string | null {
  * которое не записалось, — несостоявшееся, и человек должен об этом узнать.
  */
 export function writeSaved(key: string, text: string): void {
+  localStorage.setItem(key, packText(text));
+  // Замораживаем только после записи: несостоявшееся восстановление не
+  // должно оставить стор без записи до перезагрузки.
   if (key === PERSIST_KEY) {
     pending = null;
     frozen = true;
   }
-  localStorage.setItem(key, packText(text));
 }
 
 /** Стереть сохранение мимо стора: отложенная запись стора его не вернёт. */

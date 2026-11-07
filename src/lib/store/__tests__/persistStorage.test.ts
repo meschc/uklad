@@ -56,7 +56,10 @@ describe("persistStorage", () => {
 
   it("переполненное хранилище не роняет запись стора", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const set = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+    // Прототип самого `localStorage`: у Node 26 свой глобальный `Storage`,
+    // и шпион на нём jsdom-хранилище не задел бы.
+    const proto = Object.getPrototypeOf(localStorage) as Storage;
+    const set = vi.spyOn(proto, "setItem").mockImplementation(() => {
       throw new DOMException("full", "QuotaExceededError");
     });
     persistStorage.setItem(PERSIST_KEY, '{"n":5}');
@@ -65,5 +68,25 @@ describe("persistStorage", () => {
     expect(() => writeSaved("k", "v")).toThrow();
     set.mockRestore();
     warn.mockRestore();
+  });
+
+  it("неудачное восстановление не морозит запись стора", () => {
+    const proto = Object.getPrototypeOf(localStorage) as Storage;
+    const set = vi.spyOn(proto, "setItem").mockImplementationOnce(() => {
+      throw new DOMException("full", "QuotaExceededError");
+    });
+    persistStorage.setItem(PERSIST_KEY, '{"n":6}');
+    expect(() => writeSaved(PERSIST_KEY, '{"restored":true}')).toThrow();
+    set.mockRestore();
+    vi.advanceTimersByTime(1000);
+    expect(readSaved(PERSIST_KEY)).toBe('{"n":6}');
+  });
+
+  it("битое сохранение откладывается рядом, а не теряется", () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    localStorage.setItem(PERSIST_KEY, "UKZ1|999|xx");
+    expect(persistStorage.getItem(PERSIST_KEY)).toBeNull();
+    expect(localStorage.getItem(`${PERSIST_KEY}.broken`)).toBe("UKZ1|999|xx");
+    vi.restoreAllMocks();
   });
 });
