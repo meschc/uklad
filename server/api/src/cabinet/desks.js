@@ -38,11 +38,14 @@ const { MAX_SNAPSHOT_BYTES, withProducts, withoutProducts } = require("./snapsho
 const { whoseBadge, answerCheck, CHECKS_PER_MINUTE } = require("./deskBadges");
 const { mergeDeskStock, STOCK_KEYS } = require("./deskStock");
 const { recordMoves, diffMoves, invalidWork } = require("./moves");
+const { isOp, runDeskOps, undoneMarks, MAX_OPS } = require("./deskOps");
 
 // Стол живёт, пока его не отвяжут; срок — страховка от забытого компьютера.
 const DESK_TTL_MS = 180 * 86_400_000;
 const DEVICE_RE = /^[A-Za-z0-9_-]{1,100}$/;
 const WRITES_PER_MINUTE = 30;
+/** Пачки операций: у каждого стола своя очередь, а лимит — на компанию. */
+const OPS_PER_MINUTE = 120;
 // Вход по бейджу за столом живёт 12 часов — как `SESSION_TTL_MS` в браузере.
 const SHIFT_TTL_MS = 12 * 3_600_000;
 // Должности руководства — те же, что в кабинете (`MANAGER_ROLE`, lib/workstation.ts).
@@ -340,6 +343,7 @@ function createDesks({ auth, cfg, send, log }) {
     capacity: WRITES_PER_MINUTE,
     refillPerMinute: WRITES_PER_MINUTE,
   });
+  const opsLimit = createRateLimit({ capacity: OPS_PER_MINUTE, refillPerMinute: OPS_PER_MINUTE });
   const checks = createRateLimit({
     capacity: CHECKS_PER_MINUTE,
     refillPerMinute: CHECKS_PER_MINUTE,
@@ -492,6 +496,16 @@ function createDesks({ auth, cfg, send, log }) {
       // Товары стол не пишет, но сверка приёмки ведётся по каталогу:
       // он в таблице (миграция 013), а не в снимке.
       const write = mergeDeskWrite(await withProducts(c, cur.data), data, who);
+      // Снятая операцией отметка не возвращается старой записью снимка.
+      const undone = await undoneMarks(c);
+      if (undone.size > 0 && Array.isArray(write.data.staffEvents)) {
+        const had = new Set(
+          (Array.isArray(cur.data.staffEvents) ? cur.data.staffEvents : []).map((e) => e?.id),
+        );
+        write.data.staffEvents = write.data.staffEvents.filter(
+          (e) => had.has(e?.id) || !undone.has(e?.id),
+        );
+      }
       if (write.mismatch.length > 0) {
         log.warn?.(`[uklad] стол: остатки не сошлись по ${write.mismatch.length} товарам`);
       }
@@ -521,6 +535,32 @@ function createDesks({ auth, cfg, send, log }) {
       return send(res, 409, { ok: false, error, version: out.conflict });
     }
     return send(res, 200, { ok: true, version: out.version });
+  }
+
+  /**
+   * Операции стола (миграция 015): пачка фактов с ключами повтора. Ответ на
+   * каждую — `applied`, `flagged` с причиной или повтор уже принятой.
+   */
+  async function saveOps(req, res) {
+    const b = await readJson(req, res);
+    if (!b) return;
+    const ops = b.ops;
+    if (!Array.isArray(ops) || ops.length === 0 || ops.length > MAX_OPS || !ops.every(isOp)) {
+      return send(res, 400, { ok: false, error: "bad_request" });
+    }
+    const out = await withDesk(req, async (c, d) => {
+      if (!opsLimit.take(d.orgId)) return { limited: true };
+      const people = await c.query(`SELECT staff_ref, prev_staff_ref FROM auth.desk_staff($1)`, [
+        deskHash(req),
+      ]);
+      const who = { staff: people.rows[0]?.staff_ref, prev: people.rows[0]?.prev_staff_ref };
+      return runDeskOps(c, d.deskId, ops, who, Date.now());
+    });
+    if (!out) return gone(res);
+    if (out.limited) return limited(res);
+    // Снимка ещё нет: класть отметки некуда, его заводит руководитель.
+    if (out.conflict !== undefined) return send(res, 409, { ok: false, error: "no_snapshot" });
+    return send(res, 200, { ok: true, ...out });
   }
 
   async function checkBadge(req, res) {
@@ -591,6 +631,7 @@ function createDesks({ auth, cfg, send, log }) {
     "POST /api/cabinet/badges/check": checkBadge,
     "POST /api/desk/unbind": unbind,
     "POST /api/desk/leave": leave,
+    "POST /api/desk/ops": saveOps,
   };
   // Куда стол не ходит: весь кабинет. Заявки с витрины и демо — не наши.
   const CABINET = /^\/api\/(auth|cabinet|staff|chat|telegram|desk|company|account)\//;

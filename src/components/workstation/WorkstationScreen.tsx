@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { WorkstationKind } from "@/lib/types";
 import {
   ArrowLeft,
+  CloudOff,
   History,
   Gavel,
   LogOut,
@@ -12,7 +13,7 @@ import {
   Scale,
 } from "lucide-react";
 import { boundDevice, useEditor } from "@/lib/store";
-import { workstationRepository } from "@/lib/data";
+import { STUCK_MS, usePendingOps, workstationRepository } from "@/lib/data";
 import { isSessionLive } from "@/lib/workstation";
 import { isSenior } from "@/lib/docFlow";
 import { sizeLabel, useLabelPrinter } from "@/lib/labelPrinter";
@@ -96,6 +97,7 @@ export function WorkstationScreen() {
           <h1 className="text-sm font-semibold">{t(`ws.station.${station}` as MsgKey)}</h1>
         )}
         <Equipment onPrinter={() => setPanel("printer")} canOpen={!!member} />
+        <PendingOps />
         {member && (
           <div className="ml-auto flex items-center gap-4">
             <ShiftBar staffId={member.id} onOpen={() => setPanel("shift")} />
@@ -296,5 +298,26 @@ function Equipment({ onPrinter, canOpen }: { onPrinter: () => void; canOpen: boo
         </li>
       ))}
     </ul>
+  );
+}
+
+/**
+ * Работа, которая ещё не дошла до сервера: появляется, только если очередь
+ * не уходит дольше `STUCK_MS`, — короткий обрыв не должен мигать в шапке.
+ */
+function PendingOps() {
+  const t = useT();
+  const now = useNow(1000);
+  const { count, since } = usePendingOps();
+  if (count === 0 || since == null || now - since < STUCK_MS) return null;
+  return (
+    <p
+      className="flex items-center gap-1.5 text-sm font-medium text-amber-600"
+      title={t("ws.opPendingHint")}
+      role="status"
+    >
+      <CloudOff className="size-4" />
+      {t("ws.opPending", { n: count })}
+    </p>
   );
 }

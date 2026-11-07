@@ -62,6 +62,38 @@ const RETRY_MS = 30_000;
 
 type Persisted = ReturnType<typeof persistedState>;
 
+/**
+ * Записи кабинета идут по одной: запись снимка и пачка операций стола не
+ * обгоняют друг друга, иначе версия, сдвинутая операциями, не совпала бы с
+ * той, что запись снимка только что отправила.
+ */
+let lane: Promise<unknown> = Promise.resolve();
+function inLane<T>(fn: () => Promise<T>): Promise<T> {
+  const run = lane.then(fn);
+  lane = run.catch(() => undefined);
+  return run;
+}
+
+/**
+ * Отправить операции стола в общей очереди записей. Операции меняют снимок
+ * на сервере, а в копии здесь то же уже лежит (отметка поставлена до
+ * отправки): копия, которая была на версии `before`, сдвигается на
+ * `version`. Была на другой — кто-то писал ещё, и следующая запись снимка
+ * честно получит конфликт.
+ */
+export function sendDeskOps<T extends { before: number; version: number } | null>(
+  send: () => Promise<T>,
+): Promise<T> {
+  return inLane(async () => {
+    const out = await send();
+    const meta = readMeta();
+    if (out && meta && meta.version === out.before && out.version !== out.before) {
+      writeMeta({ ...meta, version: out.version });
+    }
+    return out;
+  });
+}
+
 function readMeta(): SyncMeta | null {
   try {
     const raw = JSON.parse(readLocal(SYNC_KEY) ?? "null") as Partial<SyncMeta> | null;
@@ -247,7 +279,7 @@ export function startServerSync(orgId: string): () => void {
   /** Записать на сервер. `true` — на сервере то же, что здесь. */
   const flush = (): Promise<boolean> => {
     if (inflight) return inflight;
-    inflight = (async () => {
+    inflight = inLane(async () => {
       const meta = readMeta();
       if (stopped || !booted || !meta || meta.orgId !== orgId) return false;
       const data = companyPart(persistedState(useEditor.getState()));
@@ -273,13 +305,13 @@ export function startServerSync(orgId: string): () => void {
         // говорим именно это.
         if (res.data.rejected) rejected = res.data.rejected;
         writeMeta({ ...meta, dirty: true });
-        void boot();
+        void inLane(boot);
         return false;
       }
       lastSent = text;
       writeMeta({ orgId, version: res.data.saved, dirty: false });
       return true;
-    })().finally(() => {
+    }).finally(() => {
       inflight = null;
     });
     return inflight;
@@ -386,7 +418,7 @@ export function startServerSync(orgId: string): () => void {
   // устройства придёт до того, как здесь начнут править устаревшее. С
   // незаписанным здесь не тянем: его сначала нужно отправить.
   const onVisible = () => {
-    if (document.visibilityState === "visible" && !hasUnsyncedChanges()) void boot();
+    if (document.visibilityState === "visible" && !hasUnsyncedChanges()) void inLane(boot);
   };
   document.addEventListener("visibilitychange", onVisible);
 

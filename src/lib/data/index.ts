@@ -15,6 +15,7 @@ export { requestsRepository } from "./requestsRepository";
 export { backupRepository } from "./backupRepository";
 export { staffRepository } from "./staffRepository";
 export { workstationRepository } from "./workstationRepository";
+export { usePendingOps, STUCK_MS } from "./opQueue";
 export { badgeRepository } from "./badgeRepository";
 export { disputesRepository } from "./disputesRepository";
 export { documentsRepository } from "./documentsRepository";
