@@ -1,5 +1,5 @@
 import { removeLocal } from "../safeStorage";
-import { PERSIST_KEY } from "./index";
+import { PERSIST_KEY, removeSaved } from "./persistStorage";
 import { BEFORE_SYNC_KEY, markSignedOut } from "./serverSync";
 
 /**
@@ -20,7 +20,7 @@ import { BEFORE_SYNC_KEY, markSignedOut } from "./serverSync";
  * его можно вернуть, войдя паролем.
  */
 export function leaveServerSession(note?: "offline" | "deleted") {
-  removeLocal(PERSIST_KEY);
+  removeSaved(PERSIST_KEY);
   removeLocal(BEFORE_SYNC_KEY);
   markSignedOut();
   const query = note ? `?view=login&logout=${note}` : "?view=login";

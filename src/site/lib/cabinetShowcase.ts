@@ -1,4 +1,5 @@
 import { readLocal } from "@/lib/safeStorage";
+import { unpackText } from "@/lib/storeCodec";
 import { allCells, buildOccupancy } from "@/lib/placement";
 import type { Account } from "@/lib/types/account";
 import type { ServiceKind, ServiceSettings } from "@/lib/types/operations";
@@ -50,7 +51,7 @@ const SERVICE_MAP: Partial<Record<ServiceKind, ServiceId>> = {
 const same = (s: string): Copy => c(s, s);
 
 export function readCabinetShowcase(): Warehouse | null {
-  const raw = readLocal(PERSIST_KEY);
+  const raw = unpackText(readLocal(PERSIST_KEY));
   if (!raw) return null;
   let saved: CabinetSaved;
   try {
