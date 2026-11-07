@@ -12,7 +12,7 @@
  * в короб отгрузки, в списание недостачи (решение старшего) или снятием
  * размещения со склада. Поэтому
  *
- *   Δ коробов отгрузки + min(0, Δ собранного)
+ *   Δ коробов отгрузки + min(0, Δ собранного) − снято размещений
  *     ≤ D ≤
  *   Δ коробов отгрузки + max(0, Δ собранного) + списано + снято размещений.
  *
@@ -135,7 +135,8 @@ function mergeDeskStock(current, merged, people) {
     const left = (received.get(p) ?? 0) - (boxNet.get(p) ?? 0);
     const o = outNet.get(p) ?? 0;
     const pk = picked.get(p) ?? 0;
-    const lo = o + Math.min(0, pk);
+    // Снятое с ячейки могло лечь в тару сборки: это не товар из ничего.
+    const lo = o + Math.min(0, pk) - (unplaced.get(p) ?? 0);
     const hi = o + Math.max(0, pk) + (writtenOff.get(p) ?? 0) + (unplaced.get(p) ?? 0);
     if (o < 0 || left < lo || left > hi) mismatch.push(p);
   }

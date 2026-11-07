@@ -182,6 +182,17 @@ test("стол не ставит товар в ячейку, но снимает
   assert.deepEqual(mergeDeskWrite(cur, moved, who).data.placements, cur.placements);
   const picked = { ...cur, placements: {} };
   assert.deepEqual(mergeDeskWrite(cur, picked, who).data.placements, {});
+  // Снятое с ячейки легло в тару сборки — одна штука, не больше.
+  const toTote = withBoxes({ ...cur, placements: {} }, cur.boxes[0].lines, [
+    { productId: "p2", qty: 2 },
+    { productId: "p3", qty: 1 },
+  ]);
+  assert.deepEqual(mergeDeskWrite(cur, toTote, who).mismatch, []);
+  const tooMuch = withBoxes({ ...cur, placements: {} }, cur.boxes[0].lines, [
+    { productId: "p2", qty: 2 },
+    { productId: "p3", qty: 4 },
+  ]);
+  assert.deepEqual(mergeDeskWrite(cur, tooMuch, who).mismatch, ["p3"]);
 });
 
 test("открытое спорное копит количество, но не уменьшается", () => {
