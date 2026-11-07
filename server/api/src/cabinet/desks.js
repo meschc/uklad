@@ -562,7 +562,17 @@ function createDesks({ auth, cfg, send, log }) {
         prevSince: ms(rows[0]?.prev_since),
         prevLeft: ms(rows[0]?.prev_left),
       };
-      return runDeskOps(c, d.deskId, ops, who, Date.now());
+      // Упаковка проходит те же правила, что запись снимка со стола.
+      const verify = (before, after) => {
+        const w = mergeDeskWrite(before, after, { staff: who.staff, prev: who.prev });
+        return w.mismatch.length > 0 ? { ok: false } : { ok: true, data: w.data };
+      };
+      return runDeskOps(c, d.deskId, ops, who, Date.now(), {
+        verify,
+        withProducts,
+        withoutProducts,
+        recordMoves,
+      });
     });
     if (!out) return gone(res);
     if (out.limited) return limited(res);

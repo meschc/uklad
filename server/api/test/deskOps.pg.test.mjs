@@ -325,3 +325,100 @@ test("задним числом и ключи разных столов", { skip
   const other = await ops(desk2, [mark("key-back-001", "evy", "shift_start")]);
   assert.deepEqual(other.json.results, [{ key: "key-back-001", status: "applied" }]);
 });
+
+test(
+  "упаковка операцией: тара → короб, движения записаны, лишнего не взять",
+  { skip: SKIP },
+  async () => {
+    const { a, ivan } = await company("ops-f@sklad.ru", "10.0.5.6");
+    // Руководитель кладёт тару с собранным под заявку.
+    const data = {
+      ...cabinetData(),
+      boxes: [{ id: "t1", barcode: "UK-BOX-1", lines: [{ productId: "pr1", qty: 3 }] }],
+      requests: [
+        { id: "r1", productId: "pr1", qty: 2, status: "done", toteId: "t1", note: "Тула" },
+      ],
+      outboundBoxes: [],
+    };
+    const saved = await call("/api/cabinet/snapshot", {
+      ...a,
+      body: { version: 1, format: 8, data },
+    });
+    assert.equal(saved.status, 200);
+    const desk = await makeDesk(a);
+    await call("/api/cabinet/badges/check", { desk, body: { code: ivan } });
+
+    const body = (over = {}) => ({
+      eventId: "ev-pack-1",
+      staffId: "stf-ivan",
+      at: Date.now() - 500,
+      toteId: "t1",
+      outboundCode: "UK-OUT-1",
+      outboundId: "out1",
+      lines: [{ productId: "pr1", qty: 2 }],
+      requestIds: ["r1"],
+      shortages: [{ id: "disp-1", productId: "pr1", qty: 1 }],
+      ...over,
+    });
+    const more = await ops(desk, [
+      {
+        key: "key-pack-more",
+        kind: "pack_done",
+        body: body({ eventId: "ev-x", lines: [{ productId: "pr1", qty: 5 }] }),
+      },
+    ]);
+    assert.deepEqual(more.json.results, [
+      { key: "key-pack-more", status: "flagged", reason: "stock" },
+    ]);
+
+    // Этикетки — только журнал: сотня «упаковал» без закрытия тары не
+    // двигает товар, и платить за пики по ним нельзя — пик считается по
+    // движению в короб отгрузки (`uklad.stock_moves`).
+    const labels = Array.from({ length: 5 }, (_, i) => ({
+      key: `key-label-${i}xx`,
+      kind: "pack_event",
+      body: {
+        eventId: `ev-label-${i}`,
+        staffId: "stf-ivan",
+        type: "pack_label",
+        at: Date.now() - 400,
+        toteId: "t1",
+        productId: "pr1",
+      },
+    }));
+    const lr = await ops(desk, labels);
+    assert.ok(lr.json.results.every((x) => x.status === "applied"));
+    const none = await db.root.query(
+      `SELECT count(*)::int AS n FROM uklad.stock_moves WHERE org_id = $1 AND desk_id IS NOT NULL`,
+      [a.org],
+    );
+    assert.equal(none.rows[0].n, 0);
+
+    const r = await ops(desk, [{ key: "key-pack-0001", kind: "pack_done", body: body() }]);
+    assert.deepEqual(r.json.results, [{ key: "key-pack-0001", status: "applied" }]);
+
+    const { snap } = await serverEvents("ops-f@sklad.ru", a.org);
+    assert.deepEqual(snap.data.boxes[0].lines, [{ productId: "pr1", qty: 1 }]);
+    assert.deepEqual(snap.data.outboundBoxes[0].lines, [{ productId: "pr1", qty: 2 }]);
+    assert.equal(snap.data.requests[0].packedBy, "stf-ivan");
+    assert.equal(snap.data.disputes.find((d) => d.id === "disp-1").kind, "shortage");
+    // Товары остались в таблице, а не вернулись в снимок.
+    const raw = await db.root.query(
+      `SELECT data ? 'products' AS has FROM uklad.cabinet_snapshots WHERE org_id = $1`,
+      [a.org],
+    );
+    assert.equal(raw.rows[0].has, false);
+    const moves = await db.root.query(
+      `SELECT place_kind, place_ref, delta, staff_ref FROM uklad.stock_moves
+     WHERE org_id = $1 AND desk_id IS NOT NULL ORDER BY place_kind`,
+      [a.org],
+    );
+    assert.deepEqual(
+      moves.rows.map((m) => [m.place_kind, m.place_ref, m.delta, m.staff_ref]),
+      [
+        ["box", "t1", -2, "stf-ivan"],
+        ["outbound", "out1", 2, "stf-ivan"],
+      ],
+    );
+  },
+);

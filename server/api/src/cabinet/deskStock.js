@@ -86,6 +86,7 @@ function mergePlacements(current, incoming) {
 }
 
 const add = (m, k, n) => m.set(k, (m.get(k) ?? 0) + n);
+const WRITE_OFF = new Set(["shortage", "not_packable"]);
 
 /**
  * Свести остатки стола. `merged` — запись после остальных правил (заявки и
@@ -145,7 +146,8 @@ function mergeDeskStock(current, merged, people) {
   const wasOpen = byId(current.disputes);
   for (const d of list(merged.disputes)) {
     const prev = wasOpen.get(d.id);
-    if (prev && !prev.resolution && d.resolution === "written_off" && d.kind === "shortage") {
+    // Списать можно недостачу и брак: и то и другое лежит в таре на учёте.
+    if (prev && !prev.resolution && d.resolution === "written_off" && WRITE_OFF.has(d.kind)) {
       add(writtenOff, d.productId, num(d.qty));
     }
   }

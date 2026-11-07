@@ -13,11 +13,14 @@
  * хранится в журнале операций, но в снимок не идёт. Отказ всем запросом
  * (400) — только для того, что не похоже на операцию вовсе.
  *
- * Пока здесь отметки смены. Сборка, упаковка и приёмка переедут сюда же по
- * одной, и вместе с последней стол перестанет писать снимок.
+ * Здесь отметки смены и упаковка (`deskPack.js`). Сборка и приёмка переедут
+ * сюда же по одной, и вместе с последней стол перестанет писать снимок.
  */
 
-/* global module */
+/* global module, require */
+/* eslint-disable @typescript-eslint/no-require-imports */
+
+const { applyPackEvent, applyPackDone } = require("./deskPack");
 
 const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 
@@ -29,7 +32,8 @@ const SHIFT_TYPES = new Set([
   "idle_start",
   "idle_end",
 ]);
-const KINDS = new Set(["shift_mark", "shift_undo"]);
+const PACK_KINDS = new Set(["pack_event", "pack_done"]);
+const KINDS = new Set(["shift_mark", "shift_undo", ...PACK_KINDS]);
 /**
  * Окно отмены по часам сервера: как в кабинете (`MARK_UNDO_MS`) плюс запас
  * на сеть. Отмена, застрявшая в очереди дольше, помечается.
@@ -64,8 +68,12 @@ function isOp(op) {
  * (eventId → мс). Часам стола здесь не верим ни в чём, что меняет часы в
  * зарплате: окно отмены — по приёму на сервере, а отметка не может быть
  * раньше, чем человек встал за стол, и раньше его последней отметки.
+ *
+ * `verify(before, after)` — общие правила записи стола (`mergeDeskWrite`):
+ * правка упаковки проходит через них, `{ ok: false }` — остатки не сошлись.
  */
-function applyDeskOps(data, ops, who, now, received = new Map()) {
+function applyDeskOps(data, ops, who, now, received = new Map(), verify = null) {
+  let state = data;
   let events = Array.isArray(data.staffEvents) ? data.staffEvents : [];
   const results = [];
   let changed = false;
@@ -106,6 +114,36 @@ function applyDeskOps(data, ops, who, now, received = new Map()) {
     }
     if (typeof body.eventId !== "string" || !ID_RE.test(body.eventId)) {
       flag(op, "bad");
+      continue;
+    }
+    if (PACK_KINDS.has(op.kind)) {
+      // Упаковка — только за время, пока человек стоит за столом.
+      if (body.at < shift.from - SKEW_MS || body.at > shift.to + SKEW_MS) {
+        flag(op, "backdated");
+        continue;
+      }
+      const before = { ...state, staffEvents: events };
+      const apply = op.kind === "pack_event" ? applyPackEvent : applyPackDone;
+      const r = apply(before, body, staffRef);
+      if (r.flag) {
+        flag(op, r.flag);
+        continue;
+      }
+      let next = r.data;
+      if (verify && next !== before) {
+        const w = verify(before, next);
+        if (!w.ok) {
+          flag(op, "stock");
+          continue;
+        }
+        next = w.data;
+      }
+      if (next !== before) {
+        state = next;
+        events = Array.isArray(next.staffEvents) ? next.staffEvents : [];
+        changed = true;
+      }
+      results.push({ op, status: "applied", staffRef });
       continue;
     }
     if (op.kind === "shift_mark") {
@@ -167,15 +205,34 @@ function applyDeskOps(data, ops, who, now, received = new Map()) {
     changed = true;
     results.push({ op, status: "applied", staffRef });
   }
-  return { data: changed ? { ...data, staffEvents: events } : data, results, changed };
+  return { data: changed ? { ...state, staffEvents: events } : data, results, changed };
 }
 
 /** Что из присланного хранится в журнале: только известные поля, с пределом длины. */
 function cleanBody(body) {
   const out = { at: body.at };
-  for (const k of ["eventId", "staffId", "type", "station", "reason"]) {
-    if (typeof body[k] === "string") out[k] = body[k].slice(0, 100);
+  for (const k of [
+    "eventId",
+    "staffId",
+    "type",
+    "station",
+    "reason",
+    "toteId",
+    "productId",
+    "orderId",
+    "outboundId",
+    "outboundCode",
+    "code",
+  ]) {
+    if (typeof body[k] === "string") out[k] = body[k].slice(0, 200);
   }
+  // Состав упаковки нужен журналу целиком: по нему разбирают «куда делась
+  // штука». Размер ограничен телом запроса.
+  for (const k of ["lines", "requestIds", "shortages"]) {
+    if (Array.isArray(body[k])) out[k] = body[k];
+  }
+  if (isObject(body.dispute)) out.dispute = body.dispute;
+  if (Number.isInteger(body.ms)) out.ms = body.ms;
   return out;
 }
 
@@ -187,7 +244,7 @@ function cleanBody(body) {
  * `before` и `version` — версия снимка до и после: стол сдвигает свою, если
  * она была `before`, иначе следующая запись снимка получит конфликт.
  */
-async function runDeskOps(c, deskId, ops, who, now) {
+async function runDeskOps(c, deskId, ops, who, now, deps = {}) {
   const { rows } = await c.query(
     `SELECT version, data FROM uklad.cabinet_snapshots
      WHERE org_id = uklad.current_org() FOR UPDATE`,
@@ -220,7 +277,11 @@ async function runDeskOps(c, deskId, ops, who, now) {
     );
     for (const row of r.rows) received.set(row.id, new Date(row.at).getTime());
   }
-  const applied = applyDeskOps(cur.data, fresh, who, now, received);
+  // Упаковке нужен каталог (продавец товара, сверка остатков): он в таблице
+  // товаров (миграция 013), а не в снимке.
+  const packing = fresh.some((op) => PACK_KINDS.has(op.kind));
+  const base = packing && deps.withProducts ? await deps.withProducts(c, cur.data) : cur.data;
+  const applied = applyDeskOps(base, fresh, who, now, received, deps.verify ?? null);
   if (applied.results.length > 0) {
     await c.query(
       `INSERT INTO uklad.desk_ops (org_id, op_key, desk_id, staff_ref, kind, body,
@@ -254,9 +315,15 @@ async function runDeskOps(c, deskId, ops, who, now) {
            updated_at = now(), updated_by = NULL, updated_by_desk = $2
        WHERE org_id = uklad.current_org()
        RETURNING version`,
-      [JSON.stringify(applied.data), deskId],
+      [JSON.stringify(packing ? deps.withoutProducts(applied.data) : applied.data), deskId],
     );
     version = upd.rows[0].version;
+    if (packing && deps.recordMoves) {
+      await deps.recordMoves(c, cur.data, applied.data, version, {
+        deskId,
+        staffRef: who.staff ?? who.prev,
+      });
+    }
   }
   const byKey = new Map(applied.results.map((r) => [r.op.key, r]));
   const answered = new Set();

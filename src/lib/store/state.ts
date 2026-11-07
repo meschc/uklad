@@ -2,7 +2,7 @@ import type { StateCreator } from "zustand";
 // Только тип: `import type` стирается при сборке, поэтому кольца
 // «словарь → хранилище → словарь» не возникает.
 import type { MsgKey } from "../i18n";
-import type { ItemScan } from "../packing";
+import type { ItemScan, PackDoneFacts } from "../packing";
 import type {
   BackupSettings,
   Subscription,
@@ -757,8 +757,11 @@ export interface WorkstationSlice {
   packScanLabel: (code: string) => boolean;
   /** Отсканированная, но ещё не упакованная штука оказалась браком. */
   packRejectPending: () => void;
-  /** Закрыть тару: списать из неё ушедшее, отметить закрытые заказы. */
-  packFinish: () => void;
+  /**
+   * Закрыть тару: ушедшее — в короб отгрузки, закрытые заказы — упакованы.
+   * Возвращает факты закрытия — для операции стола на сервере.
+   */
+  packFinish: () => PackDoneFacts | null;
   /** Демо: тара из собранных заказов — пока сборка не пишет, что положила в тару. */
   prepareDemoTote: () => string | null;
 }

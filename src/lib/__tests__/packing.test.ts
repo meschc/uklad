@@ -72,15 +72,21 @@ describe("стол упаковки от тары", () => {
     expect(s().packScanLabel("UK-LBL-ЧУЖАЯ")).toBe(false);
   });
 
-  it("товар не из тары и брак уходят в отказы, недостача остаётся в таре", () => {
+  it("товар не из тары и брак уходят в отказы, брак и недостача остаются в таре", () => {
     const { s, packOne } = stand([{ productId: "p1", qty: 3 }]);
     expect(packOne("4600000000024")).toBe("not_in_tote");
     packOne("4600000000017");
     s().packScanItem("4600000000017");
     s().packRejectPending();
     s().packFinish();
-    // Одна упакована, одна брак — третья не дошла до стола и числится в таре.
-    expect(s().boxes[0].lines).toEqual([{ productId: "p1", qty: 1 }]);
+    // Одна упакована, одна брак, третья не дошла до стола. Брак не исчезает
+    // из учёта: он в таре, пока старший его не спишет.
+    expect(s().boxes[0].lines).toEqual([{ productId: "p1", qty: 2 }]);
+    expect(s().disputes.map((d) => [d.kind, d.productId, d.qty])).toContainEqual([
+      "not_packable",
+      "p1",
+      1,
+    ]);
     const types = s().staffEvents.map((e) => e.type);
     expect(types).toContain("pack_reject");
     expect(types).toContain("pack_error");

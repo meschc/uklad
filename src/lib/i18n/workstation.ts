@@ -39,6 +39,7 @@ export const ru = {
   "ws.markRejected": "Эту отметку сейчас поставить нельзя",
   "ws.opRejected": "Сервер не принял отметку смены. Отсканируйте бейдж и отметьтесь ещё раз",
   "ws.opPending": "Не отправлено: {n}",
+  "ws.opPackRejected": "Сервер не принял упаковку этой тары. Позовите старшего",
   "ws.opLost": "Сервер не принял отметки смены: {n}. Скажите руководителю",
   "ws.opPendingHint": "Нет связи с сервером. Работа сохранена здесь и уйдёт сама",
 
@@ -329,6 +330,7 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.markRejected": "This mark can't be set right now",
   "ws.opRejected": "The server didn't accept the shift mark. Scan your badge and mark again",
   "ws.opPending": "Not sent: {n}",
+  "ws.opPackRejected": "The server didn't accept packing of this tote. Call a senior",
   "ws.opLost": "The server rejected shift marks: {n}. Tell your manager",
   "ws.opPendingHint":
     "No connection to the server. Your work is kept here and will be sent automatically",
