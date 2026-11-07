@@ -15,9 +15,10 @@
  * Остальные маршруты кабинета со столом отвечают 403 — не 401, чтобы стол не
  * принял это за потерю входа.
  *
- * Пока кабинет живёт снимком (ADR 0010), стол по-прежнему пишет работу склада
- * целиком: сервер не проверяет, что упаковку отметил тот, кто вошёл бейджем.
- * Это придёт с операциями по таблицам.
+ * Пока кабинет живёт снимком (ADR 0010), стол пишет работу склада снимком, а
+ * сервер сверяет её: кто за столом (миграция 012) и куда делся товар
+ * (`deskStock.js`). Операции по таблицам заменят сверку, когда товары и
+ * остатки переедут на сервер.
  *
  * Маршруты руководителя (вход по паролю с правом staff.manage):
  *   POST /api/cabinet/desks        — { deviceRef, name } → кука стола, вход руководителя гаснет
@@ -35,6 +36,7 @@ const { createHash, randomBytes } = require("node:crypto");
 const { createRateLimit } = require("../rateLimit");
 const { MAX_SNAPSHOT_BYTES } = require("./snapshot");
 const { whoseBadge, answerCheck, CHECKS_PER_MINUTE } = require("./deskBadges");
+const { mergeDeskStock, STOCK_KEYS } = require("./deskStock");
 
 // Стол живёт, пока его не отвяжут; срок — страховка от забытого компьютера.
 const DESK_TTL_MS = 180 * 86_400_000;
@@ -105,6 +107,29 @@ function deskPeople(current, who) {
   };
 }
 
+/** Отметки, которые не зависят от движения товара. */
+const SHIFT_EVENTS = new Set([
+  "shift_start",
+  "shift_end",
+  "break_start",
+  "break_end",
+  "idle_start",
+  "idle_end",
+]);
+
+/**
+ * После отката остатков: спорное как на сервере, но решения без списания
+ * («переложили», «вернули») и новое открытое сохраняются.
+ */
+function keepDecisions(current, merged) {
+  const next = byId(merged);
+  const kept = (Array.isArray(current) ? current : []).map((d) => {
+    const n = isObject(d) ? next.get(d.id) : undefined;
+    return n && !d.resolution && n.resolution && n.resolution !== "written_off" ? n : d;
+  });
+  return appendOnly(kept, merged, (d) => !d.resolution);
+}
+
 /** Порядок статуса заявки: назад со стола — только «в работе» → «новая». */
 const REQUEST_FLOW = ["new", "in_progress", "done", "shipped"];
 /** Что стол вправе менять в заявке: ход работы, а не её суть. */
@@ -148,6 +173,11 @@ function mergeRequests(current, incoming, people) {
       const picked = Number(out.pickedQty);
       out.pickedQty = Number.isFinite(picked) ? Math.min(Math.max(0, picked), qty) : r.pickedQty;
     }
+    // Собранное со стола только растёт: «вернул из сборки» и «собрал снова»
+    // давали бы товар в таре из ничего. Отменяет сборку руководитель.
+    if ((Number(out.pickedQty) || 0) < (Number(r.pickedQty) || 0)) {
+      out.pickedQty = r.pickedQty;
+    }
     if (out.packedBy !== r.packedBy && !people.present.has(out.packedBy)) {
       out.packedBy = r.packedBy;
       out.packedAt = r.packedAt;
@@ -162,9 +192,20 @@ function mergeRequests(current, incoming, people) {
  */
 function mergeDisputes(current, incoming, people) {
   const next = byId(incoming);
-  const kept = (Array.isArray(current) ? current : []).map((d) => {
-    const n = isObject(d) ? next.get(d.id) : undefined;
-    if (!n || d.resolution || !n.resolution) return d;
+  const kept = (Array.isArray(current) ? current : []).map((was) => {
+    const n = isObject(was) ? next.get(was.id) : undefined;
+    if (!n || was.resolution) return was;
+    // Та же недостача в той же таре копится в одном спорном (`raiseDispute`):
+    // открытое может только вырасти и только от того, кто его завёл.
+    const grown =
+      Number.isInteger(n.qty) &&
+      n.qty > (Number(was.qty) || 0) &&
+      n.qty <= 100_000 &&
+      people.present.has(was.raisedBy)
+        ? { ...was, qty: n.qty }
+        : was;
+    if (!n.resolution) return grown;
+    const d = grown;
     // Решает старший, который сейчас за столом, и только от своего имени.
     if (!people.isSenior || n.resolvedBy !== people.staff) return d;
     // Списание — с причиной и не тем, кто нашёл (как в кабинете, #71):
@@ -247,7 +288,25 @@ function mergeDeskWrite(current, incoming, who = {}) {
     people.present.has(e.staffId),
   );
   out.disputes = mergeDisputes(current.disputes, incoming.disputes, people);
-  return out;
+  // Остатки: движение товара сверяется с работой (`deskStock.js`). Не сошлось —
+  // вся работа с товаром остаётся как на сервере, а стол заберёт свежий снимок.
+  const stock = mergeDeskStock(current, out, people);
+  Object.assign(out, stock.out);
+  if (stock.mismatch.length > 0) {
+    const decided = out.disputes;
+    for (const key of STOCK_KEYS) {
+      if (key in current) out[key] = current[key];
+      else delete out[key];
+    }
+    // Пики оплачиваются по журналу: упаковка, которой нет в данных, не
+    // оплачивается. Остаются отметки смены, перерывов и простоя.
+    out.staffEvents = appendOnly(current.staffEvents, out.staffEvents, (e) =>
+      SHIFT_EVENTS.has(e.type),
+    );
+    // Решения старшего, кроме списания, от остатков не зависят — оставляем.
+    out.disputes = keepDecisions(current.disputes, decided);
+  }
+  return { data: out, mismatch: stock.mismatch };
 }
 
 function createDesks({ auth, cfg, send, log }) {
@@ -408,7 +467,11 @@ function createDesks({ auth, cfg, send, log }) {
         deskHash(req),
       ]);
       const who = { staff: people.rows[0]?.staff_ref, prev: people.rows[0]?.prev_staff_ref };
-      const merged = JSON.stringify(mergeDeskWrite(cur.data, data, who));
+      const write = mergeDeskWrite(cur.data, data, who);
+      if (write.mismatch.length > 0) {
+        log.warn?.(`[uklad] стол: остатки не сошлись по ${write.mismatch.length} товарам`);
+      }
+      const merged = JSON.stringify(write.data);
       const upd = await c.query(
         `UPDATE uklad.cabinet_snapshots
          SET previous = data, data = $1::jsonb, format = $2, version = version + 1,
@@ -417,12 +480,16 @@ function createDesks({ auth, cfg, send, log }) {
          RETURNING version`,
         [merged, format, d.deskId],
       );
+      // Остатки не сошлись: остальное записано, но копия стола уже не
+      // совпадает с сервером — пусть заберёт свежий снимок, как при конфликте.
+      if (write.mismatch.length > 0) return { conflict: upd.rows[0].version, stock: true };
       return { version: upd.rows[0].version };
     });
     if (!out) return gone(res);
     if (out.limited) return limited(res);
     if (out.conflict !== undefined) {
-      return send(res, 409, { ok: false, error: "conflict", version: out.conflict });
+      const error = out.stock ? "stock_mismatch" : "conflict";
+      return send(res, 409, { ok: false, error, version: out.conflict });
     }
     return send(res, 200, { ok: true, version: out.version });
   }

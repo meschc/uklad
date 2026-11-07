@@ -449,6 +449,31 @@ test(
       "10 минут после ухода — ещё принимаем",
     );
 
+    // Товар в таре «из ничего»: остатки не сошлись (`deskStock.js`). Отметка
+    // смены записана, тара осталась как была, а стол получает 409 и забирает
+    // свежий снимок, как при конфликте.
+    await call("/api/cabinet/badges/check", { desk, body: { code: olga } });
+    const before = await snapshot();
+    const fake = await call("/api/cabinet/snapshot", {
+      desk,
+      body: {
+        version: before.version,
+        format: 8,
+        data: {
+          ...base,
+          boxes: [{ id: "bx-fake", barcode: "UK-BOX-99", lines: [{ productId: "pr1", qty: 50 }] }],
+          staffEvents: [{ id: "n5", staffId: "stf-olga", type: "shift_start", at: 9 }],
+        },
+      },
+    });
+    assert.equal(fake.status, 409);
+    assert.equal(fake.json.error, "stock_mismatch");
+    const after = await snapshot();
+    assert.equal(fake.json.version, after.version);
+    assert.equal(after.version, before.version + 1);
+    assert.ok(after.data.staffEvents.some((e) => e.id === "n5"));
+    assert.ok(!(after.data.boxes ?? []).some((b) => b.id === "bx-fake"));
+
     // Выход под входом руководителя (не стол) — не маршрут стола: 404, а не
     // 401, который закрыл бы кабинет руководителя.
     const boss = await login("desk-g@sklad.ru");
