@@ -107,6 +107,8 @@ export const ru = {
   "disputes.cancel": "Отмена",
   "disputes.noteRequired": "Для списания укажите причину",
   "disputes.selfWriteOff": "Недостачу, которую нашли вы, списывает другой старший",
+  "disputes.notInTote":
+    "В таре меньше, чем нужно списать. Пересчитайте тару: найденное верните, а не списывайте",
   "devices.title": "Устройства",
   "devices.lead":
     "Компьютеры и ТСД у рабочих мест. На привязанном устройстве открыт только вход по бейджу — без кабинета и левого меню.",
@@ -401,6 +403,8 @@ export const en: Record<keyof typeof ru, string> = {
   "disputes.cancel": "Cancel",
   "disputes.noteRequired": "Enter a reason for the write-off",
   "disputes.selfWriteOff": "A shortage you found must be written off by another supervisor",
+  "disputes.notInTote":
+    "The tote holds less than you are writing off. Recount it: return what you find instead",
   "devices.title": "Devices",
   "devices.lead":
     "Computers and handhelds at workstations. A bound device only shows badge sign-in — no cabinet, no side menu.",

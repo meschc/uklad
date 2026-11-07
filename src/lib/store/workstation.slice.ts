@@ -431,14 +431,19 @@ export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get)
           }),
         );
     }
-    // Брак из тары не уходит: он на учёте, пока его не спишет старший.
-    const kept = new Map(remaining);
-    for (const r of ps.rejects)
-      if (r.reason === "defect") kept.set(r.productId, (kept.get(r.productId) ?? 0) + 1);
     // Что легло в короб отгрузки: подтверждённые этикетками штуки и закрытые
-    // заказы. По этому составу погрузка потом сверяет машину.
+    // заказы. По этому составу погрузка потом сверяет машину. Больше, чем
+    // сейчас лежит в таре, взять нельзя: пока тара была на столе, старший мог
+    // списать из неё брак.
+    const content = toteContents(box);
     const packed = new Map<string, number>();
     for (const u of done.units) packed.set(u.productId, (packed.get(u.productId) ?? 0) + 1);
+    for (const [p, n] of packed) packed.set(p, Math.min(n, content.get(p) ?? 0));
+    // В таре остаётся всё, что не легло в короб: недостача и брак — на
+    // учёте, пока их не решит старший. Считаем от того, что в таре сейчас, а
+    // не от начала упаковки, иначе списанное за это время вернулось бы.
+    const kept = new Map<string, number>();
+    for (const [p, n] of content) kept.set(p, n - (packed.get(p) ?? 0));
     const doneEvent = event({
       staffId: ps.staffId,
       type: "pack_done",
@@ -457,7 +462,12 @@ export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get)
       }),
       boxes: get().boxes.map((b) =>
         b.id === box.id
-          ? { ...b, lines: [...kept].map(([productId, qty]) => ({ productId, qty })) }
+          ? {
+              ...b,
+              lines: [...kept]
+                .filter(([, qty]) => qty > 0)
+                .map(([productId, qty]) => ({ productId, qty })),
+            }
           : b,
       ),
       requests: s.requests.map((r) =>

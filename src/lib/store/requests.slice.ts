@@ -104,6 +104,13 @@ export const createRequestsSlice: SliceCreator<RequestsSlice> = (set, get) => ({
     const s = get();
     const req = s.requests.find((r) => r.id === id);
     if (!req) return 0;
+    // Заявка уже собрана: лишний скан не снимает с полки ещё одну штуку —
+    // иначе она ушла бы с места и не пришла никуда.
+    if ((req.pickedQty ?? 0) >= req.qty) return req.pickedQty ?? 0;
+    // Начатая заявка собирается в ту же тару: штука в другой таре (или в
+    // руках, без тары) потерялась бы для упаковки и для остатков — заявка
+    // помнит одну тару (`toteId`).
+    if ((req.pickedQty ?? 0) > 0 && req.toteId !== toteId) return req.pickedQty ?? 0;
 
     const key = addressKey(addr);
     const box = s.boxes.find(
@@ -222,7 +229,7 @@ export const createRequestsSlice: SliceCreator<RequestsSlice> = (set, get) => ({
    * остальные открытые заявки на тот же товар: физически коробка уже здесь,
    * и держать её ради формального порядка бессмысленно.
    */
-  applyCrossDock: (productId, qty, shipmentId) => {
+  applyCrossDock: (productId, qty, shipmentId, boxId) => {
     let left = Math.max(0, Math.round(qty));
     if (!left) return 0;
 
@@ -259,6 +266,9 @@ export const createRequestsSlice: SliceCreator<RequestsSlice> = (set, get) => ({
       }));
       if (picked >= r.qty) get().releaseReservation(r.id);
     }
+    // Ушедшее в заявки уже не лежит в таре приёмки: оно едет с заявкой, как
+    // снятое с полки. Иначе одна штука числилась бы и в таре, и в заявке.
+    if (boxId && used > 0) get().removeFromBox(boxId, productId, used);
     return used;
   },
 

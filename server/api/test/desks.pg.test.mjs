@@ -99,6 +99,88 @@ async function owner(email, ip) {
   return { cookie: token, org: (await res.json()).orgId };
 }
 
+test(
+  "руководитель переложил товар, стол собрал штуку: обе правки целы, стол не теряет работу",
+  { skip: SKIP },
+  async () => {
+    const { a, ivan } = await company("desk-h@sklad.ru", "10.0.3.8");
+    const desk = await makeDesk(a);
+    await call("/api/cabinet/badges/check", { desk, body: { code: ivan } });
+    const boss = await login("desk-h@sklad.ru");
+    const read = async () =>
+      (
+        await db.root.query(`SELECT version, data FROM uklad.cabinet_snapshots WHERE org_id = $1`, [
+          a.org,
+        ])
+      ).rows[0];
+    const start = await read();
+    // Руководитель в кабинете перекладывает две штуки из b1 в тару t1.
+    const moved = {
+      ...start.data,
+      boxes: [
+        { id: "b1", lines: [{ productId: "pr1", qty: 3 }] },
+        { id: "t1", barcode: "UK-BOX-7", lines: [{ productId: "pr1", qty: 2 }] },
+      ],
+    };
+    const m = await call("/api/cabinet/snapshot", {
+      cookie: boss,
+      org: a.org,
+      body: { version: start.version, format: 8, data: moved },
+    });
+    assert.equal(m.status, 200);
+
+    // Стол собирал по старой копии: запись не ложится поверх чужой правки,
+    // а получает конфликт версии — товар руководителя на месте.
+    const pick = (boxes, version) =>
+      call("/api/cabinet/snapshot", {
+        desk,
+        body: {
+          version,
+          format: 8,
+          data: {
+            warehouse: { id: "wh_1" },
+            boxes,
+            requests: [
+              {
+                id: "r1",
+                productId: "pr1",
+                qty: 5,
+                status: "in_progress",
+                note: "Тула",
+                pickedQty: 1,
+              },
+              { id: "r2", productId: "pr1", qty: 1, status: "shipped", note: "Тула" },
+            ],
+          },
+        },
+      });
+    const stale = await pick([{ id: "b1", lines: [{ productId: "pr1", qty: 4 }] }], start.version);
+    assert.equal(stale.status, 409);
+    assert.notEqual(stale.json.error, "stock_mismatch");
+    assert.deepEqual((await read()).data.boxes, moved.boxes);
+
+    // Забрав свежую копию, стол повторяет сборку поверх неё — принято.
+    const fresh = await read();
+    const ok = await pick(
+      [
+        { id: "b1", lines: [{ productId: "pr1", qty: 2 }] },
+        { id: "t1", barcode: "UK-BOX-7", lines: [{ productId: "pr1", qty: 2 }] },
+      ],
+      fresh.version,
+    );
+    assert.equal(ok.status, 200);
+    const end = (await read()).data;
+    assert.deepEqual(
+      end.boxes.map((b) => [b.id, b.lines[0].qty]),
+      [
+        ["b1", 2],
+        ["t1", 2],
+      ],
+    );
+    assert.equal(end.requests.find((r) => r.id === "r1").pickedQty, 1);
+  },
+);
+
 const PLAN = { plan: "start" };
 const staff = () => [
   { id: "stf-boss", name: "Игорь", role: "Управляющий склада", hourlyRate: 900, phone: "+7 900" },
@@ -120,7 +202,7 @@ const cabinetData = () => ({
     { id: "q2", kind: "extra" },
   ],
   otherWarehouses: [{ id: "wh_2", name: "Второй", staff: staff() }],
-  boxes: [{ id: "b1" }],
+  boxes: [{ id: "b1", lines: [{ productId: "pr1", qty: 5 }] }],
   requests: [
     { id: "r1", productId: "pr1", qty: 5, status: "in_progress", note: "Тула" },
     { id: "r2", productId: "pr1", qty: 1, status: "shipped", note: "Тула" },
@@ -205,7 +287,7 @@ test("стол пишет работу склада, но не персонал,
       staff: [{ id: "stf-x", name: "Чужой", hourlyRate: 1 }],
     },
     otherWarehouses: [],
-    boxes: [{ id: "b1" }, { id: "b2" }],
+    boxes: [{ id: "b1", lines: [{ productId: "pr1", qty: 5 }] }, { id: "b2" }],
     // Короб отгрузки пишет упаковка за столом.
     outboundBoxes: [{ id: "o1", code: "UK-OUT-TULA01" }],
     chats: {},
@@ -399,6 +481,9 @@ test(
         { id: "r2", productId: "pr1", qty: 1, status: "new", note: "Тула" },
         { id: "r3", productId: "pr1", qty: 99, status: "new" },
       ],
+      // Собранное снято с полки: иначе пять штук числились бы и в коробе, и
+      // в заявке.
+      boxes: [{ id: "b1", lines: [] }],
       // Упаковщик решает спорное — не его решение.
       disputes: [{ id: "q2", kind: "extra", resolution: "moved", resolvedBy: "stf-ivan" }],
     });

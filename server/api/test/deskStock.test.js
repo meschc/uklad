@@ -167,16 +167,26 @@ test("уехавший короб и рейс не переписываются,
   assert.equal(data.shipments[0].destination, "Тула");
 });
 
-test("кроссдок: принятое сразу закрывает заявку", () => {
+test("кроссдок: принятое сразу закрывает заявку и в таре не остаётся", () => {
   const cur = base();
-  const inc = {
-    ...withBoxes(cur, [{ productId: "p1", qty: 8 }], cur.boxes[1].lines),
+  const recv = {
     receivingEvents: [
       { id: "e1", productId: "p1", qty: 3, boxId: "b1", staffId: "stf-ivan", timestamp: 1 },
     ],
     requests: [{ ...cur.requests[0], pickedQty: 3, status: "done" }],
   };
+  // Ушедшее в заявку снято с тары приёмки: тара как была.
+  const inc = { ...withBoxes(cur, cur.boxes[0].lines, cur.boxes[1].lines), ...recv };
   assert.deepEqual(mergeDeskWrite(cur, inc, who).mismatch, []);
+  // Принятое и в таре, и в заявке — одна штука числится дважды.
+  const twice = { ...withBoxes(cur, [{ productId: "p1", qty: 8 }], cur.boxes[1].lines), ...recv };
+  assert.deepEqual(mergeDeskWrite(cur, twice, who).mismatch, ["p1"]);
+});
+
+test("собрано без снятия с полки — товар задвоен, откат", () => {
+  const cur = base();
+  const inc = { ...cur, requests: [{ ...cur.requests[0], pickedQty: 2 }] };
+  assert.deepEqual(mergeDeskWrite(cur, inc, who).mismatch, ["p1"]);
 });
 
 test("списание недостачи старшим уменьшает тару; без решения — откат", () => {
