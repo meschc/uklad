@@ -58,12 +58,41 @@ function cleanLines(raw) {
   return m;
 }
 
-/** Открытое спорное по скану или недостаче: новое или выросшее. */
+/** Спорное, по которому старший может списать товар из тары. */
+const WRITE_OFF = new Set(["shortage", "not_packable"]);
+
+/**
+ * Открытое спорное по скану или недостаче: новое или выросшее. Совпал id,
+ * а вид, тара или товар другие — подлог или сбой: расти так спорному нельзя,
+ * иначе недостача по одному товару увеличит списание по другому.
+ */
 function withDispute(disputes, d) {
   const same = disputes.find((x) => x.id === d.id);
   if (!same) return [d, ...disputes];
+  if (
+    same.resolution ||
+    same.kind !== d.kind ||
+    same.boxId !== d.boxId ||
+    same.productId !== d.productId
+  ) {
+    return null;
+  }
   // Можно ли ему расти, решит `mergeDisputes`.
   return disputes.map((x) => (x === same ? { ...x, qty: d.qty } : x));
+}
+
+/**
+ * Сколько штук товара в таре уже ждут решения старшего (недостача и брак):
+ * больше, чем лежит в таре, списать нельзя.
+ */
+function claimed(disputes, boxId, productId) {
+  let n = 0;
+  for (const d of disputes) {
+    if (!d.resolution && d.boxId === boxId && d.productId === productId && WRITE_OFF.has(d.kind)) {
+      n += Number(d.qty) || 0;
+    }
+  }
+  return n;
 }
 
 const packEvent = (body, staffRef) => ({
@@ -104,7 +133,12 @@ function applyPackEvent(data, body, staffRef) {
     ) {
       return { flag: "bad" };
     }
-    out.disputes = withDispute(list(data.disputes), {
+    const was = list(data.disputes).find((x) => x.id === d.id);
+    const grow = d.qty - (Number(was?.qty) || 0);
+    // Один скан — одна штука. Меньше — то же уже пришло снимком.
+    if (grow > 1) return { flag: "bad" };
+    if (grow <= 0) return { data: out };
+    const disputes = withDispute(list(data.disputes), {
       id: d.id,
       kind: d.kind,
       boxId: tote.id,
@@ -114,6 +148,14 @@ function applyPackEvent(data, body, staffRef) {
       raisedBy: staffRef,
       raisedAt: body.at,
     });
+    if (!disputes) return { flag: "bad" };
+    // Брака не бывает больше, чем этого товара лежит в таре.
+    if (
+      claimed(disputes, tote.id, body.productId) > (linesOf(tote.lines).get(body.productId) ?? 0)
+    ) {
+      return { flag: "stock" };
+    }
+    out.disputes = disputes;
   }
   return { data: out };
 }
@@ -166,7 +208,17 @@ function applyPackDone(data, body, staffRef) {
   const requests = list(data.requests);
   const ids = Array.isArray(body.requestIds) ? body.requestIds.filter(isId) : [];
   if (ids.length > 500) return { flag: "bad" };
-  const closing = requests.filter((r) => ids.includes(r.id) && r.toteId === tote.id && !r.packedAt);
+  const closing = requests.filter(
+    (r) => ids.includes(r.id) && r.toteId === tote.id && r.status === "done" && !r.packedAt,
+  );
+  // Заказ упакован, только если его товар лёг в короб: иначе продавец увидит
+  // отгрузку пустого короба. Частичный — по собранному (`toteOrders`).
+  const need = new Map();
+  for (const r of closing) {
+    const n = r.partial ? Number(r.pickedQty) || 0 : Number(r.qty) || 0;
+    if (n > 0) need.set(r.productId, (need.get(r.productId) ?? 0) + n);
+  }
+  for (const [p, n] of need) if ((packed.get(p) ?? 0) < n) return { flag: "stock" };
   const outs = list(data.outboundBoxes);
   const open = outs.find((b) => !b.shipmentId && normalizeCode(String(b.code ?? "")) === code);
   if (targetProblem(data, have, closing, open)) return { flag: "mixed" };
@@ -222,7 +274,6 @@ function applyPackDone(data, body, staffRef) {
     const was = disputes.find((d) => d.id === s.id);
     const grow = s.qty - (Number(was?.qty) || 0);
     if (grow <= 0) continue;
-    if (grow > (remaining.get(s.productId) ?? 0)) return { flag: "stock" };
     disputes = withDispute(disputes, {
       id: s.id,
       kind: "shortage",
@@ -233,6 +284,12 @@ function applyPackDone(data, body, staffRef) {
       raisedBy: staffRef,
       raisedAt: at,
     });
+    if (!disputes) return { flag: "bad" };
+  }
+  // Недостача и брак вместе — не больше того, что осталось в таре: одну
+  // штуку нельзя списать дважды.
+  for (const p of new Set(shortages.map((s) => s.productId))) {
+    if (claimed(disputes, tote.id, p) > (remaining.get(p) ?? 0)) return { flag: "stock" };
   }
 
   const closed = new Set(requestIds);

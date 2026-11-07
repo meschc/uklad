@@ -229,3 +229,74 @@ test("скан и брак: запись в журнал, брак — спор�
     "bad",
   );
 });
+
+test("чужой id спорного: недостача по одному товару не растит списание другого", () => {
+  const d = data();
+  d.disputes = [
+    { id: "dB", kind: "shortage", boxId: "t1", productId: "p2", qty: 1, raisedBy: "stf-olga" },
+  ];
+  const r = applyPackDone(
+    d,
+    done({ shortages: [{ id: "dB", productId: "p1", qty: 2 }] }),
+    "stf-ivan",
+  );
+  assert.equal(r.flag, "bad");
+  const scan = applyPackEvent(
+    d,
+    {
+      eventId: "e5",
+      type: "pack_reject",
+      at: AT,
+      toteId: "t1",
+      productId: "p1",
+      dispute: { id: "dB", kind: "not_packable", qty: 2 },
+    },
+    "stf-ivan",
+  );
+  assert.equal(scan.flag, "bad");
+});
+
+test("брак: одна штука за скан и не больше, чем лежит в таре", () => {
+  const reject = (id, qty, disputes = []) =>
+    applyPackEvent(
+      { ...data(), disputes },
+      {
+        eventId: id,
+        type: "pack_reject",
+        at: AT,
+        toteId: "t1",
+        productId: "p2",
+        dispute: { id: "d2", kind: "not_packable", qty },
+      },
+      "stf-ivan",
+    );
+  assert.equal(reject("e1", 100_000).flag, "bad");
+  const one = reject("e1", 1);
+  assert.equal(one.data.disputes[0].qty, 1);
+  // В таре одна штука p2 — второго брака по ней не бывает.
+  assert.equal(reject("e2", 2, one.data.disputes).flag, "stock");
+  // Недостача и брак вместе — не больше остатка: штуку не списать дважды.
+  const d = data();
+  d.disputes = [
+    { id: "d9", kind: "not_packable", boxId: "t1", productId: "p1", qty: 1, raisedBy: "stf-ivan" },
+  ];
+  const both = applyPackDone(
+    d,
+    done({ shortages: [{ id: "d1", productId: "p1", qty: 1 }] }),
+    "stf-ivan",
+  );
+  assert.equal(both.flag, "stock");
+});
+
+test("заказ не закрывается без своего товара в коробе", () => {
+  const empty = applyPackDone(data(), done({ lines: [] }), "stf-ivan");
+  assert.equal(empty.flag, "stock");
+  const short = applyPackDone(data(), done({ lines: [{ productId: "p1", qty: 2 }] }), "stf-ivan");
+  assert.equal(short.flag, "stock");
+  // Несобранная заявка упакованной не становится.
+  const d = data();
+  d.requests[1].status = "picking";
+  const r = applyPackDone(d, done({ lines: [{ productId: "p1", qty: 2 }] }), "stf-ivan");
+  assert.equal(r.flag, undefined);
+  assert.equal(r.data.requests[1].packedAt, undefined);
+});

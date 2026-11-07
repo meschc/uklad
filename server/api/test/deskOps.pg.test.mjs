@@ -371,6 +371,29 @@ test(
       { key: "key-pack-more", status: "flagged", reason: "stock" },
     ]);
 
+    // Этикетки — только журнал: сотня «упаковал» без закрытия тары не
+    // двигает товар, и платить за пики по ним нельзя — пик считается по
+    // движению в короб отгрузки (`uklad.stock_moves`).
+    const labels = Array.from({ length: 5 }, (_, i) => ({
+      key: `key-label-${i}xx`,
+      kind: "pack_event",
+      body: {
+        eventId: `ev-label-${i}`,
+        staffId: "stf-ivan",
+        type: "pack_label",
+        at: Date.now() - 400,
+        toteId: "t1",
+        productId: "pr1",
+      },
+    }));
+    const lr = await ops(desk, labels);
+    assert.ok(lr.json.results.every((x) => x.status === "applied"));
+    const none = await db.root.query(
+      `SELECT count(*)::int AS n FROM uklad.stock_moves WHERE org_id = $1 AND desk_id IS NOT NULL`,
+      [a.org],
+    );
+    assert.equal(none.rows[0].n, 0);
+
     const r = await ops(desk, [{ key: "key-pack-0001", kind: "pack_done", body: body() }]);
     assert.deepEqual(r.json.results, [{ key: "key-pack-0001", status: "applied" }]);
 
