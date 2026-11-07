@@ -13,7 +13,15 @@
 
 const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 const list = (v) => (Array.isArray(v) ? v.filter(isObject) : []);
-const qty = (v) => (Number.isInteger(v) ? v : 0);
+
+/** Строки тары и коробов: одно правило для журнала и для проверки входа. */
+const isLine = (l) =>
+  isObject(l) &&
+  typeof l.productId === "string" &&
+  l.productId.length >= 1 &&
+  l.productId.length <= 100 &&
+  Number.isInteger(l.qty);
+const MAX_REF = 300;
 
 /** Адрес ячейки одной строкой — так же для «было» и «стало». */
 const cellRef = (a) =>
@@ -35,8 +43,12 @@ function places(data) {
     ]) {
       for (const row of list(rows)) {
         if (typeof row.id !== "string") continue;
-        for (const l of list(row.lines)) {
-          put(JSON.stringify([warehouse, kind, row.id]), l.productId, qty(l.qty));
+        // Тара на месте хранения: её перенос из ячейки в ячейку — тоже
+        // движение, хоть внутри тары ничего не поменялось.
+        const at = kind === "box" ? cellRef(row.address) : "";
+        for (const l of list(row.lines).filter(isLine)) {
+          put(JSON.stringify([warehouse, kind, row.id]), l.productId, l.qty);
+          if (at) put(JSON.stringify([warehouse, "box_at", `${at}#${row.id}`]), l.productId, l.qty);
         }
       }
     }
@@ -75,11 +87,44 @@ function diffMoves(before, after) {
     const warehouse = wh && wh.length <= 100 ? wh : null;
     for (const product of [...new Set([...a.keys(), ...b.keys()])].sort()) {
       const delta = (b.get(product) ?? 0) - (a.get(product) ?? 0);
-      if (delta === 0 || ref.length > 300 || product.length > 100) continue;
+      if (delta === 0) continue;
       moves.push({ warehouse, kind, ref, product, delta });
     }
   }
   return moves;
+}
+
+/**
+ * Работа, которую журнал не сможет записать честно: id места длиннее
+ * `MAX_REF`, строка без товара или с нецелым количеством. Такую запись
+ * сервер отклоняет целиком (400), а не пропускает движение без следа.
+ */
+function invalidWork(data) {
+  if (!isObject(data)) return false;
+  const bad = (w) =>
+    [w.boxes, w.outboundBoxes].some(
+      (rows) =>
+        rows !== undefined &&
+        (!Array.isArray(rows) ||
+          rows.some(
+            (row) =>
+              !isObject(row) ||
+              typeof row.id !== "string" ||
+              row.id.length > MAX_REF ||
+              cellRef(row.address).length > MAX_REF ||
+              (row.lines !== undefined && (!Array.isArray(row.lines) || !row.lines.every(isLine))),
+          )),
+    );
+  if (bad(data)) return true;
+  if (isObject(data.warehouseData)) {
+    for (const w of Object.values(data.warehouseData)) if (isObject(w) && bad(w)) return true;
+  }
+  if (isObject(data.placements)) {
+    for (const [p, a] of Object.entries(data.placements)) {
+      if (p.length > 100 || cellRef(a).length > MAX_REF) return true;
+    }
+  }
+  return false;
 }
 
 /** Дописать движения записи снимка. `who` — { memberId } или { deskId, staffRef }. */
@@ -104,4 +149,4 @@ async function recordMoves(c, before, after, version, who) {
   return moves.length;
 }
 
-module.exports = { diffMoves, recordMoves };
+module.exports = { diffMoves, recordMoves, invalidWork };

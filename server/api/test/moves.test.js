@@ -74,3 +74,49 @@ test("первая запись — всё прибыло; мусор в стр�
   ]);
   assert.deepEqual(diffMoves(null, null), []);
 });
+
+const { invalidWork } = require("../src/cabinet/moves");
+const { mergeDeskWrite } = require("../src/cabinet/desks");
+
+test("тару перенесли из ячейки в ячейку — движение места, внутри без изменений", () => {
+  const t = (cellIndex) => ({
+    boxes: [{ ...box("t1", [{ productId: "p1", qty: 2 }]), address: { ...cell, cellIndex } }],
+  });
+  assert.deepEqual(diffMoves(t(2), t(3)), [
+    { warehouse: null, kind: "box_at", ref: "f1/m1/0/2#t1", product: "p1", delta: -2 },
+    { warehouse: null, kind: "box_at", ref: "f1/m1/0/3#t1", product: "p1", delta: 2 },
+  ]);
+});
+
+test("работу, которую журнал не запишет честно, сервер отклоняет, а не пропускает", () => {
+  const withLine = (l) => ({ boxes: [box("t1", [l])] });
+  assert.equal(invalidWork(withLine({ productId: "p1", qty: 2 })), false);
+  assert.equal(invalidWork({ boxes: [{ id: "b1" }] }), false);
+  // Количество не целым числом: сверка и журнал прочли бы его по-разному.
+  assert.equal(invalidWork(withLine({ productId: "p1", qty: "3" })), true);
+  assert.equal(invalidWork(withLine({ productId: "p1", qty: 1.5 })), true);
+  assert.equal(invalidWork(withLine({ qty: 1 })), true);
+  // Слишком длинный id места — движение без следа.
+  assert.equal(invalidWork({ boxes: [box("x".repeat(301), [])] }), true);
+  assert.equal(invalidWork({ warehouseData: { wh2: { outboundBoxes: [{ id: 7 }] } } }), true);
+  assert.equal(invalidWork({ placements: { p1: { ...cell, moduleId: "m".repeat(400) } } }), true);
+});
+
+test("за столом никого — товар со стола не двигается", () => {
+  const current = {
+    warehouse: { id: "wh1", staff: [] },
+    products: [{ id: "p1", sku: "A", name: "Кружка" }],
+    boxes: [box("t1", [{ productId: "p1", qty: 3 }])],
+    outboundBoxes: [],
+  };
+  const incoming = {
+    ...current,
+    boxes: [box("t1", [{ productId: "p1", qty: 1 }])],
+    outboundBoxes: [{ id: "o1", code: "UK-OUT-1", lines: [{ productId: "p1", qty: 2 }] }],
+  };
+  const nobody = mergeDeskWrite(current, incoming, {});
+  assert.deepEqual(nobody.mismatch, ["p1"]);
+  assert.deepEqual(nobody.data.boxes, current.boxes);
+  const someone = mergeDeskWrite(current, incoming, { staff: "stf-ivan" });
+  assert.deepEqual(someone.mismatch, []);
+});

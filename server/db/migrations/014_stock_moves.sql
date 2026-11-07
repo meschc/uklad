@@ -17,16 +17,17 @@ CREATE TABLE uklad.stock_moves (
   -- принадлежит одному плану.
   warehouse_ref text CHECK (length(warehouse_ref) <= 100),
   -- Где: тара или паллетный короб (`box`), короб отгрузки (`outbound`),
-  -- ячейка с товаром без тары (`cell`).
-  place_kind text NOT NULL CHECK (place_kind IN ('box', 'outbound', 'cell')),
-  place_ref text NOT NULL CHECK (length(place_ref) BETWEEN 1 AND 300),
+  -- ячейка с товаром без тары (`cell`), тара на месте хранения (`box_at`,
+  -- «адрес#тара»: перенос тары из ячейки в ячейку).
+  place_kind text NOT NULL CHECK (place_kind IN ('box', 'outbound', 'cell', 'box_at')),
+  place_ref text NOT NULL CHECK (length(place_ref) BETWEEN 1 AND 601),
   product_ref text NOT NULL CHECK (length(product_ref) BETWEEN 1 AND 100),
   -- Сколько прибыло (+) или убыло (−). У ячейки — +1 «положили», −1 «сняли»:
   -- размещение в кабинете не знает количества.
   delta integer NOT NULL CHECK (delta <> 0),
   -- Кто записал: руководитель из кабинета или стол со своим сотрудником.
   member_id uuid,
-  desk_id uuid,
+  desk_id uuid REFERENCES auth.desk_sessions (id),
   staff_ref text CHECK (length(staff_ref) <= 100),
   -- Версия снимка, в которой движение записано: по ней движение находится
   -- рядом с остальной работой той же записи.

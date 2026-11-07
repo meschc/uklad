@@ -37,7 +37,7 @@ const { createRateLimit } = require("../rateLimit");
 const { MAX_SNAPSHOT_BYTES, withProducts, withoutProducts } = require("./snapshot");
 const { whoseBadge, answerCheck, CHECKS_PER_MINUTE } = require("./deskBadges");
 const { mergeDeskStock, STOCK_KEYS } = require("./deskStock");
-const { recordMoves } = require("./moves");
+const { recordMoves, diffMoves, invalidWork } = require("./moves");
 
 // Стол живёт, пока его не отвяжут; срок — страховка от забытого компьютера.
 const DESK_TTL_MS = 180 * 86_400_000;
@@ -305,6 +305,13 @@ function mergeDeskWrite(current, incoming, who = {}) {
   // вся работа с товаром остаётся как на сервере, а стол заберёт свежий снимок.
   const stock = mergeDeskStock(current, out, people);
   Object.assign(out, stock.out);
+  // За столом никого: товар не двигается вовсе — в журнале не должно
+  // остаться «стол, неизвестно кто».
+  if (people.present.size === 0) {
+    for (const m of diffMoves(current, out)) {
+      if (!stock.mismatch.includes(m.product)) stock.mismatch.push(m.product);
+    }
+  }
   if (stock.mismatch.length > 0) {
     const decided = out.disputes;
     for (const key of STOCK_KEYS) {
@@ -461,7 +468,8 @@ function createDesks({ auth, cfg, send, log }) {
       version < 1 ||
       !Number.isInteger(format) ||
       format < 1 ||
-      !isObject(data)
+      !isObject(data) ||
+      invalidWork(data)
     ) {
       return send(res, 400, { ok: false, error: "bad_request" });
     }
@@ -500,7 +508,8 @@ function createDesks({ auth, cfg, send, log }) {
       // совпадает с сервером — пусть заберёт свежий снимок, как при конфликте.
       await recordMoves(c, cur.data, write.data, upd.rows[0].version, {
         deskId: d.deskId,
-        staffRef: who.staff,
+        // Прежний сотрудник принимается ещё 10 минут после ухода.
+        staffRef: who.staff ?? who.prev,
       });
       if (write.mismatch.length > 0) return { conflict: upd.rows[0].version, stock: true };
       return { version: upd.rows[0].version };

@@ -27,7 +27,7 @@
 /* global require, module */
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { createRateLimit } = require("../rateLimit");
-const { recordMoves } = require("./moves");
+const { recordMoves, invalidWork } = require("./moves");
 
 // Пустой кабинет — единицы килобайт, демо со всей историей — около мегабайта.
 // Восемь — с запасом, но не столько, чтобы одним запросом забить диск.
@@ -127,7 +127,8 @@ function createSnapshot({ auth, send, log }) {
       !b.data ||
       typeof b.data !== "object" ||
       Array.isArray(b.data) ||
-      ("products" in b.data && !Array.isArray(b.data.products))
+      ("products" in b.data && !Array.isArray(b.data.products)) ||
+      invalidWork(b.data)
     ) {
       return send(res, 400, { ok: false, error: "bad_request" });
     }
