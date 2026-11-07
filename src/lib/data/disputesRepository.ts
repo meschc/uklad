@@ -1,8 +1,11 @@
 import { writeOffProblem } from "../disputes";
 import type { Dispute, DisputeResolution } from "../types";
 import { isDispute } from "./guards";
+import { onServer } from "./badgeRepository";
+import { deskOps, type OpQueue } from "./opQueue";
 import { readList, storePort, type StorePort } from "./repository";
 import { attempt, fail, ok, type Result } from "./result";
+import { nowMs, uid } from "../utils";
 
 /**
  * Спорное склада (п.0.4). Решение старшего — команда к слою данных: на сервере
@@ -19,7 +22,10 @@ export interface DisputesRepository {
   ) => Promise<Result<void>>;
 }
 
-export function createDisputesRepository(port: StorePort = storePort): DisputesRepository {
+export function createDisputesRepository(
+  port: StorePort = storePort,
+  ops: OpQueue = deskOps,
+): DisputesRepository {
   return {
     list: () => readList(() => port.get().disputes, isDispute, "disputes"),
     resolve: async (id, resolution, by, note) => {
@@ -31,7 +37,21 @@ export function createDisputesRepository(port: StorePort = storePort): DisputesR
       }
       const res = await attempt(() => port.get().resolveDispute(id, resolution, by, note));
       if (!res.ok) return res;
-      return res.data ? ok(undefined) : fail("disputes.resolveFailed");
+      if (!res.data) return fail("disputes.resolveFailed");
+      // Старший за столом на сервере решает операцией (`cabinet/deskShip.js`):
+      // сервер сам проверит, что он старший и что списание не своё.
+      const at = port.get().stationSession?.staffId;
+      if (at && at === by && onServer(port)) {
+        ops.enqueue("dispute_resolve", {
+          eventId: uid("dr"),
+          staffId: by,
+          at: nowMs(),
+          disputeId: id,
+          resolution,
+          ...(note?.trim() ? { note: note.trim() } : {}),
+        });
+      }
+      return ok(undefined);
     },
   };
 }

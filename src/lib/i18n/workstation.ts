@@ -42,6 +42,9 @@ export const ru = {
   "ws.opPackRejected": "Сервер не принял упаковку этой тары. Позовите старшего",
   "ws.opPickRejected": "Сервер не принял сборку этой заявки. Позовите старшего",
   "ws.opRecvRejected": "Сервер не принял приёмку этой тары. Позовите старшего",
+  "ws.opShipRejected": "Сервер не принял рейс. Машину не отпускайте — позовите старшего",
+  "ws.opDisputeRejected":
+    "Сервер не принял решение по спорному: решает старший, который сейчас за столом",
   "ws.opLost": "Сервер не принял отметки смены: {n}. Скажите руководителю",
   "ws.opPendingHint": "Нет связи с сервером. Работа сохранена здесь и уйдёт сама",
 
@@ -342,6 +345,8 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.opPackRejected": "The server didn't accept packing of this tote. Call a senior",
   "ws.opPickRejected": "The server didn't accept picking for this request. Call a senior",
   "ws.opRecvRejected": "The server didn't accept receiving into this box. Call a senior",
+  "ws.opShipRejected": "The server didn't accept the run. Hold the truck and call a senior",
+  "ws.opDisputeRejected": "The server didn't accept the decision: the senior at the desk decides",
   "ws.opLost": "The server rejected shift marks: {n}. Tell your manager",
   "ws.opPendingHint":
     "No connection to the server. Your work is kept here and will be sent automatically",

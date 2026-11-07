@@ -57,6 +57,14 @@ export interface WorkstationRepository {
   ) => Promise<Result<number>>;
   /** Заявка собрана: целиком или частично (меньше запрошенного, явно). */
   pickDone: (requestId: string, partial: boolean) => Promise<Result<void>>;
+  /**
+   * Машина уехала: собранные заявки одного назначения и погруженные места.
+   * Ответ — id рейса, null — отгружать нечего.
+   */
+  ship: (
+    requestIds: string[],
+    info: { vehicle: string; staffId: string; units: string[] },
+  ) => Promise<Result<string | null>>;
 }
 
 export function createWorkstationRepository(
@@ -243,6 +251,26 @@ export function createWorkstationRepository(
           });
         }
         return now;
+      }),
+    // Рейс на сервере уходит операцией (`cabinet/deskShip.js`): стор уже
+    // отметил уехавшее, очередь донесёт «эти заявки, эти места, эта машина».
+    ship: (requestIds, info) =>
+      attempt(() => {
+        const id = port.get().shipRequests(requestIds, info);
+        const by = port.get().stationSession?.staffId;
+        if (!id || !by || !onServer(port)) return id;
+        const run = port.get().shipments.find((s) => s.id === id);
+        if (run) {
+          ops.enqueue("ship_run", {
+            eventId: id,
+            staffId: by,
+            at: run.shippedAt,
+            requestIds: run.requestIds,
+            vehicle: run.vehicle ?? "",
+            units: run.units ?? [],
+          });
+        }
+        return id;
       }),
     pickDone: (requestId, partial) =>
       attempt(() => {

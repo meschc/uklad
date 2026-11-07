@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from "react";
 import { Printer, Truck } from "lucide-react";
 import { useEditor } from "@/lib/store";
+import { workstationRepository } from "@/lib/data";
 import { groupRequestsByTarget } from "@/lib/fulfillment";
 import { parseVehicle, vehicleCode } from "@/lib/barcode";
 import {
@@ -114,7 +115,6 @@ function ShipGroup({
   const outbound = useEditor((s) => s.outboundBoxes);
   const boxes = useEditor((s) => s.boxes);
   const pallets = useEditor((s) => s.pallets);
-  const shipRequests = useEditor((s) => s.shipRequests);
   // Разные машины в одной группе не склеиваем — тогда машину сканируют.
   const named = [...new Set(items.map((r) => r.vehicle).filter(Boolean))];
   const [vehicle, setVehicle] = useState(named.length === 1 ? (named[0] as string) : "");
@@ -179,7 +179,7 @@ function ShipGroup({
   };
 
   const finish = () =>
-    shipRequests(
+    void workstationRepository.ship(
       items.map((r) => r.id),
       { vehicle, staffId, units },
     );
