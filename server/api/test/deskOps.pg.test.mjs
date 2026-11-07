@@ -241,11 +241,19 @@ test(
     await ops(desk, [mark("key-brk-0001", "evb", "break_start", at)]);
     const { snap } = await serverEvents("ops-b@sklad.ru", a.org);
 
-    // Отмена через минуту — поздно.
-    const late = await ops(desk, [undo("key-undo-late", "evb", at + 60_000)]);
+    // Сервер принял отметку минуту назад: отмена поздняя, что бы ни писал стол.
+    const shift = (t) =>
+      db.root.query(
+        `UPDATE uklad.desk_ops SET received_at = ${t}
+         WHERE org_id = $1 AND op_key = 'key-brk-0001'`,
+        [a.org],
+      );
+    await shift("received_at - interval '1 minute'");
+    const late = await ops(desk, [undo("key-undo-late", "evb", at + 1000)]);
     assert.deepEqual(late.json.results, [
       { key: "key-undo-late", status: "flagged", reason: "late" },
     ]);
+    await shift("now()");
 
     const undone = await ops(desk, [undo("key-undo-0001", "evb", at + 2000)]);
     assert.equal(undone.json.results[0].status, "applied");
@@ -298,3 +306,22 @@ test(
     assert.equal((await ops(deskD, [mark("key-000001", "e", "shift_start")])).status, 409);
   },
 );
+
+test("задним числом и ключи разных столов", { skip: SKIP }, async () => {
+  const { a, ivan } = await company("ops-e@sklad.ru", "10.0.5.5");
+  const desk = await makeDesk(a);
+  await call("/api/cabinet/badges/check", { desk, body: { code: ivan } });
+  // Начало смены на 23 часа раньше, чем Иван встал за стол, — пометка.
+  const back = await ops(desk, [
+    mark("key-back-001", "evx", "shift_start", Date.now() - 23 * 3_600_000),
+  ]);
+  assert.deepEqual(back.json.results, [
+    { key: "key-back-001", status: "flagged", reason: "backdated" },
+  ]);
+
+  // Второй стол той же компании с тем же ключом — своя операция, не повтор.
+  const desk2 = await makeDesk({ cookie: await login("ops-e@sklad.ru"), org: a.org }, "dev-2");
+  await call("/api/cabinet/badges/check", { desk: desk2, body: { code: ivan } });
+  const other = await ops(desk2, [mark("key-back-001", "evy", "shift_start")]);
+  assert.deepEqual(other.json.results, [{ key: "key-back-001", status: "applied" }]);
+});

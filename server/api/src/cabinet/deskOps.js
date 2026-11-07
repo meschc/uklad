@@ -30,8 +30,13 @@ const SHIFT_TYPES = new Set([
   "idle_end",
 ]);
 const KINDS = new Set(["shift_mark", "shift_undo"]);
-/** Как в кабинете (`MARK_UNDO_MS`) плюс запас на задержку сети. */
+/**
+ * Окно отмены по часам сервера: как в кабинете (`MARK_UNDO_MS`) плюс запас
+ * на сеть. Отмена, застрявшая в очереди дольше, помечается.
+ */
 const UNDO_MS = 5_000 + 2_000;
+/** Расхождение часов стола и сервера, которое ещё не считается «задним числом». */
+const SKEW_MS = 2 * 60 * 1000;
 /** Сколько операция может пролежать в очереди устройства. */
 const MAX_AGE_MS = 24 * 60 * 60 * 1000;
 const MAX_AHEAD_MS = 5 * 60 * 1000;
@@ -51,17 +56,37 @@ function isOp(op) {
 }
 
 /**
- * Применить новые операции к снимку. `who` — кто за столом по серверу:
- * { staff, prev }. Возвращает снимок, ответ на каждую операцию и было ли
- * что менять.
+ * Применить новые операции к снимку.
+ *
+ * `who` — кто за столом по серверу (`auth.desk_staff_times`), время в мс:
+ * { staff, staffSince, prev, prevSince, prevLeft }.
+ * `received` — когда сервер принял отметки, которые просят отменить
+ * (eventId → мс). Часам стола здесь не верим ни в чём, что меняет часы в
+ * зарплате: окно отмены — по приёму на сервере, а отметка не может быть
+ * раньше, чем человек встал за стол, и раньше его последней отметки.
  */
-function applyDeskOps(data, ops, who, now) {
+function applyDeskOps(data, ops, who, now, received = new Map()) {
   let events = Array.isArray(data.staffEvents) ? data.staffEvents : [];
   const results = [];
   let changed = false;
-  const present = [who.staff, who.prev].filter((x) => typeof x === "string" && x);
+  const shifts = [];
+  if (typeof who.staff === "string" && who.staff) {
+    shifts.push({ ref: who.staff, from: who.staffSince ?? now, to: Infinity });
+  }
+  if (typeof who.prev === "string" && who.prev) {
+    shifts.push({ ref: who.prev, from: who.prevSince ?? now, to: who.prevLeft ?? now });
+  }
+  const accepted = new Map(received);
   let staffRef = null;
   const flag = (op, reason) => results.push({ op, status: "flagged", reason, staffRef });
+  const lastMark = (ref) =>
+    events.reduce(
+      (m, e) =>
+        isObject(e) && e.staffId === ref && SHIFT_TYPES.has(e.type) && Number(e.at) > m
+          ? Number(e.at)
+          : m,
+      -Infinity,
+    );
 
   for (const op of ops) {
     const { body } = op;
@@ -69,13 +94,14 @@ function applyDeskOps(data, ops, who, now) {
     // человек за столом или стоял за ним последние минуты. Иначе отметка
     // Ивана, догнавшая сервер после смены, легла бы на Ольгу.
     const claimed = typeof body.staffId === "string" ? body.staffId : null;
-    staffRef = claimed ? (present.includes(claimed) ? claimed : null) : (present[0] ?? null);
+    const shift = claimed ? shifts.find((x) => x.ref === claimed) : shifts[0];
+    staffRef = shift?.ref ?? null;
     if (body.at > now + MAX_AHEAD_MS || body.at < now - MAX_AGE_MS) {
       flag(op, "time");
       continue;
     }
     if (!staffRef) {
-      flag(op, present.length === 0 ? "nobody" : "not_present");
+      flag(op, shifts.length === 0 ? "nobody" : "not_present");
       continue;
     }
     if (typeof body.eventId !== "string" || !ID_RE.test(body.eventId)) {
@@ -88,36 +114,52 @@ function applyDeskOps(data, ops, who, now) {
         continue;
       }
       // Та же отметка уже есть (пришла снимком раньше операции) — это она.
-      if (!events.some((e) => isObject(e) && e.id === body.eventId)) {
-        const reason =
-          body.type === "idle_start" && typeof body.reason === "string"
-            ? body.reason.slice(0, 50)
-            : undefined;
-        events = [
-          ...events,
-          {
-            id: body.eventId,
-            staffId: staffRef,
-            type: body.type,
-            at: body.at,
-            ...(typeof body.station === "string" ? { station: body.station.slice(0, 20) } : {}),
-            ...(reason ? { reason } : {}),
-          },
-        ];
-        changed = true;
+      if (events.some((e) => isObject(e) && e.id === body.eventId)) {
+        results.push({ op, status: "applied", staffRef });
+        continue;
       }
+      // Задним числом: раньше, чем человек встал за стол (или позже, чем
+      // ушёл), либо раньше его же последней отметки. Не отказ — очередь
+      // устройства бывает настоящей, — а пометка: решит руководитель.
+      if (
+        body.at < shift.from - SKEW_MS ||
+        body.at > shift.to + SKEW_MS ||
+        body.at < lastMark(staffRef)
+      ) {
+        flag(op, "backdated");
+        continue;
+      }
+      const reason =
+        body.type === "idle_start" && typeof body.reason === "string"
+          ? body.reason.slice(0, 50)
+          : undefined;
+      events = [
+        ...events,
+        {
+          id: body.eventId,
+          staffId: staffRef,
+          type: body.type,
+          at: body.at,
+          ...(typeof body.station === "string" ? { station: body.station.slice(0, 20) } : {}),
+          ...(reason ? { reason } : {}),
+        },
+      ];
+      accepted.set(body.eventId, now);
+      changed = true;
       results.push({ op, status: "applied", staffRef });
       continue;
     }
-    // shift_undo: снять свою отметку в первые секунды после неё.
+    // shift_undo: снять свою отметку в первые секунды после того, как её
+    // принял сервер.
     const ev = events.find((e) => isObject(e) && e.id === body.eventId);
     if (!ev) {
       // Уже снята или не дошла: снимать нечего, результат тот же.
       results.push({ op, status: "applied", staffRef });
       continue;
     }
-    const lag = body.at - Number(ev.at);
-    if (ev.staffId !== staffRef || !SHIFT_TYPES.has(ev.type) || lag < 0 || lag > UNDO_MS) {
+    const at = accepted.get(body.eventId);
+    const lag = at === undefined ? Infinity : now - at;
+    if (ev.staffId !== staffRef || !SHIFT_TYPES.has(ev.type) || lag > UNDO_MS) {
       flag(op, ev.staffId !== staffRef ? "not_yours" : "late");
       continue;
     }
@@ -155,8 +197,8 @@ async function runDeskOps(c, deskId, ops, who, now) {
   const keys = [...new Set(ops.map((op) => op.key))];
   const seen = await c.query(
     `SELECT op_key, status, reason FROM uklad.desk_ops
-     WHERE org_id = uklad.current_org() AND op_key = ANY($1::text[])`,
-    [keys],
+     WHERE org_id = uklad.current_org() AND desk_id = $2 AND op_key = ANY($1::text[])`,
+    [keys, deskId],
   );
   const known = new Map(seen.rows.map((r) => [r.op_key, r]));
   // Внутри пачки ключ тоже может повториться (очередь отправила дважды).
@@ -165,7 +207,20 @@ async function runDeskOps(c, deskId, ops, who, now) {
     if (known.has(op.key) || fresh.some((f) => f.key === op.key)) continue;
     fresh.push(op);
   }
-  const applied = applyDeskOps(cur.data, fresh, who, now);
+  // Когда сервер принял отметки, которые просят снять: окно отмены — по нему.
+  const undoIds = fresh.filter((op) => op.kind === "shift_undo").map((op) => op.body.eventId);
+  const received = new Map();
+  if (undoIds.length > 0) {
+    const r = await c.query(
+      `SELECT body->>'eventId' AS id, max(received_at) AS at FROM uklad.desk_ops
+       WHERE org_id = uklad.current_org() AND kind = 'shift_mark' AND status = 'applied'
+         AND body->>'eventId' = ANY($1::text[])
+       GROUP BY 1`,
+      [undoIds.filter((x) => typeof x === "string")],
+    );
+    for (const row of r.rows) received.set(row.id, new Date(row.at).getTime());
+  }
+  const applied = applyDeskOps(cur.data, fresh, who, now, received);
   if (applied.results.length > 0) {
     await c.query(
       `INSERT INTO uklad.desk_ops (org_id, op_key, desk_id, staff_ref, kind, body,
@@ -234,4 +289,4 @@ async function undoneMarks(c) {
   return new Set(rows.map((r) => r.id));
 }
 
-module.exports = { applyDeskOps, isOp, runDeskOps, undoneMarks, MAX_OPS: 100 };
+module.exports = { applyDeskOps, isOp, runDeskOps, undoneMarks, MAX_OPS: 50 };

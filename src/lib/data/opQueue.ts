@@ -12,9 +12,12 @@ import { readLocal, writeLocal } from "../safeStorage";
  * показывает «не отправлено» — человек видит, что сервер ещё не знает о
  * его работе.
  *
- * Что повтор не исправит (400, 404 — сервер без этого маршрута или рабочее
- * место под входом руководителя, 409 — снимка ещё нет), выбрасывается: та же
- * работа всё равно уходит записью снимка.
+ * 404 — рабочее место под входом руководителя или сервер без этого
+ * маршрута: очередь выбрасывается молча, та же работа уходит записью снимка.
+ * 400 — сервер не признал операции вовсе: они выбрасываются, но человек
+ * узнаёт, сколько отметок не дошло. Отказ стола (403) и «снимка ещё нет»
+ * (409) — не повод терять часы: очередь ждёт и повторяет, «не отправлено»
+ * остаётся в шапке.
  */
 
 export type DeskOpKind = "shift_mark" | "shift_undo";
@@ -32,7 +35,7 @@ export interface DeskOp {
   body: DeskOpBody;
 }
 /** Почему сервер не положил операцию в снимок. */
-export type OpFlag = "nobody" | "not_present" | "time" | "bad" | "not_yours" | "late";
+export type OpFlag = "nobody" | "not_present" | "time" | "bad" | "not_yours" | "late" | "backdated";
 
 export interface OpResult {
   key: string;
@@ -41,7 +44,7 @@ export interface OpResult {
   duplicate?: boolean;
 }
 export type SendOutcome =
-  { kind: "ok"; results: OpResult[] } | { kind: "drop" } | { kind: "retry" };
+  { kind: "ok"; results: OpResult[] } | { kind: "drop"; lost: boolean } | { kind: "retry" };
 
 export interface Pending {
   count: number;
@@ -57,7 +60,8 @@ export interface OpQueue {
 }
 
 export const OPS_KEY = "uklad-desk-ops-v1";
-const BATCH = 100;
+/** Как `MAX_OPS` на сервере. */
+const BATCH = 50;
 /** Больше очередь не растёт: столько отметок за смену у стола не бывает. */
 const MAX_QUEUE = 2000;
 const RETRY_MS = [2_000, 5_000, 15_000, 30_000];
@@ -75,6 +79,8 @@ export interface QueueDeps {
   write: (text: string) => void;
   /** Сервер пометил операции: сказать человеку один раз на пачку. */
   onFlagged: (reasons: OpFlag[]) => void;
+  /** Операции выброшены непринятыми: сказать человеку, сколько. */
+  onLost: (count: number) => void;
   later: (fn: () => void, ms: number) => void;
   now: () => number;
   newKey: () => string;
@@ -137,6 +143,7 @@ export function createOpQueue(deps: QueueDeps): OpQueue {
         const s = load();
         const rest = s.ops.filter((op) => !sent.has(op.key));
         save({ ops: rest, since: rest.length > 0 ? s.since : null });
+        if (out.kind === "drop" && out.lost) deps.onLost(batch.length);
         if (out.kind === "ok") {
           const flagged = out.results
             .filter((r) => r.status === "flagged" && !r.duplicate)
@@ -186,7 +193,8 @@ async function sendToServer(ops: DeskOp[]): Promise<SendOutcome> {
       };
     });
     if (res.status === 200) return { kind: "ok", results: res.results };
-    if ([400, 403, 404, 409].includes(res.status)) return { kind: "drop" };
+    if (res.status === 404) return { kind: "drop", lost: false };
+    if (res.status === 400) return { kind: "drop", lost: true };
     return { kind: "retry" };
   } catch {
     return { kind: "retry" };
@@ -209,11 +217,17 @@ async function sayFlagged() {
   useEditor.getState().showToast("ws.opRejected");
 }
 
+async function sayLost(n: number) {
+  const { useEditor } = await import("../store");
+  useEditor.getState().showToast("ws.opLost", { n });
+}
+
 export const deskOps: OpQueue = createOpQueue({
   send: sendToServer,
   read: () => readLocal(OPS_KEY),
   write: (text) => writeLocal(OPS_KEY, text),
   onFlagged: () => void sayFlagged(),
+  onLost: (n) => void sayLost(n),
   later: (fn, ms) => void setTimeout(fn, ms),
   now: () => Date.now(),
   newKey: randomKey,

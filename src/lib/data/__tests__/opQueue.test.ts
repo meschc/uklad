@@ -17,6 +17,7 @@ function harness(replies: SendOutcome[]) {
   const sent: DeskOp[][] = [];
   const timers: Array<() => void> = [];
   const flagged = vi.fn();
+  const lost = vi.fn();
   let n = 0;
   const deps = {
     send: vi.fn(async (ops: DeskOp[]): Promise<SendOutcome> => {
@@ -26,11 +27,12 @@ function harness(replies: SendOutcome[]) {
     read: () => stored,
     write: (t: string) => void (stored = t),
     onFlagged: flagged,
+    onLost: lost,
     later: (fn: () => void) => void timers.push(fn),
     now: () => 1000,
     newKey: () => `key-${String(++n).padStart(6, "0")}`,
   };
-  return { deps, sent, timers, flagged, make: () => createOpQueue(deps) };
+  return { deps, sent, timers, flagged, lost, make: () => createOpQueue(deps) };
 }
 
 const body = (eventId: string) => ({ eventId, staffId: "stf-ivan", type: "break_start", at: 900 });
@@ -62,13 +64,23 @@ describe("opQueue", () => {
     expect(again.pending().count).toBe(0);
   });
 
-  it("то, что повтор не исправит, выбрасывается", async () => {
-    const h = harness([{ kind: "drop" }]);
+  it("сервер не признал пачку (400): выбрасывается, человек узнаёт сколько", async () => {
+    const h = harness([{ kind: "drop", lost: true }]);
+    const q = h.make();
+    q.enqueue("shift_mark", body("ev1"));
+    await q.flush();
+    expect(h.lost).toHaveBeenCalledWith(1);
+    expect(q.pending().count).toBe(0);
+  });
+
+  it("рабочее место без стола (404): выбрасывается молча", async () => {
+    const h = harness([{ kind: "drop", lost: false }]);
     const q = h.make();
     q.enqueue("shift_undo", body("ev1"));
     await q.flush();
     expect(q.pending().count).toBe(0);
     expect(h.timers).toHaveLength(0);
+    expect(h.lost).not.toHaveBeenCalled();
   });
 
   it("пометка сервера говорится человеку, повтор уже помеченной — нет", async () => {

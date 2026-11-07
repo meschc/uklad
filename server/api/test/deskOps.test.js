@@ -116,6 +116,13 @@ test("отмена: своя в первые секунды снимается, 
     { id: "ev3", staffId: "stf-ivan", type: "shift_start", at: NOW - 60_000 },
     { id: "ev4", staffId: "stf-ivan", type: "pack_item", at: NOW - 500 },
   ];
+  // Когда сервер принял каждую: окно отмены считается по этому, а не по часам стола.
+  const received = new Map([
+    ["ev1", NOW - 3000],
+    ["ev2", NOW - 1000],
+    ["ev3", NOW - 60_000],
+    ["ev4", NOW - 500],
+  ]);
   const r = applyDeskOps(
     { staffEvents: events },
     [
@@ -127,6 +134,7 @@ test("отмена: своя в первые секунды снимается, 
     ],
     ivan,
     NOW,
+    received,
   );
   assert.deepEqual(statuses(r), [
     ["k-000001", "applied", null],
@@ -158,4 +166,63 @@ test("isOp: что не похоже на операцию, отклоняет �
   assert.equal(isOp({ key: "k-000001", kind: "shift_mark", body: { at: "1" } }), false);
   assert.equal(isOp({ key: "k-000001", kind: "shift_mark", body: [] }), false);
   assert.equal(isOp(null), false);
+});
+
+test("отмена по часам стола не проходит: окно — от приёма на сервере", () => {
+  // Отметку сервер принял 20 часов назад; стол пишет, что отменяет через секунду.
+  const events = [{ id: "ev1", staffId: "stf-ivan", type: "shift_end", at: NOW - 72_000_000 }];
+  const r = applyDeskOps(
+    { staffEvents: events },
+    [undo("k-000001", "ev1", NOW - 72_000_000 + 1000)],
+    ivan,
+    NOW,
+    new Map([["ev1", NOW - 72_000_000]]),
+  );
+  assert.deepEqual(statuses(r), [["k-000001", "flagged", "late"]]);
+  // Отметка пришла снимком, когда сервер её принял — неизвестно: тоже поздно.
+  const r2 = applyDeskOps({ staffEvents: events }, [undo("k-000002", "ev1")], ivan, NOW);
+  assert.deepEqual(statuses(r2), [["k-000002", "flagged", "late"]]);
+});
+
+test("задним числом: раньше, чем встал за стол, или раньше своей отметки — пометка", () => {
+  const at = { staff: "stf-ivan", staffSince: NOW - 3_600_000 };
+  const r = applyDeskOps(
+    { staffEvents: [{ id: "e0", staffId: "stf-ivan", type: "shift_start", at: NOW - 600_000 }] },
+    [
+      mark("k-000001", "ev1", "shift_start", NOW - 23 * 3_600_000),
+      mark("k-000002", "ev2", "break_start", NOW - 900_000),
+      mark("k-000003", "ev3", "break_start", NOW - 300_000),
+    ],
+    at,
+    NOW,
+  );
+  assert.deepEqual(statuses(r), [
+    ["k-000001", "flagged", "backdated"],
+    ["k-000002", "flagged", "backdated"],
+    ["k-000003", "applied", null],
+  ]);
+
+  // Прежний сотрудник — только за время, пока стоял за столом.
+  const left = { staff: "stf-olga", staffSince: NOW - 60_000, prev: "stf-ivan" };
+  Object.assign(left, { prevSince: NOW - 3_600_000, prevLeft: NOW - 60_000 });
+  const r2 = applyDeskOps(
+    {},
+    [
+      mark("k-000004", "ev4", "shift_end", NOW - 90_000, { staffId: "stf-ivan" }),
+      mark("k-000005", "ev5", "break_start", NOW - 1000, { staffId: "stf-ivan" }),
+    ],
+    left,
+    NOW,
+  );
+  assert.deepEqual(statuses(r2), [
+    ["k-000004", "applied", null],
+    ["k-000005", "applied", null],
+  ]);
+  const r3 = applyDeskOps(
+    {},
+    [mark("k-000006", "ev6", "break_start", NOW + 60_000 + 1000, { staffId: "stf-ivan" })],
+    { ...left, prevLeft: NOW - 3 * 60_000 },
+    NOW,
+  );
+  assert.deepEqual(statuses(r3), [["k-000006", "flagged", "backdated"]]);
 });

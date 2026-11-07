@@ -44,8 +44,11 @@ const { isOp, runDeskOps, undoneMarks, MAX_OPS } = require("./deskOps");
 const DESK_TTL_MS = 180 * 86_400_000;
 const DEVICE_RE = /^[A-Za-z0-9_-]{1,100}$/;
 const WRITES_PER_MINUTE = 30;
-/** Пачки операций: у каждого стола своя очередь, а лимит — на компанию. */
-const OPS_PER_MINUTE = 120;
+/**
+ * Пачки операций — на стол: отметок смены у человека единицы за смену, а
+ * журнал операций только растёт. Очередь после обрыва уходит за минуту-две.
+ */
+const OPS_PER_MINUTE = 20;
 // Вход по бейджу за столом живёт 12 часов — как `SESSION_TTL_MS` в браузере.
 const SHIFT_TTL_MS = 12 * 3_600_000;
 // Должности руководства — те же, что в кабинете (`MANAGER_ROLE`, lib/workstation.ts).
@@ -549,11 +552,16 @@ function createDesks({ auth, cfg, send, log }) {
       return send(res, 400, { ok: false, error: "bad_request" });
     }
     const out = await withDesk(req, async (c, d) => {
-      if (!opsLimit.take(d.orgId)) return { limited: true };
-      const people = await c.query(`SELECT staff_ref, prev_staff_ref FROM auth.desk_staff($1)`, [
-        deskHash(req),
-      ]);
-      const who = { staff: people.rows[0]?.staff_ref, prev: people.rows[0]?.prev_staff_ref };
+      if (!opsLimit.take(d.deskId)) return { limited: true };
+      const { rows } = await c.query(`SELECT * FROM auth.desk_staff_times($1)`, [deskHash(req)]);
+      const ms = (t) => (t ? new Date(t).getTime() : undefined);
+      const who = {
+        staff: rows[0]?.staff_ref,
+        staffSince: ms(rows[0]?.staff_since),
+        prev: rows[0]?.prev_staff_ref,
+        prevSince: ms(rows[0]?.prev_since),
+        prevLeft: ms(rows[0]?.prev_left),
+      };
       return runDeskOps(c, d.deskId, ops, who, Date.now());
     });
     if (!out) return gone(res);
