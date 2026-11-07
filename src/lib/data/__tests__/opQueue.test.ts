@@ -149,6 +149,7 @@ function fakeQueue(): OpQueue {
     flush: vi.fn(async () => {}),
     pending: () => ({ count: 0, since: null }),
     subscribe: () => () => {},
+    sendNow: vi.fn(async () => ({ kind: "local" as const })),
   };
 }
 

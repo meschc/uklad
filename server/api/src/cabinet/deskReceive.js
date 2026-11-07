@@ -10,8 +10,8 @@
  * сверка остатков).
  *
  * Новых тар и паллет стол не заводит: ярлыки печатаются заранее, приёмка их
- * только сканирует. Номер тары выдаёт счётчик склада, и два стола, завёдшие
- * тару одновременно, получили бы один номер.
+ * только сканирует. Места грузовой приёмки (`recv_cargo`) заводит сервер сам
+ * и сам выдаёт им номера — стол печатает ярлыки по его ответу.
  */
 
 /* global module */
@@ -270,4 +270,111 @@ function applyRecvClose(data, body) {
   };
 }
 
-module.exports = { applyRecvUnit, applyRecvOpen, applyRecvPlace, applyRecvAttach, applyRecvClose };
+const MAX_UNITS = 200;
+const count = (v) => (Number.isInteger(v) && v >= 0 && v <= MAX_UNITS ? v : null);
+const declared = (v) =>
+  v === undefined ? undefined : Number.isInteger(v) && v >= 0 && v <= 100_000 ? v : null;
+
+/** Номера мест: `<событие>-p0…`, `<событие>-b0…` — повтор находит те же. */
+const cargoIds = (eventId, n, tag) => Array.from({ length: n }, (_, i) => `${eventId}-${tag}${i}`);
+
+/** Следующий номер ярлыка: больше и счётчика, и любого уже выданного кода. */
+function nextSeq(seq, units, prefix) {
+  const re = new RegExp(`^${prefix}(\\d+)$`);
+  let top = Number.isInteger(seq) && seq > 0 ? seq : 0;
+  for (const u of units) {
+    const m = re.exec(String(u.barcode ?? "").toUpperCase());
+    if (m) top = Math.max(top, Number(m[1]));
+  }
+  return top;
+}
+
+/**
+ * Грузовая приёмка (`acceptCargo`): места поставки при водителе. Номера
+ * ярлыков выдаёт сервер — из счётчика склада, под блокировкой снимка, — и
+ * стол печатает ярлыки только после ответа. Два стола, принявшие машины
+ * одновременно, получат разные номера.
+ */
+function applyRecvCargo(data, body, staffRef) {
+  const nP = count(body.pallets);
+  const nB = count(body.boxes);
+  const dP = declared(body.declaredPallets);
+  const dB = declared(body.declaredBoxes);
+  if (nP === null || nB === null || nP + nB === 0 || dP === null || dB === null) {
+    return { flag: "bad" };
+  }
+  if (!isId(body.shipmentId) || body.eventId.length > 80) return { flag: "bad" };
+  const shipments = list(data.expectedShipments);
+  const shipment = shipments.find((s) => s.id === body.shipmentId);
+  if (!shipment || shipment.status === "closed") return { flag: "bad" };
+  const pIds = cargoIds(body.eventId, nP, "p");
+  const bIds = cargoIds(body.eventId, nB, "b");
+  const pallets = list(data.pallets);
+  const boxes = list(data.boxes);
+  // Повтор: места этого события уже заведены (ответ первой попытки потерялся).
+  if (pallets.some((p) => pIds.includes(p.id)) || boxes.some((b) => bIds.includes(b.id))) {
+    return { data };
+  }
+  const at = body.at;
+  let pSeq = nextSeq(data.palletSeq, pallets, "UK-PLT-");
+  let bSeq = nextSeq(data.boxSeq, boxes, "UK-BOX-");
+  const unit = (id, barcode, extra) => ({
+    id,
+    barcode,
+    createdAt: at,
+    ...extra,
+    sealed: true,
+    shipmentId: shipment.id,
+  });
+  const newPallets = pIds.map((id) => unit(id, `UK-PLT-${++pSeq}`, { boxIds: [] }));
+  const newBoxes = bIds.map((id) => unit(id, `UK-BOX-${++bSeq}`, { lines: [] }));
+  const prev = isObject(shipment.cargo) ? shipment.cargo : null;
+  const cargo = {
+    declaredPallets: dP ?? prev?.declaredPallets,
+    declaredBoxes: dB ?? prev?.declaredBoxes,
+    pallets: (Number(prev?.pallets) || 0) + nP,
+    boxes: (Number(prev?.boxes) || 0) + nB,
+    at,
+    staffId: staffRef,
+  };
+  for (const k of Object.keys(cargo)) if (cargo[k] === undefined) delete cargo[k];
+  return {
+    data: {
+      ...data,
+      pallets: [...pallets, ...newPallets],
+      boxes: [...boxes, ...newBoxes],
+      palletSeq: pSeq,
+      boxSeq: bSeq,
+      expectedShipments: shipments.map((s) =>
+        s === shipment
+          ? { ...s, status: s.status === "pending" ? "receiving" : s.status, cargo }
+          : s,
+      ),
+    },
+  };
+}
+
+/** Какие места завело событие: стол печатает ярлыки по ответу сервера. */
+function cargoMade(data, body) {
+  const pick = (units, ids) =>
+    ids.flatMap((id) => {
+      const u = units.find((x) => x.id === id);
+      return u ? [{ id: u.id, barcode: u.barcode }] : [];
+    });
+  const nP = count(body.pallets) ?? 0;
+  const nB = count(body.boxes) ?? 0;
+  return {
+    pallets: pick(list(data.pallets), cargoIds(body.eventId, nP, "p")),
+    boxes: pick(list(data.boxes), cargoIds(body.eventId, nB, "b")),
+  };
+}
+
+module.exports = {
+  applyRecvUnit,
+  applyRecvOpen,
+  applyRecvPlace,
+  applyRecvAttach,
+  applyRecvClose,
+  applyRecvCargo,
+  cargoMade,
+};

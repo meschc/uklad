@@ -28,6 +28,8 @@ const {
   applyRecvPlace,
   applyRecvAttach,
   applyRecvClose,
+  applyRecvCargo,
+  cargoMade,
 } = require("./deskReceive");
 const { applyShipRun, applyDisputeResolve } = require("./deskShip");
 
@@ -43,7 +45,14 @@ const SHIFT_TYPES = new Set([
 ]);
 const PACK_KINDS = new Set(["pack_event", "pack_done"]);
 const PICK_KINDS = new Set(["pick_unit", "pick_done"]);
-const RECV_KINDS = new Set(["recv_open", "recv_unit", "recv_place", "recv_attach", "recv_close"]);
+const RECV_KINDS = new Set([
+  "recv_open",
+  "recv_unit",
+  "recv_place",
+  "recv_attach",
+  "recv_close",
+  "recv_cargo",
+]);
 const SHIP_KINDS = new Set(["ship_run", "dispute_resolve"]);
 const NOW_ONLY = new Set(["dispute_resolve"]);
 /** Работа с товаром: правка снимка проходит сверку остатков. */
@@ -57,6 +66,7 @@ const WORK = new Map([
   ["recv_place", applyRecvPlace],
   ["recv_attach", applyRecvAttach],
   ["recv_close", applyRecvClose],
+  ["recv_cargo", applyRecvCargo],
   ["ship_run", applyShipRun],
   ["dispute_resolve", applyDisputeResolve],
 ]);
@@ -291,7 +301,9 @@ function cleanBody(body) {
   if (isObject(body.cell)) out.cell = body.cell;
   if (typeof body.partial === "boolean") out.partial = body.partial;
   if (Number.isInteger(body.ms)) out.ms = body.ms;
-  if (Number.isInteger(body.qty)) out.qty = body.qty;
+  for (const k of ["qty", "pallets", "boxes", "declaredPallets", "declaredBoxes"]) {
+    if (Number.isInteger(body[k])) out[k] = body[k];
+  }
   return out;
 }
 
@@ -392,11 +404,17 @@ async function runDeskOps(c, deskId, ops, who, now, deps = {}) {
     const duplicate = Boolean(old) || answered.has(op.key);
     answered.add(op.key);
     const reason = old ? old.reason : first.reason;
+    const status = old?.status ?? first.status;
     return {
       key: op.key,
-      status: old?.status ?? first.status,
+      status,
       ...(reason ? { reason } : {}),
       ...(duplicate ? { duplicate: true } : {}),
+      // Грузовая приёмка: номера мест выдал сервер, по ним стол печатает
+      // ярлыки. Повтор ключа отвечает теми же местами.
+      ...(op.kind === "recv_cargo" && status === "applied"
+        ? { made: cargoMade(applied.data, op.body) }
+        : {}),
     };
   });
   return { results, before: cur.version, version };

@@ -3,6 +3,7 @@ import { makeBox, makeShipment, makeShipmentLine } from "../../__tests__/fixture
 import type { EditorState } from "../../store/state";
 import type { StorePort } from "../repository";
 import { createFulfillmentRepository } from "../fulfillmentRepository";
+import type { DeskOpBody } from "../opQueue";
 
 /**
  * Репозиторий приёмки через подменённый порт — ни стора, ни `localStorage`.
@@ -195,6 +196,7 @@ describe("приёмка со стола на сервере уходит опе
     flush: vi.fn(async () => {}),
     pending: () => ({ count: 0, since: null }),
     subscribe: () => () => {},
+    sendNow: vi.fn(async () => ({ kind: "local" as const })),
   });
   const cell = { floorId: "f1", moduleId: "m1", shelfIndex: 0, cellIndex: 1 };
   // Тот же объект, что у стора: действие правит его, репозиторий читает его же.
@@ -249,5 +251,53 @@ describe("приёмка со стола на сервере уходит опе
       q,
     ).openUnit("b1");
     expect(q.enqueue).not.toHaveBeenCalled();
+  });
+
+  it("грузовая приёмка ждёт номера мест от сервера и повторяет тем же ключом", async () => {
+    const q = queue();
+    const made = {
+      pallets: [{ id: "cargo_1-p0", barcode: "UK-PLT-41" }],
+      boxes: [{ id: "cargo_1-b0", barcode: "UK-BOX-90" }],
+    };
+    q.sendNow.mockResolvedValueOnce({ kind: "fail" } as never).mockResolvedValueOnce({
+      kind: "ok",
+      result: { key: "x", status: "applied", made },
+    } as never);
+    const acceptCargo = vi.fn(() => ({ palletIds: ["cargo_1-p0"], boxIds: ["cargo_1-b0"] }));
+    const repo = createFulfillmentRepository(desk({ acceptCargo }), q);
+    const input = {
+      shipmentId: "s1",
+      pallets: 1,
+      boxes: 1,
+      declaredPallets: 2,
+      staffId: "stf-ivan",
+    };
+
+    // Обрыв: в стор ничего не легло, форма остаётся с повтором.
+    expect(await repo.acceptCargo(input)).toEqual({ ok: false, error: "data.failed" });
+    expect(acceptCargo).not.toHaveBeenCalled();
+    const res = await repo.acceptCargo(input);
+    expect(res.ok).toBe(true);
+    // Тот же ключ и то же событие: сервер не заведёт места второй раз.
+    const [first, second] = q.sendNow.mock.calls as unknown as [string, string, DeskOpBody][];
+    expect(second[0]).toBe(first[0]);
+    expect(second[2]).toEqual(first[2]);
+    expect(first[1]).toBe("recv_cargo");
+    expect(first[2]).toMatchObject({ shipmentId: "s1", pallets: 1, boxes: 1, declaredPallets: 2 });
+    // Стор берёт места сервера, а не заводит свои.
+    expect(acceptCargo).toHaveBeenCalledWith(expect.objectContaining({ made, at: first[2].at }));
+  });
+
+  it("сервер не принял места — отказ, в стор ничего не легло", async () => {
+    const q = queue();
+    q.sendNow.mockResolvedValueOnce({
+      kind: "ok",
+      result: { key: "x", status: "flagged", reason: "bad" },
+    } as never);
+    const acceptCargo = vi.fn();
+    const repo = createFulfillmentRepository(desk({ acceptCargo }), q);
+    const res = await repo.acceptCargo({ shipmentId: "s1", pallets: 1, boxes: 0 });
+    expect(res).toEqual({ ok: false, error: "cargo.rejected" });
+    expect(acceptCargo).not.toHaveBeenCalled();
   });
 });

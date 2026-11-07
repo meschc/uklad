@@ -33,7 +33,8 @@ export type DeskOpKind =
   | "recv_attach"
   | "recv_close"
   | "ship_run"
-  | "dispute_resolve";
+  | "dispute_resolve"
+  | "recv_cargo";
 const KINDS: readonly DeskOpKind[] = [
   "shift_mark",
   "shift_undo",
@@ -48,6 +49,7 @@ const KINDS: readonly DeskOpKind[] = [
   "recv_close",
   "ship_run",
   "dispute_resolve",
+  "recv_cargo",
 ];
 export interface DeskOpBody {
   eventId: string;
@@ -80,6 +82,11 @@ export interface DeskOpBody {
   lineId?: string;
   qty?: number;
   discrepancy?: "shortage" | "overage";
+  // Грузовая приёмка (`recv_cargo`): сколько мест приехало и по накладной.
+  pallets?: number;
+  boxes?: number;
+  declaredPallets?: number;
+  declaredBoxes?: number;
   // Рейс (`ship_run`) и решение старшего (`dispute_resolve`).
   vehicle?: string;
   units?: string[];
@@ -95,12 +102,25 @@ export interface DeskOp {
 /** Почему сервер не положил операцию в снимок. */
 export type OpFlag = "nobody" | "not_present" | "time" | "bad" | "not_yours" | "late" | "backdated";
 
+/** Места, которые завёл сервер, с номерами ярлыков (`recv_cargo`). */
+export interface CargoMade {
+  pallets: { id: string; barcode: string }[];
+  boxes: { id: string; barcode: string }[];
+}
+
 export interface OpResult {
   key: string;
   status: "applied" | "flagged";
   reason?: string;
   duplicate?: boolean;
+  made?: CargoMade;
 }
+/**
+ * Ответ на операцию, которую ждут, а не ставят в очередь. `local` — сервер
+ * не знает этот стол (рабочее место под входом руководителя): та же работа
+ * уходит снимком.
+ */
+export type NowOutcome = { kind: "ok"; result: OpResult } | { kind: "local" } | { kind: "fail" };
 export type SendOutcome =
   { kind: "ok"; results: OpResult[] } | { kind: "drop"; lost: boolean } | { kind: "retry" };
 
@@ -112,6 +132,12 @@ export interface Pending {
 
 export interface OpQueue {
   enqueue: (kind: DeskOpKind, body: DeskOpBody) => void;
+  /**
+   * Отправить одну операцию сразу и дождаться ответа — когда без ответа
+   * сервера дальше идти нельзя (номера ярлыков грузовой приёмки). Повтор
+   * после обрыва — с тем же ключом: сервер ответит тем же.
+   */
+  sendNow: (key: string, kind: DeskOpKind, body: DeskOpBody) => Promise<NowOutcome>;
   flush: () => Promise<void>;
   pending: () => Pending;
   subscribe: (fn: () => void) => () => void;
@@ -228,6 +254,12 @@ export function createOpQueue(deps: QueueDeps): OpQueue {
       const ops = [...s.ops, { key: deps.newKey(), kind, body }].slice(-MAX_QUEUE);
       save({ ops, since: s.since ?? deps.now() });
       void flush();
+    },
+    sendNow: async (key, kind, body) => {
+      const out = await deps.send([{ key, kind, body }]);
+      if (out.kind === "drop") return out.lost ? { kind: "fail" } : { kind: "local" };
+      const result = out.kind === "ok" ? out.results.find((r) => r.key === key) : undefined;
+      return result ? { kind: "ok", result } : { kind: "fail" };
     },
     flush,
     pending: () => snapshot,

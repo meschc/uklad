@@ -86,6 +86,8 @@ export const ru = {
   "cargo.stage.cargo": "Грузовая",
   "cargo.stage.items": "Товарная",
   "cargo.empty": "Нет открытых поставок — заведите поставку на вкладке «Товарная»",
+  "cargo.rejected":
+    "Сервер не принял места: проверьте, что вы вошли по бейджу и поставка не закрыта",
   "cargo.shipment": "Поставка",
   "cargo.declared": "По накладной",
   "cargo.fact": "Приехало",
@@ -184,6 +186,8 @@ export const en: Record<keyof typeof ru, string> = {
   "cargo.stage.cargo": "Cargo",
   "cargo.stage.items": "Items",
   "cargo.empty": "No open shipments — create one on the Items tab",
+  "cargo.rejected":
+    "The server did not accept the units: check that you are signed in by badge and the shipment is open",
   "cargo.shipment": "Shipment",
   "cargo.declared": "Per waybill",
   "cargo.fact": "Arrived",

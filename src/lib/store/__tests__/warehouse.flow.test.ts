@@ -144,4 +144,28 @@ describe("склад от приёмки до отгрузки, приёмка �
     expect(cargoDiff(cargo).pallets).toBe(0);
     expect(new Set(s().pallets.map((p) => p.barcode)).size).toBe(3);
   });
+
+  it("места с сервера ложатся с его номерами, а свой счётчик догоняет их", () => {
+    const store = makeFlowStore({ products: [A] });
+    const s = () => store.getState();
+    const id = s().createExpectedShipment("manual", [{ productId: "p-a", expectedQty: 1 }]);
+    // Другой стол уже взял номера до 40: сервер выдал 41 и 90.
+    s().acceptCargo({
+      shipmentId: id,
+      pallets: 1,
+      boxes: 1,
+      made: {
+        pallets: [{ id: "cargo_1-p0", barcode: "UK-PLT-41" }],
+        boxes: [{ id: "cargo_1-b0", barcode: "UK-BOX-90" }],
+      },
+      at: 5,
+    });
+    expect(s().pallets.map((p) => [p.id, p.barcode, p.sealed])).toEqual([
+      ["cargo_1-p0", "UK-PLT-41", true],
+    ]);
+    expect(s().expectedShipments[0].cargo).toMatchObject({ pallets: 1, boxes: 1, at: 5 });
+    // Следующая тара не получит уже выданный код.
+    expect(s().createBox().barcode).toBe("UK-BOX-91");
+    expect(s().createPallet().barcode).toBe("UK-PLT-42");
+  });
 });
