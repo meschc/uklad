@@ -10,10 +10,11 @@ import { Button } from "@/components/ui/button";
 import { card } from "@/components/ui/card";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { ScanField, type ScanStatus } from "@/components/fulfillment/ScanField";
+import { useDemoHints } from "./useDemoHints";
 
 /**
- * Два скана перед началом: тара с товаром и короб отгрузки. Ниже — тара,
- * которая есть на складе: в демо клик по ней делает то же, что скан.
+ * Два скана перед началом: тара с товаром и короб отгрузки. Ниже, только в
+ * демо, — тара, которая есть на складе: клик по ней делает то же, что скан.
  */
 export function ToteStart() {
   const t = useT();
@@ -22,6 +23,9 @@ export function ToteStart() {
   const [status, setStatus] = useState<ScanStatus>("idle");
   const [hint, setHint] = useState<string | null>(null);
   const start = useCommand(workstationRepository.packStart);
+  // Демо-тара собирается из собранных заявок «из воздуха»: на сервере это
+  // товар, которого не было в таре, и сервер такую запись не примет.
+  const demoHints = useDemoHints();
 
   const totes = boxes
     .filter((b) => toteContents(b).size > 0)
@@ -92,7 +96,7 @@ export function ToteStart() {
         </>
       )}
 
-      {!source && (
+      {!source && demoHints && (
         <div className="flex flex-col gap-2">
           <h2 className={eyebrow({ tone: "muted" })}>{t("ws.tote.demo")}</h2>
           <p className="text-xs text-muted-foreground">{t("ws.tote.demoHint")}</p>
