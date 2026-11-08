@@ -134,17 +134,19 @@ export function StaffScreen() {
       <ArchiveNote />
       {/* Три вкладки вместо одной длинной простыни: люди склада, партнёры-
           продавцы и режим работы. Контакты склада живут в паспорте. */}
-      <Segmented<StaffTab>
-        size="md"
-        ariaLabel={t("staff.title")}
-        value={tab}
-        onChange={setTab}
-        options={[
-          { value: "people", label: t("staff.tab.people") },
-          { value: "partners", label: t("staff.tab.partners") },
-          { value: "schedule", label: t("staff.tab.schedule") },
-        ]}
-      />
+      <div className="w-fit">
+        <Segmented<StaffTab>
+          size="md"
+          ariaLabel={t("staff.title")}
+          value={tab}
+          onChange={setTab}
+          options={[
+            { value: "people", label: t("staff.tab.people") },
+            { value: "partners", label: t("staff.tab.partners") },
+            { value: "schedule", label: t("staff.tab.schedule") },
+          ]}
+        />
+      </div>
       {tab === "people" && (
         <>
           {/* Люди первыми: кто работает, по какой ставке и сколько сделал —

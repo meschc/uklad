@@ -420,13 +420,16 @@ export function ChoiceValue<T extends string>({
  * рисовался светлым и выглядел чужим. Список раскрывается прямо под значением,
  * закрывается выбором, кликом мимо и Escape.
  */
-function ChoiceMenu<T extends string>({
+export function ChoiceMenu<T extends string>({
   value,
   text,
   options,
   labelFor,
   onChange,
+  trigger,
 }: {
+  /** Своя кнопка вместо строки со стрелкой — например значок класса. */
+  trigger?: React.ReactNode;
   value: T | undefined;
   text: string | undefined;
   options: readonly T[];
@@ -461,12 +464,20 @@ function ChoiceMenu<T extends string>({
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className={cn(GHOST, "flex w-fit cursor-pointer items-center gap-1 text-sm leading-snug")}
+        className={
+          trigger
+            ? "cursor-pointer rounded-xl transition-transform hover:scale-[1.03]"
+            : cn(GHOST, "flex w-fit cursor-pointer items-center gap-1 text-sm leading-snug")
+        }
       >
-        <span className={cn(!text && "text-muted-foreground")}>{text || "—"}</span>
-        <ChevronDown
-          className={cn("size-3.5 opacity-60 transition-transform", open && "rotate-180")}
-        />
+        {trigger ?? (
+          <>
+            <span className={cn(!text && "text-muted-foreground")}>{text || "—"}</span>
+            <ChevronDown
+              className={cn("size-3.5 opacity-60 transition-transform", open && "rotate-180")}
+            />
+          </>
+        )}
       </button>
       {open && (
         <ul

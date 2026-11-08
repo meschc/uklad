@@ -1,7 +1,8 @@
 import {
   BarChart3,
+  Building2,
+  Settings2,
   Boxes,
-  ClipboardCheck,
   ClipboardList,
   FileText,
   ListChecks,
@@ -82,9 +83,9 @@ const WAREHOUSE_NAV: NavEntry[] = [
     // по услугам склада, а не шаг ежедневной работы.
     id: "setup",
     key: "nav.group.setup",
-    icon: ClipboardCheck,
+    icon: Settings2,
     items: [
-      { view: "spec", key: "nav.side.spec", icon: ClipboardCheck },
+      { view: "spec", key: "nav.side.spec", icon: Building2 },
       { view: "staff", key: "nav.side.staff", icon: Users },
       // Компьютеры и ТСД у столов: какой стоит где и кто за ним.
       { view: "devices", key: "nav.side.devices", icon: MonitorSmartphone },
@@ -114,7 +115,7 @@ const SELLER_NAV: NavEntry[] = [
   { view: "editor", key: "nav.side.plan", icon: Boxes },
   // «Паспорт» и «Персонал» у продавца одной вкладкой: ему нужны характеристики
   // склада и к кому обратиться, а не список сотрудников.
-  { view: "spec", key: "nav.side.about", icon: ClipboardCheck },
+  { view: "spec", key: "nav.side.about", icon: Building2 },
 ];
 
 /** «Рабочее место» — внизу меню склада, а не среди рабочих пунктов. */

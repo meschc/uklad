@@ -16,12 +16,13 @@ import type { FireCategory, WarehouseClass, WarehouseSpec } from "@/lib/types";
 import { useT } from "@/lib/i18n";
 import { ReadOnlyContacts } from "./StaffScreen";
 import { ScreenShell } from "@/components/fulfillment/ScreenShell";
-import { eyebrow } from "@/components/ui/eyebrow";
 import { card } from "@/components/ui/card";
 import { WarehouseContacts } from "./WarehouseContacts";
+import { ShowcaseFields } from "./ShowcaseFields";
 import {
   BoolValue,
   ChipsValue,
+  ChoiceMenu,
   ChoiceValue,
   ClassBadge,
   CompletenessRing,
@@ -164,7 +165,18 @@ export function WarehouseSpecScreen() {
           спрашивают первыми в любом разговоре про склад. */}
       <section className={card({ className: "flex flex-col gap-4" })}>
         <div className="flex flex-wrap items-center gap-4">
-          <ClassBadge value={spec.warehouseClass} />
+          {/* Класс выбирается нажатием на сам значок — списком под ним. */}
+          {ro ? (
+            <ClassBadge value={spec.warehouseClass} />
+          ) : (
+            <ChoiceMenu
+              value={spec.warehouseClass}
+              text={spec.warehouseClass}
+              options={CLASSES}
+              onChange={(v) => patch({ warehouseClass: v })}
+              trigger={<ClassBadge value={spec.warehouseClass} />}
+            />
+          )}
           <div className="min-w-0 flex-1">
             {/* Название и адрес правятся здесь же, как любое поле паспорта:
                 искать их в другом месте кабинета склад не должен. */}
@@ -191,17 +203,6 @@ export function WarehouseSpecScreen() {
                 <MapPin className="size-3 shrink-0" />
                 <span className="truncate">{warehouse.address}</span>
               </p>
-            )}
-            {!ro && (
-              <div className="mt-1.5 flex items-center gap-1.5">
-                <span className={eyebrow({ size: "xs", weight: "medium" })}>{t("spec.class")}</span>
-                <ChoiceValue
-                  value={spec.warehouseClass}
-                  options={CLASSES}
-                  readOnly={false}
-                  onChange={(v) => patch({ warehouseClass: v })}
-                />
-              </div>
             )}
           </div>
           <CompletenessRing filled={filled} total={COUNTED.length} />
@@ -548,6 +549,12 @@ export function WarehouseSpecScreen() {
       </div>
 
       {!ro && <WarehouseContacts />}
+      {!ro && (
+        <ShowcaseFields
+          hidden={spec.showcaseHidden ?? []}
+          onChange={(showcaseHidden) => patch({ showcaseHidden })}
+        />
+      )}
 
       <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
         <Shield className="size-3" />

@@ -2,16 +2,9 @@ import { useEditor } from "@/lib/store";
 import type { BreakPolicy } from "@/lib/types";
 import { useT } from "@/lib/i18n";
 import { Input } from "@/components/ui/input";
+import { TimeSelect } from "./TimeSelect";
 
 const DAY = 24 * 60;
-const hhmm = (min: number) => {
-  const m = ((min % DAY) + DAY) % DAY;
-  return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
-};
-const parse = (v: string) => {
-  const [h, m] = v.split(":").map(Number);
-  return Number.isFinite(h) && Number.isFinite(m) ? h * 60 + m : null;
-};
 
 /**
  * Расписание перерывов склада фразами, а не сеткой из пяти полей: «Перерыв 15
@@ -36,16 +29,7 @@ export function BreakPolicyCard() {
     />
   );
   const time = (value: number, onSet: (min: number) => void) => (
-    <Input
-      key={value}
-      type="time"
-      defaultValue={hhmm(value)}
-      onBlur={(e) => {
-        const v = parse(e.target.value);
-        if (v !== null) onSet(v);
-      }}
-      className="h-8 w-24"
-    />
+    <TimeSelect value={value} onChange={onSet} />
   );
   const row = "flex flex-wrap items-center gap-2 text-sm";
 

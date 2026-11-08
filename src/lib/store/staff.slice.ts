@@ -100,6 +100,8 @@ export const createStaffSlice: SliceCreator<StaffSlice> = (set) => ({
           id,
           name: partner.name.trim() || "Без названия",
           contact: partner.contact?.trim() || undefined,
+          person: partner.person?.trim() || undefined,
+          phone: partner.phone?.trim() || undefined,
         },
       ]),
     }));
