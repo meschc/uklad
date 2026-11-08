@@ -7,6 +7,7 @@ import {
   autoIdleSince,
   earnings,
   idleMs,
+  peaksByStaff,
   shiftState,
   startOfDay,
   startOfMonth,
@@ -16,7 +17,6 @@ import type { IdleReason, ShiftMark, StaffMember } from "@/lib/types";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { card } from "@/components/ui/card";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { formatTime } from "./useNow";
 
@@ -56,17 +56,12 @@ export function ShiftMenu({ member, now }: { member: StaffMember; now: number })
   const idleToday = idleMs(events, member.id, startOfDay(now), now);
   const earnedToday = earnings(today, member.hourlyRate);
   const earnedMonth = earnings(month, member.hourlyRate);
-  const packedToday = events.filter(
-    (e) =>
-      e.staffId === member.id &&
-      e.type === "pack_label" &&
-      !!e.productId &&
-      e.at >= startOfDay(now),
-  ).length;
+  const peaks = peaksByStaff(events, startOfDay(now), now + 1).get(member.id);
+  const peaksToday = (peaks?.pack ?? 0) + (peaks?.pick ?? 0);
 
   return (
     <div className="flex flex-col gap-4">
-      <div className={card({ className: "flex items-center justify-between gap-3" })}>
+      <div className="flex items-center justify-between gap-3">
         <div>
           <p className={eyebrow({ tone: "muted" })}>{member.role}</p>
           <p className="text-lg font-semibold">{t(`ws.shift.${state}` as MsgKey)}</p>
@@ -145,10 +140,10 @@ export function ShiftMenu({ member, now }: { member: StaffMember; now: number })
         <Stat label={t("ws.hours.today")} value={hours(t, today)} />
         <Stat label={t("ws.hours.month")} value={hours(t, month)} />
         <Stat label={t("ws.idle.today")} value={hours(t, idleToday)} />
-        <Stat label={t("ws.packedToday")} value={String(packedToday)} />
+        <Stat label={t("ws.peaksToday")} value={String(peaksToday)} />
       </dl>
 
-      <div className={card({ className: "flex items-start gap-3" })}>
+      <div className="flex items-start gap-3 border-t border-border pt-4">
         <Wallet className="mt-0.5 size-5 text-primary" />
         {earnedToday == null ? (
           <p className="text-sm text-muted-foreground">{t("ws.noRate")}</p>
@@ -178,7 +173,7 @@ export function ShiftMenu({ member, now }: { member: StaffMember; now: number })
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className={card({ pad: "md" })}>
+    <div>
       <dt className={eyebrow({ tone: "muted", size: "xs" })}>{label}</dt>
       <dd className="mt-1 text-base font-semibold tabular-nums">{value}</dd>
     </div>

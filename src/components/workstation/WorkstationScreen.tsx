@@ -1,5 +1,5 @@
-import { useState } from "react";
-import type { WorkstationKind } from "@/lib/types";
+import { useEffect, useState } from "react";
+import type { ShiftMark, WorkstationKind } from "@/lib/types";
 import {
   ArrowLeft,
   ChevronDown,
@@ -19,6 +19,9 @@ import { isSessionLive } from "@/lib/workstation";
 import { isSenior } from "@/lib/docFlow";
 import { sizeLabel, useLabelPrinter } from "@/lib/labelPrinter";
 import { useT, type MsgKey } from "@/lib/i18n";
+import { allowedMarks, parseShiftMarkCode, shiftMarkCode, shiftState } from "@/lib/workstation";
+import { QrSvg } from "@/components/table/QrSvg";
+import { lastScanAt, SCAN_EVENT, SHIFT_SCAN_EVENT } from "@/components/fulfillment/ScanField";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { EmbeddedShell } from "@/components/fulfillment/embeddedShell";
@@ -164,6 +167,7 @@ export function WorkstationScreen() {
               staffId={member.id}
               onNeedShift={() => setPanel("shift")}
             />
+            <ShiftCodes staffId={member.id} />
           </div>
         )}
       </main>
@@ -287,6 +291,7 @@ function Equipment({ onPrinter, canOpen }: { onPrinter: () => void; canOpen: boo
     />
   );
   const [open, setOpen] = useState(false);
+  const scanAt = useLastScan();
   return (
     // Оборудование — одной кнопкой с раскрывающимся списком: в шапке оно
     // нужно редко, а место там занимало постоянно.
@@ -302,7 +307,11 @@ function Equipment({ onPrinter, canOpen }: { onPrinter: () => void; canOpen: boo
             <li key={key} className="flex items-center gap-2 px-2.5 py-2">
               <Icon className="size-4 text-muted-foreground" />
               <span className="flex-1">{t(key)}</span>
-              <span className="text-xs text-muted-foreground">{t("ws.equip.ready")}</span>
+              <span className="text-xs text-muted-foreground">
+                {scanAt == null
+                  ? t("ws.equip.waitScan")
+                  : t("ws.equip.lastScan", { t: formatTime(scanAt, t.lang, true) })}
+              </span>
               {dot(ready)}
             </li>
           ))}
@@ -338,6 +347,51 @@ function Equipment({ onPrinter, canOpen }: { onPrinter: () => void; canOpen: boo
       )}
     </div>
   );
+}
+
+/**
+ * Коды отметок смены внизу экрана: сканер у стола читает их прямо с монитора,
+ * и смена или перерыв отмечаются без мыши. Показываем только допустимые
+ * сейчас отметки; результат — уведомлением справа.
+ */
+function ShiftCodes({ staffId }: { staffId: string }) {
+  const t = useT();
+  const events = useEditor((s) => s.staffEvents);
+  const marks = allowedMarks(shiftState(events, staffId)).filter((m) => m !== "idle_start");
+
+  useEffect(() => {
+    const onScan = (e: Event) => {
+      const mark = parseShiftMarkCode(String((e as CustomEvent).detail));
+      void (async () => {
+        const res = mark ? await workstationRepository.mark(mark as ShiftMark) : null;
+        useEditor.getState().showToast(res?.ok ? (`ws.ev.${mark}` as MsgKey) : "ws.markRejected");
+      })();
+    };
+    window.addEventListener(SHIFT_SCAN_EVENT, onScan);
+    return () => window.removeEventListener(SHIFT_SCAN_EVENT, onScan);
+  }, []);
+
+  return (
+    <ul className="mt-6 flex flex-wrap justify-center gap-6 border-t border-border pt-6">
+      {marks.map((m) => (
+        <li key={m} className="flex flex-col items-center gap-1.5 text-xs text-muted-foreground">
+          <QrSvg code={shiftMarkCode(m)} size={72} showCode={false} />
+          {t(`ws.mark.${m}` as MsgKey)}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Когда сканер последний раз прислал код: так видно, что он подключён. */
+function useLastScan(): number | null {
+  const [at, setAt] = useState<number | null>(lastScanAt);
+  useEffect(() => {
+    const on = () => setAt(lastScanAt);
+    window.addEventListener(SCAN_EVENT, on);
+    return () => window.removeEventListener(SCAN_EVENT, on);
+  }, []);
+  return at;
 }
 
 /**

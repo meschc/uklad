@@ -169,6 +169,9 @@ export const ru = {
   "ws.rate": "по ставке {r} ₽/ч",
   "ws.noRate": "Ставка не задана — заработок появится, когда её укажет руководитель.",
   "ws.packedToday": "Упаковано штук сегодня",
+  "ws.peaksToday": "Пики сегодня",
+  "ws.equip.waitScan": "ждёт первый скан",
+  "ws.equip.lastScan": "скан в {t}",
   "ws.shiftFirst": "Начните смену, чтобы взять тару в работу.",
 
   "ws.tote.step1": "Тара с товаром",
@@ -485,6 +488,9 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.rate": "at {r} ₽/h",
   "ws.noRate": "No hourly rate yet — earnings appear once a manager sets it.",
   "ws.packedToday": "Units packed today",
+  "ws.peaksToday": "Peaks today",
+  "ws.equip.waitScan": "waiting for a scan",
+  "ws.equip.lastScan": "scan at {t}",
   "ws.shiftFirst": "Start your shift to take a tote.",
 
   "ws.tote.step1": "Source tote",

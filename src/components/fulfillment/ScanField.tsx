@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { ScanLine } from "lucide-react";
 import { useScannerInput } from "@/lib/useScannerInput";
 import { useT } from "@/lib/i18n";
+import { SHIFT_CODE_PREFIX } from "@/lib/workstation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { eyebrow } from "@/components/ui/eyebrow";
@@ -18,6 +19,15 @@ import { CameraScanButton } from "./CameraScan";
  * нужно. Фильтр по «такому же коду» здесь был бы вреден: на сборке один и тот
  * же артикул сканируют подряд, и каждая вторая единица просто терялась бы.
  */
+
+/** Событие окна: отсканирован код отметки смены. */
+export const SHIFT_SCAN_EVENT = "uklad:shift-scan";
+
+/** Время последнего скана — по нему шапка стола видит, что сканер работает. */
+/** Событие окна: в любое поле скана пришёл код. */
+export const SCAN_EVENT = "uklad:scan";
+
+export let lastScanAt: number | null = null;
 
 export type ScanStatus = "idle" | "ok" | "error";
 
@@ -54,8 +64,15 @@ export function ScanField({
   const submit = (raw: string) => {
     const code = raw.trim();
     if (!code || disabled) return;
+    lastScanAt = Date.now();
+    window.dispatchEvent(new Event(SCAN_EVENT));
     setValue("");
     setTyping(false);
+    // Код отметки смены не относится к шагу экрана: его ловит рабочее место.
+    if (code.toUpperCase().startsWith(SHIFT_CODE_PREFIX)) {
+      window.dispatchEvent(new CustomEvent(SHIFT_SCAN_EVENT, { detail: code }));
+      return;
+    }
     onSubmit(code);
   };
 
