@@ -41,6 +41,16 @@ export function PackStation({
       </div>
     );
   }
+  if (state === "break") {
+    return (
+      <div className="flex items-center justify-between gap-3 py-2">
+        <p className="text-sm text-muted-foreground">{t("ws.breakFirst")}</p>
+        <Button size="sm" onClick={() => void workstationRepository.mark("break_end")}>
+          {t("ws.mark.break_end")}
+        </Button>
+      </div>
+    );
+  }
   if (state !== "on") {
     return (
       <div className={card({ pad: "sm", className: "flex items-center justify-between gap-3" })}>

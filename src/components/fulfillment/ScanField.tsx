@@ -46,12 +46,16 @@ export function ScanField({
   const t = useT();
   const [value, setValue] = useState("");
   const [focused, setFocused] = useState(false);
+  // Новый ввод гасит прошлую ошибку: красная рамка держится до первой буквы.
+  const [typing, setTyping] = useState(false);
+  const shown: ScanStatus = typing ? "idle" : status;
   const inputRef = useRef<HTMLInputElement>(null);
 
   const submit = (raw: string) => {
     const code = raw.trim();
     if (!code || disabled) return;
     setValue("");
+    setTyping(false);
     onSubmit(code);
   };
 
@@ -79,9 +83,9 @@ export function ScanField({
           <ScanLine
             className={cn(
               "pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 transition-colors",
-              status === "ok"
+              shown === "ok"
                 ? "text-emerald-500"
-                : status === "error"
+                : shown === "error"
                   ? "text-destructive"
                   : "text-muted-foreground",
             )}
@@ -94,7 +98,10 @@ export function ScanField({
             disabled={disabled}
             autoComplete="off"
             spellCheck={false}
-            onChange={(e) => setValue(e.target.value)}
+            onChange={(e) => {
+              setValue(e.target.value);
+              setTyping(true);
+            }}
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
             onKeyDown={(e) => {
@@ -108,10 +115,12 @@ export function ScanField({
               "h-11 w-full rounded-lg border bg-background pl-9 pr-3 font-mono text-sm shadow-sm transition-colors",
               "placeholder:font-sans placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               "disabled:cursor-not-allowed disabled:opacity-50",
-              status === "ok"
-                ? "border-emerald-500 ring-2 ring-emerald-500/30"
-                : status === "error"
-                  ? "border-destructive ring-2 ring-destructive/30"
+              // Цвет рамки при фокусе — тот же, что у статуса: синяя поверх
+              // красной читалась как две ошибки.
+              shown === "ok"
+                ? "border-emerald-500 ring-2 ring-emerald-500/30 focus-visible:ring-emerald-500/30"
+                : shown === "error"
+                  ? "border-destructive ring-2 ring-destructive/30 focus-visible:ring-destructive/30"
                   : "border-input",
             )}
           />

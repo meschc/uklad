@@ -42,14 +42,32 @@ export function UnbindDevice({ onDone }: { onDone: () => void }) {
         <p className="max-w-md text-sm text-muted-foreground">{t("ws.kiosk.unbindHint")}</p>
       </div>
 
-      <ScanField
-        label={t("ws.login.scan")}
-        status={status}
-        placeholder="UK-STF-…"
-        hint={unbind.error ? t(unbind.error) : undefined}
-        actionLabel={t("ws.kiosk.unbind")}
-        onSubmit={(code) => void submit(code)}
-      />
+      {managers.length === 0 ? (
+        // Руководителя в персонале нет — бейджа, которым отвязать, тоже нет.
+        // Иначе стол остался бы привязанным навсегда.
+        <div className="flex flex-col items-center gap-2 text-center">
+          <p className="max-w-md text-sm text-muted-foreground">{t("ws.kiosk.noManager")}</p>
+          <Button
+            onClick={() => {
+              const id = useEditor.getState().thisDeviceId;
+              if (id) useEditor.getState().revokeDevice(id);
+              onDone();
+            }}
+          >
+            <MonitorX />
+            {t("ws.kiosk.unbind")}
+          </Button>
+        </div>
+      ) : (
+        <ScanField
+          label={t("ws.login.scan")}
+          status={status}
+          placeholder="UK-STF-…"
+          hint={unbind.error ? t(unbind.error) : undefined}
+          actionLabel={t("ws.kiosk.unbind")}
+          onSubmit={(code) => void submit(code)}
+        />
+      )}
 
       {demoHints && managers.length > 0 && (
         <section className="flex flex-col gap-2">
