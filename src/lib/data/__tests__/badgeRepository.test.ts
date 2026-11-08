@@ -4,6 +4,7 @@ import type { StorePort } from "../repository";
 import { createBadgeRepository, type BadgeServer } from "../badgeRepository";
 import { createWorkstationRepository } from "../workstationRepository";
 import type { DeskServer } from "../deskServer";
+import type { OpQueue } from "../opQueue";
 import { fail, ok } from "../result";
 
 /**
@@ -155,6 +156,19 @@ describe("workstationRepository: стол с пропуском на серве�
     expect((await repo.unbindDevice("UK-STF-BBBBBBBBBBBBBBBBBBBBBB")).ok).toBe(true);
     expect(port.get().revokeDevice).toHaveBeenCalledWith("dev-1");
     expect(port.get().sessionLost).toHaveBeenCalled();
+  });
+
+  it("неотправленная работа в очереди — отвязать нельзя, сервер не спрашиваем", async () => {
+    const port = fakePort(true);
+    const desks = legacyDesks({ unbind: vi.fn(async () => ok(true)) });
+    const ops = { pending: () => ({ count: 3, since: 1 }) } as unknown as OpQueue;
+    const repo = createWorkstationRepository(port, fakeServer(), desks, ops);
+    expect(await repo.unbindDevice("UK-STF-BBBBBBBBBBBBBBBBBBBBBB")).toEqual({
+      ok: false,
+      error: "ws.device.queueNotEmpty",
+    });
+    expect(desks.unbind).not.toHaveBeenCalled();
+    expect(port.get().sessionLost).not.toHaveBeenCalled();
   });
 
   it("не руководитель — отказ, стол на месте", async () => {

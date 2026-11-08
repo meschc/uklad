@@ -120,9 +120,13 @@ function writeMeta(meta: SyncMeta) {
   writeLocal(SYNC_KEY, JSON.stringify(meta));
 }
 
-/** Есть ли правки, которых нет на сервере. */
+/**
+ * Есть ли правки, которых нет на сервере. Неотправленные операции стола
+ * тоже считаются: у стола копия «чистая», но очередь — единственное место,
+ * где живёт его работа.
+ */
 export function hasUnsyncedChanges(): boolean {
-  return readMeta()?.dirty === true;
+  return readMeta()?.dirty === true || deskOps.pending().count > 0;
 }
 
 /**

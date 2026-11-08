@@ -90,6 +90,7 @@ export const ru = {
   "ws.device.notManager": "Это не бейдж руководителя",
   "ws.kiosk.unbind": "Отвязать устройство",
   "ws.kiosk.unbindHint": "Отсканируйте бейдж руководителя",
+  "ws.device.queueNotEmpty": "Работа ещё отправляется на сервер. Подождите и повторите",
   "ws.kiosk.cancel": "Отмена",
   "disputes.title": "Спорные",
   "disputes.lead":
@@ -398,6 +399,7 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.device.notManager": "This is not a manager's badge",
   "ws.kiosk.unbind": "Unbind device",
   "ws.kiosk.unbindHint": "Scan a manager's badge",
+  "ws.device.queueNotEmpty": "Work is still being sent to the server. Wait and try again",
   "ws.kiosk.cancel": "Cancel",
   "disputes.title": "Disputes",
   "disputes.lead":
