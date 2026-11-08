@@ -4,7 +4,8 @@ import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 
 /**
- * Строка настроек профиля: подпись слева, значение справа.
+ * Строка настроек профиля: подпись слева узкой колонкой, значение сразу за
+ * ней, а не у дальнего края — глаз не бегает через пустую ширину.
  *
  * Правится КАЖДОЕ поле по отдельности (п.1): карандаш открывает одну строку, а
  * не весь экран, и сохраняется тоже одна строка. Общий режим «редактировать
@@ -22,16 +23,14 @@ export function Row({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 px-4 py-3.5">
+    <div className="flex min-h-12 items-center gap-4 py-2">
       {/* Подпись не сжимается, значение занимает остаток строки: в правке поле
           должно тянуться, а не упираться в край карточки. */}
-      <div className="flex shrink-0 items-center gap-2.5">
-        <span className="flex size-8 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-          {icon}
-        </span>
-        <Label className="text-sm font-medium">{label}</Label>
+      <div className="flex w-36 shrink-0 items-center gap-2 text-muted-foreground sm:w-44">
+        {icon}
+        <Label className="text-sm font-normal text-muted-foreground">{label}</Label>
       </div>
-      <div className="flex min-w-0 flex-1 justify-end">{children}</div>
+      <div className="flex min-w-0 flex-1 justify-start">{children}</div>
     </div>
   );
 }
@@ -51,7 +50,7 @@ export function ReadValue({
 }) {
   const t = useT();
   return (
-    <div className="group/row flex min-w-0 items-center justify-end gap-1.5">
+    <div className="group/row flex min-w-0 items-center justify-start gap-1.5">
       {children ?? (
         <span
           className={cn(

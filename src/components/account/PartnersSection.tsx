@@ -6,6 +6,11 @@ import { formatPhone } from "@/lib/phone";
 import { useT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
+import { EmailInput } from "./EmailInput";
+
+/** Почта латиницей: имя, «@», домен с точкой — без пробелов и кириллицы. */
+const EMAIL_RE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
 import { card } from "@/components/ui/card";
 
 /**
@@ -21,6 +26,11 @@ export function PartnersSection() {
   const products = useWarehouseProducts();
   const t = useT();
   const [draft, setDraft] = useState<{ name: string; contact: string } | null>(null);
+  // Проверка — по нажатию «Сохранить», а не с первой буквы: красное поле до
+  // того, как человек закончил ввод, только мешает.
+  const [tried, setTried] = useState(false);
+  const nameErr = (draft?.name.trim().length ?? 0) < 2;
+  const emailErr = !EMAIL_RE.test(draft?.contact.trim() ?? "");
 
   const list = partners ?? [];
 
@@ -40,37 +50,55 @@ export function PartnersSection() {
       </div>
 
       {draft && (
-        <div className="flex flex-col gap-2 rounded-lg border border-primary/40 bg-primary/5 p-3 sm:flex-row sm:items-center">
-          <Input
-            // eslint-disable-next-line jsx-a11y/no-autofocus -- строка добавлена по клику пользователя: фокус обязан уйти в неё, иначе курсор остаётся на кнопке
-            autoFocus
-            value={draft.name}
-            onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-            placeholder={t("partners.namePlaceholder")}
-            className="h-9"
-          />
-          <Input
-            value={draft.contact}
-            onChange={(e) => setDraft({ ...draft, contact: e.target.value })}
-            placeholder={t("partners.contactPlaceholder")}
-            className="h-9"
-          />
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              className="h-9"
-              disabled={!draft.name.trim()}
-              onClick={() => {
-                addPartner(draft);
-                setDraft(null);
-              }}
-            >
-              {t("common.save")}
-            </Button>
-            <Button size="sm" variant="ghost" className="h-9" onClick={() => setDraft(null)}>
-              {t("common.cancel")}
-            </Button>
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+            <Input
+              // eslint-disable-next-line jsx-a11y/no-autofocus -- строка добавлена по клику пользователя: фокус обязан уйти в неё, иначе курсор остаётся на кнопке
+              autoFocus
+              value={draft.name}
+              onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+              placeholder={t("partners.namePlaceholder")}
+              className={cn("h-9", tried && nameErr && "border-destructive")}
+            />
+            <div className="flex w-full flex-col gap-1">
+              <EmailInput
+                value={draft.contact}
+                onValueChange={(contact) => setDraft({ ...draft, contact })}
+                placeholder={t("partners.contactPlaceholder")}
+                className={cn("h-9", tried && emailErr && "border-destructive")}
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                className="h-9"
+                onClick={() => {
+                  setTried(true);
+                  if (nameErr || emailErr) return;
+                  addPartner({ name: draft.name.trim(), contact: draft.contact.trim() });
+                  setDraft(null);
+                  setTried(false);
+                }}
+              >
+                {t("common.save")}
+              </Button>
+              <Button size="sm" variant="ghost" className="h-9" onClick={() => setDraft(null)}>
+                {t("common.cancel")}
+              </Button>
+            </div>
           </div>
+          <p
+            className={cn(
+              "text-xs",
+              tried && (nameErr || emailErr) ? "text-destructive" : "text-muted-foreground",
+            )}
+          >
+            {tried && nameErr
+              ? t("partners.badName")
+              : tried && emailErr
+                ? t("partners.badEmail")
+                : t("partners.inviteHint")}
+          </p>
         </div>
       )}
 

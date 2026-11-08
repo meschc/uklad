@@ -18,6 +18,7 @@ import { ReadOnlyContacts } from "./StaffScreen";
 import { ScreenShell } from "@/components/fulfillment/ScreenShell";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { card } from "@/components/ui/card";
+import { WarehouseContacts } from "./WarehouseContacts";
 import {
   BoolValue,
   ChipsValue,
@@ -545,6 +546,8 @@ export function WarehouseSpecScreen() {
           </TileGrid>
         </SpecCard>
       </div>
+
+      {!ro && <WarehouseContacts />}
 
       <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
         <Shield className="size-3" />

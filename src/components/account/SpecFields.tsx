@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import type { WarehouseClass } from "@/lib/types";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -404,20 +405,93 @@ export function ChoiceValue<T extends string>({
     );
 
   return (
-    <select
-      value={value ?? ""}
-      // Приведение неизбежно: у `<select>` значение всегда строка, сузить его
-      // до варианта из списка может только сам список — а он здесь и есть.
-      onChange={(e) => onChange((e.target.value as T) || undefined)}
-      className={cn(GHOST, "w-fit cursor-pointer text-sm leading-snug")}
-    >
-      <option value="">—</option>
-      {options.map((o) => (
-        <option key={o} value={o}>
-          {labelFor?.(o) ?? o}
-        </option>
-      ))}
-    </select>
+    <ChoiceMenu
+      value={value}
+      text={text}
+      options={options}
+      labelFor={labelFor}
+      onChange={onChange}
+    />
+  );
+}
+
+/**
+ * Свой выпадающий список вместо системного `<select>`: системный в тёмной теме
+ * рисовался светлым и выглядел чужим. Список раскрывается прямо под значением,
+ * закрывается выбором, кликом мимо и Escape.
+ */
+function ChoiceMenu<T extends string>({
+  value,
+  text,
+  options,
+  labelFor,
+  onChange,
+}: {
+  value: T | undefined;
+  text: string | undefined;
+  options: readonly T[];
+  labelFor?: (v: T) => string;
+  onChange: (v: T | undefined) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: Event) => {
+      if (
+        e instanceof KeyboardEvent ? e.key === "Escape" : !ref.current?.contains(e.target as Node)
+      )
+        setOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", close);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("keydown", close);
+    };
+  }, [open]);
+  const pick = (v: T | undefined) => {
+    onChange(v);
+    setOpen(false);
+  };
+  return (
+    <div ref={ref} className="relative w-fit">
+      <button
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        className={cn(GHOST, "flex w-fit cursor-pointer items-center gap-1 text-sm leading-snug")}
+      >
+        <span className={cn(!text && "text-muted-foreground")}>{text || "—"}</span>
+        <ChevronDown
+          className={cn("size-3.5 opacity-60 transition-transform", open && "rotate-180")}
+        />
+      </button>
+      {open && (
+        <ul
+          role="listbox"
+          className="absolute left-0 top-full z-30 mt-1 min-w-full animate-fade-in rounded-xl bg-popover p-1 shadow-lg ring-1 ring-border"
+        >
+          {[undefined, ...options].map((o) => (
+            <li key={o ?? "none"}>
+              <button
+                type="button"
+                role="option"
+                aria-selected={o === value}
+                onClick={() => pick(o)}
+                className={cn(
+                  "flex h-8 w-full items-center whitespace-nowrap rounded-lg px-2.5 text-left text-sm hover:bg-accent",
+                  o === value && "font-semibold text-primary",
+                )}
+              >
+                {o ? (labelFor?.(o) ?? o) : "—"}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 
