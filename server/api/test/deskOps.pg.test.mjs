@@ -230,47 +230,44 @@ test(
   },
 );
 
-test(
-  "отмена отметки: в срок снимается, старая запись снимка её не вернёт",
-  { skip: SKIP },
-  async () => {
-    const { a, ivan } = await company("ops-b@sklad.ru", "10.0.5.2");
-    const desk = await makeDesk(a);
-    await call("/api/cabinet/badges/check", { desk, body: { code: ivan } });
-    const at = Date.now() - 1000;
-    await ops(desk, [mark("key-brk-0001", "evb", "break_start", at)]);
-    const { snap } = await serverEvents("ops-b@sklad.ru", a.org);
+test("отмена отметки: в срок снимается, снимок стол не пишет", { skip: SKIP }, async () => {
+  const { a, ivan } = await company("ops-b@sklad.ru", "10.0.5.2");
+  const desk = await makeDesk(a);
+  await call("/api/cabinet/badges/check", { desk, body: { code: ivan } });
+  const at = Date.now() - 1000;
+  await ops(desk, [mark("key-brk-0001", "evb", "break_start", at)]);
+  const { snap } = await serverEvents("ops-b@sklad.ru", a.org);
 
-    // Сервер принял отметку минуту назад: отмена поздняя, что бы ни писал стол.
-    const shift = (t) =>
-      db.root.query(
-        `UPDATE uklad.desk_ops SET received_at = ${t}
+  // Сервер принял отметку минуту назад: отмена поздняя, что бы ни писал стол.
+  const shift = (t) =>
+    db.root.query(
+      `UPDATE uklad.desk_ops SET received_at = ${t}
          WHERE org_id = $1 AND op_key = 'key-brk-0001'`,
-        [a.org],
-      );
-    await shift("received_at - interval '1 minute'");
-    const late = await ops(desk, [undo("key-undo-late", "evb", at + 1000)]);
-    assert.deepEqual(late.json.results, [
-      { key: "key-undo-late", status: "flagged", reason: "late" },
-    ]);
-    await shift("now()");
-
-    const undone = await ops(desk, [undo("key-undo-0001", "evb", at + 2000)]);
-    assert.equal(undone.json.results[0].status, "applied");
-
-    // Стол успел отправить снимок с отметкой до отмены — запись приходит позже.
-    const stale = await call("/api/cabinet/snapshot", {
-      desk,
-      body: { version: undone.json.version, format: 8, data: { ...snap.data } },
-    });
-    assert.equal(stale.status, 200);
-    const { ids } = await serverEvents("ops-b@sklad.ru", a.org);
-    assert.equal(
-      ids.some(([id]) => id === "evb"),
-      false,
+      [a.org],
     );
-  },
-);
+  await shift("received_at - interval '1 minute'");
+  const late = await ops(desk, [undo("key-undo-late", "evb", at + 1000)]);
+  assert.deepEqual(late.json.results, [
+    { key: "key-undo-late", status: "flagged", reason: "late" },
+  ]);
+  await shift("now()");
+
+  const undone = await ops(desk, [undo("key-undo-0001", "evb", at + 2000)]);
+  assert.equal(undone.json.results[0].status, "applied");
+
+  // Снимок стол не пишет вовсе: старая копия с отметкой до отмены не
+  // вернёт её — запись снимка со стола отвечает 403.
+  const stale = await call("/api/cabinet/snapshot", {
+    desk,
+    body: { version: undone.json.version, format: 8, data: { ...snap.data } },
+  });
+  assert.equal(stale.status, 403);
+  const { ids } = await serverEvents("ops-b@sklad.ru", a.org);
+  assert.equal(
+    ids.some(([id]) => id === "evb"),
+    false,
+  );
+});
 
 test(
   "операции: битая пачка — 400, без снимка — 409, чужой стол — 401",
@@ -609,29 +606,17 @@ test(
     // Старший возвращает лишнее поставщику за столом. Тара уже на полке —
     // списание всё равно снимает с неё, а журнал движений подписан старшим.
     await call("/api/cabinet/badges/check", { desk, body: { code: olga } });
-    const seen = (await call("/api/cabinet/snapshot", { desk })).json.snapshot;
-    const off = {
-      ...seen.data,
-      boxes: seen.data.boxes.map((b) =>
-        b.id === "b5" ? { ...b, lines: [{ productId: "pr1", qty: 4 }] } : b,
-      ),
-      disputes: seen.data.disputes.map((d) =>
-        d.id === "ovr-ev-recv-extra"
-          ? {
-              ...d,
-              resolution: "written_off",
-              resolvedBy: "stf-olga",
-              resolvedAt: Date.now(),
-              note: "водитель забрал",
-            }
-          : d,
-      ),
-    };
-    const w = await call("/api/cabinet/snapshot", {
-      desk,
-      body: { version: seen.version, format: 8, data: off },
-    });
-    assert.equal(w.status, 200);
+    const w = await ops(desk, [
+      op("off", "dispute_resolve", {
+        eventId: "ev-recv-off",
+        staffId: "stf-olga",
+        at: Date.now() - 200,
+        disputeId: "ovr-ev-recv-extra",
+        resolution: "written_off",
+        note: "водитель забрал",
+      }),
+    ]);
+    assert.deepEqual(w.json.results, [{ key: "key-recv-off", status: "applied" }]);
     const after = await serverEvents("ops-r@sklad.ru", a.org);
     assert.deepEqual(after.snap.data.boxes.find((b) => b.id === "b5").lines, [
       { productId: "pr1", qty: 4 },

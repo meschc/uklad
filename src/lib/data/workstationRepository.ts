@@ -195,6 +195,9 @@ export function createWorkstationRepository(
     },
     unbindDevice: async (code) => {
       if (onServer(port)) {
+        // Неотправленная работа живёт только в очереди этого стола: под входом
+        // руководителя её выбросят, а копия затрётся сервером.
+        if (ops.pending().count > 0) return fail("ws.device.queueNotEmpty");
         const desk = await desks.unbind(code);
         if (!desk.ok) return desk;
         if (desk.data === false) return fail("ws.device.notManager");

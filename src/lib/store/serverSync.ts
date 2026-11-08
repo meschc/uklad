@@ -2,7 +2,8 @@ import { setApiOrg } from "../data/api";
 import { makeBackup } from "../backup";
 import { SECRET_INTEGRATION_FIELDS } from "../integrations";
 import { diffCabinet, splitCabinet, type Split } from "../data/cabinetRows";
-import { snapshotRepository } from "../data/snapshotRepository";
+import { deskOps } from "../data/opQueue";
+import { snapshotRepository, type Snapshot } from "../data/snapshotRepository";
 import { readLocal, writeLocal } from "../safeStorage";
 import { readSaved, writeSaved } from "./persistStorage";
 import { PERSIST_KEY, PERSIST_VERSION, persistedState, useEditor } from "./index";
@@ -29,8 +30,12 @@ import { emptyWarehouseData } from "./warehouseData";
  * — Копия в браузере, которую нельзя признать записанной (незаписанные
  *   правки или копия до первого входа), перед заменой откладывается в
  *   `BEFORE_SYNC_KEY`. Выход с отложенной копией спрашивает и даёт её скачать.
- * — Снимок — весь кабинет, поэтому он только руководителю (сервер отвечает
- *   403 остальным): такой вход работу на сервер не пишет.
+ * — Снимок — весь кабинет, поэтому писать его может только руководитель
+ *   (сервер отвечает 403 остальным). Стол с пропуском (`snapshot.desk`) снимок
+ *   не пишет вовсе: его работа уходит операциями (`data/opQueue.ts`), а копию
+ *   он сам подтягивает, когда версия на сервере ушла вперёд — без
+ *   перезагрузки, пока в очереди нет неотправленного. Копию, которая разошлась
+ *   с сервером (операцию он не принял), стол тоже забирает заново.
  *
  * Часть сохранения принадлежит устройству, а не компании: кто вошёл, какой
  * это компьютер, смена у стола, тема и язык. На сервер она не уходит и при
@@ -59,7 +64,12 @@ const DEVICE_KEYS = [
   "profile",
 ] as const;
 
+/** Только у стола: приёмка идёт на своём устройстве, а не на компании. */
+const DESK_LOCAL_KEYS = [...DEVICE_KEYS, "receiving"] as const;
+
 const SAVE_DELAY_MS = 5000;
+/** Как часто стол спрашивает версию снимка. */
+const DESK_POLL_MS = 20_000;
 const RETRY_MS = 30_000;
 
 type Persisted = ReturnType<typeof persistedState>;
@@ -110,9 +120,13 @@ function writeMeta(meta: SyncMeta) {
   writeLocal(SYNC_KEY, JSON.stringify(meta));
 }
 
-/** Есть ли правки, которых нет на сервере. */
+/**
+ * Есть ли правки, которых нет на сервере. Неотправленные операции стола
+ * тоже считаются: у стола копия «чистая», но очередь — единственное место,
+ * где живёт его работа.
+ */
 export function hasUnsyncedChanges(): boolean {
-  return readMeta()?.dirty === true;
+  return readMeta()?.dirty === true || deskOps.pending().count > 0;
 }
 
 /**
@@ -253,6 +267,16 @@ function replaceWith(state: Record<string, unknown>, format: number, meta: SyncM
 }
 
 let activeFlush: (() => Promise<boolean>) | null = null;
+let activeResync: (() => Promise<void>) | null = null;
+
+/**
+ * Стол: операцию сервер не принял или потерял — копия здесь разошлась с
+ * сервером, пора забрать серверную. Руководителю и демо не нужно: там работу
+ * пишет снимок.
+ */
+export function resyncDesk(): Promise<void> {
+  return activeResync ? activeResync() : Promise.resolve();
+}
 
 /**
  * Запустить синхронизацию для вошедшей компании. Возвращает остановку —
@@ -268,6 +292,10 @@ export function startServerSync(orgId: string): () => void {
   // старте (тосты, выбор этажа) иначе поднял бы версию без единой правки.
   let booted = false;
   let rejected: "stock" | "products" | "records" | null = null;
+  // Сервер отдал снимок столу: писать его не нужно и нельзя.
+  let desk = false;
+  // Копия стола разошлась с сервером: забрать серверную, как только очередь пуста.
+  let needsResync = false;
   // Что лежит на сервере на версии `version`, разложенное по строкам: от
   // него считается правка «только изменённое». Нет его или версия другая
   // (стол сдвинул её операциями) — пишем кабинет целиком.
@@ -293,6 +321,7 @@ export function startServerSync(orgId: string): () => void {
     inflight = inLane(async () => {
       const meta = readMeta();
       if (stopped || !booted || !meta || meta.orgId !== orgId) return false;
+      if (desk) return true;
       const data = companyPart(persistedState(useEditor.getState()));
       const text = JSON.stringify(data);
       if (text === lastSent) {
@@ -394,6 +423,15 @@ export function startServerSync(orgId: string): () => void {
       return replaceWith(blank, PERSIST_VERSION, { orgId, version: 0, dirty: true });
     }
 
+    if (snap.desk && meta?.orgId === orgId) {
+      // Стол копию не пишет, поэтому «незаписанного» у него нет.
+      desk = true;
+      booted = true;
+      if (meta.dirty) writeMeta({ ...meta, dirty: false });
+      if (meta.version !== snap.version) applyDeskCopy(snap);
+      return;
+    }
+
     if (meta?.orgId === orgId && meta.version === snap.version) {
       // Незаписанное с прошлого раза сравниваем с тем, что на сервере, а не
       // с собой — иначе оно так и не уйдёт.
@@ -424,10 +462,56 @@ export function startServerSync(orgId: string): () => void {
     });
   };
 
+  /**
+   * Заменить копию стола свежим снимком, не перезагружая страницу: открытый
+   * шаг сборки или приёмки остаётся на экране. Пока в очереди есть
+   * неотправленная работа, копию не трогаем — она уйдёт, и тогда подтянется.
+   */
+  const applyDeskCopy = (snap: Snapshot): boolean => {
+    if (deskOps.pending().count > 0) return false;
+    if (snap.format !== PERSIST_VERSION) {
+      // Другая версия формата: нужны миграции, их проходит только загрузка.
+      replaceWith(snap.data, snap.format, { orgId, version: snap.version, dirty: false });
+      return true;
+    }
+    const current = persistedState(useEditor.getState());
+    const keep: Record<string, unknown> = {};
+    for (const key of DESK_LOCAL_KEYS) keep[key] = current[key];
+    const persisted = {
+      ...snap.data,
+      integrations: withLocalSecrets(snap.data.integrations, current.integrations),
+      ...keep,
+    };
+    const merge = useEditor.persist.getOptions().merge;
+    if (!merge) return false;
+    useEditor.setState(merge(persisted, useEditor.getState()), true);
+    writeMeta({ orgId, version: snap.version, dirty: false });
+    needsResync = false;
+    return true;
+  };
+
+  /** Один заход стола: версия ушла вперёд или копия разошлась — забрать снимок. */
+  const deskTick = async () => {
+    if (stopped || !desk || !booted) return;
+    if (deskOps.pending().count > 0) return;
+    if (!needsResync) {
+      const v = await snapshotRepository.version();
+      const meta = readMeta();
+      if (!v.ok || v.data === null || !meta || meta.orgId !== orgId) return;
+      if (meta.version === v.data) return;
+    }
+    const res = await snapshotRepository.load();
+    if (stopped || !res.ok || !res.data?.desk) return;
+    applyDeskCopy(res.data);
+  };
+  const deskTimer = setInterval(() => {
+    if (document.visibilityState === "visible") void inLane(deskTick);
+  }, DESK_POLL_MS);
+
   // Правки — любые изменения стора; лишние (выделение, зум) отсекает
   // сравнение с последним отправленным в `flush`.
   const unsubscribe = useEditor.subscribe(() => {
-    if (!booted) return;
+    if (!booted || desk) return;
     const meta = readMeta();
     if (meta && meta.orgId === orgId && !meta.dirty) writeMeta({ ...meta, dirty: true });
     schedule();
@@ -459,9 +543,16 @@ export function startServerSync(orgId: string): () => void {
   document.addEventListener("visibilitychange", onVisible);
 
   activeFlush = flush;
+  activeResync = async () => {
+    if (!desk) return;
+    needsResync = true;
+    await inLane(deskTick);
+  };
   return () => {
     stopped = true;
     clearTimeout(timer);
+    clearInterval(deskTimer);
+    activeResync = null;
     document.removeEventListener("visibilitychange", onVisible);
     unsubscribe();
     setApiOrg(null);
