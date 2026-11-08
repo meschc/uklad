@@ -213,8 +213,9 @@ export function SideNav() {
         title={t("nav.side.toDashboard")}
         aria-label={t("nav.side.toDashboard")}
         className={cn(
-          "mb-2 flex h-10 cursor-pointer items-center rounded-lg hover:bg-accent",
-          collapsed ? "px-0.5" : "px-1.5",
+          // Отступ вокруг знака одинаковый со всех сторон.
+          // Скругление снаружи = скругление знака (10) + отступ (6).
+          "mb-2 flex min-h-12 cursor-pointer items-center rounded-2xl p-1.5 text-left hover:bg-accent",
         )}
       >
         <UkladLockup
@@ -223,6 +224,7 @@ export function SideNav() {
           // компании, если он загружен в профиле, заменяет знак Уклада.
           label={warehouseName || "Уклад"}
           image={orgLogo}
+          fit
         />
       </button>
 

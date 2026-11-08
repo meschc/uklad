@@ -2,7 +2,6 @@ import { useEditor } from "@/lib/store";
 import { startOfDay } from "@/lib/workstation";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-import { card } from "@/components/ui/card";
 import { formatTime } from "./useNow";
 
 /**
@@ -26,7 +25,7 @@ export function StaffLog({ staffId, now }: { staffId: string; now: number }) {
       {today.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t("ws.log.empty")}</p>
       ) : (
-        <ol className={card({ pad: "none", className: "divide-y divide-border" })}>
+        <ol className="divide-y divide-border">
           {today.map((e) => (
             <li
               key={e.id}

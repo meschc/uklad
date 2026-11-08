@@ -254,3 +254,51 @@ export function nextBreak(
   const lunch: NextBreak = { kind: "lunch", at: lunchAt, minutes: policy.lunchMin };
   return lunch.at <= short.at ? lunch : short;
 }
+
+/**
+ * Коды отметок смены: сканер у стола читает их с экрана, и отметка ставится
+ * без мыши. Код не секрет — он лишь нажимает кнопку за того, кто уже вошёл.
+ */
+export const SHIFT_CODE_PREFIX = "UK-SHIFT-";
+
+export function shiftMarkCode(mark: StaffEvent["type"]): string {
+  return `${SHIFT_CODE_PREFIX}${mark.toUpperCase()}`;
+}
+
+export function parseShiftMarkCode(raw: string): StaffEvent["type"] | null {
+  const code = raw.trim().toUpperCase();
+  if (!code.startsWith(SHIFT_CODE_PREFIX)) return null;
+  const mark = code.slice(SHIFT_CODE_PREFIX.length).toLowerCase();
+  const known = ["shift_start", "shift_end", "break_start", "break_end", "idle_start", "idle_end"];
+  return known.includes(mark) ? (mark as StaffEvent["type"]) : null;
+}
+
+/** Пики сотрудника по участкам: упакованная штука и снятая в тару. */
+export interface Peaks {
+  pack: number;
+  pick: number;
+}
+
+/**
+ * Пики по сотрудникам за окно [from, to). Пик — подтверждённая этикеткой
+ * упакованная штука (`pack_label` с товаром) или скан снятия в тару
+ * (`pick_scan`). Считаем уже сейчас, чтобы оплата по пикам, когда склад её
+ * включит, сразу видела историю.
+ */
+export function peaksByStaff(
+  events: readonly StaffEvent[],
+  from: number,
+  to: number,
+): Map<string, Peaks> {
+  const out = new Map<string, Peaks>();
+  for (const e of events) {
+    if (e.at < from || e.at >= to) continue;
+    const kind =
+      e.type === "pack_label" && e.productId ? "pack" : e.type === "pick_scan" ? "pick" : null;
+    if (!kind) continue;
+    const p = out.get(e.staffId) ?? { pack: 0, pick: 0 };
+    p[kind] += 1;
+    out.set(e.staffId, p);
+  }
+  return out;
+}

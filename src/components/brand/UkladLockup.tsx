@@ -55,10 +55,16 @@ export function UkladLockup({
   wordless = false,
   className,
   image,
+  fit = false,
 }: {
   label?: string;
   tone?: "blue" | "white";
   wordless?: boolean;
+  /**
+   * Название целиком, без многоточия: длинное — мельче и до двух строк.
+   * Так в меню видно полное имя склада, а не «Логопарк Ше…».
+   */
+  fit?: boolean;
   className?: string;
   image?: string;
 }) {
@@ -68,7 +74,12 @@ export function UkladLockup({
       {!wordless && (
         <span
           className={cn(
-            "truncate text-[21px] font-semibold leading-none tracking-[-0.03em]",
+            "font-semibold tracking-[-0.03em]",
+            !fit
+              ? "truncate text-[21px] leading-none"
+              : label.length <= 10
+                ? "text-[21px] leading-none"
+                : "line-clamp-2 break-words text-[15px] leading-tight",
             tone === "white" ? "text-white" : "text-foreground",
           )}
         >

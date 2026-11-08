@@ -38,6 +38,8 @@ export interface BrandMarkSpec {
   bg: string;
   /** Цвет букв; по умолчанию белый. */
   fg?: string;
+  /** Увеличение знака внутри круга, если в файле широкие поля. */
+  logoScale?: number;
   /**
    * Имя файла в `public/brands` — например `ozon.svg`. Без него рисуется
    * монограмма; если файл не загрузился, интерфейс тоже падает на монограмму,
@@ -140,6 +142,7 @@ export const INTEGRATIONS: IntegrationSpec[] = [
       bg: "#FFDB4D",
       fg: "#111111",
       logo: "yandex-market.svg",
+      logoScale: 1.35,
     },
     descriptionKey: "integr.ym.desc",
     docsUrl: "https://yandex.ru/dev/market/partner-api/doc/ru/",

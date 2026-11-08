@@ -17,17 +17,20 @@ export function Toast() {
   // `store.toast`. Гасит тост таймер, и только его результат нужен в памяти.
   const [hiddenId, setHiddenId] = useState<number | null>(null);
   const id = toast?.id;
+  const toastText = toast ? t(toast.key, toast.vars) : "";
 
   useEffect(() => {
     if (!id) return;
-    const hide = setTimeout(() => setHiddenId(id), 2600);
+    // Время — по длине: человек успевает прочитать текст трижды.
+    const len = toastText.length;
+    const hide = setTimeout(() => setHiddenId(id), Math.min(12_000, Math.max(4000, len * 150)));
     return () => clearTimeout(hide);
-  }, [id]);
+  }, [id, toastText.length]);
 
   if (!toast) return null;
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-6 z-50 flex justify-center">
+    <div className="pointer-events-none fixed bottom-6 right-6 z-50 flex justify-end">
       {/*
         `key` по идентификатору тоста: следующий тост — это новый элемент, и
         появление проигрывается заново. Появление на анимации, а не на
@@ -38,11 +41,11 @@ export function Toast() {
         key={toast.id}
         className={cnVisible(
           toast.id !== hiddenId,
-          "flex animate-scale-in items-center gap-2 rounded-lg bg-foreground px-3.5 py-2 text-sm font-medium text-background shadow-lg",
+          "flex max-w-[70ch] animate-scale-in items-center gap-2 rounded-lg bg-foreground px-3.5 py-2 text-sm font-medium text-background shadow-lg",
         )}
       >
         <CheckCircle2 className="size-4 shrink-0 text-emerald-400" />
-        {t(toast.key, toast.vars)}
+        {toastText}
       </div>
     </div>
   );

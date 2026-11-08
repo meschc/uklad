@@ -10,7 +10,7 @@ export const ru = {
   "lookup.title": "Что это?",
   "lookup.subtitle":
     "Сканируйте любой код склада — товар, тару, паллету или ярлык ячейки. Покажем, что это и что внутри.",
-  "lookup.scan": "Штрихкод или адрес",
+  "lookup.scan": "Код",
   "lookup.hint":
     "Сканер печатает код сам. Руками можно ввести артикул или адрес ячейки — например 1-2-3-4.",
   "lookup.placeholder": "Скан, артикул или адрес",
@@ -391,7 +391,7 @@ export const en: Record<keyof typeof ru, string> = {
   "lookup.title": "What is it?",
   "lookup.subtitle":
     "Scan any warehouse code — a product, a container, a pallet or a cell label. We show what it is and what is inside.",
-  "lookup.scan": "Barcode or address",
+  "lookup.scan": "Code",
   "lookup.hint":
     "The scanner types the code itself. You can also type an SKU or a cell address, e.g. 1-2-3-4.",
   "lookup.placeholder": "Scan, SKU or address",
