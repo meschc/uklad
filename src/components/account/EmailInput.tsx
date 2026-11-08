@@ -1,7 +1,6 @@
 import { forwardRef } from "react";
 import { fixEmailLayout, suggestEmailDomains } from "@/lib/emailTyping";
 import { useT } from "@/lib/i18n";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 type Props = Omit<React.ComponentProps<typeof Input>, "type" | "value" | "onChange"> & {
@@ -11,9 +10,9 @@ type Props = Omit<React.ComponentProps<typeof Input>, "type" | "value" | "onChan
 
 /**
  * Поле почты: набранное в русской раскладке становится латиницей на лету,
- * а после «@» под полем строкой — популярные почтовые сервисы
- * (`lib/emailTyping.ts`). Строка, а не всплывающий список: в кабинете нет
- * всплывающих окон.
+ * а после «@» под полем списком — популярные почтовые сервисы
+ * (`lib/emailTyping.ts`). Список в потоке страницы, а не всплывающий: в
+ * кабинете нет всплывающих окон.
  */
 export const EmailInput = forwardRef<HTMLInputElement, Props>(function EmailInput(
   { value, onValueChange, readOnly, ...rest },
@@ -37,19 +36,25 @@ export const EmailInput = forwardRef<HTMLInputElement, Props>(function EmailInpu
         {...rest}
       />
       {hints.length > 0 && (
-        <div className="flex flex-wrap gap-1.5" aria-label={t("login.emailHints")}>
-          {hints.map((h) => (
-            <Button
-              key={h}
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => onValueChange(h)}
-            >
-              {h.slice(h.indexOf("@"))}
-            </Button>
-          ))}
-        </div>
+        // Список прямо под полем, как в почтовых сервисах: набранное — синим,
+        // подставляемый домен — обычным цветом. В потоке страницы, не поверх.
+        <ul aria-label={t("login.emailHints")} className="-mt-1 flex flex-col py-1">
+          {hints.map((h) => {
+            const at = h.indexOf("@");
+            return (
+              <li key={h}>
+                <button
+                  type="button"
+                  onClick={() => onValueChange(h)}
+                  className="flex h-8 w-full items-center rounded-md px-3 text-left text-sm hover:bg-accent"
+                >
+                  <span className="text-primary">{h.slice(0, at + 1)}</span>
+                  <span>{h.slice(at + 1)}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
       )}
     </>
   );

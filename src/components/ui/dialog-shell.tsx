@@ -4,7 +4,8 @@ import { card } from "./card";
 import { Backdrop } from "./backdrop";
 
 /**
- * Каркас модального окна: слой поверх страницы, затемнение и сама карточка.
+ * Каркас окна-сайдбара: слой поверх страницы, затемнение и панель, которая
+ * выезжает справа на всю высоту (правило Кирилла: никаких окон по центру).
  *
  * Окон в проекте одиннадцать, и до этого файла каждое повторяло одну и ту же
  * пару строк — «на весь экран, по центру, отступ» и «карточка со скруглением,
@@ -33,7 +34,11 @@ import { Backdrop } from "./backdrop";
 // Поверхность окна — та же карточка, что и везде (`card`), только без
 // внутреннего отступа: поля рисуют шапка, тело и подвал по отдельности.
 const panel = cva(
-  card({ pad: "none", className: "relative w-full animate-scale-in overflow-hidden shadow-2xl" }),
+  card({
+    pad: "none",
+    className:
+      "relative flex h-full w-full animate-slide-in-right flex-col overflow-hidden !rounded-none !rounded-l-2xl !border-y-0 !border-r-0 shadow-2xl",
+  }),
   {
     variants: {
       size: {
@@ -50,8 +55,8 @@ const panel = cva(
        * коротким окнам, где ограничение только мешало бы.
        */
       scroll: {
-        true: "flex max-h-[88vh] flex-col",
-        false: "",
+        true: "",
+        false: "overflow-y-auto",
       },
     },
     defaultVariants: { size: "md", scroll: false },
@@ -72,7 +77,7 @@ export function DialogShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className={cn("fixed inset-0 z-50 flex items-center justify-center p-4", className)}>
+    <div className={cn("fixed inset-0 z-50 flex items-stretch justify-end", className)}>
       <Backdrop onClose={onClose} />
       <div className={panel({ size, scroll })}>{children}</div>
     </div>

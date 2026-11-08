@@ -1,4 +1,4 @@
-import { Plus, Search, Settings2, Upload, X } from "lucide-react";
+import { Download, Plus, Search, Settings2, X } from "lucide-react";
 import { catLabel, useT, type MsgKey } from "@/lib/i18n";
 import type { Partner } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -40,14 +40,14 @@ export function TableToolbar({
 }) {
   const t = useT();
   return (
-    <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border bg-card px-3 py-2">
+    <div className="scrollbar-thin flex shrink-0 flex-nowrap items-center gap-2 overflow-x-auto border-b border-border bg-card px-3 py-2">
       <div className="relative">
         <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
         <Input
           value={filter.query}
           onChange={(e) => onFilter({ query: e.target.value })}
           placeholder={t("table.search")}
-          className="h-8 w-72 pl-8 pr-7"
+          className="h-8 w-56 pl-8 pr-7"
         />
         {filter.query && (
           <button
@@ -98,27 +98,37 @@ export function TableToolbar({
         options={PLACE_FILTERS.map((f) => ({ value: f.id, label: t(f.key) }))}
       />
 
-      {!readOnly && (
-        <>
-          <Button size="sm" className="ml-auto" onClick={onAdd}>
-            <Plus className="size-3.5" />
-            {t("table.addProduct")}
-          </Button>
-
-          <Button variant="outline" size="sm" onClick={onImport}>
-            <Upload className="size-3.5" />
-            {t("table.import")}
-          </Button>
-
-          <Button variant="outline" size="sm" onClick={onFields}>
-            <Settings2 className="size-3.5" />
-            {t("table.fields")}
-          </Button>
-        </>
-      )}
-
-      <div className="text-xs text-muted-foreground">
-        {t("table.shownOf", { n: counts.shown, total: counts.total, placed: counts.placed })}
+      {/* Одна строка действий: главное с подписью, остальное значками. */}
+      <div className="ml-auto flex shrink-0 items-center gap-1.5">
+        <div className="mr-1 whitespace-nowrap text-xs text-muted-foreground">
+          {t("table.shownOf", { n: counts.shown, total: counts.total, placed: counts.placed })}
+        </div>
+        {!readOnly && (
+          <>
+            <Button
+              variant="outline"
+              size="icon-sm"
+              onClick={onImport}
+              title={t("table.import")}
+              aria-label={t("table.import")}
+            >
+              <Download className="size-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon-sm"
+              onClick={onFields}
+              title={t("table.fields")}
+              aria-label={t("table.fields")}
+            >
+              <Settings2 className="size-4" />
+            </Button>
+            <Button size="sm" onClick={onAdd}>
+              <Plus className="size-3.5" />
+              {t("table.addProduct")}
+            </Button>
+          </>
+        )}
       </div>
     </div>
   );

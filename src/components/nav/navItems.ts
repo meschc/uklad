@@ -56,10 +56,10 @@ export const isGroup = (e: NavEntry): e is NavGroup => "items" in e;
 
 const WAREHOUSE_NAV: NavEntry[] = [
   { view: "editor", key: "nav.side.plan", icon: Boxes },
-  // Процессы склада — приёмка, сборка, упаковка, отгрузка — на рабочем месте
-  // вкладками, а не пунктами меню: работу делают за столом по бейджу. В
-  // кабинете руководителю остаются «Задания» (контроль), документы и аналитика.
-  { view: "workstation", key: "nav.side.workstation", icon: MonitorSmartphone },
+  // Процессы склада — приёмка, сборка, упаковка, отгрузка — на рабочем месте,
+  // а не пунктами меню: работу делают за столом по бейджу. Само «Рабочее место»
+  // стоит внизу меню (`WORKSTATION_NAV`), рядом с поддержкой и темой. В кабинете
+  // руководителю остаются «Задания» (контроль), документы и аналитика.
   { view: "tasks", key: "nav.side.tasks", icon: ClipboardList },
   // Переписка с продавцами — сразу за работой и отдельным пунктом (п.3):
   // в неё заходят по десять раз на день, и прятать её в группу значило бы
@@ -117,6 +117,13 @@ const SELLER_NAV: NavEntry[] = [
   { view: "spec", key: "nav.side.about", icon: ClipboardCheck },
 ];
 
+/** «Рабочее место» — внизу меню склада, а не среди рабочих пунктов. */
+export const WORKSTATION_NAV: NavLeaf = {
+  view: "workstation",
+  key: "nav.side.workstation",
+  icon: MonitorSmartphone,
+};
+
 /** Рельс роли — как он есть, с группами. */
 export function entriesFor(role: UserRole): NavEntry[] {
   return role === "seller" ? SELLER_NAV : WAREHOUSE_NAV;
@@ -127,7 +134,8 @@ export function entriesFor(role: UserRole): NavEntry[] {
  * недоступные текущей роли, — поэтому он должен разворачивать и группы.
  */
 export function navFor(role: UserRole): NavLeaf[] {
-  return entriesFor(role).flatMap((e) => (isGroup(e) ? e.items : [e]));
+  const leaves = entriesFor(role).flatMap((e) => (isGroup(e) ? e.items : [e]));
+  return role === "warehouse" ? [...leaves, WORKSTATION_NAV] : leaves;
 }
 
 /** Ключ записи меню для сохранённого порядка: у группы — id, у экрана — вид. */
