@@ -15,6 +15,11 @@ export interface Snapshot {
   /** Версия формата данных (`PERSIST_VERSION`). */
   format: number;
   data: Record<string, unknown>;
+  /**
+   * Снимок отдан столу: стол его не пишет, работа уходит операциями
+   * (`opQueue.ts`), а свежее он подтягивает сам.
+   */
+  desk?: boolean;
 }
 
 /** Итог записи: новая версия или «на сервере уже новее». */
@@ -67,7 +72,21 @@ export const snapshotRepository = {
     if (typeof s.version !== "number" || typeof s.format !== "number" || !s.data) {
       return fail("sync.err.network");
     }
-    return ok({ version: s.version, format: s.format, data: s.data });
+    return ok({
+      version: s.version,
+      format: s.format,
+      data: s.data,
+      ...(body.desk === true ? { desk: true } : {}),
+    });
+  },
+
+  /** Версия снимка на сервере (только стол). `null` — снимка ещё нет. */
+  version: async (): Promise<Result<number | null>> => {
+    const res = await attempt(() => apiRequest("GET", "/desk/version"), "sync.err.network");
+    if (!res.ok) return res;
+    const { status, body } = res.data;
+    if (status !== 200) return fail("sync.err.network");
+    return ok(typeof body.version === "number" ? body.version : null);
   },
 
   /** Записать снимок поверх версии `version` (0 — первая запись). */

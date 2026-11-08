@@ -12,6 +12,9 @@ import { readLocal, writeLocal } from "../safeStorage";
  * показывает «не отправлено» — человек видит, что сервер ещё не знает о
  * его работе.
  *
+ * Стол с пропуском снимок не пишет вовсе: операция, которую сервер не принял
+ * или потерял, возвращает серверную копию (`resyncDesk`).
+ *
  * 404 — рабочее место под входом руководителя или сервер без этого
  * маршрута: очередь выбрасывается молча, та же работа уходит записью снимка.
  * 400 — сервер не признал операции вовсе: они выбрасываются, но человек
@@ -332,6 +335,15 @@ async function sayFlagged(kinds: DeskOpKind[]) {
     );
 }
 
+/**
+ * Сервер не принял операцию: копия стола уже содержит эту работу, а на
+ * сервере её нет. Снимок стол не пишет, поэтому забирает серверный сам.
+ */
+async function resync() {
+  const { resyncDesk } = await import("../store/serverSync");
+  await resyncDesk();
+}
+
 async function sayLost(n: number) {
   const { useEditor } = await import("../store");
   useEditor.getState().showToast("ws.opLost", { n });
@@ -341,8 +353,14 @@ export const deskOps: OpQueue = createOpQueue({
   send: sendToServer,
   read: () => readLocal(OPS_KEY),
   write: (text) => writeLocal(OPS_KEY, text),
-  onFlagged: (_reasons, kinds) => void sayFlagged(kinds),
-  onLost: (n) => void sayLost(n),
+  onFlagged: (_reasons, kinds) => {
+    void sayFlagged(kinds);
+    void resync();
+  },
+  onLost: (n) => {
+    void sayLost(n);
+    void resync();
+  },
   later: (fn, ms) => void setTimeout(fn, ms),
   now: () => Date.now(),
   newKey: randomKey,
