@@ -308,6 +308,7 @@ export const ru = {
   "ws.kiosk.noManager":
     "В персонале нет руководителя, поэтому стол можно отвязать отсюда. Добавьте руководителя, чтобы отвязывать только его бейджем.",
   "ws.equip.title": "Устройства",
+  "ws.equip.docPrinter": "Принтер",
   "ws.ev.shift_start": "Начал смену",
   "ws.ev.break_start": "Ушёл на перерыв",
   "ws.ev.break_end": "Вернулся с перерыва",
@@ -625,6 +626,7 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.kiosk.noManager":
     "There is no manager among staff, so the desk can be unbound here. Add a manager to require their badge.",
   "ws.equip.title": "Devices",
+  "ws.equip.docPrinter": "Printer",
   "ws.ev.shift_start": "Started shift",
   "ws.ev.break_start": "Went on a break",
   "ws.ev.break_end": "Back from break",

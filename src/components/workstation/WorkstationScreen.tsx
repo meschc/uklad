@@ -3,6 +3,8 @@ import type { ShiftMark, WorkstationKind } from "@/lib/types";
 import {
   ArrowLeft,
   ChevronDown,
+  FileText,
+  Plug,
   CloudOff,
   History,
   Gavel,
@@ -283,6 +285,7 @@ function Equipment({ onPrinter, canOpen }: { onPrinter: () => void; canOpen: boo
   const printerSet = printer.name !== "";
   const items: { key: MsgKey; icon: typeof ScanLine; ready: boolean }[] = [
     { key: "ws.equip.scanner", icon: ScanLine, ready: true },
+    { key: "ws.equip.docPrinter", icon: FileText, ready: false },
     { key: "ws.equip.scales", icon: Scale, ready: false },
   ];
   const dot = (ready: boolean) => (
@@ -297,12 +300,12 @@ function Equipment({ onPrinter, canOpen }: { onPrinter: () => void; canOpen: boo
     // нужно редко, а место там занимало постоянно.
     <div className="relative hidden md:block">
       <Button variant="ghost" size="sm" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
-        <ScanLine />
+        <Plug />
         {t("ws.equip.title")}
         <ChevronDown className={cn("transition-transform", open && "rotate-180")} />
       </Button>
       {open && (
-        <ul className="absolute left-0 top-full z-50 mt-1 flex w-64 flex-col rounded-lg bg-popover p-1 text-sm shadow-lg ring-1 ring-border">
+        <ul className="absolute left-0 top-full z-50 mt-1 flex w-80 flex-col rounded-[10px] bg-popover p-1 text-sm shadow-lg ring-1 ring-border">
           {items.slice(0, 1).map(({ key, icon: Icon, ready }) => (
             <li key={key} className="flex items-center gap-2 px-2.5 py-2">
               <Icon className="size-4 text-muted-foreground" />
