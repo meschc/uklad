@@ -218,8 +218,8 @@ export function SideNav() {
       <button
         type="button"
         onClick={goToDashboard}
-        title={t("nav.side.myWarehouse")}
-        aria-label={t("nav.side.myWarehouse")}
+        title={t("nav.side.toDashboard")}
+        aria-label={t("nav.side.toDashboard")}
         className={cn(
           // Отступ вокруг знака одинаковый со всех сторон.
           // Скругление снаружи = скругление знака (10) + отступ (6).

@@ -55,7 +55,7 @@ test.describe("Демо WMS", () => {
 
     const rail = page.getByRole("navigation", { name: "Разделы" });
     await expect(rail).toBeVisible();
-    await expect(rail.getByRole("button", { name: "План склада" })).toBeVisible();
+    await expect(rail.getByRole("button", { name: "Товары" })).toBeVisible();
     await expect(page.getByText(CRASH)).toHaveCount(0);
   });
 
@@ -151,7 +151,7 @@ test.describe("Демо WMS", () => {
     await expect(rail.getByRole("button", { name: "Печать" })).toHaveCount(0);
 
     // План склада продавцу виден — но только на чтение (п.26).
-    await rail.getByRole("button", { name: "План склада" }).click();
+    await rail.getByRole("button", { name: "Товары" }).click();
     await expect(page.getByText(CRASH)).toHaveCount(0);
   });
 
@@ -193,7 +193,7 @@ test.describe("Демо WMS", () => {
 
       await page.goBack();
       await expect(page).toHaveURL(/view=editor$/);
-      await expect(rail.getByRole("button", { name: "План склада" })).toBeVisible();
+      await expect(rail.getByRole("button", { name: "Товары" })).toBeVisible();
       await expect(page.getByText(CRASH)).toHaveCount(0);
 
       // Ещё шаг назад — на список складов, то есть туда, откуда пришли.
