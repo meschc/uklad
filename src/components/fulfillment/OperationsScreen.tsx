@@ -7,6 +7,7 @@ import { useT, type MsgKey } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TableSearch, useDataTable } from "@/components/ui/data-table";
 import { Segmented } from "@/components/ui/segmented";
 import { card } from "@/components/ui/card";
 import { ScreenShell, EmptyState } from "./ScreenShell";
@@ -73,6 +74,20 @@ function TasksPanel() {
       ? x.status === "open" || x.status === "in_progress"
       : x.status === "done" || x.status === "cancelled",
   );
+  // Новые сверху; поиск — по услуге, продавцу, исполнителю и заметке.
+  const taskTable = useDataTable(
+    shown,
+    [
+      { id: "kind", value: (x) => t(`ops.svc.${x.kind}` as MsgKey) },
+      {
+        id: "who",
+        value: (x) => [x.partnerId, x.staffId].map((id) => (id ? nameOf.get(id) : "")).join(" "),
+      },
+      { id: "note", value: (x) => x.note },
+      { id: "at", value: (x) => x.doneAt ?? x.createdAt },
+    ],
+    [{ id: "at", desc: true }],
+  );
 
   return (
     <div className="flex flex-col gap-4">
@@ -82,7 +97,7 @@ function TasksPanel() {
         <p className="text-sm text-muted-foreground">{t("ops.task.noKinds")}</p>
       )}
 
-      <div>
+      <div className="flex flex-wrap items-center gap-3">
         <Segmented
           value={filter}
           onChange={setFilter}
@@ -90,6 +105,12 @@ function TasksPanel() {
             { value: "active", label: t("ops.task.filter.active") },
             { value: "done", label: t("ops.task.filter.done") },
           ]}
+        />
+        <TableSearch
+          className="ml-auto"
+          value={taskTable.query}
+          onChange={taskTable.setQuery}
+          placeholder={t("common.search")}
         />
       </div>
 
@@ -101,7 +122,7 @@ function TasksPanel() {
         />
       ) : (
         <ul className={cn(card({ pad: "none" }), "divide-y divide-border")}>
-          {shown.map((task) => (
+          {taskTable.rows.map((task) => (
             <TaskRow
               key={task.id}
               task={task}
