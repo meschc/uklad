@@ -192,3 +192,43 @@ describe("дата сборки", () => {
     expect(log.find((e) => e.kind === "picking")?.at).toBe(100);
   });
 });
+
+describe("рейс нескольких продавцов", () => {
+  const base = { createdAt: 1, updatedAt: 5, status: "shipped" as const };
+  const trip = { id: "t", destination: "ПВЗ", requestIds: ["r1", "r2"], shippedAt: 50 };
+
+  it("делится по штукам, а не уходит первому продавцу", () => {
+    const log = operationLog(
+      facts({
+        requests: [
+          { ...base, id: "r1", productId: "p-a", qty: 6 },
+          { ...base, id: "r2", productId: "p-b", qty: 4 },
+        ],
+        shipments: [trip],
+      }),
+    );
+    const loading = log.filter((e) => e.kind === "loading");
+    expect(loading.map((e) => [e.partnerId, e.qty])).toEqual([
+      ["seller-a", 0.6],
+      ["seller-b", 0.4],
+    ]);
+    const prices = { ...SETTINGS, prices: { loading: 1000 } };
+    expect(serviceReport(log, prices, { ...ALL, partnerId: "seller-a" }).total).toBe(600);
+    expect(serviceReport(log, prices, ALL).rows.find((r) => r.kind === "loading")?.qty).toBe(1);
+  });
+
+  it("рейс одного продавца — целиком ему", () => {
+    const log = operationLog(
+      facts({
+        requests: [
+          { ...base, id: "r1", productId: "p-a", qty: 6 },
+          { ...base, id: "r2", productId: "p-a", qty: 4 },
+        ],
+        shipments: [trip],
+      }),
+    );
+    expect(log.filter((e) => e.kind === "loading").map((e) => [e.id, e.partnerId, e.qty])).toEqual([
+      ["trip:t", "seller-a", 1],
+    ]);
+  });
+});

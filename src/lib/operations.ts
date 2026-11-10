@@ -83,7 +83,8 @@ export interface OperationFacts {
  * Собирается из фактов, которые система и так пишет, плюс закрытых заданий.
  * Не хранится отдельно — иначе два источника правды разъехались бы на первой
  * же отменённой приёмке. Продавец определяется по товару: паллета товара не
- * знает и остаётся без продавца, короб берёт продавца первой строки.
+ * знает и остаётся без продавца, короб берёт продавца первой строки, рейс
+ * делится между продавцами по штукам.
  */
 export function operationLog(f: OperationFacts): OperationEntry[] {
   const partnerOf = new Map(f.products.map((p) => [p.id, p.partnerId]));
@@ -153,17 +154,32 @@ export function operationLog(f: OperationFacts): OperationEntry[] {
       source: "auto",
     });
   }
+  // Рейс делится между продавцами по числу штук в машине: у кого 60 % товара,
+  // тот платит 0,6 рейса. Без товара рейс остаётся одной строкой без продавца.
   for (const s of f.shipments) {
-    const first = s.requestIds.map((id) => requestById.get(id)).find(Boolean);
-    out.push({
-      id: `trip:${s.id}`,
-      kind: "loading",
-      qty: 1,
-      at: s.shippedAt,
-      staffId: s.staffId,
-      partnerId: first ? partnerOf.get(first.productId) : undefined,
-      source: "auto",
-    });
+    const units = new Map<string | undefined, number>();
+    let total = 0;
+    for (const id of s.requestIds) {
+      const r = requestById.get(id);
+      if (!r) continue;
+      const n = r.pickedQty ?? r.qty;
+      if (n <= 0) continue;
+      const partnerId = partnerOf.get(r.productId);
+      units.set(partnerId, (units.get(partnerId) ?? 0) + n);
+      total += n;
+    }
+    const shares = total > 0 ? [...units] : [[undefined, 1] as const];
+    for (const [partnerId, n] of shares) {
+      out.push({
+        id: shares.length > 1 ? `trip:${s.id}:${partnerId ?? "-"}` : `trip:${s.id}`,
+        kind: "loading",
+        qty: total > 0 ? n / total : 1,
+        at: s.shippedAt,
+        staffId: s.staffId,
+        partnerId,
+        source: "auto",
+      });
+    }
   }
   for (const t of f.tasks) {
     if (t.status !== "done" || t.doneAt == null) continue;
