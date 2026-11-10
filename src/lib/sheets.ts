@@ -65,14 +65,23 @@ export async function readSheetMatrix(buf: ArrayBuffer): Promise<string[][] | nu
 }
 
 /** Матрица → книга из одного листа → файл в загрузках. */
-export async function downloadSheet(
+export function downloadSheet(
   matrix: (string | number)[][],
   sheetName: string,
   fileName: string,
 ): Promise<void> {
+  return downloadBook([{ name: sheetName, matrix }], fileName);
+}
+
+/** Несколько листов одной книгой: отчёт и его строки — рядом, а не двумя файлами. */
+export async function downloadBook(
+  sheets: { name: string; matrix: (string | number)[][] }[],
+  fileName: string,
+): Promise<void> {
   const XLSX = await loadXlsx();
-  const ws = XLSX.utils.aoa_to_sheet(matrix);
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  for (const sh of sheets) {
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sh.matrix), sh.name);
+  }
   XLSX.writeFile(wb, fileName);
 }
