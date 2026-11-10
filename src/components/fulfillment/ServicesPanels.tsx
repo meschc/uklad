@@ -112,13 +112,24 @@ export function ReportPanel() {
   const requests = useWithArchive("requests");
   const shipments = useWithArchive("shipments");
   const products = useEditor((s) => s.products);
+  const outboundBoxes = useWithArchive("outboundBoxes");
   const partners = useEditor((s) => s.warehouse.partners);
   const [period, setPeriod] = useState<Period>("30");
   const [partnerId, setPartnerId] = useState("");
 
   const log = useMemo(
-    () => operationLog({ tasks, pallets, boxes, receivingEvents, requests, shipments, products }),
-    [tasks, pallets, boxes, receivingEvents, requests, shipments, products],
+    () =>
+      operationLog({
+        tasks,
+        pallets,
+        boxes,
+        receivingEvents,
+        requests,
+        shipments,
+        products,
+        outboundBoxes,
+      }),
+    [tasks, pallets, boxes, receivingEvents, requests, shipments, products, outboundBoxes],
   );
   const report = useMemo(() => {
     const to = nowMs();

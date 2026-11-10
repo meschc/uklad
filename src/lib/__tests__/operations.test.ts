@@ -193,42 +193,87 @@ describe("дата сборки", () => {
   });
 });
 
-describe("рейс нескольких продавцов", () => {
+describe("отгрузка местами", () => {
   const base = { createdAt: 1, updatedAt: 5, status: "shipped" as const };
-  const trip = { id: "t", destination: "ПВЗ", requestIds: ["r1", "r2"], shippedAt: 50 };
+  const ship = (over: Record<string, unknown> = {}) => ({
+    id: "t",
+    destination: "ПВЗ",
+    requestIds: ["r1", "r2", "r3"],
+    shippedAt: 50,
+    ...over,
+  });
+  const kinds = (log: ReturnType<typeof operationLog>) =>
+    log
+      .filter((e) => e.kind.startsWith("ship_"))
+      .map((e) => [e.kind, e.partnerId])
+      .sort();
 
-  it("делится по штукам, а не уходит первому продавцу", () => {
+  it("заказ площадки — одна посылка, сколько бы в нём ни было строк и штук", () => {
     const log = operationLog(
       facts({
+        requests: [
+          { ...base, id: "r1", productId: "p-a", qty: 1, source: "ozon", externalId: "Z-1" },
+          { ...base, id: "r2", productId: "p-a", qty: 5, source: "ozon", externalId: "z-1" },
+          { ...base, id: "r3", productId: "p-b", qty: 1, source: "wildberries", externalId: "W-9" },
+        ],
+        outboundBoxes: [
+          {
+            id: "ob",
+            code: "UK-OUT-1",
+            lines: [{ productId: "p-a", qty: 6 }],
+            requestIds: ["r1", "r2", "r3"],
+            packedBy: [],
+            createdAt: 1,
+            updatedAt: 1,
+            shipmentId: "t",
+          },
+        ],
+        shipments: [ship({ units: ["UK-OUT-1"] })],
+      }),
+    );
+    expect(kinds(log)).toEqual([
+      ["ship_parcel", "seller-a"],
+      ["ship_parcel", "seller-b"],
+    ]);
+  });
+
+  it("короб и паллета поставки — местами, продавец по составу", () => {
+    const log = operationLog(
+      facts({
+        boxes: [
+          { id: "b1", barcode: "UK-BOX-7", createdAt: 1, lines: [{ productId: "p-b", qty: 3 }] },
+        ],
+        pallets: [{ id: "pl", barcode: "UK-PLT-2", createdAt: 1, boxIds: ["b1"] }],
         requests: [
           { ...base, id: "r1", productId: "p-a", qty: 6 },
           { ...base, id: "r2", productId: "p-b", qty: 4 },
         ],
-        shipments: [trip],
+        shipments: [
+          ship({ requestIds: ["r1", "r2"], units: ["UK-BOX-7", "uk-plt-2", "UK-BOX-99"] }),
+        ],
       }),
     );
-    const loading = log.filter((e) => e.kind === "loading");
-    expect(loading.map((e) => [e.partnerId, e.qty])).toEqual([
-      ["seller-a", 0.6],
-      ["seller-b", 0.4],
-    ]);
-    const prices = { ...SETTINGS, prices: { loading: 1000 } };
-    expect(serviceReport(log, prices, { ...ALL, partnerId: "seller-a" }).total).toBe(600);
-    expect(serviceReport(log, prices, ALL).rows.find((r) => r.kind === "loading")?.qty).toBe(1);
+    expect(kinds(log)).toEqual(
+      [
+        ["ship_box", "seller-b"],
+        // неизвестный короб в машине двух продавцов — без продавца, а не первому
+        ["ship_box", undefined],
+        ["ship_pallet", "seller-b"],
+      ].sort(),
+    );
   });
 
-  it("рейс одного продавца — целиком ему", () => {
+  it("рейс — расход склада: без продавца и по умолчанию не в счёте", () => {
     const log = operationLog(
       facts({
-        requests: [
-          { ...base, id: "r1", productId: "p-a", qty: 6 },
-          { ...base, id: "r2", productId: "p-a", qty: 4 },
-        ],
-        shipments: [trip],
+        requests: [{ ...base, id: "r1", productId: "p-a", qty: 6 }],
+        shipments: [ship({ requestIds: ["r1"], units: ["UK-BOX-5"] })],
       }),
     );
-    expect(log.filter((e) => e.kind === "loading").map((e) => [e.id, e.partnerId, e.qty])).toEqual([
-      ["trip:t", "seller-a", 1],
-    ]);
+    expect(log.find((e) => e.kind === "loading")?.partnerId).toBeUndefined();
+    expect(log.find((e) => e.kind === "ship_box")?.partnerId).toBe("seller-a");
+    const report = serviceReport(log, SETTINGS, ALL);
+    expect(report.rows.map((r) => r.kind)).not.toContain("loading");
+    expect(report.rows.map((r) => r.kind)).toContain("ship_box");
   });
 });
