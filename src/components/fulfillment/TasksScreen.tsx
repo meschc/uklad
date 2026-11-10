@@ -18,6 +18,7 @@ import { useCommand } from "@/lib/useCommand";
 import { formatAddress } from "@/lib/address";
 import { targetCode } from "@/lib/packing";
 import { useLabelPrinter } from "@/lib/labelPrinter";
+import { SortTh, TableSearch, useDataTable } from "@/components/ui/data-table";
 import { groupRequestsByTarget, stockByProduct } from "@/lib/fulfillment";
 import type { LabelTemplate, RequestStatus } from "@/lib/types";
 import { useT, type TFunc } from "@/lib/i18n";
@@ -100,19 +101,18 @@ export function TasksScreen() {
     // Выбранный в календаре день сужает тот же список, а не открывает второй.
     .filter((r) => day == null || (r.truckDate != null && sameDay(r.truckDate, day)));
 
-  // Внутри группы сначала то, что ждёт работы: сортируем ДО группировки —
-  // группировка порядок сохраняет.
-  const groups = useMemo(
-    () =>
-      groupRequestsByTarget(
-        [...visible].sort(
-          (x, y) =>
-            STATUS_ORDER.indexOf(x.status) - STATUS_ORDER.indexOf(y.status) ||
-            y.createdAt - x.createdAt,
-        ),
-      ),
-    [visible],
+  // Внутри группы сначала то, что ждёт работы; заголовки колонок меняют
+  // порядок. Сортируем и ищем ДО группировки — группировка порядок сохраняет.
+  const reqTable = useDataTable(
+    visible,
+    [
+      { id: "name", value: (r) => products.find((x) => x.id === r.productId)?.name },
+      { id: "qty", value: (r) => r.qty },
+      { id: "status", value: (r) => STATUS_ORDER.indexOf(r.status) * 1e13 - r.createdAt },
+    ],
+    [{ id: "status", desc: false }],
   );
+  const groups = useMemo(() => groupRequestsByTarget(reqTable.rows), [reqTable.rows]);
 
   const counts = STATUS_ORDER.map((s) => ({
     status: s,
@@ -175,6 +175,12 @@ export function TasksScreen() {
             n={c.n}
           />
         ))}
+        <TableSearch
+          className="ml-auto"
+          value={reqTable.query}
+          onChange={reqTable.setQuery}
+          placeholder={t("common.search")}
+        />
       </div>
 
       {requests.length === 0 ? (
@@ -249,10 +255,16 @@ export function TasksScreen() {
                 <table className="w-full border-collapse text-sm">
                   <thead className="bg-muted/50 text-xs">
                     <tr className="text-left">
-                      <th className="px-3 py-2 font-medium">{t("table.col.name")}</th>
-                      <th className="px-3 py-2 text-right font-medium">{t("tasks.col.qty")}</th>
+                      <SortTh table={reqTable.table} id="name">
+                        {t("table.col.name")}
+                      </SortTh>
+                      <SortTh table={reqTable.table} id="qty" align="right">
+                        {t("tasks.col.qty")}
+                      </SortTh>
                       <th className="px-3 py-2 font-medium">{t("tasks.col.where")}</th>
-                      <th className="px-3 py-2 font-medium">{t("tasks.col.status")}</th>
+                      <SortTh table={reqTable.table} id="status">
+                        {t("tasks.col.status")}
+                      </SortTh>
                       <th className="w-32 px-3 py-2" />
                     </tr>
                   </thead>

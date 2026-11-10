@@ -8,6 +8,7 @@ import { staffWorkload } from "@/lib/fulfillment";
 import { csvToStaff, staffToCsv } from "@/lib/staffIO";
 import { BOM } from "@/lib/utils";
 import type { StaffMember } from "@/lib/types";
+import { SortTh, TableSearch, useDataTable } from "@/components/ui/data-table";
 import { useT, type TFunc } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/segmented";
@@ -57,6 +58,15 @@ export function StaffScreen() {
   const workload = useMemo(() => staffWorkload(events, trips), [events, trips]);
   const [draft, setDraft] = useState<PersonDraft | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
+  const staffTable = useDataTable(staff, [
+    { id: "name", value: (m) => m.name },
+    { id: "role", value: (m) => m.role },
+    { id: "rate", value: (m) => m.hourlyRate },
+    { id: "receipts", value: (m) => workload.get(m.id)?.receipts ?? 0 },
+    { id: "units", value: (m) => workload.get(m.id)?.units ?? 0 },
+    { id: "trips", value: (m) => workload.get(m.id)?.trips ?? 0 },
+    { id: "last", value: (m) => workload.get(m.id)?.lastAt },
+  ]);
   const [tab, setTab] = useState<StaffTab>("people");
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -240,35 +250,56 @@ export function StaffScreen() {
                 body={t("staff.emptyBody")}
               />
             ) : (
-              <div className="overflow-x-auto rounded-xl border border-border">
-                <table className="w-full border-collapse text-sm">
-                  <thead className="bg-muted/50 text-xs">
-                    <tr className="text-left">
-                      <th className="px-3 py-2 font-medium">{t("staff.col.name")}</th>
-                      <th className="px-3 py-2 font-medium">{t("staff.col.role")}</th>
-                      <th className="px-3 py-2 text-right font-medium">{t("staff.rate")}</th>
-                      <th className="px-3 py-2 text-right font-medium">{t("staff.wlReceipts")}</th>
-                      <th className="px-3 py-2 text-right font-medium">{t("staff.wlUnits")}</th>
-                      <th className="px-3 py-2 text-right font-medium">{t("staff.wlTrips")}</th>
-                      <th className="px-3 py-2 font-medium">{t("staff.wlLast")}</th>
-                      <th className="w-20 px-3 py-2" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {staff.map((m) => (
-                      <StaffRow
-                        key={m.id}
-                        member={m}
-                        load={workload.get(m.id)}
-                        editing={editing === m.id}
-                        onEdit={() => setEditing(m.id)}
-                        onDone={() => setEditing(null)}
-                        t={t}
-                      />
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <>
+                <TableSearch
+                  value={staffTable.query}
+                  onChange={staffTable.setQuery}
+                  placeholder={t("common.search")}
+                />
+                <div className="overflow-x-auto rounded-xl border border-border">
+                  <table className="w-full border-collapse text-sm">
+                    <thead className="bg-muted/50 text-xs">
+                      <tr className="text-left">
+                        <SortTh table={staffTable.table} id="name">
+                          {t("staff.col.name")}
+                        </SortTh>
+                        <SortTh table={staffTable.table} id="role">
+                          {t("staff.col.role")}
+                        </SortTh>
+                        <SortTh table={staffTable.table} id="rate" align="right">
+                          {t("staff.rate")}
+                        </SortTh>
+                        <SortTh table={staffTable.table} id="receipts" align="right">
+                          {t("staff.wlReceipts")}
+                        </SortTh>
+                        <SortTh table={staffTable.table} id="units" align="right">
+                          {t("staff.wlUnits")}
+                        </SortTh>
+                        <SortTh table={staffTable.table} id="trips" align="right">
+                          {t("staff.wlTrips")}
+                        </SortTh>
+                        <SortTh table={staffTable.table} id="last">
+                          {t("staff.wlLast")}
+                        </SortTh>
+                        <th className="w-20 px-3 py-2" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {staffTable.rows.map((m) => (
+                        <StaffRow
+                          key={m.id}
+                          member={m}
+                          load={workload.get(m.id)}
+                          editing={editing === m.id}
+                          onEdit={() => setEditing(m.id)}
+                          onDone={() => setEditing(null)}
+                          t={t}
+                        />
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </section>
         </>

@@ -16,6 +16,7 @@ import { requestsRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
 import { downloadSheet } from "@/lib/sheets";
 import { groupRequestsByTarget } from "@/lib/fulfillment";
+import { SortTh, TableSearch, useDataTable } from "@/components/ui/data-table";
 import { useT, type MsgKey, type TFunc } from "@/lib/i18n";
 import { isOrderSource } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -90,7 +91,13 @@ function RequestsTab({ t }: { t: TFunc }) {
   );
   const shipments = useEditor((s) => s.shipments);
   const shipmentOf = (id?: string) => (id ? shipments.find((sh) => sh.id === id) : undefined);
-  const groups = useMemo(() => groupRequestsByTarget(requests), [requests]);
+  const reqTable = useDataTable(requests, [
+    { id: "name", value: (r) => products.find((x) => x.id === r.productId)?.name },
+    { id: "qty", value: (r) => r.qty },
+    { id: "ship", value: (r) => r.truckDate },
+    { id: "status", value: (r) => r.status },
+  ]);
+  const groups = useMemo(() => groupRequestsByTarget(reqTable.rows), [reqTable.rows]);
   const [creating, setCreating] = useState(false);
   const [importing, setImporting] = useState(false);
   const [supplying, setSupplying] = useState(false);
@@ -141,6 +148,13 @@ function RequestsTab({ t }: { t: TFunc }) {
         </div>
       )}
 
+      {requests.length > 0 && (
+        <TableSearch
+          value={reqTable.query}
+          onChange={reqTable.setQuery}
+          placeholder={t("common.search")}
+        />
+      )}
       {requests.length === 0 ? (
         <EmptyState
           icon={<Package className="size-5" />}
@@ -175,10 +189,18 @@ function RequestsTab({ t }: { t: TFunc }) {
               <table className="w-full border-collapse text-sm">
                 <thead className="bg-muted/50 text-xs">
                   <tr className="text-left">
-                    <th className="px-3 py-2 font-medium">{t("table.col.name")}</th>
-                    <th className="px-3 py-2 text-right font-medium">{t("tasks.col.qty")}</th>
-                    <th className="px-3 py-2 font-medium">{t("seller.col.shipDate")}</th>
-                    <th className="px-3 py-2 font-medium">{t("tasks.col.status")}</th>
+                    <SortTh table={reqTable.table} id="name">
+                      {t("table.col.name")}
+                    </SortTh>
+                    <SortTh table={reqTable.table} id="qty" align="right">
+                      {t("tasks.col.qty")}
+                    </SortTh>
+                    <SortTh table={reqTable.table} id="ship">
+                      {t("seller.col.shipDate")}
+                    </SortTh>
+                    <SortTh table={reqTable.table} id="status">
+                      {t("tasks.col.status")}
+                    </SortTh>
                   </tr>
                 </thead>
                 <tbody>

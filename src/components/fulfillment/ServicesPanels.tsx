@@ -6,6 +6,7 @@ import { useT, type MsgKey } from "@/lib/i18n";
 import { cn, nowMs } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Segmented } from "@/components/ui/segmented";
+import { SortTh, useDataTable } from "@/components/ui/data-table";
 import { card } from "@/components/ui/card";
 import { EmptyState } from "./ScreenShell";
 import { useWithArchive } from "@/lib/store/archive";
@@ -125,6 +126,12 @@ export function ReportPanel() {
     const from = period === "all" ? 0 : to - Number(period) * DAY;
     return serviceReport(log, settings, { from, to, partnerId: partnerId || undefined });
   }, [log, settings, period, partnerId]);
+  const repTable = useDataTable(report.rows, [
+    { id: "service", value: (r) => t(`ops.svc.${r.kind}` as MsgKey) },
+    { id: "qty", value: (r) => r.qty },
+    { id: "price", value: (r) => r.price },
+    { id: "sum", value: (r) => r.sum },
+  ]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -161,16 +168,27 @@ export function ReportPanel() {
           <table className="w-full text-sm">
             <thead className="text-xs text-muted-foreground">
               <tr className="border-b border-border">
-                <th className="px-4 py-2 text-left font-normal">{t("ops.report.service")}</th>
-                <th className="px-4 py-2 text-right font-normal">{t("ops.report.qty")}</th>
-                <th className="hidden px-4 py-2 text-right font-normal sm:table-cell">
+                <SortTh table={repTable.table} id="service" className="px-4 font-normal">
+                  {t("ops.report.service")}
+                </SortTh>
+                <SortTh table={repTable.table} id="qty" align="right" className="px-4 font-normal">
+                  {t("ops.report.qty")}
+                </SortTh>
+                <SortTh
+                  table={repTable.table}
+                  id="price"
+                  align="right"
+                  className="hidden px-4 font-normal sm:table-cell"
+                >
                   {t("ops.report.price")}
-                </th>
-                <th className="px-4 py-2 text-right font-normal">{t("ops.report.sum")}</th>
+                </SortTh>
+                <SortTh table={repTable.table} id="sum" align="right" className="px-4 font-normal">
+                  {t("ops.report.sum")}
+                </SortTh>
               </tr>
             </thead>
             <tbody className="tabular-nums">
-              {report.rows.map((r) => (
+              {repTable.rows.map((r) => (
                 <tr key={r.kind} className="border-b border-border last:border-0">
                   <td className="px-4 py-2">{t(`ops.svc.${r.kind}` as MsgKey)}</td>
                   <td className="px-4 py-2 text-right">{money(r.qty, t.lang)}</td>

@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { card } from "@/components/ui/card";
 import { eyebrow } from "@/components/ui/eyebrow";
+import { SortTh, useDataTable } from "@/components/ui/data-table";
 import { ScreenShell } from "@/components/fulfillment/ScreenShell";
 import { useNow } from "./useNow";
 
@@ -52,10 +53,17 @@ export function DevicesScreen() {
     if (res.ok) useEditor.getState().goToView("workstation");
   };
 
-  const who = (id: string) => {
+  const devTable = useDataTable(devices, [
+    { id: "name", value: (d) => d.name },
+    { id: "station", value: (d) => t(`ws.station.${d.station}` as MsgKey) },
+    { id: "who", value: (d) => who(d.id) },
+    { id: "since", value: (d) => d.createdAt },
+  ]);
+
+  function who(id: string) {
     if (id !== thisId || !isSessionLive(session, now)) return null;
     return staff.find((m) => m.id === session!.staffId)?.name ?? null;
-  };
+  }
 
   return (
     <ScreenShell title={t("devices.title")} subtitle={t("devices.lead")} wide>
@@ -108,15 +116,23 @@ export function DevicesScreen() {
           <table className="w-full text-sm">
             <thead className="text-left text-xs text-muted-foreground">
               <tr className="border-b border-border">
-                <th className="px-4 py-2 font-medium">{t("devices.col.name")}</th>
-                <th className="px-4 py-2 font-medium">{t("devices.col.station")}</th>
-                <th className="px-4 py-2 font-medium">{t("devices.col.who")}</th>
-                <th className="px-4 py-2 font-medium">{t("devices.col.since")}</th>
+                <SortTh table={devTable.table} id="name" className="px-4">
+                  {t("devices.col.name")}
+                </SortTh>
+                <SortTh table={devTable.table} id="station" className="px-4">
+                  {t("devices.col.station")}
+                </SortTh>
+                <SortTh table={devTable.table} id="who" className="px-4">
+                  {t("devices.col.who")}
+                </SortTh>
+                <SortTh table={devTable.table} id="since" className="px-4">
+                  {t("devices.col.since")}
+                </SortTh>
                 <th className="px-4 py-2" />
               </tr>
             </thead>
             <tbody>
-              {devices.map((d) => (
+              {devTable.rows.map((d) => (
                 <tr
                   key={d.id}
                   className={cn(
