@@ -68,6 +68,7 @@ const START: { title: Copy; body: Copy }[] = [
 
 const T = {
   back: c("Все склады", "All warehouses"),
+  backToSpec: c("Вернуться в паспорт склада", "Back to the warehouse passport"),
   photo: c("Фото для примера", "Sample photo"),
   previewBar: c(
     "Предпросмотр: так селлеры увидят ваш склад на витрине. Данные берутся из кабинета, обновите страницу после правок.",
@@ -243,11 +244,13 @@ export function WarehouseScreen({ id }: { id?: string }) {
       )}
       <section className="mx-auto max-w-[1280px] px-5 pt-8 sm:px-10 sm:pt-12">
         <a
-          href={href("/market")}
+          // Из предпросмотра — назад в паспорт склада в кабинете, а не на
+          // витрину: она закрыта до запуска.
+          href={preview ? "/app/?view=spec" : href("/market")}
           className="group inline-flex items-center gap-1.5 text-sm text-[var(--wh-muted)] transition-colors hover:text-[var(--wh-ink)]"
         >
           <ArrowLeft className="size-3.5 transition-transform group-hover:-translate-x-0.5" />
-          {t(T.back)}
+          {t(preview ? T.backToSpec : T.back)}
         </a>
 
         <Reveal className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_400px] lg:items-stretch lg:gap-14">

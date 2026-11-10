@@ -5,7 +5,6 @@ import { useEditor } from "@/lib/store";
 import { askNotifyPermission, notifyPermission, type NotifyPermission } from "@/lib/chatNotify";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-import { card } from "@/components/ui/card";
 import { Segmented } from "@/components/ui/segmented";
 import { Row } from "./ProfileRow";
 
@@ -45,7 +44,7 @@ export function ProfileHero({
     .map((w) => w[0]?.toUpperCase())
     .join("");
   return (
-    <div className={card({ className: "flex flex-wrap items-center gap-4" })}>
+    <div className="flex flex-wrap items-center gap-4 pb-2">
       {avatar ? (
         <img src={avatar} alt="" className="size-14 shrink-0 rounded-2xl object-cover" />
       ) : (
@@ -87,9 +86,9 @@ export function ThemeTile({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        card({ pad: "none" }),
+        "rounded-xl bg-muted/50",
         "flex cursor-pointer flex-col overflow-hidden text-left transition-colors",
-        active ? "ring-2 ring-primary" : "hover:border-foreground/20",
+        active ? "ring-2 ring-primary" : "hover:bg-muted",
       )}
     >
       {/* Превью рисуется фиксированными цветами, а не токенами: плитка тёмной
@@ -146,12 +145,7 @@ export function NotifySection() {
   ];
 
   return (
-    <div
-      className={card({
-        pad: "none",
-        className: "flex flex-col divide-y divide-border overflow-hidden",
-      })}
-    >
+    <div className="flex flex-col divide-y divide-border/60">
       <div>
         <Row icon={<Bell className="size-4" />} label={t("profile.notify.browser")}>
           <Segmented<OnOff> value={on ? "on" : "off"} onChange={toggle} options={onOff} />

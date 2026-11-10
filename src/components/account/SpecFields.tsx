@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { ChevronDown, Eye, EyeOff } from "lucide-react";
 import type { WarehouseClass } from "@/lib/types";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -67,10 +68,13 @@ export function TileGrid({ cols = 2, children }: { cols?: 2 | 3; children: React
 export function Tile({
   label,
   wide,
+  eye,
   children,
 }: {
   label: string;
   wide?: boolean;
+  /** Глаз «видно на витрине» — у полей, которые уходят в карточку склада. */
+  eye?: EyeProps;
   children: React.ReactNode;
 }) {
   return (
@@ -80,9 +84,42 @@ export function Tile({
         wide && "col-span-full",
       )}
     >
-      <span className={eyebrow({ size: "xs", weight: "medium" })}>{label}</span>
+      <span className="flex items-center justify-between gap-1">
+        <span className={eyebrow({ size: "xs", weight: "medium" })}>{label}</span>
+        {eye && <ShowcaseEye {...eye} />}
+      </span>
       {children}
     </div>
+  );
+}
+
+export interface EyeProps {
+  shown: boolean;
+  onToggle: () => void;
+}
+
+/**
+ * Глаз у поля паспорта: открыт — поле видно селлерам на витрине, перечёркнут —
+ * скрыто. Нажатие переключает.
+ */
+export function ShowcaseEye({ shown, onToggle }: EyeProps) {
+  const t = useT();
+  const Icon = shown ? Eye : EyeOff;
+  const label = t(shown ? "showcase.shown" : "showcase.hidden");
+  return (
+    <button
+      type="button"
+      aria-pressed={shown}
+      onClick={onToggle}
+      title={label}
+      aria-label={label}
+      className={cn(
+        "flex size-6 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-accent",
+        shown ? "text-primary" : "text-muted-foreground/60",
+      )}
+    >
+      <Icon className="size-3.5" />
+    </button>
   );
 }
 
@@ -404,20 +441,104 @@ export function ChoiceValue<T extends string>({
     );
 
   return (
-    <select
-      value={value ?? ""}
-      // Приведение неизбежно: у `<select>` значение всегда строка, сузить его
-      // до варианта из списка может только сам список — а он здесь и есть.
-      onChange={(e) => onChange((e.target.value as T) || undefined)}
-      className={cn(GHOST, "w-fit cursor-pointer text-sm leading-snug")}
-    >
-      <option value="">—</option>
-      {options.map((o) => (
-        <option key={o} value={o}>
-          {labelFor?.(o) ?? o}
-        </option>
-      ))}
-    </select>
+    <ChoiceMenu
+      value={value}
+      text={text}
+      options={options}
+      labelFor={labelFor}
+      onChange={onChange}
+    />
+  );
+}
+
+/**
+ * Свой выпадающий список вместо системного `<select>`: системный в тёмной теме
+ * рисовался светлым и выглядел чужим. Список раскрывается прямо под значением,
+ * закрывается выбором, кликом мимо и Escape.
+ */
+export function ChoiceMenu<T extends string>({
+  value,
+  text,
+  options,
+  labelFor,
+  onChange,
+  trigger,
+}: {
+  /** Своя кнопка вместо строки со стрелкой — например значок класса. */
+  trigger?: React.ReactNode;
+  value: T | undefined;
+  text: string | undefined;
+  options: readonly T[];
+  labelFor?: (v: T) => string;
+  onChange: (v: T | undefined) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: Event) => {
+      if (
+        e instanceof KeyboardEvent ? e.key === "Escape" : !ref.current?.contains(e.target as Node)
+      )
+        setOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", close);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("keydown", close);
+    };
+  }, [open]);
+  const pick = (v: T | undefined) => {
+    onChange(v);
+    setOpen(false);
+  };
+  return (
+    <div ref={ref} className="relative w-fit">
+      <button
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        className={
+          trigger
+            ? "cursor-pointer rounded-xl transition-transform hover:scale-[1.03]"
+            : cn(GHOST, "flex w-fit cursor-pointer items-center gap-1 text-sm leading-snug")
+        }
+      >
+        {trigger ?? (
+          <>
+            <span className={cn(!text && "text-muted-foreground")}>{text || "—"}</span>
+            <ChevronDown
+              className={cn("size-3.5 opacity-60 transition-transform", open && "rotate-180")}
+            />
+          </>
+        )}
+      </button>
+      {open && (
+        <ul
+          role="listbox"
+          className="absolute left-0 top-full z-30 mt-1 min-w-full animate-fade-in rounded-xl bg-popover p-1 shadow-lg ring-1 ring-border"
+        >
+          {[undefined, ...options].map((o) => (
+            <li key={o ?? "none"}>
+              <button
+                type="button"
+                role="option"
+                aria-selected={o === value}
+                onClick={() => pick(o)}
+                className={cn(
+                  "flex h-8 w-full items-center whitespace-nowrap rounded-lg px-2.5 text-left text-sm hover:bg-accent",
+                  o === value && "font-semibold text-primary",
+                )}
+              >
+                {o ? (labelFor?.(o) ?? o) : "—"}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 

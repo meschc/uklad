@@ -19,6 +19,7 @@ import { TableHead } from "./TableHead";
 import { TableToolbar } from "./TableToolbar";
 import { buildRows, filterAndSort, type SortKey, type TableFilter } from "./tableRows";
 import { useRowPicking } from "./useRowPicking";
+import { useColumnOrder } from "./columns";
 
 /**
  * Номенклатура склада: таблица «товар ↔ место хранения ↔ остаток» (ТЗ, 3.6).
@@ -98,6 +99,7 @@ export function TableScreen() {
 
   const visibleIds = useMemo(() => visible.map((r) => r.product.id), [visible]);
   const pick = useRowPicking(visibleIds);
+  const columns = useColumnOrder();
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col bg-background">
@@ -121,6 +123,8 @@ export function TableScreen() {
             onToggleAll={pick.toggleAllVisible}
             onSort={toggleSort}
             hidePartner={readOnly}
+            order={columns.cols}
+            onMove={columns.move}
           />
           <tbody>
             {visible.map((row) => (
@@ -136,6 +140,7 @@ export function TableScreen() {
                 onEdit={() => setProductDialog({ product: row.product })}
                 onBarcode={() => setBarcodeModal(row.product.barcode)}
                 onRequest={() => setRequestIds([row.product.id])}
+                order={columns.cols}
               />
             ))}
           </tbody>

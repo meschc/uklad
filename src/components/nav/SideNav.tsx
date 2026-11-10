@@ -9,7 +9,15 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { countUnread, selectRole, useEditor, visibleChatPartners } from "@/lib/store";
-import { applyOrder, entriesFor, entryKey, isGroup, moveItem, type NavLeaf } from "./navItems";
+import {
+  WORKSTATION_NAV,
+  applyOrder,
+  entriesFor,
+  entryKey,
+  isGroup,
+  moveItem,
+  type NavLeaf,
+} from "./navItems";
 import { useFlip } from "./useFlip";
 import type { AppView } from "@/lib/types";
 import { useT } from "@/lib/i18n";
@@ -201,12 +209,12 @@ export function SideNav() {
       ref={flipRef}
       aria-label={t("nav.side.title")}
       className={cn(
-        "flex shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-border bg-card px-2 py-3 transition-[width] duration-200",
+        "flex shrink-0 flex-col gap-0.5 overflow-y-auto bg-card px-2 py-3 transition-[width] duration-200",
         collapsed ? "w-[3.75rem]" : "w-56",
       )}
     >
-      {/* Логотип — выход в кабинет: привычка всего веба, отдельного пункта
-          «Главная» в меню нет. */}
+      {/* «Мой склад» — выход в кабинет со списком складов: привычка всего веба,
+          отдельного пункта «Главная» в меню нет. */}
       <button
         type="button"
         onClick={goToDashboard}
@@ -302,6 +310,17 @@ export function SideNav() {
       })}
 
       <div className="mt-auto flex flex-col gap-0.5 pt-2">
+        {role === "warehouse" && (
+          <NavRow
+            icon={WORKSTATION_NAV.icon}
+            label={t(WORKSTATION_NAV.key)}
+            collapsed={collapsed}
+            active={appView === "workstation"}
+            current={appView === "workstation"}
+            badge={0}
+            onClick={() => goToView("workstation")}
+          />
+        )}
         <NavRow
           icon={LifeBuoy}
           label={t("support.nav")}

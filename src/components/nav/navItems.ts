@@ -1,7 +1,8 @@
 import {
   BarChart3,
+  Building2,
+  Settings2,
   Boxes,
-  ClipboardCheck,
   ClipboardList,
   FileText,
   ListChecks,
@@ -56,10 +57,10 @@ export const isGroup = (e: NavEntry): e is NavGroup => "items" in e;
 
 const WAREHOUSE_NAV: NavEntry[] = [
   { view: "editor", key: "nav.side.plan", icon: Boxes },
-  // Процессы склада — приёмка, сборка, упаковка, отгрузка — на рабочем месте
-  // вкладками, а не пунктами меню: работу делают за столом по бейджу. В
-  // кабинете руководителю остаются «Задания» (контроль), документы и аналитика.
-  { view: "workstation", key: "nav.side.workstation", icon: MonitorSmartphone },
+  // Процессы склада — приёмка, сборка, упаковка, отгрузка — на рабочем месте,
+  // а не пунктами меню: работу делают за столом по бейджу. Само «Рабочее место»
+  // стоит внизу меню (`WORKSTATION_NAV`), рядом с поддержкой и темой. В кабинете
+  // руководителю остаются «Задания» (контроль), документы и аналитика.
   { view: "tasks", key: "nav.side.tasks", icon: ClipboardList },
   // Переписка с продавцами — сразу за работой и отдельным пунктом (п.3):
   // в неё заходят по десять раз на день, и прятать её в группу значило бы
@@ -82,9 +83,9 @@ const WAREHOUSE_NAV: NavEntry[] = [
     // по услугам склада, а не шаг ежедневной работы.
     id: "setup",
     key: "nav.group.setup",
-    icon: ClipboardCheck,
+    icon: Settings2,
     items: [
-      { view: "spec", key: "nav.side.spec", icon: ClipboardCheck },
+      { view: "spec", key: "nav.side.spec", icon: Building2 },
       { view: "staff", key: "nav.side.staff", icon: Users },
       // Компьютеры и ТСД у столов: какой стоит где и кто за ним.
       { view: "devices", key: "nav.side.devices", icon: MonitorSmartphone },
@@ -114,8 +115,15 @@ const SELLER_NAV: NavEntry[] = [
   { view: "editor", key: "nav.side.plan", icon: Boxes },
   // «Паспорт» и «Персонал» у продавца одной вкладкой: ему нужны характеристики
   // склада и к кому обратиться, а не список сотрудников.
-  { view: "spec", key: "nav.side.about", icon: ClipboardCheck },
+  { view: "spec", key: "nav.side.about", icon: Building2 },
 ];
+
+/** «Рабочее место» — внизу меню склада, а не среди рабочих пунктов. */
+export const WORKSTATION_NAV: NavLeaf = {
+  view: "workstation",
+  key: "nav.side.workstation",
+  icon: MonitorSmartphone,
+};
 
 /** Рельс роли — как он есть, с группами. */
 export function entriesFor(role: UserRole): NavEntry[] {
@@ -127,7 +135,8 @@ export function entriesFor(role: UserRole): NavEntry[] {
  * недоступные текущей роли, — поэтому он должен разворачивать и группы.
  */
 export function navFor(role: UserRole): NavLeaf[] {
-  return entriesFor(role).flatMap((e) => (isGroup(e) ? e.items : [e]));
+  const leaves = entriesFor(role).flatMap((e) => (isGroup(e) ? e.items : [e]));
+  return role === "warehouse" ? [...leaves, WORKSTATION_NAV] : leaves;
 }
 
 /** Ключ записи меню для сохранённого порядка: у группы — id, у экрана — вид. */

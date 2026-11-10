@@ -7,7 +7,7 @@ import { badgeRepository, staffRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
 import type { TFunc } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
-import { PersonForm, draftToMember, type PersonDraft } from "./PersonForm";
+import { PersonForm, draftToMember, formatRate, type PersonDraft } from "./PersonForm";
 import { BadgePanel } from "./BadgePanel";
 
 /**
@@ -47,7 +47,7 @@ export function StaffRow({
     phone: m.phone ?? "",
     email: m.email ?? "",
     photoUrl: m.photoUrl ?? "",
-    rate: m.hourlyRate ? String(m.hourlyRate) : "",
+    rate: m.hourlyRate ? formatRate(String(m.hourlyRate)) : "",
   });
 
   const save = useCommand((patch: Partial<Omit<StaffMember, "id">>) =>

@@ -5,6 +5,8 @@ import type { Product } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { RowCheck } from "./RowCheck";
 import type { TableRow } from "./tableRows";
+import type { ColId } from "./columns";
+import { Fragment } from "react";
 
 /** URL только с безопасной схемой (http/https), иначе ссылку не рисуем. */
 function safeUrl(url?: string): string | undefined {
@@ -82,6 +84,7 @@ export function ProductRow({
   onEdit,
   onBarcode,
   onRequest,
+  order,
 }: {
   row: TableRow;
   /** Имя партнёра — уже найденное: строка знает только его id. */
@@ -94,30 +97,20 @@ export function ProductRow({
   onEdit: () => void;
   onBarcode: () => void;
   onRequest: () => void;
+  /** Порядок столбцов, выставленный человеком. */
+  order: ColId[];
 }) {
   const t = useT();
   const { product: p, place, qty } = row;
   const url = safeUrl(p.url);
-
-  return (
-    <tr
-      className={cn(
-        "group/row border-b border-border/60 transition-colors hover:bg-accent/40",
-        picked && "bg-primary/5",
-      )}
-    >
-      <td className="px-3 py-1.5">
-        <RowCheck
-          checked={picked}
-          onChange={onPick}
-          label={p.name}
-          title={t("table.bulk.shiftHint")}
-        />
-      </td>
+  const cells: Record<ColId, React.ReactNode> = {
+    photo: (
       <td className="px-3 py-1.5">
         <ProductThumb product={p} />
       </td>
-      <td className="px-3 py-1.5 font-mono text-xs text-muted-foreground">{p.sku}</td>
+    ),
+    sku: <td className="px-3 py-1.5 font-mono text-xs text-muted-foreground">{p.sku}</td>,
+    name: (
       <td className="px-3 py-1.5 font-medium">
         <span className="inline-flex items-center gap-1.5">
           {p.name}
@@ -135,6 +128,8 @@ export function ProductRow({
           )}
         </span>
       </td>
+    ),
+    barcode: (
       <td className="px-3 py-1.5 font-mono text-xs text-muted-foreground">
         <button
           type="button"
@@ -146,16 +141,24 @@ export function ProductRow({
           <Barcode className="size-3.5 opacity-0 transition-opacity group-hover/row:opacity-50 group-hover/bc:opacity-100" />
         </button>
       </td>
+    ),
+    category: (
       <td className="px-3 py-1.5">
         <span className="rounded bg-muted px-1.5 py-0.5 text-xs">{catLabel(t, p.category)}</span>
       </td>
-      {!readOnly && <td className="px-3 py-1.5 text-xs text-muted-foreground">{partner || "—"}</td>}
+    ),
+    partner: <td className="px-3 py-1.5 text-xs text-muted-foreground">{partner || "—"}</td>,
+    dims: (
       <td className="whitespace-nowrap px-3 py-1.5 tabular-nums text-muted-foreground">
         {cm(p.widthCm)} × {cm(p.heightCm)} × {cm(p.depthCm)}
       </td>
+    ),
+    weight: (
       <td className="px-3 py-1.5 tabular-nums text-muted-foreground">
         {p.weightKg != null ? cm(p.weightKg) : "—"}
       </td>
+    ),
+    qty: (
       <td
         className={cn(
           "px-3 py-1.5 tabular-nums",
@@ -164,6 +167,8 @@ export function ProductRow({
       >
         {qty}
       </td>
+    ),
+    place: (
       <td className="px-3 py-1.5">
         {readOnly ? (
           place ? (
@@ -205,6 +210,29 @@ export function ProductRow({
           </button>
         )}
       </td>
+    ),
+  };
+
+  return (
+    <tr
+      className={cn(
+        "group/row border-b border-border/60 transition-colors hover:bg-accent/40",
+        picked && "bg-primary/5",
+      )}
+    >
+      <td className="px-3 py-1.5">
+        <RowCheck
+          checked={picked}
+          onChange={onPick}
+          label={p.name}
+          title={t("table.bulk.shiftHint")}
+        />
+      </td>
+      {order
+        .filter((c) => !(readOnly && c === "partner"))
+        .map((c) => (
+          <Fragment key={c}>{cells[c]}</Fragment>
+        ))}
       <td className="px-2 py-1.5">
         <div className="flex items-center justify-end gap-1">
           {/* Продавцу из таблицы нужна ровно одна операция — набрать заявку

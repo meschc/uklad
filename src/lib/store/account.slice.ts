@@ -61,7 +61,7 @@ export const createAccountSlice: SliceCreator<AccountSlice> = (set, get) => ({
         otherWarehouses: s.otherWarehouses.filter((w) => w.id !== id).concat(s.warehouse),
         activeFloorId: target.floors[0]?.id ?? "",
         appView: start,
-        mode: "2d",
+        mode: "table",
         selection: [],
         activeShelf: null,
         clipboard: [],

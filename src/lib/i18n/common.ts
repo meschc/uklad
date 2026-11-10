@@ -273,7 +273,7 @@ export const ru = {
   "nav.side.title": "Разделы",
   "nav.side.dashboard": "Главная",
   "nav.side.toDashboard": "На главную",
-  "nav.side.plan": "План склада",
+  "nav.side.plan": "Товары",
   "nav.side.labels": "Наклейки",
   "nav.side.documents": "Документы",
   // Группы рельса (п.10): экранов стало много, близкие собраны в подменю.
@@ -572,7 +572,7 @@ export const en: Record<keyof typeof ru, string> = {
   "nav.side.title": "Sections",
   "nav.side.dashboard": "Home",
   "nav.side.toDashboard": "To home",
-  "nav.side.plan": "Warehouse plan",
+  "nav.side.plan": "Products",
   "nav.side.labels": "Labels",
   "nav.side.documents": "Documents",
   "nav.group.flow": "Operations",

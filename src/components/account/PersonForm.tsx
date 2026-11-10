@@ -4,6 +4,7 @@ import { formatPhone } from "@/lib/phone";
 import type { TFunc } from "@/lib/i18n";
 import { isKnownStaffRole, staffRoleOptions } from "@/lib/staffRoles";
 import { Input } from "@/components/ui/input";
+import { ImagePicker } from "./ImagePicker";
 
 /**
  * Карточка человека — один шаблон и для сотрудника, и для ответственного лица
@@ -21,11 +22,26 @@ export interface PersonDraft {
 }
 
 /**
+ * Ставка как её набирают: целая часть не длиннее пяти цифр (до 99 999 ₽ в час,
+ * полтора миллиона в час не бывает), тысячи через пробел, копейки через
+ * запятую — не больше двух знаков.
+ */
+export function formatRate(raw: string): string {
+  const clean = raw.replace(/\./g, ",").replace(/[^\d,]/g, "");
+  const [int = "", ...rest] = clean.split(",");
+  const whole = int
+    .replace(/^0+(?=\d)/, "")
+    .slice(0, 5)
+    .replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  return rest.length ? `${whole},${rest.join("").slice(0, 2)}` : whole;
+}
+
+/**
  * Черновик → поля сотрудника. Ставка приходит строкой из поля ввода: пустая
  * или нулевая — значит «не задана», а не «работает бесплатно».
  */
 export function draftToMember({ rate, ...person }: PersonDraft) {
-  const n = Number((rate ?? "").replace(",", "."));
+  const n = Number((rate ?? "").replace(/\s/g, "").replace(",", "."));
   return { ...person, hourlyRate: Number.isFinite(n) && n > 0 ? n : undefined };
 }
 
@@ -43,20 +59,17 @@ export function PersonForm({
 }) {
   return (
     <div className="flex items-start gap-3">
-      {/* Фото — по ссылке: файлового хранилища в прототипе нет. */}
-      <div className="flex shrink-0 flex-col items-center gap-1">
-        {value.photoUrl ? (
-          <img
-            src={value.photoUrl}
-            alt=""
-            className="size-11 rounded-full border border-border object-cover"
-          />
-        ) : (
+      {/* Фото — файлом с устройства или ссылкой в поле ниже: ссылка не
+          нагружает наш сервер, файл удобнее, когда ссылки нет. */}
+      <ImagePicker
+        value={value.photoUrl || undefined}
+        fallback={
           <span className="flex size-11 items-center justify-center rounded-full bg-muted text-muted-foreground">
             <UserRound className="size-5" />
           </span>
-        )}
-      </div>
+        }
+        onChange={(photoUrl) => onChange({ photoUrl: photoUrl ?? "" })}
+      />
       <div className="grid min-w-0 flex-1 grid-cols-1 gap-2 sm:grid-cols-2">
         <Input
           value={value.name}
@@ -81,7 +94,8 @@ export function PersonForm({
         />
         <Input
           type="url"
-          value={value.photoUrl}
+          // Загруженный файл живёт в поле как data:-адрес — его не показываем.
+          value={value.photoUrl.startsWith("data:") ? "" : value.photoUrl}
           onChange={(e) => onChange({ photoUrl: e.target.value })}
           placeholder={t("staff.photoUrl")}
           className={withRate ? "h-9" : "h-9 sm:col-span-2"}
@@ -91,7 +105,7 @@ export function PersonForm({
             <span className="shrink-0 text-muted-foreground">{t("staff.rate")}</span>
             <input
               value={value.rate ?? ""}
-              onChange={(e) => onChange({ rate: e.target.value.replace(/[^\d.,]/g, "") })}
+              onChange={(e) => onChange({ rate: formatRate(e.target.value) })}
               inputMode="decimal"
               placeholder="0"
               className="w-full min-w-0 bg-transparent text-right tabular-nums outline-none"

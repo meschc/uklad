@@ -229,28 +229,32 @@ export interface NextBreak {
 
 /**
  * Ближайший перерыв по расписанию. Короткий — через `everyMin` минут работы
- * после начала смены или конца прошлого перерыва; обед — с `lunchFrom`, если
- * сегодня в смене обеда ещё не было (перерыв, начатый после `lunchFrom`).
+ * после начала смены или конца прошлого перерыва; обед — с ближайшего после
+ * начала смены `lunchFrom`, если обеда в смене ещё не было (перерыв, начатый
+ * после `lunchFrom`). Ночная смена считается так же, через полночь.
  * Из двух берём тот, что раньше: обед заодно закрывает и короткий.
  */
 export function nextBreak(
   events: readonly StaffEvent[],
   staffId: string,
   policy: BreakPolicy,
-  now: number,
+  _now: number,
 ): NextBreak | null {
   const start = shiftStartedAt(events, staffId);
   if (start == null) return null;
   const marks = shiftMarks(events, staffId).filter((e) => e.at >= start);
   const lastResume = marks.filter((e) => e.type === "break_end").at(-1)?.at ?? start;
-  const lunchAt = startOfDay(now) + policy.lunchFrom * 60_000;
+  // Обед — первое наступление `lunchFrom` после начала смены, а не «сегодня»:
+  // у ночной смены с 20:00 обед в 02:00 приходится уже на следующие сутки.
+  let lunchAt = startOfDay(start) + policy.lunchFrom * 60_000;
+  if (lunchAt < start) lunchAt += 24 * 60 * 60_000;
   const hadLunch = marks.some((e) => e.type === "break_start" && e.at >= lunchAt);
   const short: NextBreak = {
     kind: "short",
     at: lastResume + policy.everyMin * 60_000,
     minutes: policy.shortMin,
   };
-  if (hadLunch || lunchAt < start) return short;
+  if (hadLunch) return short;
   const lunch: NextBreak = { kind: "lunch", at: lunchAt, minutes: policy.lunchMin };
   return lunch.at <= short.at ? lunch : short;
 }
