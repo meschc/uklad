@@ -11,6 +11,7 @@ import { card } from "@/components/ui/card";
 import { EmptyState } from "./ScreenShell";
 import { useWithArchive } from "@/lib/store/archive";
 import { ArchiveNote } from "./ArchiveNote";
+import { ReportExport } from "./ReportExport";
 
 /**
  * Вкладки «Услуги» и «Отчёт» экрана операций. Вынесены отдельно: это
@@ -132,10 +133,22 @@ export function ReportPanel() {
       }),
     [tasks, pallets, boxes, receivingEvents, requests, shipments, products, outboundBoxes],
   );
-  const report = useMemo(() => {
+  const { report, range, entries } = useMemo(() => {
     const to = nowMs();
     const from = period === "all" ? 0 : to - Number(period) * DAY;
-    return serviceReport(log, settings, { from, to, partnerId: partnerId || undefined });
+    const pid = partnerId || undefined;
+    return {
+      report: serviceReport(log, settings, { from, to, partnerId: pid }),
+      range: { from, to },
+      // Те же операции, что попали в отчёт: окно, продавец и только включённые услуги.
+      entries: log.filter(
+        (e) =>
+          e.at >= from &&
+          e.at <= to &&
+          (!pid || e.partnerId === pid) &&
+          isServiceOn(settings, e.kind),
+      ),
+    };
   }, [log, settings, period, partnerId]);
   const repTable = useDataTable(report.rows, [
     { id: "service", value: (r) => t(`ops.svc.${r.kind}` as MsgKey) },
@@ -170,6 +183,15 @@ export function ReportPanel() {
             </option>
           ))}
         </select>
+        {report.rows.length > 0 && (
+          <ReportExport
+            report={report}
+            entries={entries}
+            from={range.from}
+            to={range.to}
+            partnerId={partnerId || undefined}
+          />
+        )}
       </div>
 
       {report.rows.length === 0 ? (
