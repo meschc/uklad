@@ -11,11 +11,13 @@ const accounts = require("./views/accounts");
 const audit = require("./views/audit");
 const other = require("./views/other");
 const support = require("./views/support");
+const invoices = require("./views/invoices");
 
 module.exports = {
   ...accounts,
   ...other,
   ...support,
+  invoicesPage: invoices.invoicesPage,
   auditPage: audit.auditPage,
   CSS: base.CSS,
   esc: base.esc,
