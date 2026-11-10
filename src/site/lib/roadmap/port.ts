@@ -11,7 +11,7 @@ import type { Track } from "../../data/roadmap";
  * `docs/roadmap-api.md` — правится вместе с этим файлом.
  */
 
-export interface RoadmapUser {
+interface RoadmapUser {
   email: string;
 }
 
@@ -63,7 +63,7 @@ export interface BoardState {
 /** Почему не вышло. Ключ, а не текст: подпись выбирает интерфейс. */
 export type RoadmapError = "network" | "invalid" | "code" | "expired" | "auth" | "limit";
 
-export type Result<T> = { ok: true; data: T } | { ok: false; error: RoadmapError };
+type Result<T> = { ok: true; data: T } | { ok: false; error: RoadmapError };
 
 export interface Consent {
   data: boolean;

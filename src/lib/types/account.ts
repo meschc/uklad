@@ -124,7 +124,7 @@ export interface Session {
 export type TariffId = "operator" | "warehouse" | "start";
 
 /** Персональный менеджер тарифа «Оператор». Назначает его Уклад, не клиент. */
-export interface Manager {
+interface Manager {
   name: string;
   phone?: string;
   email?: string;

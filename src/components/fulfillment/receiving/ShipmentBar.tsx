@@ -29,7 +29,7 @@ export function ShipmentBar({
     <div
       className={cn(
         "flex items-center justify-between gap-3 rounded-lg border px-3 py-2",
-        done ? "border-emerald-500/40 bg-emerald-500/10" : "border-border bg-card",
+        done ? "border-success/40 bg-success/10" : "border-border bg-card",
       )}
     >
       <div className="min-w-0 text-xs">

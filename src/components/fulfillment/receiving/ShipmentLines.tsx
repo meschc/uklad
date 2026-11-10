@@ -36,7 +36,7 @@ export function ShipmentLines({ shipment, t }: { shipment: ExpectedShipment; t: 
                 <td
                   className={cn(
                     "px-2.5 py-1.5 text-right font-medium tabular-nums",
-                    full && "text-emerald-600 dark:text-emerald-400",
+                    full && "text-success",
                   )}
                 >
                   {l.receivedQty}

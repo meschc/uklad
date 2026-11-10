@@ -101,7 +101,7 @@ export function ScanField({
             className={cn(
               "pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 transition-colors",
               shown === "ok"
-                ? "text-emerald-500"
+                ? "text-success"
                 : shown === "error"
                   ? "text-destructive"
                   : "text-muted-foreground",
@@ -135,7 +135,7 @@ export function ScanField({
               // Цвет рамки при фокусе — тот же, что у статуса: синяя поверх
               // красной читалась как две ошибки.
               shown === "ok"
-                ? "border-emerald-500 ring-2 ring-emerald-500/30 focus-visible:ring-emerald-500/30"
+                ? "border-success ring-2 ring-success/30 focus-visible:ring-success/30"
                 : shown === "error"
                   ? "border-destructive ring-2 ring-destructive/30 focus-visible:ring-destructive/30"
                   : "border-input",

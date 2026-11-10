@@ -1,4 +1,4 @@
-import { cva, type VariantProps } from "class-variance-authority";
+import { cva } from "class-variance-authority";
 
 /**
  * Надзаголовок — подпись над полем, группой или колонкой: «ТОВАР», «КОЛИЧЕСТВО»,
@@ -63,5 +63,3 @@ export const eyebrow = cva("uppercase tracking-wide", {
   },
   defaultVariants: { size: "sm", weight: "semibold", tone: "muted" },
 });
-
-export type EyebrowVariants = VariantProps<typeof eyebrow>;

@@ -104,12 +104,12 @@ function sellerOf(products: readonly Product[], productId: string): string {
 }
 
 /** Продавцы, чей товар в этих строках. */
-export function sellersOf(lines: readonly PackedLine[], products: readonly Product[]): Set<string> {
+function sellersOf(lines: readonly PackedLine[], products: readonly Product[]): Set<string> {
   return new Set(lines.filter((l) => l.qty > 0).map((l) => sellerOf(products, l.productId)));
 }
 
 /** Назначения заявок короба (как группирует погрузка — по тексту адреса). */
-export function destinationsOf(
+function destinationsOf(
   requestIds: readonly string[],
   requests: readonly FulfillmentRequest[],
 ): Set<string> {

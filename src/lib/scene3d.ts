@@ -12,7 +12,7 @@ import type { CellAddress, ProductCategory, Product, Warehouse } from "./types";
  */
 
 /** Высота секции в мировых единицах. Намеренно не зависит от realHeightCm. */
-export const SECTION_H = 2;
+const SECTION_H = 2;
 /** Толщина межэтажного перекрытия. */
 const SLAB_H = 0.1;
 /** Просвет между верхом секции и следующим перекрытием. */
@@ -129,7 +129,7 @@ export interface Box {
   sz: number;
 }
 
-export interface ColoredBox extends Box {
+interface ColoredBox extends Box {
   color: number;
 }
 

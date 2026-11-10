@@ -69,7 +69,7 @@ function shipmentSourceSpec(id: ShipmentSource): ShipmentSourceSpec {
 }
 
 /** Одна разобранная строка поставки. */
-export interface ShipmentRow {
+interface ShipmentRow {
   index: number;
   code: string;
   qty: number;

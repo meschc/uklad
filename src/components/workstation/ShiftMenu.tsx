@@ -75,16 +75,16 @@ export function ShiftMenu({ member, now }: { member: StaffMember; now: number })
           className={cn(
             "size-3 rounded-full",
             state === "on"
-              ? "bg-emerald-500"
+              ? "bg-success"
               : state === "break" || state === "idle"
-                ? "bg-amber-500"
+                ? "bg-warning"
                 : "bg-muted-foreground/40",
           )}
         />
       </div>
 
       {autoIdle != null && (
-        <p className="rounded-lg bg-amber-500/10 px-3 py-2 text-sm text-amber-700">
+        <p className="rounded-lg bg-warning/10 px-3 py-2 text-sm text-warning">
           {t("ws.idle.auto", { t: formatTime(autoIdle, t.lang) })}
         </p>
       )}

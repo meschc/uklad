@@ -35,7 +35,7 @@ export interface ConnectorTransport {
 }
 
 /** HTTP-статус ответа площадки → ключ ошибки для экрана. */
-export function statusToError(status: number): MsgKey {
+function statusToError(status: number): MsgKey {
   if (status === 401 || status === 403) return "integr.error.rejected";
   if (status === 429) return "integr.error.rateLimit";
   return "data.failed";

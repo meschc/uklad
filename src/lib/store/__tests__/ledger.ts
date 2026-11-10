@@ -20,7 +20,7 @@ type Stock = Pick<
   "boxes" | "outboundBoxes" | "requests" | "receivingEvents" | "disputes" | "placements"
 >;
 
-export interface Balance {
+interface Balance {
   in: number;
   stock: number;
   gone: number;
@@ -58,7 +58,7 @@ function place(s: Stock, m: Map<string, Balance>) {
 }
 
 /** Книга по всем товарам; `opening` — что лежало до начала сценария. */
-export function ledger(s: Stock, opening: ReadonlyMap<string, number> = new Map()) {
+function ledger(s: Stock, opening: ReadonlyMap<string, number> = new Map()) {
   const m = new Map<string, Balance>();
   for (const [p, n] of opening) add(m, p, "in", n);
   for (const e of s.receivingEvents) add(m, e.productId, "in", e.qty);

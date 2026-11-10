@@ -1,6 +1,6 @@
 /** Загрузка картинки профиля: до 4 МБ, PNG / JPEG / WebP. */
-export const IMAGE_MAX_BYTES = 4 * 1024 * 1024;
-export const IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp"];
+const IMAGE_MAX_BYTES = 4 * 1024 * 1024;
+const IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp"];
 
 /** Потолок data-URL картинки профиля: 256×256 в webp весит единицы килобайт. */
 export const IMAGE_MAX_DATA_URL = 150 * 1024;

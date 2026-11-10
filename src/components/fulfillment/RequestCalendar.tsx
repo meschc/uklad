@@ -145,7 +145,7 @@ export function RequestCalendar({
                   className={cn(
                     "w-full truncate rounded px-1 py-0.5 text-2xs font-semibold",
                     day.done
-                      ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
+                      ? "bg-success/15 text-success"
                       : overdue
                         ? "bg-destructive/15 text-destructive"
                         : "bg-primary/10 text-primary",

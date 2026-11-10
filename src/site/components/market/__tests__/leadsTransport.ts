@@ -13,10 +13,10 @@ import { vi } from "vitest";
  * помощник, попавший под маску, считался бы набором без единого теста.
  */
 
-export const TEST_ENDPOINT = "https://example.test/leads";
+const TEST_ENDPOINT = "https://example.test/leads";
 
 /** Тело запроса, которое собирает `lib/leads` — ровно то, что увидит приёмник. */
-export interface SentLead {
+interface SentLead {
   kind: string;
   lang: string;
   subject: string;

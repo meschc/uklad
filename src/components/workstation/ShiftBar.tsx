@@ -133,7 +133,7 @@ function Cell({
       onClick={onClick}
       className={cn(
         "group relative flex flex-col items-center rounded-md p-1.5 text-center leading-tight hover:bg-muted",
-        ring && "ring-2 ring-emerald-500",
+        ring && "ring-2 ring-success",
       )}
     >
       <span className="flex items-center gap-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
@@ -144,8 +144,8 @@ function Cell({
         className={cn(
           "text-sm font-semibold tabular-nums",
           muted && "font-normal text-muted-foreground",
-          tone === "amber" && "text-amber-600",
-          tone === "green" && "text-emerald-600",
+          tone === "amber" && "text-warning",
+          tone === "green" && "text-success",
         )}
       >
         {value}

@@ -79,7 +79,7 @@ export function stockAt(
 
 // --- Метрики дашборда ---------------------------------------------------------
 
-export interface DayBucket {
+interface DayBucket {
   /** Метка дня в локальном времени, формат ДД.ММ. */
   label: string;
   /** Начало суток — для сортировки и подписи. */
@@ -184,7 +184,7 @@ export function requestStats(requests: FulfillmentRequest[]): RequestStats {
   };
 }
 
-export interface FloorOccupancy {
+interface FloorOccupancy {
   floorId: string;
   name: string;
   cells: number;

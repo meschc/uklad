@@ -44,7 +44,7 @@ export function Toast() {
           "flex max-w-[70ch] animate-scale-in items-center gap-2 rounded-lg bg-foreground px-3.5 py-2 text-sm font-medium text-background shadow-lg",
         )}
       >
-        <CheckCircle2 className="size-4 shrink-0 text-emerald-400" />
+        <CheckCircle2 className="size-4 shrink-0 text-success" />
         {toastText}
       </div>
     </div>

@@ -16,7 +16,7 @@ export interface DocumentsRepository {
   confirm: (kind: Kind, sourceId: string, staffId: string) => Promise<Result<void>>;
 }
 
-export function createDocumentsRepository(port: StorePort = storePort): DocumentsRepository {
+function createDocumentsRepository(port: StorePort = storePort): DocumentsRepository {
   return {
     saveDraft: async (kind, sourceId, edits) => {
       const res = await attempt(() => port.get().saveDocDraft(kind, sourceId, edits));

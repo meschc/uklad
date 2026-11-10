@@ -57,10 +57,6 @@ export function serviceSpec(kind: ServiceKind): ServiceSpec | undefined {
   return SPEC.get(kind);
 }
 
-export function isServiceKind(v: unknown): v is ServiceKind {
-  return typeof v === "string" && SPEC.has(v as ServiceKind);
-}
-
 /** Включена ли услуга у склада: явная настройка, иначе — значение по умолчанию. */
 export function isServiceOn(settings: ServiceSettings, kind: ServiceKind): boolean {
   return settings.enabled?.[kind] ?? SPEC.get(kind)?.defaultOn ?? false;
@@ -160,7 +156,7 @@ export function operationLog(f: OperationFacts): OperationEntry[] {
   return out.sort((a, b) => b.at - a.at);
 }
 
-export interface ReportRow {
+interface ReportRow {
   kind: ServiceKind;
   unit: ServiceUnit;
   qty: number;

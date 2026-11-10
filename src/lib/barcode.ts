@@ -209,7 +209,7 @@ export function code128Modules(text: string): string | null {
 export const BOX_PREFIX = "UK-BOX-";
 export const PALLET_PREFIX = "UK-PLT-";
 /** QR машины: печатается один раз на машину и висит в кабине, номер — после префикса. */
-export const VEHICLE_PREFIX = "UK-VEH-";
+const VEHICLE_PREFIX = "UK-VEH-";
 
 /** Код машины из её номера: пробелы и дефисы убираем, регистр — верхний. */
 export function vehicleCode(plate: string): string {

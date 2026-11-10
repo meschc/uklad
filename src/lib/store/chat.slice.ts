@@ -28,7 +28,7 @@ import type { ChatSlice, EditorState, SliceCreator } from "./state";
  * Может вернуть `null`: у нового склада партнёров ещё нет, и это не ошибка —
  * экран показывает «сначала заведите партнёра», а не пустую ленту.
  */
-export const selectSellerPartnerId = (s: EditorState): string | null =>
+const selectSellerPartnerId = (s: EditorState): string | null =>
   s.warehouse.partners?.[0]?.id ?? null;
 
 /** Сколько входящих сообщений ждут ответа текущей роли. */

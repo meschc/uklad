@@ -215,7 +215,7 @@ function Line({ d, name, who }: { d: Dispute; name: string; who: string }) {
         <span
           className={cn(
             "text-sm font-semibold",
-            d.kind === "shortage" ? "text-orange-500" : "text-destructive",
+            d.kind === "shortage" ? "text-warning" : "text-destructive",
           )}
         >
           {t(KIND_KEY[d.kind])}

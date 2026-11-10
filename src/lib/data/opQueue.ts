@@ -103,15 +103,15 @@ export interface DeskOp {
   body: DeskOpBody;
 }
 /** Почему сервер не положил операцию в снимок. */
-export type OpFlag = "nobody" | "not_present" | "time" | "bad" | "not_yours" | "late" | "backdated";
+type OpFlag = "nobody" | "not_present" | "time" | "bad" | "not_yours" | "late" | "backdated";
 
 /** Места, которые завёл сервер, с номерами ярлыков (`recv_cargo`). */
-export interface CargoMade {
+interface CargoMade {
   pallets: { id: string; barcode: string }[];
   boxes: { id: string; barcode: string }[];
 }
 
-export interface OpResult {
+interface OpResult {
   key: string;
   status: "applied" | "flagged";
   reason?: string;
@@ -123,7 +123,7 @@ export interface OpResult {
  * не знает этот стол (рабочее место под входом руководителя): та же работа
  * уходит снимком.
  */
-export type NowOutcome = { kind: "ok"; result: OpResult } | { kind: "local" } | { kind: "fail" };
+type NowOutcome = { kind: "ok"; result: OpResult } | { kind: "local" } | { kind: "fail" };
 export type SendOutcome =
   { kind: "ok"; results: OpResult[] } | { kind: "drop"; lost: boolean } | { kind: "retry" };
 
@@ -146,7 +146,7 @@ export interface OpQueue {
   subscribe: (fn: () => void) => () => void;
 }
 
-export const OPS_KEY = "uklad-desk-ops-v1";
+const OPS_KEY = "uklad-desk-ops-v1";
 /** Как `MAX_OPS` на сервере. */
 const BATCH = 50;
 /** Больше очередь не растёт: столько отметок за смену у стола не бывает. */

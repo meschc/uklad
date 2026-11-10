@@ -1,4 +1,4 @@
-import { cva, type VariantProps } from "class-variance-authority";
+import { cva } from "class-variance-authority";
 
 /**
  * Карточка — та самая плита, из которых собран весь интерфейс: панель графика,
@@ -42,5 +42,3 @@ export const card = cva("rounded-xl border border-border bg-card", {
   },
   defaultVariants: { pad: "lg" },
 });
-
-export type CardVariants = VariantProps<typeof card>;

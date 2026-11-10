@@ -129,7 +129,7 @@ export function WorkstationScreen() {
                 <Gavel />
                 {t("disputes.title")}
                 {openDisputes > 0 && (
-                  <span className="rounded-full bg-orange-500 px-1.5 text-xs font-semibold text-white tabular-nums">
+                  <span className="rounded-full bg-warning px-1.5 text-xs font-semibold text-white tabular-nums">
                     {openDisputes}
                   </span>
                 )}
@@ -290,7 +290,7 @@ function Equipment({ onPrinter, canOpen }: { onPrinter: () => void; canOpen: boo
   ];
   const dot = (ready: boolean) => (
     <span
-      className={cn("size-1.5 rounded-full", ready ? "bg-emerald-500" : "bg-muted-foreground/40")}
+      className={cn("size-1.5 rounded-full", ready ? "bg-success" : "bg-muted-foreground/40")}
     />
   );
   const [open, setOpen] = useState(false);
@@ -408,7 +408,7 @@ function PendingOps() {
   if (count === 0 || since == null || now - since < STUCK_MS) return null;
   return (
     <p
-      className="flex items-center gap-1.5 text-sm font-medium text-amber-600"
+      className="flex items-center gap-1.5 text-sm font-medium text-warning"
       title={t("ws.opPendingHint")}
       role="status"
     >

@@ -23,8 +23,8 @@ import type { Box, FulfillmentRequest, PackSession, Product } from "./types";
  */
 
 /** Префиксы этикеток стола упаковки. Латиницей, как и номера тары. */
-export const UNIT_LABEL_PREFIX = "UK-LBL-";
-export const ORDER_LABEL_PREFIX = "UK-ORD-";
+const UNIT_LABEL_PREFIX = "UK-LBL-";
+const ORDER_LABEL_PREFIX = "UK-ORD-";
 export const TARGET_PREFIX = "UK-OUT-";
 
 /**
@@ -197,11 +197,11 @@ export function classifyItemScan(
 }
 
 /** Время упаковки единиц, мс — по подтверждённым этикетками. */
-export function unitTimes(session: PackSession): number[] {
+function unitTimes(session: PackSession): number[] {
   return session.units.filter((u) => u.confirmedAt).map((u) => u.confirmedAt! - u.scannedAt);
 }
 
-export function average(xs: readonly number[]): number | null {
+function average(xs: readonly number[]): number | null {
   return xs.length ? Math.round(xs.reduce((a, b) => a + b, 0) / xs.length) : null;
 }
 

@@ -5,7 +5,7 @@ import { useEditor } from "@/lib/store";
 import { detectRows } from "@/lib/numbering";
 import { formatAddress } from "@/lib/address";
 import { useT, type TFunc } from "@/lib/i18n";
-import { cn } from "@/lib/utils";
+import { Segmented } from "@/components/ui/segmented";
 import { DialogFooter, DialogHeader, DialogShell } from "@/components/ui/dialog-shell";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -16,7 +16,7 @@ import { eyebrow } from "@/components/ui/eyebrow";
  * склада своя, поэтому вместо зашитого формата — несколько вопросов и живой
  * пример адреса. Ряды система предлагает сама, но применяет только по «да».
  */
-export function AddressingDialog({ onClose }: { onClose: () => void }) {
+function AddressingDialog({ onClose }: { onClose: () => void }) {
   const t = useT();
   const cfg = useEditor((s) => s.addressing);
   const updateAddressing = useEditor((s) => s.updateAddressing);
@@ -165,47 +165,26 @@ export function AddressingDialog({ onClose }: { onClose: () => void }) {
 
         {/* Направление нумерации полок */}
         <Block label={t("addr.shelves")}>
-          <div className="flex items-center gap-0.5 rounded-lg bg-muted p-0.5">
-            {(
-              [
-                ["bottomUp", t("addr.bottomUp")],
-                ["topDown", t("addr.topDown")],
-              ] as const
-            ).map(([v, label]) => (
-              <button
-                key={v}
-                onClick={() => updateAddressing({ shelfOrder: v, configured: true })}
-                className={cn(
-                  "flex-1 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
-                  cfg.shelfOrder === v
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          <Segmented
+            grow
+            value={cfg.shelfOrder}
+            options={[
+              { value: "bottomUp", label: t("addr.bottomUp") },
+              { value: "topDown", label: t("addr.topDown") },
+            ]}
+            onChange={(v) => updateAddressing({ shelfOrder: v, configured: true })}
+          />
         </Block>
 
         {/* Разделитель уровней */}
         <Block label={t("addr.separator")}>
-          <div className="flex items-center gap-0.5 rounded-lg bg-muted p-0.5">
-            {["-", ".", "/"].map((sep) => (
-              <button
-                key={sep}
-                onClick={() => updateAddressing({ separator: sep, configured: true })}
-                className={cn(
-                  "flex-1 rounded-md px-2.5 py-1 font-mono text-xs font-medium transition-colors",
-                  cfg.separator === sep
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {sep}
-              </button>
-            ))}
-          </div>
+          <Segmented
+            grow
+            className="font-mono"
+            value={cfg.separator}
+            options={["-", ".", "/"].map((sep) => ({ value: sep, label: sep }))}
+            onChange={(sep) => updateAddressing({ separator: sep, configured: true })}
+          />
         </Block>
       </div>
 

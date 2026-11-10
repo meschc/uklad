@@ -49,7 +49,7 @@ interface SyncMeta {
   dirty: boolean;
 }
 
-export const SYNC_KEY = "uklad-sync-v1";
+const SYNC_KEY = "uklad-sync-v1";
 /** Сюда откладываются незаписанные правки, если сервер оказался новее. */
 export const BEFORE_SYNC_KEY = `${PERSIST_KEY}.before-sync`;
 /** Сказать человеку после перезагрузки, что его правки отложены. */
@@ -204,7 +204,7 @@ function withLocalSecrets(fromServer: unknown, local: Integrations): Integration
 }
 
 /** Что уходит на сервер: всё сохранение, кроме частей устройства и секретов. */
-export function companyPart(state: Persisted): Record<string, unknown> {
+function companyPart(state: Persisted): Record<string, unknown> {
   const out: Record<string, unknown> = {
     ...state,
     integrations: withoutSecrets(state.integrations),
@@ -227,7 +227,7 @@ function devicePart(state: Persisted): Record<string, unknown> {
  * (Кирилл 1 ноя). Настройки, которые не являются данными (категории, шаблоны
  * полок и наклеек, адресация, тариф), остаются заводскими.
  */
-export function blankCabinet(current: Persisted, email: string): Persisted {
+function blankCabinet(current: Persisted, email: string): Persisted {
   const warehouse = {
     ...blankWarehouse("", "mezzanine", ""),
     staff: [],

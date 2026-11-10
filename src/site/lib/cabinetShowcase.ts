@@ -27,7 +27,7 @@ export const PREVIEW_ID = "preview";
 const PERSIST_KEY = "uklad-store-v1";
 
 /** Что витрине нужно из сохранения кабинета. */
-export interface CabinetSaved {
+interface CabinetSaved {
   warehouse?: CabinetWarehouse;
   account?: Account;
   serviceSettings?: ServiceSettings;
@@ -71,7 +71,7 @@ export function readCabinetShowcase(): Warehouse | null {
   }
 }
 
-export function toShowcase(saved: CabinetSaved, w: CabinetWarehouse): Warehouse {
+function toShowcase(saved: CabinetSaved, w: CabinetWarehouse): Warehouse {
   const spec = w.spec ?? {};
   const settings = {
     enabled: saved.serviceSettings?.enabled ?? {},

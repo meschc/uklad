@@ -120,7 +120,7 @@ function ResultView({
         <div
           className={
             ok
-              ? "flex size-9 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+              ? "flex size-9 shrink-0 items-center justify-center rounded-full bg-success/15 text-success"
               : "flex size-9 shrink-0 items-center justify-center rounded-full bg-warning/15 text-warning"
           }
         >

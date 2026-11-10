@@ -164,7 +164,7 @@ export function PackRun({
             isError
               ? "bg-destructive text-destructive-foreground"
               : okText
-                ? "bg-emerald-600 text-white"
+                ? "bg-success text-white"
                 : "bg-muted text-muted-foreground",
           )}
         >
@@ -227,7 +227,7 @@ export function PackRun({
                 <LabelBlock code={unit.labelCode} title={t("ws.run.labelPrinted")} />
                 {/* Брак — средняя по опасности: жёлтая, красная оставлена для необратимого. */}
                 <Button
-                  className="bg-amber-400 text-black shadow-sm hover:bg-amber-500"
+                  className="bg-warning text-black shadow-sm hover:bg-warning"
                   onClick={() => void workstationRepository.packReject()}
                 >
                   <Ban />
@@ -305,9 +305,9 @@ export function PackRun({
       </div>
 
       {handoff && (
-        <div role="alert" className="flex flex-col gap-3 rounded-xl bg-orange-500/10 p-4">
+        <div role="alert" className="flex flex-col gap-3 rounded-xl bg-warning/10 p-4">
           <p className="flex items-center gap-2 text-lg font-semibold">
-            <TriangleAlert className="size-5 text-orange-500" />
+            <TriangleAlert className="size-5 text-warning" />
             {t("ws.handoff.title")}
           </p>
           <p className="text-sm">{t("ws.handoff.body", { box: box.barcode })}</p>
@@ -318,7 +318,7 @@ export function PackRun({
           </ul>
           <div className="flex flex-wrap gap-2">
             <Button
-              className="bg-orange-500 text-white hover:bg-orange-600"
+              className="bg-warning text-white hover:bg-warning/90"
               onClick={() => {
                 setHandoff(false);
                 setClosing(true);
@@ -363,7 +363,7 @@ export function PackRun({
             size="lg"
             variant={summary.shortage > 0 ? "outline" : "default"}
             className={cn(
-              summary.shortage > 0 && "border-0 bg-orange-500 text-white hover:bg-orange-600",
+              summary.shortage > 0 && "border-0 bg-warning text-white hover:bg-warning/90",
             )}
             disabled={!!label}
             onClick={() => {

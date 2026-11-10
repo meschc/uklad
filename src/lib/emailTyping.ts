@@ -32,7 +32,7 @@ export function fixEmailLayout(value: string): string {
 }
 
 /** Почтовые сервисы по частоте у наших людей: сначала российские. */
-export const POPULAR_DOMAINS = [
+const POPULAR_DOMAINS = [
   "yandex.ru",
   "mail.ru",
   "gmail.com",

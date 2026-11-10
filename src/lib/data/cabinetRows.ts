@@ -11,7 +11,7 @@
  * `diverged` — тогда кабинет пишется целиком.
  */
 
-export const WAREHOUSE_LISTS = [
+const WAREHOUSE_LISTS = [
   "expectedShipments",
   "receivingEvents",
   "boxes",
@@ -23,18 +23,18 @@ export const WAREHOUSE_LISTS = [
   "docRecords",
   "outboundBoxes",
 ] as const;
-export const COMPANY_LISTS = ["staffEvents"] as const;
+const COMPANY_LISTS = ["staffEvents"] as const;
 const NEWEST_FIRST = new Set(["expectedShipments", "requests", "shipments", "tasks", "disputes"]);
 const COMPANY = "";
 const MARK = "$rows";
 const MAX_REF = 200;
 
 type Obj = Record<string, unknown>;
-export interface Slot {
+interface Slot {
   w: string;
   d: string;
 }
-export interface Row extends Slot {
+interface Row extends Slot {
   ref: string;
   pos: number;
   data: Obj;

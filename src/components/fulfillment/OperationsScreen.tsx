@@ -261,7 +261,7 @@ function NewTaskForm({ kinds }: { kinds: ServiceKind[] }) {
   );
 }
 
-export function Field({
+function Field({
   label,
   children,
   className,

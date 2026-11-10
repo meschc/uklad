@@ -160,7 +160,7 @@ function ShipmentCard({
           </p>
         </div>
         {sh.crossDock && (
-          <span className="shrink-0 rounded bg-sky-500/15 px-1.5 py-0.5 text-2xs font-semibold text-sky-700 dark:text-sky-400">
+          <span className="shrink-0 rounded bg-primary/15 px-1.5 py-0.5 text-2xs font-semibold text-primary">
             {t("recv.crossDockBadge")}
           </span>
         )}
@@ -439,7 +439,7 @@ function ShipmentPreview({ result, t }: { result: ShipmentParseResult; t: TFunc 
                     {t(r.errorKey)}
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                  <span className="inline-flex items-center gap-1 text-success">
                     <Check className="size-3" /> {t("import.ok")}
                   </span>
                 )}

@@ -41,7 +41,7 @@ export function Stepper({
                 active
                   ? "bg-primary text-primary-foreground"
                   : passed
-                    ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
+                    ? "bg-success/15 text-success"
                     : "bg-muted text-muted-foreground",
               )}
             >

@@ -39,7 +39,7 @@ export interface TextPart {
 }
 
 /** Раздел, в котором что-то нашлось. */
-export interface SectionHits {
+interface SectionHits {
   id: string;
   title: string;
   count: number;

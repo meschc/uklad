@@ -18,7 +18,7 @@ export function ScanBanner({ tone, children }: { tone: BannerTone; children: Rea
         tone === "error"
           ? "bg-destructive text-destructive-foreground"
           : tone === "ok"
-            ? "bg-emerald-600 text-white"
+            ? "bg-success text-white"
             : "bg-muted text-muted-foreground",
       )}
     >

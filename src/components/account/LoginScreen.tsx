@@ -166,7 +166,7 @@ export function LoginScreen() {
                   )}
 
                   {resetSent && (
-                    <p className="rounded-md border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-2 text-xs text-emerald-700 dark:text-emerald-400">
+                    <p className="rounded-md border border-success/40 bg-success/10 px-2.5 py-2 text-xs text-success">
                       {t("login.resetSent", { email: email.trim() })}
                     </p>
                   )}

@@ -8,7 +8,7 @@ import type { MsgKey } from "./i18n";
  * данных, который разъедется с основным, нет.
  */
 
-export const BACKUP_FORMAT = "uklad-backup";
+const BACKUP_FORMAT = "uklad-backup";
 
 export interface BackupFile {
   format: typeof BACKUP_FORMAT;

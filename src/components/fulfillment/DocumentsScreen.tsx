@@ -302,8 +302,8 @@ function StatusChip({ status, label }: { status: Status; label: string }) {
     <span
       className={cn(
         "rounded-full px-1.5 py-px",
-        status === "confirmed" && "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
-        status === "draft" && "bg-amber-500/10 text-amber-700 dark:text-amber-400",
+        status === "confirmed" && "bg-success/10 text-success",
+        status === "draft" && "bg-warning/10 text-warning",
         status === "working" && "bg-muted",
       )}
     >

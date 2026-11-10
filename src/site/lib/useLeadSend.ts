@@ -14,7 +14,7 @@ import { hasLeadsEndpoint, leadMailto, sendLead, type Lead } from "./leads";
  * после этого «Отправлено» значило бы соврать: человек может закрыть окно
  * почты, и никакой заявки не будет.
  */
-export type LeadSendState =
+type LeadSendState =
   /** Ничего не нажимали. */
   | "idle"
   /** Запрос в пути. */

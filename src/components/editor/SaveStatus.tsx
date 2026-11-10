@@ -82,7 +82,7 @@ export function SaveStatus() {
       {saving ? (
         <Loader2 className="size-3.5 animate-spin" />
       ) : (
-        <Check className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+        <Check className="size-3.5 text-success" />
       )}
       <span className="hidden sm:inline">
         {saving ? t("save.saving") : `${t("save.saved")} · ${when}`}

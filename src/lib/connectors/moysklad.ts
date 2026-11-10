@@ -28,7 +28,7 @@ interface MsOrder {
 }
 
 /** Время МоегоСклада `ГГГГ-ММ-ДД ЧЧ:ММ:СС[.ммм]` (Москва) → ISO. */
-export function msDateToIso(value: string | undefined): string | undefined {
+function msDateToIso(value: string | undefined): string | undefined {
   if (!value) return undefined;
   const m = /^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2})/.exec(value);
   return m ? `${m[1]}T${m[2]}+03:00` : value;

@@ -14,14 +14,7 @@ import type { Box, ExpectedShipment, Pallet, ReceivingProgress, ReceivingStep } 
  */
 
 /** Шаги по порядку — он же список допустимых значений для восстановления. */
-export const RECEIVING_STEPS: ReceivingStep[] = [
-  "shipment",
-  "pallet",
-  "box",
-  "product",
-  "qty",
-  "place",
-];
+const RECEIVING_STEPS: ReceivingStep[] = ["shipment", "pallet", "box", "product", "qty", "place"];
 
 /** Мастер с чистого листа. */
 export const EMPTY_RECEIVING: ReceivingProgress = {

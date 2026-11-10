@@ -15,7 +15,7 @@ import type { Box, CellAddress, Pallet, Product, Warehouse } from "./types";
  */
 
 /** Где и сколько единиц товара лежит — одна строка «места хранения». */
-export interface LookupPlace {
+interface LookupPlace {
   addr: CellAddress;
   /** Отформатированный адрес; null — ячейка больше не существует на плане. */
   label: string | null;

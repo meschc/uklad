@@ -15,7 +15,7 @@ export type ExternalSystem =
   "wildberries" | "ozon" | "yandex-market" | "avito" | "megamarket" | "honest-sign" | "moysklad";
 
 /** Что подключение умеет. Экран прячет действие, которого нет в списке. */
-export type ConnectorCapability =
+type ConnectorCapability =
   | "orders.fetch" // забрать новые заказы на сборку (FBS)
   | "labels.fetch" // этикетки площадки для заказов
   | "stocks.push" // передать остатки склада площадке
@@ -23,7 +23,7 @@ export type ConnectorCapability =
   | "marks.verify"; // проверить коды маркировки в ГИС МТ
 
 /** Строка заказа площадки в общей форме. */
-export interface ExternalOrderLine {
+interface ExternalOrderLine {
   /** Идентификатор товара на площадке (nmID / SKU / offer). */
   externalSku: string;
   /** Артикул селлера, если площадка его возвращает. */

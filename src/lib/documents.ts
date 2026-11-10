@@ -30,7 +30,7 @@ import { nowMs } from "./utils";
 export type DocKind = "pick" | "shipment" | "receiving" | "discrepancy";
 
 /** Одна строка документа. */
-export interface DocLine {
+interface DocLine {
   no: number;
   sku: string;
   name: string;

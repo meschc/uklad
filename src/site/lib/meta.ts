@@ -43,7 +43,7 @@ function setContent(selector: string, content: string): void {
  * предрендер пишет noindex в статику, а здесь его не даёт снять скрипт, иначе
  * робот, выполняющий JS, увидит страницу открытой. Менять оба вместе.
  */
-export const SITE_HIDDEN = true;
+const SITE_HIDDEN = true;
 
 export function setNoIndex(noindex: boolean): void {
   const found = document.head.querySelector<HTMLMetaElement>('meta[name="robots"]');

@@ -25,7 +25,7 @@ export function StatCard({
 }) {
   const toneClass = {
     neutral: "text-foreground",
-    good: "text-emerald-600 dark:text-emerald-400",
+    good: "text-success",
     warn: "text-warning",
     bad: "text-destructive",
   }[tone];

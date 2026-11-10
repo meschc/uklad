@@ -11,7 +11,7 @@ import type { CellRect } from "@/lib/types";
  */
 
 /** Прямоугольник в экранных px — то, во что превращается мировой. */
-export interface ScreenRect {
+interface ScreenRect {
   left: number;
   top: number;
   width: number;
