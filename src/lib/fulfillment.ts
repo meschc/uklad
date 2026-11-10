@@ -168,7 +168,7 @@ export function requestStats(requests: FulfillmentRequest[]): RequestStats {
   const lead = picked.map((r) => (r.shippedAt ?? r.updatedAt) - r.createdAt).filter((v) => v >= 0);
   const pick = picked
     .filter((r) => r.startedAt != null)
-    .map((r) => r.updatedAt - r.startedAt!)
+    .map((r) => (r.pickedAt ?? r.updatedAt) - r.startedAt!)
     .filter((v) => v >= 0);
   const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
 

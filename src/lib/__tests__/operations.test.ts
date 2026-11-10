@@ -78,10 +78,34 @@ describe("operationLog", () => {
   });
 });
 
+describe("принятые места", () => {
+  it("тара с ярлыком, напечатанным заранее, услугой не считается", () => {
+    const log = operationLog(
+      facts({
+        pallets: [{ id: "pl", barcode: "x", createdAt: 1, boxIds: ["empty"] }],
+        boxes: [{ id: "empty", barcode: "UK-BOX-1", createdAt: 1, lines: [] }],
+      }),
+    );
+    expect(log).toEqual([]);
+  });
+
+  it("короб считается принятым в день приёмки и за продавцом принятого, даже когда уже пуст", () => {
+    const log = operationLog(
+      facts({
+        boxes: [{ id: "b", barcode: "UK-BOX-2", createdAt: 1, lines: [] }],
+        receivingEvents: [{ id: "e", productId: "p-a", qty: 2, boxId: "b", timestamp: 500 }],
+      }),
+    );
+    const box = log.find((e) => e.kind === "cargo_box");
+    expect(box?.at).toBe(500);
+    expect(box?.partnerId).toBe(log.find((e) => e.kind === "item_receiving")?.partnerId);
+  });
+});
+
 describe("serviceReport", () => {
   const log = operationLog(
     facts({
-      pallets: [{ id: "pl", barcode: "x", createdAt: 100, boxIds: [] }],
+      pallets: [{ id: "pl", barcode: "x", createdAt: 100, boxIds: [], shipmentId: "sh" }],
       receivingEvents: [
         { id: "e1", productId: "p-a", qty: 5, boxId: "b", timestamp: 100 },
         { id: "e2", productId: "p-b", qty: 3, boxId: "b", timestamp: 200 },
@@ -144,5 +168,27 @@ describe("serviceSettings при загрузке", () => {
     expect("serviceSettings" in sanitizeDomains({ serviceSettings: "x" })).toBe(false);
     const ok = { enabled: { marking: true }, prices: {} };
     expect(sanitizeDomains({ serviceSettings: ok }).serviceSettings).toEqual(ok);
+  });
+});
+
+describe("дата сборки", () => {
+  it("услуга сборки датируется сборкой, а не упаковкой или погрузкой", () => {
+    const log = operationLog(
+      facts({
+        requests: [
+          {
+            id: "r",
+            productId: "p-a",
+            qty: 2,
+            pickedQty: 2,
+            status: "shipped",
+            createdAt: 1,
+            pickedAt: 100,
+            updatedAt: 900,
+          },
+        ],
+      }),
+    );
+    expect(log.find((e) => e.kind === "picking")?.at).toBe(100);
   });
 });

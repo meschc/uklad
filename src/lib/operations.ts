@@ -90,17 +90,41 @@ export function operationLog(f: OperationFacts): OperationEntry[] {
   const requestById = new Map(f.requests.map((r) => [r.id, r]));
   const out: OperationEntry[] = [];
 
-  for (const p of f.pallets) {
-    out.push({ id: `pal:${p.id}`, kind: "cargo_pallet", qty: 1, at: p.createdAt, source: "auto" });
+  // Принятое место — то, что прошло грузовую приёмку (`shipmentId`) или в
+  // которое приняли товар. Тара и паллеты, под которые ярлык напечатали
+  // заранее, услугой не считаются: иначе пачка ярлыков уходила бы продавцу в
+  // счёт как принятые короба. Продавца берём по принятому, а не по тому, что
+  // лежит сейчас: упакованный короб пуст, а приёмку оплатить всё равно надо.
+  const firstInto = new Map<string, ReceivingEvent>();
+  for (const e of f.receivingEvents) {
+    const seen = firstInto.get(e.boxId);
+    if (!seen || e.timestamp < seen.timestamp) firstInto.set(e.boxId, e);
   }
+  const cargoBoxes = new Set<string>();
   for (const b of f.boxes) {
-    const first = b.lines[0];
+    const into = firstInto.get(b.id);
+    if (!b.shipmentId && !into) continue;
+    cargoBoxes.add(b.id);
+    const productId = into?.productId ?? b.lines[0]?.productId;
     out.push({
       id: `box:${b.id}`,
       kind: "cargo_box",
       qty: 1,
-      at: b.createdAt,
-      partnerId: first ? partnerOf.get(first.productId) : undefined,
+      at: b.shipmentId ? b.createdAt : (into?.timestamp ?? b.createdAt),
+      partnerId: productId ? partnerOf.get(productId) : undefined,
+      source: "auto",
+    });
+  }
+  for (const p of f.pallets) {
+    const used = p.boxIds.filter((id) => cargoBoxes.has(id));
+    if (!p.shipmentId && used.length === 0) continue;
+    const productId = used.map((id) => firstInto.get(id)?.productId).find(Boolean);
+    out.push({
+      id: `pal:${p.id}`,
+      kind: "cargo_pallet",
+      qty: 1,
+      at: p.createdAt,
+      partnerId: productId ? partnerOf.get(productId) : undefined,
       source: "auto",
     });
   }
@@ -124,7 +148,7 @@ export function operationLog(f: OperationFacts): OperationEntry[] {
       id: `pick:${r.id}`,
       kind: "picking",
       qty: picked,
-      at: r.updatedAt,
+      at: r.pickedAt ?? r.updatedAt,
       partnerId: partnerOf.get(r.productId),
       source: "auto",
     });

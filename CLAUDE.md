@@ -41,8 +41,10 @@ React 18 + TypeScript + Vite 6 · Zustand 4 (`persist`) · Tailwind + shadcn/ui
 (один кабинет в `dist-app/` с корнем `/` — под `app.u-klad.ru`), `npm run lint`
 (ESLint), `npm run typecheck` (`tsc -b --noEmit`), `npm test` (Vitest, разово),
 `npm run test:e2e` (Playwright по собранному сайту), `npm run format:check`,
-`npm run coverage`, `npm run tokens` (цвета из `src/index.css` →
-`docs/design/design-tokens.json`). CI гоняет формат → линтер → типы → тесты →
+`npm run coverage`, `npm run deadcode` (knip: файлы, экспорты и библиотеки,
+которыми никто не пользуется), `npm run dupes` (jscpd: повторённый код),
+`npm run check` (всё, что гоняет CI до сборки, одной командой), `npm run tokens` (цвета из `src/index.css` →
+`docs/design/design-tokens.json`). CI гоняет формат → линтер → типы → мёртвый код → дубли → тесты →
 обе сборки и отдельно e2e в Chromium.
 
 ## Ключевые решения
@@ -338,7 +340,7 @@ src/
     ui/                 примитивы: button, input, segmented (единые высоты)
   site/                 витрина — вторая точка входа, свой словарь пар
                         `c(ru, en)` и своя маршрутизация по путям
-    components/         лендинг (landing/), каталог складов (market/),
+    components/         лендинг складам (warehouses/), каталог (market/),
                         правовой раздел (legal/), страница селлера (sellers/),
                         общие шапка/подвал/согласия
     data/               склады (генератор + репозиторий), города, площадки,
