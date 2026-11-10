@@ -315,6 +315,7 @@ export const ru = {
   "ws.breakFirst": "Идёт перерыв. Закончите его, чтобы взять тару.",
   "ws.kiosk.noManager":
     "В персонале нет руководителя, поэтому стол можно отвязать отсюда. Добавьте руководителя, чтобы отвязывать только его бейджем.",
+  "ws.kiosk.unbindInCabinet": "Отвяжите стол в кабинете: «Устройства» → «Отключить».",
   "ws.equip.title": "Устройства",
   "ws.equip.docPrinter": "Принтер",
   "ws.ev.shift_start": "Начал смену",
@@ -641,6 +642,7 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.breakFirst": "You are on a break. End it to take a tote.",
   "ws.kiosk.noManager":
     "There is no manager among staff, so the desk can be unbound here. Add a manager to require their badge.",
+  "ws.kiosk.unbindInCabinet": "Unbind the desk in the cabinet: Devices → Disconnect.",
   "ws.equip.title": "Devices",
   "ws.equip.docPrinter": "Printer",
   "ws.ev.shift_start": "Started shift",
