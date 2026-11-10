@@ -80,6 +80,16 @@ describe("disputes.slice", () => {
     ]);
   });
 
+  it("списание брака тоже убирает его из тары: до решения он на учёте", () => {
+    const box = makeBox({ id: "b1", lines: [{ productId: "p1", qty: 2 }] });
+    const store = makeDisputesStore({ boxes: [box] });
+    const id = store
+      .getState()
+      .raiseDispute({ kind: "not_packable", boxId: "b1", productId: "p1", raisedBy: "s1" });
+    store.getState().resolveDispute(id, "written_off", "boss", "мятая упаковка");
+    expect(store.getState().boxes[0].lines).toEqual([{ productId: "p1", qty: 1 }]);
+  });
+
   it("списать без причины нельзя: решение не записывается", () => {
     const store = makeDisputesStore();
     const id = store.getState().raiseDispute({ kind: "shortage", productId: "p1", raisedBy: "s1" });
@@ -95,6 +105,40 @@ describe("disputes.slice", () => {
 
     expect(store.getState().resolveDispute(id, "written_off", "s1", "потерялась")).toBe(false);
     expect(store.getState().resolveDispute(id, "returned", "s1")).toBe(true);
+  });
+
+  it("лишнее с приёмки: оставить или вернуть поставщику, «вернуть на место» нельзя", () => {
+    const box = makeBox({ id: "b1", lines: [{ productId: "p1", qty: 12 }] });
+    // Заводит его сервер при приёмке со стола — здесь оно уже пришло.
+    const over = {
+      kind: "receive_overage" as const,
+      boxId: "b1",
+      productId: "p1",
+      qty: 2,
+      raisedBy: "s1",
+      raisedAt: 1,
+    };
+    const store = makeDisputesStore({
+      boxes: [box],
+      disputes: [
+        { id: "o1", ...over },
+        { id: "o2", ...over },
+      ],
+    });
+    const st = () => store.getState();
+    expect(st().resolveDispute("o1", "returned", "boss")).toBe(false);
+    expect(st().resolveDispute("o1", "moved", "boss")).toBe(false);
+    expect(st().resolveDispute("o1", "accepted", "boss")).toBe(true);
+    expect(st().boxes[0].lines).toEqual([{ productId: "p1", qty: 12 }]);
+    // Вернули поставщику — лишнее уходит из тары приёмки.
+    expect(st().resolveDispute("o2", "written_off", "boss", "водитель забрал")).toBe(true);
+    expect(st().boxes[0].lines).toEqual([{ productId: "p1", qty: 10 }]);
+  });
+
+  it("«оставить на складе» — только у лишнего с приёмки", () => {
+    const store = makeDisputesStore();
+    const id = store.getState().raiseDispute({ kind: "shortage", productId: "p1", raisedBy: "s1" });
+    expect(store.getState().resolveDispute(id, "accepted", "boss")).toBe(false);
   });
 
   it("возврат и перекладывание остаток не трогают", () => {

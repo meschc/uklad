@@ -1,6 +1,6 @@
 import { nowMs, uid } from "../utils";
 import { addressKey } from "../address";
-import { shipOutbound } from "../outbound";
+import { planLoad, shipOutbound } from "../outbound";
 import { isOrderSource, type Box, type FulfillmentRequest, type Shipment } from "../types";
 import type { RequestsSlice, SliceCreator } from "./state";
 
@@ -65,6 +65,10 @@ export const createRequestsSlice: SliceCreator<RequestsSlice> = (set, get) => ({
   },
 
   updateRequestStatus: (id, status) => {
+    // Собранное уже снято с полки: отмена молча оставила бы его «в заявке»,
+    // которой нет. Вернуть товар на место — решение старшего, не кнопка.
+    const cur = get().requests.find((r) => r.id === id);
+    if (status === "cancelled" && (cur?.pickedQty ?? 0) > 0) return;
     set((s) => ({
       requests: s.requests.map((r) => {
         if (r.id !== id) return r;
@@ -100,10 +104,17 @@ export const createRequestsSlice: SliceCreator<RequestsSlice> = (set, get) => ({
    * размещения) и увеличиваем счётчик заявки. Списание обязательно — иначе
    * занятость росла бы при приёмке и никогда не падала при отгрузке (см. 2.1).
    */
-  recordPick: (id, productId, addr, toteId) => {
+  recordPick: (id, productId, addr, toteId, by) => {
     const s = get();
     const req = s.requests.find((r) => r.id === id);
     if (!req) return 0;
+    // Заявка уже собрана: лишний скан не снимает с полки ещё одну штуку —
+    // иначе она ушла бы с места и не пришла никуда.
+    if ((req.pickedQty ?? 0) >= req.qty) return req.pickedQty ?? 0;
+    // Начатая заявка собирается в ту же тару: штука в другой таре (или в
+    // руках, без тары) потерялась бы для упаковки и для остатков — заявка
+    // помнит одну тару (`toteId`).
+    if ((req.pickedQty ?? 0) > 0 && req.toteId !== toteId) return req.pickedQty ?? 0;
 
     const key = addressKey(addr);
     const box = s.boxes.find(
@@ -122,7 +133,26 @@ export const createRequestsSlice: SliceCreator<RequestsSlice> = (set, get) => ({
     if (!taken) return req.pickedQty ?? 0;
 
     const picked = Math.min(req.qty, (req.pickedQty ?? 0) + taken);
+    const at = nowMs();
+    const tote = toteId ? s.boxes.find((b) => b.id === toteId) : undefined;
     set((st) => ({
+      // Кто снял, что и в какую тару — в журнал сотрудника, до секунды.
+      ...(by
+        ? {
+            staffEvents: [
+              ...st.staffEvents,
+              {
+                id: uid("sev"),
+                staffId: by,
+                type: "pick_scan" as const,
+                at,
+                station: "picking" as const,
+                productId,
+                ...(tote ? { code: tote.barcode } : {}),
+              },
+            ],
+          }
+        : {}),
       requests: st.requests.map((r) =>
         r.id === id
           ? { ...r, pickedQty: picked, updatedAt: nowMs(), ...(toteId ? { toteId } : {}) }
@@ -222,7 +252,7 @@ export const createRequestsSlice: SliceCreator<RequestsSlice> = (set, get) => ({
    * остальные открытые заявки на тот же товар: физически коробка уже здесь,
    * и держать её ради формального порядка бессмысленно.
    */
-  applyCrossDock: (productId, qty, shipmentId) => {
+  applyCrossDock: (productId, qty, shipmentId, boxId) => {
     let left = Math.max(0, Math.round(qty));
     if (!left) return 0;
 
@@ -259,13 +289,25 @@ export const createRequestsSlice: SliceCreator<RequestsSlice> = (set, get) => ({
       }));
       if (picked >= r.qty) get().releaseReservation(r.id);
     }
+    // Ушедшее в заявки уже не лежит в таре приёмки: оно едет с заявкой, как
+    // снятое с полки. Иначе одна штука числилась бы и в таре, и в заявке.
+    if (boxId && used > 0) get().removeFromBox(boxId, productId, used);
     return used;
   },
 
   shipRequests: (requestIds, info) => {
     const ids = new Set(requestIds);
-    const ready = get().requests.filter((r) => ids.has(r.id) && r.status === "done");
+    const done = get().requests.filter((r) => ids.has(r.id) && r.status === "done");
     // Отгружаем только собранное: «в работе» и «новые» физически ещё на полках.
+    // Заявка, чей короб отгрузки остался у стола, ждёт следующей машины.
+    const plan = planLoad(
+      get().outboundBoxes ?? [],
+      done.map((r) => r.id),
+      info?.units ?? [],
+    );
+    if (plan.split) return null;
+    const leaving = new Set(plan.going);
+    const ready = done.filter((r) => leaving.has(r.id));
     if (!ready.length) return null;
 
     const shipmentId = uid("ship");
@@ -286,7 +328,7 @@ export const createRequestsSlice: SliceCreator<RequestsSlice> = (set, get) => ({
       // Погруженные короба уехали этим рейсом: их код свободен для нового.
       outboundBoxes: shipOutbound(s.outboundBoxes ?? [], shipment.units ?? [], shipmentId, at),
       requests: s.requests.map((r) =>
-        ids.has(r.id) && r.status === "done"
+        leaving.has(r.id)
           ? {
               ...r,
               status: "shipped",

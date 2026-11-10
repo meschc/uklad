@@ -111,9 +111,24 @@ export interface WarehouseSpec {
   /** Условия договора хранения свободной строкой. */
   contractNote?: string;
 
+  /** Что склад решил НЕ показывать селлерам на витрине. */
+  showcaseHidden?: ShowcaseField[];
+
   /** Когда паспорт обновляли — данные устаревают. */
   updatedAt?: number;
 }
+
+/** Поля карточки склада на витрине, которые склад может скрыть. */
+export const SHOWCASE_FIELDS = [
+  "address",
+  "since",
+  "area",
+  "cells",
+  "prices",
+  "services",
+  "marketplaces",
+] as const;
+export type ShowcaseField = (typeof SHOWCASE_FIELDS)[number];
 
 /**
  * Класс склада: общепринятая рыночная шкала. Не ГОСТ и не закон — но именно её
@@ -193,6 +208,10 @@ export interface Partner {
   name: string;
   /** Контакт для связи — телефон или почта, как удобнее. */
   contact?: string;
+  /** Контактное лицо у продавца — к кому обращаться по имени. */
+  person?: string;
+  /** Телефон продавца, если почты мало. */
+  phone?: string;
 }
 
 /**

@@ -6,7 +6,6 @@ import { useCommand } from "@/lib/useCommand";
 import { useT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { card } from "@/components/ui/card";
 import { Row } from "./ProfileRow";
 import { Section } from "./ProfileParts";
 import { downloadBackup } from "./backupDownload";
@@ -63,12 +62,7 @@ export function AccountDataSection() {
 
   return (
     <Section title={t("account.section")}>
-      <div
-        className={card({
-          pad: "none",
-          className: "flex flex-col divide-y divide-border overflow-hidden",
-        })}
-      >
+      <div className="flex flex-col divide-y divide-border/60">
         <Row icon={<MonitorSmartphone className="size-4" />} label={t("account.devices")}>
           <div className="flex min-w-0 flex-wrap items-center justify-end gap-3">
             <span className="text-sm text-muted-foreground">

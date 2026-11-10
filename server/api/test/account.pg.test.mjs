@@ -144,8 +144,17 @@ test(
     const a = await owner("del-b@sklad.ru", "10.0.2.3");
     await call("/api/cabinet/snapshot", {
       ...a,
-      body: { version: 0, format: 8, data: { warehouse: { id: "wh", name: "секрет" } } },
+      body: {
+        version: 0,
+        format: 8,
+        data: { warehouse: { id: "wh", name: "секрет" }, requests: [{ id: "r1", to: "адрес" }] },
+      },
     });
+    const had = await db.root.query(
+      `SELECT count(*)::int AS n FROM uklad.cabinet_records WHERE org_id = $1`,
+      [a.org],
+    );
+    assert.equal(had.rows[0].n, 1, "заявка легла строкой");
     await call("/api/auth/account/delete", { ...a, body: { password: PW } });
     // Ещё не срок: уборка ничего не трогает.
     await account.purge();
@@ -164,6 +173,10 @@ test(
       a.org,
     ]);
     assert.equal(snap.rows.length, 0, "снимок стёрт");
+    const recs = await db.root.query(`SELECT 1 FROM uklad.cabinet_records WHERE org_id = $1`, [
+      a.org,
+    ]);
+    assert.equal(recs.rows.length, 0, "работа склада стёрта вместе со снимком");
     assert.equal((await login("del-b@sklad.ru", "10.0.2.3")).status, 401);
   },
 );

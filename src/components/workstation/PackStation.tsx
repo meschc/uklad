@@ -5,7 +5,6 @@ import { useEditor } from "@/lib/store";
 import { shiftState } from "@/lib/workstation";
 import { useT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
-import { card } from "@/components/ui/card";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { ToteStart } from "./ToteStart";
 import { PackRun, type PackResult } from "./PackRun";
@@ -33,7 +32,7 @@ export function PackStation({
   const state = shiftState(events, staffId);
   if (state === "idle") {
     return (
-      <div className={card({ pad: "sm", className: "flex items-center justify-between gap-3" })}>
+      <div className="flex items-center justify-between gap-3 py-2">
         <p className="text-sm text-muted-foreground">{t("ws.idle.blocked")}</p>
         <Button size="sm" onClick={() => void workstationRepository.mark("idle_end")}>
           {t("ws.mark.idle_end")}
@@ -41,9 +40,19 @@ export function PackStation({
       </div>
     );
   }
+  if (state === "break") {
+    return (
+      <div className="flex items-center justify-between gap-3 py-2">
+        <p className="text-sm text-muted-foreground">{t("ws.breakFirst")}</p>
+        <Button size="sm" onClick={() => void workstationRepository.mark("break_end")}>
+          {t("ws.mark.break_end")}
+        </Button>
+      </div>
+    );
+  }
   if (state !== "on") {
     return (
-      <div className={card({ pad: "sm", className: "flex items-center justify-between gap-3" })}>
+      <div className="flex items-center justify-between gap-3 py-2">
         <p className="text-sm text-muted-foreground">{t("ws.shiftFirst")}</p>
         <Button size="sm" onClick={onNeedShift}>
           {t("ws.tab.shift")}
@@ -75,11 +84,7 @@ function PackDone({ result, onNext }: { result: PackResult; onNext: () => void }
       <p className="font-mono text-sm text-muted-foreground">
         {result.source} → {result.target}
       </p>
-      <dl
-        className={card({
-          className: "grid w-full max-w-sm grid-cols-[minmax(0,1fr)_6rem] gap-y-1.5 text-sm",
-        })}
-      >
+      <dl className="grid w-full max-w-sm grid-cols-[minmax(0,1fr)_6rem] gap-y-1.5 text-sm">
         {rows.map(([k, v]) => (
           <div key={k} className="contents">
             <dt className={eyebrow({ tone: "muted" })}>{k}</dt>

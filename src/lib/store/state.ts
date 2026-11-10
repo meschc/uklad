@@ -2,7 +2,7 @@ import type { StateCreator } from "zustand";
 // Только тип: `import type` стирается при сборке, поэтому кольца
 // «словарь → хранилище → словарь» не возникает.
 import type { MsgKey } from "../i18n";
-import type { ItemScan } from "../packing";
+import type { ItemScan, PackDoneFacts } from "../packing";
 import type {
   BackupSettings,
   Subscription,
@@ -507,6 +507,15 @@ export interface FulfillmentSlice {
     declaredPallets?: number;
     declaredBoxes?: number;
     staffId?: string;
+    /**
+     * Места уже завёл сервер (стол на сервере, `recv_cargo`): берём его id и
+     * номера ярлыков, свой счётчик не трогаем, только догоняем.
+     */
+    made?: {
+      pallets: { id: string; barcode: string }[];
+      boxes: { id: string; barcode: string }[];
+    };
+    at?: number;
   }) => { palletIds: string[]; boxIds: string[] };
   /** Вскрыть место (паллету или короб) — начало товарной приёмки по нему. */
   openUnit: (id: string) => void;
@@ -558,8 +567,9 @@ export interface RequestsSlice {
   /**
    * Кроссдокинг: принятый товар раздаётся ждущим заявкам, минуя полку.
    * Возвращает, сколько единиц ушло в заявки (остальное — на склад как обычно).
+   * `boxId` — тара приёмки, куда товар лёг: ушедшее в заявки из неё снимается.
    */
-  applyCrossDock: (productId: string, qty: number, shipmentId?: string) => number;
+  applyCrossDock: (productId: string, qty: number, shipmentId?: string, boxId?: string) => number;
   updateRequestStatus: (id: string, status: RequestStatus) => void;
   /** Взять заявку в работу (экран «Сборка»): статус + отметка времени. */
   startPicking: (id: string) => void;
@@ -569,9 +579,16 @@ export interface RequestsSlice {
    */
   /**
    * Снять единицу с места в заявку. `toteId` — тара сборки: снятое ложится в
-   * неё, и упаковщик потом берёт заказ из этой тары.
+   * неё, и упаковщик потом берёт заказ из этой тары. `by` — сотрудник за
+   * столом: снятая штука ложится в его журнал (`pick_scan`).
    */
-  recordPick: (id: string, productId: string, addr: CellAddress, toteId?: string) => number;
+  recordPick: (
+    id: string,
+    productId: string,
+    addr: CellAddress,
+    toteId?: string,
+    by?: string,
+  ) => number;
   /** Закрыть заявку: полностью или частично (собрали меньше запрошенного). */
   completeRequest: (id: string, partial?: boolean) => void;
   /**
@@ -757,8 +774,11 @@ export interface WorkstationSlice {
   packScanLabel: (code: string) => boolean;
   /** Отсканированная, но ещё не упакованная штука оказалась браком. */
   packRejectPending: () => void;
-  /** Закрыть тару: списать из неё ушедшее, отметить закрытые заказы. */
-  packFinish: () => void;
+  /**
+   * Закрыть тару: ушедшее — в короб отгрузки, закрытые заказы — упакованы.
+   * Возвращает факты закрытия — для операции стола на сервере.
+   */
+  packFinish: () => PackDoneFacts | null;
   /** Демо: тара из собранных заказов — пока сборка не пишет, что положила в тару. */
   prepareDemoTote: () => string | null;
 }

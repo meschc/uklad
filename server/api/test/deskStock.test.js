@@ -167,16 +167,26 @@ test("уехавший короб и рейс не переписываются,
   assert.equal(data.shipments[0].destination, "Тула");
 });
 
-test("кроссдок: принятое сразу закрывает заявку", () => {
+test("кроссдок: принятое сразу закрывает заявку и в таре не остаётся", () => {
   const cur = base();
-  const inc = {
-    ...withBoxes(cur, [{ productId: "p1", qty: 8 }], cur.boxes[1].lines),
+  const recv = {
     receivingEvents: [
       { id: "e1", productId: "p1", qty: 3, boxId: "b1", staffId: "stf-ivan", timestamp: 1 },
     ],
     requests: [{ ...cur.requests[0], pickedQty: 3, status: "done" }],
   };
+  // Ушедшее в заявку снято с тары приёмки: тара как была.
+  const inc = { ...withBoxes(cur, cur.boxes[0].lines, cur.boxes[1].lines), ...recv };
   assert.deepEqual(mergeDeskWrite(cur, inc, who).mismatch, []);
+  // Принятое и в таре, и в заявке — одна штука числится дважды.
+  const twice = { ...withBoxes(cur, [{ productId: "p1", qty: 8 }], cur.boxes[1].lines), ...recv };
+  assert.deepEqual(mergeDeskWrite(cur, twice, who).mismatch, ["p1"]);
+});
+
+test("собрано без снятия с полки — товар задвоен, откат", () => {
+  const cur = base();
+  const inc = { ...cur, requests: [{ ...cur.requests[0], pickedQty: 2 }] };
+  assert.deepEqual(mergeDeskWrite(cur, inc, who).mismatch, ["p1"]);
 });
 
 test("списание недостачи старшим уменьшает тару; без решения — откат", () => {
@@ -378,4 +388,200 @@ test("вся цепочка: приёмка → сборка в тару → у�
     boxes: [{ ...s.boxes[0], lines: [{ productId: "p1", qty: 1 }] }, s.boxes[1]],
   };
   assert.deepEqual(mergeDeskWrite(s, steal, who).mismatch, ["p1"]);
+});
+
+test("лишнее с приёмки: сервер сам заводит спорное старшему, стол его не подделает", () => {
+  const cur = {
+    ...base(),
+    expectedShipments: [
+      { id: "s1", lines: [{ id: "l1", productId: "p2", expectedQty: 10, receivedQty: 0 }] },
+    ],
+  };
+  const inc = {
+    ...withBoxes(cur, cur.boxes[0].lines, [{ productId: "p2", qty: 14 }]),
+    receivingEvents: [
+      {
+        id: "e1",
+        productId: "p2",
+        qty: 12,
+        boxId: "t1",
+        staffId: "stf-ivan",
+        timestamp: 5,
+        expectedShipmentLineId: "l1",
+      },
+    ],
+    // Стол пытается завести «лишнее» сам — и сразу решённым.
+    disputes: [
+      ...cur.disputes,
+      {
+        id: "fake",
+        kind: "receive_overage",
+        productId: "p2",
+        qty: 1,
+        raisedBy: "stf-ivan",
+        raisedAt: 5,
+      },
+    ],
+  };
+  const { data, mismatch } = mergeDeskWrite(cur, inc, who);
+  assert.deepEqual(mismatch, []);
+  assert.equal(data.receivingEvents[0].discrepancy, "overage");
+  const over = data.disputes.filter((d) => d.kind === "receive_overage");
+  assert.deepEqual(over, [
+    {
+      id: "ovr-e1",
+      kind: "receive_overage",
+      boxId: "t1",
+      toteCode: "UK-BOX-2",
+      productId: "p2",
+      qty: 2,
+      raisedBy: "stf-ivan",
+      raisedAt: 5,
+    },
+  ]);
+  // Повтор той же записи второго спорного не заводит.
+  const again = mergeDeskWrite(data, { ...data }, who).data;
+  assert.equal(again.disputes.filter((d) => d.kind === "receive_overage").length, 1);
+});
+
+test("лишнее с приёмки решает старший: оставить или вернуть поставщику, не «вернуть на место»", () => {
+  const open = {
+    id: "ovr-e1",
+    kind: "receive_overage",
+    boxId: "t1",
+    productId: "p2",
+    qty: 2,
+    raisedBy: "stf-ivan",
+    raisedAt: 5,
+  };
+  const cur = { ...base(), disputes: [open] };
+  const olga = { staff: "stf-olga" };
+  const decide = (res, extra = {}) =>
+    mergeDeskWrite(
+      cur,
+      {
+        ...cur,
+        disputes: [{ ...open, resolution: res, resolvedBy: "stf-olga", resolvedAt: 9, ...extra }],
+      },
+      olga,
+    ).data.disputes[0];
+  assert.equal(decide("returned").resolution, undefined);
+  assert.equal(decide("accepted").resolution, "accepted");
+  // Вернули поставщику: товар уходит из тары, сверка это признаёт.
+  const r = mergeDeskWrite(
+    cur,
+    {
+      ...withBoxes(cur, cur.boxes[0].lines, []),
+      disputes: [
+        {
+          ...open,
+          resolution: "written_off",
+          resolvedBy: "stf-olga",
+          resolvedAt: 9,
+          note: "водитель забрал",
+        },
+      ],
+    },
+    olga,
+  );
+  assert.deepEqual(r.mismatch, []);
+  assert.equal(r.data.disputes[0].resolution, "written_off");
+  // «Оставить» у обычной недостачи не бывает.
+  const d1 = base().disputes[0];
+  const s = mergeDeskWrite(
+    base(),
+    {
+      ...base(),
+      disputes: [{ ...d1, resolution: "accepted", resolvedBy: "stf-olga", resolvedAt: 9 }],
+    },
+    olga,
+  );
+  assert.equal(s.data.disputes[0].resolution, undefined);
+});
+
+test("приёмка откатилась сверкой — её «лишнее» не остаётся", () => {
+  const cur = base();
+  const inc = {
+    ...cur,
+    // Событие есть, а в таре прироста нет: не сошлось.
+    receivingEvents: [
+      { id: "e9", productId: "p2", qty: 3, boxId: "t1", staffId: "stf-ivan", timestamp: 5 },
+    ],
+  };
+  const { data, mismatch } = mergeDeskWrite(cur, inc, who);
+  assert.deepEqual(mismatch, ["p2"]);
+  assert.equal(data.disputes.filter((d) => d.kind === "receive_overage").length, 0);
+});
+
+test("id «лишнего» занят сервером: стол не подложит под него своё спорное", () => {
+  const cur = {
+    ...base(),
+    expectedShipments: [
+      { id: "s1", lines: [{ id: "l1", productId: "p2", expectedQty: 1, receivedQty: 0 }] },
+    ],
+  };
+  const inc = {
+    ...withBoxes(cur, cur.boxes[0].lines, [{ productId: "p2", qty: 5 }]),
+    receivingEvents: [
+      {
+        id: "e1",
+        productId: "p2",
+        qty: 3,
+        boxId: "t1",
+        staffId: "stf-ivan",
+        timestamp: 5,
+        expectedShipmentLineId: "l1",
+      },
+    ],
+    disputes: [
+      ...cur.disputes,
+      {
+        id: "ovr-e1",
+        kind: "shortage",
+        productId: "p2",
+        qty: 9,
+        raisedBy: "stf-ivan",
+        raisedAt: 5,
+      },
+    ],
+  };
+  const { data } = mergeDeskWrite(cur, inc, who);
+  const d = data.disputes.filter((x) => x.id === "ovr-e1");
+  assert.deepEqual(
+    d.map((x) => [x.kind, x.qty]),
+    [["receive_overage", 2]],
+  );
+});
+
+test("лишнее списывают с тары, даже если она уже стоит в ячейке", () => {
+  const open = {
+    id: "ovr-e1",
+    kind: "receive_overage",
+    boxId: "b1",
+    productId: "p1",
+    qty: 2,
+    raisedBy: "stf-ivan",
+    raisedAt: 5,
+  };
+  const cur = { ...base(), disputes: [open] };
+  // b1 стоит на месте «A»; в нём 5, списываем 2.
+  const r = mergeDeskWrite(
+    cur,
+    {
+      ...withBoxes(cur, [{ productId: "p1", qty: 3 }], cur.boxes[1].lines),
+      disputes: [
+        {
+          ...open,
+          resolution: "written_off",
+          resolvedBy: "stf-olga",
+          resolvedAt: 9,
+          note: "вернули",
+        },
+      ],
+    },
+    { staff: "stf-olga" },
+  );
+  assert.deepEqual(r.mismatch, []);
+  assert.deepEqual(r.data.boxes[0].lines, [{ productId: "p1", qty: 3 }]);
+  assert.equal(r.data.boxes[0].address, "A");
 });

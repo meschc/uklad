@@ -71,9 +71,7 @@ export function CookieBar() {
     >
       <div className="wh cookie-in flex flex-col gap-4 rounded-[20px] bg-[var(--wh-tile)] p-5 shadow-[0_18px_50px_-12px_rgba(16,24,40,0.25),0_0_0_1px_rgba(16,24,40,0.06)] dark:shadow-[0_18px_50px_-12px_rgba(0,0,0,0.6),0_0_0_1px_rgba(255,255,255,0.08)]">
         <div className="flex items-start gap-3">
-          <span className="cookie-bite grid size-10 shrink-0 place-items-center rounded-full bg-[hsl(var(--primary))] text-white">
-            <Cookie className="size-5" />
-          </span>
+          <Cookie className="cookie-bite size-6 shrink-0 text-[hsl(var(--primary))]" />
           <p className="pt-0.5 text-[15px] leading-snug text-[var(--wh-ink)]">
             {t(T.text)}{" "}
             {/* Баннер остаётся на экране: человек ушёл читать политику именно

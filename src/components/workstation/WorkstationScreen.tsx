@@ -1,7 +1,11 @@
-import { useState } from "react";
-import type { WorkstationKind } from "@/lib/types";
+import { useEffect, useState } from "react";
+import type { ShiftMark, WorkstationKind } from "@/lib/types";
 import {
   ArrowLeft,
+  ChevronDown,
+  FileText,
+  Plug,
+  CloudOff,
   History,
   Gavel,
   LogOut,
@@ -12,11 +16,14 @@ import {
   Scale,
 } from "lucide-react";
 import { boundDevice, useEditor } from "@/lib/store";
-import { workstationRepository } from "@/lib/data";
+import { STUCK_MS, usePendingOps, workstationRepository } from "@/lib/data";
 import { isSessionLive } from "@/lib/workstation";
 import { isSenior } from "@/lib/docFlow";
 import { sizeLabel, useLabelPrinter } from "@/lib/labelPrinter";
 import { useT, type MsgKey } from "@/lib/i18n";
+import { allowedMarks, parseShiftMarkCode, shiftMarkCode, shiftState } from "@/lib/workstation";
+import { QrSvg } from "@/components/table/QrSvg";
+import { lastScanAt, SCAN_EVENT, SHIFT_SCAN_EVENT } from "@/components/fulfillment/ScanField";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { EmbeddedShell } from "@/components/fulfillment/embeddedShell";
@@ -72,33 +79,49 @@ export function WorkstationScreen() {
 
   return (
     <div className="flex h-full flex-col bg-background">
-      <header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border px-4 py-2.5">
-        {device ? (
-          // Стол, привязанный к месту, в кабинет не уходит: вместо выхода —
-          // имя места, чтобы по экрану было видно, какой это стол.
-          <div className="flex items-center gap-2 text-sm font-medium">
-            <MonitorSmartphone className="size-4 text-muted-foreground" />
-            {device.name}
-            {!member && !unbinding && (
-              <Button variant="ghost" size="sm" onClick={() => setUnbinding(true)}>
-                {t("ws.kiosk.unbind")}
-              </Button>
-            )}
-          </div>
-        ) : (
-          <Button variant="ghost" size="sm" onClick={() => useEditor.getState().goToView("tasks")}>
-            <ArrowLeft />
-            {t("ws.exit")}
-          </Button>
-        )}
-        {member && (
-          // Процесс стола — заголовком: по нему видно, чьё это задание.
-          <h1 className="text-sm font-semibold">{t(`ws.station.${station}` as MsgKey)}</h1>
-        )}
-        <Equipment onPrinter={() => setPanel("printer")} canOpen={!!member} />
-        {member && (
-          <div className="ml-auto flex items-center gap-4">
-            <ShiftBar staffId={member.id} onOpen={() => setPanel("shift")} />
+      {/* Высота шапки постоянная: кнопки и таймеры не должны двигать экран. */}
+      <header className="grid h-14 shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4 border-b border-border px-4">
+        <div className="flex min-w-0 items-center gap-3">
+          {device ? (
+            // Стол, привязанный к месту, в кабинет не уходит: вместо выхода —
+            // имя места, чтобы по экрану было видно, какой это стол.
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <MonitorSmartphone className="size-4 text-muted-foreground" />
+              {device.name}
+              {!member && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={unbinding}
+                  onClick={() => setUnbinding(true)}
+                >
+                  {t("ws.kiosk.unbind")}
+                </Button>
+              )}
+            </div>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => useEditor.getState().goToView("tasks")}
+            >
+              <ArrowLeft />
+              {t("ws.exit")}
+            </Button>
+          )}
+          {member && (
+            // Процесс стола — заголовком: по нему видно, чьё это задание.
+            <h1 className="text-sm font-semibold">{t(`ws.station.${station}` as MsgKey)}</h1>
+          )}
+          <Equipment onPrinter={() => setPanel("printer")} canOpen={!!member} />
+          <PendingOps />
+        </div>
+        {/* Смена и перерыв — по центру: их ищут взглядом чаще всего. */}
+        <div className="flex justify-center">
+          {member && <ShiftBar staffId={member.id} onOpen={() => setPanel("shift")} />}
+        </div>
+        {member ? (
+          <div className="flex min-w-0 items-center justify-end gap-3">
             {isSenior(member) && (
               // Спорное решает старший, не отходя от стола: тара с недостачей
               // приходит к нему, и счётчик виден сразу.
@@ -127,6 +150,8 @@ export function WorkstationScreen() {
               {t("ws.logout")}
             </Button>
           </div>
+        ) : (
+          <div />
         )}
       </header>
 
@@ -144,6 +169,7 @@ export function WorkstationScreen() {
               staffId={member.id}
               onNeedShift={() => setPanel("shift")}
             />
+            <ShiftCodes staffId={member.id} />
           </div>
         )}
       </main>
@@ -259,6 +285,7 @@ function Equipment({ onPrinter, canOpen }: { onPrinter: () => void; canOpen: boo
   const printerSet = printer.name !== "";
   const items: { key: MsgKey; icon: typeof ScanLine; ready: boolean }[] = [
     { key: "ws.equip.scanner", icon: ScanLine, ready: true },
+    { key: "ws.equip.docPrinter", icon: FileText, ready: false },
     { key: "ws.equip.scales", icon: Scale, ready: false },
   ];
   const dot = (ready: boolean) => (
@@ -266,35 +293,127 @@ function Equipment({ onPrinter, canOpen }: { onPrinter: () => void; canOpen: boo
       className={cn("size-1.5 rounded-full", ready ? "bg-emerald-500" : "bg-muted-foreground/40")}
     />
   );
+  const [open, setOpen] = useState(false);
+  const scanAt = useLastScan();
   return (
-    <ul className="hidden flex-wrap items-center gap-3 text-xs text-muted-foreground md:flex">
-      {items.slice(0, 1).map(({ key, icon: Icon, ready }) => (
-        <li key={key} className="flex items-center gap-1" title={t("ws.equip.ready")}>
-          <Icon className="size-3.5" />
-          {t(key)}
-          {dot(ready)}
-        </li>
-      ))}
-      <li>
-        <button
-          type="button"
-          disabled={!canOpen}
-          onClick={onPrinter}
-          title={t(printerSet ? "ws.equip.printerSet" : "ws.equip.off")}
-          className="flex items-center gap-1 rounded hover:text-foreground disabled:cursor-default disabled:hover:text-muted-foreground"
-        >
-          <Printer className="size-3.5" />
-          {printerSet ? `${printer.name} · ${sizeLabel(printer)}` : t("ws.equip.printer")}
-          {dot(printerSet)}
-        </button>
-      </li>
-      {items.slice(1).map(({ key, icon: Icon, ready }) => (
-        <li key={key} className="flex items-center gap-1" title={t("ws.equip.off")}>
-          <Icon className="size-3.5" />
-          {t(key)}
-          {dot(ready)}
+    // Оборудование — одной кнопкой с раскрывающимся списком: в шапке оно
+    // нужно редко, а место там занимало постоянно.
+    <div className="relative hidden md:block">
+      <Button variant="ghost" size="sm" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
+        <Plug />
+        {t("ws.equip.title")}
+        <ChevronDown className={cn("transition-transform", open && "rotate-180")} />
+      </Button>
+      {open && (
+        <ul className="absolute left-0 top-full z-50 mt-1 flex w-80 flex-col rounded-[10px] bg-popover p-1 text-sm shadow-lg ring-1 ring-border">
+          {items.slice(0, 1).map(({ key, icon: Icon, ready }) => (
+            <li key={key} className="flex items-center gap-2 px-2.5 py-2">
+              <Icon className="size-4 text-muted-foreground" />
+              <span className="flex-1">{t(key)}</span>
+              <span className="text-xs text-muted-foreground">
+                {scanAt == null
+                  ? t("ws.equip.waitScan")
+                  : t("ws.equip.lastScan", { t: formatTime(scanAt, t.lang, true) })}
+              </span>
+              {dot(ready)}
+            </li>
+          ))}
+          <li>
+            <button
+              type="button"
+              disabled={!canOpen}
+              onClick={() => {
+                setOpen(false);
+                onPrinter();
+              }}
+              className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left hover:bg-muted disabled:cursor-default disabled:hover:bg-transparent"
+            >
+              <Printer className="size-4 text-muted-foreground" />
+              <span className="flex-1 truncate">
+                {printerSet ? `${printer.name} · ${sizeLabel(printer)}` : t("ws.equip.printer")}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {t(printerSet ? "ws.equip.printerSet" : "ws.equip.off")}
+              </span>
+              {dot(printerSet)}
+            </button>
+          </li>
+          {items.slice(1).map(({ key, icon: Icon, ready }) => (
+            <li key={key} className="flex items-center gap-2 px-2.5 py-2">
+              <Icon className="size-4 text-muted-foreground" />
+              <span className="flex-1">{t(key)}</span>
+              <span className="text-xs text-muted-foreground">{t("ws.equip.off")}</span>
+              {dot(ready)}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Коды отметок смены внизу экрана: сканер у стола читает их прямо с монитора,
+ * и смена или перерыв отмечаются без мыши. Показываем только допустимые
+ * сейчас отметки; результат — уведомлением справа.
+ */
+function ShiftCodes({ staffId }: { staffId: string }) {
+  const t = useT();
+  const events = useEditor((s) => s.staffEvents);
+  const marks = allowedMarks(shiftState(events, staffId)).filter((m) => m !== "idle_start");
+
+  useEffect(() => {
+    const onScan = (e: Event) => {
+      const mark = parseShiftMarkCode(String((e as CustomEvent).detail));
+      void (async () => {
+        const res = mark ? await workstationRepository.mark(mark as ShiftMark) : null;
+        useEditor.getState().showToast(res?.ok ? (`ws.ev.${mark}` as MsgKey) : "ws.markRejected");
+      })();
+    };
+    window.addEventListener(SHIFT_SCAN_EVENT, onScan);
+    return () => window.removeEventListener(SHIFT_SCAN_EVENT, onScan);
+  }, []);
+
+  return (
+    <ul className="mt-6 flex flex-wrap justify-center gap-6 border-t border-border pt-6">
+      {marks.map((m) => (
+        <li key={m} className="flex flex-col items-center gap-1.5 text-xs text-muted-foreground">
+          <QrSvg code={shiftMarkCode(m)} size={72} showCode={false} />
+          {t(`ws.mark.${m}` as MsgKey)}
         </li>
       ))}
     </ul>
+  );
+}
+
+/** Когда сканер последний раз прислал код: так видно, что он подключён. */
+function useLastScan(): number | null {
+  const [at, setAt] = useState<number | null>(lastScanAt);
+  useEffect(() => {
+    const on = () => setAt(lastScanAt);
+    window.addEventListener(SCAN_EVENT, on);
+    return () => window.removeEventListener(SCAN_EVENT, on);
+  }, []);
+  return at;
+}
+
+/**
+ * Работа, которая ещё не дошла до сервера: появляется, только если очередь
+ * не уходит дольше `STUCK_MS`, — короткий обрыв не должен мигать в шапке.
+ */
+function PendingOps() {
+  const t = useT();
+  const now = useNow(1000);
+  const { count, since } = usePendingOps();
+  if (count === 0 || since == null || now - since < STUCK_MS) return null;
+  return (
+    <p
+      className="flex items-center gap-1.5 text-sm font-medium text-amber-600"
+      title={t("ws.opPendingHint")}
+      role="status"
+    >
+      <CloudOff className="size-4" />
+      {t("ws.opPending", { n: count })}
+    </p>
   );
 }

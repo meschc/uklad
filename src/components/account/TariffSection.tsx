@@ -1,10 +1,18 @@
+import { useState } from "react";
 import { Check, Headset, Minus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useEditor } from "@/lib/store";
-import { TARIFF_FEATURES, TARIFF_IDS } from "@/lib/tariff";
+import { TARIFF_FEATURES } from "@/lib/tariff";
+import type { TariffId } from "@/lib/types";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-import { card } from "@/components/ui/card";
 import { Row } from "./ProfileRow";
+
+/**
+ * В кабинете тарифы идут по возрастанию возможностей: Старт → Склад →
+ * Оператор. На витрине порядок маркетинговый, здесь — рабочий.
+ */
+const CABINET_ORDER: TariffId[] = ["start", "warehouse", "operator"];
 
 /** Что показываем на плитке тарифа — то, чем тарифы различаются в кабинете. */
 const FEATURE_LABELS: { key: keyof (typeof TARIFF_FEATURES)["start"]; label: MsgKey }[] = [
@@ -23,22 +31,26 @@ export function TariffSection() {
   const sub = useEditor((s) => s.subscription);
   const setTariff = useEditor((s) => s.setTariff);
   const hasManager = TARIFF_FEATURES[sub.tariff].personalManager;
+  // Смена тарифа — в два шага: выбрать плитку и подтвердить. Один клик по
+  // плитке тариф больше не переключает.
+  const [pick, setPick] = useState<TariffId | null>(null);
 
   return (
     <div className="flex flex-col gap-3">
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-        {TARIFF_IDS.map((id) => {
+        {CABINET_ORDER.map((id) => {
           const active = id === sub.tariff;
+          const picked = id === pick;
           return (
             <button
               key={id}
               type="button"
               aria-pressed={active}
-              onClick={() => setTariff(id)}
+              onClick={() => setPick(active ? null : id)}
               className={cn(
-                card({ pad: "none" }),
-                "flex cursor-pointer flex-col gap-2 p-3 text-left transition-colors",
-                active ? "ring-2 ring-primary" : "hover:border-foreground/20",
+                "flex cursor-pointer flex-col gap-2 rounded-xl bg-muted/50 p-3 text-left transition-colors hover:bg-muted",
+                active && "ring-2 ring-primary",
+                picked && "ring-2 ring-primary/40",
               )}
             >
               <span className="flex items-center justify-between text-sm font-semibold">
@@ -71,7 +83,24 @@ export function TariffSection() {
         })}
       </div>
 
-      <div className={card({ pad: "none", className: "overflow-hidden" })}>
+      {pick && pick !== sub.tariff && (
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            size="sm"
+            onClick={() => {
+              setTariff(pick);
+              setPick(null);
+            }}
+          >
+            {t("tariff.switchTo", { plan: t(`tariff.${pick}`) })}
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => setPick(null)}>
+            {t("tariff.keep")}
+          </Button>
+        </div>
+      )}
+
+      <div>
         <Row icon={<Headset className="size-4" />} label={t("manager.label")}>
           {!hasManager ? (
             <span className="text-right text-sm text-muted-foreground">

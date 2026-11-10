@@ -3,6 +3,7 @@ import { makeBox, makeShipment, makeShipmentLine } from "../../__tests__/fixture
 import type { EditorState } from "../../store/state";
 import type { StorePort } from "../repository";
 import { createFulfillmentRepository } from "../fulfillmentRepository";
+import type { DeskOpBody } from "../opQueue";
 
 /**
  * Репозиторий приёмки через подменённый порт — ни стора, ни `localStorage`.
@@ -162,16 +163,16 @@ describe("createFulfillmentRepository", () => {
     expect(res).toEqual({ ok: true, data: 0 });
   });
 
-  it("передаёт кроссдок вместе с поставкой и отдаёт, сколько ушло", async () => {
+  it("передаёт кроссдок с поставкой и тарой приёмки и отдаёт, сколько ушло", async () => {
     // Arrange
     const applyCrossDock = vi.fn(() => 3);
     const repo = createFulfillmentRepository(fakePort({ applyCrossDock }));
 
     // Act
-    const res = await repo.crossDock("prod-1", 5, "ship-1");
+    const res = await repo.crossDock("prod-1", 5, "ship-1", "box-1");
 
     // Assert
-    expect(applyCrossDock).toHaveBeenCalledWith("prod-1", 5, "ship-1");
+    expect(applyCrossDock).toHaveBeenCalledWith("prod-1", 5, "ship-1", "box-1");
     expect(res).toEqual({ ok: true, data: 3 });
   });
 
@@ -186,5 +187,117 @@ describe("createFulfillmentRepository", () => {
     // Assert
     expect(closeShipment).toHaveBeenCalledWith("ship-1");
     expect(res.ok).toBe(true);
+  });
+});
+
+describe("приёмка со стола на сервере уходит операциями", () => {
+  const queue = () => ({
+    enqueue: vi.fn(),
+    flush: vi.fn(async () => {}),
+    pending: () => ({ count: 0, since: null }),
+    subscribe: () => () => {},
+    sendNow: vi.fn(async () => ({ kind: "local" as const })),
+  });
+  const cell = { floorId: "f1", moduleId: "m1", shelfIndex: 0, cellIndex: 1 };
+  // Тот же объект, что у стора: действие правит его, репозиторий читает его же.
+  const desk = (state: Partial<EditorState>, server = true) =>
+    fakePort(
+      Object.assign(state, {
+        session: { source: server ? "server" : "local" } as EditorState["session"],
+        stationSession: {
+          staffId: "stf-ivan",
+          station: "receiving",
+        } as EditorState["stationSession"],
+      }),
+    );
+
+  it("принятое уходит тем же id события, что в журнале приёмки, с числом из стора", async () => {
+    const q = queue();
+    const state: Partial<EditorState> = {
+      receivingEvents: [],
+      receiveProduct: vi.fn(() => {
+        state.receivingEvents = [
+          { id: "recv_1", productId: "p1", qty: 2, boxId: "b1", timestamp: 7 },
+        ] as EditorState["receivingEvents"];
+        return "recv_1";
+      }),
+      placeBox: vi.fn(),
+      openUnit: vi.fn(),
+    };
+    const repo = createFulfillmentRepository(desk(state), q);
+    await repo.openUnit("b1");
+    await repo.receive({ productId: "p1", qty: 2.4, boxId: "b1", shipmentId: "s1", lineId: "l1" });
+    await repo.placeBox("b1", cell);
+    expect(q.enqueue.mock.calls.map((c) => c[0])).toEqual(["recv_open", "recv_unit", "recv_place"]);
+    expect(q.enqueue.mock.calls[1][1]).toEqual({
+      eventId: "recv_1",
+      staffId: "stf-ivan",
+      at: 7,
+      productId: "p1",
+      qty: 2,
+      boxId: "b1",
+      shipmentId: "s1",
+      lineId: "l1",
+      discrepancy: undefined,
+    });
+    expect(q.enqueue.mock.calls[2][1]).toMatchObject({ boxId: "b1", cell, staffId: "stf-ivan" });
+  });
+
+  it("в демо и в кабинете без стола очереди нет", async () => {
+    const q = queue();
+    await createFulfillmentRepository(desk({ openUnit: vi.fn() }, false), q).openUnit("b1");
+    await createFulfillmentRepository(
+      fakePort({ session: { source: "server" } as EditorState["session"], openUnit: vi.fn() }),
+      q,
+    ).openUnit("b1");
+    expect(q.enqueue).not.toHaveBeenCalled();
+  });
+
+  it("грузовая приёмка ждёт номера мест от сервера и повторяет тем же ключом", async () => {
+    const q = queue();
+    const made = {
+      pallets: [{ id: "cargo_1-p0", barcode: "UK-PLT-41" }],
+      boxes: [{ id: "cargo_1-b0", barcode: "UK-BOX-90" }],
+    };
+    q.sendNow.mockResolvedValueOnce({ kind: "fail" } as never).mockResolvedValueOnce({
+      kind: "ok",
+      result: { key: "x", status: "applied", made },
+    } as never);
+    const acceptCargo = vi.fn(() => ({ palletIds: ["cargo_1-p0"], boxIds: ["cargo_1-b0"] }));
+    const repo = createFulfillmentRepository(desk({ acceptCargo }), q);
+    const input = {
+      shipmentId: "s1",
+      pallets: 1,
+      boxes: 1,
+      declaredPallets: 2,
+      staffId: "stf-ivan",
+    };
+
+    // Обрыв: в стор ничего не легло, форма остаётся с повтором.
+    expect(await repo.acceptCargo(input)).toEqual({ ok: false, error: "data.failed" });
+    expect(acceptCargo).not.toHaveBeenCalled();
+    const res = await repo.acceptCargo(input);
+    expect(res.ok).toBe(true);
+    // Тот же ключ и то же событие: сервер не заведёт места второй раз.
+    const [first, second] = q.sendNow.mock.calls as unknown as [string, string, DeskOpBody][];
+    expect(second[0]).toBe(first[0]);
+    expect(second[2]).toEqual(first[2]);
+    expect(first[1]).toBe("recv_cargo");
+    expect(first[2]).toMatchObject({ shipmentId: "s1", pallets: 1, boxes: 1, declaredPallets: 2 });
+    // Стор берёт места сервера, а не заводит свои.
+    expect(acceptCargo).toHaveBeenCalledWith(expect.objectContaining({ made, at: first[2].at }));
+  });
+
+  it("сервер не принял места — отказ, в стор ничего не легло", async () => {
+    const q = queue();
+    q.sendNow.mockResolvedValueOnce({
+      kind: "ok",
+      result: { key: "x", status: "flagged", reason: "bad" },
+    } as never);
+    const acceptCargo = vi.fn();
+    const repo = createFulfillmentRepository(desk({ acceptCargo }), q);
+    const res = await repo.acceptCargo({ shipmentId: "s1", pallets: 1, boxes: 0 });
+    expect(res).toEqual({ ok: false, error: "cargo.rejected" });
+    expect(acceptCargo).not.toHaveBeenCalled();
   });
 });

@@ -1,4 +1,4 @@
-import { ChevronLeft, Gauge, Layers, Printer, Table2, Box } from "lucide-react";
+import { Gauge, Layers, Printer, Table2, Box } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { selectRole, useEditor } from "@/lib/store";
 import type { ViewMode } from "@/lib/types";
@@ -20,10 +20,8 @@ const MODES: ModeTab[] = [
 ];
 
 export function TopBar() {
-  const warehouse = useEditor((s) => s.warehouse);
   const mode = useEditor((s) => s.mode);
   const setMode = useEditor((s) => s.setMode);
-  const goToDashboard = useEditor((s) => s.goToDashboard);
   // Продавцу печать плана не нужна: это инструмент склада.
   const isSeller = useEditor((s) => selectRole(s) === "seller");
   const setPrintPreview = useEditor((s) => s.setPrintPreview);
@@ -33,16 +31,7 @@ export function TopBar() {
     <header className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-card px-3">
       {/* Слева: путь склад/этаж. Логотипа тут нет — он в боковом рельсе, а
           две «Уклад» подряд читались как дубль (п.1). */}
-      <div className="flex items-center gap-2.5">
-        <button
-          onClick={goToDashboard}
-          title={t("nav.backToDashboard")}
-          className="flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-        >
-          <ChevronLeft className="size-3.5 opacity-70" />
-          <span className="font-medium text-foreground">{warehouse.name}</span>
-        </button>
-      </div>
+      <div className="flex items-center gap-2.5"></div>
 
       {/* Отмена / повтор живут на холсте, рядом с зумом (п.5) */}
 

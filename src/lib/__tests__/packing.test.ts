@@ -72,15 +72,21 @@ describe("стол упаковки от тары", () => {
     expect(s().packScanLabel("UK-LBL-ЧУЖАЯ")).toBe(false);
   });
 
-  it("товар не из тары и брак уходят в отказы, недостача остаётся в таре", () => {
+  it("товар не из тары и брак уходят в отказы, брак и недостача остаются в таре", () => {
     const { s, packOne } = stand([{ productId: "p1", qty: 3 }]);
     expect(packOne("4600000000024")).toBe("not_in_tote");
     packOne("4600000000017");
     s().packScanItem("4600000000017");
     s().packRejectPending();
     s().packFinish();
-    // Одна упакована, одна брак — третья не дошла до стола и числится в таре.
-    expect(s().boxes[0].lines).toEqual([{ productId: "p1", qty: 1 }]);
+    // Одна упакована, одна брак, третья не дошла до стола. Брак не исчезает
+    // из учёта: он в таре, пока старший его не спишет.
+    expect(s().boxes[0].lines).toEqual([{ productId: "p1", qty: 2 }]);
+    expect(s().disputes.map((d) => [d.kind, d.productId, d.qty])).toContainEqual([
+      "not_packable",
+      "p1",
+      1,
+    ]);
     const types = s().staffEvents.map((e) => e.type);
     expect(types).toContain("pack_reject");
     expect(types).toContain("pack_error");
@@ -131,6 +137,17 @@ describe("стол упаковки от тары", () => {
     const requests = [req({ id: "r1", note: "Тула", productId: "p1", qty: 5 })];
     const { s } = stand([{ productId: "p1", qty: 2 }], requests);
     expect(toteOrders(requests, s().boxes[0])).toEqual([]);
+  });
+
+  it("тара закрывает только заказы, собранные в неё, даже если товар тот же", () => {
+    const { s } = stand([{ productId: "p1", qty: 3 }], []);
+    const tote = s().boxes[0];
+    const requests = [
+      // Казань собрана в другую тару: тот же товар, но это не её заказ.
+      req({ id: "kzn", note: "Казань", productId: "p1", qty: 2, toteId: "box-other" }),
+      req({ id: "tula", note: "Тула", productId: "p1", qty: 3, toteId: tote.id }),
+    ];
+    expect(toteOrders(requests, tote).map((o) => o.requestIds)).toEqual([["tula"]]);
   });
 });
 
@@ -203,6 +220,18 @@ describe("тара сборки", () => {
     expect(
       pickToteProblem({ tote: tote([], { sealed: true }), request: r, requests: [r], products }),
     ).toBe("tote_sealed");
+  });
+
+  it("короб с товаром без открытых заявок — не тара сборки", () => {
+    const r = req("r1", "pA", "Тула");
+    const t = tote([{ productId: "pA", qty: 3 }]);
+    expect(pickToteProblem({ tote: t, request: r, requests: [r], products })).toBe("tote_busy");
+    // Заявки с этой тарой уже упакованы или уехали — их товар не «собирается».
+    const packed = req("r0", "pA", "Тула", { toteId: "t1", packedAt: 5 });
+    const gone = req("r2", "pA", "Тула", { toteId: "t1", status: "shipped" });
+    expect(pickToteProblem({ tote: t, request: r, requests: [r, packed, gone], products })).toBe(
+      "tote_busy",
+    );
   });
 
   it("в одной таре — один продавец и одно назначение", () => {

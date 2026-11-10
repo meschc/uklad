@@ -8,7 +8,6 @@ import { useCommand } from "@/lib/useCommand";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/segmented";
-import { card } from "@/components/ui/card";
 import { Row } from "./ProfileRow";
 import { downloadBackup } from "./backupDownload";
 
@@ -71,12 +70,7 @@ export function BackupSection() {
   const restoreError = pickError ?? restore.error;
 
   return (
-    <div
-      className={card({
-        pad: "none",
-        className: "flex flex-col divide-y divide-border overflow-hidden",
-      })}
-    >
+    <div className="flex flex-col divide-y divide-border/60">
       <Row icon={<Download className="size-4" />} label={t("backup.archive")}>
         <div className="flex flex-wrap items-center justify-end gap-2">
           {download.error && <span className="text-xs text-destructive">{t(download.error)}</span>}

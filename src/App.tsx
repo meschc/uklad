@@ -297,9 +297,14 @@ export default function App() {
 
   return (
     <TooltipProvider>
-      <div className="flex h-full">
+      {/* Оболочка: меню стоит на фоне цвета меню, а экран живёт окном со
+          скруглёнными углами поверх него. */}
+      <div className="flex h-full bg-card">
         <SideNav />
-        <div key={view} className="min-w-0 flex-1 animate-fade-in">
+        <div
+          key={view}
+          className="my-2 mr-2 min-w-0 flex-1 animate-fade-in overflow-hidden rounded-2xl border border-border bg-background"
+        >
           {screen}
         </div>
       </div>

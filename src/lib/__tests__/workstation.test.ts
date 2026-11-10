@@ -131,3 +131,30 @@ describe("простой", () => {
     expect(autoIdleSince(onBreak, "s1", policy, 60 * 60_000)).toBeNull();
   });
 });
+
+describe("коды смены и пики", () => {
+  it("код отметки читается обратно, чужой — нет", async () => {
+    const { shiftMarkCode, parseShiftMarkCode } = await import("../workstation");
+    expect(parseShiftMarkCode(shiftMarkCode("break_start"))).toBe("break_start");
+    expect(parseShiftMarkCode("UK-SHIFT-PACK_SCAN")).toBeNull();
+    expect(parseShiftMarkCode("UK-BOX-1")).toBeNull();
+  });
+
+  it("пик — упакованная штука с товаром и снятие в тару", async () => {
+    const { peaksByStaff } = await import("../workstation");
+    const ev = (staffId: string, type: string, at: number, productId?: string) =>
+      ({ id: `${at}`, staffId, type, at, productId }) as never;
+    const m = peaksByStaff(
+      [
+        ev("a", "pack_label", 1, "p"),
+        ev("a", "pack_label", 2), // этикетка заказа — не пик
+        ev("a", "pick_scan", 3),
+        ev("b", "pack_label", 50, "p"), // вне окна
+      ],
+      0,
+      10,
+    );
+    expect(m.get("a")).toEqual({ pack: 1, pick: 1 });
+    expect(m.has("b")).toBe(false);
+  });
+});

@@ -1,16 +1,16 @@
 import { useMemo, useRef, useState } from "react";
-import { Check, Download, Plus, Upload, Users } from "lucide-react";
+import { Download, Plus, Upload, Users } from "lucide-react";
 import { selectRole, useEditor } from "@/lib/store";
 import { staffRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
-import { formatPhone, telHref } from "@/lib/phone";
+import { telHref } from "@/lib/phone";
 import { staffWorkload } from "@/lib/fulfillment";
 import { csvToStaff, staffToCsv } from "@/lib/staffIO";
 import { BOM } from "@/lib/utils";
 import type { StaffMember } from "@/lib/types";
 import { useT, type TFunc } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Segmented } from "@/components/ui/segmented";
 import { ScreenShell, EmptyState } from "@/components/fulfillment/ScreenShell";
 import { BreakPolicyCard } from "./BreakPolicyCard";
 import { eyebrow } from "@/components/ui/eyebrow";
@@ -18,6 +18,8 @@ import { card } from "@/components/ui/card";
 import { PartnersSection } from "./PartnersSection";
 import { PersonForm, draftToMember, type PersonDraft } from "./PersonForm";
 import { StaffRow } from "./StaffRow";
+import { useWithArchive } from "@/lib/store/archive";
+import { ArchiveNote } from "@/components/fulfillment/ArchiveNote";
 
 /**
  * Склад и персонал (п.6, 24, 25): контакты склада, ответственное лицо отдельной
@@ -37,10 +39,11 @@ const EMPTY_DRAFT: PersonDraft = {
   rate: "",
 };
 
+type StaffTab = "people" | "partners" | "schedule";
+
 export function StaffScreen() {
   const warehouse = useEditor((s) => s.warehouse);
   const showToast = useEditor((s) => s.showToast);
-  const updateWarehouseContacts = useEditor((s) => s.updateWarehouseContacts);
   const updateManager = useEditor((s) => s.updateManager);
   // Продавцу список персонала виден, но не редактируется (п.27).
   const readOnly = useEditor((s) => selectRole(s) === "seller");
@@ -48,29 +51,14 @@ export function StaffScreen() {
 
   const staff = warehouse.staff ?? [];
   // Нагрузка считается из фактов приёмки и отгрузки (см. fulfillment.ts).
-  const events = useEditor((s) => s.receivingEvents);
-  const trips = useEditor((s) => s.shipments);
+  // Нагрузка за всё время — с архивом старше 45 дней (`store/archive.ts`).
+  const events = useWithArchive("receivingEvents");
+  const trips = useWithArchive("shipments");
   const workload = useMemo(() => staffWorkload(events, trips), [events, trips]);
   const [draft, setDraft] = useState<PersonDraft | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
-  const [contacts, setContacts] = useState({
-    phone: warehouse.phone ?? "",
-    email: warehouse.email ?? "",
-    contactPerson: warehouse.contactPerson ?? "",
-  });
-  const [saved, setSaved] = useState(false);
+  const [tab, setTab] = useState<StaffTab>("people");
   const fileRef = useRef<HTMLInputElement>(null);
-
-  // Кнопка активна только когда есть что сохранять: вечно активная «Сохранить»
-  // читалась как «данные всё время меняются» (п.24).
-  const dirty =
-    contacts.phone !== (warehouse.phone ?? "") || contacts.email !== (warehouse.email ?? "");
-
-  const saveContacts = () => {
-    updateWarehouseContacts(warehouse.id, contacts);
-    setSaved(true);
-    window.setTimeout(() => setSaved(false), 1600);
-  };
 
   // Персонал правится через репозиторий (п.3.2.1). Заведение и загрузка из
   // файла — команды экрана; правка и удаление строки принадлежат самой строке.
@@ -143,175 +131,169 @@ export function StaffScreen() {
       subtitle={t("staff.subtitle", { name: warehouse.name })}
       wide
     >
-      {/* Люди первыми: кто работает, по какой ставке и сколько сделал —
+      <ArchiveNote />
+      {/* Три вкладки вместо одной длинной простыни: люди склада, партнёры-
+          продавцы и режим работы. Контакты склада живут в паспорте. */}
+      <div className="w-fit">
+        <Segmented<StaffTab>
+          size="md"
+          ariaLabel={t("staff.title")}
+          value={tab}
+          onChange={setTab}
+          options={[
+            { value: "people", label: t("staff.tab.people") },
+            { value: "partners", label: t("staff.tab.partners") },
+            { value: "schedule", label: t("staff.tab.schedule") },
+          ]}
+        />
+      </div>
+      {tab === "people" && (
+        <>
+          {/* Люди первыми: кто работает, по какой ставке и сколько сделал —
           одна таблица, а не список и отдельная «нагрузка» под ним. */}
-      <section className="flex flex-col gap-3">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-sm font-semibold">
-            {t("staff.people")} · {staff.length}
-          </h2>
-          <div className="flex items-center gap-1.5">
-            <Button size="sm" variant="outline" disabled={staff.length === 0} onClick={exportStaff}>
-              <Download className="size-3.5" />
-              {t("staff.export")}
-            </Button>
-            {/* Формы у загрузки нет, терять нечего — отказ тостом, а кнопка на
+          <section className="flex flex-col gap-3">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-sm font-semibold">
+                {t("staff.people")} · {staff.length}
+              </h2>
+              <div className="flex items-center gap-1.5">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={staff.length === 0}
+                  onClick={exportStaff}
+                >
+                  <Download className="size-3.5" />
+                  {t("staff.export")}
+                </Button>
+                {/* Формы у загрузки нет, терять нечего — отказ тостом, а кнопка на
                 время команды занята: второй тот же файл завёл бы список дважды. */}
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={load.pending}
-              onClick={() => fileRef.current?.click()}
-            >
-              <Upload className="size-3.5" />
-              {load.pending ? t("data.busy") : t("staff.import")}
-            </Button>
-            <input
-              ref={fileRef}
-              type="file"
-              accept=".csv,text/csv"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) void importStaff(file);
-                e.target.value = "";
-              }}
-            />
-            {!draft && (
-              <Button size="sm" onClick={() => setDraftTo({ ...EMPTY_DRAFT })}>
-                <Plus className="size-3.5" />
-                {t("staff.add")}
-              </Button>
-            )}
-          </div>
-        </div>
-
-        {draft && (
-          <div className="flex flex-col gap-3 rounded-xl border border-primary/40 bg-primary/5 p-3.5">
-            <PersonForm
-              withRate
-              value={draft}
-              onChange={(p) => setDraft({ ...draft, ...p })}
-              t={t}
-            />
-            <div className="flex items-center gap-2">
-              {/* Форма есть — при отказе она остаётся открытой с набранным, а
-                  кнопка становится повтором (п.3.2.2). */}
-              <Button
-                size="sm"
-                disabled={!draft.name.trim() || create.pending}
-                onClick={submitDraft}
-              >
-                {create.pending ? t("data.busy") : create.error ? t("data.retry") : t("staff.save")}
-              </Button>
-              {/* Отмену не блокируем: если запрос повис, выход не должен быть
-                  заперт вместе с ним. */}
-              <Button size="sm" variant="ghost" onClick={() => setDraftTo(null)}>
-                {t("common.cancel")}
-              </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={load.pending}
+                  onClick={() => fileRef.current?.click()}
+                >
+                  <Upload className="size-3.5" />
+                  {load.pending ? t("data.busy") : t("staff.import")}
+                </Button>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept=".csv,text/csv"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) void importStaff(file);
+                    e.target.value = "";
+                  }}
+                />
+                {!draft && (
+                  <Button size="sm" onClick={() => setDraftTo({ ...EMPTY_DRAFT })}>
+                    <Plus className="size-3.5" />
+                    {t("staff.add")}
+                  </Button>
+                )}
+              </div>
             </div>
-            {create.error && (
-              <p role="alert" className="text-xs text-destructive">
-                {t(create.error)}
-              </p>
+
+            {draft && (
+              <div className="flex flex-col gap-3 rounded-xl border border-primary/40 bg-primary/5 p-3.5">
+                <PersonForm
+                  withRate
+                  value={draft}
+                  onChange={(p) => setDraft({ ...draft, ...p })}
+                  t={t}
+                />
+                <div className="flex items-center gap-2">
+                  {/* Форма есть — при отказе она остаётся открытой с набранным, а
+                  кнопка становится повтором (п.3.2.2). */}
+                  <Button
+                    size="sm"
+                    disabled={!draft.name.trim() || create.pending}
+                    onClick={submitDraft}
+                  >
+                    {create.pending
+                      ? t("data.busy")
+                      : create.error
+                        ? t("data.retry")
+                        : t("staff.save")}
+                  </Button>
+                  {/* Отмену не блокируем: если запрос повис, выход не должен быть
+                  заперт вместе с ним. */}
+                  <Button size="sm" variant="ghost" onClick={() => setDraftTo(null)}>
+                    {t("common.cancel")}
+                  </Button>
+                </div>
+                {create.error && (
+                  <p role="alert" className="text-xs text-destructive">
+                    {t(create.error)}
+                  </p>
+                )}
+              </div>
             )}
-          </div>
-        )}
 
-        {staff.length === 0 && !draft ? (
-          <EmptyState
-            icon={<Users className="size-5" />}
-            title={t("staff.emptyTitle")}
-            body={t("staff.emptyBody")}
-          />
-        ) : (
-          <div className="overflow-x-auto rounded-xl border border-border">
-            <table className="w-full border-collapse text-sm">
-              <thead className="bg-muted/50 text-xs">
-                <tr className="text-left">
-                  <th className="px-3 py-2 font-medium">{t("staff.col.name")}</th>
-                  <th className="px-3 py-2 font-medium">{t("staff.col.role")}</th>
-                  <th className="px-3 py-2 text-right font-medium">{t("staff.rate")}</th>
-                  <th className="px-3 py-2 text-right font-medium">{t("staff.wlReceipts")}</th>
-                  <th className="px-3 py-2 text-right font-medium">{t("staff.wlUnits")}</th>
-                  <th className="px-3 py-2 text-right font-medium">{t("staff.wlTrips")}</th>
-                  <th className="px-3 py-2 font-medium">{t("staff.wlLast")}</th>
-                  <th className="w-20 px-3 py-2" />
-                </tr>
-              </thead>
-              <tbody>
-                {staff.map((m) => (
-                  <StaffRow
-                    key={m.id}
-                    member={m}
-                    load={workload.get(m.id)}
-                    editing={editing === m.id}
-                    onEdit={() => setEditing(m.id)}
-                    onDone={() => setEditing(null)}
-                    t={t}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-
-      <BreakPolicyCard />
-
-      {/* Контакты склада — телефон и почта самого объекта, без людей */}
-      <section className={card({ className: "flex flex-col gap-3" })}>
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-sm font-semibold">{t("staff.contacts")}</h2>
-          <Button
-            size="sm"
-            variant={saved ? "outline" : "default"}
-            disabled={!dirty && !saved}
-            onClick={saveContacts}
-          >
-            {saved ? <Check className="size-3.5" /> : null}
-            {t(saved ? "staff.contactsSaved" : "common.save")}
-          </Button>
-        </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Labeled label={t("staff.phone")}>
-            <Input
-              value={contacts.phone}
-              onChange={(e) => setContacts((c) => ({ ...c, phone: formatPhone(e.target.value) }))}
-              placeholder="+7 495 000-00-00"
-              inputMode="tel"
-              className="h-9"
-            />
-          </Labeled>
-          <Labeled label={t("staff.email")}>
-            <Input
-              type="email"
-              value={contacts.email}
-              onChange={(e) => setContacts((c) => ({ ...c, email: e.target.value }))}
-              placeholder="sklad@example.com"
-              className="h-9"
-            />
-          </Labeled>
-        </div>
-      </section>
+            {staff.length === 0 && !draft ? (
+              <EmptyState
+                icon={<Users className="size-5" />}
+                title={t("staff.emptyTitle")}
+                body={t("staff.emptyBody")}
+              />
+            ) : (
+              <div className="overflow-x-auto rounded-xl border border-border">
+                <table className="w-full border-collapse text-sm">
+                  <thead className="bg-muted/50 text-xs">
+                    <tr className="text-left">
+                      <th className="px-3 py-2 font-medium">{t("staff.col.name")}</th>
+                      <th className="px-3 py-2 font-medium">{t("staff.col.role")}</th>
+                      <th className="px-3 py-2 text-right font-medium">{t("staff.rate")}</th>
+                      <th className="px-3 py-2 text-right font-medium">{t("staff.wlReceipts")}</th>
+                      <th className="px-3 py-2 text-right font-medium">{t("staff.wlUnits")}</th>
+                      <th className="px-3 py-2 text-right font-medium">{t("staff.wlTrips")}</th>
+                      <th className="px-3 py-2 font-medium">{t("staff.wlLast")}</th>
+                      <th className="w-20 px-3 py-2" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {staff.map((m) => (
+                      <StaffRow
+                        key={m.id}
+                        member={m}
+                        load={workload.get(m.id)}
+                        editing={editing === m.id}
+                        onEdit={() => setEditing(m.id)}
+                        onDone={() => setEditing(null)}
+                        t={t}
+                      />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        </>
+      )}
+      {tab === "schedule" && <BreakPolicyCard />}
 
       {/* Ответственное лицо — тот же шаблон, что и у сотрудника (п.24) */}
-      <section className={card({ className: "flex flex-col gap-3" })}>
-        <h2 className="text-sm font-semibold">{t("staff.manager")}</h2>
-        <PersonForm
-          value={{
-            name: warehouse.manager?.name ?? warehouse.contactPerson ?? "",
-            role: warehouse.manager?.role ?? "",
-            phone: warehouse.manager?.phone ?? "",
-            email: warehouse.manager?.email ?? "",
-            photoUrl: warehouse.manager?.photoUrl ?? "",
-          }}
-          onChange={(patch) => updateManager(patch)}
-          t={t}
-        />
-      </section>
+      {tab === "people" && (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-sm font-semibold">{t("staff.manager")}</h2>
+          <PersonForm
+            value={{
+              name: warehouse.manager?.name ?? warehouse.contactPerson ?? "",
+              role: warehouse.manager?.role ?? "",
+              phone: warehouse.manager?.phone ?? "",
+              email: warehouse.manager?.email ?? "",
+              photoUrl: warehouse.manager?.photoUrl ?? "",
+            }}
+            onChange={(patch) => updateManager(patch)}
+            t={t}
+          />
+        </section>
+      )}
 
-      <PartnersSection />
+      {tab === "partners" && <PartnersSection />}
     </ScreenShell>
   );
 }
@@ -369,14 +351,5 @@ export function ReadOnlyContacts({
         )}
       </section>
     </>
-  );
-}
-
-function Labeled({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="flex flex-col gap-1">
-      <span className={eyebrow()}>{label}</span>
-      {children}
-    </label>
   );
 }

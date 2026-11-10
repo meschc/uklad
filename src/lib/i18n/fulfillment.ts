@@ -10,7 +10,7 @@ export const ru = {
   "lookup.title": "Что это?",
   "lookup.subtitle":
     "Сканируйте любой код склада — товар, тару, паллету или ярлык ячейки. Покажем, что это и что внутри.",
-  "lookup.scan": "Штрихкод или адрес",
+  "lookup.scan": "Код",
   "lookup.hint":
     "Сканер печатает код сам. Руками можно ввести артикул или адрес ячейки — например 1-2-3-4.",
   "lookup.placeholder": "Скан, артикул или адрес",
@@ -277,6 +277,8 @@ export const ru = {
   "recv.place.done": "Размещено в {addr}",
   "recv.box.opened": "Открыта тара {code}",
   "recv.box.placed": "Эта тара уже стоит на месте {addr}",
+  "recv.box.picking": "В эту тару сейчас собирают заказ — возьмите другую",
+  "recv.box.mixed": "Товар другого продавца — в одной таре и поставке только один продавец",
   "recv.box.added": "{name} × {n} → тара {code}",
   "recv.box.close": "Закрыть тару и поставить на место",
   "recv.box.active": "Открыта тара {code} · позиций: {n}",
@@ -337,6 +339,7 @@ export const ru = {
   "pick.tote.unknown": "Такой тары нет. Ярлыки тары печатаются на экране «Ярлыки».",
   "pick.tote.placed": "Этот короб стоит на месте хранения — возьмите пустую тару",
   "pick.tote.sealed": "Это невскрытое место с приёмки, а не тара",
+  "pick.tote.busy": "В этом коробе лежит товар не из сборки — возьмите пустую тару",
   "pick.tote.otherSeller": "В этой таре товар другого продавца — возьмите другую тару",
   "pick.tote.otherTarget": "В этой таре заказ на другое назначение — возьмите другую тару",
   "pick.tote.ok": "Собираем в тару {code}",
@@ -377,6 +380,9 @@ export const ru = {
   // --- Приоритет отбора (п.10.2) ------------------------------------------------
   "insp.pickPriority": "Приоритет отбора",
   "insp.notPickable": "не отбирать отсюда",
+  "archive.loading": "Догружаем историю старше 45 дней. Пока числа только за последние недели.",
+  "archive.failed": "История старше 45 дней не загрузилась: числа только за последние недели.",
+  "archive.retry": "Повторить",
 };
 
 export const en: Record<keyof typeof ru, string> = {
@@ -385,7 +391,7 @@ export const en: Record<keyof typeof ru, string> = {
   "lookup.title": "What is it?",
   "lookup.subtitle":
     "Scan any warehouse code — a product, a container, a pallet or a cell label. We show what it is and what is inside.",
-  "lookup.scan": "Barcode or address",
+  "lookup.scan": "Code",
   "lookup.hint":
     "The scanner types the code itself. You can also type an SKU or a cell address, e.g. 1-2-3-4.",
   "lookup.placeholder": "Scan, SKU or address",
@@ -650,6 +656,8 @@ export const en: Record<keyof typeof ru, string> = {
   "recv.place.done": "Placed at {addr}",
   "recv.box.opened": "Container {code} is open",
   "recv.box.placed": "This container already sits at {addr}",
+  "recv.box.picking": "An order is being picked into this tote — take another one",
+  "recv.box.mixed": "Another seller's product — one tote and one supply hold a single seller",
   "recv.box.added": "{name} × {n} → container {code}",
   "recv.box.close": "Close container and put it away",
   "recv.box.active": "Container {code} is open · lines: {n}",
@@ -710,6 +718,7 @@ export const en: Record<keyof typeof ru, string> = {
   "pick.tote.unknown": "No such tote. Tote labels are printed on the Labels screen.",
   "pick.tote.placed": "This box sits in a storage location — take an empty tote",
   "pick.tote.sealed": "This is an unopened receiving unit, not a tote",
+  "pick.tote.busy": "This box holds goods that are not from picking — take an empty tote",
   "pick.tote.otherSeller": "This tote holds another seller's goods — take a different tote",
   "pick.tote.otherTarget":
     "This tote holds an order for another destination — take a different tote",
@@ -751,4 +760,9 @@ export const en: Record<keyof typeof ru, string> = {
   // --- Pick priority (10.2) --------------------------------------------------------
   "insp.pickPriority": "Pick priority",
   "insp.notPickable": "do not pick from here",
+  "archive.loading":
+    "Loading history older than 45 days. For now the numbers cover the last weeks only.",
+  "archive.failed":
+    "History older than 45 days didn't load: the numbers cover the last weeks only.",
+  "archive.retry": "Try again",
 };

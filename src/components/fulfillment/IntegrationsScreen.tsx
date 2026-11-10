@@ -108,6 +108,9 @@ function BrandMark({ brand }: { brand: BrandMarkSpec }) {
           alt=""
           loading="lazy"
           onError={() => setLogoFailed(true)}
+          // У части знаков (Яндекс Маркет) в файле широкие белые поля —
+          // увеличиваем их, чтобы знак заполнял круг.
+          style={brand.logoScale ? { transform: `scale(${brand.logoScale})` } : undefined}
           className="size-full object-contain"
         />
       </span>

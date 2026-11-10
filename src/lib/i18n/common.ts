@@ -172,11 +172,17 @@ export const ru = {
   "login.emailHints": "Популярные почтовые сервисы",
   "sync.err.network":
     "Нет связи с сервером. Правки сохранены на этом устройстве и уйдут, когда связь вернётся.",
+  "sync.err.badData":
+    "Сервер не принял запись: в таре или коробе есть строка без товара или с дробным количеством. Правки хранятся на этом устройстве. Напишите в поддержку.",
   "sync.err.tooBig": "Данные кабинета слишком большие для одной записи. Напишите в поддержку.",
   "sync.conflict":
     "На сервере была более новая версия кабинета, открыли её. Ваши незаписанные правки отложены в копию на этом устройстве.",
   "sync.stockRejected":
     "Сервер не принял движение товара: оно не сошлось с приёмкой, сборкой и упаковкой. Открыли данные с сервера, ваши правки отложены в копию на этом устройстве. Покажите это старшему смены.",
+  "sync.productsRejected":
+    "Сервер не удалил больше половины товаров одной записью: так выглядит сбой, а не работа. Открыли каталог с сервера, ваши правки отложены в копию на этом устройстве. Удалите товары частями.",
+  "sync.recordsRejected":
+    "Сервер не стёр больше половины заявок, приёмки или журнала смен одной записью: так выглядит сбой, а не работа. Открыли данные с сервера, ваши правки отложены в копию на этом устройстве.",
   "profile.logoutUnsynced":
     "Часть правок ещё не дошла до сервера и при выходе пропадёт. Скачайте копию, если она нужна.",
   "login.switch.body":
@@ -267,7 +273,7 @@ export const ru = {
   "nav.side.title": "Разделы",
   "nav.side.dashboard": "Главная",
   "nav.side.toDashboard": "На главную",
-  "nav.side.plan": "План склада",
+  "nav.side.plan": "Товары",
   "nav.side.labels": "Наклейки",
   "nav.side.documents": "Документы",
   // Группы рельса (п.10): экранов стало много, близкие собраны в подменю.
@@ -465,11 +471,17 @@ export const en: Record<keyof typeof ru, string> = {
   "login.emailHints": "Popular email services",
   "sync.err.network":
     "Can't reach the server. Changes are saved on this device and will be sent once you're back online.",
+  "sync.err.badData":
+    "The server didn't accept the save: a tote or box has a line without a product or with a fractional quantity. Your changes are kept on this device. Please contact support.",
   "sync.err.tooBig": "The cabinet data is too large for a single save. Please contact support.",
   "sync.conflict":
     "The server had a newer version of the cabinet, so we opened it. Your unsaved changes were set aside in a copy on this device.",
   "sync.stockRejected":
     "The server didn't accept the stock movement: it doesn't match receiving, picking and packing. We opened the server data, and your changes were set aside in a copy on this device. Show this to the shift lead.",
+  "sync.productsRejected":
+    "The server didn't remove more than half of the products in one save: that looks like a failure, not work. We opened the catalog from the server, and your changes were set aside in a copy on this device. Delete the products in parts.",
+  "sync.recordsRejected":
+    "The server didn't erase more than half of the requests, receiving or shift log in one save: that looks like a failure, not work. We opened the server data, and your changes were set aside in a copy on this device.",
   "profile.logoutUnsynced":
     "Some changes haven't reached the server yet and will be lost when you sign out. Download a copy if you need it.",
   "login.switch.body":
@@ -560,7 +572,7 @@ export const en: Record<keyof typeof ru, string> = {
   "nav.side.title": "Sections",
   "nav.side.dashboard": "Home",
   "nav.side.toDashboard": "To home",
-  "nav.side.plan": "Warehouse plan",
+  "nav.side.plan": "Products",
   "nav.side.labels": "Labels",
   "nav.side.documents": "Documents",
   "nav.group.flow": "Operations",

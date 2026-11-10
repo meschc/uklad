@@ -8,17 +8,17 @@
  *   · узнать сотрудника по бейджу;
  *   · прочитать снимок кабинета без ставок, контактов, подключений, переписки
  *     и чужих складов;
- *   · записать работу склада по разрешённому списку (`DESK_WRITES`); журнал
- *     смен только дописывается, решённое спорное не меняется, всё прочее
- *     сервер берёт из текущего снимка;
+ *   · записать работу склада только операциями (`POST /api/desk/ops`): факт с
+ *     ключом повтора, сервер сам применяет его к текущему снимку; журнал смен
+ *     только дописывается, решённое спорное не меняется;
  *   · отвязаться бейджем руководителя.
  * Остальные маршруты кабинета со столом отвечают 403 — не 401, чтобы стол не
  * принял это за потерю входа.
  *
- * Пока кабинет живёт снимком (ADR 0010), стол пишет работу склада снимком, а
- * сервер сверяет её: кто за столом (миграция 012) и куда делся товар
- * (`deskStock.js`). Операции по таблицам заменят сверку, когда товары и
- * остатки переедут на сервер.
+ * Снимок кабинета стол не пишет вовсе (шаг 4 «потолка данных»): записью
+ * целого документа со стола он упирался бы в лимит и мог затереть правку
+ * руководителя. Результат каждой операции проходит сверку (`mergeDeskWrite`):
+ * кто за столом (миграция 012) и куда делся товар (`deskStock.js`).
  *
  * Маршруты руководителя (вход по паролю с правом staff.manage):
  *   POST /api/cabinet/desks        — { deviceRef, name } → кука стола, вход руководителя гаснет
@@ -26,7 +26,8 @@
  * Маршруты стола (кука стола и нет куки входа):
  *   GET  /api/auth/me              — { kind: "desk", current: { orgId } }
  *   GET  /api/cabinet/snapshot     — снимок без лишнего
- *   POST /api/cabinet/snapshot     — запись работы склада поверх известной версии
+ *   GET  /api/desk/version         — версия снимка: пора ли подтянуть свежий
+ *   POST /api/desk/ops             — пачка операций с ключами повтора
  *   POST /api/cabinet/badges/check — чей бейдж
  *   POST /api/desk/unbind          — { code } бейдж руководителя → стол отвязан
  */
@@ -34,14 +35,26 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { createHash, randomBytes } = require("node:crypto");
 const { createRateLimit } = require("../rateLimit");
-const { MAX_SNAPSHOT_BYTES } = require("./snapshot");
+const {
+  MAX_SNAPSHOT_BYTES,
+  warnNearLimit,
+  loadCabinet,
+  splitCabinet,
+  storeRecords,
+} = require("./snapshot");
 const { whoseBadge, answerCheck, CHECKS_PER_MINUTE } = require("./deskBadges");
 const { mergeDeskStock, STOCK_KEYS } = require("./deskStock");
+const { recordMoves, diffMoves } = require("./moves");
+const { isOp, runDeskOps, MAX_OPS } = require("./deskOps");
 
 // Стол живёт, пока его не отвяжут; срок — страховка от забытого компьютера.
 const DESK_TTL_MS = 180 * 86_400_000;
 const DEVICE_RE = /^[A-Za-z0-9_-]{1,100}$/;
-const WRITES_PER_MINUTE = 30;
+/**
+ * Пачки операций — на стол: отметок смены у человека единицы за смену, а
+ * журнал операций только растёт. Очередь после обрыва уходит за минуту-две.
+ */
+const OPS_PER_MINUTE = 20;
 // Вход по бейджу за столом живёт 12 часов — как `SESSION_TTL_MS` в браузере.
 const SHIFT_TTL_MS = 12 * 3_600_000;
 // Должности руководства — те же, что в кабинете (`MANAGER_ROLE`, lib/workstation.ts).
@@ -53,10 +66,10 @@ const SENIOR_ROLE =
   /старш|бригадир|начальник|управля|заместител|руковод|директор|senior|lead|manager/i;
 
 /**
- * Что стол вправе записать — разрешённый список, а не запретный: новый домен
- * кабинета для стола закрыт, пока его сюда не впишут. Это работа склада у
- * стола: приёмка, тара, паллеты, сборка (заявки, остатки в ячейках), рейсы,
- * задания. Всё остальное — персонал и план (`warehouse`), товары и их
+ * Что результат операции стола вправе изменить — разрешённый список, а не
+ * запретный: новый домен кабинета для стола закрыт, пока его сюда не впишут.
+ * Это работа склада у стола: приёмка, тара, паллеты, сборка (заявки, остатки
+ * в ячейках), рейсы. Всё остальное — персонал и план (`warehouse`), товары и их
  * продавцы, документы, цены, тариф, подключения, другие склады — сервер
  * берёт из текущего снимка.
  */
@@ -127,7 +140,8 @@ function keepDecisions(current, merged) {
     const n = isObject(d) ? next.get(d.id) : undefined;
     return n && !d.resolution && n.resolution && n.resolution !== "written_off" ? n : d;
   });
-  return appendOnly(kept, merged, (d) => !d.resolution);
+  // Лишнее с приёмки заводится вместе с приёмкой: откатилась она — нет и его.
+  return appendOnly(kept, merged, (d) => !d.resolution && d.kind !== "receive_overage");
 }
 
 /** Порядок статуса заявки: назад со стола — только «в работе» → «новая». */
@@ -202,6 +216,8 @@ function mergeRequests(current, incoming, people, boxes) {
  * Спорное со стола: новое добавляется, открытое можно решить (старший решает
  * за столом), решённое не меняется — решение старшего не перепишешь.
  */
+const OVERAGE_RES = new Set(["accepted", "written_off"]);
+
 function mergeDisputes(current, incoming, people) {
   const next = byId(incoming);
   const kept = (Array.isArray(current) ? current : []).map((was) => {
@@ -218,6 +234,9 @@ function mergeDisputes(current, incoming, people) {
         : was;
     if (!n.resolution) return grown;
     const d = grown;
+    // Лишнее с приёмки оставляют или списывают; «оставить» — только для него.
+    const overage = d.kind === "receive_overage";
+    if (overage ? !OVERAGE_RES.has(n.resolution) : n.resolution === "accepted") return d;
     // Решает старший, который сейчас за столом, и только от своего имени.
     if (!people.isSenior || n.resolvedBy !== people.staff) return d;
     // Списание — с причиной и не тем, кто нашёл (как в кабинете, #71):
@@ -242,8 +261,18 @@ function mergeDisputes(current, incoming, people) {
     for (const f of ["resolution", "resolvedAt", "resolvedBy", "note"]) delete open[f];
     return open;
   });
-  // Завести спорное может только тот, кто за столом.
-  return appendOnly(kept, fresh, (d) => people.present.has(d.raisedBy));
+  // Завести спорное может только тот, кто за столом. Лишнее с приёмки
+  // заводит сервер (`overageDisputes` в `deskStock.js`), не стол.
+  return appendOnly(
+    kept,
+    fresh,
+    // Id `ovr-…` тоже занят сервером: иначе стол заранее подложил бы своё
+    // спорное под id будущего «лишнего».
+    (d) =>
+      people.present.has(d.raisedBy) &&
+      d.kind !== "receive_overage" &&
+      !String(d.id).startsWith("ovr-"),
+  );
 }
 
 /** Чего стол не видит вовсе: переписка, подключения, чужие склады. */
@@ -304,6 +333,13 @@ function mergeDeskWrite(current, incoming, who = {}) {
   // вся работа с товаром остаётся как на сервере, а стол заберёт свежий снимок.
   const stock = mergeDeskStock(current, out, people);
   Object.assign(out, stock.out);
+  // За столом никого: товар не двигается вовсе — в журнале не должно
+  // остаться «стол, неизвестно кто».
+  if (people.present.size === 0) {
+    for (const m of diffMoves(current, out)) {
+      if (!stock.mismatch.includes(m.product)) stock.mismatch.push(m.product);
+    }
+  }
   if (stock.mismatch.length > 0) {
     const decided = out.disputes;
     for (const key of STOCK_KEYS) {
@@ -328,10 +364,9 @@ function createDesks({ auth, cfg, send, log }) {
   const attrs = `Path=/; HttpOnly;${local ? "" : " Secure;"} SameSite=Strict`;
   const deskCookie = (token) => `${COOKIE}=${token}; ${attrs}; Max-Age=${DESK_TTL_MS / 1000}`;
   const clearDesk = `${COOKIE}=; ${attrs}; Max-Age=0`;
-  const writes = createRateLimit({
-    capacity: WRITES_PER_MINUTE,
-    refillPerMinute: WRITES_PER_MINUTE,
-  });
+  // Стол раз в 20 секунд спрашивает версию снимка: запас на несколько вкладок.
+  const versionLimit = createRateLimit({ capacity: 12, refillPerMinute: 12 });
+  const opsLimit = createRateLimit({ capacity: OPS_PER_MINUTE, refillPerMinute: OPS_PER_MINUTE });
   const checks = createRateLimit({
     capacity: CHECKS_PER_MINUTE,
     refillPerMinute: CHECKS_PER_MINUTE,
@@ -438,7 +473,8 @@ function createDesks({ auth, cfg, send, log }) {
         `SELECT version, format, data, updated_at FROM uklad.cabinet_snapshots
          WHERE org_id = uklad.current_org()`,
       );
-      return { row: rows[0] ?? null };
+      if (!rows[0]) return { row: null };
+      return { row: { ...rows[0], data: await loadCabinet(c, rows[0].data) } };
     });
     if (!out) return gone(res);
     if (!out.row) return send(res, 200, { ok: true, snapshot: null });
@@ -446,64 +482,80 @@ function createDesks({ auth, cfg, send, log }) {
     return send(res, 200, {
       ok: true,
       snapshot: { version, format, data: forDesk(data), updatedAt },
+      // Клиент узнаёт по этому, что он стол: стол снимок не пишет, а сам
+      // подтягивает свежий (`store/serverSync.ts`).
+      desk: true,
     });
   }
 
-  async function saveSnapshot(req, res) {
-    const b = await readJson(req, res, MAX_SNAPSHOT_BYTES);
-    if (!b) return;
-    const { version, format, data } = b;
-    // Первую запись (версия 0) стол не делает: снимок заводит руководитель.
-    if (
-      !Number.isInteger(version) ||
-      version < 1 ||
-      !Number.isInteger(format) ||
-      format < 1 ||
-      !isObject(data)
-    ) {
-      return send(res, 400, { ok: false, error: "bad_request" });
-    }
+  /**
+   * Версия снимка без самого снимка: стол сам снимок не пишет, а подтягивает
+   * свежий, когда версия ушла вперёд (правка руководителя или другого стола).
+   */
+  async function snapshotVersion(req, res) {
     const out = await withDesk(req, async (c, d) => {
-      if (!writes.take(d.orgId)) return { limited: true };
+      if (!versionLimit.take(d.deskId)) return { limited: true };
       const { rows } = await c.query(
-        `SELECT version, data FROM uklad.cabinet_snapshots
-         WHERE org_id = uklad.current_org() FOR UPDATE`,
+        `SELECT version FROM uklad.cabinet_snapshots WHERE org_id = uklad.current_org()`,
       );
-      const cur = rows[0];
-      if (!cur || cur.version !== version) return { conflict: cur?.version ?? 0 };
-      // Стол работает на одном складе. Руководитель переключил кабинет на
-      // другой — работа стола легла бы поверх чужого склада; пусть стол
-      // сначала заберёт свежий снимок.
-      if (data.warehouse?.id !== cur.data.warehouse?.id) return { conflict: cur.version };
-      const people = await c.query(`SELECT staff_ref, prev_staff_ref FROM auth.desk_staff($1)`, [
-        deskHash(req),
-      ]);
-      const who = { staff: people.rows[0]?.staff_ref, prev: people.rows[0]?.prev_staff_ref };
-      const write = mergeDeskWrite(cur.data, data, who);
-      if (write.mismatch.length > 0) {
-        log.warn?.(`[uklad] стол: остатки не сошлись по ${write.mismatch.length} товарам`);
-      }
-      const merged = JSON.stringify(write.data);
-      const upd = await c.query(
-        `UPDATE uklad.cabinet_snapshots
-         SET previous = data, data = $1::jsonb, format = $2, version = version + 1,
-             updated_at = now(), updated_by = NULL, updated_by_desk = $3
-         WHERE org_id = uklad.current_org()
-         RETURNING version`,
-        [merged, format, d.deskId],
-      );
-      // Остатки не сошлись: остальное записано, но копия стола уже не
-      // совпадает с сервером — пусть заберёт свежий снимок, как при конфликте.
-      if (write.mismatch.length > 0) return { conflict: upd.rows[0].version, stock: true };
-      return { version: upd.rows[0].version };
+      return { version: rows[0]?.version ?? null };
     });
     if (!out) return gone(res);
     if (out.limited) return limited(res);
-    if (out.conflict !== undefined) {
-      const error = out.stock ? "stock_mismatch" : "conflict";
-      return send(res, 409, { ok: false, error, version: out.conflict });
-    }
     return send(res, 200, { ok: true, version: out.version });
+  }
+
+  /**
+   * Операции стола (миграция 015): пачка фактов с ключами повтора. Ответ на
+   * каждую — `applied`, `flagged` с причиной или повтор уже принятой.
+   */
+  async function saveOps(req, res) {
+    const b = await readJson(req, res);
+    if (!b) return;
+    const ops = b.ops;
+    if (!Array.isArray(ops) || ops.length === 0 || ops.length > MAX_OPS || !ops.every(isOp)) {
+      return send(res, 400, { ok: false, error: "bad_request" });
+    }
+    const out = await withDesk(req, async (c, d) => {
+      if (!opsLimit.take(d.deskId)) return { limited: true };
+      const { rows } = await c.query(`SELECT * FROM auth.desk_staff_times($1)`, [deskHash(req)]);
+      const ms = (t) => (t ? new Date(t).getTime() : undefined);
+      const who = {
+        staff: rows[0]?.staff_ref,
+        staffSince: ms(rows[0]?.staff_since),
+        prev: rows[0]?.prev_staff_ref,
+        prevSince: ms(rows[0]?.prev_since),
+        prevLeft: ms(rows[0]?.prev_left),
+      };
+      // Упаковка проходит те же правила, что запись снимка со стола.
+      const verify = (before, after) => {
+        const w = mergeDeskWrite(before, after, { staff: who.staff, prev: who.prev });
+        return w.mismatch.length > 0 ? { ok: false } : { ok: true, data: w.data };
+      };
+      return runDeskOps(c, d.deskId, ops, who, Date.now(), {
+        verify,
+        load: loadCabinet,
+        split: splitCabinet,
+        storeRecords,
+        recordMoves,
+        maxBytes: MAX_SNAPSHOT_BYTES,
+      }).then((r) => ({ ...r, orgId: d.orgId }));
+    });
+    if (!out) return gone(res);
+    if (out.limited) return limited(res);
+    if (out.tooLarge) {
+      // Снимок компании упёрся в потолок: дальше работа стола не сохраняется.
+      // Это должны увидеть мы, а не только стол тостом.
+      log.warn?.(`[uklad] стол: снимок компании ${out.orgId} больше лимита, операции не приняты`);
+      return send(res, 413, { ok: false, error: "too_large" });
+    }
+    // Снимка ещё нет: класть отметки некуда, его заводит руководитель.
+    if (out.conflict !== undefined) return send(res, 409, { ok: false, error: "no_snapshot" });
+    if (out.bytes) warnNearLimit(log, out.orgId, out.bytes);
+    const answer = { ...out };
+    delete answer.bytes;
+    delete answer.orgId;
+    return send(res, 200, { ok: true, ...answer });
   }
 
   async function checkBadge(req, res) {
@@ -570,10 +622,11 @@ function createDesks({ auth, cfg, send, log }) {
   const deskRoutes = {
     "GET /api/auth/me": me,
     "GET /api/cabinet/snapshot": loadSnapshot,
-    "POST /api/cabinet/snapshot": saveSnapshot,
     "POST /api/cabinet/badges/check": checkBadge,
     "POST /api/desk/unbind": unbind,
     "POST /api/desk/leave": leave,
+    "GET /api/desk/version": snapshotVersion,
+    "POST /api/desk/ops": saveOps,
   };
   // Куда стол не ходит: весь кабинет. Заявки с витрины и демо — не наши.
   const CABINET = /^\/api\/(auth|cabinet|staff|chat|telegram|desk|company|account)\//;

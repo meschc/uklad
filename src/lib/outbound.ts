@@ -189,6 +189,30 @@ export function classifyLoadScan(
   return { kind: "ok", code, box };
 }
 
+/**
+ * Что уезжает с этой погрузкой. Заявка уезжает, только если все её открытые
+ * короба отгрузки в машине: иначе продавец увидит «Уехало», а короб останется
+ * у стола. Заявка без короба (собрана не на столе) уезжает как есть. `split` —
+ * в машине короб, где есть и заявка, которая остаётся: такой рейс не
+ * отправляют, короб уедет с половиной чужого заказа.
+ */
+export function planLoad(
+  list: readonly OutboundBox[],
+  requestIds: readonly string[],
+  loaded: readonly string[],
+): { going: string[]; split: boolean } {
+  const got = new Set(loaded.map(normalizeCode));
+  const open = list.filter((b) => !b.shipmentId);
+  const going = requestIds.filter((id) =>
+    open.every((b) => !b.requestIds.includes(id) || got.has(normalizeCode(b.code))),
+  );
+  const keep = new Set(going);
+  const split = open.some(
+    (b) => got.has(normalizeCode(b.code)) && b.requestIds.some((r) => !keep.has(r)),
+  );
+  return { going, split };
+}
+
 /** Короба назначения, которые ещё не погрузили. */
 export function missingOutbound(
   expected: readonly OutboundBox[],

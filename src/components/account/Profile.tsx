@@ -16,7 +16,7 @@ import { leaveServerSession } from "@/lib/store/leave";
 import { flushServerSync, hasDeferredCopy } from "@/lib/store/serverSync";
 import { downloadBackup, downloadDeferredCopy } from "./backupDownload";
 import { PERSIST_KEY, selectRole, useEditor } from "@/lib/store";
-import { removeLocal } from "@/lib/safeStorage";
+import { removeSaved } from "@/lib/store/persistStorage";
 import { isValidInn } from "@/lib/company";
 import { companyRepository } from "@/lib/data/companyRepository";
 import type { Lang } from "@/lib/types";
@@ -25,7 +25,6 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/segmented";
 import { Input } from "@/components/ui/input";
-import { card } from "@/components/ui/card";
 import { ImagePicker } from "./ImagePicker";
 import { Row, ReadValue, RowEditor } from "./ProfileRow";
 import { TariffSection } from "./TariffSection";
@@ -118,7 +117,7 @@ export function Profile() {
    * приложения, — и второй его копии в интерфейсе быть не должно.
    */
   const resetDemoData = () => {
-    removeLocal(PERSIST_KEY);
+    removeSaved(PERSIST_KEY);
     window.location.reload();
   };
   const [draft, setDraft] = useState(() => draftOf());
@@ -232,14 +231,13 @@ export function Profile() {
           было не видно. Вкладки — в ней же, чтобы переключаться, не
           проматывая наверх. */}
       <header className="sticky top-0 z-10 border-b border-border bg-background">
-        <div className="mx-auto flex max-w-3xl flex-col gap-3 px-6 pb-3 pt-5">
+        <div className="mx-auto flex max-w-2xl flex-col gap-3 px-6 pb-3 pt-5">
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="icon-sm" onClick={goToDashboard}>
               <ChevronLeft className="size-4" />
             </Button>
             <div className="min-w-0 flex-1">
               <h1 className="text-lg font-semibold tracking-tight">{t("profile.title")}</h1>
-              <p className="text-xs text-muted-foreground">{t("profile.subtitle")}</p>
             </div>
             <Button size="sm" onClick={goToDashboard}>
               {t("profile.done")}
@@ -256,7 +254,7 @@ export function Profile() {
           </div>
         </div>
       </header>
-      <div className="mx-auto flex max-w-3xl flex-col gap-6 px-6 py-6">
+      <div className="mx-auto flex max-w-2xl flex-col gap-6 px-6 py-6">
         {/* Визитка: кто вошёл и на каком тарифе — чтобы экран начинался не
             со строки «Имя», а с человека. */}
         <ProfileHero
@@ -312,12 +310,7 @@ export function Profile() {
         <div className="flex min-w-0 flex-col gap-6">
           {tab === "account" && (
             <Section title={t("profile.section.account")}>
-              <div
-                className={card({
-                  pad: "none",
-                  className: "flex flex-col divide-y divide-border overflow-hidden",
-                })}
-              >
+              <div className="flex flex-col divide-y divide-border/60">
                 <Row icon={<User className="size-4" />} label={t("profile.image.photo")}>
                   <ImagePicker
                     value={account.avatar}
@@ -387,12 +380,7 @@ export function Profile() {
               ИНН — ключ, остальное приходит по нему. */}
           {tab === "company" && account.type === "company" && (
             <Section title={t("profile.section.company")}>
-              <div
-                className={card({
-                  pad: "none",
-                  className: "flex flex-col divide-y divide-border overflow-hidden",
-                })}
-              >
+              <div className="flex flex-col divide-y divide-border/60">
                 <>
                   <Row icon={<Hash className="size-4" />} label={t("profile.inn")}>
                     {edit === "inn" ? (
@@ -483,19 +471,31 @@ export function Profile() {
                     ) : (
                       <ReadValue onEdit={() => open("details")}>
                         {hasDetails ? (
-                          <div className="flex max-w-56 flex-col items-end text-right">
+                          // Каждое значение со своим названием: голые цифры
+                          // КПП и ОГРН не отличить друг от друга. Адрес
+                          // переносится, а не тянется в одну строку.
+                          <dl className="grid max-w-sm grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-sm">
                             {account.kpp && (
-                              <span className="font-mono text-xs">{account.kpp}</span>
+                              <>
+                                <dt className="text-muted-foreground">{t("profile.kpp")}</dt>
+                                <dd className="font-mono text-xs leading-5">{account.kpp}</dd>
+                              </>
                             )}
                             {account.ogrn && (
-                              <span className="font-mono text-xs">{account.ogrn}</span>
+                              <>
+                                <dt className="text-muted-foreground">{t("profile.ogrn")}</dt>
+                                <dd className="font-mono text-xs leading-5">{account.ogrn}</dd>
+                              </>
                             )}
                             {account.legalAddress && (
-                              <span className="truncate text-xs text-muted-foreground">
-                                {account.legalAddress}
-                              </span>
+                              <>
+                                <dt className="text-muted-foreground">
+                                  {t("profile.legalAddress")}
+                                </dt>
+                                <dd>{account.legalAddress}</dd>
+                              </>
                             )}
-                          </div>
+                          </dl>
                         ) : (
                           <span className="text-sm text-muted-foreground">—</span>
                         )}
@@ -528,7 +528,7 @@ export function Profile() {
                 </div>
                 {/* Выбор языка скрыт до перевода кабинета (Кирилл, 31 окт). */}
                 {SHOW_LANGUAGE && (
-                  <div className={card({ pad: "none", className: "overflow-hidden" })}>
+                  <div className="flex flex-col">
                     <Row icon={<Globe className="size-4" />} label={t("profile.language")}>
                       <Segmented<Lang>
                         value={profile.language}
@@ -550,12 +550,7 @@ export function Profile() {
               <Section title={t("profile.section.other")}>
                 {/* Обучение: сброс подсказок + переход в редактор, где сразу
             показывается приветственная подсказка. */}
-                <div
-                  className={card({
-                    pad: "none",
-                    className: "flex flex-col divide-y divide-border overflow-hidden",
-                  })}
-                >
+                <div className="flex flex-col divide-y divide-border/60">
                   <Row icon={<RotateCcw className="size-4" />} label={t("profile.onboarding")}>
                     <Button
                       size="sm"
@@ -615,7 +610,7 @@ export function Profile() {
               запуска и онлайн-оплаты. */}
           {tab === "tariff" && isSeller && (
             <Section title={t("profile.sellerOptions.title")}>
-              <div className={card({ className: "flex flex-col gap-2 text-sm" })}>
+              <div className="flex flex-col gap-2 text-sm">
                 <p>{t("profile.sellerOptions.included")}</p>
                 <p className="text-muted-foreground">{t("profile.sellerOptions.paid")}</p>
               </div>

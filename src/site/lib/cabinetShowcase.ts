@@ -1,8 +1,9 @@
 import { readLocal } from "@/lib/safeStorage";
+import { unpackText } from "@/lib/storeCodec";
 import { allCells, buildOccupancy } from "@/lib/placement";
 import type { Account } from "@/lib/types/account";
 import type { ServiceKind, ServiceSettings } from "@/lib/types/operations";
-import type { Box, CellAddress, Warehouse as CabinetWarehouse } from "@/lib/types";
+import type { Box, CellAddress, ShowcaseField, Warehouse as CabinetWarehouse } from "@/lib/types";
 import type { IntegrationConfig } from "@/lib/integrations";
 import { MARKETPLACES, type SchemeId, type ServiceId } from "../data/marketplaces";
 import type { Warehouse } from "../data/warehouses";
@@ -50,7 +51,7 @@ const SERVICE_MAP: Partial<Record<ServiceKind, ServiceId>> = {
 const same = (s: string): Copy => c(s, s);
 
 export function readCabinetShowcase(): Warehouse | null {
-  const raw = readLocal(PERSIST_KEY);
+  const raw = unpackText(readLocal(PERSIST_KEY));
   if (!raw) return null;
   let saved: CabinetSaved;
   try {
@@ -100,6 +101,10 @@ export function toShowcase(saved: CabinetSaved, w: CabinetWarehouse): Warehouse 
     .filter((id, i, all) => all.indexOf(id) === i);
 
   const legal = saved.account?.org || saved.account?.name || w.name;
+  // Скрытое складом поле уходит на витрину пустым, а не настоящим значением.
+  const hidden = new Set(spec.showcaseHidden ?? []);
+  const show = <T>(field: ShowcaseField, value: T, empty: T): T =>
+    hidden.has(field) ? empty : value;
 
   return {
     id: PREVIEW_ID,
@@ -108,22 +113,26 @@ export function toShowcase(saved: CabinetSaved, w: CabinetWarehouse): Warehouse 
     city,
     cityTitle: same(city),
     region: same(city),
-    address: same(street),
+    address: same(show("address", street, "—")),
     lat: w.lat ?? 55.7558,
     lng: w.lng ?? 37.6173,
-    since: spec.builtYear ?? new Date().getFullYear(),
-    areaM2: spec.storageAreaM2 ?? spec.totalAreaM2 ?? 0,
-    cellsTotal: total,
-    cellsFree: Math.max(0, total - busy),
+    since: show("since", spec.builtYear ?? new Date().getFullYear(), 0),
+    areaM2: show("area", spec.storageAreaM2 ?? spec.totalAreaM2 ?? 0, 0),
+    cellsTotal: show("cells", total, 0),
+    cellsFree: show("cells", Math.max(0, total - busy), 0),
     schemes,
-    marketplaces,
-    services,
-    price: {
-      storage: w.storageRatePerCell ?? 0,
-      receiving: settings.prices.cargo_box ?? 0,
-      picking: settings.prices.picking ?? 0,
-      marking: settings.prices.marking ?? 0,
-    },
+    marketplaces: show("marketplaces", marketplaces, []),
+    services: show("services", services, []),
+    price: show(
+      "prices",
+      {
+        storage: w.storageRatePerCell ?? 0,
+        receiving: settings.prices.cargo_box ?? 0,
+        picking: settings.prices.picking ?? 0,
+        marking: settings.prices.marking ?? 0,
+      },
+      { storage: 0, receiving: 0, picking: 0, marking: 0 },
+    ),
     confirmedAt: Date.now(),
     minPlaces: 0,
     reputation: NO_REPUTATION,

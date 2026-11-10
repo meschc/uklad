@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { readCabinetShowcase } from "../cabinetShowcase";
+import { packText } from "@/lib/storeCodec";
 
 const KEY = "uklad-store-v1";
 
@@ -49,5 +50,17 @@ describe("readCabinetShowcase", () => {
     expect(w?.city).toBe("Тула");
     expect(w?.schemes).toEqual(["FBS"]);
     expect(w?.price.picking).toBe(12);
+  });
+
+  it("сжатое сохранение кабинета читается так же", () => {
+    localStorage.setItem(
+      KEY,
+      packText(
+        JSON.stringify({
+          state: { warehouse: { name: "Склад", address: "Тула, Южная, 3", floors: [] } },
+        }),
+      ),
+    );
+    expect(readCabinetShowcase()?.city).toBe("Тула");
   });
 });

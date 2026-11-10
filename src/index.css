@@ -452,3 +452,13 @@
     animation: none;
   }
 }
+
+/* Поле с ошибкой: одна обводка, а не синяя поверх красной. Пока человек
+   правит (`data-typing` ставит ui/input), красное снято до ухода из поля. */
+input.border-destructive:focus-visible {
+  --tw-ring-color: hsl(var(--destructive) / 0.35);
+}
+input.border-destructive[data-typing] {
+  border-color: hsl(var(--input));
+  --tw-ring-color: hsl(var(--ring));
+}

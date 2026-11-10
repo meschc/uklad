@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Boxes } from "lucide-react";
+import { UkladLockup } from "@/components/brand/UkladLockup";
 import { useEditor } from "@/lib/store";
 import { planBounds, rowFrames } from "@/lib/planGeometry";
 import type { Box, CellAddress, Floor, PlacedModule } from "@/lib/types";
@@ -157,16 +157,15 @@ export function HeatmapView() {
     dragRef.current = null;
   };
 
+  const orgLogo = useEditor((s) => s.account.orgLogo);
   return (
     <div className="flex h-full flex-col bg-background text-foreground">
       <header className="flex h-12 shrink-0 items-center justify-between gap-3 border-b border-border bg-card px-4">
         <div className="flex min-w-0 items-center gap-2.5">
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-foreground text-background">
-            <Boxes className="size-4" />
-          </div>
-          <span className="truncate text-sm font-semibold">
-            {warehouse.name} · {t("heat.title")}
-          </span>
+          {/* Тот же блок знака, что в меню кабинета: поменяли логотип или
+              название — поменялось и здесь. */}
+          <UkladLockup label={warehouse.name} image={orgLogo} />
+          <span className="truncate text-sm text-muted-foreground">· {t("heat.title")}</span>
         </div>
         {warehouse.floors.length > 1 && (
           <div className="flex items-center gap-0.5 rounded-lg bg-muted p-0.5">

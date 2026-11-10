@@ -17,7 +17,7 @@ export const createPrintSlice: SliceCreator<PrintSlice> = (set) => ({
 });
 
 export const createViewSlice: SliceCreator<ViewSlice> = (set) => ({
-  mode: "2d",
+  mode: "table",
   zoom: 1,
   pan: { x: 0, y: 0 },
   toast: null,

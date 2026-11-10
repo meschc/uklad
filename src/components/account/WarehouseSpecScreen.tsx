@@ -12,15 +12,18 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { selectRole, useEditor } from "@/lib/store";
-import type { FireCategory, WarehouseClass, WarehouseSpec } from "@/lib/types";
+import type { FireCategory, ShowcaseField, WarehouseClass, WarehouseSpec } from "@/lib/types";
 import { useT } from "@/lib/i18n";
 import { ReadOnlyContacts } from "./StaffScreen";
 import { ScreenShell } from "@/components/fulfillment/ScreenShell";
-import { eyebrow } from "@/components/ui/eyebrow";
 import { card } from "@/components/ui/card";
+import { WarehouseContacts } from "./WarehouseContacts";
+import { ShowcaseFields } from "./ShowcaseFields";
 import {
   BoolValue,
   ChipsValue,
+  ChoiceMenu,
+  ShowcaseEye,
   ChoiceValue,
   ClassBadge,
   CompletenessRing,
@@ -109,6 +112,18 @@ export function WarehouseSpecScreen() {
 
   const spec = warehouse.spec ?? {};
   const patch = (p: Partial<WarehouseSpec>) => updateSpec(warehouse.id, p);
+  // Глаз «видно на витрине» у поля паспорта. Продавцу его не показываем.
+  const hidden = spec.showcaseHidden ?? [];
+  const eye = (f: ShowcaseField) =>
+    ro
+      ? undefined
+      : {
+          shown: !hidden.includes(f),
+          onToggle: () =>
+            patch({
+              showcaseHidden: hidden.includes(f) ? hidden.filter((x) => x !== f) : [...hidden, f],
+            }),
+        };
   const ro = readOnly;
 
   // «Заполнено» = значение есть и оно не пустая строка. `false` считается
@@ -163,7 +178,18 @@ export function WarehouseSpecScreen() {
           спрашивают первыми в любом разговоре про склад. */}
       <section className={card({ className: "flex flex-col gap-4" })}>
         <div className="flex flex-wrap items-center gap-4">
-          <ClassBadge value={spec.warehouseClass} />
+          {/* Класс выбирается нажатием на сам значок — списком под ним. */}
+          {ro ? (
+            <ClassBadge value={spec.warehouseClass} />
+          ) : (
+            <ChoiceMenu
+              value={spec.warehouseClass}
+              text={spec.warehouseClass}
+              options={CLASSES}
+              onChange={(v) => patch({ warehouseClass: v })}
+              trigger={<ClassBadge value={spec.warehouseClass} />}
+            />
+          )}
           <div className="min-w-0 flex-1">
             {/* Название и адрес правятся здесь же, как любое поле паспорта:
                 искать их в другом месте кабинета склад не должен. */}
@@ -175,12 +201,15 @@ export function WarehouseSpecScreen() {
                   placeholder={t("spec.name")}
                   onCommit={(v) => v && updateWarehouse(warehouse.id, { name: v })}
                 />
-                <TextValue
-                  value={warehouse.address}
-                  readOnly={false}
-                  placeholder={t("spec.addressPlaceholder")}
-                  onCommit={(v) => updateWarehouse(warehouse.id, { address: v ?? "" })}
-                />
+                <div className="flex items-center gap-1">
+                  <TextValue
+                    value={warehouse.address}
+                    readOnly={false}
+                    placeholder={t("spec.addressPlaceholder")}
+                    onCommit={(v) => updateWarehouse(warehouse.id, { address: v ?? "" })}
+                  />
+                  <ShowcaseEye {...eye("address")!} />
+                </div>
               </div>
             ) : (
               <p className="truncate text-base font-semibold">{warehouse.name}</p>
@@ -191,23 +220,12 @@ export function WarehouseSpecScreen() {
                 <span className="truncate">{warehouse.address}</span>
               </p>
             )}
-            {!ro && (
-              <div className="mt-1.5 flex items-center gap-1.5">
-                <span className={eyebrow({ size: "xs", weight: "medium" })}>{t("spec.class")}</span>
-                <ChoiceValue
-                  value={spec.warehouseClass}
-                  options={CLASSES}
-                  readOnly={false}
-                  onChange={(v) => patch({ warehouseClass: v })}
-                />
-              </div>
-            )}
           </div>
           <CompletenessRing filled={filled} total={COUNTED.length} />
         </div>
 
         <TileGrid cols={3}>
-          <Tile label={t("spec.storageArea")}>
+          <Tile label={t("spec.storageArea")} eye={eye("area")}>
             <StatValue
               value={spec.storageAreaM2}
               unit={t("spec.unit.m2")}
@@ -223,7 +241,7 @@ export function WarehouseSpecScreen() {
               onCommit={(v) => patch({ ceilingHeightM: v })}
             />
           </Tile>
-          <Tile label={t("spec.palletCapacity")}>
+          <Tile label={t("spec.palletCapacity")} eye={eye("cells")}>
             <StatValue
               value={spec.palletCapacity}
               readOnly={ro}
@@ -241,7 +259,7 @@ export function WarehouseSpecScreen() {
               onCommit={(v) => patch({ floorLoadKgM2: v })}
             />
           </Tile>
-          <Tile label={t("spec.builtYear")}>
+          <Tile label={t("spec.builtYear")} eye={eye("since")}>
             <StatValue
               value={spec.builtYear}
               readOnly={ro}
@@ -545,6 +563,15 @@ export function WarehouseSpecScreen() {
           </TileGrid>
         </SpecCard>
       </div>
+
+      {!ro && <WarehouseContacts />}
+      {!ro && (
+        <ShowcaseFields
+          only={["prices", "services", "marketplaces"]}
+          hidden={spec.showcaseHidden ?? []}
+          onChange={(showcaseHidden) => patch({ showcaseHidden })}
+        />
+      )}
 
       <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
         <Shield className="size-3" />

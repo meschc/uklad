@@ -73,7 +73,12 @@ export interface ToteOrder {
  */
 export function toteOrders(requests: readonly FulfillmentRequest[], box: Box): ToteOrder[] {
   const contents = toteContents(box);
-  const ready = requests.filter((r) => r.status === "done" && !r.packedAt);
+  const open = requests.filter((r) => r.status === "done" && !r.packedAt);
+  // Заявка помнит свою тару (`toteId`): заказ из другой тары сюда не лёг,
+  // даже если товар тот же — иначе тара Тулы закрыла бы заказ Казани. По
+  // составу угадываем только заявки, собранные без тары (старые).
+  const own = open.filter((r) => r.toteId === box.id);
+  const ready = own.length > 0 ? own : open.filter((r) => !r.toteId);
   const left = new Map(contents);
   const out: ToteOrder[] = [];
   for (const g of groupRequestsByTarget(ready)) {
@@ -125,6 +130,24 @@ function packedForOrder(session: PackSession, orderId: string): Map<string, numb
 export function isOrderComplete(session: PackSession, order: ToteOrder): boolean {
   const have = packedForOrder(session, order.id);
   return [...order.need].every(([p, n]) => (have.get(p) ?? 0) >= n);
+}
+
+/**
+ * Что стол сообщает серверу, закрыв тару (`pack_done`, `cabinet/deskPack.js`):
+ * сервер сам повторяет правку снимка по этим фактам и сверяет остатки.
+ */
+export interface PackDoneFacts {
+  eventId: string;
+  staffId: string;
+  at: number;
+  toteId: string;
+  outboundCode: string;
+  /** Короб отгрузки, куда легло упакованное; нет — ничего не легло. */
+  outboundId: string | null;
+  lines: { productId: string; qty: number }[];
+  requestIds: string[];
+  /** Недостача: спорное и его итог по товару. */
+  shortages: { id: string; productId: string; qty: number }[];
 }
 
 export type ItemScan =
@@ -255,7 +278,7 @@ export function explainScan(
 }
 
 export type PickToteProblem =
-  "tote_placed" | "tote_sealed" | "tote_other_seller" | "tote_other_target";
+  "tote_placed" | "tote_sealed" | "tote_busy" | "tote_other_seller" | "tote_other_target";
 
 /**
  * Можно ли собирать эту заявку в эту тару. Тара сборки — короб без места на
@@ -272,6 +295,14 @@ export function pickToteProblem(input: {
   const { tote, request, requests, products } = input;
   if (tote.address) return "tote_placed";
   if (tote.sealed) return "tote_sealed";
+  // Тара сборки — пустая или та, в которую уже собирают открытые заявки.
+  // Товар в коробе без заявок — это принятое и не разложенное (или остаток
+  // старшему после упаковки): в заказ оно уйти не должно.
+  const collecting = requests.some(
+    (r) =>
+      r.toteId === tote.id && !r.packedAt && r.status !== "shipped" && r.status !== "cancelled",
+  );
+  if (toteContents(tote).size > 0 && !collecting) return "tote_busy";
   const sellerOf = (id: string) => {
     const p = products.find((x) => x.id === id);
     return p ? (p.partnerId ?? "") : `?${id}`;

@@ -1,4 +1,5 @@
 import { nowMs, uid } from "../utils";
+import { resolutionsFor, writeOffProblem, writesOffGoods } from "../disputes";
 import type { DisputesSlice, SliceCreator } from "./state";
 
 /**
@@ -46,9 +47,14 @@ export const createDisputesSlice: SliceCreator<DisputesSlice> = (set, get) => ({
   resolveDispute: (id, resolution, by, note) => {
     const d = get().disputes.find((x) => x.id === id);
     if (!d || d.resolution) return false;
+    // У лишнего с приёмки свои решения: оставить на складе или списать.
+    if (!resolutionsFor(d).includes(resolution)) return false;
     // Списание — необратимая потеря чужого товара: нужна причина, и решает не
     // тот, кто сам нашёл недостачу (четыре глаза).
     if (resolution === "written_off" && (!note?.trim() || d.raisedBy === by)) return false;
+    // Списать можно только то, что лежит в таре: иначе списание больше
+    // остатка — товар, который «ушёл», не уходя (`writeOffProblem`).
+    if (resolution === "written_off" && writeOffProblem(get().boxes, d)) return false;
     const now = nowMs();
     set((s) => ({
       disputes: s.disputes.map((x) =>
@@ -56,17 +62,15 @@ export const createDisputesSlice: SliceCreator<DisputesSlice> = (set, get) => ({
           ? { ...x, resolution, resolvedBy: by, resolvedAt: now, note: note?.trim() || undefined }
           : x,
       ),
-      // Списали недостачу — в таре этого товара больше нет.
+      // Списали недостачу или брак — в таре этого товара больше нет.
       boxes:
-        resolution === "written_off" && d.kind === "shortage" && d.boxId && d.productId
+        resolution === "written_off" && writesOffGoods(d) && d.boxId && d.productId
           ? s.boxes.map((b) =>
               b.id === d.boxId
                 ? {
                     ...b,
                     lines: b.lines
-                      .map((l) =>
-                        l.productId === d.productId ? { ...l, qty: Math.max(0, l.qty - d.qty) } : l,
-                      )
+                      .map((l) => (l.productId === d.productId ? { ...l, qty: l.qty - d.qty } : l))
                       .filter((l) => l.qty > 0),
                   }
                 : b,

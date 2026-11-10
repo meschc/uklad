@@ -74,15 +74,32 @@ export function LookupScreen() {
 
   const status: ScanStatus = result === null ? "idle" : result.kind === "none" ? "error" : "ok";
 
+  const field = (
+    <ScanField
+      label={t("lookup.scan")}
+      placeholder={t("lookup.placeholder")}
+      status={status}
+      onSubmit={onScan}
+    />
+  );
+
+  // До первого скана экран — одно поле по центру с объяснением. После скана
+  // поле уходит наверх, а под ним появляется ответ.
+  if (result === null)
+    return (
+      <div className="mx-auto flex min-h-full max-w-xl flex-col justify-center gap-6 px-4 py-10">
+        <div className="flex flex-col items-center gap-2 text-center">
+          <ScanSearch className="size-8 text-primary" />
+          <h1 className="text-2xl font-semibold tracking-tight">{t("lookup.title")}</h1>
+          <p className="text-sm text-muted-foreground">{t("lookup.subtitle")}</p>
+        </div>
+        {field}
+      </div>
+    );
+
   return (
-    <ScreenShell title={t("lookup.title")} subtitle={t("lookup.subtitle")} wide>
-      <ScanField
-        label={t("lookup.scan")}
-        hint={t("lookup.hint")}
-        placeholder={t("lookup.placeholder")}
-        status={status}
-        onSubmit={onScan}
-      />
+    <ScreenShell title={t("lookup.title")} wide>
+      {field}
 
       {printable && templates[0] && (
         <Button className="self-start" variant="outline" onClick={() => setPrinting(true)}>
@@ -99,15 +116,7 @@ export function LookupScreen() {
         />
       )}
 
-      {result === null ? (
-        <EmptyState
-          icon={<ScanSearch className="size-5" />}
-          title={t("lookup.emptyTitle")}
-          body={t("lookup.emptyBody")}
-        />
-      ) : (
-        <ResultCard result={result} t={t} />
-      )}
+      <ResultCard result={result} t={t} />
     </ScreenShell>
   );
 }

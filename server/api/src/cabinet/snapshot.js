@@ -19,14 +19,63 @@
  * Маршруты:
  *   GET  /api/cabinet/snapshot — снимок компании или `snapshot: null`
  *   POST /api/cabinet/snapshot — { version, format, data }; version 0 — первая запись
+ *   POST /api/cabinet/snapshot/changes — только изменённое поверх версии:
+ *     { version, format, doc, slots, upsert, remove, products? } (`saveChanges`)
+ *   GET  /api/cabinet/history?after=… — архив законченной работы страницами
+ *     (`history`): `{ rows: [{ w, d, ref, pos, data }], next }`
+ *
+ * Товары в снимке не хранятся (миграция 013): кабинет присылает и получает
+ * их в составе снимка, а сервер раскладывает по строкам `uklad.products` —
+ * со своей корзиной и журналом правок. Так же — работа склада (миграция 021,
+ * `records.js`): заявки, приёмка, тара, рейсы и журнал смен лежат строками
+ * `uklad.cabinet_records`, в документе от них остаются метки.
  */
-/* global require, module */
+/* global require, module, Buffer */
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { createRateLimit } = require("../rateLimit");
+const { recordMoves, invalidWork } = require("./moves");
+const {
+  WAREHOUSE_LISTS,
+  COMPANY_LISTS,
+  splitRecords,
+  assembleRecords,
+  loadRecords,
+  storeRecords,
+  hasMarks,
+  massGone,
+  massRemoved,
+  lostLists,
+  inlineDrops,
+  marksOf,
+  liveCounts,
+  upsertRecords,
+  removeRecords,
+  isRef,
+  archiveDaily,
+  loadArchive,
+  archivedChanged,
+} = require("./records");
 
 // Пустой кабинет — единицы килобайт, демо со всей историей — около мегабайта.
 // Восемь — с запасом, но не столько, чтобы одним запросом забить диск.
 const MAX_SNAPSHOT_BYTES = 8 * 1024 * 1024;
+/** С какой доли лимита предупреждаем нас (не склад: его это только пугает). */
+const NEAR_LIMIT = 0.7;
+
+/**
+ * Снимок компании подбирается к лимиту записи: дальше у неё перестанет
+ * сохраняться работа. Это знаем мы, по журналу сервера, за недели до отказа.
+ */
+const warned = new Map();
+const WARN_EVERY_MS = 60 * 60 * 1000;
+function warnNearLimit(log, orgId, bytes, now = Date.now()) {
+  if (bytes < NEAR_LIMIT * MAX_SNAPSHOT_BYTES) return;
+  // Раз в час на компанию: стол пишет сотни раз в час, журнал не засоряем.
+  if (now - (warned.get(orgId) ?? -Infinity) < WARN_EVERY_MS) return;
+  warned.set(orgId, now);
+  const pct = Math.round((bytes / MAX_SNAPSHOT_BYTES) * 100);
+  log.warn?.(`[uklad] снимок компании ${orgId} заполнен на ${pct}% лимита записи`);
+}
 // Кабинет пишет не чаще раза в 5 секунд на человека; 30 записей в минуту на
 // компанию — запас на несколько устройств, но не на скрипт с мегабайтами.
 const WRITES_PER_MINUTE = 30;
@@ -35,6 +84,94 @@ const FORBIDDEN = Symbol("forbidden");
 const LIMITED = Symbol("limited");
 /** Снимок — весь кабинет: только руководитель, вошедший паролем. */
 const mayUse = (ctx) => Boolean(ctx.accountId) && ctx.can("staff.manage");
+
+/**
+ * Документ компании из базы → кабинет целиком, как его видит браузер:
+ * товары — из таблицы, работа склада — со строк.
+ */
+async function loadCabinet(c, doc) {
+  const { rows } = await c.query(`SELECT uklad.load_products() AS products`);
+  return { ...(await loadRecords(c, doc)), products: rows[0].products };
+}
+
+/** Снимок без товаров. */
+function withoutProducts(data) {
+  const out = { ...data };
+  delete out.products;
+  return out;
+}
+
+/**
+ * Кабинет → что хранится в `cabinet_snapshots` (`doc`: без товаров, с
+ * метками вместо списков) и строки работы склада (`items`).
+ */
+function splitCabinet(data) {
+  return splitRecords(withoutProducts(data));
+}
+
+/**
+ * Убирает ли запись больше половины живого каталога. Так выглядит сбой
+ * (пустой стор после ошибки), а не работа человека: из корзины в кабинете
+ * пока не восстановить, поэтому такую запись сервер не принимает. Большой
+ * каталог удаляется частями, и весь сразу — только из одного-двух товаров.
+ */
+async function massDelete(c, data) {
+  if (!Array.isArray(data.products)) return false;
+  const refs = data.products.map((p) => p?.id).filter((id) => typeof id === "string");
+  const { rows } = await c.query(
+    `SELECT count(*)::int AS live,
+            count(*) FILTER (WHERE NOT (ref = ANY($1::text[])))::int AS gone
+     FROM uklad.products WHERE org_id = uklad.current_org() AND deleted_at IS NULL`,
+    [refs],
+  );
+  const { live, gone } = rows[0];
+  if (gone * 2 <= live) return false;
+  // Разом можно убрать до девяти, но не весь каталог: «ноль из пяти» — тоже
+  // похоже на сбой. Последние один-два товара удаляются как обычно, иначе их
+  // нельзя было бы удалить вовсе.
+  return gone >= 10 || (gone === live && live >= 3);
+}
+
+const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
+const LISTS = new Set([...WAREHOUSE_LISTS, ...COMPANY_LISTS]);
+/** Что из работы склада нужно журналу движений: тара и короба отгрузки. */
+const MOVE_LISTS = ["boxes", "outboundBoxes"];
+const slotKey = (x) => `${x.w}\u0000${x.d}`;
+const isSlot = (x) => isObject(x) && typeof x.w === "string" && x.w.length <= 200 && LISTS.has(x.d);
+
+/**
+ * Правка «только изменённое» неверной формы. Строка — своя запись своего
+ * списка (`data.id === ref`), список правки — метка в документе, тара
+ * проходит те же проверки, что в записи целиком.
+ */
+function badChanges(b) {
+  if (!Number.isInteger(b.version) || b.version < 1) return true;
+  if (!Number.isInteger(b.format) || b.format < 1) return true;
+  if (!isObject(b.doc) || "products" in b.doc) return true;
+  if ("products" in b && !Array.isArray(b.products)) return true;
+  if (![b.slots, b.upsert, b.remove].every(Array.isArray)) return true;
+  if (!b.slots.every(isSlot)) return true;
+  const slots = new Set(b.slots.map(slotKey));
+  const inSlot = (r) => isSlot(r) && slots.has(slotKey(r)) && isRef(r.ref);
+  if (
+    !b.upsert.every(
+      (r) => inSlot(r) && Number.isInteger(r.pos) && isObject(r.data) && r.data.id === r.ref,
+    )
+  ) {
+    return true;
+  }
+  if (!b.remove.every(inSlot)) return true;
+  const marks = marksOf(b.doc);
+  if (!b.slots.every((x) => marks.has(slotKey(x)))) return true;
+  // Тара и размещения — тем же правилом, что запись целиком.
+  return invalidWork(assembleRecords(b.doc, b.upsert));
+}
+
+/** Товары из присланного снимка — в таблицу. Нет поля — товары не трогаем. */
+async function storeProducts(c, data) {
+  if (!("products" in data)) return;
+  await c.query(`SELECT uklad.save_products($1::jsonb)`, [JSON.stringify(data.products)]);
+}
 
 function createSnapshot({ auth, send, log }) {
   const { withSession, readJson } = auth;
@@ -50,7 +187,11 @@ function createSnapshot({ auth, send, log }) {
         `SELECT version, format, data, updated_at FROM uklad.cabinet_snapshots
          WHERE org_id = uklad.current_org()`,
       );
-      return rows[0] ?? false;
+      if (!rows[0]) return false;
+      // Законченное старше окна — в архив, до того как собрать кабинет: так
+      // браузер держит живую работу и последние недели, а не всю историю.
+      await archiveDaily(c);
+      return { ...rows[0], data: await loadCabinet(c, rows[0].data) };
     });
     if (out === null) return send(res, 401, { ok: false });
     if (out === FORBIDDEN) return send(res, 403, { ok: false });
@@ -78,14 +219,35 @@ function createSnapshot({ auth, send, log }) {
       format < 1 ||
       !b.data ||
       typeof b.data !== "object" ||
-      Array.isArray(b.data)
+      Array.isArray(b.data) ||
+      ("products" in b.data && !Array.isArray(b.data.products)) ||
+      invalidWork(b.data) ||
+      hasMarks(b.data)
     ) {
       return send(res, 400, { ok: false, error: "bad_request" });
     }
-    const data = JSON.stringify(b.data);
+    const split = splitCabinet(b.data);
+    const data = JSON.stringify(split.doc);
     const out = await withSession(req, async (c, ctx) => {
       if (!mayUse(ctx)) return FORBIDDEN;
       if (!writes.take(ctx.orgId)) return LIMITED;
+      if (await massDelete(c, b.data)) return { conflict: true, error: "products_mass_delete" };
+      if (await massGone(c, split.items, split.slots)) {
+        return { conflict: true, error: "records_mass_delete" };
+      }
+      // Архив не переписывается: копия забирает свежие данные.
+      if (await archivedChanged(c, split.items)) return { conflict: true };
+      // Список, лежавший строками, пропал вовсе (ключа нет, не список) —
+      // кабинет показал бы пустоту, а массовое удаление этого не увидело бы.
+      const prev = await c.query(
+        `SELECT data FROM uklad.cabinet_snapshots WHERE org_id = uklad.current_org() FOR UPDATE`,
+      );
+      if (prev.rows[0]) {
+        const lost = lostLists(prev.rows[0].data, split.doc);
+        if (lost.missing.length > 0 || (await inlineDrops(c, lost.inline))) {
+          return { conflict: true, error: "records_mass_delete" };
+        }
+      }
       // Первая запись: строки ещё нет. Двое одновременно — второй получит
       // конфликт ключа и ответ 409, а не вторую строку.
       if (version === 0) {
@@ -96,17 +258,32 @@ function createSnapshot({ auth, send, log }) {
            RETURNING version`,
           [format, data, ctx.memberId],
         );
-        return rows[0] ? { version: rows[0].version } : { conflict: true };
+        if (!rows[0]) return { conflict: true };
+        await storeProducts(c, b.data);
+        await storeRecords(c, split.items, split.slots);
+        await recordMoves(c, {}, b.data, rows[0].version, { memberId: ctx.memberId });
+        return { version: rows[0].version, orgId: ctx.orgId };
       }
       const { rows } = await c.query(
         `UPDATE uklad.cabinet_snapshots
          SET previous = data, data = $1::jsonb, format = $2, version = version + 1,
              updated_at = now(), updated_by = $3, updated_by_desk = NULL
          WHERE org_id = uklad.current_org() AND version = $4
-         RETURNING version`,
+         RETURNING version, previous`,
         [data, format, ctx.memberId, version],
       );
-      return rows[0] ? { version: rows[0].version } : { conflict: true };
+      // Версия не сошлась — товары тоже не трогаем: запись целиком не прошла.
+      if (!rows[0]) return { conflict: true };
+      // Прежний кабинет целиком — пока строки ещё старые: по нему журнал
+      // движений считает, что прибыло и убыло.
+      const before = await loadRecords(c, rows[0].previous);
+      await storeProducts(c, b.data);
+      await storeRecords(c, split.items, split.slots);
+      // Что где прибыло и убыло — в журнал движений, с тем, кто записал.
+      await recordMoves(c, before, b.data, rows[0].version, {
+        memberId: ctx.memberId,
+      });
+      return { version: rows[0].version, orgId: ctx.orgId };
     });
     if (out === null) return send(res, 401, { ok: false });
     if (out === FORBIDDEN) return send(res, 403, { ok: false });
@@ -118,14 +295,134 @@ function createSnapshot({ auth, send, log }) {
         );
         return rows[0]?.version ?? 0;
       });
-      return send(res, 409, { ok: false, error: "conflict", version: current ?? 0 });
+      const error = out.error ?? "conflict";
+      return send(res, 409, { ok: false, error, version: current ?? 0 });
     }
+    // Потолок теперь — размер одной записи кабинета целиком, а не документа.
+    const sent = Number(req.headers["content-length"]) || Buffer.byteLength(JSON.stringify(b.data));
+    warnNearLimit(log, out.orgId, sent);
     return send(res, 200, { ok: true, version: out.version });
   }
 
+  /**
+   * Только изменённое (шаг 2 потолка данных): документ компании без списков
+   * работы склада и строки, которые поменялись. Кабинет считает правку от
+   * того, что сервер отдал или принял на этой версии. Не сошлось — число
+   * строк в списке не равно метке — правка откатывается целиком, а кабинет
+   * получает `diverged` и пишет кабинет целиком.
+   */
+  async function saveChanges(req, res) {
+    const b = await readJson(req, res, MAX_SNAPSHOT_BYTES);
+    if (!b) return;
+    if (badChanges(b)) return send(res, 400, { ok: false, error: "bad_request" });
+    const doc = JSON.stringify(b.doc);
+    const out = await withSession(req, async (c, ctx) => {
+      if (!mayUse(ctx)) return FORBIDDEN;
+      if (!writes.take(ctx.orgId)) return LIMITED;
+      const { rows } = await c.query(
+        `SELECT version, data FROM uklad.cabinet_snapshots
+         WHERE org_id = uklad.current_org() FOR UPDATE`,
+      );
+      const cur = rows[0];
+      if (!cur || cur.version !== b.version) return { conflict: true };
+      if ("products" in b && (await massDelete(c, b))) {
+        return { conflict: true, error: "products_mass_delete" };
+      }
+      // Список, лежавший строками, обязан остаться меткой: иначе кабинет
+      // показал бы пустоту, не тронув строк. Пусть пишет себя целиком —
+      // там такую запись судит защита от массового удаления.
+      const lost = lostLists(cur.data, b.doc);
+      if (lost.missing.length + lost.inline.length > 0)
+        return { conflict: true, error: "diverged" };
+      if (await massRemoved(c, b.remove)) return { conflict: true, error: "records_mass_delete" };
+      if (await archivedChanged(c, b.upsert)) return { conflict: true };
+      const before = await loadRecords(c, cur.data, MOVE_LISTS);
+      await c.query(`SAVEPOINT changes`);
+      await upsertRecords(c, b.upsert);
+      await removeRecords(c, b.remove);
+      // Каждая метка документа — ровно столько живых строк. Иначе копия в
+      // браузере считала правку не от того, что лежит здесь.
+      const marks = marksOf(b.doc);
+      const live = await liveCounts(
+        c,
+        [...marks.keys()].map((k) => {
+          const [w, d] = k.split("\u0000");
+          return { w, d };
+        }),
+      );
+      if ([...marks].some(([k, n]) => live.get(k) !== n)) {
+        await c.query(`ROLLBACK TO SAVEPOINT changes`);
+        return { conflict: true, error: "diverged" };
+      }
+      const upd = await c.query(
+        `UPDATE uklad.cabinet_snapshots
+         SET previous = data, data = $1::jsonb, format = $2, version = version + 1,
+             updated_at = now(), updated_by = $3, updated_by_desk = NULL
+         WHERE org_id = uklad.current_org()
+         RETURNING version`,
+        [doc, b.format, ctx.memberId],
+      );
+      const version = upd.rows[0].version;
+      if ("products" in b) await storeProducts(c, b);
+      const after = await loadRecords(c, b.doc, MOVE_LISTS);
+      await recordMoves(c, before, after, version, { memberId: ctx.memberId });
+      return { version, orgId: ctx.orgId };
+    });
+    if (out === null) return send(res, 401, { ok: false });
+    if (out === FORBIDDEN) return send(res, 403, { ok: false });
+    if (out === LIMITED) return send(res, 429, { ok: false }, { "Retry-After": "30" });
+    if (out.conflict) {
+      const current = await withSession(req, async (c) => {
+        const { rows } = await c.query(
+          `SELECT version FROM uklad.cabinet_snapshots WHERE org_id = uklad.current_org()`,
+        );
+        return rows[0]?.version ?? 0;
+      });
+      return send(res, 409, { ok: false, error: out.error ?? "conflict", version: current ?? 0 });
+    }
+    warnNearLimit(log, out.orgId, Buffer.byteLength(doc));
+    return send(res, 200, { ok: true, version: out.version });
+  }
+
+  /**
+   * Архив законченной работы — для отчётов за долгий период. Только тем же,
+   * кому весь кабинет. Страница — `ARCHIVE_PAGE` строк, `after` — ключ из
+   * `next` прошлой страницы.
+   */
+  async function history(req, res, url) {
+    let after = null;
+    const raw = url.searchParams.get("after");
+    if (raw !== null) {
+      try {
+        after = JSON.parse(Buffer.from(raw, "base64url").toString("utf8"));
+      } catch {
+        after = undefined;
+      }
+      if (
+        !isObject(after) ||
+        typeof after.w !== "string" ||
+        after.w.length > 200 ||
+        !LISTS.has(after.d) ||
+        !isRef(after.ref)
+      ) {
+        return send(res, 400, { ok: false, error: "bad_request" });
+      }
+    }
+    const out = await withSession(req, async (c, ctx) => {
+      if (!mayUse(ctx)) return FORBIDDEN;
+      return loadArchive(c, after);
+    });
+    if (out === null) return send(res, 401, { ok: false });
+    if (out === FORBIDDEN) return send(res, 403, { ok: false });
+    const next = out.next && Buffer.from(JSON.stringify(out.next)).toString("base64url");
+    return send(res, 200, { ok: true, rows: out.rows, next });
+  }
+
   const routes = {
+    "GET /api/cabinet/history": history,
     "GET /api/cabinet/snapshot": load,
     "POST /api/cabinet/snapshot": save,
+    "POST /api/cabinet/snapshot/changes": saveChanges,
   };
 
   /** Обработчик маршрутов снимка. `false` — маршрут не наш. */
@@ -144,4 +441,13 @@ function createSnapshot({ auth, send, log }) {
   return { handle };
 }
 
-module.exports = { createSnapshot, MAX_SNAPSHOT_BYTES };
+module.exports = {
+  createSnapshot,
+  MAX_SNAPSHOT_BYTES,
+  warnNearLimit,
+  loadCabinet,
+  splitCabinet,
+  storeRecords,
+  hasMarks,
+  archivedChanged,
+};

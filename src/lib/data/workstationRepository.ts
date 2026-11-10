@@ -1,10 +1,19 @@
 import type { ItemScan } from "../packing";
-import type { Device, IdleReason, ShiftMark, StaffEvent, WorkstationKind } from "../types";
+import type {
+  CellAddress,
+  Device,
+  IdleReason,
+  ShiftMark,
+  StaffEvent,
+  WorkstationKind,
+} from "../types";
 import { onServer, serverBadges, type BadgeServer } from "./badgeRepository";
 import { serverDesks, type DeskServer } from "./deskServer";
 import { isStaffEvent } from "./guards";
+import { deskOps, type OpQueue } from "./opQueue";
 import { readList, storePort, type StorePort } from "./repository";
 import { attempt, fail, ok, type Result } from "./result";
+import { nowMs, uid } from "../utils";
 
 /**
  * Рабочее место и журнал сотрудника (п.0.4). Здесь появится сеть: вход по
@@ -35,13 +44,95 @@ export interface WorkstationRepository {
   packLabel: (code: string) => Promise<Result<void>>;
   packReject: () => Promise<Result<void>>;
   packFinish: () => Promise<Result<void>>;
+  /**
+   * Снять штуку с места в тару под заявку. Ответ — сколько собрано теперь;
+   * не изменилось — снять было нечего (пустое место, чужая тара, заявка уже
+   * собрана).
+   */
+  pickUnit: (
+    requestId: string,
+    productId: string,
+    addr: CellAddress,
+    toteId?: string,
+  ) => Promise<Result<number>>;
+  /** Заявка собрана: целиком или частично (меньше запрошенного, явно). */
+  pickDone: (requestId: string, partial: boolean) => Promise<Result<void>>;
+  /**
+   * Машина уехала: собранные заявки одного назначения и погруженные места.
+   * Ответ — id рейса, null — отгружать нечего.
+   */
+  ship: (
+    requestIds: string[],
+    info: { vehicle: string; staffId: string; units: string[] },
+  ) => Promise<Result<string | null>>;
 }
 
 export function createWorkstationRepository(
   port: StorePort = storePort,
   badges: BadgeServer = serverBadges,
   desks: DeskServer = serverDesks,
+  ops: OpQueue = deskOps,
 ): WorkstationRepository {
+  /**
+   * Отметка смены на сервере уходит операцией (миграция 015): стор уже
+   * поставил её, очередь донесёт её с ключом повтора, даже если связь
+   * пропала. Запись снимка несёт её тоже — сервер узнает её по id.
+   */
+  const queueMark = (before: readonly StaffEvent[]) => {
+    if (!onServer(port)) return;
+    const known = new Set(before.map((e) => e.id));
+    const added = port.get().staffEvents.find((e) => !known.has(e.id));
+    if (!added) return;
+    ops.enqueue("shift_mark", {
+      eventId: added.id,
+      staffId: added.staffId,
+      type: added.type,
+      at: added.at,
+      ...(added.station ? { station: added.station } : {}),
+      ...(added.reason ? { reason: added.reason } : {}),
+    });
+  };
+  /**
+   * Упаковка на сервере уходит операциями (`cabinet/deskPack.js`): скан,
+   * этикетка и брак — записью журнала (со спорным, если скан его завёл),
+   * закрытие тары — фактами, по которым сервер сам повторит правку.
+   */
+  const queuePack = <T>(act: () => T): T => {
+    const s = port.get();
+    const toteId = s.packSession?.sourceBoxId;
+    const events = new Set(s.staffEvents.map((e) => e.id));
+    const disputes = new Map(s.disputes.map((d) => [d.id, d.qty]));
+    const out = act();
+    if (!onServer(port) || !toteId) return out;
+    const after = port.get();
+    const raised = after.disputes.find(
+      (d) => d.boxId === toteId && !d.resolution && disputes.get(d.id) !== d.qty,
+    );
+    for (const e of after.staffEvents) {
+      if (events.has(e.id) || !e.type.startsWith("pack_")) continue;
+      ops.enqueue("pack_event", {
+        eventId: e.id,
+        staffId: e.staffId,
+        type: e.type,
+        at: e.at,
+        toteId,
+        ...(e.code ? { code: e.code } : {}),
+        ...(e.productId ? { productId: e.productId } : {}),
+        ...(e.orderId ? { orderId: e.orderId } : {}),
+        ...(e.ms !== undefined ? { ms: Math.round(e.ms) } : {}),
+        ...(raised && raised.productId === e.productId
+          ? { dispute: { id: raised.id, kind: raised.kind, qty: raised.qty } }
+          : {}),
+      });
+    }
+    return out;
+  };
+  const queueUndo = (before: readonly StaffEvent[], at: number) => {
+    if (!onServer(port)) return;
+    const left = new Set(port.get().staffEvents.map((e) => e.id));
+    const gone = before.find((e) => !left.has(e.id));
+    if (gone) ops.enqueue("shift_undo", { eventId: gone.id, staffId: gone.staffId, at });
+  };
   // На сервере код проверяет сервер (секрет, а не id), и срез получает уже
   // сотрудника; в демо срез разбирает код сам.
   return {
@@ -68,14 +159,21 @@ export function createWorkstationRepository(
       return attempt(() => port.get().stationLogout());
     },
     mark: async (type, reason) => {
+      const before = port.get().staffEvents;
       const res = await attempt(() => port.get().markShift(type, reason));
       if (!res.ok) return res;
-      return res.data ? ok(undefined) : fail("ws.markRejected");
+      if (!res.data) return fail("ws.markRejected");
+      queueMark(before);
+      return ok(undefined);
     },
     undoMark: async () => {
+      const before = port.get().staffEvents;
+      const at = nowMs();
       const res = await attempt(() => port.get().undoShiftMark());
       if (!res.ok) return res;
-      return res.data ? ok(undefined) : fail("ws.markRejected");
+      if (!res.data) return fail("ws.markRejected");
+      queueUndo(before, at);
+      return ok(undefined);
     },
     addDevice: async (name, station) => {
       if (!name.trim()) return fail("ws.device.nameEmpty");
@@ -97,6 +195,9 @@ export function createWorkstationRepository(
     },
     unbindDevice: async (code) => {
       if (onServer(port)) {
+        // Неотправленная работа живёт только в очереди этого стола: под входом
+        // руководителя её выбросят, а копия затрётся сервером.
+        if (ops.pending().count > 0) return fail("ws.device.queueNotEmpty");
         const desk = await desks.unbind(code);
         if (!desk.ok) return desk;
         if (desk.data === false) return fail("ws.device.notManager");
@@ -123,14 +224,90 @@ export function createWorkstationRepository(
       if (!res.ok) return res;
       return res.data ? fail(res.data) : ok(undefined);
     },
-    packItem: (code) => attempt(() => port.get().packScanItem(code)),
+    packItem: (code) => attempt(() => queuePack(() => port.get().packScanItem(code))),
     packLabel: async (code) => {
-      const res = await attempt(() => port.get().packScanLabel(code));
+      const res = await attempt(() => queuePack(() => port.get().packScanLabel(code)));
       if (!res.ok) return res;
       return res.data ? ok(undefined) : fail("ws.label.wrong");
     },
-    packReject: () => attempt(() => port.get().packRejectPending()),
-    packFinish: () => attempt(() => port.get().packFinish()),
+    packReject: () => attempt(() => queuePack(() => port.get().packRejectPending())),
+    // Сборка на сервере уходит операциями (`cabinet/deskPick.js`): стор уже
+    // снял штуку, очередь донесёт факт «откуда, куда, под какую заявку».
+    pickUnit: (requestId, productId, addr, toteId) =>
+      attempt(() => {
+        const s = port.get();
+        const by = s.stationSession?.staffId;
+        const before = s.requests.find((r) => r.id === requestId)?.pickedQty ?? 0;
+        const known = new Set(s.staffEvents.map((e) => e.id));
+        const now = s.recordPick(requestId, productId, addr, toteId, by);
+        if (now === before || !by || !onServer(port)) return now;
+        const ev = port.get().staffEvents.find((e) => !known.has(e.id) && e.type === "pick_scan");
+        if (ev && toteId) {
+          ops.enqueue("pick_unit", {
+            eventId: ev.id,
+            staffId: by,
+            at: ev.at,
+            requestId,
+            productId,
+            toteId,
+            cell: addr,
+          });
+        }
+        return now;
+      }),
+    // Рейс на сервере уходит операцией (`cabinet/deskShip.js`): стор уже
+    // отметил уехавшее, очередь донесёт «эти заявки, эти места, эта машина».
+    ship: (requestIds, info) =>
+      attempt(() => {
+        const id = port.get().shipRequests(requestIds, info);
+        const by = port.get().stationSession?.staffId;
+        if (!id || !by || !onServer(port)) return id;
+        const run = port.get().shipments.find((s) => s.id === id);
+        if (run) {
+          ops.enqueue("ship_run", {
+            eventId: id,
+            staffId: by,
+            at: run.shippedAt,
+            requestIds: run.requestIds,
+            vehicle: run.vehicle ?? "",
+            units: run.units ?? [],
+          });
+        }
+        return id;
+      }),
+    pickDone: (requestId, partial) =>
+      attempt(() => {
+        port.get().completeRequest(requestId, partial);
+        const by = port.get().stationSession?.staffId;
+        if (by && onServer(port)) {
+          ops.enqueue("pick_done", {
+            eventId: uid("pd"),
+            staffId: by,
+            at: nowMs(),
+            requestId,
+            partial,
+          });
+        }
+      }),
+    packFinish: async () => {
+      const res = await attempt(() => port.get().packFinish());
+      if (!res.ok) return res;
+      const f = res.data;
+      if (f && onServer(port)) {
+        ops.enqueue("pack_done", {
+          eventId: f.eventId,
+          staffId: f.staffId,
+          at: f.at,
+          toteId: f.toteId,
+          outboundCode: f.outboundCode,
+          ...(f.outboundId ? { outboundId: f.outboundId } : {}),
+          lines: f.lines,
+          requestIds: f.requestIds,
+          shortages: f.shortages,
+        });
+      }
+      return ok(undefined);
+    },
   };
 }
 
