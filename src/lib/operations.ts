@@ -1,7 +1,9 @@
+import { normalizeCode, PALLET_PREFIX } from "./barcode";
 import type {
   Box,
   FulfillmentRequest,
   OperationEntry,
+  OutboundBox,
   Pallet,
   Product,
   ReceivingEvent,
@@ -45,7 +47,10 @@ export const SERVICES: ServiceSpec[] = [
   { kind: "packing", unit: "order", auto: false, defaultOn: true },
   { kind: "fbo_box", unit: "box", auto: false, defaultOn: false },
   { kind: "palletizing", unit: "pallet", auto: false, defaultOn: false },
-  { kind: "loading", unit: "trip", auto: true, defaultOn: true },
+  { kind: "ship_parcel", unit: "order", auto: true, defaultOn: true },
+  { kind: "ship_box", unit: "box", auto: true, defaultOn: true },
+  { kind: "ship_pallet", unit: "pallet", auto: true, defaultOn: true },
+  { kind: "loading", unit: "trip", auto: true, defaultOn: false },
   { kind: "returns", unit: "unit", auto: false, defaultOn: true },
   { kind: "inventory", unit: "cell", auto: false, defaultOn: false },
   { kind: "photo", unit: "unit", auto: false, defaultOn: false },
@@ -75,6 +80,8 @@ export interface OperationFacts {
   requests: FulfillmentRequest[];
   shipments: Shipment[];
   products: Product[];
+  /** Короба отгрузки: по ним погруженное место знает свои заказы и продавца. */
+  outboundBoxes?: OutboundBox[];
 }
 
 /**
@@ -84,6 +91,7 @@ export interface OperationFacts {
  * Не хранится отдельно — иначе два источника правды разъехались бы на первой
  * же отменённой приёмке. Продавец определяется по товару: паллета товара не
  * знает и остаётся без продавца, короб берёт продавца первой строки.
+ * Отгрузку продавец оплачивает местами (`shipmentPlaces`), рейс — расход склада.
  */
 export function operationLog(f: OperationFacts): OperationEntry[] {
   const partnerOf = new Map(f.products.map((p) => [p.id, p.partnerId]));
@@ -153,18 +161,7 @@ export function operationLog(f: OperationFacts): OperationEntry[] {
       source: "auto",
     });
   }
-  for (const s of f.shipments) {
-    const first = s.requestIds.map((id) => requestById.get(id)).find(Boolean);
-    out.push({
-      id: `trip:${s.id}`,
-      kind: "loading",
-      qty: 1,
-      at: s.shippedAt,
-      staffId: s.staffId,
-      partnerId: first ? partnerOf.get(first.productId) : undefined,
-      source: "auto",
-    });
-  }
+  for (const s of f.shipments) out.push(...shipmentPlaces(s, f, partnerOf, requestById));
   for (const t of f.tasks) {
     if (t.status !== "done" || t.doneAt == null) continue;
     out.push({
@@ -233,4 +230,82 @@ export function serviceReport(
     rows.push({ kind: s.kind, unit: s.unit, qty: n, price, sum });
   }
   return { rows, total: Math.round(total * 100) / 100, unpriced };
+}
+
+/** Заказ площадки: у него есть источник и номер — он едет отдельной посылкой. */
+function orderKey(r: FulfillmentRequest): string | null {
+  return r.source && r.source !== "manual" && r.externalId
+    ? `${r.source}:${r.externalId.trim().toLowerCase()}`
+    : null;
+}
+
+/**
+ * Отгрузка для счёта продавцу — по местам, а не долей рейса (решение 10.11).
+ * Долю рейса продавец не может посчитать заранее: она зависит от того, кто
+ * ещё поехал в машине. Место — может: «посылка — N ₽, короб — M ₽».
+ *
+ *  — **посылка**: каждый заказ площадки (FBS, ПВЗ) — сколько бы штук в нём ни
+ *    было. Короб отгрузки, в котором едут только такие заказы, отдельно не
+ *    считается: продавец уже платит за посылки;
+ *  — **короб** и **паллета**: места, отсканированные на погрузке. Продавец —
+ *    по составу места, а если состав неизвестен — по рейсу, когда в нём товар
+ *    одного продавца. Иначе место остаётся без продавца, а не уходит первому.
+ *
+ * Сам рейс — строка без продавца: это расход склада, по умолчанию выключен.
+ */
+function shipmentPlaces(
+  s: Shipment,
+  f: OperationFacts,
+  partnerOf: Map<string, string | undefined>,
+  requestById: Map<string, FulfillmentRequest>,
+): OperationEntry[] {
+  const base = { at: s.shippedAt, staffId: s.staffId, source: "auto" as const };
+  const out: OperationEntry[] = [{ ...base, id: `trip:${s.id}`, kind: "loading", qty: 1 }];
+  const reqs = s.requestIds.flatMap((id) => requestById.get(id) ?? []);
+  const sellers = new Set(reqs.map((r) => partnerOf.get(r.productId)));
+  const onlySeller = sellers.size === 1 ? [...sellers][0] : undefined;
+  const sellerOfLines = (lines: readonly { productId: string }[]) =>
+    lines.map((l) => partnerOf.get(l.productId)).find(Boolean) ?? onlySeller;
+
+  const parcels = new Map<string, string | undefined>();
+  for (const r of reqs) {
+    const key = orderKey(r);
+    if (key && !parcels.has(key)) parcels.set(key, partnerOf.get(r.productId));
+  }
+  for (const [key, partnerId] of parcels)
+    out.push({ ...base, id: `parcel:${s.id}:${key}`, kind: "ship_parcel", qty: 1, partnerId });
+
+  const outbound = new Map(
+    (f.outboundBoxes ?? [])
+      .filter((b) => b.shipmentId === s.id)
+      .map((b) => [normalizeCode(b.code), b]),
+  );
+  const boxByCode = new Map(f.boxes.map((b) => [normalizeCode(b.barcode), b]));
+  const palletByCode = new Map(f.pallets.map((p) => [normalizeCode(p.barcode), p]));
+  const boxById = new Map(f.boxes.map((b) => [b.id, b]));
+  const codes = new Set([...(s.units ?? []).map(normalizeCode), ...outbound.keys()]);
+  for (const code of codes) {
+    const id = `place:${s.id}:${code}`;
+    const pallet = palletByCode.get(code);
+    if (pallet || code.startsWith(PALLET_PREFIX)) {
+      const lines = (pallet?.boxIds ?? []).flatMap((b) => boxById.get(b)?.lines ?? []);
+      out.push({ ...base, id, kind: "ship_pallet", qty: 1, partnerId: sellerOfLines(lines) });
+      continue;
+    }
+    const ob = outbound.get(code);
+    if (ob) {
+      const onlyParcels =
+        ob.requestIds.length > 0 &&
+        ob.requestIds.every((r) => {
+          const req = requestById.get(r);
+          return req ? orderKey(req) !== null : false;
+        });
+      if (onlyParcels) continue;
+      out.push({ ...base, id, kind: "ship_box", qty: 1, partnerId: sellerOfLines(ob.lines) });
+      continue;
+    }
+    const box = boxByCode.get(code);
+    out.push({ ...base, id, kind: "ship_box", qty: 1, partnerId: sellerOfLines(box?.lines ?? []) });
+  }
+  return out;
 }

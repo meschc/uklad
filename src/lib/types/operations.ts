@@ -20,6 +20,9 @@ export type ServiceKind =
   | "cargo_box"
   | "item_receiving"
   | "picking"
+  | "ship_parcel"
+  | "ship_box"
+  | "ship_pallet"
   | "loading"
   // выполняются заданием
   | "unloading"
