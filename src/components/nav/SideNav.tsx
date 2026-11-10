@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { readLocal, writeLocal } from "@/lib/safeStorage";
 import {
   ChevronDown,
   LifeBuoy,
@@ -29,11 +30,7 @@ import { UkladLockup } from "@/components/brand/UkladLockup";
 const COLLAPSED_KEY = "uklad-nav-collapsed";
 
 function readCollapsed(): boolean {
-  try {
-    return localStorage.getItem(COLLAPSED_KEY) === "1";
-  } catch {
-    return false;
-  }
+  return readLocal(COLLAPSED_KEY) === "1";
 }
 
 /** Порядок пунктов, выставленный человеком: ключ списка → ключи записей. */
@@ -42,7 +39,7 @@ type NavOrder = Record<string, string[]>;
 
 function readOrder(): NavOrder {
   try {
-    const raw = JSON.parse(localStorage.getItem(ORDER_KEY) ?? "{}") as unknown;
+    const raw = JSON.parse(readLocal(ORDER_KEY) ?? "{}") as unknown;
     return raw && typeof raw === "object" ? (raw as NavOrder) : {};
   } catch {
     return {};
@@ -103,11 +100,7 @@ export function SideNav() {
   const saveOrder = (list: string, keys: string[]) => {
     const next = { ...order, [list]: keys };
     setOrder(next);
-    try {
-      localStorage.setItem(ORDER_KEY, JSON.stringify(next));
-    } catch {
-      // Приватный режим: порядок продержится до перезагрузки.
-    }
+    writeLocal(ORDER_KEY, JSON.stringify(next));
   };
 
   /**
@@ -187,11 +180,7 @@ export function SideNav() {
   const toggleCollapsed = () => {
     const next = !collapsed;
     setCollapsed(next);
-    try {
-      localStorage.setItem(COLLAPSED_KEY, next ? "1" : "0");
-    } catch {
-      // Приватный режим: меню просто не запомнит выбор.
-    }
+    writeLocal(COLLAPSED_KEY, next ? "1" : "0");
   };
 
   // Счётчик на «Заданиях»: сколько заявок ждут склад прямо сейчас.

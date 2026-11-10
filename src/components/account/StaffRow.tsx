@@ -7,7 +7,8 @@ import { badgeRepository, staffRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
 import type { TFunc } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
-import { PersonForm, draftToMember, formatRate, type PersonDraft } from "./PersonForm";
+import { PersonForm } from "./PersonForm";
+import { draftToMember, formatRate, type PersonDraft } from "@/lib/personDraft";
 import { BadgePanel } from "./BadgePanel";
 
 /**
