@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Eye, EyeOff } from "lucide-react";
 import type { WarehouseClass } from "@/lib/types";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -68,10 +68,13 @@ export function TileGrid({ cols = 2, children }: { cols?: 2 | 3; children: React
 export function Tile({
   label,
   wide,
+  eye,
   children,
 }: {
   label: string;
   wide?: boolean;
+  /** Глаз «видно на витрине» — у полей, которые уходят в карточку склада. */
+  eye?: EyeProps;
   children: React.ReactNode;
 }) {
   return (
@@ -81,9 +84,42 @@ export function Tile({
         wide && "col-span-full",
       )}
     >
-      <span className={eyebrow({ size: "xs", weight: "medium" })}>{label}</span>
+      <span className="flex items-center justify-between gap-1">
+        <span className={eyebrow({ size: "xs", weight: "medium" })}>{label}</span>
+        {eye && <ShowcaseEye {...eye} />}
+      </span>
       {children}
     </div>
+  );
+}
+
+export interface EyeProps {
+  shown: boolean;
+  onToggle: () => void;
+}
+
+/**
+ * Глаз у поля паспорта: открыт — поле видно селлерам на витрине, перечёркнут —
+ * скрыто. Нажатие переключает.
+ */
+export function ShowcaseEye({ shown, onToggle }: EyeProps) {
+  const t = useT();
+  const Icon = shown ? Eye : EyeOff;
+  const label = t(shown ? "showcase.shown" : "showcase.hidden");
+  return (
+    <button
+      type="button"
+      aria-pressed={shown}
+      onClick={onToggle}
+      title={label}
+      aria-label={label}
+      className={cn(
+        "flex size-6 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-accent",
+        shown ? "text-primary" : "text-muted-foreground/60",
+      )}
+    >
+      <Icon className="size-3.5" />
+    </button>
   );
 }
 

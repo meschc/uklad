@@ -14,14 +14,17 @@ const LABEL: Record<ShowcaseField, MsgKey> = {
 };
 
 /**
- * Что из паспорта видят селлеры на витрине. Каждое поле — пилюля-переключатель
- * с глазом: нажал — поле скрыто, нажал ещё раз — снова видно. Предпросмотр
- * «Посмотреть на витрине» показывает ровно этот выбор.
+ * Что ещё видят селлеры на витрине, кроме полей паспорта (у тех глаз стоит
+ * прямо на плитке): цены, услуги, площадки. Пилюля с глазом: нажал — скрыто,
+ * нажал ещё раз — видно. Предпросмотр показывает ровно этот выбор.
  */
 export function ShowcaseFields({
   hidden,
   onChange,
+  only = SHOWCASE_FIELDS,
 }: {
+  /** Поля, которых нет в плитках паспорта (цены, услуги, площадки). */
+  only?: readonly ShowcaseField[];
   hidden: readonly ShowcaseField[];
   onChange: (next: ShowcaseField[]) => void;
 }) {
@@ -32,7 +35,7 @@ export function ShowcaseFields({
     <section className="flex flex-col gap-3">
       <h2 className="text-sm font-semibold">{t("showcase.title")}</h2>
       <div className="flex flex-wrap gap-2">
-        {SHOWCASE_FIELDS.map((f) => {
+        {only.map((f) => {
           const off = hidden.includes(f);
           const Icon = off ? EyeOff : Eye;
           return (

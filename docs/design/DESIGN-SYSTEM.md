@@ -187,7 +187,9 @@ Geist). Medeo Sans набирает текст и заголовки, Medeo Mono
 - высота 32 (по умолчанию) или 36 (`h-9`), радиус `md`, `border: input`,
   тень `shadow-sm`
 - состояния: rest · focus (ring 2px) · disabled · **error** (`border-destructive`
-  - подпись 12px `destructive` под полем)
+  - подпись 12px `destructive` под полем). Ошибка в фокусе — одна красная
+    обводка, без синей; с первым набранным символом красное снимается до ухода
+    из поля (`data-typing`, `index.css`)
 - варианты содержимого: текст · моно (адрес/артикул) · числовой (табличные цифры,
   спиннеры скрыты)
 
@@ -213,9 +215,11 @@ Geist). Medeo Sans набирает текст и заголовки, Medeo Mono
 
 ### Dialog
 
-Backdrop `black/40` + `backdrop-blur-[1px]`, карточка `max-w-lg`, радиус `xl`,
-`shadow-2xl`; шапка и подвал разделены `border`, подвал — `bg-muted/30`.
-Анимации: `animate-fade-in` (backdrop), `animate-scale-in` (карточка).
+Окон по центру нет: `DialogShell` — панель справа на всю высоту.
+Backdrop `black/40` + `backdrop-blur-[1px]`, панель шириной по `size`
+(`max-w-sm`…`max-w-3xl`), скругление `2xl` только слева, `shadow-2xl`; шапка и
+подвал разделены `border`, подвал — `bg-muted/30`. Анимации: `animate-fade-in`
+(backdrop), `animate-slide-in-right` (панель).
 
 ### Alert (единый паттерн предупреждения)
 
