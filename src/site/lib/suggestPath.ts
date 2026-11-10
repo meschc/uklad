@@ -19,7 +19,7 @@ export interface PageHint {
   names: string[];
 }
 
-export const PAGE_HINTS: PageHint[] = [
+const PAGE_HINTS: PageHint[] = [
   { to: "/", label: c("Главная", "Home"), names: ["", "home", "index", "glavnaya", "главная"] },
   {
     to: "/warehouses",

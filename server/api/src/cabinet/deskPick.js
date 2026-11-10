@@ -174,7 +174,13 @@ function applyPickDone(data, body) {
       ...data,
       requests: requests.map((r) =>
         r === req
-          ? { ...r, status: "done", partial: Boolean(body.partial), updatedAt: body.at }
+          ? {
+              ...r,
+              status: "done",
+              partial: Boolean(body.partial),
+              pickedAt: r.pickedAt ?? body.at,
+              updatedAt: body.at,
+            }
           : r,
       ),
     },

@@ -73,14 +73,6 @@ export function milestoneProgress(
   };
 }
 
-/** Прогресс всех вех разом, в порядке их объявления. */
-export function milestonesProgress(
-  milestones: readonly Milestone[],
-  items: readonly RoadmapItem[],
-): MilestoneProgress[] {
-  return milestones.map((milestone) => milestoneProgress(milestone, items));
-}
-
 /**
  * Подпись квартала: «IV квартал 2026» / «Q4 2026».
  *

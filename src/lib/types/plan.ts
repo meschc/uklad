@@ -158,7 +158,7 @@ export interface ShelfTemplate {
  * сохранили. Полки хранятся как число ячеек по полкам (id перегенерируются при
  * штампе), по образцу ShelfTemplate.
  */
-export interface LayoutModuleSpec {
+interface LayoutModuleSpec {
   type: ModuleType;
   dx: number;
   dy: number;

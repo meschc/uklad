@@ -260,7 +260,7 @@ function ResultView({
               <tr key={r.index} className="border-t border-border/60">
                 <td className="px-2 py-1.5">
                   {r.ok ? (
-                    <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                    <span className="inline-flex items-center gap-1 text-success">
                       <Check className="size-3" /> {t("import.ok")}
                     </span>
                   ) : (

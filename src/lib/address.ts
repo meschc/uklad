@@ -25,7 +25,7 @@ export function setAddressingConfig(cfg: AddressingConfig) {
  * Действующий номер этажа: собственный (задан вручную) или позиционный.
  * `idx` — индекс этажа в складе.
  */
-export function floorNumber(floor: Floor, idx: number): number {
+function floorNumber(floor: Floor, idx: number): number {
   return floor.number ?? idx + 1;
 }
 
@@ -193,7 +193,7 @@ export function cellDimsCm(mod: PlacedModule, shelfIndex: number): CellDims | nu
 }
 
 /** Округление до десятых — габариты в ТЗ задаются с десятыми (напр. 234,1). */
-export function round1(n: number): number {
+function round1(n: number): number {
   return Math.round(n * 10) / 10;
 }
 

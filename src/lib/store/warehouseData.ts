@@ -10,7 +10,7 @@ import type { EditorState } from "./state";
  * Без этого склады делили одну историю: новый склад открывался с чужими
  * поставками и заявками, а приёмка на одном складе появлялась на другом.
  */
-export const WAREHOUSE_DOMAINS = [
+const WAREHOUSE_DOMAINS = [
   "expectedShipments",
   "receivingEvents",
   "boxes",
@@ -59,7 +59,7 @@ export function emptyWarehouseData(
   };
 }
 
-export function pickWarehouseData(s: EditorState): WarehouseData {
+function pickWarehouseData(s: EditorState): WarehouseData {
   const out = {} as Record<string, unknown>;
   for (const k of WAREHOUSE_DOMAINS) out[k] = s[k];
   return out as WarehouseData;

@@ -38,7 +38,7 @@ export const SITE_NAV_H = 64;
 /** Английскую версию отложили (Кирилл 23 окт): переключатель скрыт, страницы /en/ остаются. */
 const SHOW_LANG = false;
 
-export function SiteNav({
+function SiteNav({
   route,
   tone,
   extra,

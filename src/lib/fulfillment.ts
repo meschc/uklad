@@ -79,7 +79,7 @@ export function stockAt(
 
 // --- Метрики дашборда ---------------------------------------------------------
 
-export interface DayBucket {
+interface DayBucket {
   /** Метка дня в локальном времени, формат ДД.ММ. */
   label: string;
   /** Начало суток — для сортировки и подписи. */
@@ -165,10 +165,12 @@ export function requestStats(requests: FulfillmentRequest[]): RequestStats {
   // из метрик, и «среднее время сборки» считалось бы только по тому, что ещё
   // стоит на складе.
   const picked = requests.filter((r) => r.status === "done" || r.status === "shipped");
-  const lead = picked.map((r) => (r.shippedAt ?? r.updatedAt) - r.createdAt).filter((v) => v >= 0);
+  const lead = picked
+    .map((r) => (r.shippedAt ?? r.pickedAt ?? r.updatedAt) - r.createdAt)
+    .filter((v) => v >= 0);
   const pick = picked
     .filter((r) => r.startedAt != null)
-    .map((r) => r.updatedAt - r.startedAt!)
+    .map((r) => (r.pickedAt ?? r.updatedAt) - r.startedAt!)
     .filter((v) => v >= 0);
   const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
 
@@ -184,7 +186,7 @@ export function requestStats(requests: FulfillmentRequest[]): RequestStats {
   };
 }
 
-export interface FloorOccupancy {
+interface FloorOccupancy {
   floorId: string;
   name: string;
   cells: number;

@@ -359,7 +359,7 @@ function BulkRequestDialog({ onClose, t }: { onClose: () => void; t: TFunc }) {
                 <tr key={r.index} className="border-b border-border/60 last:border-0">
                   <td className="px-2 py-1">
                     {r.ok ? (
-                      <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                      <span className="inline-flex items-center gap-1 text-success">
                         <Check className="size-3" />
                       </span>
                     ) : (

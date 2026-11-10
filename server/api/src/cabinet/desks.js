@@ -150,6 +150,7 @@ const REQUEST_FLOW = ["new", "in_progress", "done", "shipped"];
 const REQUEST_WORK = [
   "status",
   "startedAt",
+  "pickedAt",
   "pickedQty",
   "partial",
   "shipmentId",

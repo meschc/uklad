@@ -378,9 +378,9 @@ export function StatusBadge({
   const tone: Record<RequestStatus, string> = {
     new: "bg-warning/15 text-warning",
     in_progress: "bg-primary/10 text-primary",
-    done: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
+    done: "bg-success/15 text-success",
     // Отгружено — финал пути: спокойный синий, чтобы отличать от «собрано».
-    shipped: "bg-sky-500/15 text-sky-700 dark:text-sky-400",
+    shipped: "bg-primary/15 text-primary",
     cancelled: "bg-muted text-muted-foreground",
   };
   return (

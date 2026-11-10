@@ -66,6 +66,7 @@ function crossDock(data, productId, qty, shipmentId, boxId, at) {
         pickedQty: picked,
         status: picked >= (Number(r.qty) || 0) ? "done" : "in_progress",
         startedAt: r.startedAt ?? at,
+        ...(picked >= (Number(r.qty) || 0) ? { pickedAt: r.pickedAt ?? at } : {}),
         updatedAt: at,
       };
     }),

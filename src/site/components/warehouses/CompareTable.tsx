@@ -5,7 +5,7 @@ import type { Plan } from "../../data/plans";
 import { ru, useT, type Copy } from "../../lib/copy";
 import { scrollPageTo } from "../../lib/useSmoothScroll";
 import { Reveal } from "../Reveal";
-import { STICKY_NAV_H } from "./StickyNav";
+import { SITE_NAV_H } from "../frame/SiteNav";
 import { COMPARE, NO, SHORT_COMPARE, YES, type Row } from "./tariffsData";
 
 const T = {
@@ -113,14 +113,14 @@ export function CompareTable({ plans }: { plans: Plan[] }) {
               <tr>
                 <th
                   className="sticky z-10 border-y border-[var(--wh-line)] bg-[var(--wh-ground)] px-4 py-3.5 font-medium"
-                  style={{ top: STICKY_NAV_H }}
+                  style={{ top: SITE_NAV_H }}
                 >
                   {t(T.head)}
                 </th>
                 {plans.map((p) => (
                   <th
                     key={p.id}
-                    style={{ top: STICKY_NAV_H }}
+                    style={{ top: SITE_NAV_H }}
                     className={cn(
                       "sticky z-10 border-y border-[var(--wh-line)] px-4 py-3.5 font-medium",
                       p.featured

@@ -17,12 +17,12 @@
 
 import type { MsgKey } from "./i18n";
 
-export type AuthKind = "basic" | "token" | "oauth" | "none";
+type AuthKind = "basic" | "token" | "oauth" | "none";
 
 /** Раздел списка: маркетплейсы, учётные системы, доставка, государство. */
 export type IntegrationCategory = "market" | "erp" | "delivery" | "gov";
 
-export interface IntegrationField {
+interface IntegrationField {
   /** Ключ в конфиге подключения. */
   id: keyof IntegrationConfig & string;
   labelKey: MsgKey;

@@ -205,8 +205,3 @@ export const RELEASES: readonly Release[] = [
     ],
   },
 ];
-
-/** Выпуски по версии — чтобы карточка нашла свой, не перебирая список. */
-export const RELEASE_BY_VERSION: Record<string, Release> = Object.fromEntries(
-  RELEASES.map((release) => [release.version, release]),
-);

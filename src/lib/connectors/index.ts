@@ -17,10 +17,7 @@ import { createYandexMarketConnector } from "./yandexMarket";
 
 export * from "./types";
 export * from "./identity";
-export { createServerTransport, offlineTransport } from "./transport";
-export { signInHonestSign, type MarkSigner } from "./honestSign";
-
-export const transport: ConnectorTransport = offlineTransport;
+const transport: ConnectorTransport = offlineTransport;
 
 const FACTORIES: Partial<
   Record<ExternalSystem, (t: ConnectorTransport, account: string) => Connector>

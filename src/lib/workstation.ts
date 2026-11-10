@@ -9,7 +9,7 @@ import type { BreakPolicy, StaffEvent, StationSession } from "./types";
  */
 
 /** Префикс бейджа сотрудника. Латиницей, как и номера тары: так его читает любой сканер. */
-export const BADGE_PREFIX = "UK-STF-";
+const BADGE_PREFIX = "UK-STF-";
 
 /** Вход по бейджу живёт одну смену с запасом (узел карты «вход на ТСД по QR»). */
 export const SESSION_TTL_MS = 12 * 60 * 60 * 1000;

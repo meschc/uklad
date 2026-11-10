@@ -18,7 +18,7 @@ export function ScanStatusLine({ status, msg }: { status: ScanStatus; msg?: stri
       className={cn(
         "flex items-center gap-2 rounded-lg border px-3 py-2 text-xs",
         good
-          ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+          ? "border-success/40 bg-success/10 text-success"
           : "border-destructive/40 bg-destructive/10 text-destructive",
       )}
       role="status"

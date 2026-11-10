@@ -47,7 +47,7 @@ import type { SiteLang } from "./lang";
  * Это разные очереди: первая ведёт к знакомству и внедрению, вторая к письму
  * с персональной ссылкой на демо-кабинет.
  */
-export type LeadKind = "contact" | "request" | "complaint" | "vote" | "idea" | "connect" | "demo";
+type LeadKind = "contact" | "request" | "complaint" | "vote" | "idea" | "connect" | "demo";
 
 /** Одно поле формы. Подпись — ровно та, что человек видел на экране. */
 export interface LeadField {
@@ -71,7 +71,7 @@ export interface Lead {
 }
 
 /** Почему не отправилось. Три причины — три разных разговора с человеком. */
-export type LeadFailure =
+type LeadFailure =
   /** Приёмник не настроен: отправлять некуда, и это не сбой, а состояние сайта. */
   | "unconfigured"
   /** Запрос не дошёл: нет сети, оборвалось, истекло время. */

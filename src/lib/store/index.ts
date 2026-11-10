@@ -46,8 +46,8 @@ import { PERSIST_KEY, persistStorage } from "./persistStorage";
 export { fieldValueKey, resolveFloor, FLOOR_MAX } from "./helpers";
 export { selectRole } from "./session.slice";
 export { boundDevice } from "./workstation.slice";
-export { countUnread, selectSellerPartnerId, visibleChatPartners } from "./chat.slice";
-export type { GoodsConflict, EditorState } from "./state";
+export { countUnread, visibleChatPartners } from "./chat.slice";
+export type { EditorState } from "./state";
 
 /** Ключ автосохранения в localStorage (ТЗ: изменения сохраняются сами). */
 export { PERSIST_KEY };

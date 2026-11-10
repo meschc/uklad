@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { readLocal, writeLocal } from "@/lib/safeStorage";
 
 /**
  * Столбцы таблицы товаров, которые можно переставлять. Отметка строки слева и
@@ -16,7 +17,7 @@ export type ColId =
   | "qty"
   | "place";
 
-export const DEFAULT_COLS: ColId[] = [
+const DEFAULT_COLS: ColId[] = [
   "photo",
   "sku",
   "name",
@@ -33,7 +34,7 @@ export const DEFAULT_COLS: ColId[] = [
 const KEY = "uklad-table-cols";
 
 /** Сохранённый порядок — подсказка: новые столбцы встают в конец, пропавшие отбрасываются. */
-export function readCols(raw: string | null): ColId[] {
+function readCols(raw: string | null): ColId[] {
   try {
     const saved = (JSON.parse(raw ?? "[]") as unknown[]).filter((c): c is ColId =>
       DEFAULT_COLS.includes(c as ColId),
@@ -45,7 +46,7 @@ export function readCols(raw: string | null): ColId[] {
 }
 
 /** Переставить столбец `from` на место `to`. */
-export function moveCol(cols: ColId[], from: ColId, to: ColId): ColId[] {
+function moveCol(cols: ColId[], from: ColId, to: ColId): ColId[] {
   if (from === to) return cols;
   const next = cols.filter((c) => c !== from);
   next.splice(next.indexOf(to) + (cols.indexOf(from) < cols.indexOf(to) ? 1 : 0), 0, from);
@@ -53,21 +54,11 @@ export function moveCol(cols: ColId[], from: ColId, to: ColId): ColId[] {
 }
 
 export function useColumnOrder() {
-  const [cols, setCols] = useState<ColId[]>(() => {
-    try {
-      return readCols(localStorage.getItem(KEY));
-    } catch {
-      return DEFAULT_COLS;
-    }
-  });
+  const [cols, setCols] = useState<ColId[]>(() => readCols(readLocal(KEY)));
   const move = (from: ColId, to: ColId) => {
     const next = moveCol(cols, from, to);
     setCols(next);
-    try {
-      localStorage.setItem(KEY, JSON.stringify(next));
-    } catch {
-      // Приватный режим: порядок продержится до перезагрузки.
-    }
+    writeLocal(KEY, JSON.stringify(next));
   };
   return { cols, move };
 }

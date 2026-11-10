@@ -22,6 +22,13 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import jsxA11y from "eslint-plugin-jsx-a11y";
 import prettier from "eslint-config-prettier";
 
+// Классы палитры Tailwind, которые обходят токены темы: `text-emerald-600`,
+// `bg-sky-500/15` и т. п. Цвет по роли — токены `success`, `warning`,
+// `primary`, `destructive` из src/index.css; так тёмная тема чинится в одном
+// месте, а не `dark:`-парой на каждом экране.
+const PALETTE =
+  "/\\b(bg|text|border|ring|fill|stroke|from|to|via|outline|divide|decoration|accent)-(red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose|slate|gray|zinc|neutral|stone)-[0-9]/";
+
 export default tseslint.config(
   {
     // Собранное, отчёты и зависимости линтеру показывать незачем.
@@ -85,6 +92,40 @@ export default tseslint.config(
     // Скрипты сборки и конфиги живут в Node и печатают в консоль по делу.
     files: ["scripts/**/*.mjs", "*.config.{js,ts}", "e2e/**/*.ts"],
     rules: { "no-console": "off" },
+  },
+
+  {
+    // Дизайн-система (ADR 0007) — правилами, а не памятью: нарушение
+    // ловится сразу в редакторе и на коммите, а не через неделю на ревью.
+    files: ["src/components/**/*.{ts,tsx}", "src/site/**/*.{ts,tsx}"],
+    ignores: [
+      "src/components/ui/**",
+      "**/__tests__/**",
+      // Бумага: лист A4 и ярлык печатаются чёрным по белому в любой теме,
+      // им нужны постоянные серые, а не токены, которые темнеют вместе с темой.
+      "src/components/fulfillment/DocumentSheet.tsx",
+      "src/components/fulfillment/LabelCard.tsx",
+      "src/components/table/Code128Svg.tsx",
+    ],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: `Literal[value=${PALETTE}], TemplateElement[value.raw=${PALETTE}]`,
+          message:
+            "Цвет палитры Tailwind мимо токенов. Берите токен по роли: primary, success, warning, destructive, muted-foreground (src/index.css).",
+        },
+        {
+          selector: "Literal[value=/\\bbg-muted p-0\\.5\\b/]",
+          message: "Свой набор кнопок-табов. Переключатель — только ui/segmented.",
+        },
+        {
+          selector: 'MemberExpression[object.name="localStorage"]',
+          message:
+            "localStorage напрямую. Настройки устройства — readLocal/writeLocal (lib/safeStorage), данные — через репозиторий.",
+        },
+      ],
+    },
   },
 
   prettier,

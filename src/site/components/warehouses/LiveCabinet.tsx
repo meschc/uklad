@@ -16,8 +16,8 @@ import { cn } from "@/lib/utils";
  * Окно нарисовано в 1240×640 и масштабируется под колонку, как картинка.
  */
 
-export const LIVE_W = 1240;
-export const LIVE_H = 640;
+const LIVE_W = 1240;
+const LIVE_H = 640;
 /** Сколько ждать после загрузки фрейма, пока кабинет отрисуется. */
 const SETTLE_MS = 700;
 

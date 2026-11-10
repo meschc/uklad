@@ -13,10 +13,10 @@ import { journal, scrubText, type JournalEntry } from "./journal";
  * должен видеть, что он отдаёт.
  */
 
-export const REPORT_VERSION = 1;
+const REPORT_VERSION = 1;
 /** Предел тела на сервере — держим его и здесь, чтобы не слать заведомый отказ. */
 export const MAX_REPORT_BYTES = 512 * 1024;
-export const MAX_MESSAGE = 4000;
+const MAX_MESSAGE = 4000;
 
 export interface ReportEnv {
   userAgent: string;

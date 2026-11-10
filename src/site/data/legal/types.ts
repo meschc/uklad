@@ -43,7 +43,7 @@ export interface LegalDoc {
   editions?: LegalEdition[];
 }
 
-export interface LegalEdition {
+interface LegalEdition {
   /** Дата редакции словами, как в документе: «27 августа 2026 года». */
   date: string;
   /** Что изменилось в следующей редакции, одной фразой. */

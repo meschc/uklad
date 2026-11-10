@@ -17,7 +17,7 @@ import { int, pick, rng } from "../lib/rng";
  * сборке набора», а не «каждый раз заново».
  */
 
-export interface WarehousePrice {
+interface WarehousePrice {
   /** ₽ за паллето-место в сутки. */
   storage: number;
   /** ₽ за приёмку коробки. */
@@ -96,7 +96,7 @@ export interface Warehouse {
  * чисел по чужим таблицам. Генератору здесь больше и не нужно — отзывы про
  * склад пишут после того, как склад появился.
  */
-export type WarehouseRecord = Omit<Warehouse, "reputation">;
+type WarehouseRecord = Omit<Warehouse, "reputation">;
 
 /**
  * Склад, каким его выдаёт генератор: без фотографии и без даты подтверждения

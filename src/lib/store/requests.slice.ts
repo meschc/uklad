@@ -79,6 +79,7 @@ export const createRequestsSlice: SliceCreator<RequestsSlice> = (set, get) => ({
           // Момент взятия в работу фиксируем один раз — на нём стоит метрика
           // «среднее время сборки» в дашборде.
           startedAt: status === "in_progress" ? (r.startedAt ?? nowMs()) : r.startedAt,
+          pickedAt: status === "done" ? (r.pickedAt ?? nowMs()) : r.pickedAt,
         };
       }),
     }));
@@ -170,7 +171,9 @@ export const createRequestsSlice: SliceCreator<RequestsSlice> = (set, get) => ({
   completeRequest: (id, partial = false) => {
     set((s) => ({
       requests: s.requests.map((r) =>
-        r.id === id ? { ...r, status: "done", partial, updatedAt: nowMs() } : r,
+        r.id === id
+          ? { ...r, status: "done", partial, pickedAt: r.pickedAt ?? nowMs(), updatedAt: nowMs() }
+          : r,
       ),
     }));
     // Собранная заявка больше ничего не ждёт: бронь под поставку снимается,
@@ -282,6 +285,7 @@ export const createRequestsSlice: SliceCreator<RequestsSlice> = (set, get) => ({
                 pickedQty: picked,
                 status: picked >= x.qty ? "done" : "in_progress",
                 startedAt: x.startedAt ?? nowMs(),
+                ...(picked >= x.qty ? { pickedAt: x.pickedAt ?? nowMs() } : {}),
                 updatedAt: nowMs(),
               }
             : x,

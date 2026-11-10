@@ -456,7 +456,7 @@ export function LabelsScreen() {
                         <span className="font-mono tabular-nums">{code}</span>
                         {info?.printedAt ? (
                           <span
-                            className="flex items-center gap-0.5 text-emerald-600"
+                            className="flex items-center gap-0.5 text-success"
                             title={t("labels.printedAt", {
                               date: new Date(info.printedAt).toLocaleDateString(),
                             })}

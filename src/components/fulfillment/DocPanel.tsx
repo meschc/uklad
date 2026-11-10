@@ -158,7 +158,7 @@ export function DocPanel({
 
         {locked ? (
           <p className="flex items-center gap-2 text-sm">
-            <BadgeCheck className="size-4 text-emerald-600" />
+            <BadgeCheck className="size-4 text-success" />
             {t("doc.confirmedBy", {
               who,
               d: new Date(record?.confirmedAt ?? 0).toLocaleString(t.lang),

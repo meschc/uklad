@@ -4,7 +4,7 @@ import { useEditor } from "@/lib/store";
 import { planBounds, rowFrames } from "@/lib/planGeometry";
 import type { Box, CellAddress, Floor, PlacedModule } from "@/lib/types";
 import { useT } from "@/lib/i18n";
-import { cn } from "@/lib/utils";
+import { Segmented } from "@/components/ui/segmented";
 import { CELL, MODULE_GAP, ZOOM_MAX, ZOOM_MIN } from "@/components/editor/constants";
 
 /**
@@ -168,22 +168,11 @@ export function HeatmapView() {
           <span className="truncate text-sm text-muted-foreground">· {t("heat.title")}</span>
         </div>
         {warehouse.floors.length > 1 && (
-          <div className="flex items-center gap-0.5 rounded-lg bg-muted p-0.5">
-            {warehouse.floors.map((f, i) => (
-              <button
-                key={f.id}
-                onClick={() => setFloorIdx(i)}
-                className={cn(
-                  "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
-                  i === floorIdx
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {f.name}
-              </button>
-            ))}
-          </div>
+          <Segmented
+            value={warehouse.floors[floorIdx]?.id ?? ""}
+            options={warehouse.floors.map((f) => ({ value: f.id, label: f.name }))}
+            onChange={(id) => setFloorIdx(warehouse.floors.findIndex((f) => f.id === id))}
+          />
         )}
         {/* Легенда шкалы (п.9.4) */}
         <div className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">

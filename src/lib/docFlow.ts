@@ -102,7 +102,7 @@ export function docEntries(src: DocSources, records: DocRecord[]): DocEntry[] {
 }
 
 /** Модель из операции, ещё без правок. null — операции уже нет. */
-export function baseDoc(kind: DocSourceKind, sourceId: string, src: DocSources): DocModel | null {
+function baseDoc(kind: DocSourceKind, sourceId: string, src: DocSources): DocModel | null {
   if (kind === "shipment") {
     const ship = src.shipments.find((s) => s.id === sourceId);
     return ship ? buildShipmentDoc(ship, src.requests, src.products) : null;
@@ -120,7 +120,7 @@ export function baseDoc(kind: DocSourceKind, sourceId: string, src: DocSources):
 }
 
 /** Черновик с правками поверх модели из операции. */
-export function applyEdits(doc: DocModel, edits: DocEdits): DocModel {
+function applyEdits(doc: DocModel, edits: DocEdits): DocModel {
   const lines = doc.lines.map((l) => {
     const fact = edits.facts?.[String(l.no)];
     return fact != null ? { ...l, fact } : l;

@@ -22,7 +22,7 @@ import { COMPLAINTS, REVIEWS, WAREHOUSES, type Warehouse } from "./warehouses";
  */
 
 /** Цифры по всей витрине: их показывает лендинг и подвал. */
-export interface WarehouseStats {
+interface WarehouseStats {
   /** Складов на витрине. */
   total: number;
   /** Городов и хабов. */
@@ -68,7 +68,7 @@ function buildStats(list: Warehouse[]): WarehouseStats {
 const newestFirst = <T extends { createdAt: number }>(items: T[]): T[] =>
   [...items].sort((a, b) => b.createdAt - a.createdAt);
 
-export function createWarehousesRepository(
+function createWarehousesRepository(
   list: Warehouse[] = WAREHOUSES,
   reviews: readonly Review[] = REVIEWS,
   complaints: readonly Complaint[] = COMPLAINTS,

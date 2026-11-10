@@ -33,7 +33,7 @@ export interface RequestValues {
  * Считается от нынешнего дня, а не записана строкой: записанная строка
  * когда-нибудь наступит, и тест начнёт падать без единой правки в коде.
  */
-export function futureDate(): string {
+function futureDate(): string {
   return todayISO(new Date(Date.now() + DAYS_AHEAD * MS_IN_DAY));
 }
 

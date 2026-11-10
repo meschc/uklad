@@ -62,8 +62,6 @@ export interface LabelTemplate {
 
 export const LABEL_SIDE_MIN_MM = 20;
 export const LABEL_SIDE_MAX_MM = 210;
-export const LABEL_CODE_MIN = 0.3;
-export const LABEL_CODE_MAX = 1;
 /** Ширина, до которой ужимается загруженный логотип, px. */
 export const LABEL_LOGO_MAX_PX = 240;
 

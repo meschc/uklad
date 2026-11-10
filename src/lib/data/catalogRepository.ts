@@ -18,7 +18,7 @@ import { attempt, type Result } from "./result";
  */
 
 /** Ответ на попытку завести доп.поле: имя может оказаться уже занятым. */
-export interface FieldOutcome {
+interface FieldOutcome {
   ok: boolean;
   errorKey?: MsgKey;
   errorVars?: Record<string, string | number>;

@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useDismiss } from "@/lib/useDismiss";
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const MINUTES = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
@@ -24,21 +25,7 @@ export function TimeSelect({
   const v = ((value % 1440) + 1440) % 1440;
   const h = Math.floor(v / 60);
   const m = v % 60;
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: Event) => {
-      if (
-        e instanceof KeyboardEvent ? e.key === "Escape" : !ref.current?.contains(e.target as Node)
-      )
-        setOpen(false);
-    };
-    document.addEventListener("mousedown", close);
-    document.addEventListener("keydown", close);
-    return () => {
-      document.removeEventListener("mousedown", close);
-      document.removeEventListener("keydown", close);
-    };
-  }, [open]);
+  useDismiss(open, ref, () => setOpen(false));
   const cell = (on: boolean) =>
     cn(
       "flex h-8 w-12 shrink-0 items-center justify-center rounded-lg text-sm tabular-nums transition-colors",

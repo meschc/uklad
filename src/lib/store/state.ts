@@ -88,7 +88,7 @@ export type SliceCreator<T> = StateCreator<EditorState, [["zustand/persist", unk
  * `commit` — замыкание с самой операцией. Хранить функцию в состоянии проще,
  * чем описывать каждую правку плана отдельным сериализуемым типом.
  */
-export interface GoodsConflict {
+interface GoodsConflict {
   /** Ключ i18n заголовка алерта (что за операция) + подстановки. */
   titleKey: MsgKey;
   titleVars?: Record<string, string | number>;
@@ -416,7 +416,7 @@ export interface PrintSlice {
  * идентификатора собирается настоящий ключ `MsgKey`, а не «`onb.` плюс что
  * угодно» — то есть забытый перевод тоже поймает компилятор.
  */
-export type HintId = "welcome" | "lod" | "dup" | "marquee" | "ctx" | "stamp" | "multi";
+type HintId = "welcome" | "lod" | "dup" | "marquee" | "ctx" | "stamp" | "multi";
 
 export interface OnboardingSlice {
   /**

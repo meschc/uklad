@@ -9,7 +9,7 @@ type Ctx2D = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 type Surface = { width: number; height: number };
 
 /** Прямоугольник тихой зоны в координатах поля, px. */
-export type QuietRect = { l: number; r: number; t: number; b: number };
+type QuietRect = { l: number; r: number; t: number; b: number };
 
 export type FieldSize = { w: number; h: number; dpr: number; rects: QuietRect[] };
 

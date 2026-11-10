@@ -348,7 +348,7 @@ export function AssignDialog({ product, onClose }: { product: Product; onClose: 
                         ? "border-destructive/40 bg-destructive/10 text-destructive"
                         : busy
                           ? "border-warning/40 bg-warning/10 text-warning"
-                          : "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+                          : "border-success/40 bg-success/10 text-success",
                     selected && "ring-2 ring-ring ring-offset-1",
                   )}
                 >
@@ -382,7 +382,7 @@ export function AssignDialog({ product, onClose }: { product: Product; onClose: 
             <div
               className={cn(
                 "mt-2 flex items-center gap-1.5 border-t border-border pt-2 font-medium",
-                fit.fits ? "text-emerald-600 dark:text-emerald-400" : "text-destructive",
+                fit.fits ? "text-success" : "text-destructive",
               )}
             >
               {fit.fits ? <Check className="size-3.5" /> : <AlertTriangle className="size-3.5" />}

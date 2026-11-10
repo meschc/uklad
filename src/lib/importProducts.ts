@@ -34,7 +34,7 @@ const FIELD_SYNONYMS: Record<FieldKey, string[]> = {
 const REQUIRED: FieldKey[] = ["sku", "name", "category", "widthCm", "heightCm", "depthCm"];
 
 /** Ошибка строки: ключ i18n + подстановки (перевод — в UI). */
-export interface RowError {
+interface RowError {
   key: MsgKey;
   vars?: Record<string, string | number>;
 }

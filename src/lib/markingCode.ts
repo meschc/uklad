@@ -42,7 +42,7 @@ export interface MarkingCode {
 }
 
 /** Привести запись разделителя со сканера к настоящему GS и убрать мусор. */
-export function normalizeMarkingRaw(raw: string): string {
+function normalizeMarkingRaw(raw: string): string {
   return (
     raw
       .slice(0, MAX_RAW)

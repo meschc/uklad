@@ -4,6 +4,7 @@ import { useEditor } from "@/lib/store";
 import { useT, type TFunc } from "@/lib/i18n";
 import { ALT_KEY as ALT, DEL_KEY as DEL, MOD_KEY as MOD, SHIFT_KEY as SHIFT } from "@/lib/platform";
 import { cn } from "@/lib/utils";
+import { Segmented } from "@/components/ui/segmented";
 import { eyebrow } from "@/components/ui/eyebrow";
 
 /**
@@ -175,40 +176,6 @@ function FaqItem({ q, a }: { q: string; a: string }) {
   );
 }
 
-/**
- * Кнопка вкладки. Живёт снаружи `HelpMenu` намеренно: компонент, объявленный
- * в теле другого компонента, при каждом рендере родителя оказывается новым
- * типом — React выбрасывает старое поддерево и монтирует новое, теряя фокус.
- */
-function TabBtn({
-  id,
-  icon,
-  label,
-  active,
-  onPick,
-}: {
-  id: "faq" | "keys";
-  icon: React.ReactNode;
-  label: string;
-  active: boolean;
-  onPick: (id: "faq" | "keys") => void;
-}) {
-  return (
-    <button
-      onClick={() => onPick(id)}
-      className={cn(
-        "flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition-colors",
-        active
-          ? "bg-background text-foreground shadow-sm"
-          : "text-muted-foreground hover:text-foreground",
-      )}
-    >
-      {icon}
-      {label}
-    </button>
-  );
-}
-
 export function HelpMenu() {
   const t = useT();
   const [open, setOpen] = useState(false);
@@ -271,22 +238,16 @@ export function HelpMenu() {
               </button>
             </div>
 
-            <div className="mb-3 flex items-center gap-0.5 rounded-lg bg-muted p-0.5">
-              <TabBtn
-                id="faq"
-                icon={<BookOpen className="size-3.5" />}
-                label={t("help.tab.faq")}
-                active={tab === "faq"}
-                onPick={setTab}
-              />
-              <TabBtn
-                id="keys"
-                icon={<Keyboard className="size-3.5" />}
-                label={t("help.tab.keys")}
-                active={tab === "keys"}
-                onPick={setTab}
-              />
-            </div>
+            <Segmented
+              grow
+              className="mb-3"
+              value={tab}
+              options={[
+                { value: "faq", label: t("help.tab.faq"), icon: <BookOpen /> },
+                { value: "keys", label: t("help.tab.keys"), icon: <Keyboard /> },
+              ]}
+              onChange={setTab}
+            />
 
             <div className="flex max-h-[62vh] flex-col gap-3 overflow-y-auto pr-0.5">
               {tab === "faq" ? (
@@ -325,7 +286,7 @@ export function HelpMenu() {
                   >
                     {reset ? (
                       <>
-                        <Check className="size-3.5 text-emerald-500" />
+                        <Check className="size-3.5 text-success" />
                         {t("help.onboardingReset")}
                       </>
                     ) : (

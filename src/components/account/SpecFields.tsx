@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { ChevronDown, Eye, EyeOff } from "lucide-react";
 import type { WarehouseClass } from "@/lib/types";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { useDismiss } from "@/lib/useDismiss";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { card } from "@/components/ui/card";
 
@@ -380,7 +381,7 @@ export function BoolValue({
 }) {
   const t = useT();
   const tone = value
-    ? "bg-emerald-500/15 text-emerald-600 ring-emerald-500/30 dark:text-emerald-400"
+    ? "bg-success/15 text-success ring-success/30"
     : value === false
       ? "bg-muted text-muted-foreground ring-border"
       : "bg-transparent text-muted-foreground ring-border";
@@ -474,21 +475,7 @@ export function ChoiceMenu<T extends string>({
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: Event) => {
-      if (
-        e instanceof KeyboardEvent ? e.key === "Escape" : !ref.current?.contains(e.target as Node)
-      )
-        setOpen(false);
-    };
-    document.addEventListener("mousedown", close);
-    document.addEventListener("keydown", close);
-    return () => {
-      document.removeEventListener("mousedown", close);
-      document.removeEventListener("keydown", close);
-    };
-  }, [open]);
+  useDismiss(open, ref, () => setOpen(false));
   const pick = (v: T | undefined) => {
     onChange(v);
     setOpen(false);
@@ -545,8 +532,8 @@ export function ChoiceMenu<T extends string>({
 // --- Крупные элементы шапки ----------------------------------------------------
 
 const CLASS_TONE: Record<WarehouseClass, string> = {
-  "A+": "bg-emerald-500/15 text-emerald-600 ring-emerald-500/30 dark:text-emerald-400",
-  A: "bg-emerald-500/15 text-emerald-600 ring-emerald-500/30 dark:text-emerald-400",
+  "A+": "bg-success/15 text-success ring-success/30",
+  A: "bg-success/15 text-success ring-success/30",
   "B+": "bg-primary/15 text-primary ring-primary/30",
   B: "bg-primary/15 text-primary ring-primary/30",
   C: "bg-warning/15 text-warning ring-warning/30",
@@ -581,7 +568,7 @@ export function CompletenessRing({ filled, total }: { filled: number; total: num
   const share = total ? filled / total : 0;
   const r = 22;
   const len = 2 * Math.PI * r;
-  const tone = share > 0.85 ? "text-emerald-500" : share > 0.6 ? "text-primary" : "text-warning";
+  const tone = share > 0.85 ? "text-success" : share > 0.6 ? "text-primary" : "text-warning";
 
   return (
     <div className="flex shrink-0 items-center gap-2.5">

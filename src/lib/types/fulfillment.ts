@@ -8,7 +8,7 @@ import type { DocModel } from "../documents";
 import type { CellAddress } from "./plan";
 
 /** Товар внутри коробки: артикул + количество. */
-export interface BoxLine {
+interface BoxLine {
   productId: string;
   qty: number;
 }
@@ -260,6 +260,11 @@ export interface FulfillmentRequest {
   updatedAt: number;
   /** Когда заявку взяли в работу — нужно для метрики времени сборки. */
   startedAt?: number;
+  /**
+   * Когда заявку собрали. Отдельно от `updatedAt`: тот сдвигают упаковка и
+   * погрузка, и время сборки с датой услуги уезжали бы к дню машины.
+   */
+  pickedAt?: number;
   /** Сколько единиц уже собрано на экране «Сборка». */
   pickedQty?: number;
   /** Закрыта частично: собрали меньше запрошенного и отметили это явно. */
@@ -293,7 +298,7 @@ export type WorkstationKind = "pack" | "receiving" | "picking" | "marking" | "re
  * делает: отметился на смене, отсканировал товар, закрыл заказ. Событие
  * появляется только по действию самого человека, время — до секунды.
  */
-export type StaffEventType =
+type StaffEventType =
   | "shift_start"
   | "break_start"
   | "break_end"
@@ -369,7 +374,7 @@ export interface Device {
  * этикетка печатается сама → упаковщик клеит её и сканирует → единица
  * упакована. Время между первым и последним сканом и есть время упаковки.
  */
-export interface PackedUnit {
+interface PackedUnit {
   productId: string;
   /** Заказ, под который ушла единица; нет — тара без заказов (поставка FBO). */
   orderId?: string;
@@ -381,9 +386,9 @@ export interface PackedUnit {
 }
 
 /** Что пошло не так со штукой: брак, её нет в таре, она лишняя. */
-export type PackRejectReason = "defect" | "not_in_tote" | "extra";
+type PackRejectReason = "defect" | "not_in_tote" | "extra";
 
-export interface PackReject {
+interface PackReject {
   productId: string;
   reason: PackRejectReason;
   at: number;

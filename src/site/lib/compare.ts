@@ -51,7 +51,7 @@ export function comparedWarehouses(list: Warehouse[], selected: string[]): Wareh
 }
 
 /** Куда смотреть в строке: меньше — лучше, или больше — лучше. */
-export type Direction = "less" | "more";
+type Direction = "less" | "more";
 
 export interface CompareRow {
   key: string;

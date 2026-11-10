@@ -7,7 +7,6 @@
  * остаётся чистыми функциями и про хранилище по-прежнему ничего не знает.
  */
 export { catalogRepository } from "./catalogRepository";
-export type { FieldOutcome } from "./catalogRepository";
 export { chatRepository } from "./chatRepository";
 export { fulfillmentRepository } from "./fulfillmentRepository";
 export { placementRepository } from "./placementRepository";
@@ -19,7 +18,4 @@ export { usePendingOps, STUCK_MS } from "./opQueue";
 export { badgeRepository } from "./badgeRepository";
 export { disputesRepository } from "./disputesRepository";
 export { documentsRepository } from "./documentsRepository";
-export { sanitizeDomains } from "./sanitize";
-export type { Repository, StorePort } from "./repository";
-export { attempt, fail, ok } from "./result";
 export type { Result } from "./result";

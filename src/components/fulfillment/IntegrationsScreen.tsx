@@ -153,7 +153,7 @@ function IntegrationCard({
           <p className="flex items-center gap-1.5 text-sm font-semibold">
             {spec.title}
             {config.enabled && (
-              <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-2xs font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
+              <span className="rounded bg-success/15 px-1.5 py-0.5 text-2xs font-semibold uppercase tracking-wide text-success">
                 {t("integr.on")}
               </span>
             )}
@@ -178,7 +178,7 @@ function IntegrationCard({
             <span
               className={cn(
                 "shrink-0 text-xs tabular-nums",
-                ready ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground",
+                ready ? "text-success" : "text-muted-foreground",
               )}
             >
               {t("integr.filled", { n: filled, total: spec.fields.length })}

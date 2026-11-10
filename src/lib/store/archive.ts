@@ -31,7 +31,7 @@ interface ArchiveState {
 }
 
 const EMPTY: ArchiveState = { status: "idle", org: null, lists: {} };
-export const useArchive = create<ArchiveState>(() => EMPTY);
+const useArchive = create<ArchiveState>(() => EMPTY);
 
 let inflight: Promise<void> | null = null;
 
@@ -54,12 +54,6 @@ export function ensureArchive(): Promise<void> {
     useArchive.setState({ status: "ready", lists });
   });
   return inflight;
-}
-
-/** Для тестов: забыть загруженный архив. */
-export function resetArchiveForTests() {
-  inflight = null;
-  useArchive.setState(EMPTY);
 }
 
 type ListOf<K extends ArchiveList> = EditorState[K] extends (infer T)[] ? T[] : never;
