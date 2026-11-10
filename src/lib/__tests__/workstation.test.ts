@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  stationKey,
   SESSION_TTL_MS,
   allowedMarks,
   autoIdleSince,
@@ -156,5 +157,16 @@ describe("коды смены и пики", () => {
     );
     expect(m.get("a")).toEqual({ pack: 1, pick: 1 });
     expect(m.has("b")).toBe(false);
+  });
+});
+
+describe("stationKey", () => {
+  it("F-клавиши работают всегда, цифры — только вне поля", () => {
+    expect(stationKey("F1", true)).toBe("shift");
+    expect(stationKey("F4", false)).toBe("end");
+    expect(stationKey("2", false)).toBe("break");
+    expect(stationKey("2", true)).toBeNull();
+    expect(stationKey("F9", false)).toBeNull();
+    expect(stationKey("a", false)).toBeNull();
   });
 });

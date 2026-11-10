@@ -1,7 +1,15 @@
 import { Coffee, Hourglass, Timer, UtensilsCrossed, type LucideIcon } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { workstationRepository } from "@/lib/data";
-import { MARK_UNDO_MS, nextBreak, shiftStartedAt, shiftState, stateSince } from "@/lib/workstation";
+import {
+  MARK_UNDO_MS,
+  nextBreak,
+  shiftStartedAt,
+  shiftState,
+  stateSince,
+  STATION_KEY_LABEL,
+} from "@/lib/workstation";
+import { KeyHint } from "./KeyHint";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { useNow } from "./useNow";
@@ -34,6 +42,7 @@ export function ShiftBar({ staffId, onOpen }: { staffId: string; onOpen: () => v
         muted
         hint={t("ws.bar.openShift")}
         onClick={onOpen}
+        k={STATION_KEY_LABEL.shift}
       />
     );
 
@@ -54,6 +63,7 @@ export function ShiftBar({ staffId, onOpen }: { staffId: string; onOpen: () => v
           value={clock(now - start)}
           hint={t("ws.bar.openShift")}
           onClick={onOpen}
+          k={STATION_KEY_LABEL.shift}
         />
         <Cell
           icon={Hourglass}
@@ -74,6 +84,7 @@ export function ShiftBar({ staffId, onOpen }: { staffId: string; onOpen: () => v
         value={clock(now - start)}
         hint={t("ws.bar.openShift")}
         onClick={onOpen}
+        k={STATION_KEY_LABEL.shift}
       />
       <Cell
         icon={next?.kind === "lunch" ? UtensilsCrossed : Coffee}
@@ -91,6 +102,7 @@ export function ShiftBar({ staffId, onOpen }: { staffId: string; onOpen: () => v
         }
         tone={onBreak ? "amber" : ready ? "green" : undefined}
         ring={overdue}
+        k={STATION_KEY_LABEL.break}
         hint={t(
           undoable ? "ws.bar.undoBreak" : onBreak ? "ws.mark.break_end" : "ws.mark.break_start",
         )}
@@ -115,6 +127,7 @@ function Cell({
   ring,
   hint,
   onClick,
+  k,
 }: {
   icon: LucideIcon;
   label: string;
@@ -125,6 +138,8 @@ function Cell({
   /** Что сделает нажатие — всплывает под блоком при наведении. */
   hint: string;
   onClick: () => void;
+  /** Кнопка ТСД, которая делает то же самое. */
+  k?: string;
 }) {
   return (
     <button
@@ -132,13 +147,14 @@ function Cell({
       aria-label={`${label} ${value}. ${hint}`}
       onClick={onClick}
       className={cn(
-        "group relative flex flex-col items-center rounded-md p-1.5 text-center leading-tight hover:bg-muted",
+        "group relative flex min-h-12 flex-col items-center justify-center rounded-md px-3 py-1 text-center leading-tight hover:bg-muted",
         ring && "ring-2 ring-success",
       )}
     >
       <span className="flex items-center gap-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
         <Icon className="size-3" />
         {label}
+        {k && <KeyHint k={k} />}
       </span>
       <span
         className={cn(
