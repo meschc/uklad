@@ -34,7 +34,7 @@ import type {
 const DAY = 86_400_000;
 
 /** Простейший детерминированный ГПСЧ (mulberry32) — одинаков от запуска к запуску. */
-function rng(seed: number) {
+export function rng(seed: number) {
   let a = seed >>> 0;
   return () => {
     a = (a + 0x6d2b79f5) >>> 0;

@@ -13,6 +13,7 @@ import type { EditorState } from "./state";
 import { fieldValueKey } from "./helpers";
 import { SEED_FIELD_VALUES, seedOwnProducts, seedStaff } from "./seed";
 import { seedHistory } from "./seedHistory";
+import { seedWork } from "./seedWork";
 import { createAccountSlice } from "./account.slice";
 import { createIntegrationsSlice } from "./integrations.slice";
 import { createLabelsSlice } from "./labels.slice";
@@ -413,6 +414,15 @@ if (!HAD_PERSISTED) {
       s.warehouse,
       s.products.filter((p) => !p.warehouseId),
       s.placements,
+    ),
+  );
+  // Люди склада: смены и пики, задания на услуги, прайс и столы — иначе
+  // «Операции и услуги», «Устройства» и журнал смены открываются нулями.
+  useEditor.setState(
+    seedWork(
+      s.warehouse.staff ?? [],
+      s.warehouse.partners ?? [],
+      s.products.filter((p) => !p.warehouseId),
     ),
   );
   // История правок не должна начинаться со снимка «до посева»: демо-данные —
