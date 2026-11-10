@@ -2,6 +2,7 @@ import { Lightbulb } from "lucide-react";
 import { ru, useT } from "../../lib/copy";
 import { openDialog } from "../../lib/roadmap/store";
 import { Reveal } from "../Reveal";
+import { Button } from "@/components/ui/button";
 
 const T = {
   title: ru("Чего не хватает?"),
@@ -34,14 +35,17 @@ export function RoadmapAsk() {
           </h2>
           <div className="mt-6 flex flex-col items-start gap-8 lg:flex-row lg:items-center lg:justify-between">
             <p className="max-w-[34rem] text-[17px] leading-relaxed text-white/80">{t(T.note)}</p>
-            <button
+            <Button
               type="button"
               onClick={() => openDialog({ kind: "idea" })}
-              className="wh-btn wh-btn--white shrink-0"
+              size="lg"
+              shape="pill"
+              variant="inverse"
+              className="shrink-0"
             >
               <Lightbulb className="size-4" />
               {t(T.suggest)}
-            </button>
+            </Button>
           </div>
         </Reveal>
       </div>

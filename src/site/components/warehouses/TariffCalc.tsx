@@ -7,6 +7,7 @@ import { ru, useT, type Copy } from "../../lib/copy";
 import { Reveal } from "../Reveal";
 import { RollNumber } from "./RollNumber";
 import { CALC, calcLines, calcMonthly, fittingPlan, type CalcInput } from "./tariffsData";
+import { Button } from "@/components/ui/button";
 
 const T = {
   title: ru("Свой тариф"),
@@ -101,12 +102,20 @@ export function TariffCalc({ period }: { period: PayPeriod }) {
           <span className="wh-muted hidden text-[15px] sm:inline">
             {t(T.from, { sum: money(monthlyFor(CALC.base, period)) })}
           </span>
-          <span className="wh-btn wh-btn--soft size-10 shrink-0 !px-0 sm:h-12 sm:w-auto sm:!px-5">
-            <span className="sr-only sm:not-sr-only">{t(open ? T.close : T.open)}</span>
-            <ChevronDown
-              className={cn("size-4 transition-transform duration-300", open && "rotate-180")}
-            />
-          </span>
+          <Button
+            asChild
+            size="lg"
+            shape="pill"
+            variant="secondary"
+            className="size-10 shrink-0 px-0 sm:w-auto sm:px-5"
+          >
+            <span>
+              <span className="sr-only sm:not-sr-only">{t(open ? T.close : T.open)}</span>
+              <ChevronDown
+                className={cn("size-4 transition-transform duration-300", open && "rotate-180")}
+              />
+            </span>
+          </Button>
         </span>
       </button>
 
@@ -208,9 +217,9 @@ export function TariffCalc({ period }: { period: PayPeriod }) {
               {v.warehouses >= maxWh && (
                 <p className="text-[13px] text-[var(--wh-blue)]">{t(T.bigger, { n: maxWh })}</p>
               )}
-              <a href="#connect" className="wh-btn wh-btn--blue mt-auto w-full">
-                {t(T.choose)}
-              </a>
+              <Button asChild size="lg" shape="pill" className="mt-auto w-full">
+                <a href="#connect">{t(T.choose)}</a>
+              </Button>
             </div>
           </div>
         </div>

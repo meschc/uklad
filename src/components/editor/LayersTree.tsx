@@ -100,7 +100,7 @@ export function LayersTree({ floor, t }: { floor: Floor; t: TFunc }) {
       >
         <ModuleGlyph type={m.type} className="size-3.5 shrink-0" />
         <span className="flex-1 truncate">{label}</span>
-        <span className="shrink-0 font-mono text-2xs text-muted-foreground/70">
+        <span className="shrink-0 font-mono text-2xs text-muted-foreground">
           {m.w}×{m.h}
         </span>
       </button>
@@ -155,12 +155,12 @@ export function LayersTree({ floor, t }: { floor: Floor; t: TFunc }) {
                 <span
                   className={cn(
                     "flex-1 truncate font-medium",
-                    rowSel > 0 ? "text-primary" : "text-foreground/90",
+                    rowSel > 0 ? "text-primary" : "text-foreground",
                   )}
                 >
                   {t("canvas.rowFrame", { n: row })}
                 </span>
-                <span className="shrink-0 font-mono text-2xs text-muted-foreground/70">
+                <span className="shrink-0 font-mono text-2xs text-muted-foreground">
                   {mods.length}
                 </span>
               </button>
@@ -173,7 +173,7 @@ export function LayersTree({ floor, t }: { floor: Floor; t: TFunc }) {
                     m.type === "section" ? (
                       <>
                         {t("module.section.title")}{" "}
-                        <span className="tabular-nums text-muted-foreground/70">
+                        <span className="tabular-nums text-muted-foreground">
                           {sectionNumber(floor, m.id)}
                         </span>
                       </>

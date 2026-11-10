@@ -21,12 +21,21 @@ for (let i = 0; i < RU.length; i++) {
 const CYRILLIC = /[а-яё]/i;
 
 /**
+ * Русская раскладка → латиница по месту клавиши, если в строке есть
+ * кириллица. Нужна и почте, и полям скана: сканер «печатает» код
+ * нажатиями, и при русской раскладке «UK-BOX-12» приходит как «ГЛ-ИЩЧ-12».
+ */
+export function fixKeyboardLayout(value: string): string {
+  return CYRILLIC.test(value) ? Array.from(value, (ch) => KEYS.get(ch) ?? ch).join("") : value;
+}
+
+/**
  * Перевести набранное в русской раскладке в латиницу. Буквы переводятся,
  * только если в строке есть кириллица; кавычка — пока в адресе нет «@»:
  * буквы уже стали латиницей, а «@» человек набирает той же клавишей.
  */
 export function fixEmailLayout(value: string): string {
-  let out = CYRILLIC.test(value) ? Array.from(value, (ch) => KEYS.get(ch) ?? ch).join("") : value;
+  let out = fixKeyboardLayout(value);
   if (!value.includes("@")) out = out.replace('"', "@");
   return out;
 }

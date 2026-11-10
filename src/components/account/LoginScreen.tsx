@@ -246,7 +246,7 @@ function LoginField({
   return (
     <div className="flex flex-col gap-1.5">
       <Label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-        <span className="text-muted-foreground/70">{icon}</span>
+        <span className="text-muted-foreground">{icon}</span>
         {label}
       </Label>
       {children}

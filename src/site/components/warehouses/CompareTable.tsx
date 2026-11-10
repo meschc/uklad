@@ -7,6 +7,7 @@ import { scrollPageTo } from "../../lib/useSmoothScroll";
 import { Reveal } from "../Reveal";
 import { SITE_NAV_H } from "../frame/SiteNav";
 import { COMPARE, NO, SHORT_COMPARE, YES, type Row } from "./tariffsData";
+import { Button } from "@/components/ui/button";
 
 const T = {
   head: ru("Что входит"),
@@ -168,18 +169,20 @@ export function CompareTable({ plans }: { plans: Plan[] }) {
         </div>
       </Reveal>
       <div className="mt-5 flex justify-center">
-        <button
+        <Button
           ref={btn}
           type="button"
           aria-expanded={full}
           onClick={toggle}
-          className="wh-btn wh-btn--soft"
+          size="lg"
+          shape="pill"
+          variant="secondary"
         >
           {t(full ? T.hideAll : T.showAll)}
           <ChevronDown
             className={cn("size-4 transition-transform duration-300", full && "rotate-180")}
           />
-        </button>
+        </Button>
       </div>
     </>
   );

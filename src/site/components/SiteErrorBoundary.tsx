@@ -77,7 +77,7 @@ export class SiteErrorBoundary extends Component<Props, State> {
            * написать нам. Без него сообщение «у вас что-то не работает»
            * невозможно проверить.
            */}
-          <p className="mt-4 break-words font-mono text-xs leading-relaxed text-muted-foreground/70">
+          <p className="mt-4 break-words font-mono text-xs leading-relaxed text-muted-foreground">
             {this.state.error.message}
           </p>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">

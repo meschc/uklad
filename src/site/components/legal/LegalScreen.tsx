@@ -272,9 +272,7 @@ function LegalIndex() {
                 {doc.title}
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{doc.lead}</p>
-              <p className="mt-auto pt-6 text-xs leading-snug text-muted-foreground/70">
-                {doc.basis}
-              </p>
+              <p className="mt-auto pt-6 text-xs leading-snug text-muted-foreground">{doc.basis}</p>
             </a>
           ))}
         </div>

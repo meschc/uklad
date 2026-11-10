@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { fixKeyboardLayout } from "./emailTyping";
 
 /**
  * Приём кода с HID-сканера (USB/Bluetooth «пистолет»).
@@ -78,7 +79,8 @@ export function useScannerInput({
     };
 
     const flush = () => {
-      const code = buffer.trim();
+      // Русская раскладка у сканера — частая беда: переводим по клавишам.
+      const code = fixKeyboardLayout(buffer.trim());
       reset();
       if (code.length >= minLength && code.length <= SCAN_MAX_LENGTH) {
         onScanRef.current(code);

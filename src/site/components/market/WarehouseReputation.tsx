@@ -11,6 +11,7 @@ import { PAGE_NOW, daysSince, shortDate } from "../../lib/date";
 import { COMPLAINT_ANSWER_DAYS, isComplaintOpen } from "../../lib/reputation";
 import { MAX_TEXT } from "../../lib/request";
 import { useLeadSend } from "../../lib/useLeadSend";
+import { Button } from "@/components/ui/button";
 
 /**
  * Отзывы и жалобы на странице склада.
@@ -252,14 +253,17 @@ function ComplaintForm({ warehouse: w }: { warehouse: Warehouse }) {
 
   if (!shown) {
     return (
-      <button
+      <Button
         type="button"
         onClick={() => setShown(true)}
-        className="wh-btn wh-btn--soft mt-5 !h-10 !px-4 !text-sm"
+        size="lg"
+        shape="pill"
+        variant="secondary"
+        className="mt-5"
       >
         <AlertTriangle className="size-3.5" />
         {t(T.open)}
-      </button>
+      </Button>
     );
   }
 
@@ -285,7 +289,7 @@ function ComplaintForm({ warehouse: w }: { warehouse: Warehouse }) {
               placeholder={t(T.dealPlaceholder)}
               maxLength={MAX_TEXT}
               onChange={(e) => setDeal(e.target.value)}
-              className="mt-1.5 h-10 w-full rounded-full border border-border bg-background px-3.5 text-sm outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-primary"
+              className="mt-1.5 h-10 w-full rounded-full border border-border bg-background px-3.5 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
             />
           </div>
 
@@ -303,7 +307,7 @@ function ComplaintForm({ warehouse: w }: { warehouse: Warehouse }) {
               placeholder={t(T.whatPlaceholder)}
               maxLength={MAX_TEXT}
               onChange={(e) => setWhat(e.target.value)}
-              className="r-inset mt-1.5 w-full resize-y border border-border bg-background px-3.5 py-2.5 text-sm outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-primary"
+              className="r-inset mt-1.5 w-full resize-y border border-border bg-background px-3.5 py-2.5 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
             />
           </div>
 

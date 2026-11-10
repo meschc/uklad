@@ -174,7 +174,7 @@ export function WarehouseDialog({
           <label className="flex flex-col gap-1.5">
             <Label>
               {t("wh.storageRate")}
-              <span className="ml-1.5 font-normal normal-case text-muted-foreground/70">
+              <span className="ml-1.5 font-normal normal-case text-muted-foreground">
                 · {t("common.optional")}
               </span>
             </Label>
@@ -196,7 +196,7 @@ export function WarehouseDialog({
         <label className="flex flex-col gap-1.5">
           <Label>
             {t("wh.address")}
-            <span className="ml-1.5 font-normal normal-case text-muted-foreground/70">
+            <span className="ml-1.5 font-normal normal-case text-muted-foreground">
               · {t("common.optional")}
             </span>
           </Label>

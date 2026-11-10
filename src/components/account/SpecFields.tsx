@@ -116,7 +116,7 @@ export function ShowcaseEye({ shown, onToggle }: EyeProps) {
       aria-label={label}
       className={cn(
         "flex size-6 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-accent",
-        shown ? "text-primary" : "text-muted-foreground/60",
+        shown ? "text-primary" : "text-muted-foreground",
       )}
     >
       <Icon className="size-3.5" />

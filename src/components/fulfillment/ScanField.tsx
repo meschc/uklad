@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ScanLine } from "lucide-react";
 import { useScannerInput } from "@/lib/useScannerInput";
+import { fixKeyboardLayout } from "@/lib/emailTyping";
 import { useT } from "@/lib/i18n";
 import { SHIFT_CODE_PREFIX } from "@/lib/workstation";
 import { cn } from "@/lib/utils";
@@ -116,7 +117,9 @@ export function ScanField({
             autoComplete="off"
             spellCheck={false}
             onChange={(e) => {
-              setValue(e.target.value);
+              // Браузер не переключает раскладку системы, поэтому русские
+              // буквы сразу меняются на латинские с тех же клавиш.
+              setValue(fixKeyboardLayout(e.target.value));
               setTyping(true);
             }}
             onFocus={() => setFocused(true)}

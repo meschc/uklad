@@ -6,6 +6,7 @@ import { useOverlay } from "../../lib/useOverlay";
 import { closeDialog, port, requestCode, verifyCode } from "../../lib/roadmap/store";
 import type { RoadmapError } from "../../lib/roadmap/port";
 import { SidePanel } from "../frame/SidePanel";
+import { Button } from "@/components/ui/button";
 
 const T = {
   title: ru("Аккаунт Уклада"),
@@ -134,7 +135,7 @@ export function RoadmapLogin() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder={t(T.emailPh)}
-                className="mt-1.5 h-12 w-full rounded-xl border border-border bg-background px-4 text-base outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-[var(--wh-blue)]"
+                className="mt-1.5 h-12 w-full rounded-xl border border-border bg-background px-4 text-base outline-none transition-colors placeholder:text-muted-foreground focus:border-[var(--wh-blue)]"
               />
             </div>
             <ConsentChecks value={consent} onChange={setConsent} />
@@ -173,7 +174,7 @@ export function RoadmapLogin() {
                 value={code}
                 onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
                 placeholder="000000"
-                className="mt-1.5 h-12 w-full rounded-xl border border-border bg-background px-4 font-mono text-xl tracking-[0.4em] outline-none transition-colors placeholder:text-muted-foreground/40 focus:border-[var(--wh-blue)]"
+                className="mt-1.5 h-12 w-full rounded-xl border border-border bg-background px-4 font-mono text-xl tracking-[0.4em] outline-none transition-colors placeholder:text-muted-foreground focus:border-[var(--wh-blue)]"
               />
             </div>
             <SubmitButton
@@ -224,13 +225,9 @@ export function SubmitButton({
   disabled?: boolean;
 }) {
   return (
-    <button
-      type="submit"
-      disabled={busy || disabled}
-      className="wh-btn wh-btn--blue h-12 w-full justify-center disabled:opacity-50"
-    >
+    <Button type="submit" disabled={busy || disabled} size="lg" shape="pill" className="w-full">
       {busy ? pending : idle}
-    </button>
+    </Button>
   );
 }
 

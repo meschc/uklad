@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fixEmailLayout, suggestEmailDomains } from "../emailTyping";
+import { fixEmailLayout, fixKeyboardLayout, suggestEmailDomains } from "../emailTyping";
 
 describe("раскладка в поле почты", () => {
   it("русская раскладка переводится по клавишам, кавычка становится @", () => {
@@ -29,5 +29,14 @@ describe("подсказки домена", () => {
     expect(suggestEmailDomains("@ya")).toEqual([]);
     expect(suggestEmailDomains("kir@gmail.com")).toEqual([]);
     expect(suggestEmailDomains("kir@sklad.ru")).toEqual([]);
+  });
+});
+
+describe("fixKeyboardLayout", () => {
+  it("переводит код, отсканированный в русской раскладке", () => {
+    expect(fixKeyboardLayout("ГЛ-ИЩЧ-12")).toBe("UK-BOX-12");
+  });
+  it("латинский код не трогает", () => {
+    expect(fixKeyboardLayout("UK-OUT-7")).toBe("UK-OUT-7");
   });
 });

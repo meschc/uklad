@@ -176,7 +176,7 @@ function FloorsSection() {
                       "flex size-5 items-center justify-center rounded transition-colors",
                       linked
                         ? "text-primary hover:text-primary/70"
-                        : "text-muted-foreground/60 hover:text-foreground",
+                        : "text-muted-foreground hover:text-foreground",
                     )}
                   >
                     {linked ? <Unlink className="size-3" /> : <Link2 className="size-3" />}
@@ -223,12 +223,12 @@ function FloorsSection() {
                   el?.focus();
                   el?.select();
                 }}
-                className="flex size-4 shrink-0 items-center justify-center rounded text-muted-foreground/50 opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
+                className="flex size-4 shrink-0 items-center justify-center rounded text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
               >
                 <Pencil className="size-3" />
               </button>
               <span className="flex-1" />
-              <span className="shrink-0 font-mono text-2xs text-muted-foreground/70">{count}</span>
+              <span className="shrink-0 font-mono text-2xs text-muted-foreground">{count}</span>
               {/* Действия справа — выезжают при наведении на ПРАВУЮ часть. */}
               <div
                 className={cn(
@@ -246,7 +246,7 @@ function FloorsSection() {
                   title={t("struct.duplicateFloorRow")}
                   disabled={floors.length >= FLOOR_MAX}
                   onClick={() => duplicateFloor(f.id)}
-                  className="flex h-6 w-5 shrink-0 items-center justify-center rounded text-muted-foreground/50 transition hover:text-foreground disabled:opacity-0"
+                  className="flex h-6 w-5 shrink-0 items-center justify-center rounded text-muted-foreground transition hover:text-foreground disabled:opacity-0"
                 >
                   <Copy className="size-3" />
                 </button>
@@ -254,7 +254,7 @@ function FloorsSection() {
                   <button
                     title={t("struct.deleteFloor")}
                     onClick={() => deleteFloor(f.id)}
-                    className="flex h-6 w-5 shrink-0 items-center justify-center rounded text-muted-foreground/50 transition hover:text-destructive"
+                    className="flex h-6 w-5 shrink-0 items-center justify-center rounded text-muted-foreground transition hover:text-destructive"
                   >
                     <X className="size-3" />
                   </button>

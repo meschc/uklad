@@ -63,7 +63,7 @@ function ReleaseCard({ release }: { release: Release }) {
         {release.highlights.map((highlight) => (
           <li key={highlight.ru} className="flex gap-2.5 text-sm leading-relaxed">
             <Check className="mt-0.5 size-3.5 shrink-0 text-primary" strokeWidth={3} />
-            <span className="text-foreground/85">{t(highlight)}</span>
+            <span className="text-foreground">{t(highlight)}</span>
           </li>
         ))}
       </ul>

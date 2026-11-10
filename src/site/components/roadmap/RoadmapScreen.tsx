@@ -11,6 +11,7 @@ import { WarehousesFooter } from "../warehouses/WarehousesFooter";
 import { RoadmapDialogs } from "./RoadmapAccount";
 import { RoadmapMyIdeas } from "./RoadmapMyIdeas";
 import { openDialog } from "../../lib/roadmap/store";
+import { Button } from "@/components/ui/button";
 
 const T = {
   tabBoard: c("Дорожная карта", "Roadmap"),
@@ -99,14 +100,16 @@ export function RoadmapScreen() {
               <p className="mt-1 text-sm leading-relaxed text-[var(--wh-muted)]">
                 {t(T.suggestBody)}
               </p>
-              <button
+              <Button
                 type="button"
                 onClick={() => openDialog({ kind: "idea" })}
-                className="wh-btn wh-btn--blue mt-3 !h-10 w-full !px-[18px] !text-sm"
+                size="lg"
+                shape="pill"
+                className="mt-3 w-full"
               >
                 <Lightbulb className="size-4" />
                 {t(T.suggest)}
-              </button>
+              </Button>
             </div>
 
             <h2 className="mt-6 text-sm font-heading">{t(T.howTitle)}</h2>

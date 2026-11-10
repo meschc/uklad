@@ -8,6 +8,7 @@ import { AsciiField } from "./AsciiField";
 import { CabinetFrame } from "./LiveCabinet";
 import type { AppView } from "@/lib/types";
 import { SITE_NAV_H } from "../frame/SiteNav";
+import { Button } from "@/components/ui/button";
 
 // Демо открывает только личная ссылка из письма: кнопка ведёт к заявке на неё
 // в конце страницы (`FinalConnect`, якорь `#demo`).
@@ -118,13 +119,15 @@ export function HeroScreens() {
             <div ref={leadRef} className="flex min-w-0 flex-col gap-5 lg:w-[470px] lg:shrink-0">
               <p className="text-[17px] leading-[1.55] text-white/85">{t(T.lead)}</p>
               <div className="flex flex-col gap-2.5 sm:flex-row">
-                <a href="#connect" className="wh-btn wh-btn--white">
-                  <RollText text={t(T.connect)} />
-                  <ArrowRight className="size-4" />
-                </a>
-                <a href={DEMO_HREF} className="wh-btn wh-btn--ghost">
-                  {t(T.look)}
-                </a>
+                <Button asChild size="lg" shape="pill" variant="inverse">
+                  <a href="#connect">
+                    <RollText text={t(T.connect)} />
+                    <ArrowRight className="size-4" />
+                  </a>
+                </Button>
+                <Button asChild size="lg" shape="pill" variant="inverse-outline">
+                  <a href={DEMO_HREF}>{t(T.look)}</a>
+                </Button>
               </div>
             </div>
           </Reveal>

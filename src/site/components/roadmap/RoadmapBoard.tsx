@@ -148,7 +148,7 @@ export function RoadmapBoard() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t(T.search)}
-            className="h-9 w-full rounded-full border border-border bg-background pl-9 pr-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-[var(--wh-blue)]"
+            className="h-9 w-full rounded-full border border-border bg-background pl-9 pr-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-[var(--wh-blue)]"
           />
         </label>
       </div>

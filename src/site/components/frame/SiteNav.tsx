@@ -5,6 +5,7 @@ import { c, useT, type Copy } from "../../lib/copy";
 import { href, routePath, switchLang, type Route } from "../../lib/route";
 import { Logo } from "../Logo";
 import { RollText } from "../RollText";
+import { Button } from "@/components/ui/button";
 
 /**
  * Пункты шапки страниц в новом стиле. Склад раньше селлера — тот же порядок,
@@ -103,15 +104,17 @@ function SiteNav({
               {other}
             </a>
           )}
-          <a
-            href={`${href("/warehouses")}#connect`}
-            className={cn(
-              "wh-btn !h-10 !px-[18px] !text-sm max-sm:!hidden",
-              onBlue ? "wh-btn--white" : "wh-btn--blue",
-            )}
+          <Button
+            asChild
+            size="lg"
+            shape="pill"
+            variant={onBlue ? "inverse" : "default"}
+            className="max-sm:!hidden"
           >
-            <RollText text={t(T.connect)} />
-          </a>
+            <a href={`${href("/warehouses")}#connect`}>
+              <RollText text={t(T.connect)} />
+            </a>
+          </Button>
           {extra}
           <button
             type="button"

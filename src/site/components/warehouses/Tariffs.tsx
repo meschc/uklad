@@ -10,6 +10,7 @@ import { PriceSheet } from "./PriceWhy";
 import { TariffCalc } from "./TariffCalc";
 import { CompareTable } from "./CompareTable";
 import { ALL_PLANS, COMPARE } from "./tariffsData";
+import { Button } from "@/components/ui/button";
 
 const T = {
   title: ru("Тарифы"),
@@ -211,12 +212,15 @@ export function Tariffs({ page = false }: { page?: boolean }) {
               >
                 {note(plan)}
               </p>
-              <a
-                href="#connect"
-                className={cn("wh-btn w-full", blue ? "wh-btn--white" : "wh-btn--soft")}
+              <Button
+                asChild
+                size="lg"
+                shape="pill"
+                variant={blue ? "inverse" : "secondary"}
+                className="w-full"
               >
-                {t(T.choose)}
-              </a>
+                <a href="#connect">{t(T.choose)}</a>
+              </Button>
             </Reveal>
           );
         })}
@@ -231,9 +235,9 @@ export function Tariffs({ page = false }: { page?: boolean }) {
           <p className="text-lg font-medium">{t(T.customTitle)}</p>
           <p className="wh-muted mt-1 text-[15px]">{t(T.customBody)}</p>
         </div>
-        <a href="#connect" className="wh-btn wh-btn--blue shrink-0">
-          {t(T.customCta)}
-        </a>
+        <Button asChild size="lg" shape="pill" className="shrink-0">
+          <a href="#connect">{t(T.customCta)}</a>
+        </Button>
       </Reveal>
 
       {why && <PriceSheet onClose={() => setWhy(false)} />}

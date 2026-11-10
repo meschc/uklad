@@ -117,7 +117,7 @@ export function SingleInspector({ module: m, t }: { module: PlacedModule; t: TFu
       <div className="flex flex-col gap-2.5">
         <div className="flex items-center justify-between">
           <Label>{t("insp.dims")}</Label>
-          <span className="text-2xs text-muted-foreground/70">{t("insp.noScale")}</span>
+          <span className="text-2xs text-muted-foreground">{t("insp.noScale")}</span>
         </div>
         <Row label={t("insp.width")}>
           <Input
