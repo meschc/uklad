@@ -4,6 +4,7 @@ import { ru, useT } from "../../lib/copy";
 import { logout, openDialog, useRoadmap } from "../../lib/roadmap/store";
 import { RoadmapIdeaForm } from "./RoadmapIdeaForm";
 import { RoadmapLogin } from "./RoadmapLogin";
+import { Button } from "@/components/ui/button";
 
 const T = {
   login: ru("Войти"),
@@ -36,14 +37,16 @@ export function RoadmapAccount() {
 
   if (!session) {
     return (
-      <button
+      <Button
         type="button"
         onClick={() => openDialog({ kind: "login" })}
-        className="wh-btn wh-btn--soft !h-10 !px-[18px] !text-sm"
+        size="lg"
+        shape="pill"
+        variant="secondary"
       >
         <UserRound className="size-4" />
         {t(T.login)}
-      </button>
+      </Button>
     );
   }
 

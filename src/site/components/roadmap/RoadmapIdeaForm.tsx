@@ -10,6 +10,7 @@ import type { RoadmapError } from "../../lib/roadmap/port";
 import { TRACK_COLORS } from "./roadmapColors";
 import { Hint, SubmitButton } from "./RoadmapLogin";
 import { SidePanel } from "../frame/SidePanel";
+import { Button } from "@/components/ui/button";
 
 const MAX_TITLE = 90;
 const MAX_DETAILS = 1_500;
@@ -120,13 +121,15 @@ export function RoadmapIdeaForm() {
           <div className="mt-4">
             <h2 className="text-2xl font-heading tracking-tight">{t(T.doneTitle)}</h2>
             <p className="mt-2 text-sm leading-relaxed text-[var(--wh-muted)]">{t(T.doneLead)}</p>
-            <button
+            <Button
               type="button"
               onClick={closeDialog}
-              className="wh-btn wh-btn--blue mt-6 h-12 w-full justify-center"
+              size="lg"
+              shape="pill"
+              className="mt-6 w-full"
             >
               {t(T.ok)}
-            </button>
+            </Button>
           </div>
         ) : (
           <form
@@ -151,7 +154,7 @@ export function RoadmapIdeaForm() {
                 maxLength={MAX_TITLE}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder={t(T.namePh)}
-                className="mt-1.5 h-12 w-full rounded-xl border border-border bg-background px-4 text-base outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-[var(--wh-blue)]"
+                className="mt-1.5 h-12 w-full rounded-xl border border-border bg-background px-4 text-base outline-none transition-colors placeholder:text-muted-foreground focus:border-[var(--wh-blue)]"
               />
             </div>
 
@@ -186,7 +189,7 @@ export function RoadmapIdeaForm() {
                 maxLength={MAX_DETAILS}
                 onChange={(e) => setDetails(e.target.value)}
                 placeholder={t(T.detailsPh)}
-                className="mt-1.5 w-full resize-y rounded-xl border border-border bg-background px-4 py-3 text-base leading-relaxed outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-[var(--wh-blue)]"
+                className="mt-1.5 w-full resize-y rounded-xl border border-border bg-background px-4 py-3 text-base leading-relaxed outline-none transition-colors placeholder:text-muted-foreground focus:border-[var(--wh-blue)]"
               />
             </div>
 

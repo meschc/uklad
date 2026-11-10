@@ -3,6 +3,7 @@ import { ArrowRight, Search } from "lucide-react";
 import { href } from "../lib/route";
 import { c, useT } from "../lib/copy";
 import { AddressBar } from "./AddressBar";
+import { Button } from "@/components/ui/button";
 
 /**
  * «Ничего не нашлось» — одним экраном на все случаи витрины.
@@ -49,14 +50,16 @@ export function NotFoundScreen({ caption, title, children, action }: Props) {
           <AddressBar />
         </div>
         <div className="mt-10 flex flex-wrap justify-center gap-3">
-          <a href={href(primary.to)} className="wh-btn wh-btn--blue group">
-            <Search className="size-4" />
-            {primary.label}
-            <ArrowRight className="size-4" />
-          </a>
-          <a href={href("/contacts")} className="wh-btn wh-btn--soft">
-            {t(T.home)}
-          </a>
+          <Button asChild size="lg" shape="pill" className="group">
+            <a href={href(primary.to)}>
+              <Search className="size-4" />
+              {primary.label}
+              <ArrowRight className="size-4" />
+            </a>
+          </Button>
+          <Button asChild size="lg" shape="pill" variant="secondary">
+            <a href={href("/contacts")}>{t(T.home)}</a>
+          </Button>
         </div>
       </div>
     </div>

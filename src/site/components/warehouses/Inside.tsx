@@ -5,6 +5,7 @@ import { Reveal } from "../Reveal";
 import { ru, useT, type Copy } from "../../lib/copy";
 import { href } from "../../lib/route";
 import { DEMO_HREF } from "./HeroScreens";
+import { Button } from "@/components/ui/button";
 
 const T = {
   title: ru("Товар, сотрудники и селлеры"),
@@ -105,10 +106,12 @@ export function Inside() {
       </div>
 
       <Reveal className="mt-12 flex justify-center sm:mt-14">
-        <a href={DEMO_HREF} className="wh-btn wh-btn--soft group">
-          {t(T.demo)}
-          <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
-        </a>
+        <Button asChild size="lg" shape="pill" variant="secondary" className="group">
+          <a href={DEMO_HREF}>
+            {t(T.demo)}
+            <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+          </a>
+        </Button>
       </Reveal>
 
       {/* Плашка каталога скрыта, пока витрина складов не запущена (26 окт). */}

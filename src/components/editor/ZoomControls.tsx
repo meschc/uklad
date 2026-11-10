@@ -92,7 +92,7 @@ function IconBtn({
           className={cn(
             "flex h-8 w-8 items-center justify-center rounded-md transition-colors",
             disabled
-              ? "cursor-not-allowed text-muted-foreground/35"
+              ? "cursor-not-allowed text-muted-foreground"
               : cn(
                   "hover:bg-accent hover:text-foreground",
                   active ? "text-foreground" : "text-muted-foreground",

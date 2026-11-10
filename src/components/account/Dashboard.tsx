@@ -227,7 +227,7 @@ function WarehouseCard({
               <p className="mt-0.5 text-xs text-muted-foreground">
                 {stats.floors} {floorWord}
               </p>
-              <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground/80">
+              <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
                 <MapPin className="size-3 shrink-0" />
                 <span className="truncate">{w.address || t("wh.noAddress")}</span>
               </p>
@@ -239,7 +239,7 @@ function WarehouseCard({
 
           {/* Кто отвечает за склад — самое частое, что ищут в карточке (п.5) */}
           {(w.manager?.name || w.phone) && (
-            <p className="truncate text-xs text-muted-foreground/80">
+            <p className="truncate text-xs text-muted-foreground">
               {[w.manager?.name, w.phone].filter(Boolean).join(" · ")}
             </p>
           )}

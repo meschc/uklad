@@ -146,7 +146,7 @@ export function CanvasMenu({ state, onClose }: { state: CanvasMenuState; onClose
             className={cn(
               "flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors",
               it.disabled
-                ? "cursor-not-allowed text-muted-foreground/40"
+                ? "cursor-not-allowed text-muted-foreground"
                 : it.danger
                   ? "text-destructive hover:bg-destructive/10"
                   : "text-foreground hover:bg-accent",
@@ -154,7 +154,7 @@ export function CanvasMenu({ state, onClose }: { state: CanvasMenuState; onClose
           >
             {it.icon}
             <span className="flex-1">{it.label}</span>
-            <kbd className="text-2xs text-muted-foreground/70">{it.hint}</kbd>
+            <kbd className="text-2xs text-muted-foreground">{it.hint}</kbd>
           </button>
         ))}
       </div>

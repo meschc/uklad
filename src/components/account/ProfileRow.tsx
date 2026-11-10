@@ -67,7 +67,7 @@ export function ReadValue({
         onClick={onEdit}
         title={t("profile.editField")}
         aria-label={t("profile.editField")}
-        className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground/40 transition-colors hover:bg-accent hover:text-foreground group-hover/row:text-muted-foreground"
+        className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground group-hover/row:text-muted-foreground"
       >
         <Pencil className="size-3.5" />
       </button>

@@ -74,7 +74,7 @@ function Block({ block, query, self }: { block: LegalBlock; query: string; self?
   switch (block.kind) {
     case "p":
       return (
-        <p className="mt-4 leading-prose text-foreground/85">
+        <p className="mt-4 leading-prose text-foreground">
           <Rich text={block.text} query={query} self={self} />
         </p>
       );
@@ -83,7 +83,7 @@ function Block({ block, query, self }: { block: LegalBlock; query: string; self?
       return (
         <ul className="mt-4 flex flex-col gap-2.5">
           {block.items.map((item, i) => (
-            <li key={i} className="flex gap-3 leading-prose text-foreground/85">
+            <li key={i} className="flex gap-3 leading-prose text-foreground">
               {/* Маркер — точка, набранная вручную: у ul с list-style маркер
                   прилипает к первой строке и разъезжается на переносах. */}
               <span className="mt-[0.6em] size-1.5 shrink-0 rounded-full bg-primary/50" />
@@ -99,7 +99,7 @@ function Block({ block, query, self }: { block: LegalBlock; query: string; self?
       return (
         <ol className="mt-4 flex flex-col gap-2.5">
           {block.items.map((item, i) => (
-            <li key={i} className="flex gap-3 leading-prose text-foreground/85">
+            <li key={i} className="flex gap-3 leading-prose text-foreground">
               <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold tabular-nums text-primary">
                 {i + 1}
               </span>
@@ -115,7 +115,7 @@ function Block({ block, query, self }: { block: LegalBlock; query: string; self?
       return (
         <div className="r-inset mt-5 flex gap-3 border border-primary/25 bg-primary/[0.05] p-4">
           <Info className="mt-0.5 size-4 shrink-0 text-primary" />
-          <p className="text-sm leading-prose text-foreground/85">
+          <p className="text-sm leading-prose text-foreground">
             <Rich text={block.text} query={query} self={self} />
           </p>
         </div>
@@ -151,7 +151,7 @@ function Block({ block, query, self }: { block: LegalBlock; query: string; self?
                         // здесь ступень ниже, но тоже из шкалы, не на глаз.
                         j === 0
                           ? "px-4 py-3 align-top font-medium leading-relaxed"
-                          : "px-4 py-3 align-top leading-relaxed text-foreground/80"
+                          : "px-4 py-3 align-top leading-relaxed text-foreground"
                       }
                     >
                       <Rich text={cell} query={query} self={self} />

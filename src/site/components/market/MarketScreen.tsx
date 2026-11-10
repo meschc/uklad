@@ -229,9 +229,15 @@ export function MarketScreen() {
                 <div className="grid gap-4 xl:grid-cols-2">{cards}</div>
                 {limit < found.length && (
                   <div className="mt-8 text-center">
-                    <button type="button" className="wh-btn wh-btn--soft" onClick={showMore}>
+                    <Button
+                      type="button"
+                      size="lg"
+                      shape="pill"
+                      variant="secondary"
+                      onClick={showMore}
+                    >
                       {t(T.more, { n: Math.min(PAGE, found.length - limit) })}
-                    </button>
+                    </Button>
                   </div>
                 )}
               </>
@@ -366,9 +372,9 @@ function Empty({ onReset }: { onReset: () => void }) {
     <div className="rounded-[22px] bg-[var(--wh-soft)] py-20 text-center">
       <p className="font-display text-lg font-medium">{t(T.emptyTitle)}</p>
       <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">{t(T.emptyBody)}</p>
-      <button type="button" onClick={onReset} className="wh-btn wh-btn--blue mt-5">
+      <Button type="button" onClick={onReset} size="lg" shape="pill" className="mt-5">
         {t(T.emptyReset)}
-      </button>
+      </Button>
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { c, useT } from "../../lib/copy";
 import type { RoadmapComment } from "../../lib/roadmap/port";
 import { loadComments, openDialog, postComment, useRoadmap } from "../../lib/roadmap/store";
+import { Button } from "@/components/ui/button";
 
 const T = {
   title: c("Обсуждение", "Discussion"),
@@ -110,22 +111,27 @@ export function RoadmapComments({ itemId }: { itemId: string }) {
             {t(T.aliasConsent)}
           </label>
           {failed && <p className="text-xs text-destructive">{t(T.failed)}</p>}
-          <button
+          <Button
             type="submit"
             disabled={busy || !text.trim()}
-            className="wh-btn h-10 self-start disabled:opacity-50"
+            size="lg"
+            shape="pill"
+            className="self-start"
           >
             {t(T.send)}
-          </button>
+          </Button>
         </form>
       ) : (
-        <button
+        <Button
           type="button"
           onClick={() => openDialog({ kind: "login" })}
-          className="wh-btn wh-btn--soft mt-4 h-10"
+          size="lg"
+          shape="pill"
+          variant="secondary"
+          className="mt-4"
         >
           {t(T.login)}
-        </button>
+        </Button>
       )}
     </section>
   );

@@ -89,7 +89,7 @@ function LayoutTemplateList() {
           "rounded-md border border-dashed py-1.5 text-xs font-medium transition-colors",
           canSave
             ? "border-primary/40 text-primary hover:bg-primary/10"
-            : "cursor-not-allowed border-border text-muted-foreground/50",
+            : "cursor-not-allowed border-border text-muted-foreground",
         )}
       >
         {canSave ? t("layout.saveN", { n: selection.length }) : t("layout.selectFirst")}
@@ -131,7 +131,7 @@ function LayoutTemplateList() {
                 type="button"
                 title={t("tpl.remove")}
                 onClick={() => removeLayout(tpl.id)}
-                className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-muted-foreground/50 opacity-0 transition hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
+                className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-muted-foreground opacity-0 transition hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
               >
                 <X className="size-3.5" />
               </button>
@@ -218,7 +218,7 @@ export function TemplateLibrary() {
                   type="button"
                   title={t("tpl.remove")}
                   onClick={() => removeTemplate(tpl.id)}
-                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-muted-foreground/50 opacity-0 transition hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
+                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-muted-foreground opacity-0 transition hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
                 >
                   <X className="size-3.5" />
                 </button>
@@ -231,7 +231,7 @@ export function TemplateLibrary() {
                   "mt-2 w-full rounded-md py-1 text-xs font-medium transition-colors",
                   canApply
                     ? "bg-primary/10 text-primary hover:bg-primary/15"
-                    : "cursor-not-allowed bg-muted/60 text-muted-foreground/60",
+                    : "cursor-not-allowed bg-muted/60 text-muted-foreground",
                 )}
               >
                 {canApply ? t("tpl.applyToN", { n: selSections }) : t("tpl.selectSections")}

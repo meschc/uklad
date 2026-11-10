@@ -281,7 +281,7 @@ function BulkBtn({
       className={cn(
         "flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors",
         disabled
-          ? "cursor-not-allowed text-muted-foreground/40"
+          ? "cursor-not-allowed text-muted-foreground"
           : danger
             ? "text-destructive hover:bg-destructive/10"
             : "text-foreground hover:bg-accent",

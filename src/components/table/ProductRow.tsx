@@ -121,7 +121,7 @@ export function ProductRow({
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
               title={t("table.openUrl")}
-              className="text-muted-foreground/50 transition-colors hover:text-primary"
+              className="text-muted-foreground transition-colors hover:text-primary"
             >
               <ExternalLink className="size-3.5" />
             </a>
@@ -241,7 +241,7 @@ export function ProductRow({
             <button
               onClick={onRequest}
               title={t("seller.request")}
-              className="flex size-7 items-center justify-center rounded-md text-muted-foreground/50 transition-colors hover:bg-accent hover:text-primary group-hover/row:text-muted-foreground"
+              className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-primary group-hover/row:text-muted-foreground"
             >
               <Truck className="size-3.5" />
             </button>
@@ -249,7 +249,7 @@ export function ProductRow({
           <button
             onClick={onEdit}
             title={t("table.editProduct")}
-            className="flex size-7 items-center justify-center rounded-md text-muted-foreground/50 transition-colors hover:bg-accent hover:text-foreground group-hover/row:text-muted-foreground"
+            className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground group-hover/row:text-muted-foreground"
           >
             <Pencil className="size-3.5" />
           </button>

@@ -56,7 +56,7 @@ export function SectionNumber({
         <p className={eyebrow()}>{t("insp.fullAddress")}</p>
         <p className="mt-0.5 font-mono text-base font-semibold tabular-nums">
           {[floorNum, ...(cfg.useRows ? [effectiveRow] : []), effective].join(cfg.separator)}
-          <span className="text-muted-foreground/50">
+          <span className="text-muted-foreground">
             {cfg.separator}…{cfg.separator}…
           </span>
         </p>

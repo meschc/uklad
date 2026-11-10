@@ -84,7 +84,7 @@ function Keys({ keys }: { keys: Tok[] }) {
     <span className="flex items-center gap-1">
       {keys.map((k, i) =>
         k === "plus" ? (
-          <span key={i} className="text-2xs text-muted-foreground/50">
+          <span key={i} className="text-2xs text-muted-foreground">
             +
           </span>
         ) : "kbd" in k ? (
@@ -159,7 +159,7 @@ function AddressScheme({ t }: { t: TFunc }) {
             <span className="text-2xs leading-none text-muted-foreground">{p.label}</span>
           </div>
           {i < parts.length - 1 && (
-            <span className="pb-3 font-mono text-sm text-muted-foreground/50">-</span>
+            <span className="pb-3 font-mono text-sm text-muted-foreground">-</span>
           )}
         </div>
       ))}

@@ -63,7 +63,7 @@ export function DocSearch({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={t(T.placeholder)}
-          className="h-10 w-full rounded-full border border-border bg-background pl-11 pr-11 text-sm outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-primary"
+          className="h-10 w-full rounded-full border border-border bg-background pl-11 pr-11 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
         />
         {value !== "" && (
           <button

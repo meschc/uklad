@@ -684,52 +684,6 @@ a.wh-invert-chip:hover {
   letter-spacing: -0.02em;
   text-wrap: pretty;
 }
-.wh-btn {
-  display: inline-flex;
-  height: 48px;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  border-radius: 999px;
-  padding: 0 24px;
-  font-size: 15px;
-  font-weight: 500;
-  transition:
-    transform 0.15s ease,
-    background-color 0.2s ease;
-}
-.wh-btn:active {
-  transform: scale(0.97);
-}
-.wh-btn--blue {
-  background: var(--wh-blue);
-  color: var(--wh-on-blue);
-}
-.wh-btn--blue:hover {
-  background: var(--wh-blue-deep);
-}
-.wh-btn--white {
-  background: #fff;
-  color: var(--wh-blue);
-}
-.wh-btn--white:hover {
-  background: #f2f2f2;
-}
-.wh-btn--ghost {
-  color: inherit;
-  box-shadow: inset 0 0 0 1.5px rgb(255 255 255 / 0.7);
-}
-.wh-btn--soft {
-  background: var(--wh-soft);
-  color: var(--wh-blue);
-}
-.wh-btn--soft:hover {
-  background: var(--wh-line);
-}
-.wh-btn--ghost:hover {
-  background: rgb(255 255 255 / 0.12);
-}
-
 /*
  * «Подключить склад» — буквы волной прокатываются вверх (`RollText`):
  * раз в 7 с сами и сразу под курсором (Кирилл 31 окт: живая кнопка, но
@@ -773,12 +727,6 @@ button:hover .wh-roll-ch {
   to {
     transform: translateY(-100%);
   }
-}
-.wh-btn svg {
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.wh-btn:hover svg {
-  transform: translateX(3px);
 }
 @media (prefers-reduced-motion: reduce) {
   .wh-roll-ch,

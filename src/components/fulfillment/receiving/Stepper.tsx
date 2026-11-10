@@ -48,7 +48,7 @@ export function Stepper({
               <s.icon className="size-3" />
               {t(s.id === "qty" && !hasShipment ? "recv.step.qtyFree" : s.key)}
             </span>
-            {i < steps.length - 1 && <span className="text-muted-foreground/40">·</span>}
+            {i < steps.length - 1 && <span className="text-muted-foreground">·</span>}
           </li>
         );
       })}
