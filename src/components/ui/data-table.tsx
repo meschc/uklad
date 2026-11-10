@@ -19,7 +19,7 @@ import { Input } from "./input";
  * Колонка — это id и значение для сортировки и поиска. Значение — строка или
  * число: числа сортируются как числа, пустое уходит в конец.
  */
-export interface DataColumn<T> {
+interface DataColumn<T> {
   id: string;
   value: (row: T) => string | number | null | undefined;
 }
