@@ -116,7 +116,8 @@ function createInvoices({ db, payee = null, send = null, log = console }) {
       status      TEXT NOT NULL DEFAULT 'issued' CHECK (status IN ('issued', 'paid', 'cancelled')),
       sent_at     TEXT,
       paid_at     TEXT,
-      closed_by   INTEGER
+      closed_by   INTEGER,
+      period_from TEXT
     );
     CREATE UNIQUE INDEX IF NOT EXISTS invoices_one_open
       ON invoices(account_id) WHERE status = 'issued';
@@ -132,9 +133,11 @@ function createInvoices({ db, payee = null, send = null, log = console }) {
     openOf: db.prepare(`SELECT * FROM invoices WHERE account_id = ? AND status = 'issued'`),
     countYear: db.prepare(`SELECT COUNT(*) AS n FROM invoices WHERE number LIKE ?`),
     insert: db.prepare(
-      `INSERT INTO invoices (number, account_id, issued_at, due_at, months, amount)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO invoices (number, account_id, issued_at, due_at, months, amount, period_from)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
     ),
+    forPeriod: db.prepare(`SELECT 1 FROM invoices WHERE account_id = ? AND period_from = ?`),
+    unsent: db.prepare(`SELECT * FROM invoices WHERE status = 'issued' AND sent_at IS NULL`),
     sent: db.prepare(`UPDATE invoices SET sent_at = ? WHERE id = ?`),
     close: db.prepare(
       `UPDATE invoices SET status = ?, paid_at = ?, closed_by = ? WHERE id = ? AND status = 'issued'`,
@@ -162,7 +165,7 @@ function createInvoices({ db, payee = null, send = null, log = console }) {
     const end = coveredUntil(a);
     const due = end && end > nowIso ? end : new Date(Date.parse(nowIso) + 3 * DAY).toISOString();
     const id = Number(
-      q.insert.run(number, a.id, nowIso, due, months, price * months).lastInsertRowid,
+      q.insert.run(number, a.id, nowIso, due, months, price * months, end).lastInsertRowid,
     );
     return { invoice: q.byId.get(id) };
   });
@@ -189,10 +192,13 @@ function createInvoices({ db, payee = null, send = null, log = console }) {
     for (const a of q.accounts.all()) {
       const end = coveredUntil(a);
       if (!end || end > edge || q.openOf.get(a.id) || !monthlyPrice(a)) continue;
+      // На этот срок счёт уже был — оплачен или отменён владельцем: не возвращаем.
+      if (q.forPeriod.get(a.id, end)) continue;
       const r = issue(a, nowIso);
       if (r.invoice) made.push(r.invoice);
     }
-    for (const inv of made) await deliver(inv, nowIso);
+    // Письма, которые не ушли раньше (почта лежала), — заодно ещё раз.
+    for (const inv of q.unsent.all()) await deliver(inv, nowIso);
     return made;
   }
 
@@ -207,7 +213,10 @@ function createInvoices({ db, payee = null, send = null, log = console }) {
       return { error: `Счёт уже ${STATUS_TITLES[inv.status].toLowerCase()}.` };
     }
     const a = q.account.get(inv.account_id);
-    const from = a.paid_until && a.paid_until > nowIso ? a.paid_until : nowIso;
+    // От конца оплаченного или пробного срока: оплативший во время пробного
+    // не теряет пробные дни.
+    const end = coveredUntil(a);
+    const from = end && end > nowIso ? end : nowIso;
     const paidUntil = plans.addMonths(from, inv.months);
     q.close.run("paid", nowIso, adminId ?? null, id);
     q.setPaid.run(paidUntil, nowIso, a.id);

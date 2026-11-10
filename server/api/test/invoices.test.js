@@ -42,7 +42,7 @@ function setup({ trialUntil, kind = "warehouse", period = "month" } = {}) {
     send: async (m) => letters.push(m),
     log: { error() {} },
   });
-  return { store, invoices, id, letters };
+  return { db, store, invoices, id, letters };
 }
 
 test("без реквизитов счета не выставляются", () => {
@@ -98,4 +98,40 @@ test("поиск по строке выписки: номер, сумма", asyn
   assert.equal(invoices.find("Оплата по счёту № uk-2026-0001 за доступ").length, 1);
   assert.equal(invoices.find("9 900,00").length, 1);
   assert.equal(invoices.find("UK-2026-0002").length, 0);
+});
+
+test("оплата во время пробного не съедает пробные дни", async () => {
+  const { invoices } = setup({ trialUntil: "2026-11-15T20:59:59.999Z" });
+  const [inv] = await invoices.issueDue("2026-11-10T10:00:00.000Z");
+  assert.equal(
+    invoices.markPaid(inv.id, "2026-11-10T11:00:00.000Z", 1).paidUntil,
+    "2026-12-15T20:59:59.999Z",
+  );
+});
+
+test("отменённый счёт обход не возвращает", async () => {
+  const { invoices, letters } = setup({ trialUntil: "2026-11-15T20:59:59.999Z" });
+  const [inv] = await invoices.issueDue("2026-11-10T10:00:00.000Z");
+  invoices.cancel(inv.id, 1);
+  assert.equal((await invoices.issueDue("2026-11-10T11:00:00.000Z")).length, 0);
+  assert.equal(letters.length, 1);
+});
+
+test("письмо, которое не ушло, уходит следующим обходом", async () => {
+  const { db, letters } = setup({ trialUntil: "2026-11-15T20:59:59.999Z" });
+  let down = true;
+  const flaky = createInvoices({
+    db,
+    payee: readPayee(PAYEE),
+    send: async (m) => {
+      if (down) throw new Error("почта лежит");
+      letters.push(m);
+    },
+    log: { error() {} },
+  });
+  await flaky.issueDue("2026-11-10T10:00:00.000Z");
+  assert.equal(letters.length, 0);
+  down = false;
+  await flaky.issueDue("2026-11-10T11:00:00.000Z");
+  assert.equal(letters.length, 1);
 });
