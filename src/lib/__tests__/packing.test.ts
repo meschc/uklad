@@ -133,6 +133,25 @@ describe("стол упаковки от тары", () => {
     expect(s().requests.every((r) => r.packedAt)).toBe(true);
   });
 
+  it("два заказа площадки на один пункт — две посылки, а не одна", () => {
+    const requests = [
+      req({ id: "a1", note: "ПВЗ Ленина 1", source: "ozon", externalId: "111", productId: "p1" }),
+      req({ id: "a2", note: "ПВЗ Ленина 1", source: "ozon", externalId: "111", productId: "p2" }),
+      req({ id: "b1", note: "ПВЗ Ленина 1", source: "ozon", externalId: "222", productId: "p1" }),
+    ];
+    const { s } = stand(
+      [
+        { productId: "p1", qty: 2 },
+        { productId: "p2", qty: 1 },
+      ],
+      requests,
+    );
+    expect(toteOrders(requests, s().boxes[0]).map((o) => o.requestIds)).toEqual([
+      ["a1", "a2"],
+      ["b1"],
+    ]);
+  });
+
   it("заказ, который тара не покрывает целиком, в неё не попадает", () => {
     const requests = [req({ id: "r1", note: "Тула", productId: "p1", qty: 5 })];
     const { s } = stand([{ productId: "p1", qty: 2 }], requests);

@@ -13,7 +13,6 @@ export interface RequestsRepository extends Repository<FulfillmentRequest> {
       vehicle?: string;
       source?: OrderSource;
       externalId?: string;
-      kitId?: string;
     }[],
     truckDate?: number,
   ) => Promise<Result<string[]>>;

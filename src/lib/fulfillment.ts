@@ -165,7 +165,9 @@ export function requestStats(requests: FulfillmentRequest[]): RequestStats {
   // из метрик, и «среднее время сборки» считалось бы только по тому, что ещё
   // стоит на складе.
   const picked = requests.filter((r) => r.status === "done" || r.status === "shipped");
-  const lead = picked.map((r) => (r.shippedAt ?? r.updatedAt) - r.createdAt).filter((v) => v >= 0);
+  const lead = picked
+    .map((r) => (r.shippedAt ?? r.pickedAt ?? r.updatedAt) - r.createdAt)
+    .filter((v) => v >= 0);
   const pick = picked
     .filter((r) => r.startedAt != null)
     .map((r) => (r.pickedAt ?? r.updatedAt) - r.startedAt!)

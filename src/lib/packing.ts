@@ -81,7 +81,7 @@ export function toteOrders(requests: readonly FulfillmentRequest[], box: Box): T
   const ready = own.length > 0 ? own : open.filter((r) => !r.toteId);
   const left = new Map(contents);
   const out: ToteOrder[] = [];
-  for (const g of groupRequestsByTarget(ready)) {
+  for (const g of groupRequestsByTarget(ready).flatMap(splitByOrder)) {
     const need = new Map<string, number>();
     for (const r of g.items) {
       const n = r.partial ? (r.pickedQty ?? 0) : r.qty;
@@ -99,6 +99,22 @@ export function toteOrders(requests: readonly FulfillmentRequest[], box: Box): T
     });
   }
   return out;
+}
+
+/**
+ * Одно назначение — ещё не один заказ. Два покупателя с одним пунктом выдачи —
+ * два заказа площадки, и у каждого своя этикетка: склеенные в один, они уехали
+ * бы одной посылкой на один номер. Заказ площадки узнаём по номеру
+ * (`source` + `externalId`); заявки без номера (FBO, ручные) остаются одним
+ * заказом на назначение, как раньше.
+ */
+function splitByOrder<G extends { items: FulfillmentRequest[] }>(g: G): G[] {
+  const byOrder = new Map<string, FulfillmentRequest[]>();
+  for (const r of g.items) {
+    const key = r.externalId ? `${r.source ?? ""}:${r.externalId.trim().toLowerCase()}` : "";
+    byOrder.set(key, [...(byOrder.get(key) ?? []), r]);
+  }
+  return [...byOrder.values()].map((items) => ({ ...g, items }));
 }
 
 /** Сколько штук товара уже ушло из тары: упаковано или отбраковано. */
