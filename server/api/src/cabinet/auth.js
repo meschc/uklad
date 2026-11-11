@@ -75,7 +75,7 @@ function cookieValue(req, name) {
   return "";
 }
 
-function createAuth({ pool, cfg, send, readBody, log, mail }) {
+function createAuth({ pool, cfg, send, readBody, log, mail, onRegister = null }) {
   // Локально по http браузер не сохранит куку с `Secure` и `__Host-`.
   const local = !cfg.publicUrl.startsWith("https://");
   const COOKIE = local ? "uklad_session" : "__Host-uklad_session";
@@ -219,6 +219,13 @@ function createAuth({ pool, cfg, send, readBody, log, mail }) {
     // потерял письмо). Занятая и подтверждённая — письмо «вы уже с нами».
     // Ответ сайта во всех трёх случаях один.
     if (rows[0]) {
+      // Новый человек сразу виден в админке: с источником «кабинет» и
+      // пробным периодом. Сбой записи не мешает регистрации.
+      try {
+        onRegister?.({ email, kind: b.kind, company, name: String(b.name ?? "").slice(0, 200) });
+      } catch (e) {
+        log.error("[uklad] регистрация не попала в админку:", e?.message);
+      }
       await sendCode(rows[0].account_id, email, "verify");
     } else {
       const t = await codeTarget(email, "verify");

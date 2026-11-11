@@ -40,6 +40,20 @@ function openDb(file) {
       opens      INTEGER NOT NULL DEFAULT 0
     );
     CREATE INDEX IF NOT EXISTS demo_links_email ON demo_links(email, created_at);
+    -- Что человек делал по демо-ссылке: открыл, какие экраны, куда нажал,
+    -- сколько пробыл. visitor — случайный номер браузера из своей куки (так
+    -- считаем «сколько человек»), device — грубо: браузер, система, тип.
+    -- IP и введённые значения не пишем.
+    CREATE TABLE IF NOT EXISTS demo_events (
+      id      INTEGER PRIMARY KEY,
+      token   TEXT NOT NULL,
+      at      TEXT NOT NULL,
+      visitor TEXT NOT NULL,
+      kind    TEXT NOT NULL,
+      what    TEXT NOT NULL DEFAULT '',
+      device  TEXT NOT NULL DEFAULT ''
+    );
+    CREATE INDEX IF NOT EXISTS demo_events_token ON demo_events(token, id);
     -- Обращения «Сообщить о проблеме». Тело — как пришло (обезличено ещё в
     -- кабинете), рядом — то, по чему ищут и сортируют в админке.
     CREATE TABLE IF NOT EXISTS support_reports (
@@ -58,6 +72,21 @@ function openDb(file) {
     -- по индексу и готовому размеру, а не чтением сотен мегабайт тел.
     CREATE INDEX IF NOT EXISTS support_reports_created ON support_reports (created_at);
   `);
+
+  // Колонки демо-ссылок, выданных из админки: имя ссылки, кто выдал, отзыв.
+  const demoCols = new Set(
+    db
+      .prepare(`PRAGMA table_info(demo_links)`)
+      .all()
+      .map((c) => c.name),
+  );
+  for (const [name, type] of [
+    ["label", "TEXT"],
+    ["issued_by", "INTEGER"],
+    ["revoked_at", "TEXT"],
+  ]) {
+    if (!demoCols.has(name)) db.exec(`ALTER TABLE demo_links ADD COLUMN ${name} ${type}`);
+  }
 
   const q = {
     insertLead: db.prepare(
@@ -79,6 +108,13 @@ function openDb(file) {
     ),
     purgeLeads: db.prepare(`DELETE FROM leads WHERE created_at < ?`),
     purgeDemos: db.prepare(`DELETE FROM demo_links WHERE expires_at < ?`),
+    purgeDemoEvents: db.prepare(
+      `DELETE FROM demo_events WHERE token NOT IN (SELECT token FROM demo_links)`,
+    ),
+    insertEvent: db.prepare(
+      `INSERT INTO demo_events (token, at, visitor, kind, what, device) VALUES (?, ?, ?, ?, ?, ?)`,
+    ),
+    countEvents: db.prepare(`SELECT COUNT(*) AS n FROM demo_events WHERE token = ?`),
     insertReport: db.prepare(
       `INSERT INTO support_reports (created_at, message, view, errors, has_snapshot, payload, bytes)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -110,6 +146,9 @@ function openDb(file) {
     demosSince: (email, since) => q.demosSince.get(email, since).n,
     findDemo: (token) => q.findDemo.get(token),
     openDemo: (token, now) => q.openDemo.run(now.toISOString(), token),
+    addDemoEvent: (e) =>
+      q.insertEvent.run(e.token, e.at, e.visitor, e.kind, e.what ?? "", e.device ?? ""),
+    countDemoEvents: (token) => Number(q.countEvents.get(token).n),
     addReport(report, payload, now) {
       const r = q.insertReport.run(
         now.toISOString(),
@@ -131,7 +170,10 @@ function openDb(file) {
     purge(now, retentionDays, reportRetentionDays = 90) {
       const edge = new Date(now.getTime() - retentionDays * 86_400_000).toISOString();
       const leads = Number(q.purgeLeads.run(edge).changes);
-      const demos = Number(q.purgeDemos.run(now.toISOString()).changes);
+      // Ссылка и её след живут столько же, сколько заявки, считая от конца
+      // срока: по ним потом разбирают, кто и как смотрел демо.
+      const demos = Number(q.purgeDemos.run(edge).changes);
+      q.purgeDemoEvents.run();
       const reportEdge = new Date(now.getTime() - reportRetentionDays * 86_400_000).toISOString();
       const reports = Number(q.purgeReports.run(reportEdge).changes);
       return { leads, demos, reports };

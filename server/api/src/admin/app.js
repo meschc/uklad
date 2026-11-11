@@ -22,14 +22,18 @@
  * Локальная копия (`dev.js`) работает по http://localhost: только там кука
  * без `Secure` и без префикса `__Host-` — браузер иначе её не сохранит.
  */
-/* global require, module, Buffer, URL, URLSearchParams, console */
+/* global require, module, Buffer, URL, URLSearchParams, console, __dirname */
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { randomBytes, timingSafeEqual } = require("node:crypto");
+const fs = require("node:fs");
+const nodePath = require("node:path");
 const { adminStore, sha256 } = require("./store");
 const { checkPassword } = require("./password");
 const totp = require("./totp");
 const views = require("./views");
 const { createRoutes } = require("./routes");
+const { createInvoices } = require("./invoices");
+const { newToken } = require("../demo");
 const { createRateLimit, clientIp } = require("../rateLimit");
 
 const MAX_FORM_BYTES = 16 * 1024;
@@ -53,7 +57,7 @@ const DUMMY_HASH =
 
 const SECURITY_HEADERS = {
   "Content-Security-Policy":
-    "default-src 'none'; style-src 'self'; img-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'",
+    "default-src 'none'; style-src 'self'; img-src 'self'; font-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'",
   "X-Frame-Options": "DENY",
   "X-Content-Type-Options": "nosniff",
   // same-origin, а не no-referrer: при no-referrer браузер шлёт форму с
@@ -61,6 +65,20 @@ const SECURITY_HEADERS = {
   "Referrer-Policy": "same-origin",
   "Cache-Control": "no-store",
   "X-Robots-Tag": "noindex, nofollow",
+};
+
+const ASSET_DIR = nodePath.join(__dirname, "assets");
+const file = (name) => {
+  let cached = null;
+  return () => (cached ??= fs.readFileSync(nodePath.join(ASSET_DIR, name)));
+};
+const ASSETS = {
+  "/logo.svg": { type: "image/svg+xml", body: file("logo.svg") },
+  "/fonts/medeo-sans-cyrillic.woff2": {
+    type: "font/woff2",
+    body: file("medeo-sans-cyrillic.woff2"),
+  },
+  "/fonts/medeo-sans-latin.woff2": { type: "font/woff2", body: file("medeo-sans-latin.woff2") },
 };
 
 const LOCAL_ORIGIN = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
@@ -99,7 +117,7 @@ const sameText = (a, b) => {
   return x.length === y.length && timingSafeEqual(x, y);
 };
 
-function createAdminApp({ cfg, db, now = () => new Date(), log = console }) {
+function createAdminApp({ cfg, db, now = () => new Date(), log = console, invoices = null }) {
   const local = LOCAL_ORIGIN.test(cfg.adminOrigin);
   if (!local && !cfg.adminOrigin.startsWith("https://")) {
     throw new Error(
@@ -111,9 +129,14 @@ function createAdminApp({ cfg, db, now = () => new Date(), log = console }) {
 
   const store = adminStore(db);
   const limiter = createRateLimit({ capacity: 10, refillPerMinute: 5 });
+  const bills = invoices ?? createInvoices({ db, log });
   const routes = createRoutes({
     store,
+    invoices: bills,
     cfg: {
+      demoDays: cfg.demoDays ?? 14,
+      newToken,
+      demoLink: (token) => `${cfg.publicUrl}/d/${token}`,
       issueReset(accountId, t) {
         const token = randomBytes(32).toString("base64url");
         store.addReset(accountId, sha256(token), t, new Date(t.getTime() + RESET_MS).toISOString());
@@ -246,6 +269,16 @@ function createAdminApp({ cfg, db, now = () => new Date(), log = console }) {
       });
       return res.end(views.CSS);
     }
+    // Марка и шрифт — файлами рядом с кодом, только по белому списку имён.
+    const asset = ASSETS[path];
+    if (asset && req.method === "GET") {
+      res.writeHead(200, {
+        ...SECURITY_HEADERS,
+        "Content-Type": asset.type,
+        "Cache-Control": "private, max-age=86400",
+      });
+      return res.end(asset.body());
+    }
     if (path === "/login") {
       if (req.method === "POST") return login(req, res);
       return loginPage(res, 200);
@@ -258,6 +291,7 @@ function createAdminApp({ cfg, db, now = () => new Date(), log = console }) {
       badges: {
         "/leads": store.countNewLeads() || 0,
         "/support": store.countNewReports() || 0,
+        "/invoices": bills.open().length || 0,
       },
     };
     const t = now();
