@@ -27,13 +27,12 @@ export interface PlanLimits {
   skus: number;
   staff: number;
   sellers: number;
-  billing: boolean;
 }
 
 export const PLAN_LIMITS: Record<"start" | "warehouse" | "operator", PlanLimits> = {
-  start: { warehouses: 1, skus: 5000, staff: 5, sellers: 5, billing: false },
-  warehouse: { warehouses: 1, skus: 30000, staff: 15, sellers: 30, billing: false },
-  operator: { warehouses: 3, skus: Infinity, staff: 50, sellers: Infinity, billing: true },
+  start: { warehouses: 1, skus: 5000, staff: 10, sellers: 5 },
+  warehouse: { warehouses: 1, skus: 30000, staff: 30, sellers: 30 },
+  operator: { warehouses: 3, skus: Infinity, staff: 100, sellers: Infinity },
 };
 
 /** Разряды через неразрывный пробел: 30 000. */

@@ -12,9 +12,9 @@
 /* global module */
 
 const PLANS = {
-  start: { title: "Старт", price: 4900 },
-  warehouse: { title: "Склад", price: 9900 },
-  operator: { title: "Оператор", price: 24900 },
+  start: { title: "Старт", price: 5900 },
+  warehouse: { title: "Склад", price: 12900 },
+  operator: { title: "Оператор", price: 29900 },
   custom: { title: "Свой тариф", price: null },
   corporate: { title: "Корпоративный", price: null },
 };
@@ -37,8 +37,13 @@ const FEATURES = {
 
 const ALL = Object.keys(FEATURES);
 const PLAN_FEATURES = {
-  start: [],
-  warehouse: ALL.filter((f) => !["client_billing", "personal_manager"].includes(f)),
+  start: ALL.filter(
+    (f) =>
+      !["roles", "analytics_full", "weekly_backup", "migration_help", "personal_manager"].includes(
+        f,
+      ),
+  ),
+  warehouse: ALL.filter((f) => f !== "personal_manager"),
   operator: ALL,
   custom: ALL.filter((f) => f !== "personal_manager"),
   corporate: ALL,
@@ -53,10 +58,10 @@ const LIMITS = {
 
 /** `null` — без ограничений. */
 const PLAN_LIMITS = {
-  start: { warehouses: 1, skus: 5000, staff: 5, sellers: 5 },
-  warehouse: { warehouses: 1, skus: 30000, staff: 15, sellers: 30 },
-  operator: { warehouses: 3, skus: null, staff: 50, sellers: null },
-  custom: { warehouses: 1, skus: 5000, staff: 5, sellers: 5 },
+  start: { warehouses: 1, skus: 5000, staff: 10, sellers: 5 },
+  warehouse: { warehouses: 1, skus: 30000, staff: 30, sellers: 30 },
+  operator: { warehouses: 3, skus: null, staff: 100, sellers: null },
+  custom: { warehouses: 1, skus: 5000, staff: 10, sellers: 5 },
   corporate: { warehouses: null, skus: null, staff: null, sellers: null },
 };
 

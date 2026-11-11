@@ -218,7 +218,7 @@ test("продление идёт от «оплачено до», оплата �
   );
   const id = Number(made.headers.get("location").split("/").pop());
   const a = app.store.account(id);
-  assert.equal(a.price, 9900);
+  assert.equal(a.price, 12900);
   assert.equal(a.trial_until.slice(0, 10), "2026-11-21", "месяц пробного");
 
   await app.post(

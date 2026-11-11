@@ -18,8 +18,6 @@ const T = {
   included: ru("В основе {n}"),
   less: ru("Меньше: {what}"),
   more: ru("Больше: {what}"),
-  billing: ru("Учёт по клиентам: остатки, отгрузки, биллинг"),
-  billingHint: ru("Раздельные остатки и счета для каждого селлера"),
   total: ru("Итого"),
   perMonth: ru("₽ в месяц"),
   monthNote: ru("при оплате помесячно"),
@@ -65,7 +63,7 @@ const FIELDS: { key: Key; label: Copy; unit: Copy; base: number; step: number; m
   },
 ];
 
-const START: CalcInput = { warehouses: 1, skus: 10000, staff: 10, sellers: 15, billing: false };
+const START: CalcInput = { warehouses: 1, skus: 10000, staff: 10, sellers: 15 };
 
 /**
  * «Свой тариф» — свёрнутая карточка под готовыми тарифами (Кирилл, 20 окт).
@@ -140,36 +138,6 @@ export function TariffCalc({ period }: { period: PayPeriod }) {
                   onChange={(n) => setV({ ...v, [f.key]: n })}
                 />
               ))}
-              <button
-                type="button"
-                role="switch"
-                aria-checked={v.billing}
-                onClick={() => setV({ ...v, billing: !v.billing })}
-                className="flex cursor-pointer items-center justify-between gap-4 py-3 text-left sm:py-4"
-              >
-                <span>
-                  <span className="block text-[15px] sm:text-[17px]">{t(T.billing)}</span>
-                  <span className="wh-muted block text-[12px] sm:text-[13px]">
-                    {t(T.billingHint)}
-                  </span>
-                </span>
-                {/* Переключатель вместо системной галочки: та грубая и разная
-                    в каждом браузере (Кирилл, 20 окт). */}
-                <span
-                  aria-hidden
-                  className={cn(
-                    "relative h-7 w-12 shrink-0 rounded-full transition-colors duration-300",
-                    v.billing ? "bg-[var(--wh-blue)]" : "bg-[var(--wh-line)]",
-                  )}
-                >
-                  <span
-                    className={cn(
-                      "absolute left-0.5 top-0.5 size-6 rounded-full bg-white shadow-sm transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
-                      v.billing && "translate-x-5",
-                    )}
-                  />
-                </span>
-              </button>
             </div>
 
             <div className="flex flex-col gap-4 rounded-[18px] bg-[var(--wh-soft)] p-5 sm:p-6">

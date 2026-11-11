@@ -8,10 +8,10 @@ describe("цены тарифов", () => {
   it("за полгода −15 %, за год −25 %, до сотен рублей", () => {
     expect(
       ["start", "warehouse", "operator"].map((id) => monthlyFor(plan(id).monthly, "half")),
-    ).toEqual([4200, 8400, 21200]);
+    ).toEqual([5000, 11000, 25400]);
     expect(
       ["start", "warehouse", "operator"].map((id) => monthlyFor(plan(id).monthly, "year")),
-    ).toEqual([3700, 7400, 18700]);
+    ).toEqual([4400, 9700, 22400]);
   });
 
   it("разбивка «Склада» сходится с его ценой за месяц", () => {
@@ -31,14 +31,8 @@ describe("калькулятор своего тарифа", () => {
   });
 
   it("подсказывает самый дешёвый тариф, в который набранное помещается", () => {
-    expect(
-      fittingPlan({ warehouses: 1, skus: 10000, staff: 10, sellers: 15, billing: false }),
-    ).toBe("warehouse");
-    expect(fittingPlan({ warehouses: 1, skus: 1000, staff: 3, sellers: 0, billing: true })).toBe(
-      "operator",
-    );
-    expect(
-      fittingPlan({ warehouses: 5, skus: 1000, staff: 3, sellers: 0, billing: false }),
-    ).toBeNull();
+    expect(fittingPlan({ warehouses: 1, skus: 10000, staff: 10, sellers: 15 })).toBe("warehouse");
+    expect(fittingPlan({ warehouses: 2, skus: 1000, staff: 3, sellers: 0 })).toBe("operator");
+    expect(fittingPlan({ warehouses: 5, skus: 1000, staff: 3, sellers: 0 })).toBeNull();
   });
 });
