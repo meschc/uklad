@@ -18,6 +18,7 @@ import { eyebrow } from "@/components/ui/eyebrow";
 import { card } from "@/components/ui/card";
 import { PartnersSection } from "./PartnersSection";
 import { TeamAccess } from "./TeamAccess";
+import { StaffOutput } from "./StaffOutput";
 import { PersonForm } from "./PersonForm";
 import { draftToMember, type PersonDraft } from "@/lib/personDraft";
 import { StaffRow } from "./StaffRow";
@@ -42,7 +43,7 @@ const EMPTY_DRAFT: PersonDraft = {
   rate: "",
 };
 
-type StaffTab = "people" | "partners" | "schedule" | "access";
+type StaffTab = "people" | "output" | "partners" | "schedule" | "access";
 
 export function StaffScreen() {
   const warehouse = useEditor((s) => s.warehouse);
@@ -156,6 +157,7 @@ export function StaffScreen() {
           onChange={setTab}
           options={[
             { value: "people", label: t("staff.tab.people") },
+            { value: "output", label: t("staff.tab.output") },
             { value: "partners", label: t("staff.tab.partners") },
             { value: "schedule", label: t("staff.tab.schedule") },
             ...(onServer ? [{ value: "access" as const, label: t("staff.tab.access") }] : []),
@@ -310,6 +312,7 @@ export function StaffScreen() {
         </>
       )}
       {tab === "schedule" && <BreakPolicyCard />}
+      {tab === "output" && <StaffOutput />}
       {tab === "access" && <TeamAccess />}
 
       {/* Ответственное лицо — тот же шаблон, что и у сотрудника (п.24) */}
