@@ -1,8 +1,6 @@
-import { workstationRepository } from "@/lib/data";
 import { useState } from "react";
 import { Package } from "lucide-react";
 import { useEditor } from "@/lib/store";
-import { shiftState } from "@/lib/workstation";
 import { useT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { eyebrow } from "@/components/ui/eyebrow";
@@ -13,15 +11,7 @@ import { PackRun, type PackResult } from "./PackRun";
  * Стол упаковки от тары: тара с товаром → короб отгрузки → поштучный цикл
  * «скан товара → этикетка → скан этикетки». Правила — в `lib/packing.ts`.
  */
-export function PackStation({
-  staffId,
-  onNeedShift,
-}: {
-  staffId: string;
-  onNeedShift: () => void;
-}) {
-  const t = useT();
-  const events = useEditor((s) => s.staffEvents);
+export function PackStation({ staffId }: { staffId: string }) {
   const session = useEditor((s) => s.packSession);
   const [result, setResult] = useState<PackResult | null>(null);
 
@@ -29,37 +19,6 @@ export function PackStation({
   if (session && session.staffId === staffId)
     return <PackRun session={session} onDone={setResult} />;
 
-  const state = shiftState(events, staffId);
-  if (state === "idle") {
-    return (
-      <div className="flex items-center justify-between gap-3 py-2">
-        <p className="text-sm text-muted-foreground">{t("ws.idle.blocked")}</p>
-        <Button size="sm" onClick={() => void workstationRepository.mark("idle_end")}>
-          {t("ws.mark.idle_end")}
-        </Button>
-      </div>
-    );
-  }
-  if (state === "break") {
-    return (
-      <div className="flex items-center justify-between gap-3 py-2">
-        <p className="text-sm text-muted-foreground">{t("ws.breakFirst")}</p>
-        <Button size="sm" onClick={() => void workstationRepository.mark("break_end")}>
-          {t("ws.mark.break_end")}
-        </Button>
-      </div>
-    );
-  }
-  if (state !== "on") {
-    return (
-      <div className="flex items-center justify-between gap-3 py-2">
-        <p className="text-sm text-muted-foreground">{t("ws.shiftFirst")}</p>
-        <Button size="sm" onClick={onNeedShift}>
-          {t("ws.tab.shift")}
-        </Button>
-      </div>
-    );
-  }
   return <ToteStart />;
 }
 

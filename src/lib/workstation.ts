@@ -306,3 +306,38 @@ export function peaksByStaff(
   }
   return out;
 }
+
+/**
+ * Кнопки ТСД и клавиатуры стола: F1 — смена, F2 — перерыв, F3 — журнал,
+ * F4 — завершить смену. Физические кнопки ТСД шлют браузеру обычные коды
+ * клавиш, поэтому отдельного драйвера не нужно.
+ *
+ * Цифры 1–4 дублируют F-клавиши только вне поля ввода: сканер «печатает» код
+ * в поле скана, и цифра штрихкода не должна открывать меню. F-клавиш сканер
+ * не шлёт, они работают всегда.
+ */
+export type StationKey = "shift" | "break" | "log" | "end";
+
+const KEY_ACTION: Record<string, StationKey> = {
+  F1: "shift",
+  F2: "break",
+  F3: "log",
+  F4: "end",
+  "1": "shift",
+  "2": "break",
+  "3": "log",
+  "4": "end",
+};
+
+/** Подпись клавиши на кнопке. */
+export const STATION_KEY_LABEL: Record<StationKey, string> = {
+  shift: "F1",
+  break: "F2",
+  log: "F3",
+  end: "F4",
+};
+
+export function stationKey(key: string, inField: boolean): StationKey | null {
+  if (/^F\d$/.test(key)) return KEY_ACTION[key] ?? null;
+  return inField ? null : (KEY_ACTION[key] ?? null);
+}

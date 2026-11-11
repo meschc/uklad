@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { boundDevice, useEditor } from "@/lib/store";
 import { STUCK_MS, usePendingOps, workstationRepository } from "@/lib/data";
-import { isSessionLive } from "@/lib/workstation";
+import { isSessionLive, STATION_KEY_LABEL } from "@/lib/workstation";
 import { isSenior } from "@/lib/docFlow";
 import { sizeLabel, useLabelPrinter } from "@/lib/labelPrinter";
 import { useT, type MsgKey } from "@/lib/i18n";
@@ -32,6 +32,9 @@ import { PickingScreen } from "@/components/fulfillment/PickingScreen";
 import { EmptyState } from "@/components/fulfillment/ScreenShell";
 import { BadgeLogin } from "./BadgeLogin";
 import { UnbindDevice } from "./UnbindDevice";
+import { KeyHint } from "./KeyHint";
+import { ShiftGate } from "./ShiftGate";
+import { useStationKeys } from "./useStationKeys";
 import { ShiftMenu } from "./ShiftMenu";
 import { ShiftBar } from "./ShiftBar";
 import { PackStation } from "./PackStation";
@@ -75,12 +78,17 @@ export function WorkstationScreen() {
   const panel: Panel = opened.owner === member?.id ? opened.panel : null;
   const setPanel = (p: Panel) => setOpened({ panel: p, owner: member?.id });
 
+  // Кнопки ТСД: F1 — смена, F2 — перерыв, F3 — журнал, F4 — конец смены.
+  useStationKeys(member?.id, (p) => setPanel(panel === p ? null : p));
   const station = session?.station ?? "pack";
 
   return (
-    <div className="flex h-full flex-col bg-background">
+    // Оболочка как у кабинета (App.tsx): шапка на фоне меню, а рабочая область —
+    // окном в рамке со скруглёнными углами. На узком экране ТСД рамки нет:
+    // поля съели бы ширину, которой там и так мало, — шапку отделяет линия.
+    <div className="flex h-full flex-col bg-card">
       {/* Высота шапки постоянная: кнопки и таймеры не должны двигать экран. */}
-      <header className="grid h-14 shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4 border-b border-border px-4">
+      <header className="grid h-14 shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:gap-4 border-border px-4 md:border-0">
         <div className="flex min-w-0 items-center gap-3">
           {device ? (
             // Стол, привязанный к месту, в кабинет не уходит: вместо выхода —
@@ -111,13 +119,16 @@ export function WorkstationScreen() {
           )}
           {member && (
             // Процесс стола — заголовком: по нему видно, чьё это задание.
-            <h1 className="text-sm font-semibold">{t(`ws.station.${station}` as MsgKey)}</h1>
+            <h1 className="hidden text-sm font-semibold sm:block">
+              {t(`ws.station.${station}` as MsgKey)}
+            </h1>
           )}
           <Equipment onPrinter={() => setPanel("printer")} canOpen={!!member} />
           <PendingOps />
         </div>
         {/* Смена и перерыв — по центру: их ищут взглядом чаще всего. */}
-        <div className="flex justify-center">
+        {/* На телефоне и ТСД смена уходит вниз, под большой палец. */}
+        <div className="hidden justify-center md:flex">
           {member && <ShiftBar staffId={member.id} onOpen={() => setPanel("shift")} />}
         </div>
         {member ? (
@@ -127,7 +138,7 @@ export function WorkstationScreen() {
               // приходит к нему, и счётчик виден сразу.
               <Button variant="ghost" size="sm" onClick={() => setPanel("disputes")}>
                 <Gavel />
-                {t("disputes.title")}
+                <span className="hidden lg:inline">{t("disputes.title")}</span>
                 {openDisputes > 0 && (
                   <span className="rounded-full bg-warning px-1.5 text-xs font-semibold text-white tabular-nums">
                     {openDisputes}
@@ -135,19 +146,30 @@ export function WorkstationScreen() {
                 )}
               </Button>
             )}
-            <Button variant="ghost" size="sm" onClick={() => setPanel("log")}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="hidden md:inline-flex"
+              onClick={() => setPanel("log")}
+            >
               <History />
               {t("ws.tab.log")}
+              <KeyHint k={STATION_KEY_LABEL.log} />
             </Button>
-            <div className="text-right">
-              <p className="text-sm font-medium leading-tight">{member.name}</p>
-              <p className="text-xs text-muted-foreground">
+            <div className="min-w-0 text-right">
+              <p className="truncate text-sm font-medium leading-tight">{member.name}</p>
+              <p className="hidden text-xs text-muted-foreground md:block">
                 {t("ws.sessionUntil", { t: formatTime(session!.expiresAt, t.lang) })}
               </p>
             </div>
-            <Button variant="outline" size="sm" onClick={() => void workstationRepository.logout()}>
+            <Button
+              variant="outline"
+              size="sm"
+              aria-label={t("ws.logout")}
+              onClick={() => void workstationRepository.logout()}
+            >
               <LogOut />
-              {t("ws.logout")}
+              <span className="hidden sm:inline">{t("ws.logout")}</span>
             </Button>
           </div>
         ) : (
@@ -155,7 +177,7 @@ export function WorkstationScreen() {
         )}
       </header>
 
-      <main className="min-h-0 flex-1 overflow-y-auto">
+      <main className="min-h-0 flex-1 overflow-y-auto bg-background md:mx-2 md:mb-2 md:rounded-2xl md:border md:border-border">
         {!member && unbinding ? (
           // Вместо входа, а не поверх него: иначе бейдж руководителя прочитал
           // бы и вход и пустил его за стол.
@@ -164,15 +186,29 @@ export function WorkstationScreen() {
           <BadgeLogin />
         ) : (
           <div className="mx-auto flex max-w-5xl flex-col gap-5 px-4 py-6">
-            <StationTask
-              station={station}
-              staffId={member.id}
-              onNeedShift={() => setPanel("shift")}
-            />
+            <ShiftGate staffId={member.id}>
+              <StationTask station={station} staffId={member.id} />
+            </ShiftGate>
             <ShiftCodes staffId={member.id} />
           </div>
         )}
       </main>
+
+      {member && (
+        // Нижняя панель телефона и ТСД: смена, перерыв и журнал — крупно и
+        // под большой палец, чтобы работать одной рукой.
+        <nav className="flex shrink-0 items-center justify-center gap-2 border-t border-border bg-card px-2 py-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] md:hidden">
+          <ShiftBar staffId={member.id} onOpen={() => setPanel("shift")} />
+          <button
+            type="button"
+            onClick={() => setPanel("log")}
+            className="flex min-h-12 flex-col items-center justify-center rounded-md px-3 text-xs font-medium text-muted-foreground hover:bg-muted"
+          >
+            <History className="size-5" />
+            {t("ws.tab.log")}
+          </button>
+        </nav>
+      )}
 
       {member && panel && (
         // Смена и журнал — боковой панелью справа, а не вкладкой: они нужны
@@ -234,15 +270,7 @@ export function WorkstationScreen() {
  * Задание стола. Приёмка и сборка — те же мастера, что были экранами кабинета,
  * только без своей рамки: заголовок процесса уже в шапке.
  */
-function StationTask({
-  station,
-  staffId,
-  onNeedShift,
-}: {
-  station: WorkstationKind;
-  staffId: string;
-  onNeedShift: () => void;
-}) {
+function StationTask({ station, staffId }: { station: WorkstationKind; staffId: string }) {
   const t = useT();
   switch (station) {
     case "receiving":
@@ -260,7 +288,7 @@ function StationTask({
     case "shipping":
       return <ShipStation staffId={staffId} />;
     case "pack":
-      return <PackStation staffId={staffId} onNeedShift={onNeedShift} />;
+      return <PackStation staffId={staffId} />;
     default:
       return (
         <EmptyState
