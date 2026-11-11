@@ -38,6 +38,7 @@ before(async () => {
   const { createDeskBadges } = require("../src/cabinet/deskBadges.js");
   const { createSnapshot } = require("../src/cabinet/snapshot.js");
   const { createDesks } = require("../src/cabinet/desks.js");
+  const { createTeam } = require("../src/cabinet/team.js");
   db = await helpers.setupDb();
   const cfg = { publicUrl: ORIGIN, allowedOrigins: [ORIGIN], trustProxy: true };
   const quiet = { error() {} };
@@ -46,12 +47,14 @@ before(async () => {
   const badges = createDeskBadges({ auth, send, log: quiet });
   const snapshot = createSnapshot({ auth, send, log: quiet });
   const desks = createDesks({ auth, cfg, send, log: quiet });
+  const team = createTeam({ auth, cfg, send, log: quiet });
   cookieName = auth.cookieName;
   deskCookieName = desks.cookieName;
   const cabinet = {
     handle: async (req, res, url) =>
       (await desks.handle(req, res, url)) ||
       (await auth.handle(req, res, url)) ||
+      (await team.handle(req, res, url)) ||
       (await badges.handle(req, res, url)) ||
       (await snapshot.handle(req, res, url)),
   };
@@ -225,6 +228,14 @@ async function company(email, ip) {
   assert.equal(first.status, 200);
   const code = async (staffRef) =>
     (await call("/api/cabinet/badges/issue", { ...a, body: { staffRef } })).json.code;
+  // Права у стола — по роли (миграция 024): Игорь и Ольга — начальники склада,
+  // у Ивана роли нет. Должность в снимке на права не влияет.
+  const team = (await call("/api/team", a)).json;
+  const chief = team.roles.find((r) => r.name === "Начальник склада").id;
+  for (const staffRef of ["stf-boss", "stf-olga"]) {
+    const set = await call("/api/team/desk-role", { ...a, body: { staffRef, roleId: chief } });
+    assert.equal(set.status, 200);
+  }
   return { a, boss: await code("stf-boss"), ivan: await code("stf-ivan") };
 }
 
@@ -239,7 +250,7 @@ async function makeDesk(who, deviceRef = "dev-1") {
 }
 
 test("стол: вход руководителя гаснет, стол видит снимок без ставок", { skip: SKIP }, async () => {
-  const { a, ivan } = await company("desk-a@sklad.ru", "10.0.3.1");
+  const { a, ivan, boss: bossCode } = await company("desk-a@sklad.ru", "10.0.3.1");
   const desk = await makeDesk(a);
   assert.equal((await call("/api/cabinet/snapshot", a)).status, 401);
 
@@ -267,6 +278,10 @@ test("стол: вход руководителя гаснет, стол вид�
 
   const who = await call("/api/cabinet/badges/check", { desk, body: { code: ivan } });
   assert.equal(who.json.staffRef, "stf-ivan");
+  // У Ивана роли нет: стол по бейджу никаких прав роли не открывает.
+  assert.equal(who.json.permissions, null);
+  const boss = await call("/api/cabinet/badges/check", { desk, body: { code: bossCode } });
+  assert.ok(boss.json.permissions.includes("goods.decide"));
 });
 
 test("стол снимок не пишет: любая запись — 403, версия не растёт", { skip: SKIP }, async () => {

@@ -42,7 +42,8 @@ const {
   splitCabinet,
   storeRecords,
 } = require("./snapshot");
-const { whoseBadge, answerCheck, CHECKS_PER_MINUTE } = require("./deskBadges");
+const { whoseBadge, badgeAnswer, answerCheck, CHECKS_PER_MINUTE } = require("./deskBadges");
+const { GOODS_DECIDE, STAFF_MANAGE, may, loadDeskPerms } = require("./deskPerms");
 const { mergeDeskStock, STOCK_KEYS } = require("./deskStock");
 const { recordMoves, diffMoves } = require("./moves");
 const { isOp, runDeskOps, MAX_OPS } = require("./deskOps");
@@ -57,13 +58,6 @@ const DEVICE_RE = /^[A-Za-z0-9_-]{1,100}$/;
 const OPS_PER_MINUTE = 20;
 // Вход по бейджу за столом живёт 12 часов — как `SESSION_TTL_MS` в браузере.
 const SHIFT_TTL_MS = 12 * 3_600_000;
-// Должности руководства — те же, что в кабинете (`MANAGER_ROLE`, lib/workstation.ts).
-const MANAGER_ROLE = /управля|заместител|руковод|директор|manager/i;
-// Кто решает спорное — тот же «старший», что в кабинете (`SENIOR_ROLE`,
-// lib/docFlow.ts): старший смены и бригадир тоже. Тест сверяет оба выражения,
-// иначе решение старшего в браузере пройдёт, а сервер его молча не примет.
-const SENIOR_ROLE =
-  /старш|бригадир|начальник|управля|заместител|руковод|директор|senior|lead|manager/i;
 
 /**
  * Что результат операции стола вправе изменить — разрешённый список, а не
@@ -107,16 +101,15 @@ function appendOnly(current, incoming, allow = () => true) {
 /**
  * Кто за столом по данным сервера (миграция 012): `staff` — отсканировал
  * бейдж и не ушёл, `prev` — стоял до него последние 10 минут (его отметки
- * ещё могут догонять сервер). Старший ли — по должности в снимке.
+ * ещё могут догонять сервер). Решает ли — по праву роли (`goods.decide`,
+ * миграция 024), а не по должности в снимке.
  */
-function deskPeople(current, who) {
-  const staff = Array.isArray(current?.warehouse?.staff) ? current.warehouse.staff : [];
-  const roleOf = (id) => String(staff.find((m) => isObject(m) && m.id === id)?.role ?? "");
+function deskPeople(who) {
   const present = new Set([who?.staff, who?.prev].filter(Boolean));
   return {
     present,
     staff: who?.staff ?? null,
-    isSenior: Boolean(who?.staff) && SENIOR_ROLE.test(roleOf(who.staff)),
+    mayDecide: may(who, who?.staff, GOODS_DECIDE),
   };
 }
 
@@ -238,8 +231,8 @@ function mergeDisputes(current, incoming, people) {
     // Лишнее с приёмки оставляют или списывают; «оставить» — только для него.
     const overage = d.kind === "receive_overage";
     if (overage ? !OVERAGE_RES.has(n.resolution) : n.resolution === "accepted") return d;
-    // Решает старший, который сейчас за столом, и только от своего имени.
-    if (!people.isSenior || n.resolvedBy !== people.staff) return d;
+    // Решает тот, у кого есть право, кто сейчас за столом, и только от своего имени.
+    if (!people.mayDecide || n.resolvedBy !== people.staff) return d;
     // Списание — с причиной и не тем, кто нашёл (как в кабинете, #71):
     // иначе свою же недостачу можно списать в одиночку.
     if (
@@ -320,7 +313,7 @@ function forDesk(data) {
  * и спорное принимаются только от него, заявки — только ходом работы.
  */
 function mergeDeskWrite(current, incoming, who = {}) {
-  const people = deskPeople(current, who);
+  const people = deskPeople(who);
   const out = { ...current };
   for (const key of DESK_WRITES) {
     if (key in incoming) out[key] = incoming[key];
@@ -528,9 +521,10 @@ function createDesks({ auth, cfg, send, log }) {
         prevSince: ms(rows[0]?.prev_since),
         prevLeft: ms(rows[0]?.prev_left),
       };
+      who.perms = await loadDeskPerms(c, [who.staff, who.prev]);
       // Упаковка проходит те же правила, что запись снимка со стола.
       const verify = (before, after) => {
-        const w = mergeDeskWrite(before, after, { staff: who.staff, prev: who.prev });
+        const w = mergeDeskWrite(before, after, who);
         return w.mismatch.length > 0 ? { ok: false } : { ok: true, data: w.data };
       };
       return runDeskOps(c, d.deskId, ops, who, Date.now(), {
@@ -574,11 +568,11 @@ function createDesks({ auth, cfg, send, log }) {
           `${SHIFT_TTL_MS / 1000} seconds`,
         ]);
       }
-      return { staffRef };
+      return badgeAnswer(c, staffRef);
     });
     if (!out) return gone(res);
     if (out.limited) return limited(res);
-    return answerCheck(res, send, out.staffRef);
+    return answerCheck(res, send, out);
   }
 
   /** Сотрудник вышел со стола: его отметки дальше не принимаются. */
@@ -599,14 +593,9 @@ function createDesks({ auth, cfg, send, log }) {
       if (!checks.take(d.orgId)) return { limited: true };
       const staffRef = await whoseBadge(c, b.code);
       if (!staffRef) return { manager: false };
-      // Персонал пока живёт в снимке: должность берём оттуда, а не из запроса.
-      const { rows } = await c.query(
-        `SELECT data->'warehouse'->'staff' AS staff FROM uklad.cabinet_snapshots
-         WHERE org_id = uklad.current_org()`,
-      );
-      const staff = Array.isArray(rows[0]?.staff) ? rows[0].staff : [];
-      const member = staff.find((m) => isObject(m) && m.id === staffRef);
-      if (!member || !MANAGER_ROLE.test(String(member.role ?? ""))) return { manager: false };
+      // Отвязать стол — право роли на персонал, а не должность в снимке.
+      const perms = await loadDeskPerms(c, [staffRef]);
+      if (!may({ perms }, staffRef, STAFF_MANAGE)) return { manager: false };
       await c.query(`SELECT auth.close_desk($1)`, [deskHash(req)]);
       return { manager: true };
     });
@@ -656,4 +645,4 @@ function createDesks({ auth, cfg, send, log }) {
   return { handle, cookieName: COOKIE };
 }
 
-module.exports = { createDesks, forDesk, mergeDeskWrite, DESK_WRITES, SENIOR_ROLE };
+module.exports = { createDesks, forDesk, mergeDeskWrite, DESK_WRITES };

@@ -20,6 +20,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { createHash, randomBytes } = require("node:crypto");
 const { createRateLimit } = require("../rateLimit");
+const { loadDeskPerms } = require("./deskPerms");
 
 const BADGE_PREFIX = "UK-STF-";
 // 16 байт в base64url — ровно 22 знака без «=».
@@ -55,9 +56,19 @@ async function whoseBadge(c, code) {
 }
 
 /** Ответ проверки: чужой или погашенный — 404, а не 401: сессия жива. */
-function answerCheck(res, send, staffRef) {
-  return staffRef
-    ? send(res, 200, { ok: true, staffRef })
+/**
+ * Ответ на проверку бейджа: чей он и права роли сотрудника (миграция 024).
+ * `permissions: null` — роль не назначена: стол по ней ничего не открывает.
+ */
+async function badgeAnswer(c, staffRef) {
+  if (!staffRef) return { staffRef: null };
+  const perms = await loadDeskPerms(c, [staffRef]);
+  return { staffRef, permissions: perms[staffRef] ?? null };
+}
+
+function answerCheck(res, send, who) {
+  return who.staffRef
+    ? send(res, 200, { ok: true, staffRef: who.staffRef, permissions: who.permissions ?? null })
     : send(res, 404, { ok: false, error: "bad_badge" });
 }
 
@@ -125,9 +136,9 @@ function createDeskBadges({ auth, send, log }) {
     const out = await withSession(req, async (c, ctx) => {
       if (!mayUse(ctx)) return FORBIDDEN;
       if (!checks.take(ctx.orgId)) return LIMITED;
-      return { staffRef: await whoseBadge(c, b.code) };
+      return badgeAnswer(c, await whoseBadge(c, b.code));
     });
-    return reply(res, out, (r) => answerCheck(res, send, r.staffRef));
+    return reply(res, out, (r) => answerCheck(res, send, r));
   }
 
   const routes = {
@@ -152,4 +163,11 @@ function createDeskBadges({ auth, send, log }) {
   return { handle };
 }
 
-module.exports = { createDeskBadges, whoseBadge, answerCheck, BADGE_PREFIX, CHECKS_PER_MINUTE };
+module.exports = {
+  createDeskBadges,
+  whoseBadge,
+  badgeAnswer,
+  answerCheck,
+  BADGE_PREFIX,
+  CHECKS_PER_MINUTE,
+};

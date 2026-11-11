@@ -144,7 +144,8 @@ export function createWorkstationRepository(
       if (onServer(port)) {
         const who = await badges.check(code);
         if (!who.ok) return who;
-        const id = who.data && port.get().openStation(who.data, station);
+        const id =
+          who.data && port.get().openStation(who.data.staffId, station, who.data.permissions);
         return id ? ok(id) : fail("ws.badgeUnknown");
       }
       const res = await attempt(() => port.get().badgeLogin(code, station));
@@ -211,7 +212,7 @@ export function createWorkstationRepository(
         }
         const who = await badges.check(code);
         if (!who.ok) return who;
-        return who.data && port.get().unbindAs(who.data)
+        return who.data && port.get().unbindAs(who.data.staffId)
           ? ok(undefined)
           : fail("ws.device.notManager");
       }

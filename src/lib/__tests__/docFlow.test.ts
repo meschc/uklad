@@ -3,7 +3,14 @@ import { create, type StateCreator } from "zustand";
 import { createDocsSlice } from "../store/docs.slice";
 import type { DocsSlice, EditorState } from "../store/state";
 import { isDocRecord } from "../data/guards";
-import { SENIOR_ROLE, discrepancyDoc, docEntries, resolveDoc, type DocSources } from "../docFlow";
+import {
+  SENIOR_ROLE,
+  discrepancyDoc,
+  mayDecideGoods,
+  docEntries,
+  resolveDoc,
+  type DocSources,
+} from "../docFlow";
 import type { ExpectedShipment, FulfillmentRequest, Product, Shipment, Warehouse } from "../types";
 
 const products = [
@@ -123,14 +130,24 @@ describe("документы из операций", () => {
   });
 });
 
-describe("старший — одно правило в кабинете и на сервере", () => {
-  it("сервер решает спорное по тому же выражению, что кабинет", async () => {
-    // Расхождение молчит: старший смены решает в браузере, сервер решение не
-    // принимает, и запись тихо разъезжается.
+describe("решение спорного у стола — то же право, что проверяет сервер", () => {
+  const olga = { role: "Старший смены" };
+  const ivan = { role: "Грузчик" };
+  it("на сервере решает право роли, а не должность", () => {
+    // Расхождение молчит: кнопка есть, а сервер решение не примет — или наоборот.
+    expect(mayDecideGoods({ permissions: null }, olga)).toBe(false);
+    expect(mayDecideGoods({ permissions: ["packing.do"] }, olga)).toBe(false);
+    expect(mayDecideGoods({ permissions: ["goods.decide"] }, ivan)).toBe(true);
+  });
+  it("в демо без сервера — по должности старшего", () => {
+    expect(mayDecideGoods({}, olga)).toBe(true);
+    expect(mayDecideGoods({}, ivan)).toBe(false);
+    expect(SENIOR_ROLE.test("Бригадир")).toBe(true);
+  });
+  it("сервер больше не угадывает старшего по должности", async () => {
     const { createRequire } = await import("node:module");
     const require = createRequire(import.meta.url);
-    const server = require("../../../server/api/src/cabinet/desks.js") as { SENIOR_ROLE: RegExp };
-    expect(server.SENIOR_ROLE.source).toBe(SENIOR_ROLE.source);
-    expect(server.SENIOR_ROLE.flags).toBe(SENIOR_ROLE.flags);
+    const server = require("../../../server/api/src/cabinet/desks.js") as Record<string, unknown>;
+    expect(server.SENIOR_ROLE).toBeUndefined();
   });
 });

@@ -41,6 +41,8 @@ export interface TeamState {
   members: TeamMember[];
   roles: TeamRole[];
   permissions: TeamPermission[];
+  /** Роли сотрудников стола (вход по бейджу): `staffRef → roleId`. */
+  deskRoles: Record<string, string>;
 }
 
 /** Что показать человеку, когда сервер отказал. */
@@ -81,7 +83,8 @@ export const teamRepository = {
     if (!res.ok) return res;
     const { status, body } = res.data;
     if (status !== 200 || !Array.isArray(body.members)) return fail(teamError(res.data));
-    return ok(body as unknown as TeamState);
+    const state = body as unknown as TeamState;
+    return ok({ ...state, deskRoles: state.deskRoles ?? {} });
   },
   invite: (email: string, roleId: string, name: string) =>
     act("/team/invite", { email, roleId, name }),
@@ -96,6 +99,9 @@ export const teamRepository = {
       permissions: role.permissions,
     }),
   deleteRole: (roleId: string) => act("/team/roles/delete", { roleId }),
+  /** Роль сотрудника стола; `null` — снять. */
+  setDeskRole: (staffRef: string, roleId: string | null) =>
+    act("/team/desk-role", { staffRef, roleId }),
 };
 
 /** Приглашение по ссылке из письма: что в нём и принять. */
