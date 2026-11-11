@@ -63,7 +63,7 @@ export const PLANS: Plan[] = [
       "Небольшому складу, который переходит с таблиц на систему",
       "A small warehouse moving from spreadsheets to a system",
     ),
-    monthly: 4900,
+    monthly: 5900,
     cta: c(
       `Начать: ${monthsRu(OFFER.freeMonths)} бесплатно`,
       `Start: ${OFFER.freeMonths} month${OFFER.freeMonths === 1 ? "" : "s"} free`,
@@ -96,7 +96,7 @@ export const PLANS: Plan[] = [
       "Одному складу с собственным товаром или парой клиентов",
       "One warehouse with its own goods or a couple of clients",
     ),
-    monthly: 9900,
+    monthly: 12900,
     featured: true,
     cta: c(
       `Начать: ${monthsRu(OFFER.freeMonths)} бесплатно`,
@@ -125,6 +125,10 @@ export const PLANS: Plan[] = [
       ),
       c("Импорт остатков и поставок из XLSX", "Stock and delivery import from XLSX"),
       c(
+        "Счёт селлерам за услуги склада и отгрузку местами",
+        "Seller invoices for warehouse services and shipped parcels, boxes and pallets",
+      ),
+      c(
         "Карточка склада на витрине с отметкой «учёт в Укладе»",
         "A catalogue card marked “runs on Uklad”",
       ),
@@ -137,7 +141,7 @@ export const PLANS: Plan[] = [
       "Фулфилмент-оператору, который ведёт склад для десятков селлеров",
       "A fulfilment operator running a warehouse for dozens of sellers",
     ),
-    monthly: 24900,
+    monthly: 29900,
     cta: c("Обсудить внедрение", "Discuss a rollout"),
     firstScreen: c(
       "Тариф включается не кнопкой, а после разговора и договора: к первому входу склады, клиенты и роли уже заведены, а остатки перенесены из вашей выгрузки. Первый экран — рабочий день смены, а не пустая система, которую ещё предстоит наполнить.",
@@ -174,7 +178,7 @@ export const PLANS: Plan[] = [
 
 export type PayPeriod = "year" | "half" | "month";
 
-/** Цена месяца при оплате за срок, до сотен рублей: 9 900 → 8 400 → 7 400. */
+/** Цена месяца при оплате за срок, до сотен рублей: 12 900 → 11 000 → 9 700. */
 export function monthlyFor(monthly: number, period: PayPeriod): number {
   const off = period === "year" ? YEARLY_DISCOUNT : period === "half" ? HALF_DISCOUNT : 0;
   return Math.round((monthly * (1 - off)) / 100) * 100;
