@@ -56,6 +56,7 @@ const NAV = [
     [
       ["/", "Обзор", "overview"],
       ["/money", "Деньги", "money"],
+      ["/invoices", "Счета", "money"],
     ],
   ],
   [

@@ -7,6 +7,7 @@
 const plans = require("../plans");
 const b = require("./base");
 const audit = require("./audit");
+const { invoicesCard } = require("./invoices");
 
 const { esc, when, day, money, hidden, errorBox, opt, head, stat, icon } = b;
 const KIND = { warehouse: "Склад", seller: "Селлер" };
@@ -299,6 +300,7 @@ function accessCards(session, a) {
 
 function accountPage(o) {
   const { session, account: a, features, limits, managers, payments, now, error, resetLink } = o;
+  const invoices = o.invoices ?? [];
   return page(
     session,
     "/accounts",
@@ -331,6 +333,7 @@ function accountPage(o) {
       </div>
       <div>
         ${tariffForm(session, a, managers)}
+        ${invoicesCard(session, a, invoices)}
         ${paymentsCard(session, a, payments)}
         ${accessCards(session, a)}
       </div>
