@@ -68,7 +68,7 @@ function accountRows(store, nowIso) {
   }));
 }
 
-function createRoutes({ store, cfg }) {
+function createRoutes({ store, cfg, invoices }) {
   /** Профиль аккаунта из формы. Ошибка — строкой, иначе патч. */
   function profileFrom(form, selfId) {
     const kind = form.get("kind");
@@ -112,6 +112,7 @@ function createRoutes({ store, cfg }) {
       limits: plans.effectiveLimits(a),
       managers: store.managers(),
       payments: store.paymentsOf(a.id),
+      invoices: invoices.of(a.id),
       audit: store.auditOf(`account:${a.id}`),
       now: nowIso,
       ...extra,
@@ -177,6 +178,13 @@ function createRoutes({ store, cfg }) {
               .some((v) => String(v).toLowerCase().includes(needle))),
       );
       return page(views.accountsList({ session: s, rows, filter, now: nowIso }));
+    }
+
+    if (path === "/invoices") {
+      const q = (url.searchParams.get("q") ?? "").trim().slice(0, 100);
+      return page(
+        views.invoicesPage({ session: s, rows: invoices.find(q), q, ready: invoices.ready }),
+      );
     }
 
     if (path === "/accounts/new") {
@@ -402,6 +410,17 @@ function createRoutes({ store, cfg }) {
           });
           return back();
         }
+        case "invoice": {
+          const r = invoices.issue(a, nowIso);
+          if (r.error) return fail(r.error);
+          const sent = await invoices.deliver(r.invoice, nowIso);
+          store.log(t, by, "invoice_issue", target, {
+            счёт: r.invoice.number,
+            сумма: r.invoice.amount,
+            письмо: sent ? "ушло" : "не ушло",
+          });
+          return back();
+        }
         case "trial": {
           const months = Number(form.get("months"));
           if (![1, 3].includes(months)) {
@@ -475,6 +494,36 @@ function createRoutes({ store, cfg }) {
         default:
           return notFound();
       }
+    }
+
+    const inv = /^\/invoices\/(\d{1,10})\/(paid|cancel)$/.exec(path);
+    if (inv) {
+      const id = Number(inv[1]);
+      const r = inv[2] === "paid" ? invoices.markPaid(id, nowIso, by) : invoices.cancel(id, by);
+      if (r.error)
+        return badRequest(
+          views.invoicesPage({
+            session: s,
+            rows: invoices.open(),
+            q: "",
+            ready: invoices.ready,
+            error: r.error,
+          }),
+        );
+      const i = r.invoice;
+      store.log(
+        t,
+        by,
+        inv[2] === "paid" ? "invoice_paid" : "invoice_cancel",
+        `account:${i.account_id}`,
+        {
+          счёт: i.number,
+          сумма: i.amount,
+          ...(r.paidUntil ? { "оплачено до": r.paidUntil.slice(0, 10) } : {}),
+        },
+      );
+      const back = text(form, "back");
+      return redirect(back === "account" ? `/accounts/${i.account_id}` : "/invoices");
     }
 
     const rep = /^\/support\/(\d{1,10})$/.exec(path);

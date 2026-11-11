@@ -443,7 +443,10 @@ function createApp({ cfg, db, mail, cabinet = null, now = () => new Date(), log 
       }
       if (cabinet && (await cabinet.handle(req, res, url))) return;
       // Кабинет без базы не работает: честный 503, а не «нет такого адреса».
-      if (!cabinet && /^\/api\/(auth|staff|chat|telegram|cabinet|company)\//.test(url.pathname)) {
+      if (
+        !cabinet &&
+        /^\/api\/(auth|staff|team|chat|telegram|cabinet|company)\//.test(url.pathname)
+      ) {
         return send(res, 503, { ok: false });
       }
       return send(res, 404, { ok: false });
@@ -538,6 +541,8 @@ function main() {
     setInterval(account.purge, DAY_MS).unref();
     const { createSnapshot } = require("./cabinet/snapshot");
     const snapshot = createSnapshot({ auth, send, log: console });
+    const { createTeam } = require("./cabinet/team");
+    const team = createTeam({ auth, cfg, send, log: console });
     const { createDeskBadges } = require("./cabinet/deskBadges");
     const deskBadges = createDeskBadges({ auth, send, log: console });
     // Стол первым: со своей кукой он отвечает за вход и снимок сам, а в
@@ -557,6 +562,7 @@ function main() {
       handle: async (req, res, url) =>
         (await desks.handle(req, res, url)) ||
         (await auth.handle(req, res, url)) ||
+        (await team.handle(req, res, url)) ||
         (await account.handle(req, res, url)) ||
         (await snapshot.handle(req, res, url)) ||
         (await deskBadges.handle(req, res, url)) ||
@@ -585,7 +591,21 @@ function main() {
   let admin;
   if (cfg.adminOrigin) {
     const { createAdminApp } = require("./admin/app");
-    admin = http.createServer(createAdminApp({ cfg, db: db.raw }));
+    const { adminStore } = require("./admin/store");
+    const { createInvoices, readPayee } = require("./admin/invoices");
+    adminStore(db.raw); // таблица счетов ссылается на аккаунты админки
+    const payee = readPayee(process.env);
+    if (!payee) console.log("[uklad] счета не выставляются: не заданы реквизиты PAYEE_*");
+    const invoices = createInvoices({ db: db.raw, payee, send: mail.sendTo });
+    // Раз в час: кому до конца срока 7 дней, выставить счёт и отправить письмом.
+    const billRound = () =>
+      invoices
+        .issueDue(new Date().toISOString())
+        .then((made) => made.length && console.log(`[uklad] выставлено счетов: ${made.length}`))
+        .catch((e) => console.error("[uklad] обход счетов:", e.message));
+    billRound();
+    setInterval(billRound, 3_600_000).unref();
+    admin = http.createServer(createAdminApp({ cfg, db: db.raw, invoices }));
     admin.requestTimeout = 15_000;
     admin.headersTimeout = 10_000;
     admin.listen(cfg.adminPort, () => console.log(`[uklad] админка слушает порт ${cfg.adminPort}`));

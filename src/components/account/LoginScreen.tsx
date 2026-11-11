@@ -12,6 +12,8 @@ import { hasCabinetServer } from "@/lib/data/api";
 import { UkladAppTile } from "@/components/brand/UkladLockup";
 import { AsciiBackdrop } from "./AsciiBackdrop";
 import { ServerLoginForm } from "./ServerLoginForm";
+import { InviteAccept } from "./InviteAccept";
+import { inviteTokenFromUrl } from "@/lib/inviteLink";
 
 /**
  * Вход, регистрация и восстановление пароля (п.28). Сборка с сервером
@@ -42,6 +44,11 @@ export function LoginScreen() {
   const [password, setPassword] = useState("");
   const [touched, setTouched] = useState(false);
   const [resetSent, setResetSent] = useState(false);
+  // Ссылка из письма-приглашения: сначала принять её, потом форма входа сама
+  // увидит живую куку и пустит в кабинет.
+  const [inviteToken, setInviteToken] = useState(() =>
+    hasCabinetServer ? inviteTokenFromUrl() : null,
+  );
 
   const emailErr = !EMAIL_RE.test(email.trim()) ? t("login.err.email") : null;
   const passErr =
@@ -92,7 +99,19 @@ export function LoginScreen() {
             <h1 className="text-xl font-semibold tracking-tight">Уклад</h1>
           </div>
 
-          {hasCabinetServer ? (
+          {inviteToken ? (
+            <InviteAccept
+              token={inviteToken}
+              onDone={() => {
+                window.history.replaceState(
+                  null,
+                  "",
+                  window.location.pathname + window.location.search,
+                );
+                setInviteToken(null);
+              }}
+            />
+          ) : hasCabinetServer ? (
             <ServerLoginForm />
           ) : (
             <>

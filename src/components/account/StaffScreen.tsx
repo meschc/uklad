@@ -17,6 +17,8 @@ import { BreakPolicyCard } from "./BreakPolicyCard";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { card } from "@/components/ui/card";
 import { PartnersSection } from "./PartnersSection";
+import { TeamAccess } from "./TeamAccess";
+import { StaffOutput } from "./StaffOutput";
 import { PersonForm } from "./PersonForm";
 import { draftToMember, type PersonDraft } from "@/lib/personDraft";
 import { StaffRow } from "./StaffRow";
@@ -41,7 +43,7 @@ const EMPTY_DRAFT: PersonDraft = {
   rate: "",
 };
 
-type StaffTab = "people" | "partners" | "schedule";
+type StaffTab = "people" | "output" | "partners" | "schedule" | "access";
 
 export function StaffScreen() {
   const warehouse = useEditor((s) => s.warehouse);
@@ -49,6 +51,8 @@ export function StaffScreen() {
   const updateManager = useEditor((s) => s.updateManager);
   // Продавцу список персонала виден, но не редактируется (п.27).
   const readOnly = useEditor((s) => selectRole(s) === "seller");
+  // Вход второго человека есть только у серверного кабинета: демо живёт в браузере.
+  const onServer = useEditor((s) => s.session.source === "server");
   const t = useT();
 
   const staff = warehouse.staff ?? [];
@@ -153,8 +157,10 @@ export function StaffScreen() {
           onChange={setTab}
           options={[
             { value: "people", label: t("staff.tab.people") },
+            { value: "output", label: t("staff.tab.output") },
             { value: "partners", label: t("staff.tab.partners") },
             { value: "schedule", label: t("staff.tab.schedule") },
+            ...(onServer ? [{ value: "access" as const, label: t("staff.tab.access") }] : []),
           ]}
         />
       </div>
@@ -306,6 +312,8 @@ export function StaffScreen() {
         </>
       )}
       {tab === "schedule" && <BreakPolicyCard />}
+      {tab === "output" && <StaffOutput />}
+      {tab === "access" && <TeamAccess />}
 
       {/* Ответственное лицо — тот же шаблон, что и у сотрудника (п.24) */}
       {tab === "people" && (
