@@ -28,7 +28,12 @@ export interface ServerOrg {
 export interface ServerMe {
   kind: "password" | "badge";
   orgs: ServerOrg[];
-  current: { orgId: string; memberId: string; warehouseId: string | null } | null;
+  current: {
+    orgId: string;
+    memberId: string;
+    warehouseId: string | null;
+    permissions: string[];
+  } | null;
 }
 
 /** Итог входа: вошёл, или пароль верный, но почту ещё не подтвердили. */

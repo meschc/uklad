@@ -53,4 +53,15 @@ function deletionLetter(at, publicUrl) {
   };
 }
 
-module.exports = { codeLetter, alreadyLetter, deletionLetter };
+/** Приглашение в компанию: кто зовёт, в какой роли и ссылка на 7 дней. */
+function inviteLetter({ company, role, link }) {
+  return {
+    subject: `Вас приглашают в «${company}» в Укладе`,
+    text:
+      `Здравствуйте!\n\nВас приглашают в компанию «${company}» с ролью «${role}».\n\n` +
+      `Принять приглашение: ${link}\n\nСсылка действует 7 дней. ` +
+      `Если вы не ждали письма, просто не открывайте ссылку.\n`,
+  };
+}
+
+module.exports = { codeLetter, alreadyLetter, deletionLetter, inviteLetter };
