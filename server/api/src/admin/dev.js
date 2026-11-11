@@ -222,6 +222,59 @@ function seed(db, store) {
     ]),
     "done",
   );
+
+  // Сам зарегистрировался в кабинете — так в админке выглядит человек с сайта.
+  require("./registered").registeredAccount(
+    db,
+    { email: "new@example.ru", kind: "warehouse", company: "Склад «Новый»", name: "Пётр" },
+    ago(3),
+  );
+
+  // Именная демо-ссылка после созвона и что по ней делали.
+  const token = require("../demo").newToken();
+  const demoId = store.addDemo({
+    token,
+    email: "olga@sklad-sever.ru",
+    label: "Склад «Север», Ольга",
+    createdAt: ago(1).toISOString(),
+    expiresAt: ahead(13),
+    by: 1,
+  });
+  db.prepare(`UPDATE demo_links SET opens = 3, opened_at = ? WHERE rowid = ?`).run(
+    ago(0.9).toISOString(),
+    demoId,
+  );
+  const pc = "Chrome · Windows · компьютер";
+  const mob = "Safari · iOS · телефон";
+  const ev = (minAgo, visitor, kind, what, device) =>
+    db
+      .prepare(
+        `INSERT INTO demo_events (token, at, visitor, kind, what, device) VALUES (?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        token,
+        new Date(Date.now() - minAgo * 60_000).toISOString(),
+        visitor,
+        kind,
+        what,
+        device,
+      );
+  ev(1300, "a1b2c3d4e5f6g7h8", "open", "", pc);
+  ev(1299, "a1b2c3d4e5f6g7h8", "start", "1920×1080", pc);
+  ev(1299, "a1b2c3d4e5f6g7h8", "view", "table", pc);
+  for (let i = 0; i < 24; i++) ev(1298 - i * 0.25, "a1b2c3d4e5f6g7h8", "beat", "table", pc);
+  ev(1292, "a1b2c3d4e5f6g7h8", "click", "План", pc);
+  ev(1292, "a1b2c3d4e5f6g7h8", "view", "editor", pc);
+  for (let i = 0; i < 40; i++) ev(1291 - i * 0.25, "a1b2c3d4e5f6g7h8", "beat", "editor", pc);
+  ev(1281, "a1b2c3d4e5f6g7h8", "click", "Приёмка", pc);
+  ev(1281, "a1b2c3d4e5f6g7h8", "view", "receiving", pc);
+  for (let i = 0; i < 16; i++) ev(1280 - i * 0.25, "a1b2c3d4e5f6g7h8", "beat", "receiving", pc);
+  ev(1276, "a1b2c3d4e5f6g7h8", "leave", "receiving", pc);
+  ev(70, "z9y8x7w6v5u4t3s2", "open", "", mob);
+  ev(69, "z9y8x7w6v5u4t3s2", "view", "table", mob);
+  for (let i = 0; i < 10; i++) ev(68 - i * 0.25, "z9y8x7w6v5u4t3s2", "beat", "table", mob);
+  ev(66, "z9y8x7w6v5u4t3s2", "click", "Рабочее место", mob);
+  ev(66, "z9y8x7w6v5u4t3s2", "view", "workstation", mob);
 }
 
 function main() {

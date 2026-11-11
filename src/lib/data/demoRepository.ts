@@ -17,4 +17,21 @@ export const demoRepository = {
     if (status !== 200) return fail("sync.err.network");
     return ok(body.ok === true && typeof body.until === "string" ? { until: body.until } : null);
   },
+  /**
+   * След демо: какие экраны, куда нажимали, сколько пробыли (`lib/demoTrack`).
+   * Сбой не показываем — демо работает и без счётчика.
+   */
+  track: async (events: DemoEvent[]): Promise<Result<true>> => {
+    const res = await attempt(
+      () => apiRequest("POST", "/demo/events", { events }),
+      "sync.err.network",
+    );
+    return res.ok ? ok(true) : res;
+  },
 };
+
+/** Событие демо: вид, короткая подпись (экран или кнопка), без введённого. */
+export interface DemoEvent {
+  k: "start" | "view" | "click" | "beat" | "leave";
+  v?: string;
+}
