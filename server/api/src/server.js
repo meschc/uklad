@@ -443,7 +443,10 @@ function createApp({ cfg, db, mail, cabinet = null, now = () => new Date(), log 
       }
       if (cabinet && (await cabinet.handle(req, res, url))) return;
       // Кабинет без базы не работает: честный 503, а не «нет такого адреса».
-      if (!cabinet && /^\/api\/(auth|staff|chat|telegram|cabinet|company)\//.test(url.pathname)) {
+      if (
+        !cabinet &&
+        /^\/api\/(auth|staff|team|chat|telegram|cabinet|company)\//.test(url.pathname)
+      ) {
         return send(res, 503, { ok: false });
       }
       return send(res, 404, { ok: false });
@@ -538,6 +541,8 @@ function main() {
     setInterval(account.purge, DAY_MS).unref();
     const { createSnapshot } = require("./cabinet/snapshot");
     const snapshot = createSnapshot({ auth, send, log: console });
+    const { createTeam } = require("./cabinet/team");
+    const team = createTeam({ auth, cfg, send, log: console });
     const { createDeskBadges } = require("./cabinet/deskBadges");
     const deskBadges = createDeskBadges({ auth, send, log: console });
     // Стол первым: со своей кукой он отвечает за вход и снимок сам, а в
@@ -557,6 +562,7 @@ function main() {
       handle: async (req, res, url) =>
         (await desks.handle(req, res, url)) ||
         (await auth.handle(req, res, url)) ||
+        (await team.handle(req, res, url)) ||
         (await account.handle(req, res, url)) ||
         (await snapshot.handle(req, res, url)) ||
         (await deskBadges.handle(req, res, url)) ||

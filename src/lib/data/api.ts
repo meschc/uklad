@@ -30,6 +30,8 @@ const PUBLIC_PATHS = new Set([
   "/auth/login",
   "/auth/logout",
   "/auth/badge",
+  "/auth/invite/info",
+  "/auth/invite/accept",
 ]);
 
 let onUnauthorized: (() => void) | null = null;
