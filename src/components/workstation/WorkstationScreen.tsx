@@ -33,6 +33,7 @@ import { EmptyState } from "@/components/fulfillment/ScreenShell";
 import { BadgeLogin } from "./BadgeLogin";
 import { UnbindDevice } from "./UnbindDevice";
 import { KeyHint } from "./KeyHint";
+import { ShiftGate } from "./ShiftGate";
 import { useStationKeys } from "./useStationKeys";
 import { ShiftMenu } from "./ShiftMenu";
 import { ShiftBar } from "./ShiftBar";
@@ -185,11 +186,9 @@ export function WorkstationScreen() {
           <BadgeLogin />
         ) : (
           <div className="mx-auto flex max-w-5xl flex-col gap-5 px-4 py-6">
-            <StationTask
-              station={station}
-              staffId={member.id}
-              onNeedShift={() => setPanel("shift")}
-            />
+            <ShiftGate staffId={member.id}>
+              <StationTask station={station} staffId={member.id} />
+            </ShiftGate>
             <ShiftCodes staffId={member.id} />
           </div>
         )}
@@ -271,15 +270,7 @@ export function WorkstationScreen() {
  * Задание стола. Приёмка и сборка — те же мастера, что были экранами кабинета,
  * только без своей рамки: заголовок процесса уже в шапке.
  */
-function StationTask({
-  station,
-  staffId,
-  onNeedShift,
-}: {
-  station: WorkstationKind;
-  staffId: string;
-  onNeedShift: () => void;
-}) {
+function StationTask({ station, staffId }: { station: WorkstationKind; staffId: string }) {
   const t = useT();
   switch (station) {
     case "receiving":
@@ -297,7 +288,7 @@ function StationTask({
     case "shipping":
       return <ShipStation staffId={staffId} />;
     case "pack":
-      return <PackStation staffId={staffId} onNeedShift={onNeedShift} />;
+      return <PackStation staffId={staffId} />;
     default:
       return (
         <EmptyState

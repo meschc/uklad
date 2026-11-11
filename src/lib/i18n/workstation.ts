@@ -174,7 +174,7 @@ export const ru = {
   "ws.peaksToday": "Пики сегодня",
   "ws.equip.waitScan": "ждёт первый скан",
   "ws.equip.lastScan": "скан в {t}",
-  "ws.shiftFirst": "Начните смену, чтобы взять тару в работу.",
+  "ws.gate.off": "Смена не начата. Задания откроются, когда вы начнёте смену.",
 
   "ws.tote.step1": "Тара с товаром",
   "ws.tote.step1Hint": "Отсканируйте короб, который привезли к столу: с приёмки или со сборки.",
@@ -505,7 +505,7 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.peaksToday": "Peaks today",
   "ws.equip.waitScan": "waiting for a scan",
   "ws.equip.lastScan": "scan at {t}",
-  "ws.shiftFirst": "Start your shift to take a tote.",
+  "ws.gate.off": "Shift not started. Tasks open once you start your shift.",
 
   "ws.tote.step1": "Source tote",
   "ws.tote.step1Hint": "Scan the tote brought to the desk — from receiving or from picking.",
