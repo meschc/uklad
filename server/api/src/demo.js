@@ -46,4 +46,43 @@ function demoLetter({ lang, link, days }) {
   };
 }
 
-module.exports = { newToken, isToken, demoLetter };
+/**
+ * Устройство грубо, по заголовку браузера: «Chrome · Windows · компьютер».
+ * Точнее не нужно — достаточно отличить телефон от компьютера и понять,
+ * один это человек или несколько.
+ */
+function deviceOf(ua) {
+  const s = String(ua ?? "");
+  const browser = /YaBrowser/.test(s)
+    ? "Яндекс Браузер"
+    : /Edg\//.test(s)
+      ? "Edge"
+      : /OPR\//.test(s)
+        ? "Opera"
+        : /Firefox\//.test(s)
+          ? "Firefox"
+          : /Chrome\//.test(s)
+            ? "Chrome"
+            : /Safari\//.test(s)
+              ? "Safari"
+              : "браузер";
+  const os = /iPhone|iPad|iPod/.test(s)
+    ? "iOS"
+    : /Android/.test(s)
+      ? "Android"
+      : /Windows/.test(s)
+        ? "Windows"
+        : /Mac OS X|Macintosh/.test(s)
+          ? "macOS"
+          : /Linux/.test(s)
+            ? "Linux"
+            : "система";
+  const type = /iPad|Tablet/.test(s)
+    ? "планшет"
+    : /Mobi|iPhone|Android/.test(s)
+      ? "телефон"
+      : "компьютер";
+  return `${browser} · ${os} · ${type}`;
+}
+
+module.exports = { newToken, isToken, demoLetter, deviceOf };

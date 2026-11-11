@@ -66,7 +66,7 @@ export const PLANS: Plan[] = [
     monthly: 4900,
     cta: c(
       `Начать: ${monthsRu(OFFER.freeMonths)} бесплатно`,
-      `Start: ${OFFER.freeMonths} months free`,
+      `Start: ${OFFER.freeMonths} month${OFFER.freeMonths === 1 ? "" : "s"} free`,
     ),
     firstScreen: c(
       "Тот же мастер склада, что и в тарифе «Склад»: назвать склад, разметить стеллажи и залить остатки из XLSX. Когда позиций или людей станет больше, тариф меняется без переноса данных.",
@@ -100,7 +100,7 @@ export const PLANS: Plan[] = [
     featured: true,
     cta: c(
       `Начать: ${monthsRu(OFFER.freeMonths)} бесплатно`,
-      `Start: ${OFFER.freeMonths} months free`,
+      `Start: ${OFFER.freeMonths} month${OFFER.freeMonths === 1 ? "" : "s"} free`,
     ),
     firstScreen: c(
       "И в бесплатный период, и после оплаты первый экран один: мастер склада — назвать склад, разметить стеллажи (можно взять готовую схему) и залить остатки из XLSX. Принимать поставки можно в тот же день; карточка на витрине появляется после проверки данных.",

@@ -219,7 +219,7 @@ test("продление идёт от «оплачено до», оплата �
   const id = Number(made.headers.get("location").split("/").pop());
   const a = app.store.account(id);
   assert.equal(a.price, 9900);
-  assert.equal(a.trial_until.slice(0, 10), "2027-01-21", "3 месяца пробного");
+  assert.equal(a.trial_until.slice(0, 10), "2026-11-21", "месяц пробного");
 
   await app.post(
     `/accounts/${id}/tariff`,
@@ -307,7 +307,7 @@ test("смена пароля требует код и закрывает ост
   assert.equal((await app.get("/", second.cookie)).status, 200, "текущий жив");
 });
 
-test("заявка становится аккаунтом с пробным периодом", async (t) => {
+test("заявка становится аккаунтом: форма с данными заявки, потом связь", async (t) => {
   const app = await start();
   t.after(app.stop);
   app.db.addLead(
@@ -315,7 +315,7 @@ test("заявка становится аккаунтом с пробным п�
       kind: "demo",
       lang: "ru",
       subject: "Демо",
-      message: "Имя: Ольга\nПочта: Olga@Test.ru",
+      message: "Имя: Ольга\nПочта: Olga@Test.ru\nТелефон: +7 900 111-22-33",
       consent: { ads: false },
     },
     new Date("2026-10-21T09:00:00Z"),
@@ -324,12 +324,90 @@ test("заявка становится аккаунтом с пробным п�
   const { cookie } = await app.login();
   const csrf = await app.csrf(cookie);
   const res = await app.post("/leads/1/convert", { csrf }, cookie);
-  assert.equal(res.status, 303);
+  assert.equal(res.headers.get("location"), "/accounts/new?lead=1", "сначала форма");
+  const form = await (await app.get("/accounts/new?lead=1", cookie)).text();
+  assert.ok(form.includes('value="olga@test.ru"'), "почта подставлена");
+  assert.ok(form.includes("+7 900 111-22-33"), "телефон подставлен");
+  const made = await app.post(
+    "/accounts",
+    {
+      kind: "warehouse",
+      name: "Ольга",
+      email: "olga@test.ru",
+      contact_name: "Ольга",
+      trial: "on",
+      lead_id: "1",
+      csrf,
+    },
+    cookie,
+  );
+  assert.equal(made.status, 303);
   const acc = app.store.accountByEmail("olga@test.ru");
-  assert.ok(acc, "аккаунт создан");
-  assert.equal(acc.contact_name, "Ольга");
+  assert.equal(acc.source, "lead");
   assert.ok(acc.trial_until);
   assert.equal(app.store.lead(1).status, "won");
+});
+
+test("пробный период витрины и админки — одно число", () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const plans = require("../src/admin/plans");
+  const src = fs.readFileSync(path.join(__dirname, "../../../src/site/data/offer.ts"), "utf8");
+  assert.equal(Number(/freeMonths: (\d+)/.exec(src)[1]), plans.TRIAL_MONTHS);
+});
+
+test("регистрация в кабинете видна в пользователях", () => {
+  const { openDb } = require("../src/db");
+  const { registeredAccount } = require("../src/admin/registered");
+  const db = openDb(":memory:");
+  const now = new Date("2026-11-02T10:00:00Z");
+  const id = registeredAccount(
+    db.raw,
+    { email: "12@example.ru", kind: "warehouse", company: "Новая компания" },
+    now,
+  );
+  const a = adminStore(db.raw).account(id);
+  assert.equal(a.source, "cabinet");
+  assert.equal(a.trial_until.slice(0, 10), "2026-12-02");
+  assert.equal(
+    registeredAccount(db.raw, { email: "12@example.ru", kind: "seller" }, now),
+    null,
+    "без дублей",
+  );
+});
+
+test("менеджер и демо-ссылка — только после подтверждения", async (t) => {
+  const app = await start();
+  t.after(app.stop);
+  const { cookie } = await app.login();
+  const csrf = await app.csrf(cookie);
+  const ask = await app.post("/managers", { name: "Кирилл", csrf }, cookie);
+  assert.equal(ask.status, 200);
+  assert.ok((await ask.text()).includes("Подтвердить"));
+  assert.equal(app.store.managers().length, 0, "без подтверждения не добавлен");
+  await app.post("/managers", { name: "Кирилл", confirmed: "1", csrf }, cookie);
+  assert.equal(app.store.managers().length, 1);
+
+  await app.post("/demos", { label: "Склад Север", days: "7", csrf }, cookie);
+  assert.equal(app.store.demos().length, 0);
+  const made = await app.post(
+    "/demos",
+    { label: "Склад Север", days: "7", confirmed: "1", csrf },
+    cookie,
+  );
+  const id = made.headers.get("location").split("/").pop();
+  const pageText = await (await app.get(`/demos/${id}`, cookie)).text();
+  assert.match(pageText, /https:\/\/u-klad\.ru\/d\/[A-Za-z0-9_-]{22}/, "ссылка показана");
+  const d = app.store.demo(Number(id));
+  app.db.addDemoEvent({
+    token: d.token,
+    at: "2026-10-21T10:01:00Z",
+    visitor: "v1",
+    kind: "view",
+    what: "План",
+    device: "Chrome · macOS · компьютер",
+  });
+  assert.ok((await (await app.get(`/demos/${id}`, cookie)).text()).includes("План"));
 });
 
 test("все страницы открываются и экранируют ввод", async (t) => {
@@ -342,6 +420,8 @@ test("все страницы открываются и экранируют в�
     "/accounts/new",
     "/leads",
     "/demos",
+    "/money",
+    "/logo.svg",
     "/managers",
     "/audit",
     "/settings",

@@ -57,6 +57,7 @@ const ACCOUNT_FIELDS = [
   "manager_id",
   "features",
   "limits",
+  "source",
 ];
 
 function adminStore(db) {
@@ -142,6 +143,9 @@ function adminStore(db) {
     limits: "TEXT",
     archived_at: "TEXT",
     updated_at: "TEXT",
+    // Откуда пришёл: admin — завела админка, lead — из заявки, cabinet —
+    // сам зарегистрировался в кабинете. Пусто у старых строк = admin.
+    source: "TEXT",
   });
   // Таблицы заявок создаёт db.js; в тестах админки их может не быть.
   const hasLeads = db.prepare(`SELECT 1 FROM sqlite_master WHERE name = 'leads'`).get();
@@ -201,6 +205,10 @@ function adminStore(db) {
     ),
     paymentsOf: db.prepare(`SELECT * FROM payments WHERE account_id = ? ORDER BY id DESC`),
     paymentsSince: db.prepare(`SELECT COALESCE(SUM(amount), 0) AS sum FROM payments WHERE at >= ?`),
+    recentPayments: db.prepare(
+      `SELECT p.*, a.name AS account_name FROM payments p JOIN accounts a ON a.id = p.account_id
+       ORDER BY p.id DESC LIMIT ?`,
+    ),
 
     managers: db.prepare(`SELECT * FROM managers ORDER BY active DESC, name`),
     manager: db.prepare(`SELECT * FROM managers WHERE id = ?`),
@@ -225,7 +233,21 @@ function adminStore(db) {
         setLead: db.prepare(`UPDATE leads SET status = ?, note = ? WHERE id = ?`),
         linkLead: db.prepare(`UPDATE leads SET account_id = ?, status = 'won' WHERE id = ?`),
         countNew: db.prepare(`SELECT COUNT(*) AS n FROM leads WHERE status = 'new'`),
-        demos: db.prepare(`SELECT * FROM demo_links ORDER BY created_at DESC LIMIT 500`),
+        demos: db.prepare(
+          `SELECT d.rowid AS id, d.*,
+             (SELECT COUNT(DISTINCT visitor) FROM demo_events e WHERE e.token = d.token) AS people,
+             (SELECT MAX(at) FROM demo_events e WHERE e.token = d.token) AS last_at
+           FROM demo_links d ORDER BY d.created_at DESC LIMIT 500`,
+        ),
+        demo: db.prepare(`SELECT rowid AS id, * FROM demo_links WHERE rowid = ?`),
+        demoEvents: db.prepare(
+          `SELECT * FROM demo_events WHERE token = ? ORDER BY id DESC LIMIT 2000`,
+        ),
+        addDemo: db.prepare(
+          `INSERT INTO demo_links (token, email, lead_id, created_at, expires_at, label, issued_by)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        ),
+        revokeDemo: db.prepare(`UPDATE demo_links SET revoked_at = ? WHERE rowid = ?`),
       }
     : null;
 
@@ -303,6 +325,7 @@ function adminStore(db) {
       ),
     paymentsOf: (accountId) => q.paymentsOf.all(accountId),
     paymentsSince: (iso) => q.paymentsSince.get(iso).sum,
+    recentPayments: (limit = 50) => q.recentPayments.all(limit),
 
     managers: () => q.managers.all(),
     manager: (id) => q.manager.get(id),
@@ -317,6 +340,21 @@ function adminStore(db) {
     linkLead: (id, accountId) => leadQ?.linkLead.run(accountId, id),
     countNewLeads: () => (leadQ ? leadQ.countNew.get().n : 0),
     demos: () => (leadQ ? leadQ.demos.all() : []),
+    demo: (id) => leadQ?.demo.get(id),
+    demoEvents: (token) => (leadQ ? leadQ.demoEvents.all(token) : []),
+    addDemo: (d) =>
+      Number(
+        leadQ.addDemo.run(
+          d.token,
+          d.email ?? "",
+          d.leadId ?? null,
+          d.createdAt,
+          d.expiresAt,
+          d.label,
+          d.by ?? null,
+        ).lastInsertRowid,
+      ),
+    revokeDemo: (id, now) => leadQ?.revokeDemo.run(now.toISOString(), id),
 
     log: (now, adminId, action, target, detail) =>
       q.insertAudit.run(

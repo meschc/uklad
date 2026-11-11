@@ -1,6 +1,6 @@
 /**
- * Обзор и пользователи: сводка, список с фильтрами, новый аккаунт и полная
- * карточка — контакты, тариф и оплата, функции и лимиты, доступ, журнал.
+ * Обзор и пользователи: сводка, список с отбором, новый аккаунт и карточка —
+ * контакты, тариф и оплата, функции и лимиты, доступ, журнал.
  */
 /* global require, module, URLSearchParams */
 /* eslint-disable @typescript-eslint/no-require-imports */
@@ -9,9 +9,14 @@ const b = require("./base");
 const audit = require("./audit");
 const { invoicesCard } = require("./invoices");
 
-const { esc, when, day, money, hidden, errorBox, opt } = b;
+const { esc, when, day, money, hidden, errorBox, opt, head, stat, icon } = b;
 const KIND = { warehouse: "Склад", seller: "Селлер" };
+const SOURCE = { admin: "Админка", lead: "Заявка", cabinet: "Сам в кабинете" };
 const badge = (state) => `<span class="badge ${state}">${plans.STATE_TITLES[state]}</span>`;
+const source = (a) => {
+  const s = a.source || "admin";
+  return `<span class="tag ${s === "cabinet" ? "cabinet" : s === "lead" ? "lead" : "admin"}">${SOURCE[s] ?? s}</span>`;
+};
 const page = (session, active, title, body) =>
   b.layout({ title, session, active, body, badges: session.badges });
 
@@ -23,78 +28,70 @@ function term(iso, nowIso) {
   return `${day(iso)} <span class="muted small">· ${tail}</span>`;
 }
 
+/** Название с иконкой типа — склад или селлер видно без чтения. */
+const who = (a) =>
+  `<div class="who"><span class="ava">${icon(a.kind === "seller" ? "seller" : "warehouse")}</span><div><a href="/accounts/${a.id}">${esc(a.name)}</a><div class="muted small">${esc(a.email)}</div></div></div>`;
+
 function accountTable(rows, nowIso, empty) {
   if (!rows.length) return `<p class="empty">${empty}</p>`;
-  return `<table><thead><tr><th>Название</th><th>Тип</th><th>Тариф</th><th>Состояние</th><th>Срок</th><th class="r">Цена</th><th>Последний вход</th></tr></thead><tbody>${rows
+  return `<table><thead><tr><th>Название</th><th>Откуда</th><th>Тариф</th><th>Состояние</th><th>Срок</th><th class="r">В месяц</th><th>Последний вход</th></tr></thead><tbody>${rows
     .map((a) => {
       const until = a.state === "trial" ? a.trial_until : a.paid_until;
       return `<tr>
-        <td><a href="/accounts/${a.id}">${esc(a.name)}</a><div class="muted small">${esc(a.email)}</div></td>
-        <td>${KIND[a.kind]}</td>
+        <td>${who(a)}</td>
+        <td>${source(a)}</td>
         <td>${esc(plans.PLANS[a.tariff]?.title ?? a.tariff)}</td>
         <td>${badge(a.state)}</td>
         <td class="num">${term(until, nowIso)}</td>
         <td class="num r">${money(a.price)}</td>
-        <td class="num">${when(a.last_login_at)}</td>
+        <td class="num muted">${when(a.last_login_at)}</td>
       </tr>`;
     })
     .join("")}</tbody></table>`;
 }
 
-/** Короткая таблица для узких колонок обзора. */
+/** Короткий список для обзора и «Денег»: кто, сколько и до какого числа. */
 function shortTable(rows, nowIso, field, empty) {
   if (!rows.length) return `<p class="empty">${empty}</p>`;
   return `<table><tbody>${rows
     .map(
       (a) =>
-        `<tr><td><a href="/accounts/${a.id}">${esc(a.name)}</a><div class="muted small">${esc(
-          plans.PLANS[a.tariff]?.title ?? a.tariff,
-        )} · ${money(a.price)}</div></td><td class="num r">${term(a[field], nowIso)}</td></tr>`,
+        `<tr><td>${who(a)}</td><td class="num r">${money(a.price)}<div>${term(a[field], nowIso)}</div></td></tr>`,
     )
     .join("")}</tbody></table>`;
 }
 
-function dashboard({
-  session,
-  rows,
-  trialsEnding,
-  paidEnding,
-  overdue,
-  newLeads,
-  revenue30,
-  recent,
-  now,
-}) {
+function dashboard({ session, rows, trialsEnding, overdue, newLeads, revenue30, recent, now }) {
   const live = rows.filter((a) => a.state !== "archived");
   const count = (st) => live.filter((a) => a.state === st).length;
   const mrr = live.filter((a) => a.state === "paid").reduce((s, a) => s + (a.price ?? 0), 0);
-  const tile = (href, label, value) =>
-    `<a class="tile" href="${href}"><span>${label}</span><b>${value}</b></a>`;
   return page(
     session,
     "/",
     "Обзор",
-    `<div class="head"><h1>Обзор</h1><span class="grow"></span><a class="btn" href="/accounts/new">Добавить аккаунт</a></div>
-    <div class="tiles">
-      ${tile("/accounts?kind=warehouse", "Склады", live.filter((a) => a.kind === "warehouse").length)}
-      ${tile("/accounts?kind=seller", "Селлеры", live.filter((a) => a.kind === "seller").length)}
-      ${tile("/accounts?state=trial", "На пробном периоде", count("trial"))}
-      ${tile("/accounts?state=paid", "Платят", count("paid"))}
-      ${tile("/accounts?state=overdue", "Не оплатили", count("overdue"))}
-      ${tile("/accounts?state=blocked", "Заблокированы", count("blocked"))}
-      ${tile("/leads?status=new", "Новые заявки", newLeads)}
-      ${tile("/accounts?state=paid", "В месяц по тарифам", money(mrr))}
+    `${head("Уклад сегодня", "Обзор", `<a class="btn" href="/accounts/new">${icon("plus")}Добавить аккаунт</a>`)}
+    <div class="stats">
+      ${stat("Новые заявки", newLeads, { href: "/leads?status=new", tone: newLeads ? "primary" : "", ico: "leads" })}
+      ${stat("На пробном", count("trial"), { href: "/accounts?state=trial", ico: "calendar" })}
+      ${stat("Платят", count("paid"), { href: "/money", tone: "ok", ico: "check" })}
+      ${stat("Не оплатили", count("overdue"), { href: "/money", tone: count("overdue") ? "warn" : "", ico: "alert" })}
     </div>
-    <div class="cols">
-      <section class="card"><h2>Пробный период кончается за 14 дней</h2>${shortTable(trialsEnding, now, "trial_until", "Ни у кого.")}</section>
-      <section class="card"><h2>Оплата кончается за 14 дней</h2>${shortTable(paidEnding, now, "paid_until", "Ни у кого.")}</section>
+    <div class="stats">
+      ${stat("В месяц по тарифам", money(mrr), { href: "/money", ico: "money" })}
+      ${stat("Пришло за 30 дней", money(revenue30), { href: "/money", ico: "money" })}
+      ${stat("Склады", live.filter((a) => a.kind === "warehouse").length, { href: "/accounts?kind=warehouse", ico: "warehouse" })}
+      ${stat("Селлеры", live.filter((a) => a.kind === "seller").length, { href: "/accounts?kind=seller", ico: "seller" })}
     </div>
-    <div class="cols" style="margin-top:16px">
-      <section class="card"><h2>Не оплатили</h2>${shortTable(overdue, now, "paid_until", "Все оплатили.")}</section>
-      <section class="card"><h2>Последние действия</h2>
-        <p class="muted small">Поступило за 30 дней: ${money(revenue30)}</p>
+    <div class="split">
+      <section>
+        <div class="sec-head"><h2>Пробный кончается за 14 дней</h2></div>
+        ${shortTable(trialsEnding, now, "trial_until", "Ни у кого.")}
+        <div class="sec-head sec"><h2>Не оплатили</h2><span class="grow"></span><a class="btn soft sm" href="/money">Все деньги</a></div>
+        ${shortTable(overdue, now, "paid_until", "Все оплатили.")}
+      </section>
+      <section>
+        <div class="sec-head"><h2>Последние действия</h2><span class="grow"></span><a class="btn soft sm" href="/audit">Весь журнал</a></div>
         ${audit.mini(recent)}
-        <p><a class="btn ghost sm" href="/audit">Весь журнал</a></p>
       </section>
     </div>`,
   );
@@ -113,8 +110,7 @@ function accountsList({ session, rows, filter, now }) {
     session,
     "/accounts",
     "Пользователи",
-    `<div class="head"><h1>Пользователи</h1><span class="count">${rows.length}</span><span class="grow"></span>
-      <a class="btn" href="/accounts/new">Добавить</a></div>
+    `${head("Клиенты", `Пользователи · ${rows.length}`, `<a class="btn" href="/accounts/new">${icon("plus")}Добавить</a>`)}
     <div class="bar">
       <div class="seg">${tab("kind", "", "Все")}${tab("kind", "warehouse", "Склады")}${tab("kind", "seller", "Селлеры")}</div>
       <div class="seg">${tab("state", "", "Действующие")}${Object.entries(plans.STATE_TITLES)
@@ -127,7 +123,7 @@ function accountsList({ session, rows, filter, now }) {
         .map(([k, p]) => opt(k, p.title, filter.tariff))
         .join("")}</select>
       <input class="q" name="q" value="${esc(filter.q)}" placeholder="Название, почта, компания, ИНН, телефон, город">
-      <button class="ghost">Найти</button>
+      <button class="soft">${icon("search")}Найти</button>
     </form></div>
     ${accountTable(rows, now, "Никого не нашли.")}`,
   );
@@ -144,34 +140,41 @@ function profileFields(v) {
       <label>Контактное лицо<input name="contact_name" maxlength="120" value="${esc(v.contact_name)}"></label>
     </div>
     <div class="row3">
-      <label>Телефон<input name="phone" maxlength="40" value="${esc(v.phone)}"></label>
+      <label>Телефон<input name="phone" type="tel" maxlength="40" value="${esc(v.phone)}"></label>
       <label>Компания<input name="company" maxlength="200" value="${esc(v.company)}"></label>
-      <label>ИНН<input name="inn" inputmode="numeric" maxlength="12" value="${esc(v.inn)}"></label>
+      <label>ИНН<input name="inn" inputmode="numeric" pattern="[0-9]{10}([0-9]{2})?" maxlength="12" value="${esc(v.inn)}"></label>
     </div>
     <label>Город<input name="city" maxlength="80" value="${esc(v.city)}"></label>
     <label>Заметка для себя<textarea name="note" maxlength="2000">${esc(v.note)}</textarea></label>`;
 }
 
-function accountNew({ session, values, error }) {
+/**
+ * Новый аккаунт. Из заявки приходит уже заполненным: имя, почта, телефон и
+ * всё, что человек написал, — остаётся проверить и нажать «Создать».
+ */
+function accountNew({ session, values, error, lead }) {
   const v = { kind: "warehouse", tariff: "start", trial: "on", ...values };
   return page(
     session,
-    "/accounts",
+    lead ? "/leads" : "/accounts",
     "Новый аккаунт",
-    `<a class="back" href="/accounts">← Пользователи</a>
-    <div class="head"><h1>Новый аккаунт</h1></div>
-    <form class="card form" method="post" action="/accounts" style="max-width:720px">
+    `<a class="back" href="${lead ? `/leads/${lead.id}` : "/accounts"}">${icon("back", 16)}${lead ? `Заявка #${lead.id}` : "Пользователи"}</a>
+    ${head(lead ? `Из заявки #${lead.id}` : "Клиенты", "Новый аккаунт")}
+    ${lead ? `<div class="note"><strong>Подставили из заявки</strong><p>Проверьте название и почту: по почте человек будет входить.</p></div>` : ""}
+    <form class="form" method="post" action="/accounts">
       ${errorBox(error)}${hidden(session)}
+      ${lead ? `<input type="hidden" name="lead_id" value="${lead.id}">` : ""}
       ${profileFields(v)}
       <div class="row">
         <label>Тариф<select name="tariff">${Object.entries(plans.PLANS)
           .map(([k, p]) => opt(k, `${p.title}${p.price ? ` · ${money(p.price)}` : ""}`, v.tariff))
           .join("")}</select></label>
-        <label class="check" style="align-self:end;height:36px"><input type="checkbox" name="trial"${
+        <label class="check" style="align-self:end;height:40px"><input type="checkbox" name="trial"${
           v.trial === "on" ? " checked" : ""
-        }> Пробный период ${plans.TRIAL_MONTHS} месяца</label>
+        }> Пробный период ${plans.TRIAL_MONTHS} мес.</label>
       </div>
-      <div class="actions"><button>Создать</button><a class="btn ghost" href="/accounts">Отмена</a></div>
+      <p class="hint">Спецусловия после созвона — в карточке: дата пробного периода и цена правятся вручную.</p>
+      <div class="actions"><button>${icon("check")}Создать</button><a class="btn soft" href="/accounts">Отмена</a></div>
     </form>`,
   );
 }
@@ -181,7 +184,7 @@ function featuresForm(session, a, features, limits) {
     .map(([key, label]) => {
       const f = features[key];
       const cur = f.override === null ? "plan" : f.override ? "on" : "off";
-      return `<span>${f.on ? "✓" : `<span class="muted">—</span>`} ${esc(label)}</span>
+      return `<span>${f.on ? `<span class="ok">✓</span>` : `<span class="muted">—</span>`} ${esc(label)}</span>
         <select name="f_${key}" aria-label="${esc(label)}">${opt("plan", `Как в тарифе (${f.fromPlan ? "да" : "нет"})`, cur)}${opt("on", "Включить", cur)}${opt("off", "Выключить", cur)}</select>`;
     })
     .join("");
@@ -189,23 +192,23 @@ function featuresForm(session, a, features, limits) {
     .map(([key, label]) => {
       const l = limits[key];
       const fromPlan = l.fromPlan === null ? "без ограничений" : l.fromPlan.toLocaleString("ru-RU");
-      return `<label>${esc(label)} <span class="small">· в тарифе: ${fromPlan}</span>
+      return `<label>${esc(label)} · в тарифе ${fromPlan}
         <input name="l_${key}" inputmode="numeric" placeholder="как в тарифе" value="${l.override ?? ""}"></label>`;
     })
     .join("");
-  return `<form class="card form" method="post" action="/accounts/${a.id}/features">
-    <h2>Функции и лимиты</h2>${hidden(session)}
-    <p class="muted small">По умолчанию — как в тарифе. Можно включить функцию сверх тарифа или поднять лимит одному клиенту. Кабинет начнёт их соблюдать после переезда на сервер.</p>
+  return `<section class="sec"><h2>Функции и лимиты</h2>
+    <form class="form" method="post" action="/accounts/${a.id}/features">${hidden(session)}
+    <p class="hint">По умолчанию — как в тарифе. Можно включить функцию сверх тарифа или поднять лимит одному клиенту.</p>
     <div class="feat">${rows}</div>
     <div class="row">${limitRows}</div>
-    <div class="actions"><button>Сохранить функции и лимиты</button></div>
-  </form>`;
+    <div class="actions"><button class="soft">Сохранить функции и лимиты</button></div>
+  </form></section>`;
 }
 
 function tariffForm(session, a, managers) {
   const manager = managers.find((m) => m.id === a.manager_id);
-  return `<form class="card form" method="post" action="/accounts/${a.id}/tariff">
-    <h2>Тариф и оплата</h2>${hidden(session)}
+  return `<form class="panel form" method="post" action="/accounts/${a.id}/tariff">
+    <h2>Тариф и сроки</h2>${hidden(session)}
     <div class="row">
       <label>Тариф<select name="tariff">${Object.entries(plans.PLANS)
         .map(([k, p]) => opt(k, p.title, a.tariff))
@@ -231,7 +234,7 @@ function tariffForm(session, a, managers) {
     </div>
     ${
       a.tariff === "operator" && !manager
-        ? `<p class="muted small">У «Оператора» по тарифу персональный менеджер — назначьте его${
+        ? `<p class="hint">У «Оператора» по тарифу персональный менеджер — назначьте его${
             managers.length ? "" : ` (сначала добавьте в разделе <a href="/managers">Менеджеры</a>)`
           }.</p>`
         : ""
@@ -248,53 +251,51 @@ function paymentsCard(session, a, payments) {
             `<tr><td class="num">${day(p.at)}</td><td>${p.months} мес.</td><td class="num r">${money(p.amount)}</td><td class="num">${day(p.paid_until)}</td><td class="muted">${esc(p.note ?? "")}</td></tr>`,
         )
         .join("")}</tbody></table>`
-    : `<p class="muted">Оплат пока не было.</p>`;
-  return `<div class="card stack">
-    <h2>Продлить</h2>
+    : `<p class="empty">Оплат пока не было.</p>`;
+  return `<section class="sec">
+    <h2>Записать оплату</h2>
     <form class="form" method="post" action="/accounts/${a.id}/extend">${hidden(session)}
       <div class="row3">
         <label>Срок<select name="months">${opt(1, "1 месяц", 1)}${opt(3, "3 месяца")}${opt(6, "6 месяцев")}${opt(12, "12 месяцев")}</select></label>
         <label>Получено, ₽<input name="amount" inputmode="numeric" placeholder="${a.price ?? ""}"></label>
         <label>Заметка<input name="note" maxlength="200" placeholder="счёт №…"></label>
       </div>
-      <div class="actions"><button>Записать оплату и продлить</button></div>
+      <div class="actions"><button>${icon("money")}Записать и продлить</button></div>
     </form>
-    <form class="actions" method="post" action="/accounts/${a.id}/trial">${hidden(session)}
+    <form class="actions" method="post" action="/accounts/${a.id}/trial" style="margin-top:14px">${hidden(session)}
       <select name="months" style="width:auto">${opt(1, "+1 месяц")}${opt(3, "+3 месяца")}</select>
-      <button class="ghost">Продлить пробный период</button>
+      <button class="soft">Продлить пробный период</button>
     </form>
-    <h3>Оплаты</h3>${list}
-  </div>`;
+    <div class="sec"><h2>Оплаты</h2>${list}</div>
+  </section>`;
 }
 
 function accessCards(session, a) {
   const blocked = a.status === "blocked";
-  return `<div class="card stack">
-      <h2>Доступ</h2>
+  return `<section class="sec"><h2>Доступ</h2>
       ${
         blocked
           ? `<p>Заблокирован${a.blocked_note ? `: ${esc(a.blocked_note)}` : ""}.</p>
              <form method="post" action="/accounts/${a.id}/unblock">${hidden(session)}<button>Разблокировать</button></form>`
           : `<form class="form" method="post" action="/accounts/${a.id}/block">${hidden(session)}
                <label>Причина блокировки<input name="note" maxlength="200" placeholder="Например: не оплатил"></label>
-               <div class="actions"><button class="danger">Заблокировать</button></div></form>`
+               <div class="actions"><button class="danger">${icon("ban")}Заблокировать</button></div></form>`
       }
-      <form class="form" method="post" action="/accounts/${a.id}/reset">${hidden(session)}
-        <p class="muted small">Старый пароль перестанет работать, человек задаст новый по ссылке.</p>
-        <div class="actions"><button class="ghost">Сбросить доступ</button></div>
+      <form class="form" method="post" action="/accounts/${a.id}/reset" style="margin-top:20px">${hidden(session)}
+        <p class="hint">Старый пароль перестанет работать, человек задаст новый по ссылке.</p>
+        <div class="actions"><button class="soft">Сбросить доступ</button></div>
       </form>
-    </div>
-    <div class="card danger-zone stack">
-      <h2>Архив</h2>
+    </section>
+    <section class="sec"><h2>Архив</h2>
       ${
         a.archived_at
-          ? `<p>В архиве с ${day(a.archived_at)}.</p><form method="post" action="/accounts/${a.id}/restore">${hidden(session)}<button class="ghost">Вернуть из архива</button></form>`
-          : `<p class="muted small">Аккаунт пропадёт из списков, но данные и журнал останутся. Вернуть можно в любой момент.</p>
-             <form class="form" method="post" action="/accounts/${a.id}/archive">${hidden(session)}
+          ? `<p>В архиве с ${day(a.archived_at)}.</p><form method="post" action="/accounts/${a.id}/restore">${hidden(session)}<button class="soft">Вернуть из архива</button></form>`
+          : `<p class="hint">Аккаунт пропадёт из списков, но данные и журнал останутся.</p>
+             <form class="form" method="post" action="/accounts/${a.id}/archive" style="margin-top:12px">${hidden(session)}
                <label>Впишите название, чтобы подтвердить<input name="confirm" maxlength="120" autocomplete="off"></label>
                <div class="actions"><button class="danger">Убрать в архив</button></div></form>`
       }
-    </div>`;
+    </section>`;
 }
 
 function accountPage(o) {
@@ -304,40 +305,41 @@ function accountPage(o) {
     session,
     "/accounts",
     a.name,
-    `<a class="back" href="/accounts">← Пользователи</a>
-    <div class="head"><h1>${esc(a.name)}</h1>${badge(a.state)}<span class="muted">${KIND[a.kind]} · #${a.id}</span></div>
-    ${error ? `<div class="card" style="margin-bottom:16px">${errorBox(error)}</div>` : ""}
+    `<a class="back" href="/accounts">${icon("back", 16)}Пользователи</a>
+    ${head(`${KIND[a.kind]} · #${a.id}`, a.name, `${source(a)} ${badge(a.state)}`)}
+    ${error ? `<div class="note warn">${errorBox(error)}</div>` : ""}
     ${
       resetLink
-        ? `<div class="card notice" style="margin-bottom:16px"><strong>Ссылка для нового пароля</strong>
-           <p class="muted">Показываем один раз. Отправьте её человеку сами: работает 24 часа и гасит прежние. Заработает, когда кабинет переедет на сервер.</p>
-           <code>${esc(resetLink)}</code></div>`
+        ? `<div class="note"><strong>Ссылка для нового пароля</strong>
+           <p>Показываем один раз. Отправьте её человеку сами: работает 24 часа и гасит прежние.</p>
+           <code class="copy">${esc(resetLink)}</code></div>`
         : ""
     }
-    <div class="tiles">
-      <div class="tile"><span>Тариф</span><b>${esc(plans.PLANS[a.tariff]?.title ?? a.tariff)}</b></div>
-      <div class="tile"><span>Цена в месяц · ${esc(plans.PERIODS[a.period] ?? "")}</span><b>${money(a.price)}</b></div>
-      <div class="tile"><span>Пробный до</span><b class="num">${day(a.trial_until)}</b></div>
-      <div class="tile"><span>Оплачено до</span><b class="num">${day(a.paid_until)}</b></div>
+    <div class="stats">
+      ${stat("Тариф", esc(plans.PLANS[a.tariff]?.title ?? a.tariff))}
+      ${stat(`В месяц · ${esc(plans.PERIODS[a.period] ?? "")}`, money(a.price))}
+      ${stat("Пробный до", day(a.trial_until), { tone: a.state === "trial" ? "primary" : "" })}
+      ${stat("Оплачено до", day(a.paid_until), { tone: a.state === "overdue" ? "warn" : a.state === "paid" ? "ok" : "" })}
     </div>
-    <div class="cols">
-      <div class="stack">
-        <form class="card form" method="post" action="/accounts/${a.id}/profile">
-          <h2>Контакты</h2>${hidden(session)}${profileFields(a)}
-          <dl><dt>Добавлен</dt><dd>${when(a.created_at)}</dd><dt>Изменён</dt><dd>${when(a.updated_at)}</dd><dt>Последний вход</dt><dd>${when(a.last_login_at)}</dd></dl>
-          <div class="actions"><button>Сохранить контакты</button></div>
+    <div class="side-col">
+      <div>
+        <section><h2>Контакты</h2>
+        <form class="form" method="post" action="/accounts/${a.id}/profile">${hidden(session)}${profileFields(a)}
+          <div class="actions"><button class="soft">Сохранить контакты</button></div>
         </form>
+        <dl class="sec small"><dt>Добавлен</dt><dd>${when(a.created_at)}</dd><dt>Изменён</dt><dd>${when(a.updated_at)}</dd><dt>Последний вход</dt><dd>${when(a.last_login_at)}</dd></dl>
+        </section>
         ${featuresForm(session, a, features, limits)}
       </div>
-      <div class="stack">
+      <div>
         ${tariffForm(session, a, managers)}
         ${invoicesCard(session, a, invoices)}
         ${paymentsCard(session, a, payments)}
         ${accessCards(session, a)}
       </div>
     </div>
-    <section style="margin-top:24px"><h2>Журнал по аккаунту</h2>${audit.rows(o.audit, now)}</section>`,
+    <section class="sec"><h2>Журнал по аккаунту</h2>${audit.rows(o.audit, now)}</section>`,
   );
 }
 
-module.exports = { dashboard, accountsList, accountNew, accountPage, KIND };
+module.exports = { dashboard, accountsList, accountNew, accountPage, shortTable, who, KIND };

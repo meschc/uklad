@@ -74,7 +74,12 @@ test("заявка уходит письмом, а демо — ссылкой �
   assert.equal(open.status, 302);
   assert.equal(open.headers.get("location"), "/app/");
   // Ссылка оставляет браузеру пропуск: без него кабинет в сборке с сервером закрыт.
-  const cookie = open.headers.get("set-cookie");
+  const [cookie, visitorCookie] = open.headers.getSetCookie();
+  assert.match(
+    visitorCookie,
+    /^__Host-uklad_dv=[A-Za-z0-9_-]{16}; /,
+    "номер браузера — для «сколько людей»",
+  );
   assert.match(
     cookie,
     /^__Host-uklad_demo=[A-Za-z0-9_-]{22}; Path=\/; HttpOnly; Secure; SameSite=Lax; Max-Age=\d+$/,
@@ -91,6 +96,30 @@ test("заявка уходит письмом, а демо — ссылкой �
   assert.equal(JSON.stringify(ok).includes(link[1]), false, "токен не уходит обратно");
   assert.deepEqual(await pass(""), { ok: false });
   assert.deepEqual(await pass("__Host-uklad_demo=AAAAAAAAAAAAAAAAAAAAAA"), { ok: false });
+
+  // След демо: принимается только с пропуском, подпись режется, мусор отбрасывается.
+  const both = `${jar}; ${visitorCookie.split(";")[0]}`;
+  const track = (c, events) =>
+    fetch(`${s.base}/api/demo/events`, {
+      method: "POST",
+      headers: { cookie: c, "Content-Type": "application/json" },
+      body: JSON.stringify({ events }),
+    }).then((r) => r.json());
+  assert.deepEqual(
+    await track(both, [
+      { k: "view", v: "table" },
+      { k: "evil", v: "x" },
+      { k: "click", v: "Я".repeat(200) },
+    ]),
+    { ok: true },
+  );
+  assert.deepEqual(await track("", [{ k: "view", v: "table" }]), { ok: false });
+  const evs = s.db.raw.prepare(`SELECT kind, what, device FROM demo_events ORDER BY id`).all();
+  assert.deepEqual(
+    evs.map((e) => e.kind),
+    ["open", "view", "click"],
+  );
+  assert.equal(evs[2].what.length, 80);
 
   s.tick(15 * 86_400_000);
   const late = await fetch(`${s.base}/d/${link[1]}`, { redirect: "manual" });

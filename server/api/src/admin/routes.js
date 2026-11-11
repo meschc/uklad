@@ -37,6 +37,28 @@ function leadFields(lead) {
   return out;
 }
 
+/** Что подставить в новый аккаунт из заявки: всё, что нашли в письме. */
+function leadValues(lead) {
+  const f = leadFields(lead);
+  const email = (Object.values(f).find((v) => EMAIL.test(v)) ?? "").toLowerCase();
+  return {
+    kind: lead.kind === "seller" ? "seller" : "warehouse",
+    name: (f["Склад"] || f["Компания"] || f["Имя"] || email).slice(0, 120),
+    email,
+    contact_name: f["Имя"] ?? "",
+    phone: Object.values(f).find((v) => /^\+?[\d\s()-]{7,}$/.test(v)) ?? "",
+    company: f["Компания"] ?? "",
+    inn: /^\d{10}(\d{2})?$/.test(f["ИНН"] ?? "") ? f["ИНН"] : "",
+    city: f["Город"] ?? "",
+    note: String(lead.message ?? "").slice(0, 2000),
+    tariff: "start",
+    trial: "on",
+  };
+}
+
+/** Вторая половина двухшаговой формы: пришло ли «Подтвердить». */
+const confirmed = (form) => form.get("confirmed") === "1";
+
 function accountRows(store, nowIso) {
   const managers = new Map(store.managers().map((m) => [m.id, m]));
   return store.allAccounts().map((a) => ({
@@ -97,7 +119,7 @@ function createRoutes({ store, cfg, invoices }) {
     });
   }
 
-  async function get({ path, url, s, t, page, notFound, download }) {
+  async function get({ path, url, s, t, page, notFound, download, redirect }) {
     const nowIso = t.toISOString();
 
     if (path === "/") {
@@ -108,11 +130,28 @@ function createRoutes({ store, cfg, invoices }) {
           session: s,
           rows,
           trialsEnding: rows.filter((a) => a.state === "trial" && a.trial_until < soon),
-          paidEnding: rows.filter((a) => a.state === "paid" && a.paid_until < soon),
           overdue: rows.filter((a) => a.state === "overdue"),
           newLeads: store.countNewLeads(),
           revenue30: store.paymentsSince(new Date(t.getTime() - 30 * DAY).toISOString()),
           recent: store.audit(10),
+          now: nowIso,
+        }),
+      );
+    }
+
+    if (path === "/money") {
+      const rows = accountRows(store, nowIso);
+      const soon = new Date(t.getTime() + 14 * DAY).toISOString();
+      return page(
+        views.moneyPage({
+          session: s,
+          rows,
+          payments: store.recentPayments(100),
+          revenue30: store.paymentsSince(new Date(t.getTime() - 30 * DAY).toISOString()),
+          revenue365: store.paymentsSince(new Date(t.getTime() - 365 * DAY).toISOString()),
+          trialsEnding: rows.filter((a) => a.state === "trial" && a.trial_until < soon),
+          paidEnding: rows.filter((a) => a.state === "paid" && a.paid_until < soon),
+          overdue: rows.filter((a) => a.state === "overdue"),
           now: nowIso,
         }),
       );
@@ -149,7 +188,12 @@ function createRoutes({ store, cfg, invoices }) {
     }
 
     if (path === "/accounts/new") {
-      return page(views.accountNew({ session: s, values: {} }));
+      const leadId = Number(url.searchParams.get("lead"));
+      const l = Number.isInteger(leadId) && leadId > 0 ? store.lead(leadId) : null;
+      if (l?.account_id) return redirect(`/accounts/${l.account_id}`);
+      return page(
+        views.accountNew({ session: s, values: l ? leadValues(l) : {}, lead: l ?? null }),
+      );
     }
 
     const acc = /^\/accounts\/(\d{1,10})$/.exec(path);
@@ -199,7 +243,28 @@ function createRoutes({ store, cfg, invoices }) {
     }
 
     if (path === "/demos") {
-      return page(views.demosList({ session: s, demos: store.demos(), now: nowIso }));
+      return page(
+        views.demosList({ session: s, demos: store.demos(), now: nowIso, days: cfg.demoDays }),
+      );
+    }
+    const dm = /^\/demos\/(\d{1,10})$/.exec(path);
+    if (dm) {
+      const d = store.demo(Number(dm[1]));
+      if (!d) return notFound();
+      return page(
+        views.demoPage({
+          session: s,
+          demo: d,
+          link: cfg.demoLink(d.token),
+          events: store.demoEvents(d.token),
+          now: nowIso,
+        }),
+      );
+    }
+    const mgr = /^\/managers\/(\d{1,10})$/.exec(path);
+    if (mgr) {
+      const m = store.manager(Number(mgr[1]));
+      return m ? page(views.managerEdit({ session: s, manager: m })) : notFound();
     }
     if (path === "/managers") {
       const load = new Map();
@@ -236,27 +301,37 @@ function createRoutes({ store, cfg, invoices }) {
       const p = profileFrom(form);
       if (p.error) {
         return badRequest(
-          views.accountNew({ session: s, values: Object.fromEntries(form), error: p.error }),
+          views.accountNew({
+            session: s,
+            values: Object.fromEntries(form),
+            error: p.error,
+            lead: Number(form.get("lead_id")) ? store.lead(Number(form.get("lead_id"))) : null,
+          }),
         );
       }
       const tariff = Object.keys(plans.PLANS).includes(form.get("tariff"))
         ? form.get("tariff")
         : "start";
       const trial = form.get("trial") === "on";
+      const leadId = Number(form.get("lead_id"));
+      const lead = Number.isInteger(leadId) && leadId > 0 ? store.lead(leadId) : null;
       const id = store.addAccount(
         {
           ...p.patch,
           tariff,
+          source: lead ? "lead" : "admin",
           price: plans.PLANS[tariff].price,
           trial_until: trial ? plans.addMonths(nowIso, plans.TRIAL_MONTHS) : null,
         },
         t,
       );
+      if (lead) store.linkLead(lead.id, id);
       store.log(t, by, "account_create", `account:${id}`, {
         тип: p.patch.kind,
         почта: p.patch.email,
         тариф: plans.PLANS[tariff].title,
         пробный: trial ? `${plans.TRIAL_MONTHS} мес.` : "нет",
+        ...(lead ? { "из заявки": `#${lead.id}` } : {}),
       });
       return redirect(`/accounts/${id}`);
     }
@@ -473,41 +548,116 @@ function createRoutes({ store, cfg, invoices }) {
         store.log(t, by, "lead_update", `lead:${l.id}`, { статус: status });
         return redirect(`/leads/${l.id}`);
       }
-      // Заявка → аккаунт: подставляем, что нашли в письме, остальное правится потом.
-      const f = leadFields(l);
-      const email = (Object.values(f).find((v) => EMAIL.test(v)) ?? "").toLowerCase();
-      if (!email) return redirect(`/accounts/new`);
-      const existing = store.accountByEmail(email);
+      // Заявка → аккаунт: форма с подставленными данными, создаёт человек.
+      // Если почта уже есть у аккаунта — просто связываем.
+      const v = leadValues(l);
+      const existing = v.email ? store.accountByEmail(v.email) : null;
       if (existing) {
         store.linkLead(l.id, existing.id);
         store.log(t, by, "lead_update", `lead:${l.id}`, { аккаунт: `#${existing.id}` });
         return redirect(`/accounts/${existing.id}`);
       }
-      const name = f["Склад"] || f["Компания"] || f["Имя"] || email;
-      const id = store.addAccount(
-        {
-          kind: l.kind === "seller" ? "seller" : "warehouse",
-          name: name.slice(0, 120),
-          email,
-          contact_name: f["Имя"] ?? null,
-          phone: Object.values(f).find((v) => /^\+?[\d\s()-]{7,}$/.test(v)) ?? null,
-          tariff: "start",
-          price: plans.PLANS.start.price,
-          trial_until: plans.addMonths(nowIso, plans.TRIAL_MONTHS),
-        },
-        t,
-      );
-      store.linkLead(l.id, id);
-      store.log(t, by, "account_create", `account:${id}`, {
-        "из заявки": `#${l.id}`,
-        почта: email,
+      return redirect(`/accounts/new?lead=${l.id}`);
+    }
+
+    if (path === "/demos") {
+      const label = text(form, "label", 80);
+      const email = text(form, "email").toLowerCase();
+      const days = Number(form.get("days") || cfg.demoDays);
+      const error = !label
+        ? "Впишите, для кого ссылка."
+        : email && !EMAIL.test(email)
+          ? "Почта выглядит неверно."
+          : !Number.isInteger(days) || days < 1 || days > 90
+            ? "Срок — от 1 до 90 дней."
+            : "";
+      if (error) {
+        return badRequest(
+          views.demosList({
+            session: s,
+            demos: store.demos(),
+            now: nowIso,
+            error,
+            days: cfg.demoDays,
+          }),
+        );
+      }
+      if (!confirmed(form)) {
+        return page(
+          views.confirmPage({
+            session: s,
+            active: "/demos",
+            eyebrow: "Демо-ссылки",
+            title: "Выдать ссылку?",
+            lines: [
+              ["Для кого", label],
+              ["Почта", email],
+              ["Работает", `${days} дн.`],
+            ],
+            action: "/demos",
+            form,
+            back: "/demos",
+          }),
+        );
+      }
+      const id = store.addDemo({
+        token: cfg.newToken(),
+        email,
+        label,
+        createdAt: nowIso,
+        expiresAt: new Date(t.getTime() + days * DAY).toISOString(),
+        by,
       });
-      return redirect(`/accounts/${id}`);
+      store.log(t, by, "demo_issue", `demo:${id}`, { для: label, дней: days });
+      return redirect(`/demos/${id}`);
+    }
+    const rv = /^\/demos\/(\d{1,10})\/revoke$/.exec(path);
+    if (rv) {
+      const d = store.demo(Number(rv[1]));
+      if (!d) return notFound();
+      if (!confirmed(form)) {
+        return page(
+          views.confirmPage({
+            session: s,
+            active: "/demos",
+            eyebrow: "Демо-ссылки",
+            title: "Отозвать ссылку?",
+            lines: [
+              ["Для кого", d.label || d.email],
+              ["Что будет", "Ссылка перестанет открывать демо. История останется."],
+            ],
+            action: `/demos/${d.id}/revoke`,
+            form,
+            back: `/demos/${d.id}`,
+            danger: true,
+          }),
+        );
+      }
+      store.revokeDemo(d.id, t);
+      store.log(t, by, "demo_revoke", `demo:${d.id}`);
+      return redirect(`/demos/${d.id}`);
     }
 
     if (path === "/managers") {
       const name = text(form, "name", 120);
       if (!name) return redirect("/managers");
+      if (!confirmed(form)) {
+        return page(
+          views.confirmPage({
+            session: s,
+            active: "/managers",
+            eyebrow: "Менеджеры",
+            title: "Добавить менеджера?",
+            lines: [
+              ["Имя", name],
+              ["Контакт", text(form, "contact")],
+            ],
+            action: "/managers",
+            form,
+            back: "/managers",
+          }),
+        );
+      }
       const id = store.addManager({ name, contact: text(form, "contact") || null }, t);
       store.log(t, by, "manager_create", `manager:${id}`, { имя: name });
       return redirect("/managers");
@@ -521,6 +671,28 @@ function createRoutes({ store, cfg, invoices }) {
         contact: text(form, "contact") || null,
         active: form.get("active") === "on",
       };
+      if (!confirmed(form)) {
+        return page(
+          views.confirmPage({
+            session: s,
+            active: "/managers",
+            eyebrow: "Менеджеры",
+            title: "Сохранить изменения?",
+            lines: [
+              ["Имя", cur.name === next.name ? next.name : `${cur.name} → ${next.name}`],
+              ["Контакт", next.contact ?? "—"],
+              [
+                "Работает",
+                next.active ? "да" : `нет${cur.active ? " — с клиентами его не снимет" : ""}`,
+              ],
+            ],
+            action: `/managers/${cur.id}`,
+            form,
+            back: `/managers/${cur.id}`,
+            danger: cur.active && !next.active,
+          }),
+        );
+      }
       store.updateManager(cur.id, next);
       store.log(t, by, "manager_edit", `manager:${cur.id}`, {
         имя: next.name,

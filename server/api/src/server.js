@@ -39,7 +39,7 @@ const path = require("node:path");
 const { parseLead, letterSubject, letterText } = require("../../leads/lead");
 const { openDb } = require("./db");
 const { createRateLimit, clientIp } = require("./rateLimit");
-const { newToken, isToken, demoLetter } = require("./demo");
+const { newToken, isToken, demoLetter, deviceOf } = require("./demo");
 const { parseReport, scrubDeep } = require("./support");
 
 const MAX_BODY_BYTES = 32 * 1024;
@@ -340,7 +340,52 @@ function createApp({ cfg, db, mail, cabinet = null, now = () => new Date(), log 
   /** Живая демо-ссылка по токену: есть в базе и срок не вышел. */
   function liveDemo(token, t) {
     const row = isToken(token) ? db.findDemo(token) : undefined;
-    return row && row.expires_at >= t.toISOString() ? row : undefined;
+    return row && !row.revoked_at && row.expires_at >= t.toISOString() ? row : undefined;
+  }
+
+  // Номер браузера для подсчёта «сколько человек открыли»: случайный, живёт
+  // в своей куке год. Не связан ни с почтой, ни с IP.
+  const VISITOR_COOKIE = demoLocal ? "uklad_dv" : "__Host-uklad_dv";
+  const visitorOf = (req) => {
+    const v = cookieValue(req, VISITOR_COOKIE);
+    return /^[A-Za-z0-9_-]{16}$/.test(v) ? v : "";
+  };
+  const eventLimiter = createRateLimit({ capacity: 30, refillPerMinute: 30 });
+  const EVENT_KINDS = new Set(["start", "view", "click", "beat", "leave"]);
+  const EVENTS_PER_LINK = 20_000;
+
+  /**
+   * События демо от кабинета: какие экраны, куда нажал, сколько пробыл.
+   * Принимаем только от браузера с живым пропуском; текст — короткая
+   * подпись кнопки или экрана, введённых значений кабинет не шлёт.
+   */
+  async function handleDemoEvents(req, res) {
+    const t = now();
+    const row = liveDemo(cookieValue(req, DEMO_COOKIE), t);
+    const visitor = visitorOf(req);
+    if (!row || !visitor) return send(res, 200, { ok: false });
+    if (!eventLimiter.take(row.token)) return send(res, 429, { ok: false });
+    const body = await readBody(req, 16 * 1024);
+    let list = [];
+    try {
+      list = body.ok ? JSON.parse(body.text).events : [];
+    } catch {
+      list = [];
+    }
+    if (!Array.isArray(list)) return send(res, 400, { ok: false });
+    let room = EVENTS_PER_LINK - db.countDemoEvents(row.token);
+    const device = deviceOf(req.headers["user-agent"]);
+    for (const e of list.slice(0, 50)) {
+      if (room <= 0) break;
+      if (!e || !EVENT_KINDS.has(e.k)) continue;
+      const what = String(e.v ?? "")
+        .replace(/\s+/g, " ")
+        .replace(/[^\p{L}\p{N}\p{P}\p{S} ]/gu, "")
+        .slice(0, 80);
+      db.addDemoEvent({ token: row.token, at: t.toISOString(), visitor, kind: e.k, what, device });
+      room -= 1;
+    }
+    return send(res, 200, { ok: true });
   }
 
   function handleDemo(req, res, token) {
@@ -354,9 +399,21 @@ function createApp({ cfg, db, mail, cabinet = null, now = () => new Date(), log 
     }
     db.openDemo(token, t);
     const left = Math.max(1, Math.floor((Date.parse(row.expires_at) - t.getTime()) / 1000));
+    const visitor = visitorOf(req) || newToken().slice(0, 16);
+    db.addDemoEvent({
+      token,
+      at: t.toISOString(),
+      visitor,
+      kind: "open",
+      what: "",
+      device: deviceOf(req.headers["user-agent"]),
+    });
     return send(res, 302, undefined, {
       Location: "/app/",
-      "Set-Cookie": `${DEMO_COOKIE}=${token}; ${demoAttrs}; Max-Age=${left}`,
+      "Set-Cookie": [
+        `${DEMO_COOKIE}=${token}; ${demoAttrs}; Max-Age=${left}`,
+        `${VISITOR_COOKIE}=${visitor}; ${demoAttrs}; Max-Age=31536000`,
+      ],
     });
   }
 
@@ -378,6 +435,9 @@ function createApp({ cfg, db, mail, cabinet = null, now = () => new Date(), log 
       if (url.pathname === "/api/support/reports") return await handleReport(req, res);
       const demo = /^\/d\/([^/]+)\/?$/.exec(url.pathname);
       if (demo && req.method === "GET") return handleDemo(req, res, demo[1]);
+      if (url.pathname === "/api/demo/events" && req.method === "POST") {
+        return await handleDemoEvents(req, res);
+      }
       if (url.pathname === "/api/demo/pass" && req.method === "GET") {
         return handleDemoPass(req, res);
       }
@@ -414,7 +474,16 @@ function main() {
     pool = new pg.Pool({ connectionString: process.env.DATABASE_URL, max: 10 });
     // Обрыв простаивающего соединения не должен ронять процесс.
     pool.on("error", (e) => console.error("[uklad] база:", e.message));
-    const auth = createAuth({ pool, cfg, send, readBody, log: console, mail });
+    const { registeredAccount } = require("./admin/registered");
+    const auth = createAuth({
+      pool,
+      cfg,
+      send,
+      readBody,
+      log: console,
+      mail,
+      onRegister: (r) => registeredAccount(db.raw, r, new Date()),
+    });
     auth.purge();
     setInterval(auth.purge, DAY_MS).unref();
     // Чат: без CENTRIFUGO_* работает, только кабинет сам перечитывает ленту.
