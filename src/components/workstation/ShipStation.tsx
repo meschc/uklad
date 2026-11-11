@@ -12,7 +12,10 @@ import {
   outboundUnits,
   planLoad,
 } from "@/lib/outbound";
-import { beep } from "@/lib/beep";
+import { beep, beepNotes } from "@/lib/beep";
+import { destinationMark } from "@/lib/destinationMark";
+import { parseBadge } from "@/lib/workstation";
+import { isSenior } from "@/lib/docFlow";
 import type { FulfillmentRequest } from "@/lib/types";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -24,6 +27,7 @@ import { EmptyState } from "@/components/fulfillment/ScreenShell";
 import { ScanField } from "@/components/fulfillment/ScanField";
 import { ScanBanner, type BannerTone } from "./ScanBanner";
 import { useDemoHints } from "./useDemoHints";
+import { DestinationChip } from "./DestinationChip";
 
 /**
  * Отгрузка за столом: собранные заявки одного назначения уезжают одной
@@ -84,7 +88,9 @@ function ShipList({
             key={keyOf(g)}
             className="flex flex-wrap items-baseline justify-between gap-3 border-t border-border pt-6"
           >
-            <h3 className="text-lg font-semibold">{g.target ?? t("ws.ship.noTarget")}</h3>
+            <h3 className="text-lg">
+              <DestinationChip destination={g.target ?? t("ws.ship.noTarget")} />
+            </h3>
             <div className="flex items-center gap-4">
               <span className={eyebrow({ tone: "muted" })}>
                 {t("ws.ship.count", { n: g.items.length })}
@@ -113,6 +119,7 @@ function ShipGroup({
   const t = useT();
   const products = useEditor((s) => s.products);
   const allRequests = useEditor((s) => s.requests);
+  const staff = useEditor((s) => s.warehouse.staff);
   const outbound = useEditor((s) => s.outboundBoxes);
   const boxes = useEditor((s) => s.boxes);
   const pallets = useEditor((s) => s.pallets);
@@ -124,11 +131,18 @@ function ShipGroup({
     tone: "idle",
     text: "",
   });
+  // Повторный скан останавливает погрузку до бейджа старшего: короб, который
+  // «пикнули» дважды, обычно значит, что второй, похожий, уехал не туда.
+  const [locked, setLocked] = useState<string | null>(null);
   const timer = useRef<number | undefined>(undefined);
   useEffect(() => () => window.clearTimeout(timer.current), []);
 
   const flash = (tone: "ok" | "error", text: string) => {
     beep(tone);
+    show(tone, text);
+  };
+  // Без общего писка: у принятого короба свой звук назначения.
+  const show = (tone: "ok" | "error", text: string) => {
     window.clearTimeout(timer.current);
     setBanner({ tone, text });
     // Ошибка висит до следующего скана, «принято» гаснет само.
@@ -149,6 +163,14 @@ function ShipGroup({
   const staying = items.length - plan.going.length;
 
   const onScan = (raw: string) => {
+    if (locked) {
+      const id = parseBadge(raw);
+      const senior = id ? staff?.find((m) => m.id === id) : undefined;
+      if (!senior || !isSenior(senior))
+        return flash("error", t("ws.ship.locked", { code: locked }));
+      setLocked(null);
+      return flash("ok", t("ws.ship.unlocked", { name: senior.name }));
+    }
     if (!vehicle) {
       const plate = parseVehicle(raw);
       if (!plate) return flash("error", t("ws.ship.notVehicle", { code: raw }));
@@ -167,7 +189,8 @@ function ShipGroup({
       case "not_unit":
         return flash("error", t("ws.ship.notUnit", { code: raw }));
       case "dup":
-        return flash("error", t("ws.ship.dup", { code: res.code }));
+        setLocked(res.code);
+        return flash("error", t("ws.ship.locked", { code: res.code }));
       case "shipped":
         return flash("error", t("ws.ship.unitShipped", { code: res.code }));
       case "foreign": {
@@ -181,7 +204,8 @@ function ShipGroup({
         return flash("error", t("ws.ship.mixed", { code: res.code }));
       case "ok":
         setUnits((u) => [...u, res.code]);
-        return flash(
+        beepNotes(destinationMark(target).notes);
+        return show(
           "ok",
           res.box
             ? t("ws.ship.boxOk", { code: res.code, n: outboundUnits(res.box) })
@@ -215,7 +239,9 @@ function ShipGroup({
   return (
     <section className="flex flex-col gap-4">
       <div className="flex items-baseline justify-between gap-3">
-        <h3 className="text-lg font-semibold">{target}</h3>
+        <h3 className="text-lg">
+          <DestinationChip destination={target} />
+        </h3>
         <span className={eyebrow({ tone: "muted" })}>
           {t("ws.ship.count", { n: items.length })}
         </span>

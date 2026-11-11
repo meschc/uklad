@@ -9,6 +9,25 @@ export type BeepTone = "ok" | "error";
 let ctx: AudioContext | undefined;
 
 export function beep(tone: BeepTone): void {
+  play(
+    tone === "ok"
+      ? [{ f: 1040, at: 0, len: 0.09 }]
+      : [
+          { f: 330, at: 0, len: 0.14 },
+          { f: 330, at: 0.2, len: 0.14 },
+        ],
+  );
+}
+
+/** Звук назначения (`destinationMark`): две короткие ноты, свои у каждого. */
+export function beepNotes([a, b]: readonly [number, number]): void {
+  play([
+    { f: a, at: 0, len: 0.08 },
+    { f: b, at: 0.11, len: 0.1 },
+  ]);
+}
+
+function play(notes: { f: number; at: number; len: number }[]): void {
   try {
     const Ctor =
       window.AudioContext ??
@@ -16,14 +35,6 @@ export function beep(tone: BeepTone): void {
     if (!Ctor) return;
     ctx ??= new Ctor();
     const c = ctx;
-    // Две ноты для ошибки, одна для успеха.
-    const notes =
-      tone === "ok"
-        ? [{ f: 1040, at: 0, len: 0.09 }]
-        : [
-            { f: 330, at: 0, len: 0.14 },
-            { f: 330, at: 0.2, len: 0.14 },
-          ];
     for (const n of notes) {
       const osc = c.createOscillator();
       const gain = c.createGain();

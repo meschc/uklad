@@ -7,6 +7,7 @@ import {
   explainScan,
   packSummary,
   pendingLabel,
+  targetCode,
   toteContents,
   toteOrders,
   toteRemaining,
@@ -15,7 +16,8 @@ import {
 import type { PackSession } from "@/lib/types";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { sizeLabel, useLabelPrinter } from "@/lib/labelPrinter";
-import { beep } from "@/lib/beep";
+import { beep, beepNotes } from "@/lib/beep";
+import { destinationMark } from "@/lib/destinationMark";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { eyebrow } from "@/components/ui/eyebrow";
@@ -24,6 +26,7 @@ import { ScanField, type ScanStatus } from "@/components/fulfillment/ScanField";
 import { PrintableLabel } from "./PrintableLabel";
 import { shortId } from "./useNow";
 import { useDemoHints } from "./useDemoHints";
+import { DestinationChip } from "./DestinationChip";
 
 export type PackResult = ReturnType<typeof packSummary> & { source: string; target: string };
 
@@ -55,8 +58,8 @@ export function PackRun({
   const [okText, setOkText] = useState<string | null>(null);
   const okTimer = useRef<number | undefined>(undefined);
   useEffect(() => () => window.clearTimeout(okTimer.current), []);
-  const flashOk = (text: string) => {
-    beep("ok");
+  const flashOk = (text: string, quiet = false) => {
+    if (!quiet) beep("ok");
     setFeedback(null);
     setOkText(text);
     window.clearTimeout(okTimer.current);
@@ -77,6 +80,8 @@ export function PackRun({
   const unit = session.units.find((u) => !u.confirmedAt);
   const orderLabel = !unit ? session.orderLabels.find((l) => !l.confirmedAt) : undefined;
   const summary = packSummary(session, box);
+  // Назначение короба отгрузки этой сессии: короб один на адрес (`targetCode`).
+  const dest = orders.find((o) => o.target && targetCode(o.target) === session.targetCode)?.target;
   const nameOf = (id: string) => products.find((p) => p.id === id)?.name ?? id;
 
   const onScan = async (code: string) => {
@@ -89,7 +94,11 @@ export function PackRun({
     if (mistake) return flashError({ status: "error", key: `ws.chk.${mistake}` });
     if (label) {
       const res = await workstationRepository.packLabel(code);
-      if (res.ok) return flashOk(t("ws.ok.label"));
+      if (res.ok) {
+        // Свой звук назначения: на слух ясно, в какой короб класть.
+        if (dest) beepNotes(destinationMark(dest).notes);
+        return flashOk(t("ws.ok.label"), !!dest);
+      }
       // Не этикетка, а товар — значит, этикетку ещё не наклеили.
       const item = await workstationRepository.packItem(code);
       return flashError({
@@ -219,8 +228,9 @@ export function PackRun({
                 {t("ws.run.unitOf", { i: doneOfProduct, n: contents.get(product.id) ?? 0 })}
               </p>
               {order && (
-                <p className="text-sm text-muted-foreground">
-                  {t("ws.run.forOrder", { id: shortId(order.id), target: order.target ?? "—" })}
+                <p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                  {t("ws.run.forOrder", { id: shortId(order.id) })}
+                  {order.target && <DestinationChip destination={order.target} />}
                 </p>
               )}
               <div className="mt-auto flex flex-col items-start gap-3">
@@ -358,6 +368,7 @@ export function PackRun({
         <div className="ml-auto flex flex-wrap items-center gap-3">
           <p className="text-xs text-muted-foreground">
             {t("ws.run.outTote")} <span className="font-mono">{session.targetCode}</span>
+            {dest && <DestinationChip destination={dest} className="ml-2 text-xs" />}
           </p>
           <Button
             size="lg"
