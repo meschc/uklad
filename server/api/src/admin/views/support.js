@@ -27,7 +27,7 @@ function supportList({ session, reports, status }) {
   return page(
     session,
     "Поддержка",
-    `<div class="head"><h1>Поддержка</h1><span class="count">${reports.length}</span></div>
+    `${b.head("Клиенты", `Поддержка · ${reports.length}`)}
     <p class="muted">Обращения «Сообщить о проблеме» из кабинета. Журнал и копия данных приходят уже без имён и контактов. Хранятся 90 дней.</p>
     <div class="bar"><div class="seg">${tab("", "Все")}${Object.entries(STATUS)
       .map(([k, v]) => tab(k, v))
@@ -58,7 +58,7 @@ function supportPage({ session, report: r, payload }) {
     `<a class="back" href="/support">← Поддержка</a>
     <div class="head"><h1>Обращение № ${r.id}</h1><span class="badge ${BADGE[r.status] ?? ""}">${STATUS[r.status] ?? esc(r.status)}</span></div>
     <div class="cols">
-      <section class="card stack">
+      <section class="panel">
         <h2>Что случилось</h2>
         <p class="pre">${esc(r.message)}</p>
         <dl><dt>Когда</dt><dd>${when(r.created_at)}</dd><dt>Экран</dt><dd>${esc(env.view)}</dd>
@@ -69,10 +69,10 @@ function supportPage({ session, report: r, payload }) {
               ? `есть: заменено имён ${Number(stats.names) || 0}, удалено полей ${Number(stats.dropped) || 0}, скрыто текстов ${Number(stats.texts) || 0}`
               : "не приложена"
           }</dd></dl>
-        <div class="actions"><a class="btn ghost sm" href="/support/${r.id}.json">Скачать обращение целиком</a></div>
+        <div class="actions"><a class="btn soft sm" href="/support/${r.id}.json">Скачать обращение целиком</a></div>
         <p class="muted small">Файл — для разбора ошибки: в нём журнал и копия без имён. Скачивание пишется в журнал админки.</p>
       </section>
-      <form class="card form" method="post" action="/support/${r.id}">${hidden(session)}
+      <form class="form" method="post" action="/support/${r.id}">${hidden(session)}
         <h2>Что с обращением</h2>
         <label>Статус<select name="status">${Object.entries(STATUS)
           .map(([k, v]) => opt(k, v, r.status))

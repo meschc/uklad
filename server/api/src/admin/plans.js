@@ -60,8 +60,8 @@ const PLAN_LIMITS = {
   corporate: { warehouses: null, skus: null, staff: null, sellers: null },
 };
 
-/** Пробный период первым складам — 3 месяца с подключения. */
-const TRIAL_MONTHS = 3;
+/** Пробный период — 1 месяц с подключения, для всех, кто пришёл с сайта (Кирилл 2.11). Спецусловия после созвона задаются вручную в карточке. Равен `OFFER.freeMonths` витрины (src/site/data/offer.ts), тест сверяет. */
+const TRIAL_MONTHS = 1;
 
 function addMonths(iso, months) {
   const d = new Date(iso);

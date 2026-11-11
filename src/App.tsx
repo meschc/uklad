@@ -10,6 +10,7 @@ import { authRepository } from "@/lib/data/authRepository";
 import { hasCabinetServer, setUnauthorizedHandler } from "@/lib/data/api";
 import { holdsCompanyCopy, startServerSync } from "@/lib/store/serverSync";
 import { demoRepository } from "@/lib/data/demoRepository";
+import { startDemoTrack } from "@/lib/demoTrack";
 import { SideNav } from "@/components/nav/SideNav";
 import { navFor } from "@/components/nav/navItems";
 import type { AppView } from "@/lib/types";
@@ -176,6 +177,14 @@ export default function App() {
   // памяти, нажать и ввести там ничего нельзя (`main.tsx`), так что кабинетом
   // в обход заявки он не служит, а чужих данных в нём нет (`store/index.ts`).
   const demo = useDemoPass(serverSession || IS_EMBED);
+  // По личной демо-ссылке пишем след: экраны, нажатия, время (`lib/demoTrack`).
+  useEffect(() => {
+    if (demo !== "open") return;
+    return startDemoTrack(
+      () => useEditor.getState().appView,
+      (cb) => useEditor.subscribe((s, prev) => s.appView !== prev.appView && cb(s.appView)),
+    );
+  }, [demo]);
   const locked = useEditor((s) =>
     IS_EMBED
       ? false
