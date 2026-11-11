@@ -54,7 +54,7 @@ test("за 7 дней до конца пробного — один счёт и 
   const made = await invoices.issueDue("2026-11-10T10:00:00.000Z");
   assert.equal(made.length, 1);
   assert.equal(made[0].number, "UK-2026-0001");
-  assert.equal(made[0].amount, 9900);
+  assert.equal(made[0].amount, 12900);
   assert.equal(made[0].due_at, "2026-11-15T20:59:59.999Z");
   assert.equal(letters.length, 1);
   assert.match(letters[0].text, /UK-2026-0001/);
@@ -83,7 +83,7 @@ test("рано и продавцам счёт не выставляется", as
 test("«Оплачено» продлевает от конца срока и только один раз", async () => {
   const { store, invoices, id } = setup({ trialUntil: "2026-11-15T20:59:59.999Z", period: "half" });
   const [inv] = await invoices.issueDue("2026-11-10T10:00:00.000Z");
-  assert.equal(inv.amount, 9900 * 6);
+  assert.equal(inv.amount, 12900 * 6);
   store.updateAccount(id, { paid_until: "2026-11-15T20:59:59.999Z" }, new Date());
   const r = invoices.markPaid(inv.id, "2026-11-12T10:00:00.000Z", 1);
   assert.equal(r.paidUntil, "2027-05-15T20:59:59.999Z");
@@ -96,7 +96,7 @@ test("поиск по строке выписки: номер, сумма", asyn
   const { invoices } = setup({ trialUntil: "2026-11-15T20:59:59.999Z" });
   await invoices.issueDue("2026-11-10T10:00:00.000Z");
   assert.equal(invoices.find("Оплата по счёту № uk-2026-0001 за доступ").length, 1);
-  assert.equal(invoices.find("9 900,00").length, 1);
+  assert.equal(invoices.find("12 900,00").length, 1);
   assert.equal(invoices.find("UK-2026-0002").length, 0);
 });
 
