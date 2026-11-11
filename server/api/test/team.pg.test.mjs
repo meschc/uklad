@@ -21,16 +21,20 @@ before(async () => {
   const { createApp, send, readBody } = require("../src/server.js");
   const { createAuth } = require("../src/cabinet/auth.js");
   const { createTeam } = require("../src/cabinet/team.js");
+  const { createDeskBadges } = require("../src/cabinet/deskBadges.js");
   db = await helpers.setupDb();
   const cfg = { publicUrl: ORIGIN, allowedOrigins: [ORIGIN], trustProxy: true };
   const quiet = { error() {} };
   const mail = { sendTo: async (m) => void sent.push(m) };
   const auth = createAuth({ pool: db.pool, cfg, send, readBody, log: quiet, mail });
   const team = createTeam({ auth, cfg, send, log: quiet });
+  const badges = createDeskBadges({ auth, send, log: quiet });
   cookieName = auth.cookieName;
   const cabinet = {
     handle: async (req, res, url) =>
-      (await auth.handle(req, res, url)) || (await team.handle(req, res, url)),
+      (await auth.handle(req, res, url)) ||
+      (await team.handle(req, res, url)) ||
+      (await badges.handle(req, res, url)),
   };
   server = http.createServer(
     createApp({
@@ -494,3 +498,30 @@ test(
     assert.equal(free.status, 200);
   },
 );
+
+test("бейдж на строку с ролью выше своей не выпустить и не погасить", { skip: SKIP }, async () => {
+  const boss = await owner("boss-badge@example.com", "10.1.0.11");
+  const r = await roles(boss);
+  const set = (staffRef, roleId) =>
+    post("/api/team/desk-role", { ...boss, body: { staffRef, roleId } });
+  assert.equal((await set("stf-top", r["Владелец"])).status, 200);
+  assert.equal((await set("stf-low", r["Кладовщик"])).status, 200);
+  // Своя роль начальника без goods.decide: бейдж на владельца ему не выпустить.
+  const saved = await post("/api/team/roles/save", {
+    ...boss,
+    body: { name: "Начальник без решений", permissions: ["staff.manage", "stock.view"] },
+  });
+  const chief = await join(boss, "chief-badge@example.com", saved.json.roleId);
+  const issue = (who, staffRef) =>
+    post("/api/cabinet/badges/issue", { ...who, body: { staffRef } });
+  const revoke = (who, staffRef) =>
+    post("/api/cabinet/badges/revoke", { ...who, body: { staffRef } });
+  assert.equal((await issue(chief, "stf-top")).status, 403);
+  assert.equal((await issue(boss, "stf-top")).status, 200);
+  assert.equal((await revoke(chief, "stf-top")).status, 403);
+  // У кладовщика есть права, которых нет у этого начальника, — тоже нельзя;
+  // строку без роли — можно.
+  assert.equal((await issue(chief, "stf-low")).status, 403);
+  assert.equal((await issue(chief, "stf-new")).status, 200);
+  assert.equal((await revoke(chief, "stf-new")).status, 200);
+});

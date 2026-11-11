@@ -115,6 +115,20 @@ BEGIN
   UPDATE uklad.roles SET deleted_at = now() WHERE id = p_role;
 END $$;
 
+-- Бейдж — это вход за стол с правами роли строки. Выпустить или погасить
+-- его может только тот, у кого все права этой роли: иначе руководитель без
+-- `goods.decide` выпустил бы себе бейдж на строку начальника и списывал бы
+-- за столом, а один человек с двумя бейджами обошёл бы «четыре глаза».
+CREATE FUNCTION auth.may_badge(p_staff_ref text) RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = auth, uklad, pg_temp AS $$
+  SELECT NOT EXISTS (
+    SELECT 1 FROM uklad.desk_staff_roles d
+    JOIN uklad.roles r ON r.org_id = d.org_id AND r.id = d.role_id
+    WHERE d.org_id = uklad.current_org() AND d.staff_ref = p_staff_ref
+      AND NOT (r.permissions <@ auth.actor_permissions())
+  )
+$$;
+
 -- Права сотрудников стола одним запросом: `staff_ref → права`. Удалённая
 -- роль прав не даёт.
 CREATE FUNCTION uklad.desk_staff_permissions(p_refs text[])
@@ -125,6 +139,6 @@ LANGUAGE sql STABLE AS $$
   WHERE d.org_id = uklad.current_org() AND d.staff_ref = ANY (p_refs)
 $$;
 
-REVOKE EXECUTE ON FUNCTION auth.set_desk_staff_role(text, uuid) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION auth.set_desk_staff_role(text, uuid) TO uklad_app;
+REVOKE EXECUTE ON FUNCTION auth.set_desk_staff_role(text, uuid), auth.may_badge(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION auth.set_desk_staff_role(text, uuid), auth.may_badge(text) TO uklad_app;
 GRANT EXECUTE ON FUNCTION uklad.desk_staff_permissions(text[]) TO uklad_app;

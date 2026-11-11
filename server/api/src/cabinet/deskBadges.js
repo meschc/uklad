@@ -36,6 +36,8 @@ const FORBIDDEN = Symbol("forbidden");
 const LIMITED = Symbol("limited");
 const sha256 = (s) => createHash("sha256").update(s).digest();
 /** Тот же круг, что у снимка: персонал и журнал смен видит руководитель. */
+const mayBadge = async (c, staffRef) =>
+  (await c.query(`SELECT auth.may_badge($1) AS ok`, [staffRef])).rows[0].ok === true;
 const mayUse = (ctx) => Boolean(ctx.accountId) && ctx.can("staff.manage");
 
 /**
@@ -95,6 +97,8 @@ function createDeskBadges({ auth, send, log }) {
     const secret = randomBytes(16).toString("base64url");
     const out = await withSession(req, async (c, ctx) => {
       if (!mayUse(ctx)) return FORBIDDEN;
+      // Бейдж на строку с ролью выше своей не выпустить и не погасить (024).
+      if (!(await mayBadge(c, staffRef))) return FORBIDDEN;
       // Сначала гасим старый, потом выпускаем новый: индекс «один живой»
       // не даст двум одновременным выпускам оставить оба бейджа.
       await c.query(
@@ -120,6 +124,8 @@ function createDeskBadges({ auth, send, log }) {
     if (!STAFF_REF_RE.test(staffRef)) return send(res, 400, { ok: false, error: "bad_request" });
     const out = await withSession(req, async (c, ctx) => {
       if (!mayUse(ctx)) return FORBIDDEN;
+      // Бейдж на строку с ролью выше своей не выпустить и не погасить (024).
+      if (!(await mayBadge(c, staffRef))) return FORBIDDEN;
       const { rowCount } = await c.query(
         `UPDATE uklad.desk_badges SET revoked_at = now(), revoked_by = $2
          WHERE org_id = uklad.current_org() AND staff_ref = $1 AND revoked_at IS NULL`,
