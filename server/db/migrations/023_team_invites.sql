@@ -38,6 +38,31 @@ $$;
 CREATE FUNCTION auth.actor_member() RETURNS uuid
 LANGUAGE sql STABLE AS $$ SELECT nullif(current_setting('app.member_id', true), '')::uuid $$;
 
+-- Управлять командой может только тот, у кого есть право `staff.manage`.
+-- Проверяет и сервер, но функции базы не полагаются на него: новый маршрут,
+-- который вызовет их с сессией кладовщика, не должен дать ему менять людей.
+CREATE FUNCTION auth.assert_staff() RETURNS void
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = auth, uklad, pg_temp AS $$
+BEGIN
+  IF NOT ('staff.manage' = ANY (auth.actor_permissions())) THEN
+    RAISE EXCEPTION 'team:role_not_allowed';
+  END IF;
+END $$;
+
+-- Приглашение живёт, пока жив пригласивший: он активен и права роли
+-- приглашённого не выше его нынешних. Отключили руководителя — его
+-- неоткрытые ссылки мертвы, а не ждут, чтобы вернуть его со стороны.
+CREATE FUNCTION auth.inviter_still_may(p_invited_by uuid, p_role uuid) RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = auth, uklad, pg_temp AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM uklad.members m
+    JOIN uklad.roles r ON r.org_id = m.org_id AND r.id = m.role_id
+    JOIN uklad.roles t ON t.org_id = m.org_id AND t.id = p_role AND t.deleted_at IS NULL
+    WHERE m.id = p_invited_by AND m.org_id = uklad.current_org()
+      AND m.deleted_at IS NULL AND m.status IN ('active', 'sleeping')
+      AND 'staff.manage' = ANY (r.permissions) AND t.permissions <@ r.permissions)
+$$;
+
 -- Список людей компании: роль, статус, почта (если есть вход), бейдж.
 CREATE FUNCTION auth.team_list()
 RETURNS TABLE (member_id uuid, name text, email text, role_id uuid, role_name text,
@@ -71,10 +96,17 @@ DECLARE
   v_perms text[];
   v_member uuid;
 BEGIN
+  PERFORM auth.assert_staff();
   SELECT r.permissions INTO v_perms FROM uklad.roles r
   WHERE r.id = p_role AND r.org_id = uklad.current_org() AND r.deleted_at IS NULL;
   IF NOT FOUND THEN RAISE EXCEPTION 'team:not_found'; END IF;
   IF NOT (v_perms <@ auth.actor_permissions()) THEN RAISE EXCEPTION 'team:role_not_allowed'; END IF;
+  -- Письма уходят с нашего домена: суточный потолок на компанию не даёт
+  -- циклом «отозвать → пригласить» разослать их тысячи.
+  IF (SELECT count(*) FROM auth.invitations i
+      WHERE i.org_id = uklad.current_org() AND i.created_at > now() - interval '1 day') >= 50 THEN
+    RAISE EXCEPTION 'team:too_many_invites';
+  END IF;
   IF EXISTS (SELECT 1 FROM uklad.members m JOIN auth.accounts a ON a.id = m.account_id
              WHERE m.org_id = uklad.current_org() AND m.deleted_at IS NULL AND a.email = v_email) THEN
     RAISE EXCEPTION 'team:already_member';
@@ -109,7 +141,16 @@ END $$;
 -- Отозвать приглашение: карточка человека, который так и не пришёл, гаснет.
 CREATE FUNCTION auth.revoke_invite(p_member uuid) RETURNS void
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = auth, uklad, pg_temp AS $$
+DECLARE v_perms text[];
 BEGIN
+  PERFORM auth.assert_staff();
+  -- Приглашение человеку с правами выше своих не отозвать, как и его самого.
+  SELECT r.permissions INTO v_perms FROM uklad.members m
+  JOIN uklad.roles r ON r.org_id = m.org_id AND r.id = m.role_id
+  WHERE m.id = p_member AND m.org_id = uklad.current_org();
+  IF FOUND AND NOT (v_perms <@ auth.actor_permissions()) THEN
+    RAISE EXCEPTION 'team:role_not_allowed';
+  END IF;
   UPDATE uklad.members SET status = 'expired', deleted_at = now()
   WHERE id = p_member AND org_id = uklad.current_org()
     AND account_id IS NULL AND status = 'invited' AND deleted_at IS NULL;
@@ -124,6 +165,7 @@ CREATE FUNCTION auth.assert_may_touch(p_member uuid) RETURNS void
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = auth, uklad, pg_temp AS $$
 DECLARE v_perms text[];
 BEGIN
+  PERFORM auth.assert_staff();
   SELECT r.permissions INTO v_perms FROM uklad.members m
   JOIN uklad.roles r ON r.org_id = m.org_id AND r.id = m.role_id
   WHERE m.id = p_member AND m.org_id = uklad.current_org() AND m.deleted_at IS NULL;
@@ -142,6 +184,9 @@ BEGIN
   IF NOT FOUND THEN RAISE EXCEPTION 'team:not_found'; END IF;
   IF NOT (v_perms <@ auth.actor_permissions()) THEN RAISE EXCEPTION 'team:role_not_allowed'; END IF;
   UPDATE uklad.members SET role_id = p_role WHERE id = p_member;
+  -- Права человека изменились — его неоткрытые приглашения устарели.
+  UPDATE auth.invitations SET revoked_at = now()
+  WHERE invited_by = p_member AND accepted_at IS NULL AND revoked_at IS NULL;
 END $$;
 
 -- Отключить или вернуть. Отключённый не входит ни паролем, ни бейджем
@@ -152,6 +197,9 @@ BEGIN
   PERFORM auth.assert_may_touch(p_member);
   IF p_disabled THEN
     UPDATE uklad.members SET status = 'disabled' WHERE id = p_member;
+    -- Отключённый не оставляет за собой живых ссылок.
+    UPDATE auth.invitations SET revoked_at = now()
+    WHERE invited_by = p_member AND accepted_at IS NULL AND revoked_at IS NULL;
     UPDATE auth.badges SET revoked_at = now() WHERE member_id = p_member AND revoked_at IS NULL;
     UPDATE auth.sessions SET revoked_at = now()
     WHERE kind = 'badge' AND member_id = p_member AND revoked_at IS NULL;
@@ -171,6 +219,7 @@ DECLARE
   v_old text[];
   v_default boolean;
 BEGIN
+  PERFORM auth.assert_staff();
   IF length(trim(p_name)) NOT BETWEEN 1 AND 100 THEN RAISE EXCEPTION 'team:bad_name'; END IF;
   IF 'org.manage' = ANY (p_perms) THEN RAISE EXCEPTION 'team:role_not_allowed'; END IF;
   IF NOT (p_perms <@ auth.actor_permissions()) THEN RAISE EXCEPTION 'team:role_not_allowed'; END IF;
@@ -197,6 +246,7 @@ CREATE FUNCTION auth.delete_role(p_role uuid) RETURNS void
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = auth, uklad, pg_temp AS $$
 DECLARE v_perms text[]; v_default boolean;
 BEGIN
+  PERFORM auth.assert_staff();
   SELECT r.permissions, r.is_default INTO v_perms, v_default FROM uklad.roles r
   WHERE r.id = p_role AND r.org_id = uklad.current_org() AND r.deleted_at IS NULL;
   IF NOT FOUND THEN RAISE EXCEPTION 'team:not_found'; END IF;
@@ -224,6 +274,10 @@ BEGIN
   IF NOT FOUND THEN RETURN; END IF;
   -- Таблицы компании под RLS: компанию ставит сама функция, по приглашению.
   PERFORM set_config('app.org_id', i.org_id::text, true);
+  IF NOT auth.inviter_still_may(i.invited_by, (SELECT m.role_id FROM uklad.members m WHERE m.id = i.member_id)) THEN
+    PERFORM set_config('app.org_id', '', true);
+    RETURN;
+  END IF;
   RETURN QUERY
   SELECT o.name, r.name, i.email,
          CASE WHEN a.id IS NULL THEN 'none'
@@ -264,6 +318,10 @@ BEGIN
     RETURN NULL;
   END IF;
   PERFORM set_config('app.org_id', i.org_id::text, true);
+  IF NOT auth.inviter_still_may(i.invited_by, (SELECT m.role_id FROM uklad.members m WHERE m.id = i.member_id)) THEN
+    PERFORM set_config('app.org_id', '', true);
+    RETURN NULL;
+  END IF;
   IF EXISTS (SELECT 1 FROM uklad.members m
              WHERE m.org_id = i.org_id AND m.account_id = p_account AND m.deleted_at IS NULL) THEN
     RAISE EXCEPTION 'team:already_member';

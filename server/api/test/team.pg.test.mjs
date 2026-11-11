@@ -382,3 +382,59 @@ test("свои роли: правка, занятая роль не удаляе
   const memberId = (await call("GET", "/api/team", boss)).json.me;
   assert.ok(memberId);
 });
+
+test(
+  "отключили пригласившего — его ссылка мертва, а чужого владельца не отозвать",
+  { skip: SKIP },
+  async () => {
+    const boss = await owner("boss7@example.com", "10.1.0.9");
+    const r = await roles(boss);
+    const chief = await join(boss, "chief7@example.com", r["Начальник склада"]);
+    const chiefId = (await call("GET", "/api/team", chief)).json.me;
+    // Начальник перед увольнением зовёт свою вторую почту.
+    await post("/api/team/invite", {
+      ...chief,
+      body: { email: "backdoor7@example.com", roleId: r["Начальник склада"] },
+    });
+    const token = tokenIn(await lastMail("backdoor7@example.com"));
+    assert.equal((await post("/api/auth/invite/info", { body: { token } })).status, 200);
+    await post("/api/team/disable", { ...boss, body: { memberId: chiefId } });
+    assert.equal((await post("/api/auth/invite/info", { body: { token } })).status, 404);
+    const late = await post("/api/auth/invite/accept", {
+      body: { token, password: PW, consent: true },
+    });
+    assert.equal(late.status, 404);
+    // Понизили пригласившего — приглашение тоже гаснет.
+    await post("/api/team/disable", { ...boss, body: { memberId: chiefId, disabled: false } });
+    await post("/api/team/invite", {
+      ...chief,
+      body: { email: "second7@example.com", roleId: r["Начальник склада"] },
+    });
+    const t2 = tokenIn(await lastMail("second7@example.com"));
+    await post("/api/team/role", { ...boss, body: { memberId: chiefId, roleId: r["Кладовщик"] } });
+    assert.equal((await post("/api/auth/invite/info", { body: { token: t2 } })).status, 404);
+    // Приглашение владельцу начальник отозвать не может.
+    await post("/api/team/role", {
+      ...boss,
+      body: { memberId: chiefId, roleId: r["Начальник склада"] },
+    });
+    await post("/api/team/invite", {
+      ...boss,
+      body: { email: "own7@example.com", roleId: r["Владелец"] },
+    });
+    const ownerId = (await call("GET", "/api/team", boss)).json.members.find(
+      (m) => m.email === "own7@example.com",
+    ).id;
+    assert.equal(
+      (await post("/api/team/invite/revoke", { ...chief, body: { memberId: ownerId } })).status,
+      403,
+    );
+  },
+);
+
+test("письмо-приглашение не несёт чужих переводов строк", { skip: SKIP }, () => {
+  const { inviteLetter } = require("../src/cabinet/letters.js");
+  const l = inviteLetter({ company: "Ёлка\r\nBcc: x@y.z", role: "Роль\nещё", link: "https://u" });
+  assert.ok(!/[\r\n]/.test(l.subject));
+  assert.ok(!l.text.includes("\nBcc:"));
+});
