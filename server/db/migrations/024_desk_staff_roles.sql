@@ -93,6 +93,21 @@ BEGIN
   VALUES (uklad.current_org(), p_staff_ref, p_role, auth.actor_member())
   ON CONFLICT (org_id, staff_ref)
   DO UPDATE SET role_id = EXCLUDED.role_id, set_by = EXCLUDED.set_by, updated_at = now();
+  -- Копия кода могла остаться у того, кто выпускал бейдж. Новая роль не
+  -- должна достаться ему через неё: гаснет живой бейдж, если у выпустившего
+  -- (или он уже отключён) нет всех прав новой роли. Бейдж от владельца или
+  -- равного остаётся, остальным перевыпустит тот, кто повысил.
+  IF p_role IS NOT NULL THEN
+    UPDATE uklad.desk_badges b SET revoked_at = now(), revoked_by = auth.actor_member()
+    WHERE b.org_id = uklad.current_org() AND b.staff_ref = p_staff_ref AND b.revoked_at IS NULL
+      AND NOT EXISTS (
+        SELECT 1 FROM uklad.members m
+        JOIN uklad.roles r ON r.org_id = m.org_id AND r.id = m.role_id
+        WHERE m.org_id = b.org_id AND m.id = b.issued_by
+          AND m.deleted_at IS NULL AND m.status <> 'disabled'
+          AND v_perms <@ r.permissions
+      );
+  END IF;
 END $$;
 
 -- Роль, которую носит сотрудник стола, не удалить — как и роль члена команды.

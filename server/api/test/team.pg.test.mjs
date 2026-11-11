@@ -525,3 +525,39 @@ test("бейдж на строку с ролью выше своей не вып
   assert.equal((await issue(chief, "stf-new")).status, 200);
   assert.equal((await revoke(chief, "stf-new")).status, 200);
 });
+
+test(
+  "повысили роль строки — бейдж от младшего руководителя погас, от владельца остался",
+  {
+    skip: SKIP,
+  },
+  async () => {
+    const boss = await owner("boss-raise@example.com", "10.1.0.12");
+    const r = await roles(boss);
+    const chief = await join(boss, "chief-raise@example.com", r["Начальник склада"]);
+    const issue = (who, staffRef) =>
+      post("/api/cabinet/badges/issue", { ...who, body: { staffRef } });
+    const set = (staffRef, roleId) =>
+      post("/api/team/desk-role", { ...boss, body: { staffRef, roleId } });
+    const live = async (staffRef) =>
+      (
+        await db.root.query(
+          `SELECT count(*)::int AS n FROM uklad.desk_badges
+         WHERE org_id = $1 AND staff_ref = $2 AND revoked_at IS NULL`,
+          [boss.org, staffRef],
+        )
+      ).rows[0].n;
+    // Новичкам без роли бейджи выпускают начальник и владелец.
+    assert.equal((await issue(chief, "stf-a")).status, 200);
+    assert.equal((await issue(boss, "stf-b")).status, 200);
+    // Владелец даёт обоим свою роль: копия у начальника не должна её получить.
+    assert.equal((await set("stf-a", r["Владелец"])).status, 200);
+    assert.equal((await set("stf-b", r["Владелец"])).status, 200);
+    assert.equal(await live("stf-a"), 0);
+    assert.equal(await live("stf-b"), 1);
+    // Роль в пределах прав начальника бейдж не гасит.
+    assert.equal((await issue(chief, "stf-c")).status, 200);
+    assert.equal((await set("stf-c", r["Кладовщик"])).status, 200);
+    assert.equal(await live("stf-c"), 1);
+  },
+);
