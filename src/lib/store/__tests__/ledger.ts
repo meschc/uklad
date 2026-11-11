@@ -1,4 +1,4 @@
-import { writesOffGoods } from "../../disputes";
+import { adoptsGoods, writesOffGoods } from "../../disputes";
 import type { EditorState } from "../state";
 
 /**
@@ -6,7 +6,8 @@ import type { EditorState } from "../state";
  * исчезает без следа и не числится в двух местах сразу.
  *
  * По каждому товару считаем три суммы:
- *   · пришло — события приёмки плюс то, что лежало на складе в начале;
+ *   · пришло — события приёмки плюс то, что лежало на складе в начале и
+ *     излишек инвентаризации, оприходованный старшим (товар найден, не принят);
  *   · на складе — тара и короба приёмки, открытые короба отгрузки и
  *     снятое в заявку без тары, пока заявка не уехала;
  *   · ушло — уехавшие короба отгрузки, уехавшее снятое в заявку и
@@ -53,6 +54,9 @@ function place(s: Stock, m: Map<string, Balance>) {
   for (const d of s.disputes ?? []) {
     if (d.resolution === "written_off" && writesOffGoods(d) && d.productId) {
       add(m, d.productId, "gone", d.qty);
+    }
+    if (d.resolution === "accepted" && adoptsGoods(d) && d.productId) {
+      add(m, d.productId, "in", d.qty);
     }
   }
 }

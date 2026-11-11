@@ -13,8 +13,8 @@
  * хранится в журнале операций, но в снимок не идёт. Отказ всем запросом
  * (400) — только для того, что не похоже на операцию вовсе.
  *
- * Здесь отметки смены, упаковка (`deskPack.js`), сборка (`deskPick.js`) и
- * приёмка (`deskReceive.js`).
+ * Здесь отметки смены, упаковка (`deskPack.js`), сборка (`deskPick.js`),
+ * приёмка (`deskReceive.js`) и инвентаризация (`deskInventory.js`).
  */
 
 /* global module, require, Buffer */
@@ -32,6 +32,7 @@ const {
   cargoMade,
 } = require("./deskReceive");
 const { applyShipRun, applyDisputeResolve } = require("./deskShip");
+const { applyInvCount } = require("./deskInventory");
 
 const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 
@@ -54,6 +55,7 @@ const RECV_KINDS = new Set([
   "recv_cargo",
 ]);
 const SHIP_KINDS = new Set(["ship_run", "dispute_resolve"]);
+const INV_KINDS = new Set(["inv_count"]);
 const NOW_ONLY = new Set(["dispute_resolve"]);
 /** Работа с товаром: правка снимка проходит сверку остатков. */
 const WORK = new Map([
@@ -69,6 +71,7 @@ const WORK = new Map([
   ["recv_cargo", applyRecvCargo],
   ["ship_run", applyShipRun],
   ["dispute_resolve", applyDisputeResolve],
+  ["inv_count", applyInvCount],
 ]);
 const KINDS = new Set([
   "shift_mark",
@@ -77,6 +80,7 @@ const KINDS = new Set([
   ...PICK_KINDS,
   ...RECV_KINDS,
   ...SHIP_KINDS,
+  ...INV_KINDS,
 ]);
 /**
  * Окно отмены по часам сервера: как в кабинете (`MARK_UNDO_MS`) плюс запас

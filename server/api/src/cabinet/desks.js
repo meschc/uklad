@@ -130,6 +130,18 @@ const SHIFT_EVENTS = new Set([
   "idle_end",
 ]);
 
+/** Решение старшего, которое меняет остаток тары: списание или оприходование. */
+const movesGoods = (d, resolution) =>
+  resolution === "written_off" || (resolution === "accepted" && d.kind === "inventory_over");
+
+/** Какие решения допустимы у какого вида спорного; у остальных — вернуть, переложить, списать. */
+const RESOLUTIONS_BY_KIND = {
+  receive_overage: new Set(["accepted", "written_off"]),
+  inventory_short: new Set(["returned", "written_off"]),
+  inventory_over: new Set(["returned", "accepted"]),
+};
+const OTHER_RES = new Set(["returned", "moved", "written_off"]);
+
 /**
  * После отката остатков: спорное как на сервере, но решения без списания
  * («переложили», «вернули») и новое открытое сохраняются.
@@ -138,7 +150,9 @@ function keepDecisions(current, merged) {
   const next = byId(merged);
   const kept = (Array.isArray(current) ? current : []).map((d) => {
     const n = isObject(d) ? next.get(d.id) : undefined;
-    return n && !d.resolution && n.resolution && n.resolution !== "written_off" ? n : d;
+    // Решения, которые двигают товар (списание, оприходование излишка),
+    // от остатков зависят — после отката их не оставляем.
+    return n && !d.resolution && n.resolution && !movesGoods(d, n.resolution) ? n : d;
   });
   // Лишнее с приёмки заводится вместе с приёмкой: откатилась она — нет и его.
   return appendOnly(kept, merged, (d) => !d.resolution && d.kind !== "receive_overage");
@@ -217,7 +231,6 @@ function mergeRequests(current, incoming, people, boxes) {
  * Спорное со стола: новое добавляется, открытое можно решить (старший решает
  * за столом), решённое не меняется — решение старшего не перепишешь.
  */
-const OVERAGE_RES = new Set(["accepted", "written_off"]);
 
 function mergeDisputes(current, incoming, people) {
   const next = byId(incoming);
@@ -235,15 +248,16 @@ function mergeDisputes(current, incoming, people) {
         : was;
     if (!n.resolution) return grown;
     const d = grown;
-    // Лишнее с приёмки оставляют или списывают; «оставить» — только для него.
-    const overage = d.kind === "receive_overage";
-    if (overage ? !OVERAGE_RES.has(n.resolution) : n.resolution === "accepted") return d;
+    // У каждого вида свои решения: лишнее с приёмки оставляют или списывают,
+    // по инвентаризации правят учёт к факту либо закрывают без правки.
+    if (!(RESOLUTIONS_BY_KIND[d.kind] ?? OTHER_RES).has(n.resolution)) return d;
     // Решает старший, который сейчас за столом, и только от своего имени.
     if (!people.isSenior || n.resolvedBy !== people.staff) return d;
     // Списание — с причиной и не тем, кто нашёл (как в кабинете, #71):
     // иначе свою же недостачу можно списать в одиночку.
+    // То же — оприходование излишка: товар из ничего подтверждает второй.
     if (
-      n.resolution === "written_off" &&
+      movesGoods(d, n.resolution) &&
       (n.resolvedBy === d.raisedBy || !String(n.note ?? "").trim())
     )
       return d;

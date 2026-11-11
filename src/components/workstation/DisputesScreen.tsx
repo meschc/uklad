@@ -6,7 +6,7 @@ import { isSessionLive } from "@/lib/workstation";
 import { disputesRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
 import { isSenior } from "@/lib/docFlow";
-import { resolutionsFor } from "@/lib/disputes";
+import { isInventoryDispute, needsSecondPair, resolutionsFor } from "@/lib/disputes";
 import type { Dispute, DisputeKind, DisputeResolution } from "@/lib/types";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -25,6 +25,8 @@ const KIND_KEY: Record<DisputeKind, MsgKey> = {
   extra: "disputes.kind.extra",
   not_packable: "disputes.kind.not_packable",
   receive_overage: "disputes.kind.receive_overage",
+  inventory_short: "disputes.kind.inventory_short",
+  inventory_over: "disputes.kind.inventory_over",
 };
 
 const RES_KEY: Record<DisputeResolution, MsgKey> = {
@@ -33,6 +35,25 @@ const RES_KEY: Record<DisputeResolution, MsgKey> = {
   written_off: "disputes.res.written_off",
   accepted: "disputes.res.accepted",
 };
+
+/** Что написать на кнопке решения: у пересчёта свои слова, чем у остального спорного. */
+function actKey(d: Dispute, r: DisputeResolution): MsgKey {
+  if (isInventoryDispute(d)) {
+    if (r === "returned") return "disputes.act.inventoryClose";
+    if (r === "accepted") return "disputes.act.inventoryAdopt";
+    return "disputes.act.inventoryWriteOff";
+  }
+  if (r === "written_off") {
+    return d.kind === "receive_overage" ? "disputes.act.overageOff" : "disputes.act.written_off";
+  }
+  return ACT_KEY[r];
+}
+
+function resKey(d: Dispute): MsgKey {
+  if (isInventoryDispute(d) && d.resolution === "returned") return "disputes.res.inventoryClose";
+  if (isInventoryDispute(d) && d.resolution === "accepted") return "disputes.res.inventoryAdopt";
+  return RES_KEY[d.resolution!];
+}
 
 const ACT_KEY: Record<Exclude<DisputeResolution, "written_off">, MsgKey> = {
   returned: "disputes.act.returned",
@@ -65,7 +86,9 @@ export function DisputesScreen() {
 
   const role = useEditor(selectRole);
   const now = useNow();
-  const [writing, setWriting] = useState<string | null>(null);
+  const [writing, setWriting] = useState<{ id: string; resolution: DisputeResolution } | null>(
+    null,
+  );
   const [reason, setReason] = useState("");
 
   // Решает тот, кто явно вправе: руководитель склада из кабинета (роль склада,
@@ -118,12 +141,12 @@ export function DisputesScreen() {
             >
               <Line d={d} name={nameOf(d.productId)} who={who(d.raisedBy)} />
               {canResolve &&
-                (writing === d.id ? (
+                (writing?.id === d.id ? (
                   <form
                     className="flex flex-wrap items-center gap-2"
                     onSubmit={async (e) => {
                       e.preventDefault();
-                      const res = await resolve.run(d.id, "written_off", by, reason);
+                      const res = await resolve.run(d.id, writing.resolution, by, reason);
                       if (res.ok) {
                         setWriting(null);
                         setReason("");
@@ -137,8 +160,16 @@ export function DisputesScreen() {
                       placeholder={t("disputes.reason")}
                       onChange={(e) => setReason(e.target.value)}
                     />
-                    <Button type="submit" variant="destructive" disabled={!reason.trim()}>
-                      {t("disputes.confirmWriteOff")}
+                    <Button
+                      type="submit"
+                      variant={writing.resolution === "written_off" ? "destructive" : "default"}
+                      disabled={!reason.trim()}
+                    >
+                      {t(
+                        writing.resolution === "written_off"
+                          ? "disputes.confirmWriteOff"
+                          : "disputes.confirmAdopt",
+                      )}
                     </Button>
                     <Button type="button" variant="ghost" onClick={() => setWriting(null)}>
                       {t("disputes.cancel")}
@@ -146,30 +177,28 @@ export function DisputesScreen() {
                   </form>
                 ) : (
                   <div className="flex flex-wrap gap-2">
-                    {resolutionsFor(d)
-                      .filter((r) => r !== "written_off")
-                      .map((r) => (
+                    {resolutionsFor(d).map((r) =>
+                      needsSecondPair(d, r) ? (
+                        <Button
+                          key={r}
+                          variant={r === "written_off" ? "destructive" : "default"}
+                          onClick={() => {
+                            setReason("");
+                            setWriting({ id: d.id, resolution: r });
+                          }}
+                        >
+                          {t(actKey(d, r))}
+                        </Button>
+                      ) : (
                         <Button
                           key={r}
                           variant="outline"
                           onClick={() => void resolve.run(d.id, r, by)}
                         >
-                          {t(ACT_KEY[r])}
+                          {t(actKey(d, r))}
                         </Button>
-                      ))}
-                    <Button
-                      variant="destructive"
-                      onClick={() => {
-                        setReason("");
-                        setWriting(d.id);
-                      }}
-                    >
-                      {t(
-                        d.kind === "receive_overage"
-                          ? "disputes.act.overageOff"
-                          : "disputes.act.written_off",
-                      )}
-                    </Button>
+                      ),
+                    )}
                   </div>
                 ))}
             </li>
@@ -195,7 +224,7 @@ export function DisputesScreen() {
                   {t(KIND_KEY[d.kind])} · {nameOf(d.productId)} · {d.qty}
                 </span>
                 <span>
-                  {t(RES_KEY[d.resolution!])} · {who(d.resolvedBy!)} · {fmt(d.resolvedAt!)}
+                  {t(resKey(d))} · {who(d.resolvedBy!)} · {fmt(d.resolvedAt!)}
                   {d.note ? ` · ${d.note}` : ""}
                 </span>
               </li>
@@ -215,7 +244,7 @@ function Line({ d, name, who }: { d: Dispute; name: string; who: string }) {
         <span
           className={cn(
             "text-sm font-semibold",
-            d.kind === "shortage" ? "text-warning" : "text-destructive",
+            d.kind === "shortage" || isInventoryDispute(d) ? "text-warning" : "text-destructive",
           )}
         >
           {t(KIND_KEY[d.kind])}

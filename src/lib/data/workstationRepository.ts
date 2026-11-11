@@ -1,4 +1,5 @@
 import type { ItemScan } from "../packing";
+import type { CountLine } from "../inventory";
 import type {
   CellAddress,
   Device,
@@ -65,6 +66,12 @@ export interface WorkstationRepository {
     requestIds: string[],
     info: { vehicle: string; staffId: string; units: string[] },
   ) => Promise<Result<string | null>>;
+  /**
+   * Инвентаризация: слепой пересчёт тары на полке. Ответ — сошлось ли с
+   * учётом; сами числа учёта сотруднику не возвращаются. Не получилось —
+   * отказ `ws.count.<причина>`.
+   */
+  countBox: (boxId: string, lines: CountLine[]) => Promise<Result<{ matched: boolean }>>;
 }
 
 export function createWorkstationRepository(
@@ -275,6 +282,23 @@ export function createWorkstationRepository(
         }
         return id;
       }),
+    // Пересчёт на сервере уходит операцией (`cabinet/deskInventory.js`):
+    // сервер сам сравнит с учётом и заведёт спорное, стол числа учёта не знает.
+    countBox: async (boxId, lines) => {
+      const by = port.get().stationSession?.staffId;
+      if (!by) return fail("ws.count.nobody");
+      const eventId = uid("ic");
+      const at = nowMs();
+      const res = await attempt(() =>
+        port.get().countBox({ boxId, lines, staffId: by, at, eventId }),
+      );
+      if (!res.ok) return res;
+      if ("problem" in res.data) return fail(`ws.count.${res.data.problem}`);
+      if (onServer(port)) {
+        ops.enqueue("inv_count", { eventId, staffId: by, at, boxId, lines });
+      }
+      return ok({ matched: res.data.diffs.length === 0 });
+    },
     pickDone: (requestId, partial) =>
       attempt(() => {
         port.get().completeRequest(requestId, partial);

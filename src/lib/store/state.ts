@@ -3,6 +3,7 @@ import type { StateCreator } from "zustand";
 // «словарь → хранилище → словарь» не возникает.
 import type { MsgKey } from "../i18n";
 import type { ItemScan, PackDoneFacts } from "../packing";
+import type { CountDiff, CountInput, CountProblem } from "../inventory";
 import type {
   BackupSettings,
   Subscription,
@@ -816,6 +817,12 @@ export interface DisputesSlice {
   }) => string;
   /** Решить. Уже решённое не трогаем: первое решение остаётся. */
   resolveDispute: (id: string, resolution: DisputeResolution, by: string, note?: string) => boolean;
+  /**
+   * Инвентаризация: записать пересчёт тары. Ставит отметку «считали» и заводит
+   * спорное по каждому расхождению; остатки не трогает. Возвращает расхождения
+   * или причину отказа (`CountProblem`).
+   */
+  countBox: (input: CountInput) => { diffs: CountDiff[] } | { problem: CountProblem };
 }
 
 export interface OperationsSlice {
