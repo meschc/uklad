@@ -192,3 +192,23 @@ test("запись стола: решение рядового сотрудни�
   const w = mergeDeskWrite(current, sneaky, { staff: "stf-ivan", prev: null });
   assert.equal(w.data.disputes[0].resolution, undefined);
 });
+
+test("тара с нерешённым расхождением заморожена: из неё не собирают", () => {
+  const { applyPickUnit } = require("../src/cabinet/deskPick");
+  const d = data();
+  d.boxes.push({ id: "tote", barcode: "UK-BOX-9", lines: [] });
+  d.requests = [{ id: "r1", productId: "p1", qty: 1, status: "in_progress" }];
+  d.staffEvents = [];
+  const body = {
+    eventId: "pk1",
+    at: AT,
+    requestId: "r1",
+    productId: "p1",
+    toteId: "tote",
+    cell: ADDR,
+  };
+  d.disputes = [open("inventory_short", 2)];
+  assert.equal(applyPickUnit(d, body, "stf-ivan").flag, "stock");
+  d.disputes = [open("inventory_short", 2, { resolution: "returned", resolvedBy: "stf-olga" })];
+  assert.equal(applyPickUnit(d, body, "stf-ivan").flag, undefined);
+});

@@ -140,3 +140,15 @@ export function countCoverage(
   const stale = new Set(staleBoxes(stored, now).map((b) => b.id));
   return { counted: stored.length - stale.size, total: stored.length };
 }
+
+/**
+ * Тара, замороженная до решения старшего: по ней есть открытое расхождение
+ * инвентаризации. Из неё не собирают, пока учёт не поправили или не закрыли.
+ */
+export function frozenBoxes(disputes: readonly Dispute[]): Set<string> {
+  return new Set(
+    disputes
+      .filter((d) => !d.resolution && isInventoryDispute(d) && d.boxId)
+      .map((d) => d.boxId as string),
+  );
+}

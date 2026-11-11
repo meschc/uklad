@@ -3,6 +3,7 @@ import {
   COUNT_STALE_DAYS,
   countCoverage,
   countDiffs,
+  frozenBoxes,
   normalizeCount,
   planCount,
   staleBoxes,
@@ -134,5 +135,25 @@ describe("давно не считали", () => {
   });
   it("охват считает только тару на полках", () => {
     expect(countCoverage(boxes, NOW)).toEqual({ counted: 1, total: 3 });
+  });
+});
+
+describe("frozenBoxes", () => {
+  it("замораживает только тару с открытым расхождением инвентаризации", () => {
+    const base = { qty: 1, raisedBy: "s1", raisedAt: 1, productId: "p1" };
+    const ds: Dispute[] = [
+      { ...base, id: "1", kind: "inventory_over", boxId: "b1" },
+      {
+        ...base,
+        id: "2",
+        kind: "inventory_short",
+        boxId: "b2",
+        resolution: "returned",
+        resolvedBy: "s2",
+        resolvedAt: 2,
+      },
+      { ...base, id: "3", kind: "shortage", boxId: "b3" },
+    ];
+    expect([...frozenBoxes(ds)]).toEqual(["b1"]);
   });
 });

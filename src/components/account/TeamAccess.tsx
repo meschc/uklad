@@ -38,6 +38,8 @@ const PERM_KEYS: Record<string, MsgKey> = {
   "shipping.do": "perm.shipping.do",
   "seller.requests": "perm.seller.requests",
   "chat.use": "perm.chat.use",
+  "inventory.count": "perm.inventory.count",
+  "inventory.adjust": "perm.inventory.adjust",
 };
 
 const STATUS_KEYS: Record<TeamMember["status"], MsgKey> = {

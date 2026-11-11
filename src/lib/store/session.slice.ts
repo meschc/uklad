@@ -66,7 +66,7 @@ export const createSessionSlice: SliceCreator<SessionSlice> = (set, get) => ({
       activeShelf: null,
     })),
 
-  startServerSession: (email, role, orgId) => {
+  startServerSession: (email, role, orgId, permissions) => {
     set((s) => ({
       session: {
         user: { ...s.session.user, id: orgId, email },
@@ -74,6 +74,7 @@ export const createSessionSlice: SliceCreator<SessionSlice> = (set, get) => ({
         startedAt: nowMs(),
         source: "server",
         orgId,
+        ...(permissions ? { permissions } : {}),
       },
     }));
     get().setRole(role);

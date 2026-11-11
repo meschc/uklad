@@ -3,7 +3,7 @@ import { ClipboardCheck, Trash2 } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { workstationRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
-import { formatAddress } from "@/lib/address";
+import { addressKey, formatAddress, parseAddress } from "@/lib/address";
 import { countCoverage, MAX_COUNT_QTY, staleBoxes, type CountLine } from "@/lib/inventory";
 import type { Box } from "@/lib/types";
 import { useT } from "@/lib/i18n";
@@ -37,6 +37,8 @@ export function InventoryStation() {
   const [lines, setLines] = useState<CountLine[]>([]);
   const [status, setStatus] = useState<ScanStatus>("idle");
   const [done, setDone] = useState<"matched" | "diff" | null>(null);
+  // Скан ячейки, где стоит несколько тар: какую из них считать.
+  const [choice, setChoice] = useState<Box[] | null>(null);
 
   const box = boxes.find((b) => b.id === boxId);
   const nameOf = (id: string) => products.find((p) => p.id === id)?.name ?? id;
@@ -48,11 +50,31 @@ export function InventoryStation() {
     setBoxId(null);
     setLines([]);
     setStatus("idle");
+    setChoice(null);
     count.reset();
+  };
+
+  const open = (b: Box) => {
+    setStatus("ok");
+    setDone(null);
+    setChoice(null);
+    setBoxId(b.id);
+    setLines([]);
   };
 
   const scanBox = (raw: string) => {
     const code = raw.trim().toUpperCase();
+    // Ярлык ячейки: считаем тару, которая в ней стоит; если её несколько —
+    // сотрудник выбирает, какую открыл.
+    const addr = code.startsWith("UK-") ? null : parseAddress(warehouse, raw);
+    if (addr) {
+      const key = addressKey(addr);
+      const here = boxes.filter((b) => b.address && !b.sealed && addressKey(b.address) === key);
+      if (here.length === 1) return open(here[0]);
+      setStatus(here.length ? "ok" : "error");
+      setChoice(here);
+      return;
+    }
     const found = boxes.find((b) => b.barcode.toUpperCase() === code);
     // Считают то, что стоит на полке: у тары без места и невскрытого места
     // учёта нет, пересчитывать нечего.
@@ -60,10 +82,7 @@ export function InventoryStation() {
       setStatus("error");
       return;
     }
-    setStatus("ok");
-    setDone(null);
-    setBoxId(found.id);
-    setLines([]);
+    open(found);
   };
 
   const scanProduct = (raw: string) => {
@@ -104,8 +123,22 @@ export function InventoryStation() {
           />
           {status === "error" && (
             <p role="alert" className="text-sm text-destructive">
-              {t("ws.count.boxUnknown")}
+              {t(choice ? "ws.count.cellEmpty" : "ws.count.boxUnknown")}
             </p>
+          )}
+          {choice && choice.length > 1 && (
+            <section className="flex flex-col gap-2">
+              <h2 className={eyebrow({ tone: "muted" })}>
+                {t("ws.count.cellMany", { n: choice.length })}
+              </h2>
+              <div className="flex flex-wrap gap-2">
+                {choice.map((b) => (
+                  <Button key={b.id} variant="outline" onClick={() => open(b)}>
+                    <span className="font-mono">{b.barcode}</span>
+                  </Button>
+                ))}
+              </div>
+            </section>
           )}
           {done && (
             <p role="status" className="text-sm font-medium text-success">

@@ -100,6 +100,11 @@ export function DisputesScreen() {
   const canResolve =
     role === "warehouse" && (session ? !!badgeStaff && isSenior(badgeStaff) : true);
   const by = badgeStaff?.id ?? "manager";
+  // Правка учёта по инвентаризации — отдельное право роли в кабинете
+  // (`inventory.adjust`). За столом решает должность старшего, как раньше.
+  const perms = useEditor((s) => s.session.permissions);
+  const mayAdjust = (d: Dispute) =>
+    !isInventoryDispute(d) || !!badgeStaff || !perms || perms.includes("inventory.adjust");
 
   const open = disputes.filter((d) => !d.resolution);
   // Лишнее с приёмки списывают «вернули поставщику»: руководитель должен
@@ -141,6 +146,7 @@ export function DisputesScreen() {
             >
               <Line d={d} name={nameOf(d.productId)} who={who(d.raisedBy)} />
               {canResolve &&
+                mayAdjust(d) &&
                 (writing?.id === d.id ? (
                   <form
                     className="flex flex-wrap items-center gap-2"

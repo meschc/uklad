@@ -617,7 +617,12 @@ export interface SessionSlice {
   session: Session;
   setRole: (role: UserRole) => void;
   /** Вошли паролем на сервере: роль и компания приходят оттуда. */
-  startServerSession: (email: string, role: UserRole, orgId: string) => void;
+  startServerSession: (
+    email: string,
+    role: UserRole,
+    orgId: string,
+    permissions?: string[],
+  ) => void;
   /**
    * Сервер сказал «сессии нет» (истекла, отозвана). Данные не стираются: они
    * пока живут только здесь. Остаётся пометка, чьи они (`session.orgId`), и

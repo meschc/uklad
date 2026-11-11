@@ -1,3 +1,4 @@
+import { frozenBoxes } from "../inventory";
 import { nowMs, uid } from "../utils";
 import { addressKey } from "../address";
 import { planLoad, shipOutbound } from "../outbound";
@@ -118,8 +119,12 @@ export const createRequestsSlice: SliceCreator<RequestsSlice> = (set, get) => ({
     if ((req.pickedQty ?? 0) > 0 && req.toteId !== toteId) return req.pickedQty ?? 0;
 
     const key = addressKey(addr);
+    // Тара с нерешённым расхождением инвентаризации заморожена: снятая из
+    // неё штука сдвинула бы то, что старший сейчас списывает или оприходует.
+    const frozen = frozenBoxes(s.disputes ?? []);
     const box = s.boxes.find(
       (b) =>
+        !frozen.has(b.id) &&
         b.address &&
         addressKey(b.address) === key &&
         b.lines.some((l) => l.productId === productId && l.qty > 0),

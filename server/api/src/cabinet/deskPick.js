@@ -14,7 +14,9 @@
  * та же штука уже пришла снимком.
  */
 
-/* global module */
+/* global module, require */
+/* eslint-disable @typescript-eslint/no-require-imports */
+const { INVENTORY_KINDS } = require("./deskInventory");
 
 const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 const list = (v) => (Array.isArray(v) ? v.filter(isObject) : []);
@@ -92,9 +94,16 @@ function applyPickUnit(data, body, staffRef) {
 
   // Откуда: первый короб в этой ячейке с этим товаром, иначе прямое
   // размещение — тот же порядок, что у `recordPick`.
+  // Тара с нерешённым расхождением инвентаризации заморожена (`deskInventory.js`).
+  const frozen = new Set(
+    list(data.disputes)
+      .filter((d) => !d.resolution && INVENTORY_KINDS.has(d.kind))
+      .map((d) => d.boxId),
+  );
   const from = boxes.find(
     (b) =>
       b !== tote &&
+      !frozen.has(b.id) &&
       b.address &&
       cellKey(b.address) === key &&
       list(b.lines).some((l) => l.productId === body.productId && Number(l.qty) > 0),
