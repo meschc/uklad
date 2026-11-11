@@ -8,7 +8,7 @@ import type { StaffMember } from "./types";
 const STAFF_CSV_HEADERS = ["Имя", "Должность", "Телефон", "Почта", "Фото"];
 
 /** Экранирование значения для CSV: кавычки удваиваются. */
-function cell(value: string): string {
+export function cell(value: string): string {
   return /[",;\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 }
 

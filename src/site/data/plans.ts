@@ -165,10 +165,6 @@ export const PLANS: Plan[] = [
         "Client service billing and statement export",
       ),
       c(
-        "API и вебхуки для интеграции с личным кабинетом клиента",
-        "API and webhooks to plug into a client's own account",
-      ),
-      c(
         "Приоритетная поддержка, первая реакция за 4 рабочих часа",
         "Priority support, first reply within 4 business hours",
       ),

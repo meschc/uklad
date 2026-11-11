@@ -53,4 +53,24 @@ function deletionLetter(at, publicUrl) {
   };
 }
 
-module.exports = { codeLetter, alreadyLetter, deletionLetter };
+/** Приглашение в компанию: кто зовёт, в какой роли и ссылка на 7 дней. */
+function inviteLetter({ company: rawCompany, role: rawRole, link }) {
+  // Название задаёт клиент, а письмо уходит с нашего домена: без переводов
+  // строк (чужая строка в теме или тексте) и не длиннее 80 знаков.
+  const clean = (v) =>
+    String(v)
+      .replace(/[\r\n\u2028\u2029]+/g, " ")
+      .trim()
+      .slice(0, 80);
+  const company = clean(rawCompany);
+  const role = clean(rawRole);
+  return {
+    subject: `Вас приглашают в «${company}» в Укладе`,
+    text:
+      `Здравствуйте!\n\nВас приглашают в компанию «${company}» с ролью «${role}».\n\n` +
+      `Принять приглашение: ${link}\n\nСсылка действует 7 дней. ` +
+      `Если вы не ждали письма, просто не открывайте ссылку.\n`,
+  };
+}
+
+module.exports = { codeLetter, alreadyLetter, deletionLetter, inviteLetter };

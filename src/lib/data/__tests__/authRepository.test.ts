@@ -101,7 +101,7 @@ describe("authRepository", () => {
       roleOf({
         kind: "password",
         orgs,
-        current: { orgId: "o2", memberId: "m", warehouseId: null },
+        current: { orgId: "o2", memberId: "m", warehouseId: null, permissions: [] },
       }),
     ).toEqual({ orgId: "o2", role: "warehouse" });
     expect(roleOf({ kind: "password", orgs: [], current: null })).toBeNull();
