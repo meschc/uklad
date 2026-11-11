@@ -37,9 +37,9 @@ export const COMPARE: Group[] = [
       { label: ru("Приёмка, сборка и отгрузка со сканером"), cells: [YES, YES, YES] },
       { label: ru("Ярлыки и складские документы"), cells: [YES, YES, YES] },
       { label: ru("Импорт остатков из Excel"), cells: [YES, YES, YES] },
-      { label: ru("Импорт поставок из Excel"), cells: [YES, YES, NO] },
-      { label: ru("Кроссдокинг и наборы"), cells: [YES, YES, NO] },
-      { label: ru("Тепловая карта склада"), cells: [YES, YES, NO] },
+      { label: ru("Импорт поставок из Excel"), cells: [YES, YES, YES] },
+      { label: ru("Кроссдокинг и наборы"), cells: [YES, YES, YES] },
+      { label: ru("Тепловая карта склада"), cells: [YES, YES, YES] },
       {
         label: ru("Аналитика"),
         cells: [ru("полная"), ru("полная"), ru("основные показатели")],
@@ -55,8 +55,8 @@ export const COMPARE: Group[] = [
       },
       { label: ru("Заявки и поставки от селлера"), cells: [YES, YES, YES] },
       { label: ru("Чат с селлером"), cells: [YES, YES, YES] },
-      { label: ru("Карточка склада на витрине Уклада"), cells: [YES, YES, NO] },
-      { label: ru("Учёт по клиентам: остатки, отгрузки, биллинг"), cells: [YES, NO, NO] },
+      { label: ru("Карточка склада на витрине Уклада"), cells: [YES, YES, YES] },
+      { label: ru("Счёт селлерам: услуги, хранение, отгрузка местами"), cells: [YES, YES, YES] },
     ],
   },
   {
@@ -119,20 +119,24 @@ export const ALL_PLANS: Copy[] = [
 export const BREAKDOWN: { title: Copy; body: Copy; price: number; market: Copy }[] = [
   {
     title: ru("Учёт склада"),
-    body: ru("Адресное хранение, план склада, приёмка, сборка, отгрузка, ярлыки, документы"),
-    price: 5400,
+    body: ru(
+      "Адресное хранение, план склада, приёмка, сборка, упаковка и отгрузка на ТСД, ярлыки, документы",
+    ),
+    price: 7400,
     market: ru("от 20 000 ₽"),
   },
   {
     title: ru("Кабинет селлера"),
-    body: ru("Селлер сам видит остатки, отправляет заявки и поставки, пишет в чат"),
-    price: 2500,
+    body: ru(
+      "Селлер сам видит остатки, отправляет заявки и поставки, пишет в чат; склад выставляет ему счёт за услуги",
+    ),
+    price: 3000,
     market: ru("в старших тарифах"),
   },
   {
     title: ru("Управление сотрудниками"),
-    body: ru("Роли, задачи и нагрузка по фактам работы"),
-    price: 2000,
+    body: ru("Роли, смены, задачи, пики и заработок по фактам работы"),
+    price: 2500,
     market: ru("от 3 000 ₽"),
   },
 ];
@@ -165,11 +169,10 @@ export const CALC = {
   baseSkus: L.start.skus,
   baseStaff: L.start.staff,
   baseSellers: L.start.sellers,
-  perWarehouse: 4900,
+  perWarehouse: 5900,
   perSkus: { step: 5000, price: 900 },
   perStaff: { step: 5, price: 1500 },
   perSellers: { step: 10, price: 1500 },
-  clientBilling: 4900,
 };
 
 export interface CalcInput {
@@ -177,7 +180,6 @@ export interface CalcInput {
   skus: number;
   staff: number;
   sellers: number;
-  billing: boolean;
 }
 
 const steps = (value: number, base: number, step: number) =>
@@ -220,7 +222,6 @@ export function calcLines(v: CalcInput): { label: Copy; count?: number; price: n
       count: Math.max(0, v.sellers - CALC.baseSellers),
       price: steps(v.sellers, CALC.baseSellers, CALC.perSellers.step) * CALC.perSellers.price,
     },
-    { label: ru("Учёт по клиентам"), price: v.billing ? CALC.clientBilling : 0 },
   ];
   return lines;
 }
@@ -236,8 +237,7 @@ export function fittingPlan(v: CalcInput): string | null {
       v.warehouses <= l.warehouses &&
       v.skus <= l.skus &&
       v.staff <= l.staff &&
-      v.sellers <= l.sellers &&
-      (!v.billing || l.billing)
+      v.sellers <= l.sellers
     )
       return id;
   }
