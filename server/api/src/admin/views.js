@@ -11,6 +11,7 @@ const accounts = require("./views/accounts");
 const audit = require("./views/audit");
 const other = require("./views/other");
 const support = require("./views/support");
+const invoices = require("./views/invoices");
 const money = require("./views/money");
 const demos = require("./views/demos");
 
@@ -18,6 +19,7 @@ module.exports = {
   ...accounts,
   ...other,
   ...support,
+  invoicesPage: invoices.invoicesPage,
   ...money,
   ...demos,
   confirmPage: base.confirmPage,

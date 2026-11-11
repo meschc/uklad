@@ -32,6 +32,7 @@ const { checkPassword } = require("./password");
 const totp = require("./totp");
 const views = require("./views");
 const { createRoutes } = require("./routes");
+const { createInvoices } = require("./invoices");
 const { newToken } = require("../demo");
 const { createRateLimit, clientIp } = require("../rateLimit");
 
@@ -116,7 +117,7 @@ const sameText = (a, b) => {
   return x.length === y.length && timingSafeEqual(x, y);
 };
 
-function createAdminApp({ cfg, db, now = () => new Date(), log = console }) {
+function createAdminApp({ cfg, db, now = () => new Date(), log = console, invoices = null }) {
   const local = LOCAL_ORIGIN.test(cfg.adminOrigin);
   if (!local && !cfg.adminOrigin.startsWith("https://")) {
     throw new Error(
@@ -128,8 +129,10 @@ function createAdminApp({ cfg, db, now = () => new Date(), log = console }) {
 
   const store = adminStore(db);
   const limiter = createRateLimit({ capacity: 10, refillPerMinute: 5 });
+  const bills = invoices ?? createInvoices({ db, log });
   const routes = createRoutes({
     store,
+    invoices: bills,
     cfg: {
       demoDays: cfg.demoDays ?? 14,
       newToken,
@@ -288,6 +291,7 @@ function createAdminApp({ cfg, db, now = () => new Date(), log = console }) {
       badges: {
         "/leads": store.countNewLeads() || 0,
         "/support": store.countNewReports() || 0,
+        "/invoices": bills.open().length || 0,
       },
     };
     const t = now();

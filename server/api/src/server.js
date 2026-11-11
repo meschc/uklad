@@ -591,7 +591,21 @@ function main() {
   let admin;
   if (cfg.adminOrigin) {
     const { createAdminApp } = require("./admin/app");
-    admin = http.createServer(createAdminApp({ cfg, db: db.raw }));
+    const { adminStore } = require("./admin/store");
+    const { createInvoices, readPayee } = require("./admin/invoices");
+    adminStore(db.raw); // таблица счетов ссылается на аккаунты админки
+    const payee = readPayee(process.env);
+    if (!payee) console.log("[uklad] счета не выставляются: не заданы реквизиты PAYEE_*");
+    const invoices = createInvoices({ db: db.raw, payee, send: mail.sendTo });
+    // Раз в час: кому до конца срока 7 дней, выставить счёт и отправить письмом.
+    const billRound = () =>
+      invoices
+        .issueDue(new Date().toISOString())
+        .then((made) => made.length && console.log(`[uklad] выставлено счетов: ${made.length}`))
+        .catch((e) => console.error("[uklad] обход счетов:", e.message));
+    billRound();
+    setInterval(billRound, 3_600_000).unref();
+    admin = http.createServer(createAdminApp({ cfg, db: db.raw, invoices }));
     admin.requestTimeout = 15_000;
     admin.headersTimeout = 10_000;
     admin.listen(cfg.adminPort, () => console.log(`[uklad] админка слушает порт ${cfg.adminPort}`));

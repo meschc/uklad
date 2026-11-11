@@ -218,8 +218,8 @@ test("продление идёт от «оплачено до», оплата �
   );
   const id = Number(made.headers.get("location").split("/").pop());
   const a = app.store.account(id);
-  assert.equal(a.price, 9900);
-  assert.equal(a.trial_until.slice(0, 10), "2026-11-21", "месяц пробного");
+  assert.equal(a.price, 12900);
+  assert.equal(a.trial_until.slice(0, 10), "2026-12-21", "два месяца пробного");
 
   await app.post(
     `/accounts/${id}/tariff`,
@@ -368,7 +368,7 @@ test("регистрация в кабинете видна в пользова�
   );
   const a = adminStore(db.raw).account(id);
   assert.equal(a.source, "cabinet");
-  assert.equal(a.trial_until.slice(0, 10), "2026-12-02");
+  assert.equal(a.trial_until.slice(0, 10), "2027-01-02");
   assert.equal(
     registeredAccount(db.raw, { email: "12@example.ru", kind: "seller" }, now),
     null,
