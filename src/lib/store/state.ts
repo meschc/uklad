@@ -752,7 +752,11 @@ export interface WorkstationSlice {
    */
   badgeLogin: (code: string, station: WorkstationKind) => string | null;
   /** Открыть вход за сотрудника, которого назвал сервер по бейджу; чужой — null. */
-  openStation: (staffId: string, station: WorkstationKind) => string | null;
+  openStation: (
+    staffId: string,
+    station: WorkstationKind,
+    permissions?: string[] | null,
+  ) => string | null;
   stationLogout: () => void;
   /**
    * Отметка смены вошедшего сотрудника. Недопустимый переход (перерыв без

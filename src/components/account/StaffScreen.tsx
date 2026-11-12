@@ -313,7 +313,7 @@ export function StaffScreen() {
       )}
       {tab === "schedule" && <BreakPolicyCard />}
       {tab === "output" && <StaffOutput />}
-      {tab === "access" && <TeamAccess />}
+      {tab === "access" && <TeamAccess staff={staff} />}
 
       {/* Ответственное лицо — тот же шаблон, что и у сотрудника (п.24) */}
       {tab === "people" && (

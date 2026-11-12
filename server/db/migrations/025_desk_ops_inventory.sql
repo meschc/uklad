@@ -7,20 +7,15 @@ ALTER TABLE uklad.desk_ops ADD CONSTRAINT desk_ops_kind_check
                   'recv_open', 'recv_unit', 'recv_place', 'recv_attach', 'recv_close',
                   'ship_run', 'dispute_resolve', 'recv_cargo', 'inv_count'));
 
--- Права инвентаризации поверх модели ролей (миграция 023): пересчитывать и
--- править учёт по итогам пересчёта — разные права. Правку учёта (списать
--- недостачу, оприходовать излишек) получают только руководящие роли.
+-- Право пересчитывать (поверх ролей 023–024). Правка учёта по итогам —
+-- общее право решений по товару `goods.decide`: отдельного не заводим.
 INSERT INTO uklad.permissions (code, title) VALUES
-  ('inventory.count', 'Инвентаризация: пересчёт'),
-  ('inventory.adjust', 'Инвентаризация: правка учёта по итогам');
+  ('inventory.count', 'Инвентаризация: пересчёт');
 
--- Уже заведённые роли по умолчанию: владелец получает всё, начальник склада —
--- оба права, кладовщик — только пересчёт.
-UPDATE uklad.roles SET permissions = permissions || ARRAY['inventory.count','inventory.adjust']
-  WHERE is_default AND name IN ('Владелец', 'Начальник склада')
-    AND NOT ('inventory.count' = ANY (permissions));
+-- Уже заведённые роли по умолчанию: владелец, начальник склада и кладовщик считают.
 UPDATE uklad.roles SET permissions = permissions || ARRAY['inventory.count']
-  WHERE is_default AND name = 'Кладовщик' AND NOT ('inventory.count' = ANY (permissions));
+  WHERE is_default AND name IN ('Владелец', 'Начальник склада', 'Кладовщик')
+    AND NOT ('inventory.count' = ANY (permissions));
 
 CREATE OR REPLACE FUNCTION uklad.create_default_roles() RETURNS trigger
 LANGUAGE plpgsql AS $$
@@ -31,7 +26,7 @@ BEGIN
     INSERT INTO uklad.roles (org_id, name, permissions, is_default) VALUES
       (NEW.id, 'Начальник склада', ARRAY['staff.manage','contracts.manage','plan.edit','products.edit',
         'stock.view','stock.move','receiving.do','picking.do','packing.do','shipping.do','chat.use',
-        'inventory.count','inventory.adjust'], true),
+        'goods.decide','inventory.count'], true),
       (NEW.id, 'Кладовщик', ARRAY['stock.view','stock.move','receiving.do','picking.do','packing.do',
         'shipping.do','inventory.count'], true),
       (NEW.id, 'Приёмщик', ARRAY['stock.view','receiving.do'], true),

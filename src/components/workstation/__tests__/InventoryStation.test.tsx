@@ -35,6 +35,8 @@ function setup() {
       },
     ],
     disputes: [],
+    // Задание видно только на смене (ShiftGate).
+    staffEvents: [{ id: "e0", staffId: "m1", type: "shift_start", at: Date.now() - 1000 }],
   });
   return product;
 }

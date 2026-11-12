@@ -10,6 +10,9 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { mergeDeskWrite } = require("../src/cabinet/desks");
 
+// Право решать по товару — у роли Ольги (миграция 024), не у должности.
+const DECIDES = { "stf-olga": ["goods.decide"] };
+
 const who = { staff: "stf-ivan" };
 
 function base() {
@@ -204,7 +207,10 @@ test("списание недостачи старшим уменьшает та
       },
     ],
   };
-  assert.deepEqual(mergeDeskWrite(cur, decided, { staff: "stf-olga" }).mismatch, []);
+  assert.deepEqual(
+    mergeDeskWrite(cur, decided, { staff: "stf-olga", perms: DECIDES }).mismatch,
+    [],
+  );
   // Упаковщик не старший: решение не принято, и тара без него не худеет.
   assert.deepEqual(mergeDeskWrite(cur, decided, who).mismatch, ["p1"]);
 });
@@ -277,7 +283,7 @@ test("при откате решение старшего без списани�
     ...withBoxes(cur, [{ productId: "p1", qty: 9 }], cur.boxes[1].lines),
     disputes: [{ ...cur.disputes[0], resolution: "moved", resolvedBy: "stf-olga", resolvedAt: 3 }],
   };
-  const res = mergeDeskWrite(cur, inc, { staff: "stf-olga" });
+  const res = mergeDeskWrite(cur, inc, { staff: "stf-olga", perms: DECIDES });
   assert.deepEqual(res.mismatch, ["p1"]);
   assert.equal(res.data.disputes[0].resolution, "moved");
 });
@@ -455,7 +461,7 @@ test("лишнее с приёмки решает старший: оставит
     raisedAt: 5,
   };
   const cur = { ...base(), disputes: [open] };
-  const olga = { staff: "stf-olga" };
+  const olga = { staff: "stf-olga", perms: DECIDES };
   const decide = (res, extra = {}) =>
     mergeDeskWrite(
       cur,
@@ -579,7 +585,7 @@ test("лишнее списывают с тары, даже если она уж
         },
       ],
     },
-    { staff: "stf-olga" },
+    { staff: "stf-olga", perms: DECIDES },
   );
   assert.deepEqual(r.mismatch, []);
   assert.deepEqual(r.data.boxes[0].lines, [{ productId: "p1", qty: 3 }]);

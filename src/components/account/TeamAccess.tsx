@@ -13,6 +13,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DialogFooter, DialogHeader, DialogShell } from "@/components/ui/dialog-shell";
+import { PERM_KEYS, groupPermissions } from "@/lib/permModules";
+import type { StaffMember } from "@/lib/types";
+import { DeskRoles } from "./DeskRoles";
+import { RoleMatrix } from "./RoleMatrix";
+import { selectClass } from "./teamSelect";
 
 /**
  * Вкладка «Доступ» в «Персонале»: кто входит в кабинет и с какой ролью.
@@ -23,25 +28,6 @@ import { DialogFooter, DialogHeader, DialogShell } from "@/components/ui/dialog-
  * людей и ролей разделены отступами и заголовками.
  */
 
-const PERM_KEYS: Record<string, MsgKey> = {
-  "org.manage": "perm.org.manage",
-  "billing.view": "perm.billing.view",
-  "staff.manage": "perm.staff.manage",
-  "contracts.manage": "perm.contracts.manage",
-  "plan.edit": "perm.plan.edit",
-  "products.edit": "perm.products.edit",
-  "stock.view": "perm.stock.view",
-  "stock.move": "perm.stock.move",
-  "receiving.do": "perm.receiving.do",
-  "picking.do": "perm.picking.do",
-  "packing.do": "perm.packing.do",
-  "shipping.do": "perm.shipping.do",
-  "seller.requests": "perm.seller.requests",
-  "chat.use": "perm.chat.use",
-  "inventory.count": "perm.inventory.count",
-  "inventory.adjust": "perm.inventory.adjust",
-};
-
 const STATUS_KEYS: Record<TeamMember["status"], MsgKey> = {
   invited: "team.status.invited",
   active: "team.status.active",
@@ -50,12 +36,10 @@ const STATUS_KEYS: Record<TeamMember["status"], MsgKey> = {
   disabled: "team.status.disabled",
 };
 
-const selectClass =
-  "flex h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
-
 type Panel = { kind: "invite" } | { kind: "role"; role: TeamRole | null } | null;
 
-export function TeamAccess() {
+/** `staff` — сотрудники склада из снимка: им назначают роль у стола. */
+export function TeamAccess({ staff }: { staff: StaffMember[] }) {
   const t = useT();
   const showToast = useEditor((s) => s.showToast);
   const [state, setState] = useState<TeamState | null>(null);
@@ -81,7 +65,7 @@ export function TeamAccess() {
   }, [tick]);
 
   // Правка на месте: роль и отключение — команды строки, отказ — тостом.
-  const run = async (op: () => ReturnType<typeof teamRepository.changeRole>) => {
+  const run = async (op: () => ReturnType<typeof teamRepository.setDeskRole>) => {
     const res = await op();
     if (!res.ok) showToast(res.error);
     reload();
@@ -163,6 +147,15 @@ export function TeamAccess() {
           ))}
         </ul>
       </section>
+
+      <DeskRoles
+        staff={staff}
+        roles={state.roles}
+        assigned={state.deskRoles}
+        onChange={(ref, roleId) => run(() => teamRepository.setDeskRole(ref, roleId))}
+      />
+
+      <RoleMatrix roles={state.roles} />
 
       {panel?.kind === "invite" && (
         <InvitePanel
@@ -388,28 +381,35 @@ function RolePanel({
           <Label>{t("team.roleName")}</Label>
           <Input disabled={locked} value={name} onChange={(e) => setName(e.target.value)} />
         </label>
-        <fieldset className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-4">
           <Label>{t("team.perms")}</Label>
-          {permissions.map((code) => {
-            // Владельца в свою роль не включают; чужого права, которого нет у
-            // самого человека, тоже не выдать (сервер всё равно откажет).
-            const allowed = !locked && code !== "org.manage" && mine.has(code);
-            return (
-              <label key={code} className="flex items-center gap-2 py-0.5 text-sm">
-                <input
-                  type="checkbox"
-                  className="size-4 accent-primary"
-                  disabled={!allowed && !perms.has(code)}
-                  checked={perms.has(code)}
-                  onChange={() => allowed && toggle(code)}
-                />
-                <span className={allowed || locked ? "" : "text-muted-foreground"}>
-                  {PERM_KEYS[code] ? t(PERM_KEYS[code]) : code}
-                </span>
-              </label>
-            );
-          })}
-        </fieldset>
+          {groupPermissions(permissions).map((g) => (
+            <fieldset key={g.module?.id ?? "other"} className="flex flex-col gap-1">
+              <legend className="pb-1 text-xs font-medium text-muted-foreground">
+                {t(g.module?.title ?? "perm.mod.other")}
+              </legend>
+              {g.codes.map((code) => {
+                // Владельца в свою роль не включают; чужого права, которого нет у
+                // самого человека, тоже не выдать (сервер всё равно откажет).
+                const allowed = !locked && code !== "org.manage" && mine.has(code);
+                return (
+                  <label key={code} className="flex items-center gap-2 py-0.5 text-sm">
+                    <input
+                      type="checkbox"
+                      className="size-4 accent-primary"
+                      disabled={!allowed && !perms.has(code)}
+                      checked={perms.has(code)}
+                      onChange={() => allowed && toggle(code)}
+                    />
+                    <span className={allowed || locked ? "" : "text-muted-foreground"}>
+                      {PERM_KEYS[code] ? t(PERM_KEYS[code]) : code}
+                    </span>
+                  </label>
+                );
+              })}
+            </fieldset>
+          ))}
+        </div>
         {err && (
           <p role="alert" className="text-xs text-destructive">
             {t(err)}

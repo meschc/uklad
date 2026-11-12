@@ -15,6 +15,8 @@
 /* global module, require */
 /* eslint-disable @typescript-eslint/no-require-imports */
 
+const { GOODS_DECIDE, may } = require("./deskPerms");
+
 const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 const list = (v) => (Array.isArray(v) ? v.filter(isObject) : []);
 const ID_RE = /^[A-Za-z0-9_-]{1,100}$/;
@@ -123,9 +125,7 @@ const RESOLUTIONS_BY_KIND = {
   inventory_over: ["returned", "accepted"],
 };
 
-function applyDisputeResolve(data, body, staffRef) {
-  // Роль старшего — то же выражение, что у записи снимка (`desks.js`).
-  const { SENIOR_ROLE } = require("./desks");
+function applyDisputeResolve(data, body, staffRef, who) {
   if (!isId(body.disputeId) || !RESOLUTIONS.has(body.resolution)) return { flag: "bad" };
   const disputes = list(data.disputes);
   const d = disputes.find((x) => x.id === body.disputeId);
@@ -136,9 +136,8 @@ function applyDisputeResolve(data, body, staffRef) {
       ? { data }
       : { flag: "bad" };
   }
-  const staff = isObject(data.warehouse) ? list(data.warehouse.staff) : [];
-  const role = String(staff.find((m) => m.id === staffRef)?.role ?? "");
-  if (!SENIOR_ROLE.test(role)) return { flag: "not_yours" };
+  // Решение по товару — право роли (`goods.decide`), а не должность.
+  if (!may(who, staffRef, GOODS_DECIDE)) return { flag: "not_yours" };
   const allowed = RESOLUTIONS_BY_KIND[d.kind] ?? ["returned", "moved", "written_off"];
   if (!allowed.includes(body.resolution)) return { flag: "bad" };
   const note = typeof body.note === "string" ? body.note.trim().slice(0, 200) : "";

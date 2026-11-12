@@ -5,7 +5,7 @@ import { selectRole } from "@/lib/store/session.slice";
 import { isSessionLive } from "@/lib/workstation";
 import { disputesRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
-import { isSenior } from "@/lib/docFlow";
+import { mayDecideGoods } from "@/lib/docFlow";
 import { isInventoryDispute, needsSecondPair, resolutionsFor } from "@/lib/disputes";
 import type { Dispute, DisputeKind, DisputeResolution } from "@/lib/types";
 import { useT, type MsgKey } from "@/lib/i18n";
@@ -92,19 +92,20 @@ export function DisputesScreen() {
   const [reason, setReason] = useState("");
 
   // Решает тот, кто явно вправе: руководитель склада из кабинета (роль склада,
-  // бейджа нет) или сотрудник на должности старшего с живым входом по бейджу.
+  // бейджа нет) или сотрудник с правом роли на решения (в демо — должность
+  // старшего) и живым входом по бейджу.
   // Просроченный вход и роль продавца кнопок не дают, а не «открывают по
   // умолчанию».
   const live = isSessionLive(session, now);
   const badgeStaff = live ? staff.find((m) => m.id === session!.staffId) : undefined;
   const canResolve =
-    role === "warehouse" && (session ? !!badgeStaff && isSenior(badgeStaff) : true);
+    role === "warehouse" && (session ? !!badgeStaff && mayDecideGoods(session, badgeStaff) : true);
   const by = badgeStaff?.id ?? "manager";
-  // Правка учёта по инвентаризации — отдельное право роли в кабинете
-  // (`inventory.adjust`). За столом решает должность старшего, как раньше.
+  // Правка учёта по инвентаризации в кабинете — право роли `goods.decide`;
+  // за столом его уже проверил `mayDecideGoods`.
   const perms = useEditor((s) => s.session.permissions);
   const mayAdjust = (d: Dispute) =>
-    !isInventoryDispute(d) || !!badgeStaff || !perms || perms.includes("inventory.adjust");
+    !isInventoryDispute(d) || !!badgeStaff || !perms || perms.includes("goods.decide");
 
   const open = disputes.filter((d) => !d.resolution);
   // Лишнее с приёмки списывают «вернули поставщику»: руководитель должен

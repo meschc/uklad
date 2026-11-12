@@ -94,7 +94,13 @@ function createTeam({ auth, cfg, send, log }) {
         const permissions = (
           await c.query(`SELECT code, title FROM uklad.permissions ORDER BY code`)
         ).rows;
-        return { members, roles, permissions, me: ctx.memberId };
+        const deskRoles = (
+          await c.query(
+            `SELECT staff_ref, role_id FROM uklad.desk_staff_roles
+             WHERE org_id = uklad.current_org() AND role_id IS NOT NULL`,
+          )
+        ).rows;
+        return { members, roles, permissions, deskRoles, me: ctx.memberId };
       },
       (v) => ({
         me: v.me,
@@ -117,6 +123,8 @@ function createTeam({ auth, cfg, send, log }) {
           lastSeenAt: m.last_seen_at,
           inviteExpiresAt: m.invite_expires_at,
         })),
+        // Роли сотрудников стола (вход по бейджу): `staffRef → roleId`.
+        deskRoles: Object.fromEntries(v.deskRoles.map((d) => [d.staff_ref, d.role_id])),
       }),
     );
   }
@@ -202,6 +210,16 @@ function createTeam({ auth, cfg, send, log }) {
       },
       (id) => ({ roleId: id }),
     );
+
+  // Роль сотрудника стола (миграция 024); `roleId: null` — снять.
+  const STAFF_REF_RE = /^[A-Za-z0-9_-]{1,100}$/;
+  const deskRole = (req, res) =>
+    guarded(req, res, async (c, _ctx, b) => {
+      const ref = STAFF_REF_RE.test(String(b.staffRef ?? "")) ? String(b.staffRef) : null;
+      const r = b.roleId == null ? null : uuid(b.roleId);
+      if (!ref || (b.roleId != null && !r)) throw new Error("team:not_found");
+      await c.query(`SELECT auth.set_desk_staff_role($1, $2)`, [ref, r]);
+    });
 
   const deleteRole = (req, res) =>
     guarded(req, res, async (c, _ctx, b) => {
@@ -318,6 +336,7 @@ function createTeam({ auth, cfg, send, log }) {
     "POST /api/team/disable": disable,
     "POST /api/team/roles/save": saveRole,
     "POST /api/team/roles/delete": deleteRole,
+    "POST /api/team/desk-role": deskRole,
     "POST /api/auth/invite/info": info,
     "POST /api/auth/invite/accept": accept,
   };

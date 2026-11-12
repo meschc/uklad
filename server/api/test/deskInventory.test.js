@@ -33,6 +33,8 @@ const data = () => ({
   requests: [],
   outboundBoxes: [],
 });
+// Права роли за столом: у Ольги есть решения по товару, у Ивана — нет.
+const WHO = { perms: { "stf-olga": ["goods.decide"], "stf-ivan": ["inventory.count"] } };
 const count = (lines, over = {}) => ({ eventId: "ic-1", at: AT, boxId: "b1", lines, ...over });
 const open = (kind, qty, over = {}) => ({
   id: "inv-ic-1-p1",
@@ -111,27 +113,32 @@ test("повтор того же пересчёта не задваивает с
   assert.equal(again.data.disputes.length, 1);
 });
 
-test("недостачу списывает старший, не нашедший её, с причиной", () => {
+test("недостачу списывает тот, у кого право решений и кто её не нашёл, с причиной", () => {
   const d = data();
   d.disputes = [open("inventory_short", 3)];
   const body = { disputeId: "inv-ic-1-p1", resolution: "written_off", at: AT, note: "пересчитали" };
-  assert.equal(applyDisputeResolve(d, body, "stf-ivan").flag, "not_yours");
-  assert.equal(applyDisputeResolve(d, { ...body, note: "" }, "stf-olga").flag, "not_yours");
-  const r = applyDisputeResolve(d, body, "stf-olga");
+  assert.equal(applyDisputeResolve(d, body, "stf-ivan", WHO).flag, "not_yours");
+  assert.equal(applyDisputeResolve(d, { ...body, note: "" }, "stf-olga", WHO).flag, "not_yours");
+  const r = applyDisputeResolve(d, body, "stf-olga", WHO);
   assert.equal(r.data.boxes[0].lines[0].qty, 7);
   assert.equal(r.data.disputes[0].resolution, "written_off");
 });
 
-test("излишек оприходует старший с причиной; «вернули» — без правки учёта", () => {
+test("излишек оприходует сотрудник с правом решений, с причиной; «вернули» — без правки учёта", () => {
   const d = data();
   d.disputes = [open("inventory_over", 3)];
   const body = { disputeId: "inv-ic-1-p1", resolution: "accepted", at: AT, note: "нашли на полке" };
-  assert.equal(applyDisputeResolve(d, body, "stf-ivan").flag, "not_yours");
+  assert.equal(applyDisputeResolve(d, body, "stf-ivan", WHO).flag, "not_yours");
   const same = { ...d, disputes: [open("inventory_over", 3, { raisedBy: "stf-olga" })] };
-  assert.equal(applyDisputeResolve(same, body, "stf-olga").flag, "not_yours");
-  const r = applyDisputeResolve(d, body, "stf-olga");
+  assert.equal(applyDisputeResolve(same, body, "stf-olga", WHO).flag, "not_yours");
+  const r = applyDisputeResolve(d, body, "stf-olga", WHO);
   assert.equal(r.data.boxes[0].lines[0].qty, 13);
-  const back = applyDisputeResolve(d, { ...body, resolution: "returned", note: "" }, "stf-olga");
+  const back = applyDisputeResolve(
+    d,
+    { ...body, resolution: "returned", note: "" },
+    "stf-olga",
+    WHO,
+  );
   assert.equal(back.data.boxes[0].lines[0].qty, 10);
 });
 
@@ -142,11 +149,11 @@ test("недопустимые решения: излишек не списыв�
   short.disputes = [open("inventory_short", 3)];
   const body = { disputeId: "inv-ic-1-p1", at: AT, note: "x" };
   assert.equal(
-    applyDisputeResolve(over, { ...body, resolution: "written_off" }, "stf-olga").flag,
+    applyDisputeResolve(over, { ...body, resolution: "written_off" }, "stf-olga", WHO).flag,
     "bad",
   );
   assert.equal(
-    applyDisputeResolve(short, { ...body, resolution: "accepted" }, "stf-olga").flag,
+    applyDisputeResolve(short, { ...body, resolution: "accepted" }, "stf-olga", WHO).flag,
     "bad",
   );
 });
@@ -154,12 +161,13 @@ test("недопустимые решения: излишек не списыв�
 test("запись стола: оприходование излишка проходит сверку, а излишек из ничего — нет", () => {
   const current = data();
   current.disputes = [open("inventory_over", 3)];
-  const who = { staff: "stf-olga", prev: null };
-  // Решение старшего (как делает операция) — остатки сходятся.
+  const who = { staff: "stf-olga", prev: null, ...WHO };
+  // Решение сотрудника с правом (как делает операция) — остатки сходятся.
   const resolved = applyDisputeResolve(
     current,
     { disputeId: "inv-ic-1-p1", resolution: "accepted", at: AT, note: "нашли" },
     "stf-olga",
+    WHO,
   ).data;
   const good = mergeDeskWrite(current, resolved, who);
   assert.deepEqual(good.mismatch, []);
@@ -189,7 +197,7 @@ test("запись стола: решение рядового сотрудни�
       },
     ],
   };
-  const w = mergeDeskWrite(current, sneaky, { staff: "stf-ivan", prev: null });
+  const w = mergeDeskWrite(current, sneaky, { staff: "stf-ivan", prev: null, ...WHO });
   assert.equal(w.data.disputes[0].resolution, undefined);
 });
 

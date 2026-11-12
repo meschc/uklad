@@ -85,7 +85,7 @@ const LIMITED = Symbol("limited");
 /** Снимок — весь кабинет: только руководитель, вошедший паролем. */
 /**
  * Решение по расхождению инвентаризации — правка учёта (право
- * `inventory.adjust`, миграция 024). Есть ли в записи такое решение, которого
+ * `goods.decide`, миграция 024). Есть ли в записи такое решение, которого
  * на сервере ещё нет: строка спорного вида `inventory_*` с решением, которое
  * у той же строки на сервере другое или отсутствует.
  */
@@ -261,7 +261,7 @@ function createSnapshot({ auth, send, log }) {
       }
       // Архив не переписывается: копия забирает свежие данные.
       if (await archivedChanged(c, split.items)) return { conflict: true };
-      if (!ctx.can("inventory.adjust") && (await inventoryDecided(c, split.items))) {
+      if (!ctx.can("goods.decide") && (await inventoryDecided(c, split.items))) {
         return FORBIDDEN;
       }
       // Список, лежавший строками, пропал вовсе (ключа нет, не список) —
@@ -363,7 +363,7 @@ function createSnapshot({ auth, send, log }) {
         return { conflict: true, error: "diverged" };
       if (await massRemoved(c, b.remove)) return { conflict: true, error: "records_mass_delete" };
       if (await archivedChanged(c, b.upsert)) return { conflict: true };
-      if (!ctx.can("inventory.adjust") && (await inventoryDecided(c, b.upsert))) return FORBIDDEN;
+      if (!ctx.can("goods.decide") && (await inventoryDecided(c, b.upsert))) return FORBIDDEN;
       const before = await loadRecords(c, cur.data, MOVE_LISTS);
       await c.query(`SAVEPOINT changes`);
       await upsertRecords(c, b.upsert);

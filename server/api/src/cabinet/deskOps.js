@@ -33,6 +33,7 @@ const {
 } = require("./deskReceive");
 const { applyShipRun, applyDisputeResolve } = require("./deskShip");
 const { applyInvCount } = require("./deskInventory");
+const { GOODS_DECIDE, may } = require("./deskPerms");
 
 const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 
@@ -57,6 +58,15 @@ const RECV_KINDS = new Set([
 const SHIP_KINDS = new Set(["ship_run", "dispute_resolve"]);
 const INV_KINDS = new Set(["inv_count"]);
 const NOW_ONLY = new Set(["dispute_resolve"]);
+/** Какое право роли нужно операции (миграция 024). */
+const OP_PERM = new Map([
+  ...[...PACK_KINDS].map((k) => [k, "packing.do"]),
+  ...[...PICK_KINDS].map((k) => [k, "picking.do"]),
+  ...[...RECV_KINDS].map((k) => [k, "receiving.do"]),
+  ["ship_run", "shipping.do"],
+  ["dispute_resolve", GOODS_DECIDE],
+  ["inv_count", "inventory.count"],
+]);
 /** Работа с товаром: правка снимка проходит сверку остатков. */
 const WORK = new Map([
   ["pack_event", applyPackEvent],
@@ -176,8 +186,16 @@ function applyDeskOps(data, ops, who, now, received = new Map(), verify = null) 
         flag(op, "not_yours");
         continue;
       }
+      // Сотрудник с ролью делает только то, что разрешает роль. Без роли —
+      // работа как раньше, но решения по товару нет (это проверяет само
+      // решение): иначе стол встал бы у всех, кому роль ещё не назначили.
+      const hasRole = Boolean(who.perms && Object.hasOwn(who.perms, staffRef));
+      if ((hasRole || op.kind === "dispute_resolve") && !may(who, staffRef, OP_PERM.get(op.kind))) {
+        flag(op, "not_yours");
+        continue;
+      }
       const before = { ...state, staffEvents: events };
-      const r = WORK.get(op.kind)(before, body, staffRef);
+      const r = WORK.get(op.kind)(before, body, staffRef, who);
       if (r.flag) {
         flag(op, r.flag);
         continue;
