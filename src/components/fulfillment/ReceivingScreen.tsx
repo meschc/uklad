@@ -65,11 +65,13 @@ export function ReceivingScreen({ staffId: badgeStaffId }: { staffId?: string } 
   // За столом по бейджу поставку заводит только тот, у кого в роли «Решения по
   // товару» (в демо — старший по должности); руководитель в кабинете — всегда.
   const station = useEditor((s) => s.stationSession);
+  const onServer = useEditor((s) => s.session.source === "server");
   const canCreateShipment =
     !badgeStaffId ||
     mayDecideGoods(
       station,
       staff.find((m) => m.id === badgeStaffId),
+      onServer,
     );
   const twoStage = useEditor((s) => !!s.serviceSettings.twoStageReceiving);
   const [stage, setStage] = useState<"cargo" | "items">("cargo");

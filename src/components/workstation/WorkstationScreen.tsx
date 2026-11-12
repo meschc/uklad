@@ -62,6 +62,7 @@ export function WorkstationScreen() {
   const t = useT();
   const now = useNow();
   const session = useEditor((s) => s.stationSession);
+  const onServer = useEditor((s) => s.session.source === "server");
   const staff = useEditor((s) => s.warehouse.staff);
   const device = useEditor(boundDevice);
   const openDisputes = useEditor((s) => s.disputes.filter((d) => !d.resolution).length);
@@ -133,7 +134,7 @@ export function WorkstationScreen() {
         </div>
         {member ? (
           <div className="flex min-w-0 items-center justify-end gap-3">
-            {mayDecideGoods(session, member) && (
+            {mayDecideGoods(session, member, onServer) && (
               // Спорное решает старший, не отходя от стола: тара с недостачей
               // приходит к нему, и счётчик виден сразу.
               <Button variant="ghost" size="sm" onClick={() => setPanel("disputes")}>

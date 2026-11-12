@@ -38,7 +38,7 @@ export const createDocsSlice: SliceCreator<DocsSlice> = (set, get) => ({
   confirmDoc: (kind, sourceId, staffId) => {
     const s = get();
     const member = (s.warehouse.staff ?? []).find((m) => m.id === staffId);
-    if (!isDecider(member, s.deskDeciders)) return "notSenior";
+    if (!isDecider(member, s.deskDeciders, s.session.source === "server")) return "notSenior";
     const prev = s.docRecords.find((r) => r.kind === kind && r.sourceId === sourceId);
     if (prev?.status === "confirmed") return "locked";
     const snapshot = resolveDoc(kind, sourceId, sourcesOf(s), prev);
