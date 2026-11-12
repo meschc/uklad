@@ -273,7 +273,7 @@ export const ru = {
   "perm.where.later": "позже",
   "team.matrix": "Права по модулям",
   "team.matrixLead":
-    "Сейчас сервер проверяет приёмку, сборку, упаковку, отгрузку и решения по товару у стола, а «Персонал и роли» открывает кабинет руководителя целиком. Остальные права уже записаны в роли и включатся, когда раздел переедет на сервер.",
+    "Сейчас сервер проверяет приёмку, сборку, упаковку, отгрузку и решения по товару у стола, а «Персонал и роли» открывает кабинет руководителя целиком. Роль с «Остатками», но без «Персонала» входит в кабинет по почте только смотреть, без ставок и контактов. Остальные права уже записаны в роли и включатся, когда раздел переедет на сервер.",
   "team.matrixModule": "Модуль",
   "team.matrixWhere": "Где действует",
   "team.desk": "Роли у стола",
@@ -667,7 +667,7 @@ export const en: Record<keyof typeof ru, string> = {
   "perm.where.later": "later",
   "team.matrix": "Permissions by module",
   "team.matrixLead":
-    "Right now the server checks receiving, picking, packing, shipping and goods decisions at the desk, and “Staff and roles” opens the whole manager cabinet. Other permissions are already saved in roles and take effect when their section moves to the server.",
+    "Right now the server checks receiving, picking, packing, shipping and goods decisions at the desk, and “Staff and roles” opens the whole manager cabinet. A role with “Stock” but without “Staff” signs in by email to view the cabinet only, without rates and contacts. Other permissions are already saved in roles and take effect when their section moves to the server.",
   "team.matrixModule": "Module",
   "team.matrixWhere": "Where it applies",
   "team.desk": "Roles at the desk",

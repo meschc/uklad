@@ -52,7 +52,8 @@ export const PERM_MODULES: PermModule[] = [
     title: "perm.mod.stock",
     read: ["stock.view"],
     write: ["stock.move"],
-    where: "later",
+    // Чтение открывает кабинет в режиме просмотра; перемещение — позже.
+    where: "cabinet",
   },
   {
     id: "receiving",
