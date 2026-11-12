@@ -169,6 +169,7 @@ export const ru = {
   "staff.tab.access": "Доступ",
   "staff.tab.output": "Выработка",
   "staff.out.period": "Период",
+  "staff.out.now": "сейчас: {station} с {time}",
   "staff.out.today": "Сегодня",
   "staff.out.week": "7 дней",
   "staff.out.month": "Этот месяц",
@@ -279,6 +280,8 @@ export const ru = {
   "team.deskLead":
     "Роль решает, что сотрудник может у стола по бейджу. Без роли работа идёт как раньше, но списать, принять излишек или решить по браку нельзя.",
   "team.deskNone": "Без роли",
+  "team.deskMissing":
+    "Без роли у стола: {n}. Назначьте роль, иначе решения по товару им недоступны.",
   "team.deskEmpty": "Сотрудников пока нет. Добавьте их во вкладке «Сотрудники».",
   "partners.goods": "товаров: {n}",
   "partners.remove": "Удалить партнёра",
@@ -559,6 +562,7 @@ export const en: Record<keyof typeof ru, string> = {
   "staff.tab.access": "Access",
   "staff.tab.output": "Output",
   "staff.out.period": "Period",
+  "staff.out.now": "now: {station} since {time}",
   "staff.out.today": "Today",
   "staff.out.week": "7 days",
   "staff.out.month": "This month",
@@ -670,6 +674,8 @@ export const en: Record<keyof typeof ru, string> = {
   "team.deskLead":
     "The role decides what a person can do at the desk with their badge. Without a role, work goes on as before, but write-offs, accepting surplus and defect decisions are off.",
   "team.deskNone": "No role",
+  "team.deskMissing":
+    "Without a desk role: {n}. Assign a role, otherwise goods decisions are off for them.",
   "team.deskEmpty": "No staff yet. Add people on the “Staff” tab.",
   "partners.goods": "items: {n}",
   "partners.remove": "Delete partner",

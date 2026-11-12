@@ -3,7 +3,8 @@ import { BadgeCheck, X } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { documentsRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
-import { isSenior } from "@/lib/docFlow";
+import { isDecider } from "@/lib/docFlow";
+import { useDeskDeciders } from "@/lib/useDeskDeciders";
 import type { DocModel } from "@/lib/documents";
 import type { DocEdits, DocRecord } from "@/lib/types";
 import { useT } from "@/lib/i18n";
@@ -37,7 +38,10 @@ export function DocPanel({
   const t = useT();
   const warehouse = useEditor((s) => s.warehouse);
   const staff = warehouse.staff ?? [];
-  const seniors = staff.filter(isSenior);
+  // Подписывает тот, у кого в роли «Решения по товару»; в демо — старший по должности.
+  const deciders = useDeskDeciders();
+  const onServer = useEditor((s) => s.session.source === "server");
+  const seniors = staff.filter((m) => isDecider(m, deciders, onServer));
   const locked = record?.status === "confirmed";
 
   const [edits, setEdits] = useState<DocEdits>(() => ({
@@ -50,7 +54,11 @@ export function DocPanel({
       doc.lines.filter((l) => l.fact != null).map((l) => [String(l.no), l.fact as number]),
     ),
   }));
-  const [senior, setSenior] = useState(seniors[0]?.id ?? "");
+  const [picked, setPicked] = useState("");
+  // Список подписантов на сервере приходит позже панели — выбор по умолчанию
+  // берётся, когда он пришёл, а не застывает пустым.
+  const senior = seniors.some((m) => m.id === picked) ? picked : (seniors[0]?.id ?? "");
+  const setSenior = setPicked;
   const save = useCommand(documentsRepository.saveDraft);
   const confirm = useCommand(documentsRepository.confirm);
 
@@ -178,8 +186,12 @@ export function DocPanel({
             <section className="flex flex-col gap-2 border-t border-border pt-4">
               <h3 className={eyebrow({ tone: "muted" })}>{t("doc.confirmTitle")}</h3>
               <p className="text-xs text-muted-foreground">{t("doc.confirmHint")}</p>
-              {seniors.length === 0 ? (
-                <p className="text-sm text-muted-foreground">{t("doc.noSeniors")}</p>
+              {onServer && deciders === null ? (
+                <p className="text-sm text-muted-foreground">{t("doc.loadingSigners")}</p>
+              ) : seniors.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  {t(onServer ? "doc.noDeciders" : "doc.noSeniors")}
+                </p>
               ) : (
                 <div className="flex gap-2">
                   <select
