@@ -3,7 +3,8 @@ import { BadgeCheck, X } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { documentsRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
-import { isSenior } from "@/lib/docFlow";
+import { isDecider } from "@/lib/docFlow";
+import { useDeskDeciders } from "@/lib/useDeskDeciders";
 import type { DocModel } from "@/lib/documents";
 import type { DocEdits, DocRecord } from "@/lib/types";
 import { useT } from "@/lib/i18n";
@@ -37,7 +38,9 @@ export function DocPanel({
   const t = useT();
   const warehouse = useEditor((s) => s.warehouse);
   const staff = warehouse.staff ?? [];
-  const seniors = staff.filter(isSenior);
+  // Подписывает тот, у кого в роли «Решения по товару»; в демо — старший по должности.
+  const deciders = useDeskDeciders();
+  const seniors = staff.filter((m) => isDecider(m, deciders));
   const locked = record?.status === "confirmed";
 
   const [edits, setEdits] = useState<DocEdits>(() => ({

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Plus, X } from "lucide-react";
 import {
+  decidersOf,
   teamRepository,
   type TeamMember,
   type TeamRole,
@@ -42,6 +43,7 @@ type Panel = { kind: "invite" } | { kind: "role"; role: TeamRole | null } | null
 export function TeamAccess({ staff }: { staff: StaffMember[] }) {
   const t = useT();
   const showToast = useEditor((s) => s.showToast);
+  const setDeskDeciders = useEditor((s) => s.setDeskDeciders);
   const [state, setState] = useState<TeamState | null>(null);
   const [failed, setFailed] = useState<MsgKey | null>(null);
   const [panel, setPanel] = useState<Panel>(null);
@@ -56,13 +58,15 @@ export function TeamAccess({ staff }: { staff: StaffMember[] }) {
       if (!alive) return;
       if (res.ok) {
         setState(res.data);
+        // Кто подписывает документы и решает спорное в кабинете — по ролям.
+        setDeskDeciders(decidersOf(res.data));
         setFailed(null);
       } else setFailed(res.error === "team.err.forbidden" ? "team.noAccess" : "team.loadFailed");
     });
     return () => {
       alive = false;
     };
-  }, [tick]);
+  }, [tick, setDeskDeciders]);
 
   // Правка на месте: роль и отключение — команды строки, отказ — тостом.
   const run = async (op: () => ReturnType<typeof teamRepository.setDeskRole>) => {

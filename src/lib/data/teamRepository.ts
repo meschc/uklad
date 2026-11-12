@@ -45,6 +45,16 @@ export interface TeamState {
   deskRoles: Record<string, string>;
 }
 
+/** Кто из персонала стола решает по товару: роль с `goods.decide`. */
+export function decidersOf(state: Pick<TeamState, "roles" | "deskRoles">): string[] {
+  const deciding = new Set(
+    state.roles.filter((r) => r.permissions.includes("goods.decide")).map((r) => r.id),
+  );
+  return Object.entries(state.deskRoles)
+    .filter(([, roleId]) => deciding.has(roleId))
+    .map(([staffRef]) => staffRef);
+}
+
 /** Что показать человеку, когда сервер отказал. */
 function teamError(res: ApiResponse): MsgKey {
   if (res.status === 429) return "team.err.tooOften";

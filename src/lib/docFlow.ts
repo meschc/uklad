@@ -31,8 +31,18 @@ import type {
 export const SENIOR_ROLE =
   /старш|бригадир|начальник|управля|заместител|руковод|директор|senior|lead|manager/i;
 
-export const isSenior = (m: Pick<StaffMember, "role"> | undefined): boolean =>
+const isSenior = (m: Pick<StaffMember, "role"> | undefined): boolean =>
   !!m && SENIOR_ROLE.test(m.role);
+
+/**
+ * Вправе ли сотрудник решать по товару и подписывать документ в кабинете. На
+ * сервере — по роли (`deciders` — у кого в роли `goods.decide`), в демо
+ * (`null`) — по должности старшего.
+ */
+export const isDecider = (
+  m: Pick<StaffMember, "id" | "role"> | undefined,
+  deciders: readonly string[] | null,
+): boolean => (deciders ? Boolean(m) && deciders.includes(m!.id) : isSenior(m));
 
 /**
  * Решает ли спорное тот, кто за столом. На сервере — право роли

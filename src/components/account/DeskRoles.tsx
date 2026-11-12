@@ -21,11 +21,19 @@ export function DeskRoles({
   onChange: (staffRef: string, roleId: string | null) => void;
 }) {
   const t = useT();
+  // Руководитель должен видеть, кому роль ещё не назначили: без неё у стола
+  // нет решений по товару, а после запуска правило станет строгим.
+  const missing = staff.filter((m) => !assigned[m.id]).length;
   return (
     <section className="flex flex-col gap-3">
       <div className="flex flex-col gap-1">
         <h2 className="text-sm font-semibold">{t("team.desk")}</h2>
         <p className="max-w-2xl text-xs text-muted-foreground">{t("team.deskLead")}</p>
+        {missing > 0 && (
+          <p className="text-xs font-medium text-warning">
+            {t("team.deskMissing", { n: missing })}
+          </p>
+        )}
       </div>
       {staff.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t("team.deskEmpty")}</p>
@@ -35,6 +43,7 @@ export function DeskRoles({
             <li key={m.id} className="flex flex-wrap items-center justify-between gap-3 py-2.5">
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium">{m.name || "—"}</p>
+                {!assigned[m.id] && <p className="text-xs text-warning">{t("team.deskNone")}</p>}
                 {m.role && <p className="truncate text-xs text-muted-foreground">{m.role}</p>}
               </div>
               <select
