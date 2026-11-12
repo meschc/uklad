@@ -607,4 +607,11 @@ test("кладовщик с почтой смотрит кабинет без с
   });
   const talker = await join(boss, "talker-view@example.com", chatOnly.json.roleId);
   assert.equal((await call("GET", "/api/cabinet/snapshot", talker)).status, 403);
+  // Роль продавца склад целиком не видит: там товар всех партнёров.
+  const sellerish = await post("/api/team/roles/save", {
+    ...boss,
+    body: { name: "Как продавец", permissions: ["stock.view", "seller.requests"] },
+  });
+  const seller = await join(boss, "seller-view@example.com", sellerish.json.roleId);
+  assert.equal((await call("GET", "/api/cabinet/snapshot", seller)).status, 403);
 });

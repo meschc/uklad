@@ -213,7 +213,8 @@ test(
     // Вход паролем, но в роли без права на персонал — только просмотр (без
     // ставок), запись — нет.
     await db.root.query(
-      `UPDATE uklad.roles SET permissions = array_remove(permissions, 'staff.manage')
+      `UPDATE uklad.roles
+       SET permissions = array_remove(array_remove(permissions, 'staff.manage'), 'seller.requests')
      WHERE org_id = $1 AND name = 'Владелец'`,
       [a.org],
     );
@@ -226,7 +227,8 @@ test(
     });
     assert.equal(noWrite.status, 403);
     await db.root.query(
-      `UPDATE uklad.roles SET permissions = array_append(permissions, 'staff.manage')
+      `UPDATE uklad.roles
+       SET permissions = permissions || ARRAY['staff.manage', 'seller.requests']
      WHERE org_id = $1 AND name = 'Владелец'`,
       [a.org],
     );

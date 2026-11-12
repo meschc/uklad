@@ -85,10 +85,12 @@ const LIMITED = Symbol("limited");
 /** Снимок — весь кабинет: только руководитель, вошедший паролем. */
 const mayUse = (ctx) => Boolean(ctx.accountId) && ctx.can("staff.manage");
 // Член команды без «Персонала» (кладовщик, приёмщик…) кабинет только
-// смотрит: снимок в том же урезанном виде, что у стола (`forDesk` — без
-// ставок, телефонов, контактов продавцов, переписки и подключений), а
-// запись — по-прежнему только `staff.manage`.
-const mayView = (ctx) => Boolean(ctx.accountId) && ctx.can("stock.view");
+// смотрит: снимок по разрешённому списку (`viewer.js` — без реквизитов,
+// цен, ставок, контактов, журнала смен), запись — только `staff.manage`.
+// Роль продавца (`seller.requests`) склад так не видит: там товар всех
+// партнёров, а продавцу — только свой.
+const mayView = (ctx) =>
+  Boolean(ctx.accountId) && ctx.can("stock.view") && !ctx.can("seller.requests");
 
 /**
  * Документ компании из базы → кабинет целиком, как его видит браузер:
@@ -198,8 +200,8 @@ function createSnapshot({ auth, send, log }) {
       // браузер держит живую работу и последние недели, а не всю историю.
       if (viewer) {
         // Смотрящий архив не двигает: это работа руководителя.
-        const { forDesk } = require("./desks");
-        return { ...rows[0], viewer, data: forDesk(await loadCabinet(c, rows[0].data)) };
+        const { forViewer } = require("./viewer");
+        return { ...rows[0], viewer, data: forViewer(await loadCabinet(c, rows[0].data)) };
       }
       await archiveDaily(c);
       return { ...rows[0], data: await loadCabinet(c, rows[0].data) };
