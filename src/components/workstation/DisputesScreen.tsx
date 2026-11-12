@@ -5,7 +5,7 @@ import { selectRole } from "@/lib/store/session.slice";
 import { isSessionLive } from "@/lib/workstation";
 import { disputesRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
-import { isSenior } from "@/lib/docFlow";
+import { mayDecideGoods } from "@/lib/docFlow";
 import { resolutionsFor } from "@/lib/disputes";
 import type { Dispute, DisputeKind, DisputeResolution } from "@/lib/types";
 import { useT, type MsgKey } from "@/lib/i18n";
@@ -61,6 +61,7 @@ export function DisputesScreen() {
   const products = useEditor((s) => s.products);
   const staff = useEditor((s) => s.warehouse.staff) ?? [];
   const session = useEditor((s) => s.stationSession);
+  const onServer = useEditor((s) => s.session.source === "server");
   const resolve = useCommand(disputesRepository.resolve);
 
   const role = useEditor(selectRole);
@@ -69,13 +70,15 @@ export function DisputesScreen() {
   const [reason, setReason] = useState("");
 
   // Решает тот, кто явно вправе: руководитель склада из кабинета (роль склада,
-  // бейджа нет) или сотрудник на должности старшего с живым входом по бейджу.
+  // бейджа нет) или сотрудник с правом роли на решения (в демо — должность
+  // старшего) и живым входом по бейджу.
   // Просроченный вход и роль продавца кнопок не дают, а не «открывают по
   // умолчанию».
   const live = isSessionLive(session, now);
   const badgeStaff = live ? staff.find((m) => m.id === session!.staffId) : undefined;
   const canResolve =
-    role === "warehouse" && (session ? !!badgeStaff && isSenior(badgeStaff) : true);
+    role === "warehouse" &&
+    (session ? !!badgeStaff && mayDecideGoods(session, badgeStaff, onServer) : true);
   const by = badgeStaff?.id ?? "manager";
 
   const open = disputes.filter((d) => !d.resolution);

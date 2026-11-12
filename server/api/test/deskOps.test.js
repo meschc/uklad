@@ -9,6 +9,9 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { applyDeskOps, isOp } = require("../src/cabinet/deskOps");
 
+// Право решать по товару — у роли Ольги (миграция 024), не у должности.
+const DECIDES = { "stf-olga": ["goods.decide"] };
+
 const NOW = 1_800_000_000_000;
 const mark = (key, eventId, type, at = NOW - 1000, extra = {}) => ({
   key,
@@ -28,7 +31,7 @@ test("отметка ложится за того, кто за столом по
 });
 
 test("стол называет сотрудника: принимается, только если он за столом или был", () => {
-  const both = { staff: "stf-olga", prev: "stf-ivan" };
+  const both = { staff: "stf-olga", perms: DECIDES, prev: "stf-ivan" };
   const r = applyDeskOps(
     {},
     [
@@ -203,7 +206,7 @@ test("задним числом: раньше, чем встал за стол, 
   ]);
 
   // Прежний сотрудник — только за время, пока стоял за столом.
-  const left = { staff: "stf-olga", staffSince: NOW - 60_000, prev: "stf-ivan" };
+  const left = { staff: "stf-olga", perms: DECIDES, staffSince: NOW - 60_000, prev: "stf-ivan" };
   Object.assign(left, { prevSince: NOW - 3_600_000, prevLeft: NOW - 60_000 });
   const r2 = applyDeskOps(
     {},
@@ -267,7 +270,12 @@ test("решение старшего — только от того, кто з�
   assert.deepEqual(statuses(r), [["k-dr0001", "flagged", "not_yours"]]);
   assert.equal(r.data.disputes[0].resolution, undefined);
   // Ольга за столом — решение проходит.
-  const ok = applyDeskOps(data, [op], { staff: "stf-olga", staffSince: NOW - 60_000 }, NOW);
+  const ok = applyDeskOps(
+    data,
+    [op],
+    { staff: "stf-olga", perms: DECIDES, staffSince: NOW - 60_000 },
+    NOW,
+  );
   assert.deepEqual(statuses(ok), [["k-dr0001", "applied", null]]);
   assert.equal(ok.data.disputes[0].resolution, "written_off");
 });

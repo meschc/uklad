@@ -9,6 +9,10 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { applyShipRun, applyDisputeResolve } = require("../src/cabinet/deskShip");
 
+// Право решать — у роли Ольги (миграция 024), должность тут ни при чём.
+const DECIDES = { "stf-olga": ["goods.decide"] };
+const resolve = (data, body, ref) => applyDisputeResolve(data, body, ref, { perms: DECIDES });
+
 const AT = 1_800_000_000_000;
 const data = () => ({
   warehouse: {
@@ -126,46 +130,46 @@ test("заявка не уезжает без своего короба, тар�
 
 test("решение спорного: только старший, списание с причиной и не тем, кто нашёл", () => {
   const body = (over) => ({ eventId: "dr-1", at: AT, disputeId: "d1", ...over });
-  assert.equal(
-    applyDisputeResolve(data(), body({ resolution: "returned" }), "stf-ivan").flag,
-    "not_yours",
-  );
-  const back = applyDisputeResolve(data(), body({ resolution: "returned" }), "stf-olga");
+  assert.equal(resolve(data(), body({ resolution: "returned" }), "stf-ivan").flag, "not_yours");
+  const back = resolve(data(), body({ resolution: "returned" }), "stf-olga");
   assert.deepEqual(
     [back.data.disputes[0].resolution, back.data.disputes[0].resolvedBy],
     ["returned", "stf-olga"],
   );
   assert.deepEqual(back.data.boxes, data().boxes);
-  assert.equal(
-    applyDisputeResolve(data(), body({ resolution: "written_off" }), "stf-olga").flag,
-    "not_yours",
-  );
-  const off = applyDisputeResolve(
-    data(),
-    body({ resolution: "written_off", note: "пересчитали" }),
-    "stf-olga",
-  );
+  assert.equal(resolve(data(), body({ resolution: "written_off" }), "stf-olga").flag, "not_yours");
+  const off = resolve(data(), body({ resolution: "written_off", note: "пересчитали" }), "stf-olga");
   assert.deepEqual(off.data.boxes[0].lines, [{ productId: "p1", qty: 1 }]);
   // Нельзя списать больше, чем лежит.
   const thin = data();
   thin.boxes[0].lines = [{ productId: "p1", qty: 1 }];
   assert.equal(
-    applyDisputeResolve(thin, body({ resolution: "written_off", note: "x" }), "stf-olga").flag,
+    resolve(thin, body({ resolution: "written_off", note: "x" }), "stf-olga").flag,
     "stock",
   );
 });
 
 test("лишнее с приёмки: оставить или вернуть поставщику; уже решённое — повтор", () => {
   const body = (over) => ({ eventId: "dr-2", at: AT, disputeId: "d2", ...over });
+  assert.equal(resolve(data(), body({ resolution: "returned" }), "stf-olga").flag, "bad");
+  const kept = resolve(data(), body({ resolution: "accepted" }), "stf-olga").data;
+  assert.equal(kept.disputes[1].resolution, "accepted");
+  assert.equal(resolve(kept, body({ resolution: "accepted" }), "stf-olga").data, kept);
   assert.equal(
-    applyDisputeResolve(data(), body({ resolution: "returned" }), "stf-olga").flag,
+    resolve(kept, body({ resolution: "written_off", note: "x" }), "stf-olga").flag,
     "bad",
   );
-  const kept = applyDisputeResolve(data(), body({ resolution: "accepted" }), "stf-olga").data;
-  assert.equal(kept.disputes[1].resolution, "accepted");
-  assert.equal(applyDisputeResolve(kept, body({ resolution: "accepted" }), "stf-olga").data, kept);
+});
+
+test("должность «Старший смены» без права роли решать не даёт", () => {
+  const body = { eventId: "dr-9", at: AT, disputeId: "d1", resolution: "returned" };
+  // Должность у Ольги прежняя, но роли с `goods.decide` нет.
+  assert.equal(applyDisputeResolve(data(), body, "stf-olga", {}).flag, "not_yours");
+  assert.equal(applyDisputeResolve(data(), body, "stf-olga", { perms: {} }).flag, "not_yours");
+  // Право есть у Ивана-грузчика — решает он, должность не мешает.
+  const ivan = { perms: { "stf-ivan": ["goods.decide"] } };
   assert.equal(
-    applyDisputeResolve(kept, body({ resolution: "written_off", note: "x" }), "stf-olga").flag,
-    "bad",
+    applyDisputeResolve(data(), body, "stf-ivan", ivan).data.disputes[0].resolvedBy,
+    "stf-ivan",
   );
 });

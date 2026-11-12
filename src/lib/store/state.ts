@@ -746,7 +746,11 @@ export interface WorkstationSlice {
    */
   badgeLogin: (code: string, station: WorkstationKind) => string | null;
   /** Открыть вход за сотрудника, которого назвал сервер по бейджу; чужой — null. */
-  openStation: (staffId: string, station: WorkstationKind) => string | null;
+  openStation: (
+    staffId: string,
+    station: WorkstationKind,
+    permissions?: string[] | null,
+  ) => string | null;
   stationLogout: () => void;
   /**
    * Отметка смены вошедшего сотрудника. Недопустимый переход (перерыв без
@@ -793,6 +797,13 @@ export interface DocsSlice {
     sourceId: string,
     staffId: string,
   ) => "ok" | "notSenior" | "locked" | "missing";
+  /**
+   * Кто из персонала вправе решать по товару и подписывать документы — по
+   * ролям на сервере (`goods.decide`, миграция 024). `null` — не загружено
+   * или демо без сервера: тогда решает должность (`isSenior`). Не сохраняется.
+   */
+  deskDeciders: string[] | null;
+  setDeskDeciders: (ids: string[] | null) => void;
   /** Какой документ открыть на экране «Документы» — переход из задания или приёмки. */
   docFocus: { kind: DocRecord["kind"]; sourceId: string } | null;
   openDoc: (kind: DocRecord["kind"], sourceId: string) => void;

@@ -302,6 +302,17 @@ export function startServerSync(orgId: string): () => void {
   let base: { version: number; split: Split } | null = null;
 
   /** Снимок не для этой роли: не пишем и не повторяем, говорим один раз. */
+  /**
+   * Режим просмотра — по ответу сервера, а не по сохранённому: роль могли
+   * поменять. Включился — человеку говорим один раз, почему правки не идут.
+   */
+  const markReadOnly = (on: boolean) => {
+    const s = useEditor.getState();
+    if (Boolean(s.session.readOnly) === on) return;
+    useEditor.setState({ session: { ...s.session, readOnly: on || undefined } });
+    if (on) s.showToast("sync.readOnly");
+  };
+
   const forbid = () => {
     if (stopped) return;
     stopped = true;
@@ -385,6 +396,7 @@ export function startServerSync(orgId: string): () => void {
     const meta = readMeta();
     const current = persistedState(useEditor.getState());
     const snap = res.data;
+    markReadOnly(snap?.viewer === true);
 
     // Чистая пометка — копия совпадает с сервером (своя) или здесь после
     // выхода только демо: терять нечего. Незаписанные правки и копию без
@@ -423,7 +435,7 @@ export function startServerSync(orgId: string): () => void {
       return replaceWith(blank, PERSIST_VERSION, { orgId, version: 0, dirty: true });
     }
 
-    if (snap.desk && meta?.orgId === orgId) {
+    if ((snap.desk || snap.viewer) && meta?.orgId === orgId) {
       // Стол копию не пишет, поэтому «незаписанного» у него нет.
       desk = true;
       booted = true;

@@ -9,6 +9,7 @@ import type {
   ReceivingEvent,
   Shipment,
   StaffMember,
+  StationSession,
   Warehouse,
 } from "./types";
 
@@ -30,8 +31,35 @@ import type {
 export const SENIOR_ROLE =
   /старш|бригадир|начальник|управля|заместител|руковод|директор|senior|lead|manager/i;
 
-export const isSenior = (m: Pick<StaffMember, "role"> | undefined): boolean =>
+const isSenior = (m: Pick<StaffMember, "role"> | undefined): boolean =>
   !!m && SENIOR_ROLE.test(m.role);
+
+/**
+ * Вправе ли сотрудник решать по товару и подписывать документ в кабинете.
+ * На сервере — только по роли (`deciders` — у кого в роли `goods.decide`);
+ * пока список не пришёл, не вправе никто. По должности — только демо.
+ */
+export const isDecider = (
+  m: Pick<StaffMember, "id" | "role"> | undefined,
+  deciders: readonly string[] | null,
+  onServer: boolean,
+): boolean => {
+  if (!onServer) return isSenior(m);
+  return Boolean(m) && (deciders ?? []).includes(m!.id);
+};
+
+/**
+ * Решает ли спорное тот, кто за столом. На сервере — право роли
+ * `goods.decide` из ответа на бейдж (миграция 024), ровно то, что проверит
+ * сервер; нет роли или вход начат до выкладки (поля нет) — не решает. По
+ * должности — только демо без сервера.
+ */
+export const mayDecideGoods = (
+  session: Pick<StationSession, "permissions"> | null | undefined,
+  m: Pick<StaffMember, "role"> | undefined,
+  onServer: boolean,
+): boolean =>
+  onServer ? Boolean(m) && (session?.permissions ?? []).includes("goods.decide") : isSenior(m);
 
 export type DocSourceKind = DocRecord["kind"];
 

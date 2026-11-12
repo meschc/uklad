@@ -14,7 +14,7 @@ import { ProductDialog } from "@/components/table/ProductDialog";
 import { ScreenShell } from "./ScreenShell";
 import { type ScanStatus } from "./ScanField";
 import { ShipmentPicker } from "./ShipmentPicker";
-import { isSenior } from "@/lib/docFlow";
+import { mayDecideGoods } from "@/lib/docFlow";
 import { DiscrepancyAlert } from "./DiscrepancyAlert";
 import { BoxStep } from "./receiving/BoxStep";
 import { CargoStep } from "./receiving/CargoStep";
@@ -62,9 +62,17 @@ export function ReceivingScreen({ staffId: badgeStaffId }: { staffId?: string } 
   // тары выдаёт счётчик склада, два стола получили бы один номер.
   const deskOnServer = useEditor((s) => s.session.source === "server" && !!s.stationSession);
   const staff = useEditor((s) => s.warehouse.staff ?? []);
-  // За столом по бейджу поставку заводит только старший смены; руководитель
-  // в кабинете (бейджа нет) — всегда.
-  const canCreateShipment = !badgeStaffId || isSenior(staff.find((m) => m.id === badgeStaffId));
+  // За столом по бейджу поставку заводит только тот, у кого в роли «Решения по
+  // товару» (в демо — старший по должности); руководитель в кабинете — всегда.
+  const station = useEditor((s) => s.stationSession);
+  const onServer = useEditor((s) => s.session.source === "server");
+  const canCreateShipment =
+    !badgeStaffId ||
+    mayDecideGoods(
+      station,
+      staff.find((m) => m.id === badgeStaffId),
+      onServer,
+    );
   const twoStage = useEditor((s) => !!s.serviceSettings.twoStageReceiving);
   const [stage, setStage] = useState<"cargo" | "items">("cargo");
 

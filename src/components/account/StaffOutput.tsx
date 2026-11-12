@@ -4,6 +4,9 @@ import { useEditor } from "@/lib/store";
 import { useWithArchive } from "@/lib/store/archive";
 import { staffReport, staffReportCsv } from "@/lib/staffReport";
 import { startOfDay, startOfMonth } from "@/lib/workstation";
+import { currentProcess } from "@/lib/staffProcess";
+import { formatTime } from "@/components/workstation/useNow";
+import type { WorkstationKind } from "@/lib/types";
 import { BOM } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
@@ -28,6 +31,15 @@ function periodRange(p: Period, now: number): [number, number] {
 }
 
 const hoursText = (ms: number) => (ms / 3_600_000).toFixed(1);
+
+const STATIONS: WorkstationKind[] = [
+  "receiving",
+  "picking",
+  "pack",
+  "marking",
+  "returns",
+  "shipping",
+];
 
 export function StaffOutput() {
   const t = useT();
@@ -118,8 +130,28 @@ export function StaffOutput() {
                 <td className="px-3 py-2">
                   <p className="font-medium">{r.name}</p>
                   <p className="text-xs text-muted-foreground">{r.role}</p>
+                  {(() => {
+                    // Участок сам следует за человеком: где последний скан или
+                    // отметка в открытой смене, там он и сейчас.
+                    const cur = currentProcess(events, r.staffId);
+                    return cur ? (
+                      <p className="text-xs text-primary">
+                        {t("staff.out.now", {
+                          station: t(`ws.station.${cur.station}`),
+                          time: formatTime(cur.since, t.lang),
+                        })}
+                      </p>
+                    ) : null;
+                  })()}
                 </td>
-                <td className="px-3 py-2 text-right tabular-nums">{hoursText(r.workedMs)}</td>
+                <td className="px-3 py-2 text-right tabular-nums">
+                  {hoursText(r.workedMs)}
+                  {STATIONS.filter((k) => (r.byStation[k] ?? 0) > 0).map((k) => (
+                    <span key={k} className="block text-xs text-muted-foreground">
+                      {t(`ws.station.${k}`)} {hoursText(r.byStation[k] ?? 0)}
+                    </span>
+                  ))}
+                </td>
                 <td className="px-3 py-2 text-right tabular-nums">{hoursText(r.idleMs)}</td>
                 <td className="px-3 py-2 text-right tabular-nums">
                   {r.packed + r.picked}
