@@ -193,6 +193,8 @@ export const ru = {
   "profile.logoutDeferred":
     "На этом устройстве лежит отложенная копия: правки, которые не попали на сервер, или данные, бывшие здесь до входа. При выходе она сотрётся.",
   "profile.logoutDeferredBackup": "Скачать отложенную копию",
+  "sync.readOnly":
+    "Ваша роль даёт только просмотр кабинета. Менять данные может руководитель склада, работа с товаром — за столом по бейджу.",
   "sync.err.forbidden":
     "Ваша роль не даёт доступа ко всему кабинету. Правки на этом устройстве на сервер не уходят — попросите руководителя склада.",
   "profile.logoutConfirm": "Выйти и стереть",
@@ -493,6 +495,8 @@ export const en: Record<keyof typeof ru, string> = {
   "profile.logoutDeferred":
     "There is a set-aside copy on this device: changes that didn't reach the server, or data that was here before you signed in. Signing out will erase it.",
   "profile.logoutDeferredBackup": "Download the set-aside copy",
+  "sync.readOnly":
+    "Your role gives view-only access to the cabinet. A warehouse manager changes data; goods work happens at the desk with a badge.",
   "sync.err.forbidden":
     "Your role doesn't give access to the whole cabinet. Changes on this device are not sent to the server — ask your warehouse manager.",
   "profile.logoutConfirm": "Sign out and erase",

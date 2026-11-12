@@ -38,6 +38,7 @@ import { createSubscriptionSlice } from "./subscription.slice";
 import { createWorkstationSlice } from "./workstation.slice";
 import { sanitizeDomains } from "../data/sanitize";
 import { PERSIST_KEY, persistStorage } from "./persistStorage";
+import { guardReadOnly } from "./readOnlyGuard";
 
 /**
  * Сборка стора из срезов (slices pattern). Каждый срез — отдельный файл рядом;
@@ -149,31 +150,37 @@ const HAD_PERSISTED = !EMBED && hasLocal(PERSIST_KEY);
 
 export const useEditor = create<EditorState>()(
   persist(
-    (...a) => ({
-      ...createAccountSlice(...a),
-      ...createIntegrationsSlice(...a),
-      ...createLabelsSlice(...a),
-      ...createFloorsSlice(...a),
-      ...createCatalogSlice(...a),
-      ...createPlacementSlice(...a),
-      ...createModulesSlice(...a),
-      ...createShelvesSlice(...a),
-      ...createRowsSlice(...a),
-      ...createViewSlice(...a),
-      ...createPrintSlice(...a),
-      ...createOnboardingSlice(...a),
-      ...createHistorySlice(...a),
-      ...createFulfillmentSlice(...a),
-      ...createRequestsSlice(...a),
-      ...createSessionSlice(...a),
-      ...createChatSlice(...a),
-      ...createStaffSlice(...a),
-      ...createSubscriptionSlice(...a),
-      ...createWorkstationSlice(...a),
-      ...createOperationsSlice(...a),
-      ...createDisputesSlice(...a),
-      ...createDocsSlice(...a),
-    }),
+    (set, get, api) => {
+      // Ключи данных компании — то, что сохраняется; считаются один раз.
+      let company: ReadonlySet<string> | null = null;
+      const companyKeys = () => (company ??= new Set(Object.keys(persistedState(get()))));
+      const a = [guardReadOnly(set, get, companyKeys), get, api] as const;
+      return {
+        ...createAccountSlice(...a),
+        ...createIntegrationsSlice(...a),
+        ...createLabelsSlice(...a),
+        ...createFloorsSlice(...a),
+        ...createCatalogSlice(...a),
+        ...createPlacementSlice(...a),
+        ...createModulesSlice(...a),
+        ...createShelvesSlice(...a),
+        ...createRowsSlice(...a),
+        ...createViewSlice(...a),
+        ...createPrintSlice(...a),
+        ...createOnboardingSlice(...a),
+        ...createHistorySlice(...a),
+        ...createFulfillmentSlice(...a),
+        ...createRequestsSlice(...a),
+        ...createSessionSlice(...a),
+        ...createChatSlice(...a),
+        ...createStaffSlice(...a),
+        ...createSubscriptionSlice(...a),
+        ...createWorkstationSlice(...a),
+        ...createOperationsSlice(...a),
+        ...createDisputesSlice(...a),
+        ...createDocsSlice(...a),
+      };
+    },
     {
       name: PERSIST_KEY,
       version: PERSIST_VERSION,

@@ -84,6 +84,11 @@ const FORBIDDEN = Symbol("forbidden");
 const LIMITED = Symbol("limited");
 /** Снимок — весь кабинет: только руководитель, вошедший паролем. */
 const mayUse = (ctx) => Boolean(ctx.accountId) && ctx.can("staff.manage");
+// Член команды без «Персонала» (кладовщик, приёмщик…) кабинет только
+// смотрит: снимок в том же урезанном виде, что у стола (`forDesk` — без
+// ставок, телефонов, контактов продавцов, переписки и подключений), а
+// запись — по-прежнему только `staff.manage`.
+const mayView = (ctx) => Boolean(ctx.accountId) && ctx.can("stock.view");
 
 /**
  * Документ компании из базы → кабинет целиком, как его видит браузер:
@@ -182,7 +187,8 @@ function createSnapshot({ auth, send, log }) {
 
   async function load(req, res) {
     const out = await withSession(req, async (c, ctx) => {
-      if (!mayUse(ctx)) return FORBIDDEN;
+      const viewer = !mayUse(ctx);
+      if (viewer && !mayView(ctx)) return FORBIDDEN;
       const { rows } = await c.query(
         `SELECT version, format, data, updated_at FROM uklad.cabinet_snapshots
          WHERE org_id = uklad.current_org()`,
@@ -190,6 +196,11 @@ function createSnapshot({ auth, send, log }) {
       if (!rows[0]) return false;
       // Законченное старше окна — в архив, до того как собрать кабинет: так
       // браузер держит живую работу и последние недели, а не всю историю.
+      if (viewer) {
+        // Смотрящий архив не двигает: это работа руководителя.
+        const { forDesk } = require("./desks");
+        return { ...rows[0], viewer, data: forDesk(await loadCabinet(c, rows[0].data)) };
+      }
       await archiveDaily(c);
       return { ...rows[0], data: await loadCabinet(c, rows[0].data) };
     });
@@ -203,6 +214,7 @@ function createSnapshot({ auth, send, log }) {
         format: out.format,
         data: out.data,
         updatedAt: out.updated_at,
+        ...(out.viewer ? { viewer: true } : {}),
       },
     });
   }

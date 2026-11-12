@@ -22,6 +22,7 @@ before(async () => {
   const { createAuth } = require("../src/cabinet/auth.js");
   const { createTeam } = require("../src/cabinet/team.js");
   const { createDeskBadges } = require("../src/cabinet/deskBadges.js");
+  const { createSnapshot } = require("../src/cabinet/snapshot.js");
   db = await helpers.setupDb();
   const cfg = { publicUrl: ORIGIN, allowedOrigins: [ORIGIN], trustProxy: true };
   const quiet = { error() {} };
@@ -29,12 +30,14 @@ before(async () => {
   const auth = createAuth({ pool: db.pool, cfg, send, readBody, log: quiet, mail });
   const team = createTeam({ auth, cfg, send, log: quiet });
   const badges = createDeskBadges({ auth, send, log: quiet });
+  const snapshot = createSnapshot({ auth, send, log: quiet });
   cookieName = auth.cookieName;
   const cabinet = {
     handle: async (req, res, url) =>
       (await auth.handle(req, res, url)) ||
       (await team.handle(req, res, url)) ||
-      (await badges.handle(req, res, url)),
+      (await badges.handle(req, res, url)) ||
+      (await snapshot.handle(req, res, url)),
   };
   server = http.createServer(
     createApp({
@@ -561,3 +564,47 @@ test(
     assert.equal(await live("stf-c"), 1);
   },
 );
+
+test("кладовщик с почтой смотрит кабинет без ставок, но не пишет", { skip: SKIP }, async () => {
+  const boss = await owner("boss-view@example.com", "10.1.0.13");
+  const r = await roles(boss);
+  const data = {
+    warehouse: {
+      id: "w1",
+      name: "Склад",
+      staff: [
+        { id: "stf-ivan", name: "Иван", role: "Упаковщик", hourlyRate: 300, phone: "+7 900" },
+      ],
+    },
+  };
+  const first = await post("/api/cabinet/snapshot", {
+    ...boss,
+    body: { version: 0, format: 8, data },
+  });
+  assert.equal(first.status, 200);
+  const keeper = await join(boss, "keeper-view@example.com", r["Кладовщик"]);
+  const seen = await call("GET", "/api/cabinet/snapshot", keeper);
+  assert.equal(seen.status, 200);
+  assert.equal(seen.json.snapshot.viewer, true);
+  const ivan = seen.json.snapshot.data.warehouse.staff[0];
+  assert.equal(ivan.name, "Иван");
+  assert.equal(ivan.hourlyRate, undefined);
+  assert.equal(ivan.phone, undefined);
+  // Записать — нельзя ни целиком, ни частью.
+  const write = await post("/api/cabinet/snapshot", {
+    ...keeper,
+    body: { version: seen.json.snapshot.version, format: 8, data },
+  });
+  assert.equal(write.status, 403);
+  // У руководителя — полный снимок, без пометки просмотра.
+  const full = await call("GET", "/api/cabinet/snapshot", boss);
+  assert.equal(full.json.snapshot.viewer, undefined);
+  assert.equal(full.json.snapshot.data.warehouse.staff[0].hourlyRate, 300);
+  // Роль без «Остатков» кабинет не видит вовсе.
+  const chatOnly = await post("/api/team/roles/save", {
+    ...boss,
+    body: { name: "Только чат", permissions: ["chat.use"] },
+  });
+  const talker = await join(boss, "talker-view@example.com", chatOnly.json.roleId);
+  assert.equal((await call("GET", "/api/cabinet/snapshot", talker)).status, 403);
+});
