@@ -21,16 +21,20 @@ before(async () => {
   const { createApp, send, readBody } = require("../src/server.js");
   const { createAuth } = require("../src/cabinet/auth.js");
   const { createTeam } = require("../src/cabinet/team.js");
+  const { createDeskBadges } = require("../src/cabinet/deskBadges.js");
   db = await helpers.setupDb();
   const cfg = { publicUrl: ORIGIN, allowedOrigins: [ORIGIN], trustProxy: true };
   const quiet = { error() {} };
   const mail = { sendTo: async (m) => void sent.push(m) };
   const auth = createAuth({ pool: db.pool, cfg, send, readBody, log: quiet, mail });
   const team = createTeam({ auth, cfg, send, log: quiet });
+  const badges = createDeskBadges({ auth, send, log: quiet });
   cookieName = auth.cookieName;
   const cabinet = {
     handle: async (req, res, url) =>
-      (await auth.handle(req, res, url)) || (await team.handle(req, res, url)),
+      (await auth.handle(req, res, url)) ||
+      (await team.handle(req, res, url)) ||
+      (await badges.handle(req, res, url)),
   };
   server = http.createServer(
     createApp({
@@ -438,3 +442,122 @@ test("письмо-приглашение не несёт чужих перев�
   assert.ok(!/[\r\n]/.test(l.subject));
   assert.ok(!l.text.includes("\nBcc:"));
 });
+
+test(
+  "роль у стола: назначить, снять, не выше своей, не удалить занятую",
+  { skip: SKIP },
+  async () => {
+    const boss = await owner("boss-desk@example.com", "10.1.0.9");
+    const r = await roles(boss);
+    const set = (who, staffRef, roleId) =>
+      post("/api/team/desk-role", { ...who, body: { staffRef, roleId } });
+    assert.equal((await set(boss, "stf-olga", r["Начальник склада"])).status, 200);
+    assert.equal((await set(boss, "stf-ivan", r["Кладовщик"])).status, 200);
+    let list = (await call("GET", "/api/team", boss)).json;
+    assert.deepEqual(list.deskRoles, {
+      "stf-olga": r["Начальник склада"],
+      "stf-ivan": r["Кладовщик"],
+    });
+    assert.ok(list.permissions.some((p) => p.code === "goods.decide"));
+    // Начальник склада получил решения по товару и в старой, и в новой компании.
+    const chiefRole = list.roles.find((x) => x.name === "Начальник склада");
+    assert.ok(chiefRole.permissions.includes("goods.decide"));
+
+    // Начальник не даёт роль выше своей и не снимает её с того, у кого она выше.
+    const chief = await join(boss, "chief-desk@example.com", r["Начальник склада"]);
+    assert.equal((await set(chief, "stf-petr", r["Владелец"])).status, 403);
+    assert.equal((await set(boss, "stf-petr", r["Владелец"])).status, 200);
+    assert.equal((await set(chief, "stf-petr", null)).status, 403);
+    assert.equal((await set(chief, "stf-ivan", r["Сборщик"])).status, 200);
+    // Кладовщик с почтой роли у стола не трогает.
+    const keeper = await join(boss, "keeper-desk@example.com", r["Кладовщик"]);
+    assert.equal((await set(keeper, "stf-ivan", r["Кладовщик"])).status, 403);
+    // Битый id и чужая роль — 404.
+    assert.equal((await set(boss, "../x", r["Кладовщик"])).status, 404);
+    const other = await owner("boss-desk2@example.com", "10.1.0.10");
+    assert.equal((await set(other, "stf-ivan", r["Кладовщик"])).status, 404);
+
+    // Свою роль, которую носит сотрудник стола, не удалить; снял — удаляется.
+    const saved = await post("/api/team/roles/save", {
+      ...boss,
+      body: { name: "Старший смены", permissions: ["stock.view", "goods.decide"] },
+    });
+    assert.equal((await set(boss, "stf-anna", saved.json.roleId)).status, 200);
+    const busy = await post("/api/team/roles/delete", {
+      ...boss,
+      body: { roleId: saved.json.roleId },
+    });
+    assert.equal(busy.status, 409);
+    assert.equal((await set(boss, "stf-anna", null)).status, 200);
+    list = (await call("GET", "/api/team", boss)).json;
+    assert.equal(list.deskRoles["stf-anna"], undefined);
+    const free = await post("/api/team/roles/delete", {
+      ...boss,
+      body: { roleId: saved.json.roleId },
+    });
+    assert.equal(free.status, 200);
+  },
+);
+
+test("бейдж на строку с ролью выше своей не выпустить и не погасить", { skip: SKIP }, async () => {
+  const boss = await owner("boss-badge@example.com", "10.1.0.11");
+  const r = await roles(boss);
+  const set = (staffRef, roleId) =>
+    post("/api/team/desk-role", { ...boss, body: { staffRef, roleId } });
+  assert.equal((await set("stf-top", r["Владелец"])).status, 200);
+  assert.equal((await set("stf-low", r["Кладовщик"])).status, 200);
+  // Своя роль начальника без goods.decide: бейдж на владельца ему не выпустить.
+  const saved = await post("/api/team/roles/save", {
+    ...boss,
+    body: { name: "Начальник без решений", permissions: ["staff.manage", "stock.view"] },
+  });
+  const chief = await join(boss, "chief-badge@example.com", saved.json.roleId);
+  const issue = (who, staffRef) =>
+    post("/api/cabinet/badges/issue", { ...who, body: { staffRef } });
+  const revoke = (who, staffRef) =>
+    post("/api/cabinet/badges/revoke", { ...who, body: { staffRef } });
+  assert.equal((await issue(chief, "stf-top")).status, 403);
+  assert.equal((await issue(boss, "stf-top")).status, 200);
+  assert.equal((await revoke(chief, "stf-top")).status, 403);
+  // У кладовщика есть права, которых нет у этого начальника, — тоже нельзя;
+  // строку без роли — можно.
+  assert.equal((await issue(chief, "stf-low")).status, 403);
+  assert.equal((await issue(chief, "stf-new")).status, 200);
+  assert.equal((await revoke(chief, "stf-new")).status, 200);
+});
+
+test(
+  "повысили роль строки — бейдж от младшего руководителя погас, от владельца остался",
+  {
+    skip: SKIP,
+  },
+  async () => {
+    const boss = await owner("boss-raise@example.com", "10.1.0.12");
+    const r = await roles(boss);
+    const chief = await join(boss, "chief-raise@example.com", r["Начальник склада"]);
+    const issue = (who, staffRef) =>
+      post("/api/cabinet/badges/issue", { ...who, body: { staffRef } });
+    const set = (staffRef, roleId) =>
+      post("/api/team/desk-role", { ...boss, body: { staffRef, roleId } });
+    const live = async (staffRef) =>
+      (
+        await db.root.query(
+          `SELECT count(*)::int AS n FROM uklad.desk_badges
+         WHERE org_id = $1 AND staff_ref = $2 AND revoked_at IS NULL`,
+          [boss.org, staffRef],
+        )
+      ).rows[0].n;
+    // Новичкам без роли бейджи выпускают начальник и владелец.
+    assert.equal((await issue(chief, "stf-a")).status, 200);
+    assert.equal((await issue(boss, "stf-b")).status, 200);
+    // Владелец даёт обоим свою роль: копия у начальника не должна её получить.
+    assert.equal((await set("stf-a", r["Владелец"])).status, 200);
+    assert.equal((await set("stf-b", r["Владелец"])).status, 200);
+    assert.equal(await live("stf-a"), 0);
+    assert.equal(await live("stf-b"), 1);
+    // Роль в пределах прав начальника бейдж не гасит.
+    assert.equal((await issue(chief, "stf-c")).status, 200);
+    assert.equal((await set("stf-c", r["Кладовщик"])).status, 200);
+    assert.equal(await live("stf-c"), 1);
+  },
+);

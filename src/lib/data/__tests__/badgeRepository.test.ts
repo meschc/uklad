@@ -37,7 +37,9 @@ function fakeServer(): BadgeServer {
     "UK-STF-BBBBBBBBBBBBBBBBBBBBBB": "stf-boss",
   };
   return {
-    check: vi.fn(async (code: string) => ok(known[code] ?? null)),
+    check: vi.fn(async (code: string) =>
+      ok(known[code] ? { staffId: known[code], permissions: null } : null),
+    ),
     issue: vi.fn(async () => ok("UK-STF-CCCCCCCCCCCCCCCCCCCCCC")),
     revoke: vi.fn(async () => ok(undefined)),
   };
@@ -86,7 +88,7 @@ describe("workstationRepository: вход по бейджу на сервере"
       ok: true,
       data: "stf-ivan",
     });
-    expect(port.get().openStation).toHaveBeenCalledWith("stf-ivan", "pack");
+    expect(port.get().openStation).toHaveBeenCalledWith("stf-ivan", "pack", null);
     // Разбор демо-кода в обход сервера не вызывается вовсе.
     expect(port.get().badgeLogin).not.toHaveBeenCalled();
   });

@@ -9,6 +9,7 @@ import type {
   ReceivingEvent,
   Shipment,
   StaffMember,
+  StationSession,
   Warehouse,
 } from "./types";
 
@@ -32,6 +33,19 @@ export const SENIOR_ROLE =
 
 export const isSenior = (m: Pick<StaffMember, "role"> | undefined): boolean =>
   !!m && SENIOR_ROLE.test(m.role);
+
+/**
+ * Решает ли спорное тот, кто за столом. На сервере — право роли
+ * `goods.decide` из ответа на бейдж (миграция 024), ровно то, что проверит
+ * сервер; без роли — нет. В демо без сервера прав нет — решает должность.
+ */
+export const mayDecideGoods = (
+  session: Pick<StationSession, "permissions"> | null | undefined,
+  m: Pick<StaffMember, "role"> | undefined,
+): boolean =>
+  session?.permissions !== undefined
+    ? Boolean(m) && (session.permissions ?? []).includes("goods.decide")
+    : isSenior(m);
 
 export type DocSourceKind = DocRecord["kind"];
 

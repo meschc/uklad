@@ -105,7 +105,7 @@ export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get)
     return staffId ? get().openStation(staffId, station) : null;
   },
 
-  openStation: (staffId, station) => {
+  openStation: (staffId, station, permissions) => {
     const member = (get().warehouse.staff ?? []).find((m) => m.id === staffId);
     if (!member) return null;
     const now = nowMs();
@@ -118,6 +118,7 @@ export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get)
         startedAt: now,
         expiresAt: now + SESSION_TTL_MS,
         ...(device ? { deviceId: device.id } : {}),
+        ...(permissions !== undefined ? { permissions } : {}),
       },
     });
     return member.id;

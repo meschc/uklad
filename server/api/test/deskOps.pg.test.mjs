@@ -22,6 +22,7 @@ before(async () => {
   const { createDeskBadges } = require("../src/cabinet/deskBadges.js");
   const { createSnapshot } = require("../src/cabinet/snapshot.js");
   const { createDesks } = require("../src/cabinet/desks.js");
+  const { createTeam } = require("../src/cabinet/team.js");
   db = await helpers.setupDb();
   const cfg = { publicUrl: ORIGIN, allowedOrigins: [ORIGIN], trustProxy: true };
   const quiet = { error() {} };
@@ -30,12 +31,14 @@ before(async () => {
   const badges = createDeskBadges({ auth, send, log: quiet });
   const snapshot = createSnapshot({ auth, send, log: quiet });
   const desks = createDesks({ auth, cfg, send, log: quiet });
+  const team = createTeam({ auth, cfg, send, log: quiet });
   cookieName = auth.cookieName;
   deskCookieName = desks.cookieName;
   const cabinet = {
     handle: async (req, res, url) =>
       (await desks.handle(req, res, url)) ||
       (await auth.handle(req, res, url)) ||
+      (await team.handle(req, res, url)) ||
       (await badges.handle(req, res, url)) ||
       (await snapshot.handle(req, res, url)),
   };
@@ -147,6 +150,14 @@ async function company(email, ip) {
   assert.equal(first.status, 200);
   const code = async (staffRef) =>
     (await call("/api/cabinet/badges/issue", { ...a, body: { staffRef } })).json.code;
+  // Права у стола — по роли (миграция 024): Игорь и Ольга — начальники склада,
+  // у Ивана роли нет. Должность в снимке на права не влияет.
+  const team = (await call("/api/team", a)).json;
+  const chief = team.roles.find((r) => r.name === "Начальник склада").id;
+  for (const staffRef of ["stf-boss", "stf-olga"]) {
+    const set = await call("/api/team/desk-role", { ...a, body: { staffRef, roleId: chief } });
+    assert.equal(set.status, 200);
+  }
   return { a, boss: await code("stf-boss"), ivan: await code("stf-ivan") };
 }
 
@@ -460,6 +471,23 @@ test(
       kind: "pick_done",
       body: { eventId: "ev-pick-done", staffId: "stf-ivan", at: Date.now() - 400, requestId: "r1" },
     };
+    // Роль решает, что можно у стола: упаковщик не собирает, сборщик — да.
+    // Вход руководителя в этом браузере погас со столом — входит заново.
+    const office = { cookie: await login("ops-g@sklad.ru"), org: a.org };
+    const team = (await call("/api/team", office)).json;
+    const roles = Object.fromEntries(team.roles.map((x) => [x.name, x.id]));
+    const role = (name) =>
+      call("/api/team/desk-role", {
+        ...office,
+        body: { staffRef: "stf-ivan", roleId: roles[name] },
+      });
+    assert.equal((await role("Упаковщик")).status, 200);
+    const packer = await ops(desk, [{ ...unit(0), key: "key-pick-pack" }]);
+    assert.deepEqual(
+      packer.json.results.map((x) => [x.status, x.reason]),
+      [["flagged", "not_yours"]],
+    );
+    assert.equal((await role("Сборщик")).status, 200);
     const r = await ops(desk, [unit(1), unit(2), unit(3), done]);
     assert.deepEqual(
       r.json.results.map((x) => [x.key, x.status, x.reason ?? null]),

@@ -12,9 +12,15 @@ import { attempt, fail, ok, type Result } from "./result";
  * Какой путь брать, решает сессия (`session.source`), а не сборка: в
  * серверной сборке демо по заявке по-прежнему живёт в браузере.
  */
+/** Чей бейдж и права роли сотрудника на сервере (`null` — роль не назначена). */
+interface BadgeOwner {
+  staffId: string;
+  permissions: string[] | null;
+}
+
 export interface BadgeServer {
-  /** Чей это бейдж: id сотрудника или `null`, если чужой или погашен. */
-  check: (code: string) => Promise<Result<string | null>>;
+  /** Чей это бейдж или `null`, если чужой или погашен. */
+  check: (code: string) => Promise<Result<BadgeOwner | null>>;
   issue: (staffId: string) => Promise<Result<string>>;
   revoke: (staffId: string) => Promise<Result<void>>;
 }
@@ -26,7 +32,10 @@ export const serverBadges: BadgeServer = {
     const { status, body } = res.data;
     if (status === 404) return ok(null);
     if (status !== 200 || typeof body.staffRef !== "string") return fail("data.failed");
-    return ok(body.staffRef);
+    const perms = Array.isArray(body.permissions)
+      ? body.permissions.filter((p): p is string => typeof p === "string")
+      : null;
+    return ok({ staffId: body.staffRef, permissions: perms });
   },
   issue: async (staffId) => {
     const res = await attempt(() =>
