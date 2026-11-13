@@ -118,8 +118,23 @@ export function PartnerCard({ partner, onClose }: { partner: Partner; onClose: (
                 </li>
               ))}
               {goods.length > GOODS_SHOWN && (
-                <li className="py-1.5 text-xs text-muted-foreground">
-                  {t("partners.moreGoods", { n: goods.length - GOODS_SHOWN })}
+                <li className="py-1.5 text-xs">
+                  {/* Ссылка, а не подпись (Кирилл 13.11): таблица товаров
+                      сразу с фильтром по этому партнёру. */}
+                  <button
+                    type="button"
+                    className="text-primary hover:underline"
+                    onClick={() => {
+                      const s = useEditor.getState();
+                      s.setSearch("");
+                      s.setTablePartner(partner.id);
+                      s.goToEditor();
+                      s.setMode("table");
+                      onClose();
+                    }}
+                  >
+                    {t("partners.moreGoods", { n: goods.length - GOODS_SHOWN })}
+                  </button>
                 </li>
               )}
             </ul>

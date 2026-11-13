@@ -48,17 +48,22 @@ export function TableScreen() {
   // Поэтому он живёт в сторе, а остальные три условия — местные.
   const query = useEditor((s) => s.search);
   const setQuery = useEditor((s) => s.setSearch);
-  const [ownFilter, setOwnFilter] = useState<Omit<TableFilter, "query">>({
+  // Партнёр — тоже в сторе: в таблицу с ним приходят из карточки партнёра.
+  const partnerId = useEditor((s) => s.tablePartner);
+  const setPartnerId = useEditor((s) => s.setTablePartner);
+  const [ownFilter, setOwnFilter] = useState<Omit<TableFilter, "query" | "partnerId">>({
     category: "all",
-    partnerId: "all",
     place: "all",
   });
-  const filter = useMemo<TableFilter>(() => ({ ...ownFilter, query }), [ownFilter, query]);
+  const filter = useMemo<TableFilter>(
+    () => ({ ...ownFilter, partnerId, query }),
+    [ownFilter, partnerId, query],
+  );
   const patchFilter = (patch: Partial<TableFilter>) => {
     if (patch.query !== undefined) setQuery(patch.query);
+    if (patch.partnerId !== undefined) setPartnerId(patch.partnerId);
     setOwnFilter((prev) => ({
       category: patch.category ?? prev.category,
-      partnerId: patch.partnerId ?? prev.partnerId,
       place: patch.place ?? prev.place,
     }));
   };

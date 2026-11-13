@@ -179,6 +179,49 @@ export function LabelCard({
     </div>
   );
 
+  // Ярлык товара со штрихкодом (Кирилл 13.11): штрихкод по центру сверху,
+  // название под ним, номер — во всю ширину. Моноширинная цифра ≈ 0,6 em,
+  // отсюда кегль, при котором номер ровно встаёт в строку.
+  if (headline && tpl.codeType !== "qr") {
+    const inner = tpl.widthMm - 2 * plan.padMm;
+    const numberMm = Math.min(inner / (Math.max(code.length, 1) * 0.6), tpl.heightMm * 0.16);
+    return (
+      <div
+        className={cn(
+          "print-label flex flex-col items-center overflow-hidden border border-neutral-300 bg-white text-center text-black",
+          className,
+        )}
+        style={{
+          width: MM(tpl.widthMm),
+          height: MM(tpl.heightMm),
+          padding: MM(plan.padMm),
+          gap: MM(plan.gapMm),
+        }}
+      >
+        <div className="w-full shrink-0" style={{ height: MM(tpl.heightMm * 0.42) }}>
+          <Code128Svg code={code} fit />
+        </div>
+        <span
+          className="line-clamp-2 min-h-0 w-full flex-1 font-bold leading-[1.1]"
+          style={{
+            fontSize: MM(
+              Math.min(Math.max(plan.headlineMm, tpl.heightMm * 0.08), tpl.heightMm * 0.11),
+            ),
+            textWrap: "balance",
+          }}
+        >
+          {headline}
+        </span>
+        <span
+          className="w-full whitespace-nowrap font-mono font-bold leading-none tabular-nums"
+          style={{ fontSize: MM(numberMm) }}
+        >
+          {code}
+        </span>
+      </div>
+    );
+  }
+
   return (
     <div
       className={cn(

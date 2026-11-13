@@ -190,6 +190,8 @@ export interface CatalogSlice {
    * и из 3D, но результат всегда показывается в таблице (ТЗ, разд. 3.6).
    */
   search: string;
+  /** Фильтр таблицы товаров по партнёру: из карточки партнёра — «ещё N в таблице». */
+  tablePartner: string;
   /** Список категорий склада — редактируемый (п.15). */
   categories: ProductCategory[];
   /** Доп.поля категорий (ТЗ, разд. 3.8). */
@@ -198,6 +200,7 @@ export interface CatalogSlice {
   fieldValues: Record<string, string>;
 
   setSearch: (q: string) => void;
+  setTablePartner: (id: string) => void;
   /** Поиск из 3D: запрос + переход в таблицу (ТЗ, разд. 3.6). */
   searchInTable: (q: string) => void;
 

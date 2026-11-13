@@ -6,6 +6,9 @@
  * выводятся из названия назначения хешем — одинаковы на всех столах и после
  * перезагрузки, ничего настраивать не нужно. Палитра — метки метро из
  * дизайн-системы (`--tag-*` в `index.css`); на светлых тонах текст тёмный.
+ *
+ * Зелёного и красного в палитре нет (Кирилл 13.11: «почему зелёным»): у нас
+ * они значат «готово» и «ошибка», и зелёный ПВЗ читался как «всё хорошо».
  */
 interface DestinationMark {
   /** CSS-переменная цвета (HSL без `hsl()`). */
@@ -20,12 +23,10 @@ const MARKS: DestinationMark[] = [
   { token: "--tag-plan", darkInk: false, notes: [880, 1175] },
   { token: "--tag-fulfillment", darkInk: true, notes: [988, 1319] },
   { token: "--tag-staff", darkInk: false, notes: [784, 1047] },
-  { token: "--tag-integrations", darkInk: false, notes: [1047, 1397] },
   { token: "--tag-market", darkInk: true, notes: [698, 932] },
   { token: "--tag-platform", darkInk: false, notes: [1175, 880] },
   { token: "--tag-warehouses", darkInk: false, notes: [1319, 988] },
   { token: "--tag-sellers", darkInk: true, notes: [932, 1245] },
-  { token: "--tag-bug", darkInk: false, notes: [1047, 784] },
 ];
 
 export function destinationMark(destination: string): DestinationMark {
