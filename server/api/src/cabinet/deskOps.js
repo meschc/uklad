@@ -33,6 +33,7 @@ const {
 } = require("./deskReceive");
 const { applyShipRun, applyDisputeResolve } = require("./deskShip");
 const { applyInvCount } = require("./deskInventory");
+const { applySortPlace } = require("./deskSort");
 const { GOODS_DECIDE, may } = require("./deskPerms");
 
 const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
@@ -55,7 +56,7 @@ const RECV_KINDS = new Set([
   "recv_close",
   "recv_cargo",
 ]);
-const SHIP_KINDS = new Set(["ship_run", "dispute_resolve"]);
+const SHIP_KINDS = new Set(["ship_run", "dispute_resolve", "sort_place"]);
 const INV_KINDS = new Set(["inv_count"]);
 const NOW_ONLY = new Set(["dispute_resolve"]);
 /** Какое право роли нужно операции (миграция 024). */
@@ -64,6 +65,8 @@ const OP_PERM = new Map([
   ...[...PICK_KINDS].map((k) => [k, "picking.do"]),
   ...[...RECV_KINDS].map((k) => [k, "receiving.do"]),
   ["ship_run", "shipping.do"],
+  // Сортировка — часть отгрузки: отдельного права у роли нет.
+  ["sort_place", "shipping.do"],
   ["dispute_resolve", GOODS_DECIDE],
   ["inv_count", "inventory.count"],
 ]);
@@ -80,6 +83,7 @@ const WORK = new Map([
   ["recv_close", applyRecvClose],
   ["recv_cargo", applyRecvCargo],
   ["ship_run", applyShipRun],
+  ["sort_place", applySortPlace],
   ["dispute_resolve", applyDisputeResolve],
   ["inv_count", applyInvCount],
 ]);

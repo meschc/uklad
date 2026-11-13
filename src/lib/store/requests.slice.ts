@@ -2,6 +2,7 @@ import { frozenBoxes } from "../inventory";
 import { nowMs, uid } from "../utils";
 import { addressKey } from "../address";
 import { planLoad, shipOutbound } from "../outbound";
+import { normalizeCode } from "../barcode";
 import { isOrderSource, type Box, type FulfillmentRequest, type Shipment } from "../types";
 import type { RequestsSlice, SliceCreator } from "./state";
 
@@ -302,6 +303,19 @@ export const createRequestsSlice: SliceCreator<RequestsSlice> = (set, get) => ({
     // снятое с полки. Иначе одна штука числилась бы и в таре, и в заявке.
     if (boxId && used > 0) get().removeFromBox(boxId, productId, used);
     return used;
+  },
+
+  sortToPallet: (boxCode, pallet) => {
+    const code = normalizeCode(boxCode);
+    const p = normalizeCode(pallet);
+    const box = get().outboundBoxes.find((b) => !b.shipmentId && normalizeCode(b.code) === code);
+    if (!box || box.palletCode) return false;
+    set((s) => ({
+      outboundBoxes: s.outboundBoxes.map((b) =>
+        b.id === box.id ? { ...b, palletCode: p, updatedAt: nowMs() } : b,
+      ),
+    }));
+    return true;
   },
 
   shipRequests: (requestIds, info) => {

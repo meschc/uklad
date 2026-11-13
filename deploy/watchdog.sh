@@ -9,7 +9,8 @@
 set -eu
 cd "$(dirname "$0")"
 # shellcheck disable=SC1091
-[ -f .env ] && . ./.env
+. ./env.sh
+load_env .env
 
 DISK_LIMIT=${DISK_ALERT_PERCENT:-80}
 STATE=.watchdog-state

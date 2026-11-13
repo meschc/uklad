@@ -37,6 +37,7 @@ import { EmptyState } from "@/components/fulfillment/ScreenShell";
 import { BadgeLogin } from "./BadgeLogin";
 import { BindDeviceForm } from "./BindDeviceForm";
 import { UnbindDevice } from "./UnbindDevice";
+import { SortStation } from "./SortStation";
 import { KeyHint } from "./KeyHint";
 import { ShiftGate } from "./ShiftGate";
 import { useStationKeys } from "./useStationKeys";
@@ -63,6 +64,12 @@ import { formatTime, useNow } from "./useNow";
  */
 
 type Panel = "shift" | "log" | "printer" | "disputes" | null;
+
+/** Текст шапки и нижней панели поверх залитого сигналом поля. */
+const ON_COLOR_LIGHT =
+  "[&>header]:text-white [&>nav]:text-white [&>header_.text-muted-foreground]:text-white/85 [&>nav_.text-muted-foreground]:text-white/85 [&>header_.text-success]:text-white [&>nav_.text-success]:text-white [&>header_.ring-success]:ring-white [&>nav_.ring-success]:ring-white";
+const ON_COLOR_DARK =
+  "[&>header]:text-[hsl(var(--tag-ink))] [&>nav]:text-[hsl(var(--tag-ink))] [&>header_.text-muted-foreground]:text-[hsl(var(--tag-ink)/0.75)] [&>nav_.text-muted-foreground]:text-[hsl(var(--tag-ink)/0.75)] [&>header_.text-success]:text-[hsl(var(--tag-ink))] [&>nav_.text-success]:text-[hsl(var(--tag-ink))] [&>header_.ring-success]:ring-[hsl(var(--tag-ink))] [&>nav_.ring-success]:ring-[hsl(var(--tag-ink))]";
 
 export function WorkstationScreen() {
   const t = useT();
@@ -96,7 +103,20 @@ export function WorkstationScreen() {
     // Шапка на тёмном внешнем фоне, рабочая область — светлым окном со
     // скруглёнными углами, и на компьютере, и на телефоне (Кирилл 13.11):
     // рамка-сигнал опоясывает окно снаружи, по тёмному полю.
-    <div className="flex h-full flex-col bg-muted">
+    <div
+      className={cn(
+        "flex h-full flex-col bg-muted transition-colors duration-150",
+        // Сигнал скана заливает всё поле вокруг окна (Кирилл 13.11): цвет
+        // читается краем глаза с любого места у стола.
+        signalLevel === "ok" && "bg-success",
+        signalLevel === "warn" && "bg-[hsl(var(--tag-market))]",
+        signalLevel === "error" && "bg-destructive",
+        // Подписи шапки и нижней панели на цветном поле: на зелёном и красном
+        // белые, на жёлтом тёмные — серый и зелёный текст там не читается.
+        (signalLevel === "ok" || signalLevel === "error") && ON_COLOR_LIGHT,
+        signalLevel === "warn" && ON_COLOR_DARK,
+      )}
+    >
       {/* Высота шапки постоянная: кнопки и таймеры не должны двигать экран. */}
       <header className="grid h-14 shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:gap-4">
         <div className="flex min-w-0 items-center gap-3">
@@ -175,6 +195,7 @@ export function WorkstationScreen() {
             <Button
               variant="outline"
               size="sm"
+              className="text-foreground"
               aria-label={t("ws.logout")}
               onClick={() => void workstationRepository.logout()}
             >
@@ -190,17 +211,10 @@ export function WorkstationScreen() {
       <NetworkBanner />
       {/* Рамка рабочей области — сигнал скана (`scanSignal`): зелёная вспышка —
           принято, жёлтая держится, пока дело не доделано, красная — до верного
-          скана. Обводка снаружи окна, по тёмному полю вокруг: её не перекроет
-          прокрученный список. */}
+          скана: цветом заливается поле вокруг окна (см. корень экрана). */}
       <main
         className={cn(
-          "mx-3 mb-3 min-h-0 flex-1 overflow-y-auto rounded-2xl border border-border bg-background transition-[outline-color] duration-150",
-          signalLevel && "outline outline-[6px] outline-offset-0",
-          signalLevel === "ok" && "outline-success",
-          // Жёлтый — из палитры меток: токен `warning` тёмно-оранжевый и рядом
-          // с красным почти не отличается.
-          signalLevel === "warn" && "outline-[hsl(var(--tag-market))]",
-          signalLevel === "error" && "outline-destructive",
+          "mx-3 mb-3 min-h-0 flex-1 overflow-y-auto rounded-2xl border border-border bg-background",
         )}
       >
         {!member && unbinding ? (
@@ -330,6 +344,8 @@ function StationTask({ station, staffId }: { station: WorkstationKind; staffId: 
       return <InventoryStation />;
     case "pack":
       return <PackStation staffId={staffId} />;
+    case "sorting":
+      return <SortStation />;
     default:
       return (
         <EmptyState

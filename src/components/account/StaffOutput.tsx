@@ -36,6 +36,7 @@ const STATIONS: WorkstationKind[] = [
   "receiving",
   "picking",
   "pack",
+  "sorting",
   "marking",
   "returns",
   "shipping",

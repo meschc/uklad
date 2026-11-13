@@ -28,5 +28,5 @@ export const createViewSlice: SliceCreator<ViewSlice> = (set) => ({
   setView: (zoom, pan) => set({ zoom: clamp(zoom, ZOOM_LO, ZOOM_HI), pan }),
   setPan: (pan) => set({ pan }),
 
-  showToast: (key, vars) => set({ toast: { id: nowMs() + Math.random(), key, vars } }),
+  showToast: (key, vars, tone) => set({ toast: { id: nowMs() + Math.random(), key, vars, tone } }),
 });

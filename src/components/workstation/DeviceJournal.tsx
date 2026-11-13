@@ -28,6 +28,8 @@ const SERVER_KINDS = new Set([
   "recv_cargo",
   "ship_run",
   "dispute_resolve",
+  "sort_place",
+  "inv_count",
 ]);
 
 /**
