@@ -68,3 +68,32 @@ test("смотрящий не видит реквизитов, цен, став�
   assert.deepEqual(out.warehouse.staff, [{ id: "s", name: "Иван", role: "Упаковщик" }]);
   assert.deepEqual(out.warehouse.partners, [{ id: "pt", name: "Ромашка" }]);
 });
+
+test("запись без «Персонала» — только по полям, которые смотрящий получает", () => {
+  const { KEY_PERMS, writableKeys, mergeScoped } = require("../src/cabinet/writeScope");
+  const { VIEWER_KEYS } = require("../src/cabinet/viewer");
+  // Поле, которого у смотрящего нет, он записал бы пустым поверх настоящего.
+  for (const key of Object.keys(KEY_PERMS)) assert.ok(VIEWER_KEYS.includes(key), key);
+  const can = (p) => p === "plan.edit";
+  assert.deepEqual(writableKeys(can).sort(), [
+    "addressing",
+    "layoutTemplates",
+    "templates",
+    "warehouse",
+  ]);
+  const cur = {
+    addressing: { a: 1 },
+    serviceSettings: { prices: { pack: 25 } },
+    warehouse: { floors: [1], staff: [{ id: "s", hourlyRate: 300 }] },
+  };
+  const next = {
+    addressing: { a: 2 },
+    serviceSettings: { prices: {} },
+    warehouse: { floors: [2], staff: [{ id: "s" }] },
+  };
+  assert.deepEqual(mergeScoped(cur, next, can), {
+    addressing: { a: 2 },
+    serviceSettings: { prices: { pack: 25 } },
+    warehouse: { floors: [2], staff: [{ id: "s", hourlyRate: 300 }] },
+  });
+});

@@ -25,6 +25,8 @@ export interface Snapshot {
    * кабинет смотрит, но не пишет — запись сервер всё равно не примет.
    */
   viewer?: boolean;
+  /** При `viewer` — поля, которые роль вправе менять (`writeScope.js`). */
+  writable?: string[];
 }
 
 /** Итог записи: новая версия или «на сервере уже новее». */
@@ -82,7 +84,9 @@ export const snapshotRepository = {
       format: s.format,
       data: s.data,
       ...(body.desk === true ? { desk: true } : {}),
-      ...((s as { viewer?: unknown }).viewer === true ? { viewer: true } : {}),
+      ...((s as { viewer?: unknown }).viewer === true
+        ? { viewer: true, writable: stringList((s as { writable?: unknown }).writable) }
+        : {}),
     });
   },
 
@@ -123,3 +127,7 @@ export const snapshotRepository = {
     return outcome(res.data as Reply);
   },
 };
+
+function stringList(v: unknown): string[] {
+  return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+}

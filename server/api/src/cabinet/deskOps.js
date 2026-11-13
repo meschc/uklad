@@ -190,11 +190,10 @@ function applyDeskOps(data, ops, who, now, received = new Map(), verify = null) 
         flag(op, "not_yours");
         continue;
       }
-      // Сотрудник с ролью делает только то, что разрешает роль. Без роли —
-      // работа как раньше, но решения по товару нет (это проверяет само
-      // решение): иначе стол встал бы у всех, кому роль ещё не назначили.
-      const hasRole = Boolean(who.perms && Object.hasOwn(who.perms, staffRef));
-      if ((hasRole || op.kind === "dispute_resolve") && !may(who, staffRef, OP_PERM.get(op.kind))) {
+      // Сотрудник делает только то, что разрешает его роль. Без роли — ничего
+      // (Кирилл 13.11): уже выданным бейджам роль «Кладовщик» дала миграция
+      // 028, новому бейджу без роли её даёт выпуск (`deskBadges.js`).
+      if (!may(who, staffRef, OP_PERM.get(op.kind))) {
         flag(op, "not_yours");
         continue;
       }

@@ -37,6 +37,10 @@ export const ru = {
   "ws.login.demoHint": "Демо: нажмите на бейдж вместо скана.",
   "ws.login.noStaff": "В персонале склада никого нет. Добавьте сотрудников на экране «Персонал».",
   "ws.badgeUnknown": "Бейдж не найден среди сотрудников склада",
+  "ws.badgeNoRole":
+    "У вас нет роли на складе. Попросите руководителя назначить её в «Персонале» → «Доступ»",
+  "ws.badgeNoRoleIssue":
+    "Сначала назначьте сотруднику роль у стола в «Доступе»: без роли бейдж не работает",
   "ws.markRejected": "Эту отметку сейчас поставить нельзя",
   "ws.keys.endAgain": "Нажмите F4 ещё раз, чтобы завершить смену",
   "ws.keys.noShift": "Смена не начата",
@@ -462,6 +466,10 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.login.demoHint": "Demo: click a badge instead of scanning.",
   "ws.login.noStaff": "No staff on this warehouse yet. Add people on the Staff screen.",
   "ws.badgeUnknown": "This badge doesn't belong to anyone on the warehouse staff",
+  "ws.badgeNoRole":
+    "You have no warehouse role yet. Ask your manager to assign one in Staff → Access",
+  "ws.badgeNoRoleIssue":
+    "Assign this person a desk role in Access first: a badge without a role does nothing",
   "ws.markRejected": "This mark can't be set right now",
   "ws.keys.endAgain": "Press F4 again to end the shift",
   "ws.keys.noShift": "Shift not started",

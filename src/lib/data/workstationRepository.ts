@@ -155,6 +155,9 @@ export function createWorkstationRepository(
       if (onServer(port)) {
         const who = await badges.check(code);
         if (!who.ok) return who;
+        // Без роли сервер не примет ни одной операции: не пускаем к работе,
+        // а говорим, к кому идти.
+        if (who.data && who.data.permissions === null) return fail("ws.badgeNoRole");
         const id =
           who.data && port.get().openStation(who.data.staffId, station, who.data.permissions);
         return id ? ok(id) : fail("ws.badgeUnknown");

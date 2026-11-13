@@ -46,6 +46,8 @@ export const serverBadges: BadgeServer = {
     if (status === 200 && typeof body.code === "string") return ok(body.code);
     // Отказ по праву — не «проверьте связь»: связь тут ни при чём.
     if (status === 403) return fail("staff.badge.forbidden");
+    // Роль у стола не назначена и назначить её выпускающий не вправе.
+    if (status === 409 && body.error === "no_role") return fail("ws.badgeNoRoleIssue");
     return fail("data.failed");
   },
   revoke: async (staffId) => {
