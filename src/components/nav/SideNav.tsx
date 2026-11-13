@@ -198,7 +198,7 @@ export function SideNav() {
       ref={flipRef}
       aria-label={t("nav.side.title")}
       className={cn(
-        "flex shrink-0 flex-col gap-0.5 overflow-y-auto bg-card px-2 py-3 transition-[width] duration-200",
+        "flex shrink-0 flex-col gap-0.5 overflow-y-auto bg-shell px-2 py-3 transition-[width] duration-200",
         collapsed ? "w-[3.75rem]" : "w-56",
       )}
     >

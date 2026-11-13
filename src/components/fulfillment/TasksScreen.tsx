@@ -7,6 +7,7 @@ import {
   List,
   MapPin,
   Play,
+  Plus,
   Printer,
   ScanLine,
   Truck,
@@ -34,6 +35,7 @@ import { printLabels } from "@/lib/printLabels";
 import { LabelPrint } from "./LabelPrint";
 import { WorkTasksPanel } from "./WorkTasksPanel";
 import { ShipConfirm } from "./ShipConfirm";
+import { RequestDialog } from "./RequestDialog";
 
 /**
  * «Задания» (п.7.3) — общий обзор заявок продавца во ВСЕХ статусах, включая
@@ -132,6 +134,7 @@ function RequestsTasks({ sections }: { sections: React.ReactNode }) {
   const [filter, setFilter] = useState<RequestStatus | "all">("all");
   // Список или календарь (п.10.4) — одни и те же заявки, разный взгляд.
   const [view, setView] = useState<"list" | "calendar">("list");
+  const [creating, setCreating] = useState(false);
   const [day, setDay] = useState<number | null>(null);
 
   const stock = useMemo(() => stockByProduct(placements, boxes), [placements, boxes]);
@@ -175,13 +178,16 @@ function RequestsTasks({ sections }: { sections: React.ReactNode }) {
       subtitle={t("tasks.subtitle")}
       wide
       actions={
-        <Button size="sm" variant="outline" onClick={() => goToView("workstation")}>
-          <ScanLine className="size-3.5" />
-          {t("tasks.toPicking")}
+        // «К сборке» на общем экране заданий сбивал с толку (Кирилл 14.11):
+        // здесь создают задание, а собирают — на рабочем месте.
+        <Button size="sm" onClick={() => setCreating(true)}>
+          <Plus className="size-3.5" />
+          {t("tasks.create")}
         </Button>
       }
     >
       {sections}
+      {creating && <RequestDialog onClose={() => setCreating(false)} />}
       {/* Список или календарь: представления одних и тех же заявок (п.10.4).
           self-start — иначе тело ScreenShell (flex-колонка) растянет
           переключатель во всю ширину экрана. */}
@@ -209,6 +215,22 @@ function RequestsTasks({ sections }: { sections: React.ReactNode }) {
         </div>
       )}
 
+      {/* Поиск и продавец — одной строкой над фильтром статуса: раньше поиск
+          переносился на отдельную строку и висел справа сам по себе. */}
+      <div className="flex flex-wrap items-center gap-2">
+        <TableSearch
+          value={reqTable.query}
+          onChange={reqTable.setQuery}
+          placeholder={t("common.search")}
+        />
+        <TableFilters
+          facets={reqTable.facets}
+          filters={reqTable.filters}
+          onChange={reqTable.setFilter}
+          labels={{ partner: t("ops.task.partner") }}
+          allLabel={(col) => t("common.filterAll", { col })}
+        />
+      </div>
       {/* Фильтр по статусу */}
       <div className="flex flex-wrap items-center gap-1">
         <FilterChip
@@ -226,19 +248,6 @@ function RequestsTasks({ sections }: { sections: React.ReactNode }) {
             n={c.n}
           />
         ))}
-        <TableFilters
-          facets={reqTable.facets}
-          filters={reqTable.filters}
-          onChange={reqTable.setFilter}
-          labels={{ partner: t("ops.task.partner") }}
-          allLabel={(col) => t("common.filterAll", { col })}
-        />
-        <TableSearch
-          className="ml-auto"
-          value={reqTable.query}
-          onChange={reqTable.setQuery}
-          placeholder={t("common.search")}
-        />
       </div>
 
       {requests.length === 0 ? (

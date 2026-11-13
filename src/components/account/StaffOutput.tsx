@@ -3,6 +3,7 @@ import { Download } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { useWithArchive } from "@/lib/store/archive";
 import { staffReport, staffReportCsv } from "@/lib/staffReport";
+import { staffWorkload } from "@/lib/fulfillment";
 import { startOfDay, startOfMonth } from "@/lib/workstation";
 import { currentProcess } from "@/lib/staffProcess";
 import { formatTime } from "@/components/workstation/useNow";
@@ -53,6 +54,18 @@ export function StaffOutput() {
   const [now, setNow] = useState(() => Date.now());
   const [from, to] = periodRange(period, now);
   const rows = useMemo(() => staffReport(events, staff, from, to), [events, staff, from, to]);
+  // Приёмка и рейсы за тот же период — по фактам приёмки и отгрузки (их
+  // перенесли сюда из списка сотрудников, Кирилл 13.11).
+  const receipts = useWithArchive("receivingEvents");
+  const trips = useWithArchive("shipments");
+  const workload = useMemo(
+    () =>
+      staffWorkload(
+        receipts.filter((e) => e.timestamp >= from && e.timestamp < to),
+        trips.filter((s) => s.shippedAt >= from && s.shippedAt < to),
+      ),
+    [receipts, trips, from, to],
+  );
   const table = useDataTable(rows, [
     { id: "name", value: (r) => r.name },
     { id: "hours", value: (r) => r.workedMs },
@@ -60,6 +73,8 @@ export function StaffOutput() {
     { id: "peaks", value: (r) => r.packed + r.picked },
     { id: "errors", value: (r) => r.errors },
     { id: "rejects", value: (r) => r.rejects },
+    { id: "receipts", value: (r) => workload.get(r.staffId)?.units ?? 0 },
+    { id: "trips", value: (r) => workload.get(r.staffId)?.trips ?? 0 },
     { id: "earned", value: (r) => r.earned ?? -1 },
   ]);
 
@@ -120,6 +135,12 @@ export function StaffOutput() {
               <SortTh table={table.table} id="rejects" align="right">
                 {t("staff.out.rejects")}
               </SortTh>
+              <SortTh table={table.table} id="receipts" align="right">
+                {t("staff.wlUnits")}
+              </SortTh>
+              <SortTh table={table.table} id="trips" align="right">
+                {t("staff.wlTrips")}
+              </SortTh>
               <SortTh table={table.table} id="earned" align="right">
                 {t("staff.out.earned")}
               </SortTh>
@@ -162,6 +183,15 @@ export function StaffOutput() {
                 </td>
                 <td className="px-3 py-2 text-right tabular-nums">{r.errors}</td>
                 <td className="px-3 py-2 text-right tabular-nums">{r.rejects}</td>
+                <td className="px-3 py-2 text-right tabular-nums">
+                  {workload.get(r.staffId)?.units ?? 0}
+                  <span className="block text-xs text-muted-foreground">
+                    {t("staff.wlReceiptsN", { n: workload.get(r.staffId)?.receipts ?? 0 })}
+                  </span>
+                </td>
+                <td className="px-3 py-2 text-right tabular-nums">
+                  {workload.get(r.staffId)?.trips ?? 0}
+                </td>
                 <td className="px-3 py-2 text-right tabular-nums">
                   {r.earned == null ? "—" : `${r.earned.toLocaleString("ru-RU")} ₽`}
                 </td>

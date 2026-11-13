@@ -1,27 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { PERM_KEYS, PERM_MODULES, groupPermissions, moduleLevel } from "../permModules";
+import { PERM_DESC, PERM_KEYS, PERM_SECTIONS, groupPermissions } from "../permModules";
 
-const stock = PERM_MODULES.find((m) => m.id === "stock")!;
-
-describe("права по модулям", () => {
-  it("запись сильнее чтения, без прав — ничего", () => {
-    expect(moduleLevel(stock, ["stock.view"])).toBe("read");
-    expect(moduleLevel(stock, ["stock.view", "stock.move"])).toBe("write");
-    expect(moduleLevel(stock, ["stock.move"])).toBe("write");
-    expect(moduleLevel(stock, ["chat.use"])).toBe("none");
-  });
-
-  it("каждое право с подписью ровно в одном модуле", () => {
-    const all = PERM_MODULES.flatMap((m) => [...m.read, ...m.write]);
+describe("права по разделам", () => {
+  it("каждое право с подписью и объяснением ровно в одном разделе", () => {
+    const all = PERM_SECTIONS.flatMap((s) => s.perms);
     expect(new Set(all).size).toBe(all.length);
     expect(new Set(all)).toEqual(new Set(Object.keys(PERM_KEYS)));
+    expect(new Set(Object.keys(PERM_DESC))).toEqual(new Set(Object.keys(PERM_KEYS)));
   });
 
   it("неизвестное право не теряется — уходит в «Прочее»", () => {
     const g = groupPermissions(["stock.view", "future.perm", "chat.use"]);
-    expect(g.map((x) => [x.module?.id ?? null, x.codes])).toEqual([
+    expect(g.map((x) => [x.section?.id ?? null, x.codes])).toEqual([
       ["stock", ["stock.view"]],
-      ["chat", ["chat.use"]],
+      ["sellers", ["chat.use"]],
       [null, ["future.perm"]],
     ]);
   });

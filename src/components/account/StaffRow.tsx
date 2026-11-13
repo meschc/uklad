@@ -1,12 +1,14 @@
 import { useState } from "react";
-import { AtSign, Check, IdCard, Pencil, Phone, Trash2, UserRound } from "lucide-react";
+import { AtSign, Check, IdCard, Pencil, Phone, Trash2 } from "lucide-react";
 import type { StaffMember } from "@/lib/types";
-import type { StaffWorkload } from "@/lib/fulfillment";
+import type { TeamRole } from "@/lib/data/teamRepository";
 import { useEditor } from "@/lib/store";
 import { badgeRepository, staffRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
 import type { TFunc } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
+import { Avatar } from "@/components/ui/avatar";
 import { PersonForm } from "./PersonForm";
 import { draftToMember, formatRate, type PersonDraft } from "@/lib/personDraft";
 import { BadgePanel } from "./BadgePanel";
@@ -27,7 +29,7 @@ import { BadgePanel } from "./BadgePanel";
 export function StaffRow({
   member: m,
   number,
-  load,
+  access,
   editing,
   onEdit,
   onDone,
@@ -36,8 +38,15 @@ export function StaffRow({
   member: StaffMember;
   /** Табельный номер (`staffNumbers`) — тот же, что на бейдже. */
   number?: number;
-  /** Нагрузка по фактам приёмки и отгрузки — в той же строке, что и человек. */
-  load?: StaffWorkload;
+  /**
+   * Роль у стола: что сотрудник может по бейджу. Нет — колонки нет (демо или
+   * нет права на персонал).
+   */
+  access?: {
+    roles: TeamRole[];
+    roleId: string | null;
+    onChange: (id: string | null) => void;
+  } | null;
   editing: boolean;
   onEdit: () => void;
   /** Правка закончена — экрану остаётся свернуть строку. */
@@ -76,7 +85,7 @@ export function StaffRow({
     const label = t(save.error ? "data.retry" : "common.save");
     return (
       <tr className="border-t border-border/60 bg-accent/40">
-        <td className="px-3 py-2" colSpan={7}>
+        <td className="px-3 py-2" colSpan={access ? 4 : 3}>
           <PersonForm
             withRate
             value={form}
@@ -108,18 +117,10 @@ export function StaffRow({
   return (
     <tr className="group border-t border-border/60">
       <td className="px-3 py-2">
-        <button onClick={onEdit} className="flex items-center gap-2 text-left">
-          {m.photoUrl ? (
-            <img
-              src={m.photoUrl}
-              alt=""
-              className="size-7 rounded-full border border-border object-cover"
-            />
-          ) : (
-            <span className="flex size-7 items-center justify-center rounded-full bg-muted text-muted-foreground">
-              <UserRound className="size-3.5" />
-            </span>
-          )}
+        <button onClick={onEdit} className="flex min-w-0 items-center gap-3 text-left">
+          {/* shrink-0: фото не сжимается, когда соседний текст длинный
+              (Кирилл 13.11: «размер фотографии уменьшается кратно»). */}
+          <Avatar name={m.name} src={m.photoUrl} seed={m.id} />
           <span className="flex min-w-0 flex-col">
             <span className="font-medium">
               {m.name}
@@ -160,12 +161,24 @@ export function StaffRow({
           </button>
         )}
       </td>
-      <td className="px-3 py-2 text-right tabular-nums">{load?.receipts ?? 0}</td>
-      <td className="px-3 py-2 text-right tabular-nums">{load?.units ?? 0}</td>
-      <td className="px-3 py-2 text-right tabular-nums">{load?.trips ?? 0}</td>
-      <td className="px-3 py-2 text-xs text-muted-foreground">
-        {load?.lastAt ? new Date(load.lastAt).toLocaleDateString() : t("staff.wlNever")}
-      </td>
+      {access && (
+        <td className="px-3 py-2">
+          <Select
+            size="sm"
+            aria-label={t("team.role")}
+            className="w-44"
+            value={access.roleId ?? ""}
+            onChange={(e) => access.onChange(e.target.value || null)}
+          >
+            <option value="">{t("team.deskNone")}</option>
+            {access.roles.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.name}
+              </option>
+            ))}
+          </Select>
+        </td>
+      )}
       <td className="px-3 py-2">
         <div className="flex items-center gap-1">
           <button
