@@ -41,7 +41,7 @@ function palletDestination(
   return first ? boxDestination(first, requests) : null;
 }
 
-export type SortScan =
+type SortScan =
   /** Посылка принята, ждём паллету её назначения. */
   | { kind: "parcel"; box: OutboundBox; destination: string }
   /** Посылка легла на паллету. */
