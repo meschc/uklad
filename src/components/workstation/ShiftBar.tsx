@@ -21,7 +21,7 @@ import { useNow } from "./useNow";
  * панель смены, на перерыв — сразу начинает (или заканчивает) его. Повторное
  * нажатие в первые секунды отменяет перерыв: общий экран задевают локтем.
  * Что сделает нажатие, подсказывает надпись под блоком при наведении.
- * Перерыв, доступный дольше `OVERDUE_MS`, обведён рамкой — человек без
+ * Перерыв, доступный дольше `OVERDUE_MS`, подсвечен заливкой — человек без
  * перерыва устаёт и ошибается.
  */
 const OVERDUE_MS = 15 * 60_000;
@@ -145,10 +145,15 @@ function Cell({
     <button
       type="button"
       aria-label={`${label} ${value}. ${hint}`}
+      data-overdue={ring || undefined}
       onClick={onClick}
       className={cn(
-        "group relative flex min-h-12 flex-col items-center justify-center rounded-md px-3 py-1 text-center leading-tight hover:bg-muted",
-        ring && "ring-2 ring-success",
+        // Фон при наведении — от цвета текста: шапка лежит на сером, и
+        // `bg-muted` на нём не виден, а на заливке сигнала тем более.
+        "group relative flex min-h-12 flex-col items-center justify-center rounded-md px-3 py-1 text-center leading-tight hover:bg-foreground/[0.06]",
+        // Просроченный перерыв — заливкой, а не рамкой: рамка в шапке читалась
+        // как выбранная кнопка (Кирилл 13.11).
+        ring && "bg-success/15 hover:bg-success/25",
       )}
     >
       <span className="flex items-center gap-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
