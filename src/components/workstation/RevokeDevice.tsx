@@ -1,3 +1,4 @@
+import { Power } from "lucide-react";
 import { workstationRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
 import { useT } from "@/lib/i18n";
@@ -25,6 +26,7 @@ export function RevokeDevice({
   return (
     <Modal
       title={t("devices.revokeTitle", { name: device.name })}
+      icon={<Power className="size-4 text-muted-foreground" />}
       submitLabel={t("devices.revoke")}
       pending={revoke.pending}
       error={revoke.error}

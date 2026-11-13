@@ -443,6 +443,35 @@ function createDesks({ auth, cfg, send, log }) {
     return send(res, 200, { ok: true, revoked: out.revoked });
   }
 
+  /**
+   * Журнал устройства (миграция 026): операции, пришедшие с его пропусков, и
+   * кто был за столом. Только для того, кто управляет персоналом: по журналу
+   * видно, кто когда работал.
+   */
+  async function journal(req, res, url) {
+    const deviceRef = String(url.searchParams.get("device") ?? "");
+    if (!DEVICE_RE.test(deviceRef)) return send(res, 400, { ok: false, error: "bad_request" });
+    const out = await withSession(req, async (c, ctx) => {
+      if (!ctx.accountId || !ctx.can("staff.manage")) return { status: 403 };
+      const { rows } = await c.query(
+        `SELECT at, staff_ref, kind, status FROM auth.desk_journal($1, 200)`,
+        [deviceRef],
+      );
+      return { status: 200, rows };
+    });
+    if (out === null) return send(res, 401, { ok: false });
+    if (out.status !== 200) return send(res, out.status, { ok: false });
+    return send(res, 200, {
+      ok: true,
+      entries: out.rows.map((r) => ({
+        at: new Date(r.at).getTime(),
+        staffRef: r.staff_ref,
+        kind: r.kind,
+        flagged: r.status === "flagged",
+      })),
+    });
+  }
+
   // ---- Стол ----
 
   /** Нет пропуска — 401 с очисткой куки: стол погасили, нужен вход руководителя. */
@@ -608,6 +637,7 @@ function createDesks({ auth, cfg, send, log }) {
   const managerRoutes = {
     "POST /api/cabinet/desks": open,
     "POST /api/cabinet/desks/revoke": revoke,
+    "GET /api/cabinet/desks/journal": journal,
   };
   const deskRoutes = {
     "GET /api/auth/me": me,

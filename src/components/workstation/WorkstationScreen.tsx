@@ -73,7 +73,6 @@ export function WorkstationScreen() {
   const openDisputes = useEditor((s) => s.disputes.filter((d) => !d.resolution).length);
   const [opened, setOpened] = useState<{ panel: Panel; owner?: string }>({ panel: null });
   const [unbinding, setUnbinding] = useState(false);
-  const [skipBind, setSkipBind] = useState(false);
 
   const live = isSessionLive(session, now);
   const member = live ? (staff ?? []).find((m) => m.id === session!.staffId) : undefined;
@@ -203,16 +202,14 @@ export function WorkstationScreen() {
           // Вместо входа, а не поверх него: иначе бейдж руководителя прочитал
           // бы и вход и пустил его за стол.
           <UnbindDevice onDone={() => setUnbinding(false)} />
-        ) : !member && !device && !skipBind ? (
+        ) : !member && !device ? (
           // Компьютер ещё не стол: сначала привязать его здесь же, а не искать
           // «Устройства» в кабинете. Без привязки можно войти (демо, проверка).
-          <div className="mx-auto flex max-w-3xl flex-col gap-3 px-4 py-10">
-            <h2 className="text-lg font-semibold">{t("devices.unboundTitle")}</h2>
-            <p className="text-sm text-muted-foreground">{t("devices.unboundHint")}</p>
-            <BindDeviceForm />
-            <Button variant="ghost" className="self-start" onClick={() => setSkipBind(true)}>
-              {t("devices.skipBind")}
-            </Button>
+          <div className="flex min-h-full items-center justify-center px-4 py-10">
+            <div className="flex w-full max-w-sm flex-col gap-4">
+              <h2 className="text-center text-xl font-semibold">{t("devices.bindDevice")}</h2>
+              <BindDeviceForm stacked />
+            </div>
           </div>
         ) : !member ? (
           <BadgeLogin />

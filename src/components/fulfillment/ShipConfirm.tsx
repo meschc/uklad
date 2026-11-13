@@ -1,3 +1,4 @@
+import { Truck } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { useT } from "@/lib/i18n";
 import type { FulfillmentRequest } from "@/lib/types";
@@ -27,6 +28,7 @@ export function ShipConfirm({
   return (
     <Modal
       title={t("ship.title")}
+      icon={<Truck className="size-4 text-muted-foreground" />}
       submitLabel={t("ship.confirm")}
       onClose={onClose}
       onSubmit={() => {

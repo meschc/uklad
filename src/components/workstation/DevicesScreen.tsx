@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Power } from "lucide-react";
+import { History, Power } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { isSessionLive } from "@/lib/workstation";
 import type { Device } from "@/lib/types";
@@ -13,6 +13,7 @@ import { ScreenShell } from "@/components/fulfillment/ScreenShell";
 import { useNow } from "./useNow";
 import { BindDeviceForm } from "./BindDeviceForm";
 import { RevokeDevice } from "./RevokeDevice";
+import { DeviceJournal } from "./DeviceJournal";
 
 /**
  * Устройства склада (вид `devices`, группа «О складе»). Руководитель заводит
@@ -32,6 +33,7 @@ export function DevicesScreen() {
   const session = useEditor((s) => s.stationSession);
   const staff = useEditor((s) => s.warehouse.staff) ?? [];
   const [revoking, setRevoking] = useState<Device | null>(null);
+  const [journalOf, setJournalOf] = useState<Device | null>(null);
 
   const devTable = useDataTable(devices, [
     { id: "name", value: (d) => d.name },
@@ -104,6 +106,10 @@ export function DevicesScreen() {
                     {new Date(d.createdAt).toLocaleDateString(t.lang)}
                   </td>
                   <td className="px-4 py-2.5 text-right">
+                    <Button variant="ghost" size="sm" onClick={() => setJournalOf(d)}>
+                      <History />
+                      {t("devices.journal")}
+                    </Button>
                     {!d.revokedAt && (
                       <Button variant="ghost" size="sm" onClick={() => setRevoking(d)}>
                         <Power />
@@ -116,6 +122,13 @@ export function DevicesScreen() {
             </tbody>
           </table>
         </div>
+      )}
+      {journalOf && (
+        <DeviceJournal
+          device={journalOf}
+          who={who(journalOf.id)}
+          onClose={() => setJournalOf(null)}
+        />
       )}
       {revoking && (
         <RevokeDevice device={revoking} who={who(revoking.id)} onClose={() => setRevoking(null)} />
