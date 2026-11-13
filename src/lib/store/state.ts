@@ -190,6 +190,8 @@ export interface CatalogSlice {
    * и из 3D, но результат всегда показывается в таблице (ТЗ, разд. 3.6).
    */
   search: string;
+  /** Фильтр таблицы товаров по партнёру: из карточки партнёра — «ещё N в таблице». */
+  tablePartner: string;
   /** Список категорий склада — редактируемый (п.15). */
   categories: ProductCategory[];
   /** Доп.поля категорий (ТЗ, разд. 3.8). */
@@ -198,6 +200,7 @@ export interface CatalogSlice {
   fieldValues: Record<string, string>;
 
   setSearch: (q: string) => void;
+  setTablePartner: (id: string) => void;
   /** Поиск из 3D: запрос + переход в таблицу (ТЗ, разд. 3.6). */
   searchInTable: (q: string) => void;
 
@@ -715,6 +718,8 @@ export interface StaffSlice {
   importStaff: (members: Omit<StaffMember, "id">[]) => void;
   updateStaffMember: (id: string, patch: Partial<Omit<StaffMember, "id">>) => void;
   removeStaffMember: (id: string) => void;
+  /** «Отменить» после удаления: запись на прежнее место (бейдж выпускают заново). */
+  restoreStaffMember: (member: StaffMember, index: number) => void;
   /** Контакты склада: телефон, email, ответственное лицо. */
   updateWarehouseContacts: (
     id: string,
@@ -857,13 +862,16 @@ export interface DisputesSlice {
     raisedBy: string;
   }) => string;
   /** Решить. Уже решённое не трогаем: первое решение остаётся. */
-  /** `request` — только попросить списать: решит начальник (`writeOffRequest`). */
+  /**
+   * `request` — только попросить списать: решит начальник (`writeOffRequest`);
+   * `to` — тара, в которую перекладывают («moved»).
+   */
   resolveDispute: (
     id: string,
     resolution: DisputeResolution,
     by: string,
     note?: string,
-    request?: boolean,
+    opts?: { request?: boolean; to?: string },
   ) => boolean;
   /**
    * Инвентаризация: записать пересчёт тары. Ставит отметку «считали» и заводит

@@ -1,12 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { Plus, X } from "lucide-react";
-import {
-  decidersOf,
-  teamRepository,
-  type TeamMember,
-  type TeamRole,
-  type TeamState,
-} from "@/lib/data/teamRepository";
+import { teamRepository, type TeamMember, type TeamRole } from "@/lib/data/teamRepository";
 import { useCommand } from "@/lib/useCommand";
 import { useEditor } from "@/lib/store";
 import { useT, type MsgKey } from "@/lib/i18n";
@@ -14,11 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DialogFooter, DialogHeader, DialogShell } from "@/components/ui/dialog-shell";
-import { PERM_KEYS, groupPermissions } from "@/lib/permModules";
-import type { StaffMember } from "@/lib/types";
-import { DeskRoles } from "./DeskRoles";
-import { RoleMatrix } from "./RoleMatrix";
 import { selectClass } from "./teamSelect";
+import { RoleList } from "./RoleList";
+import { useTeam } from "./useTeam";
 import { Select } from "@/components/ui/select";
 
 /**
@@ -38,39 +30,18 @@ const STATUS_KEYS: Record<TeamMember["status"], MsgKey> = {
   disabled: "team.status.disabled",
 };
 
-type Panel = { kind: "invite" } | { kind: "role"; role: TeamRole | null } | null;
-
-/** `staff` — сотрудники склада из снимка: им назначают роль у стола. */
-export function TeamAccess({ staff }: { staff: StaffMember[] }) {
+/**
+ * Роль сотрудника у стола теперь в таблице сотрудников (колонка «Роль»),
+ * здесь — вход в кабинет и сами роли.
+ */
+export function TeamAccess() {
   const t = useT();
   const showToast = useEditor((s) => s.showToast);
-  const setDeskDeciders = useEditor((s) => s.setDeskDeciders);
-  const [state, setState] = useState<TeamState | null>(null);
-  const [failed, setFailed] = useState<MsgKey | null>(null);
-  const [panel, setPanel] = useState<Panel>(null);
-
-  // Перечитать список: счётчик будит эффект, а ответ ложится в состояние из
-  // колбэка, а не прямо в теле эффекта.
-  const [tick, setTick] = useState(0);
-  const reload = useCallback(() => setTick((n) => n + 1), []);
-  useEffect(() => {
-    let alive = true;
-    void teamRepository.list().then((res) => {
-      if (!alive) return;
-      if (res.ok) {
-        setState(res.data);
-        // Кто подписывает документы и решает спорное в кабинете — по ролям.
-        setDeskDeciders(decidersOf(res.data));
-        setFailed(null);
-      } else setFailed(res.error === "team.err.forbidden" ? "team.noAccess" : "team.loadFailed");
-    });
-    return () => {
-      alive = false;
-    };
-  }, [tick, setDeskDeciders]);
+  const { state, failed, reload } = useTeam();
+  const [inviting, setInviting] = useState(false);
 
   // Правка на месте: роль и отключение — команды строки, отказ — тостом.
-  const run = async (op: () => ReturnType<typeof teamRepository.setDeskRole>) => {
+  const run = async (op: () => ReturnType<typeof teamRepository.setDisabled>) => {
     const res = await op();
     if (!res.ok) showToast(res.error, undefined, undefined, "error");
     reload();
@@ -81,6 +52,10 @@ export function TeamAccess({ staff }: { staff: StaffMember[] }) {
   }
   if (!state) return <p className="text-sm text-muted-foreground">{t("common.loading")}</p>;
 
+  // Сколько людей с ролью — в кабинете и у стола.
+  const usage: Record<string, number> = {};
+  for (const id of [...state.members.map((m) => m.roleId), ...Object.values(state.deskRoles)])
+    usage[id] = (usage[id] ?? 0) + 1;
   const myPerms = new Set(
     state.roles.find((r) => r.id === state.members.find((m) => m.id === state.me)?.roleId)
       ?.permissions,
@@ -94,7 +69,7 @@ export function TeamAccess({ staff }: { staff: StaffMember[] }) {
             <h2 className="text-sm font-semibold">{t("team.title")}</h2>
             <p className="max-w-xl text-xs text-muted-foreground">{t("team.lead")}</p>
           </div>
-          <Button size="sm" onClick={() => setPanel({ kind: "invite" })}>
+          <Button size="sm" onClick={() => setInviting(true)}>
             <Plus className="size-3.5" />
             {t("team.invite")}
           </Button>
@@ -114,73 +89,21 @@ export function TeamAccess({ staff }: { staff: StaffMember[] }) {
         </ul>
       </section>
 
-      <section className="flex flex-col gap-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex flex-col gap-1">
-            <h2 className="text-sm font-semibold">{t("team.roles")}</h2>
-            <p className="max-w-xl text-xs text-muted-foreground">{t("team.rolesLead")}</p>
-          </div>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setPanel({ kind: "role", role: null })}
-          >
-            <Plus className="size-3.5" />
-            {t("team.newRole")}
-          </Button>
-        </div>
-        <ul className="flex flex-col divide-y divide-border">
-          {state.roles.map((r) => (
-            <li key={r.id} className="flex items-start justify-between gap-3 py-2.5">
-              <div className="min-w-0">
-                <p className="text-sm font-medium">
-                  {r.name}
-                  {r.builtIn && (
-                    <span className="ml-2 text-xs font-normal text-muted-foreground">
-                      {t("team.builtIn")}
-                    </span>
-                  )}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {r.permissions.map((p) => (PERM_KEYS[p] ? t(PERM_KEYS[p]) : p)).join(" · ")}
-                </p>
-              </div>
-              <Button size="sm" variant="ghost" onClick={() => setPanel({ kind: "role", role: r })}>
-                {r.builtIn ? t("team.perms") : t("common.edit")}
-              </Button>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <DeskRoles
-        staff={staff}
+      <RoleList
         roles={state.roles}
-        assigned={state.deskRoles}
-        onChange={(ref, roleId) => run(() => teamRepository.setDeskRole(ref, roleId))}
+        permissions={state.permissions.map((p) => p.code)}
+        mine={myPerms}
+        usage={usage}
+        onChanged={reload}
       />
 
-      <RoleMatrix roles={state.roles} />
-
-      {panel?.kind === "invite" && (
+      {inviting && (
         <InvitePanel
           roles={state.roles}
-          onClose={() => setPanel(null)}
+          onClose={() => setInviting(false)}
           onDone={async (email) => {
-            setPanel(null);
+            setInviting(false);
             showToast("team.sent", { email });
-            reload();
-          }}
-        />
-      )}
-      {panel?.kind === "role" && (
-        <RolePanel
-          role={panel.role}
-          mine={myPerms}
-          permissions={state.permissions.map((p) => p.code)}
-          onClose={() => setPanel(null)}
-          onDone={async () => {
-            setPanel(null);
             reload();
           }}
         />
@@ -334,118 +257,6 @@ function InvitePanel({
         <Button size="sm" disabled={!valid || send.pending} onClick={submit}>
           {send.pending ? t("data.busy") : t("team.send")}
         </Button>
-      </DialogFooter>
-    </DialogShell>
-  );
-}
-
-function RolePanel({
-  role,
-  mine,
-  permissions,
-  onClose,
-  onDone,
-}: {
-  role: TeamRole | null;
-  /** Права самого человека: чужих, которых у него нет, он выдать не может. */
-  mine: Set<string>;
-  permissions: string[];
-  onClose: () => void;
-  onDone: () => void | Promise<void>;
-}) {
-  const t = useT();
-  const locked = role?.builtIn ?? false;
-  const [name, setName] = useState(role?.name ?? "");
-  const [perms, setPerms] = useState<Set<string>>(new Set(role?.permissions ?? []));
-  const save = useCommand(() =>
-    teamRepository.saveRole({ id: role?.id, name: name.trim(), permissions: [...perms] }),
-  );
-  const del = useCommand(() => teamRepository.deleteRole(role?.id ?? ""));
-  const done = async (res: { ok: boolean }) => {
-    if (res.ok) await onDone();
-  };
-  const toggle = (code: string) =>
-    setPerms((prev) => {
-      const next = new Set(prev);
-      if (next.has(code)) next.delete(code);
-      else next.add(code);
-      return next;
-    });
-  const err = save.error ?? del.error;
-  return (
-    <DialogShell size="md" scroll onClose={onClose}>
-      <DialogHeader>
-        <p className="text-sm font-semibold">{role ? role.name : t("team.newRole")}</p>
-        <Button variant="ghost" size="icon-sm" onClick={onClose}>
-          <X className="size-4" />
-        </Button>
-      </DialogHeader>
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5 py-4">
-        {locked && <p className="text-xs text-muted-foreground">{t("team.err.defaultRole")}</p>}
-        <label className="flex flex-col gap-1.5">
-          <Label>{t("team.roleName")}</Label>
-          <Input disabled={locked} value={name} onChange={(e) => setName(e.target.value)} />
-        </label>
-        <div className="flex flex-col gap-4">
-          <Label>{t("team.perms")}</Label>
-          {groupPermissions(permissions).map((g) => (
-            <fieldset key={g.module?.id ?? "other"} className="flex flex-col gap-1">
-              <legend className="pb-1 text-xs font-medium text-muted-foreground">
-                {t(g.module?.title ?? "perm.mod.other")}
-              </legend>
-              {g.codes.map((code) => {
-                // Владельца в свою роль не включают; чужого права, которого нет у
-                // самого человека, тоже не выдать (сервер всё равно откажет).
-                const allowed = !locked && code !== "org.manage" && mine.has(code);
-                return (
-                  <label key={code} className="flex items-center gap-2 py-0.5 text-sm">
-                    <input
-                      type="checkbox"
-                      className="size-4 accent-primary"
-                      disabled={!allowed && !perms.has(code)}
-                      checked={perms.has(code)}
-                      onChange={() => allowed && toggle(code)}
-                    />
-                    <span className={allowed || locked ? "" : "text-muted-foreground"}>
-                      {PERM_KEYS[code] ? t(PERM_KEYS[code]) : code}
-                    </span>
-                  </label>
-                );
-              })}
-            </fieldset>
-          ))}
-        </div>
-        {err && (
-          <p role="alert" className="text-xs text-destructive">
-            {t(err)}
-          </p>
-        )}
-      </div>
-      <DialogFooter spread={Boolean(role && !locked)}>
-        {role && !locked && (
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={del.pending}
-            onClick={async () => done(await del.run())}
-          >
-            {t("team.deleteRole")}
-          </Button>
-        )}
-        <div className="flex gap-2">
-          <Button variant="ghost" size="sm" onClick={onClose}>
-            {t("common.cancel")}
-          </Button>
-          {!locked && (
-            <Button
-              size="sm"
-              disabled={!name.trim() || save.pending}
-              onClick={async () => done(await save.run())}
-            >
-              {save.pending ? t("data.busy") : t("common.save")}
-            </Button>
-          )}
-        </div>
       </DialogFooter>
     </DialogShell>
   );

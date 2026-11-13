@@ -48,10 +48,51 @@ export const needsSecondPair = (d: Pick<Dispute, "kind">, r: DisputeResolution):
  */
 export function writeOffProblem(boxes: readonly Box[], d: Dispute): boolean {
   if (!writesOffGoods(d)) return false;
+  return !inTote(boxes, d);
+}
+
+/** Лежит ли найденное в своей таре целиком — есть что перекладывать или списывать. */
+export function inTote(boxes: readonly Box[], d: Dispute): boolean {
   const box = d.boxId ? boxes.find((b) => b.id === d.boxId) : undefined;
-  if (!box || !d.productId) return true;
+  if (!box || !d.productId) return false;
   const have = box.lines.filter((l) => l.productId === d.productId).reduce((n, l) => n + l.qty, 0);
-  return have < d.qty;
+  return have >= d.qty;
+}
+
+/** Куда можно переложить: любая другая тара, кроме невскрытой. */
+export const moveTargets = (boxes: readonly Box[], d: Dispute): Box[] =>
+  boxes.filter((b) => b.id !== d.boxId && !b.sealed);
+
+/**
+ * Переложить найденное в другую тару (Кирилл 13.11: «с подтверждением и
+ * выбором, куда»): строки уходят из исходной в выбранную, итог по товару не
+ * меняется. Нечего или некуда — `null`.
+ */
+export function moveInto(boxes: readonly Box[], d: Dispute, toId: string): Box[] | null {
+  if (!inTote(boxes, d) || !moveTargets(boxes, d).some((b) => b.id === toId)) return null;
+  const pid = d.productId!;
+  let left = d.qty;
+  return boxes.map((b) => {
+    if (b.id === d.boxId) {
+      const lines = b.lines
+        .map((l) => {
+          if (l.productId !== pid || left <= 0) return l;
+          const take = Math.min(l.qty, left);
+          left -= take;
+          return { ...l, qty: l.qty - take };
+        })
+        .filter((l) => l.qty > 0);
+      return { ...b, lines };
+    }
+    if (b.id !== toId) return b;
+    const has = b.lines.some((l) => l.productId === pid);
+    return {
+      ...b,
+      lines: has
+        ? b.lines.map((l) => (l.productId === pid ? { ...l, qty: l.qty + d.qty } : l))
+        : [...b.lines, { productId: pid, qty: d.qty }],
+    };
+  });
 }
 
 /** Оприходовать излишек: строки тары плюс найденное. */

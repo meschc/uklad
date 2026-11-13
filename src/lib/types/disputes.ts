@@ -58,4 +58,6 @@ export interface Dispute {
    * трогаем, пока начальник не подтвердит; подтверждает не тот, кто просил.
    */
   writeOffRequest?: { by: string; at: number; note: string };
+  /** «Переложить»: в какую тару ушло найденное. */
+  movedTo?: string;
 }

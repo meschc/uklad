@@ -3,6 +3,7 @@ import { cm } from "@/lib/address";
 import { catLabel, useT } from "@/lib/i18n";
 import type { Product } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { asciiAvatar } from "@/lib/asciiAvatar";
 import { RowCheck } from "./RowCheck";
 import type { TableRow } from "./tableRows";
 import type { ColId } from "./columns";
@@ -19,39 +20,21 @@ function safeUrl(url?: string): string | undefined {
   }
 }
 
-/** Детерминированный оттенок из артикула — для демо-фото (ТЗ, разд. 2.5). */
-function hueFromSku(sku: string): number {
-  let h = 0;
-  for (const ch of sku) h = (h * 31 + ch.charCodeAt(0)) % 360;
-  return h;
-}
-
-/** Демо-фото товара: генерируется, внешних картинок нет. */
+/**
+ * Миниатюра товара: настоящее фото, а без него — ASCII-аватарка из артикула
+ * (`lib/asciiAvatar.ts`, Кирилл 14.11: «ко всем изображениям»). Картинка
+ * своя у каждого товара и не меняется, внешних картинок нет.
+ */
 function ProductThumb({ product }: { product: Product }) {
   const t = useT();
-  const h = hueFromSku(product.sku);
-  // Настоящее фото важнее заглушки: если ссылка есть, показываем её (п.13).
-  if (product.imageUrl) {
-    return (
-      <img
-        src={product.imageUrl}
-        alt=""
-        loading="lazy"
-        className="h-9 w-9 shrink-0 rounded-md border border-black/10 object-cover"
-      />
-    );
-  }
   return (
-    <div
-      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-black/10 text-sm font-semibold"
-      style={{
-        background: `linear-gradient(135deg, hsl(${h} 70% 88%), hsl(${(h + 45) % 360} 70% 74%))`,
-        color: `hsl(${h} 55% 28%)`,
-      }}
-      title={t("table.photoTitle", { sku: product.sku })}
-    >
-      {product.name.charAt(0)}
-    </div>
+    <img
+      src={product.imageUrl || asciiAvatar(product.sku, "small")}
+      alt=""
+      loading="lazy"
+      title={product.imageUrl ? undefined : t("table.photoTitle", { sku: product.sku })}
+      className="size-9 shrink-0 rounded-md border border-black/10 bg-black object-cover"
+    />
   );
 }
 

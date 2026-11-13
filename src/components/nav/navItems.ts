@@ -55,17 +55,37 @@ export type NavEntry = NavLeaf | NavGroup;
 
 export const isGroup = (e: NavEntry): e is NavGroup => "items" in e;
 
+// Порядок — по частоте, Кирилл 14.11: «задания, спорные, товары, чат,
+// о складе, аналитика, печать, что это?». Вложенность — один уровень.
 const WAREHOUSE_NAV: NavEntry[] = [
-  { view: "editor", key: "nav.side.plan", icon: Boxes },
   // Процессы склада — приёмка, сборка, упаковка, отгрузка — на рабочем месте,
   // а не пунктами меню: работу делают за столом по бейджу. Само «Рабочее место»
   // стоит внизу меню (`WORKSTATION_NAV`), рядом с поддержкой и темой. В кабинете
   // руководителю остаются «Задания» (контроль), документы и аналитика.
   { view: "tasks", key: "nav.side.tasks", icon: ClipboardList },
-  // Переписка с продавцами — сразу за работой и отдельным пунктом (п.3):
-  // в неё заходят по десять раз на день, и прятать её в группу значило бы
-  // добавить клик к самому частому действию после приёмки.
+  // Недостачи, брак и ошибки скана ждут решения старшего — это ежедневная
+  // работа, а не настройка склада, поэтому не в «О складе».
+  { view: "disputes", key: "nav.side.disputes", icon: Scale },
+  { view: "editor", key: "nav.side.plan", icon: Boxes },
+  // Переписка с продавцами — отдельным пунктом (п.3): в неё заходят по десять
+  // раз на день, в группе она стоила бы лишнего клика.
   { view: "chat", key: "nav.side.chat", icon: MessagesSquare },
+  {
+    // Всё о самом складе: какой он, кто на нём работает, чем работает, какие
+    // услуги и по какой цене оказывает, с чем связан.
+    id: "setup",
+    key: "nav.group.setup",
+    icon: Settings2,
+    items: [
+      { view: "spec", key: "nav.side.spec", icon: Building2 },
+      { view: "staff", key: "nav.side.staff", icon: Users },
+      // Компьютеры и ТСД у столов: какой стоит где и кто за ним.
+      { view: "devices", key: "nav.side.devices", icon: MonitorSmartphone },
+      { view: "operations", key: "nav.side.operations", icon: ListChecks },
+      { view: "integrations", key: "nav.side.integrations", icon: Plug },
+    ],
+  },
+  { view: "analytics", key: "nav.side.analytics", icon: BarChart3 },
   {
     // Всё, что уходит на бумагу. Наклейку и накладную печатают из одного
     // побуждения «сейчас пойду к принтеру», поэтому они рядом.
@@ -77,29 +97,7 @@ const WAREHOUSE_NAV: NavEntry[] = [
       { view: "documents", key: "nav.side.documents", icon: FileText },
     ],
   },
-  {
-    // Всё о самом складе: какой он, кто на нём работает, какие услуги и по
-    // какой цене оказывает, с чем связан. «Операции» здесь: это прайс и отчёт
-    // по услугам склада, а не шаг ежедневной работы.
-    id: "setup",
-    key: "nav.group.setup",
-    icon: Settings2,
-    items: [
-      { view: "spec", key: "nav.side.spec", icon: Building2 },
-      { view: "staff", key: "nav.side.staff", icon: Users },
-      // Компьютеры и ТСД у столов: какой стоит где и кто за ним.
-      { view: "devices", key: "nav.side.devices", icon: MonitorSmartphone },
-      // Недостачи и ошибки скана, которые решает старший смены.
-      { view: "disputes", key: "nav.side.disputes", icon: Scale },
-      { view: "operations", key: "nav.side.operations", icon: ListChecks },
-      { view: "integrations", key: "nav.side.integrations", icon: Plug },
-    ],
-  },
-  { view: "analytics", key: "nav.side.analytics", icon: BarChart3 },
-  // «Что это?» — отдельным пунктом в самом низу: это не шаг работы и не
-  // настройка, а справочник, к которому обращаются по случаю. Спрятанный в
-  // группу, он требовал бы двух кликов ровно тогда, когда человек стоит с
-  // непонятной коробкой в руках.
+  // «Что это?» — в самом низу: справочник, к которому обращаются по случаю.
   { view: "lookup", key: "nav.side.lookup", icon: ScanSearch },
 ];
 

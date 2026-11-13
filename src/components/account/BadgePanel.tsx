@@ -16,11 +16,14 @@ import { QrSvg } from "@/components/table/QrSvg";
  */
 export function BadgePanel({
   member,
+  number,
   code,
   onClose,
   t,
 }: {
   member: StaffMember;
+  /** Табельный номер — крупно, чтобы бейдж находили глазами (Кирилл 13.11). */
+  number?: number;
   code: string;
   onClose: () => void;
   t: TFunc;
@@ -47,6 +50,9 @@ export function BadgePanel({
               <div className="bg-white p-2 text-black">
                 <QrSvg code={code} size={200} showCode={false} />
               </div>
+              {number != null && (
+                <p className="text-4xl font-bold tabular-nums leading-none">№ {number}</p>
+              )}
               <p className="text-xl font-semibold">{member.name}</p>
               {member.role && <p className="text-sm text-muted-foreground">{member.role}</p>}
             </div>

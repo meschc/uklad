@@ -352,6 +352,14 @@ describe("товар не теряется и не двоится на пути 
           return `решение старшего: ${res}`;
         },
         () => {
+          // Переложить найденное в другую тару: итог по товару не меняется.
+          const d = s().disputes.find((x) => !x.resolution && x.kind !== "receive_overage");
+          const to = s().boxes.find((b) => b.id !== d?.boxId && !b.sealed);
+          if (!d || !to) return "нечего перекладывать";
+          s().resolveDispute(d.id, "moved", "s2", undefined, { to: to.id });
+          return "переложили";
+        },
+        () => {
           // Пересчёт тары на полке: то совпадает, то нет — от нуля до «в два раза больше».
           const shelf = s().boxes.filter((b) => b.address);
           const b = shelf[rnd(shelf.length)];

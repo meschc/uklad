@@ -1,96 +1,43 @@
 import type { MsgKey } from "./i18n";
 
 /**
- * Права ролей по модулям кабинета: одни функции для всех, роль даёт по модулю
- * чтение, запись или ничего. Коды прав — серверные (`uklad.permissions`,
- * миграции 002 и 024); здесь только группировка для экрана «Доступ».
- *
- * `where` — честно, где сервер проверяет право уже сейчас: у стола (вход по
- * бейджу), в кабинете (каталог и план — запись по полям,
- * `server/api/src/cabinet/writeScope.js`) или пока нигде (право записано в
- * роли, а раздел правит только «Персонал»).
+ * Права ролей для экрана «Персонал → Доступ»: одни функции для всех, роль —
+ * набор прав. Коды прав — серверные (`uklad.permissions`, миграции 002, 024,
+ * 030); здесь только разделы, подписи и объяснения. Проверяет право сервер:
+ * у стола (`deskPerms.js`) и при записи кабинета (`writeScope.js`).
  */
 
-export type PermLevel = "write" | "read" | "none";
-type PermWhere = "desk" | "cabinet" | "later";
-
-export interface PermModule {
+export interface PermSection {
   id: string;
   title: MsgKey;
-  /** Права, которые дают только смотреть. */
-  read: string[];
-  /** Права, которые дают менять. */
-  write: string[];
-  where: PermWhere;
+  /** Права раздела в порядке «от простого к сильному». */
+  perms: string[];
 }
 
-export const PERM_MODULES: PermModule[] = [
-  {
-    id: "company",
-    title: "perm.mod.company",
-    read: ["billing.view"],
-    write: ["org.manage"],
-    where: "later",
-  },
-  { id: "staff", title: "perm.mod.staff", read: [], write: ["staff.manage"], where: "cabinet" },
-  {
-    id: "contracts",
-    title: "perm.mod.contracts",
-    read: [],
-    write: ["contracts.manage"],
-    where: "later",
-  },
-  { id: "plan", title: "perm.mod.plan", read: [], write: ["plan.edit"], where: "cabinet" },
-  {
-    id: "products",
-    title: "perm.mod.products",
-    read: [],
-    write: ["products.edit"],
-    where: "cabinet",
-  },
+/**
+ * Разделы прав, как у GitHub: у каждого права своя строка с объяснением, что
+ * оно даёт. Без таблицы «чтение/запись» — Кирилл 13.11: «непонятно, что на
+ * чтение, что на запись». Право либо есть, либо нет.
+ */
+export const PERM_SECTIONS: PermSection[] = [
   {
     id: "stock",
-    title: "perm.mod.stock",
-    read: ["stock.view"],
-    write: ["stock.move"],
-    // Чтение открывает кабинет на просмотр; перемещение — у стола операциями.
-    where: "cabinet",
+    title: "perm.sec.stock",
+    perms: ["stock.view", "products.edit", "plan.edit", "stock.move"],
   },
   {
-    id: "receiving",
-    title: "perm.mod.receiving",
-    read: [],
-    write: ["receiving.do"],
-    where: "desk",
+    id: "desk",
+    title: "perm.sec.desk",
+    perms: ["receiving.do", "picking.do", "packing.do", "shipping.do", "inventory.count"],
   },
-  { id: "picking", title: "perm.mod.picking", read: [], write: ["picking.do"], where: "desk" },
-  { id: "packing", title: "perm.mod.packing", read: [], write: ["packing.do"], where: "desk" },
-  { id: "shipping", title: "perm.mod.shipping", read: [], write: ["shipping.do"], where: "desk" },
-  { id: "goods", title: "perm.mod.goods", read: [], write: ["goods.decide"], where: "desk" },
-  // Подтверждение списания — отдельно от решений по товару (миграция 030):
-  // старший просит списать, начальник подтверждает.
+  // Списание подтверждает начальник (миграция 030): старший только просит.
+  { id: "goods", title: "perm.sec.goods", perms: ["goods.decide", "goods.writeoff"] },
   {
-    id: "writeoff",
-    title: "perm.mod.writeoff",
-    read: [],
-    write: ["goods.writeoff"],
-    where: "desk",
+    id: "people",
+    title: "perm.sec.people",
+    perms: ["staff.manage", "contracts.manage", "billing.view", "org.manage"],
   },
-  {
-    id: "inventory",
-    title: "perm.mod.inventory",
-    read: [],
-    write: ["inventory.count"],
-    where: "desk",
-  },
-  {
-    id: "seller",
-    title: "perm.mod.seller",
-    read: [],
-    write: ["seller.requests"],
-    where: "later",
-  },
-  { id: "chat", title: "perm.mod.chat", read: [], write: ["chat.use"], where: "later" },
+  { id: "sellers", title: "perm.sec.sellers", perms: ["seller.requests", "chat.use"] },
 ];
 
 /** Подпись права в списке галочек. */
@@ -114,27 +61,40 @@ export const PERM_KEYS: Record<string, MsgKey> = {
   "chat.use": "perm.chat.use",
 };
 
-/** Что роль может в модуле: запись сильнее чтения. */
-export function moduleLevel(m: PermModule, perms: Iterable<string>): PermLevel {
-  const have = new Set(perms);
-  if (m.write.some((p) => have.has(p))) return "write";
-  if (m.read.some((p) => have.has(p))) return "read";
-  return "none";
-}
+/** Что право даёт — строкой под названием. */
+export const PERM_DESC: Record<string, MsgKey> = {
+  "org.manage": "perm.desc.org.manage",
+  "billing.view": "perm.desc.billing.view",
+  "staff.manage": "perm.desc.staff.manage",
+  "contracts.manage": "perm.desc.contracts.manage",
+  "plan.edit": "perm.desc.plan.edit",
+  "products.edit": "perm.desc.products.edit",
+  "stock.view": "perm.desc.stock.view",
+  "stock.move": "perm.desc.stock.move",
+  "receiving.do": "perm.desc.receiving.do",
+  "picking.do": "perm.desc.picking.do",
+  "packing.do": "perm.desc.packing.do",
+  "shipping.do": "perm.desc.shipping.do",
+  "goods.decide": "perm.desc.goods.decide",
+  "goods.writeoff": "perm.desc.goods.writeoff",
+  "inventory.count": "perm.desc.inventory.count",
+  "seller.requests": "perm.desc.seller.requests",
+  "chat.use": "perm.desc.chat.use",
+};
 
 /**
- * Права по модулям для списка галочек. Право, которого нет ни в одном модуле
- * (сервер добавил новое раньше экрана), не теряется — уходит в «Прочее».
+ * Права по разделам. Право, которого нет ни в одном разделе (сервер добавил
+ * новое раньше экрана), не теряется — уходит в «Прочее».
  */
 export function groupPermissions(
   codes: string[],
-): { module: PermModule | null; codes: string[] }[] {
+): { section: PermSection | null; codes: string[] }[] {
   const known = new Set(codes);
-  const groups = PERM_MODULES.map((m) => ({
-    module: m as PermModule | null,
-    codes: [...m.read, ...m.write].filter((c) => known.has(c)),
+  const groups = PERM_SECTIONS.map((sec) => ({
+    section: sec as PermSection | null,
+    codes: sec.perms.filter((c) => known.has(c)),
   })).filter((g) => g.codes.length > 0);
-  const placed = new Set(PERM_MODULES.flatMap((m) => [...m.read, ...m.write]));
+  const placed = new Set(PERM_SECTIONS.flatMap((sec) => sec.perms));
   const rest = codes.filter((c) => !placed.has(c));
-  return rest.length > 0 ? [...groups, { module: null, codes: rest }] : groups;
+  return rest.length > 0 ? [...groups, { section: null, codes: rest }] : groups;
 }

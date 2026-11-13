@@ -89,8 +89,18 @@
       },
       "warning": {
         "$type": "color",
-        "$value": "#B35309",
+        "$value": "#A57703",
         "$description": "CSS: hsl(var(--warning))"
+      },
+      "warning-fill": {
+        "$type": "color",
+        "$value": "#FAC114",
+        "$description": "CSS: hsl(var(--warning-fill))"
+      },
+      "warning-foreground": {
+        "$type": "color",
+        "$value": "#171717",
+        "$description": "CSS: hsl(var(--warning-foreground))"
       },
       "tag-plan": {
         "$type": "color",
@@ -186,6 +196,11 @@
         "$type": "color",
         "$value": "#F9FAFB",
         "$description": "CSS: hsl(var(--canvas-bg))"
+      },
+      "shell": {
+        "$type": "color",
+        "$value": "#EBECF0",
+        "$description": "CSS: hsl(var(--shell))"
       },
       "grid-minor": {
         "$type": "color",
@@ -339,6 +354,16 @@
         "$value": "#FBBD23",
         "$description": "CSS: hsl(var(--warning))"
       },
+      "warning-fill": {
+        "$type": "color",
+        "$value": "#FAC114",
+        "$description": "CSS: hsl(var(--warning-fill))"
+      },
+      "warning-foreground": {
+        "$type": "color",
+        "$value": "#171717",
+        "$description": "CSS: hsl(var(--warning-foreground))"
+      },
       "tag-plan": {
         "$type": "color",
         "$value": "#156BF4",
@@ -433,6 +458,11 @@
         "$type": "color",
         "$value": "#121317",
         "$description": "CSS: hsl(var(--canvas-bg))"
+      },
+      "shell": {
+        "$type": "color",
+        "$value": "#0B0C0F",
+        "$description": "CSS: hsl(var(--shell))"
       },
       "grid-minor": {
         "$type": "color",

@@ -1,10 +1,11 @@
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Download, Plus, Upload, Users } from "lucide-react";
 import { selectRole, useEditor } from "@/lib/store";
 import { staffRepository } from "@/lib/data";
+import { teamRepository } from "@/lib/data/teamRepository";
+import { useTeam } from "./useTeam";
 import { useCommand } from "@/lib/useCommand";
 import { telHref } from "@/lib/phone";
-import { staffWorkload } from "@/lib/fulfillment";
 import { csvToStaff, staffToCsv } from "@/lib/staffIO";
 import { BOM } from "@/lib/utils";
 import type { StaffMember } from "@/lib/types";
@@ -22,7 +23,7 @@ import { StaffOutput } from "./StaffOutput";
 import { PersonForm } from "./PersonForm";
 import { draftToMember, type PersonDraft } from "@/lib/personDraft";
 import { StaffRow } from "./StaffRow";
-import { useWithArchive } from "@/lib/store/archive";
+import { staffNumbers } from "@/lib/staffNumber";
 import { ArchiveNote } from "@/components/fulfillment/ArchiveNote";
 
 /**
@@ -56,21 +57,25 @@ export function StaffScreen() {
   const t = useT();
 
   const staff = warehouse.staff ?? [];
-  // Нагрузка считается из фактов приёмки и отгрузки (см. fulfillment.ts).
-  // Нагрузка за всё время — с архивом старше 45 дней (`store/archive.ts`).
-  const events = useWithArchive("receivingEvents");
-  const trips = useWithArchive("shipments");
-  const workload = useMemo(() => staffWorkload(events, trips), [events, trips]);
+  const numbers = staffNumbers(staff);
+  // Роль у стола — колонкой списка (Кирилл 13.11: «каждому сотруднику
+  // отдельно роль»). Команда приходит с сервера; в демо колонки нет.
+  const team = useTeam();
+  const runRole = async (staffRef: string, roleId: string | null) => {
+    const res = await teamRepository.setDeskRole(staffRef, roleId);
+    if (!res.ok) showToast(res.error, undefined, undefined, "error");
+    team.reload();
+  };
   const [draft, setDraft] = useState<PersonDraft | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const staffTable = useDataTable(staff, [
     { id: "name", value: (m) => m.name },
     { id: "role", value: (m) => m.role, facet: (v) => v },
     { id: "rate", value: (m) => m.hourlyRate },
-    { id: "receipts", value: (m) => workload.get(m.id)?.receipts ?? 0 },
-    { id: "units", value: (m) => workload.get(m.id)?.units ?? 0 },
-    { id: "trips", value: (m) => workload.get(m.id)?.trips ?? 0 },
-    { id: "last", value: (m) => workload.get(m.id)?.lastAt },
+    {
+      id: "access",
+      value: (m) => team.state?.roles.find((r) => r.id === team.state?.deskRoles[m.id])?.name ?? "",
+    },
   ]);
   const [tab, setTab] = useState<StaffTab>("people");
   const fileRef = useRef<HTMLInputElement>(null);
@@ -272,6 +277,13 @@ export function StaffScreen() {
                     allLabel={(col) => t("common.filterAll", { col })}
                   />
                 </div>
+                {team.state && staff.some((m) => !team.state?.deskRoles[m.id]) && (
+                  <p className="text-xs font-medium text-warning">
+                    {t("team.deskMissing", {
+                      n: staff.filter((m) => !team.state?.deskRoles[m.id]).length,
+                    })}
+                  </p>
+                )}
                 <div className="overflow-x-auto rounded-xl border border-border">
                   <table className="w-full border-collapse text-sm">
                     <thead className="bg-muted/50 text-xs">
@@ -285,18 +297,11 @@ export function StaffScreen() {
                         <SortTh table={staffTable.table} id="rate" align="right">
                           {t("staff.rate")}
                         </SortTh>
-                        <SortTh table={staffTable.table} id="receipts" align="right">
-                          {t("staff.wlReceipts")}
-                        </SortTh>
-                        <SortTh table={staffTable.table} id="units" align="right">
-                          {t("staff.wlUnits")}
-                        </SortTh>
-                        <SortTh table={staffTable.table} id="trips" align="right">
-                          {t("staff.wlTrips")}
-                        </SortTh>
-                        <SortTh table={staffTable.table} id="last">
-                          {t("staff.wlLast")}
-                        </SortTh>
+                        {team.state && (
+                          <SortTh table={staffTable.table} id="access">
+                            {t("team.role")}
+                          </SortTh>
+                        )}
                         <th className="w-20 px-3 py-2" />
                       </tr>
                     </thead>
@@ -305,7 +310,14 @@ export function StaffScreen() {
                         <StaffRow
                           key={m.id}
                           member={m}
-                          load={workload.get(m.id)}
+                          number={numbers.get(m.id)}
+                          access={
+                            team.state && {
+                              roles: team.state.roles,
+                              roleId: team.state.deskRoles[m.id] ?? null,
+                              onChange: (roleId) => void runRole(m.id, roleId),
+                            }
+                          }
                           editing={editing === m.id}
                           onEdit={() => setEditing(m.id)}
                           onDone={() => setEditing(null)}
@@ -322,7 +334,7 @@ export function StaffScreen() {
       )}
       {tab === "schedule" && <BreakPolicyCard />}
       {tab === "output" && <StaffOutput />}
-      {tab === "access" && <TeamAccess staff={staff} />}
+      {tab === "access" && <TeamAccess />}
 
       {/* Ответственное лицо — тот же шаблон, что и у сотрудника (п.24) */}
       {tab === "people" && (

@@ -18,6 +18,12 @@ describe("destinationMark", () => {
     expect(tokens.size).toBeGreaterThanOrEqual(3);
   });
 
+  it("без зелёного и красного — они заняты под «готово» и «ошибку»", () => {
+    for (const n of ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "ПВЗ Ленина 5"]) {
+      expect(["--tag-integrations", "--tag-bug"]).not.toContain(destinationMark(n).token);
+    }
+  });
+
   it("на жёлтом, салатовом и оранжевом — тёмный текст", () => {
     for (const n of ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k"]) {
       const m = destinationMark(n);

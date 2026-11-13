@@ -13,11 +13,13 @@ import { seedCategoryFields, seedProducts } from "./seed";
 export const createCatalogSlice: SliceCreator<CatalogSlice> = (set, get) => ({
   products: seedProducts(),
   search: "",
+  tablePartner: "all",
   categories: [...PRODUCT_CATEGORIES],
   categoryFields: seedCategoryFields(),
   fieldValues: {},
 
   setSearch: (q) => set({ search: q }),
+  setTablePartner: (id) => set({ tablePartner: id }),
 
   searchInTable: (q) => set({ search: q, mode: "table" }),
 
