@@ -169,7 +169,7 @@ function accountNew({ session, values, error, lead }) {
         <label>Тариф<select name="tariff">${Object.entries(plans.PLANS)
           .map(([k, p]) => opt(k, `${p.title}${p.price ? ` · ${money(p.price)}` : ""}`, v.tariff))
           .join("")}</select></label>
-        <label class="check" style="align-self:end;height:40px"><input type="checkbox" name="trial"${
+        <label class="check end"><input type="checkbox" name="trial"${
           v.trial === "on" ? " checked" : ""
         }> Пробный период ${plans.TRIAL_MONTHS} мес.</label>
       </div>
@@ -262,8 +262,8 @@ function paymentsCard(session, a, payments) {
       </div>
       <div class="actions"><button>${icon("money")}Записать и продлить</button></div>
     </form>
-    <form class="actions" method="post" action="/accounts/${a.id}/trial" style="margin-top:14px">${hidden(session)}
-      <select name="months" style="width:auto">${opt(1, "+1 месяц")}${opt(3, "+3 месяца")}</select>
+    <form class="actions mt" method="post" action="/accounts/${a.id}/trial">${hidden(session)}
+      <select name="months">${opt(1, "+1 месяц")}${opt(3, "+3 месяца")}</select>
       <button class="soft">Продлить пробный период</button>
     </form>
     <div class="sec"><h2>Оплаты</h2>${list}</div>
@@ -281,7 +281,7 @@ function accessCards(session, a) {
                <label>Причина блокировки<input name="note" maxlength="200" placeholder="Например: не оплатил"></label>
                <div class="actions"><button class="danger">${icon("ban")}Заблокировать</button></div></form>`
       }
-      <form class="form" method="post" action="/accounts/${a.id}/reset" style="margin-top:20px">${hidden(session)}
+      <form class="form mt" method="post" action="/accounts/${a.id}/reset">${hidden(session)}
         <p class="hint">Старый пароль перестанет работать, человек задаст новый по ссылке.</p>
         <div class="actions"><button class="soft">Сбросить доступ</button></div>
       </form>
@@ -291,7 +291,7 @@ function accessCards(session, a) {
         a.archived_at
           ? `<p>В архиве с ${day(a.archived_at)}.</p><form method="post" action="/accounts/${a.id}/restore">${hidden(session)}<button class="soft">Вернуть из архива</button></form>`
           : `<p class="hint">Аккаунт пропадёт из списков, но данные и журнал останутся.</p>
-             <form class="form" method="post" action="/accounts/${a.id}/archive" style="margin-top:12px">${hidden(session)}
+             <form class="form mt" method="post" action="/accounts/${a.id}/archive">${hidden(session)}
                <label>Впишите название, чтобы подтвердить<input name="confirm" maxlength="120" autocomplete="off"></label>
                <div class="actions"><button class="danger">Убрать в архив</button></div></form>`
       }
@@ -322,7 +322,7 @@ function accountPage(o) {
       ${stat("Оплачено до", day(a.paid_until), { tone: a.state === "overdue" ? "warn" : a.state === "paid" ? "ok" : "" })}
     </div>
     <div class="side-col">
-      <div>
+      <div class="stack">
         <section><h2>Контакты</h2>
         <form class="form" method="post" action="/accounts/${a.id}/profile">${hidden(session)}${profileFields(a)}
           <div class="actions"><button class="soft">Сохранить контакты</button></div>
@@ -331,7 +331,7 @@ function accountPage(o) {
         </section>
         ${featuresForm(session, a, features, limits)}
       </div>
-      <div>
+      <div class="stack">
         ${tariffForm(session, a, managers)}
         ${invoicesCard(session, a, invoices)}
         ${paymentsCard(session, a, payments)}

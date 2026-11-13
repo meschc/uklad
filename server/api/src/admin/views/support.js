@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 const b = require("./base");
 
-const { esc, when, hidden, opt } = b;
+const { esc, when, hidden, opt, icon } = b;
 const page = (session, title, body) =>
   b.layout({ title, session, active: "/support", body, badges: session.badges });
 
@@ -28,7 +28,7 @@ function supportList({ session, reports, status }) {
     session,
     "Поддержка",
     `${b.head("Клиенты", `Поддержка · ${reports.length}`)}
-    <p class="muted">Обращения «Сообщить о проблеме» из кабинета. Журнал и копия данных приходят уже без имён и контактов. Хранятся 90 дней.</p>
+    <p class="lede">Обращения «Сообщить о проблеме» из кабинета. Журнал и копия данных приходят уже без имён и контактов. Хранятся 90 дней.</p>
     <div class="bar"><div class="seg">${tab("", "Все")}${Object.entries(STATUS)
       .map(([k, v]) => tab(k, v))
       .join("")}</div></div>
@@ -55,9 +55,9 @@ function supportPage({ session, report: r, payload }) {
   return page(
     session,
     `Обращение № ${r.id}`,
-    `<a class="back" href="/support">← Поддержка</a>
-    <div class="head"><h1>Обращение № ${r.id}</h1><span class="badge ${BADGE[r.status] ?? ""}">${STATUS[r.status] ?? esc(r.status)}</span></div>
-    <div class="cols">
+    `<a class="back" href="/support">${icon("back", 16)}Поддержка</a>
+    ${b.head(`Обращение · ${when(r.created_at)}`, `Обращение № ${r.id}`, `<span class="badge ${BADGE[r.status] ?? ""}">${STATUS[r.status] ?? esc(r.status)}</span>`)}
+    <div class="side-col">
       <section class="panel">
         <h2>Что случилось</h2>
         <p class="pre">${esc(r.message)}</p>
@@ -69,8 +69,8 @@ function supportPage({ session, report: r, payload }) {
               ? `есть: заменено имён ${Number(stats.names) || 0}, удалено полей ${Number(stats.dropped) || 0}, скрыто текстов ${Number(stats.texts) || 0}`
               : "не приложена"
           }</dd></dl>
-        <div class="actions"><a class="btn soft sm" href="/support/${r.id}.json">Скачать обращение целиком</a></div>
-        <p class="muted small">Файл — для разбора ошибки: в нём журнал и копия без имён. Скачивание пишется в журнал админки.</p>
+        <div class="actions"><a class="btn soft sm" href="/support/${r.id}.json">${icon("download", 16)}Скачать обращение целиком</a></div>
+        <p class="hint">Файл — для разбора ошибки: в нём журнал и копия без имён. Скачивание пишется в журнал админки.</p>
       </section>
       <form class="form" method="post" action="/support/${r.id}">${hidden(session)}
         <h2>Что с обращением</h2>
@@ -81,8 +81,10 @@ function supportPage({ session, report: r, payload }) {
         <div class="actions"><button>Сохранить</button></div>
       </form>
     </div>
-    <h2 class="gap-top">Журнал событий · ${journal.length}</h2>
-    ${journal.length ? `<table><thead><tr><th>Когда</th><th>Вид</th><th>Что</th><th>Подробности</th></tr></thead><tbody>${rows}</tbody></table>` : `<p class="empty">Журнал пуст.</p>`}`,
+    <section class="sec">
+    <h2>Журнал событий · ${journal.length}</h2>
+    ${journal.length ? `<table><thead><tr><th>Когда</th><th>Вид</th><th>Что</th><th>Подробности</th></tr></thead><tbody>${rows}</tbody></table>` : `<p class="empty">Журнал пуст.</p>`}
+    </section>`,
   );
 }
 
