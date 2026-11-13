@@ -84,18 +84,25 @@ export function LookupScreen() {
     />
   );
 
-  // До первого скана экран — одно поле по центру с объяснением. После скана
-  // поле уходит наверх, а под ним появляется ответ.
+  // До первого скана экран — поле с объяснением посередине по ширине. После
+  // скана поле уходит наверх, а под ним появляется ответ.
+  //
+  // Блок прибит к верху с постоянным отступом, а не центрирован по высоте
+  // (Кирилл 13 ноя): при центровке каждый ввод в поиск менял длину списка, и
+  // поле с заголовком прыгали вверх-вниз. `scrollbar-gutter` держит место под
+  // полосу прокрутки, чтобы при её появлении блок не сдвигался вбок.
   if (result === null)
     return (
-      <div className="mx-auto flex min-h-full max-w-xl flex-col justify-center gap-6 px-4 py-10">
-        <div className="flex flex-col items-center gap-2 text-center">
-          <ScanSearch className="size-8 text-primary" />
-          <h1 className="text-2xl font-semibold tracking-tight">{t("lookup.title")}</h1>
-          <p className="text-sm text-muted-foreground">{t("lookup.subtitle")}</p>
+      <div className="h-full overflow-y-auto [scrollbar-gutter:stable]">
+        <div className="mx-auto flex max-w-xl flex-col gap-6 px-4 pb-10 pt-[10vh]">
+          <div className="flex flex-col items-center gap-2 text-center">
+            <ScanSearch className="size-8 text-primary" />
+            <h1 className="text-2xl font-semibold tracking-tight">{t("lookup.title")}</h1>
+            <p className="text-sm text-muted-foreground">{t("lookup.subtitle")}</p>
+          </div>
+          {field}
+          <LookupBrowser onCode={onScan} />
         </div>
-        {field}
-        <LookupBrowser onCode={onScan} />
       </div>
     );
 

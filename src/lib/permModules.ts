@@ -66,6 +66,15 @@ export const PERM_MODULES: PermModule[] = [
   { id: "packing", title: "perm.mod.packing", read: [], write: ["packing.do"], where: "desk" },
   { id: "shipping", title: "perm.mod.shipping", read: [], write: ["shipping.do"], where: "desk" },
   { id: "goods", title: "perm.mod.goods", read: [], write: ["goods.decide"], where: "desk" },
+  // Подтверждение списания — отдельно от решений по товару (миграция 030):
+  // старший просит списать, начальник подтверждает.
+  {
+    id: "writeoff",
+    title: "perm.mod.writeoff",
+    read: [],
+    write: ["goods.writeoff"],
+    where: "desk",
+  },
   {
     id: "inventory",
     title: "perm.mod.inventory",
@@ -98,6 +107,7 @@ export const PERM_KEYS: Record<string, MsgKey> = {
   "packing.do": "perm.packing.do",
   "shipping.do": "perm.shipping.do",
   "goods.decide": "perm.goods.decide",
+  "goods.writeoff": "perm.goods.writeoff",
   "inventory.count": "perm.inventory.count",
   "seller.requests": "perm.seller.requests",
   "chat.use": "perm.chat.use",

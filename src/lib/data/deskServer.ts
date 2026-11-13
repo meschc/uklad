@@ -16,6 +16,19 @@ export interface DeviceJournalEntry {
   kind: string;
   /** Сервер не смог применить факт как есть — разбирает старший. */
   flagged?: boolean;
+  /** С чем была операция: товар, тара, заказ, отправление (миграция 028). */
+  refs?: JournalRefs;
+}
+
+export interface JournalRefs {
+  productId?: string;
+  toteId?: string;
+  boxId?: string;
+  palletId?: string;
+  orderId?: string;
+  outboundCode?: string;
+  code?: string;
+  qty?: number;
 }
 
 export interface DeskServer {

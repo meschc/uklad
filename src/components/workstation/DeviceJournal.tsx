@@ -11,6 +11,7 @@ import { DialogHeader, DialogShell } from "@/components/ui/dialog-shell";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { cn } from "@/lib/utils";
 import { JournalActions } from "./JournalActions";
+import type { JournalRefs } from "@/lib/data/deskServer";
 
 /** Виды операций стола на сервере (`desk_ops.kind`) — подписи в словаре. */
 const SERVER_KINDS = new Set([
@@ -141,6 +142,30 @@ export function DeviceJournal({
 }
 
 /**
+ * С чем было действие — «Футболка, XS, чёрный × 2 · UK-BOX-12 · заказ 4512».
+ * Кирилл 13.11: «что за действие понятно, но с каким товаром нет». Чего нет в
+ * данных (товар удалили, тара уже чужая), то не выдумываем — пропускаем.
+ */
+function useRefsText() {
+  const t = useT();
+  const products = useEditor((s) => s.products);
+  const boxes = useEditor((s) => s.boxes);
+  return (r: JournalRefs | undefined): string | undefined => {
+    if (!r) return undefined;
+    const product = r.productId && products.find((p) => p.id === r.productId)?.name;
+    const tote = r.toteId ?? r.boxId;
+    const parts = [
+      product && (r.qty && r.qty > 1 ? `${product} × ${r.qty}` : product),
+      tote && (boxes.find((b) => b.id === tote)?.barcode ?? tote),
+      r.outboundCode,
+      r.orderId && t("devices.journal.order", { id: r.orderId }),
+      !product && r.code,
+    ].filter(Boolean);
+    return parts.length ? parts.join(" · ") : undefined;
+  };
+}
+
+/**
  * Человек за устройством: имя и время работы, под ними — раскрывающийся
  * список его действий, как в журнале рабочего места.
  */
@@ -160,6 +185,7 @@ function Stint({
   const t = useT();
   const [open, setOpen] = useState(false);
   const n = stint.entries.length;
+  const refsText = useRefsText();
   return (
     <li className="flex flex-col">
       <button
@@ -196,6 +222,7 @@ function Stint({
               key: `${e.at}-${i}`,
               time: time(e.at, true),
               label: kind(e.kind),
+              detail: refsText(e.refs),
               tone: e.flagged ? ("warn" as const) : undefined,
             }))}
           />

@@ -852,7 +852,14 @@ export interface DisputesSlice {
     raisedBy: string;
   }) => string;
   /** Решить. Уже решённое не трогаем: первое решение остаётся. */
-  resolveDispute: (id: string, resolution: DisputeResolution, by: string, note?: string) => boolean;
+  /** `request` — только попросить списать: решит начальник (`writeOffRequest`). */
+  resolveDispute: (
+    id: string,
+    resolution: DisputeResolution,
+    by: string,
+    note?: string,
+    request?: boolean,
+  ) => boolean;
   /**
    * Инвентаризация: записать пересчёт тары. Ставит отметку «считали» и заводит
    * спорное по каждому расхождению; остатки не трогает. Возвращает расхождения

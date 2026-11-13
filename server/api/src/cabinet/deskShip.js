@@ -15,7 +15,7 @@
 /* global module, require */
 /* eslint-disable @typescript-eslint/no-require-imports */
 
-const { GOODS_DECIDE, may } = require("./deskPerms");
+const { GOODS_DECIDE, GOODS_WRITEOFF, may } = require("./deskPerms");
 
 const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 const list = (v) => (Array.isArray(v) ? v.filter(isObject) : []);
@@ -163,9 +163,26 @@ function applyDisputeResolve(data, body, staffRef, who) {
           },
     );
   }
+  if (body.resolution === "written_off" && !may(who, staffRef, GOODS_WRITEOFF)) {
+    // Без права начальника списание только просят (Кирилл 13.11, миграция
+    // 030): спорное остаётся открытым с просьбой, товар не трогаем.
+    if (!note) return { flag: "not_yours" };
+    const request = { by: staffRef, at: body.at, note };
+    return {
+      check: (after) =>
+        list(after.disputes).some((x) => x.id === d.id && x.writeOffRequest?.by === staffRef),
+      data: {
+        ...data,
+        disputes: disputes.map((x) => (x === d ? { ...x, writeOffRequest: request } : x)),
+      },
+    };
+  }
   if (body.resolution === "written_off") {
-    // Четыре глаза и причина.
-    if (!note || d.raisedBy === staffRef) return { flag: "not_yours" };
+    // Четыре глаза и причина: подтверждает не тот, кто нашёл и не тот, кто
+    // просил. Причина — своя или из просьбы.
+    const asked = d.writeOffRequest;
+    const reason = note || (typeof asked?.note === "string" ? asked.note : "");
+    if (!reason || d.raisedBy === staffRef || asked?.by === staffRef) return { flag: "not_yours" };
     if (WRITES_OFF.has(d.kind)) {
       const box = list(data.boxes).find((b) => b.id === d.boxId);
       const have = list(box?.lines)
@@ -201,7 +218,7 @@ function applyDisputeResolve(data, body, staffRef, who) {
               resolution: body.resolution,
               resolvedBy: staffRef,
               resolvedAt: body.at,
-              ...(note ? { note } : {}),
+              ...(note || x.writeOffRequest?.note ? { note: note || x.writeOffRequest.note } : {}),
             }
           : x,
       ),

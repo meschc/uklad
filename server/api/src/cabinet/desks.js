@@ -43,7 +43,7 @@ const {
   storeRecords,
 } = require("./snapshot");
 const { whoseBadge, badgeAnswer, answerCheck, CHECKS_PER_MINUTE } = require("./deskBadges");
-const { GOODS_DECIDE, STAFF_MANAGE, may, loadDeskPerms } = require("./deskPerms");
+const { GOODS_DECIDE, GOODS_WRITEOFF, STAFF_MANAGE, may, loadDeskPerms } = require("./deskPerms");
 const { mergeDeskStock, STOCK_KEYS } = require("./deskStock");
 const { recordMoves, diffMoves } = require("./moves");
 const { isOp, runDeskOps, MAX_OPS } = require("./deskOps");
@@ -110,6 +110,7 @@ function deskPeople(who) {
     present,
     staff: who?.staff ?? null,
     mayDecide: may(who, who?.staff, GOODS_DECIDE),
+    mayWriteOff: may(who, who?.staff, GOODS_WRITEOFF),
   };
 }
 
@@ -246,6 +247,8 @@ function mergeDisputes(current, incoming, people) {
     if (!(RESOLUTIONS_BY_KIND[d.kind] ?? OTHER_RES).has(n.resolution)) return d;
     // Решает тот, у кого есть право, кто сейчас за столом, и только от своего имени.
     if (!people.mayDecide || n.resolvedBy !== people.staff) return d;
+    // Списание — только с правом начальника (030); просьбу снимком не пишут.
+    if (n.resolution === "written_off" && !people.mayWriteOff) return d;
     // Списание — с причиной и не тем, кто нашёл (как в кабинете, #71):
     // иначе свою же недостачу можно списать в одиночку.
     // То же — оприходование излишка: товар из ничего подтверждает второй.
@@ -468,7 +471,7 @@ function createDesks({ auth, cfg, send, log }) {
     const out = await withSession(req, async (c, ctx) => {
       if (!ctx.accountId || !ctx.can("staff.manage")) return { status: 403 };
       const { rows } = await c.query(
-        `SELECT at, staff_ref, kind, status FROM auth.desk_journal($1, 200)`,
+        `SELECT at, staff_ref, kind, status, refs FROM auth.desk_journal($1, 200)`,
         [deviceRef],
       );
       return { status: 200, rows };
@@ -482,6 +485,8 @@ function createDesks({ auth, cfg, send, log }) {
         staffRef: r.staff_ref,
         kind: r.kind,
         flagged: r.status === "flagged",
+        // Товар, тара, заказ — чтобы строка говорила, с чем было действие.
+        ...(r.refs && Object.keys(r.refs).length ? { refs: r.refs } : {}),
       })),
     });
   }

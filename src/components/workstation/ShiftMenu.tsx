@@ -77,7 +77,7 @@ export function ShiftMenu({ member, now }: { member: StaffMember; now: number })
             state === "on"
               ? "bg-success"
               : state === "break" || state === "idle"
-                ? "bg-warning-fill"
+                ? "bg-warning"
                 : "bg-muted-foreground/40",
           )}
         />

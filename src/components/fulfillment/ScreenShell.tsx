@@ -35,7 +35,7 @@ export function ScreenShell({
     );
   }
   return (
-    <div className="h-full overflow-y-auto bg-background">
+    <div className="h-full overflow-y-auto bg-background [scrollbar-gutter:stable]">
       <div className={`mx-auto flex ${wide ? "max-w-5xl" : "max-w-2xl"} flex-col gap-5 px-6 py-7`}>
         <header className="flex items-start justify-between gap-4">
           <div className="min-w-0">

@@ -193,7 +193,7 @@ export function PackRun({
             "flex min-h-14 items-center gap-3 rounded-xl px-4 py-3 text-xl font-semibold transition-colors duration-200",
             isError
               ? warn
-                ? "bg-warning-fill text-warning-foreground"
+                ? "bg-warning text-black"
                 : "bg-destructive text-destructive-foreground"
               : okText
                 ? "bg-success text-white"
@@ -267,7 +267,7 @@ export function PackRun({
                 <LabelBlock code={unit.labelCode} title={t("ws.run.labelPrinted")} />
                 {/* Брак — средняя по опасности: жёлтая, красная оставлена для необратимого. */}
                 <Button
-                  className="bg-warning-fill text-warning-foreground shadow-sm hover:bg-warning-fill"
+                  className="bg-warning text-black shadow-sm hover:bg-warning"
                   onClick={() => void workstationRepository.packReject()}
                 >
                   <Ban />
@@ -358,7 +358,7 @@ export function PackRun({
           </ul>
           <div className="flex flex-wrap gap-2">
             <Button
-              className="bg-warning-fill text-warning-foreground hover:bg-warning-fill/90"
+              className="bg-warning text-white hover:bg-warning/90"
               onClick={() => {
                 setHandoff(false);
                 setClosing(true);
@@ -404,8 +404,7 @@ export function PackRun({
             size="lg"
             variant={summary.shortage > 0 ? "outline" : "default"}
             className={cn(
-              summary.shortage > 0 &&
-                "border-0 bg-warning-fill text-warning-foreground hover:bg-warning-fill/90",
+              summary.shortage > 0 && "border-0 bg-warning text-white hover:bg-warning/90",
             )}
             disabled={!!label}
             onClick={() => {

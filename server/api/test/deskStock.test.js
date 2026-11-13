@@ -11,7 +11,7 @@ const assert = require("node:assert/strict");
 const { mergeDeskWrite } = require("../src/cabinet/desks");
 
 // Право решать по товару — у роли Ольги (миграция 024), не у должности.
-const DECIDES = { "stf-olga": ["goods.decide"] };
+const DECIDES = { "stf-olga": ["goods.decide", "goods.writeoff"] };
 
 const who = { staff: "stf-ivan" };
 

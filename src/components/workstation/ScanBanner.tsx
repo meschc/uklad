@@ -20,7 +20,7 @@ export function ScanBanner({ tone, children }: { tone: BannerTone; children: Rea
           : tone === "ok"
             ? "bg-success text-white"
             : tone === "warn"
-              ? "bg-warning-fill text-warning-foreground"
+              ? "bg-warning text-black"
               : "bg-muted text-muted-foreground",
       )}
     >

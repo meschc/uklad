@@ -170,7 +170,7 @@ export function WorkstationScreen() {
                 <Gavel />
                 <span className="hidden lg:inline">{t("disputes.title")}</span>
                 {openDisputes > 0 && (
-                  <span className="rounded-full bg-warning-fill px-1.5 text-xs font-semibold text-warning-foreground tabular-nums">
+                  <span className="rounded-full bg-warning px-1.5 text-xs font-semibold text-white tabular-nums">
                     {openDisputes}
                   </span>
                 )}
@@ -496,9 +496,7 @@ function NetworkBanner() {
       role="status"
       className={cn(
         "flex shrink-0 items-center gap-2 px-4 py-1.5 text-sm font-medium md:mx-2 md:mb-2 md:rounded-lg",
-        net === "offline"
-          ? "bg-destructive text-destructive-foreground"
-          : "bg-warning-fill text-warning-foreground",
+        net === "offline" ? "bg-destructive text-destructive-foreground" : "bg-warning text-black",
       )}
     >
       {net === "offline" ? <WifiOff className="size-4" /> : <Wifi className="size-4" />}

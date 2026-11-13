@@ -924,3 +924,48 @@ test("архив чужой компании не виден, без входа 
   assert.deepEqual(hist.json.rows, []);
   assert.equal((await call("/api/cabinet/history")).status, 401);
 });
+
+test(
+  "списание в кабинете — только с правом начальника склада (goods.writeoff)",
+  { skip: SKIP },
+  async () => {
+    const a = await owner("snap-wo@sklad.ru", "10.0.1.9");
+    const dispute = (extra) => ({
+      id: "d1",
+      kind: "shortage",
+      qty: 1,
+      raisedBy: "stf-1",
+      raisedAt: 1,
+      ...extra,
+    });
+    const withDispute = (d) => ({ ...data("списание"), disputes: [d] });
+    const first = await call("/api/cabinet/snapshot", {
+      ...a,
+      body: { version: 0, format: 8, data: withDispute(dispute()) },
+    });
+    assert.equal(first.status, 200);
+    await db.root.query(
+      `UPDATE uklad.roles SET permissions = array_remove(permissions, 'goods.writeoff')
+       WHERE org_id = $1 AND name = 'Владелец'`,
+      [a.org],
+    );
+    const off = dispute({
+      resolution: "written_off",
+      resolvedBy: "manager",
+      resolvedAt: 2,
+      note: "x",
+    });
+    const denied = await call("/api/cabinet/snapshot", {
+      ...a,
+      body: { version: first.json.version, format: 8, data: withDispute(off) },
+    });
+    assert.equal(denied.status, 403);
+    // Вернуть на место можно и без права списания.
+    const back = dispute({ resolution: "returned", resolvedBy: "manager", resolvedAt: 2 });
+    const kept = await call("/api/cabinet/snapshot", {
+      ...a,
+      body: { version: first.json.version, format: 8, data: withDispute(back) },
+    });
+    assert.equal(kept.status, 200);
+  },
+);
