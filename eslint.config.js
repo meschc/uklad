@@ -122,11 +122,10 @@ export default tseslint.config(
         {
           // Пределы чисел (Кирилл 12 ноя: «уже не в первый раз»): числовое
           // поле без предела принимает 34223413242134 камер. Предел — из
-          // lib/numberLimits (`{...limit("small")}`) или явный `max`.
+          // lib/numberLimits (`max={LIMITS.small.max}`) или явный `max`.
           selector:
             'JSXOpeningElement[name.name=/^(input|Input)$/]:has(JSXAttribute[name.name="type"][value.value="number"]):not(:has(JSXAttribute[name.name="max"])):not(:has(JSXSpreadAttribute))',
-          message:
-            'Числовое поле без предела. Добавьте {...limit("…")} из lib/numberLimits или max.',
+          message: "Числовое поле без предела. Добавьте max={LIMITS.…max} из lib/numberLimits.",
         },
         {
           selector:
@@ -143,6 +142,13 @@ export default tseslint.config(
           selector: 'MemberExpression[object.name="localStorage"]',
           message:
             "localStorage напрямую. Настройки устройства — readLocal/writeLocal (lib/safeStorage), данные — через репозиторий.",
+        },
+        {
+          // Кирилл 13 ноя: «почему до сих пор нет элемента дропдауна».
+          // Витрина (src/site) на паузе и свои списки пока держит.
+          selector: 'JSXOpeningElement[name.name="select"]',
+          message:
+            "Системный <select>. Выпадающий список — ui/select (<Select>): те же value, <option> и onChange.",
         },
       ],
     },

@@ -19,6 +19,7 @@ import type { StaffMember } from "@/lib/types";
 import { DeskRoles } from "./DeskRoles";
 import { RoleMatrix } from "./RoleMatrix";
 import { selectClass } from "./teamSelect";
+import { Select } from "@/components/ui/select";
 
 /**
  * Вкладка «Доступ» в «Персонале»: кто входит в кабинет и с какой ролью.
@@ -230,7 +231,7 @@ function MemberRow({
         </p>
       </div>
       <div className="flex items-center gap-2">
-        <select
+        <Select
           aria-label={t("team.role")}
           className={`${selectClass} w-44`}
           value={m.roleId}
@@ -242,7 +243,7 @@ function MemberRow({
               {r.name}
             </option>
           ))}
-        </select>
+        </Select>
         {pending ? (
           <Button size="sm" variant="ghost" onClick={onRevoke}>
             {t("team.revoke")}
@@ -308,7 +309,7 @@ function InvitePanel({
         </label>
         <label className="flex flex-col gap-1.5">
           <Label>{t("team.role")}</Label>
-          <select
+          <Select
             className={selectClass}
             value={roleId}
             onChange={(e) => setRoleId(e.target.value)}
@@ -318,7 +319,7 @@ function InvitePanel({
                 {r.name}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         {send.error && (
           <p role="alert" className="text-xs text-destructive">

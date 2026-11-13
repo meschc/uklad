@@ -196,6 +196,7 @@ export function MarketScreen() {
               </Button>
 
               <div className="ml-auto flex items-center gap-2">
+                {/* eslint-disable-next-line no-restricted-syntax -- витрина на паузе, список переведём при её запуске */}
                 <select
                   value={filters.sort}
                   onChange={(e) => setFilters({ ...filters, sort: e.target.value as SortId })}

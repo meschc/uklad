@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Segmented } from "@/components/ui/segmented";
 import type { PlaceFilter, TableFilter } from "./tableRows";
+import { Select } from "@/components/ui/select";
 
 const PLACE_FILTERS: { id: PlaceFilter; key: MsgKey }[] = [
   { id: "all", key: "table.filter.all" },
@@ -118,7 +119,7 @@ export function TableToolbar({
       </div>
       {open && (
         <div className="flex flex-wrap items-center gap-2 px-3 pb-2">
-          <select
+          <Select
             value={filter.category}
             onChange={(e) => onFilter({ category: e.target.value })}
             className="h-8 rounded-md border border-input bg-background px-2 text-sm"
@@ -129,12 +130,12 @@ export function TableToolbar({
                 {catLabel(t, c)}
               </option>
             ))}
-          </select>
+          </Select>
 
           {/* Партнёры — отдельный фильтр: на складе лежит товар нескольких
           продавцов, и разбирать его надо по одному партнёру (п.15). */}
           {partners.length > 0 && !readOnly && (
-            <select
+            <Select
               value={filter.partnerId}
               onChange={(e) => onFilter({ partnerId: e.target.value })}
               className="h-8 rounded-md border border-input bg-background px-2 text-sm"
@@ -146,7 +147,7 @@ export function TableToolbar({
                   {p.name}
                 </option>
               ))}
-            </select>
+            </Select>
           )}
 
           <Segmented

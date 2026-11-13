@@ -13,6 +13,8 @@ import { Segmented } from "@/components/ui/segmented";
 import { ORDER_SOURCES, type OrderSource } from "@/lib/types";
 import { Modal, Field } from "./Modal";
 import { digitsFor } from "@/lib/numberLimits";
+import { DatePicker } from "@/components/ui/date-picker";
+import { toIso } from "@/components/ui/dates";
 
 /** Сколько подсказок показываем: список под полем, а не второй каталог. */
 const MAX_MATCHES = 8;
@@ -179,11 +181,12 @@ export function RequestDialog({
 
       <div className="grid grid-cols-2 gap-3">
         <Field label={t("seller.col.shipDate")}>
-          <Input
-            type="date"
+          <DatePicker
             value={truck}
-            onChange={(e) => setTruck(e.target.value)}
-            className="h-9"
+            onChange={setTruck}
+            lang={t.lang}
+            min={toIso(new Date())}
+            aria-label={t("seller.col.shipDate")}
           />
         </Field>
         <Field label={t("seller.target")}>

@@ -13,6 +13,7 @@ import { DialogHeader, DialogShell } from "@/components/ui/dialog-shell";
 import { Input } from "@/components/ui/input";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { LIMITS } from "@/lib/numberLimits";
+import { Select } from "@/components/ui/select";
 
 /**
  * Панель документа справа — правка черновика и подтверждение. Не окно поверх
@@ -194,7 +195,7 @@ export function DocPanel({
                 </p>
               ) : (
                 <div className="flex gap-2">
-                  <select
+                  <Select
                     aria-label={t("doc.confirmBy")}
                     value={senior}
                     onChange={(e) => setSenior(e.target.value)}
@@ -205,7 +206,7 @@ export function DocPanel({
                         {m.name} · {m.role}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                   <Button disabled={!senior || confirm.pending} onClick={() => void onConfirm()}>
                     <BadgeCheck />
                     {t("doc.confirm")}

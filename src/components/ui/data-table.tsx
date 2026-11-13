@@ -10,6 +10,7 @@ import {
 import { ArrowDown, ArrowUp, ChevronsUpDown, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "./input";
+import { Select } from "@/components/ui/select";
 
 /**
  * Сортировка и поиск для любой таблицы кабинета — на TanStack Table (MIT,
@@ -144,7 +145,7 @@ export function TableFilters({
   return (
     <>
       {facets.map((f) => (
-        <select
+        <Select
           key={f.id}
           aria-label={labels[f.id]}
           value={filters[f.id] ?? ""}
@@ -160,7 +161,7 @@ export function TableFilters({
               {o.label}
             </option>
           ))}
-        </select>
+        </Select>
       ))}
     </>
   );

@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { Modal, Field } from "./Modal";
 import { digitsFor } from "@/lib/numberLimits";
+import { Select } from "@/components/ui/select";
 
 /**
  * «Везу товар» — заявка продавца на ПРИЁМКУ, зеркало заявки на отгрузку.
@@ -91,7 +92,7 @@ export function SupplyDialog({ onClose }: { onClose: () => void }) {
           <div key={l.id} className="flex items-end gap-2">
             <label className="flex min-w-0 flex-1 flex-col gap-1">
               <span className={eyebrow()}>{t("supply.product")}</span>
-              <select
+              <Select
                 value={l.productId}
                 onChange={(e) => setLine(i, { productId: e.target.value })}
                 className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
@@ -101,7 +102,7 @@ export function SupplyDialog({ onClose }: { onClose: () => void }) {
                     {p.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             <label className="flex w-20 flex-col gap-1">
               <span className={eyebrow()}>{t("supply.qty")}</span>

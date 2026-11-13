@@ -384,7 +384,7 @@ function ShipGroup({
           disabled={!vehicle || units.length === 0 || plan.split || plan.going.length === 0}
           className={cn(
             (short > 0 || missing.length > 0) &&
-              "border-0 bg-warning text-white hover:bg-warning/90",
+              "border-0 bg-warning-fill text-warning-foreground hover:bg-warning-fill/90",
           )}
           onClick={finish}
         >

@@ -7,6 +7,7 @@ import { useT, type MsgKey } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { Select } from "@/components/ui/select";
 
 /** Места, у которых уже есть свой экран. Остальные видны в списке как «скоро». */
 const READY: WorkstationKind[] = [
@@ -76,7 +77,7 @@ export function BindDeviceForm({
         </label>
         <label className="flex flex-col gap-1 text-sm">
           <span className="text-muted-foreground">{t("devices.station")}</span>
-          <select
+          <Select
             value={station}
             onChange={(e) => setStation(e.target.value as WorkstationKind)}
             className={cn(
@@ -90,7 +91,7 @@ export function BindDeviceForm({
                 {!READY.includes(st) && ` · ${t("ws.soon")}`}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         <Button type="submit" size={stacked ? "lg" : "default"} disabled={add.pending}>
           <MonitorSmartphone />

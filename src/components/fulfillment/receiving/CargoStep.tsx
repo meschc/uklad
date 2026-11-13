@@ -12,6 +12,7 @@ import { card } from "@/components/ui/card";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { EmptyState } from "../ScreenShell";
 import { LIMITS } from "@/lib/numberLimits";
+import { Select } from "@/components/ui/select";
 
 /**
  * Грузовая приёмка (первый этап из двух): места поставки при водителе.
@@ -73,7 +74,7 @@ export function CargoStep({ staffId, t }: { staffId: string; t: TFunc }) {
       {}
       <label className="flex flex-col items-start gap-1.5">
         <span className={eyebrow()}>{t("cargo.shipment")}</span>
-        <select
+        <Select
           value={current.id}
           onChange={(e) => {
             setShipmentId(e.target.value);
@@ -86,7 +87,7 @@ export function CargoStep({ staffId, t }: { staffId: string; t: TFunc }) {
               {s.title ?? t("doc.src.shipment")}
             </option>
           ))}
-        </select>
+        </Select>
       </label>
 
       <form onSubmit={submit} className={cn(card({ pad: "lg" }), "grid gap-4 sm:grid-cols-2")}>

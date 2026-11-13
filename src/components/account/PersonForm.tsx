@@ -6,6 +6,7 @@ import { isKnownStaffRole, staffRoleOptions } from "@/lib/staffRoles";
 import { Input } from "@/components/ui/input";
 import { ImagePicker } from "./ImagePicker";
 import { formatRate, type PersonDraft } from "@/lib/personDraft";
+import { Select } from "@/components/ui/select";
 
 /**
  * Карточка человека — один шаблон и для сотрудника, и для ответственного лица
@@ -116,7 +117,7 @@ function RoleField({
 
   return (
     <div className="grid min-w-0 gap-2">
-      <select
+      <Select
         value={isCustom ? OTHER : value}
         onChange={(e) => {
           const next = e.target.value;
@@ -133,7 +134,7 @@ function RoleField({
           </option>
         ))}
         <option value={OTHER}>{t("staff.roleOther")}</option>
-      </select>
+      </Select>
       {isCustom ? (
         <Input
           value={value}
