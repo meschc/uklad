@@ -193,6 +193,7 @@ export function AssignDialog({ product, onClose }: { product: Product; onClose: 
         {/* Ручной ввод адреса (ТЗ, разд. 3.6: вписать адрес на мезонине вручную) */}
         <Field label={t("assign.manualOrPick")}>
           <input
+            maxLength={32}
             value={manualText}
             onChange={(e) => onManualChange(e.target.value)}
             onFocus={() => setManualFocused(true)}

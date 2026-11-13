@@ -23,4 +23,6 @@ interface ImportMetaEnv {
   readonly VITE_ROADMAP_API?: string;
   /** Номер счётчика Яндекс.Метрики. Пусто — счётчик не подключается. */
   readonly VITE_METRIKA_ID?: string;
+  /** «1» — собрать витрину складов открытой, несмотря на паузу (`src/lib/features.ts`). */
+  readonly VITE_MARKET_OPEN?: string;
 }

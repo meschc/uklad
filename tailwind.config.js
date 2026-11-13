@@ -159,7 +159,32 @@ export default {
         title: "1.1",
         prose: "1.7",
       },
+      // Движение кабинета (Кирилл 12 ноя: «плавности нет, микроанимаций нет»).
+      // Три длительности на всё: fast — отклик на нажатие и наведение, base —
+      // раскрытие, смена вкладки, появление; slow — панель справа и смена
+      // числа. Кривая одна — быстрый старт и мягкая посадка. Своих цифр в
+      // компонентах не пишем: `duration-fast`, `ease-out-soft`.
+      transitionDuration: {
+        fast: "120ms",
+        base: "200ms",
+        slow: "320ms",
+      },
+      transitionTimingFunction: {
+        "out-soft": "cubic-bezier(0.16, 1, 0.3, 1)",
+      },
       keyframes: {
+        // Раскрытие блока («Дополнительно», строка с подробностями): короткий
+        // сдвиг сверху и проявление — глаз видит, откуда взялось новое.
+        "expand-in": {
+          from: { opacity: "0", transform: "translateY(-4px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
+        // Смена содержимого вкладки: то же, но без сдвига по вертикали —
+        // вкладки соседние, а не вложенные.
+        "tab-in": {
+          from: { opacity: "0" },
+          to: { opacity: "1" },
+        },
         "fade-in": {
           from: { opacity: "0" },
           to: { opacity: "1" },
@@ -211,13 +236,15 @@ export default {
         },
       },
       animation: {
+        "expand-in": "expand-in 200ms cubic-bezier(0.16, 1, 0.3, 1)",
+        "tab-in": "tab-in 200ms cubic-bezier(0.16, 1, 0.3, 1)",
         "fade-in": "fade-in 120ms ease-out",
         "scale-in": "scale-in 150ms cubic-bezier(0.16, 1, 0.3, 1)",
         pop: "pop 160ms cubic-bezier(0.16, 1, 0.3, 1)",
         marquee: "marquee 42s linear infinite",
         aurora: "aurora 18s ease-in-out infinite",
         float: "float 3.6s ease-in-out infinite",
-        "slide-in-right": "slide-in-right 220ms cubic-bezier(0.16, 1, 0.3, 1)",
+        "slide-in-right": "slide-in-right 320ms cubic-bezier(0.16, 1, 0.3, 1)",
         "slide-up": "slide-up 420ms cubic-bezier(0.16, 1, 0.3, 1)",
         ping: "ping 2.4s cubic-bezier(0.16, 1, 0.3, 1) infinite",
       },

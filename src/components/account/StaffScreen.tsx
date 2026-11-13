@@ -8,7 +8,7 @@ import { staffWorkload } from "@/lib/fulfillment";
 import { csvToStaff, staffToCsv } from "@/lib/staffIO";
 import { BOM } from "@/lib/utils";
 import type { StaffMember } from "@/lib/types";
-import { SortTh, TableSearch, useDataTable } from "@/components/ui/data-table";
+import { SortTh, TableFilters, TableSearch, useDataTable } from "@/components/ui/data-table";
 import { useT, type TFunc } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/segmented";
@@ -65,7 +65,7 @@ export function StaffScreen() {
   const [editing, setEditing] = useState<string | null>(null);
   const staffTable = useDataTable(staff, [
     { id: "name", value: (m) => m.name },
-    { id: "role", value: (m) => m.role },
+    { id: "role", value: (m) => m.role, facet: (v) => v },
     { id: "rate", value: (m) => m.hourlyRate },
     { id: "receipts", value: (m) => workload.get(m.id)?.receipts ?? 0 },
     { id: "units", value: (m) => workload.get(m.id)?.units ?? 0 },
@@ -121,7 +121,7 @@ export function StaffScreen() {
     }
     const res = await load.run(parsed);
     if (res.ok) showToast("staff.imported", { n: parsed.length });
-    else showToast(res.error, undefined, "error");
+    else showToast(res.error, undefined, undefined, "error");
   };
 
   if (readOnly) {
@@ -258,11 +258,20 @@ export function StaffScreen() {
               />
             ) : (
               <>
-                <TableSearch
-                  value={staffTable.query}
-                  onChange={staffTable.setQuery}
-                  placeholder={t("common.search")}
-                />
+                <div className="flex flex-wrap items-center gap-2">
+                  <TableSearch
+                    value={staffTable.query}
+                    onChange={staffTable.setQuery}
+                    placeholder={t("common.search")}
+                  />
+                  <TableFilters
+                    facets={staffTable.facets}
+                    filters={staffTable.filters}
+                    onChange={staffTable.setFilter}
+                    labels={{ role: t("staff.col.role") }}
+                    allLabel={(col) => t("common.filterAll", { col })}
+                  />
+                </div>
                 <div className="overflow-x-auto rounded-xl border border-border">
                   <table className="w-full border-collapse text-sm">
                     <thead className="bg-muted/50 text-xs">

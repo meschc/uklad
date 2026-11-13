@@ -64,7 +64,9 @@ export default defineConfig({
   ],
 
   webServer: {
-    command: `npm run build && npx vite preview --port ${PORT} --strictPort`,
+    // Витрина на паузе (`src/lib/features.ts`), но её код живой: тесты
+    // собирают её открытой, чтобы не разучиться её проверять.
+    command: `VITE_MARKET_OPEN=1 npm run build && npx vite preview --port ${PORT} --strictPort`,
     url: `http://localhost:${PORT}/`,
     reuseExistingServer: !process.env.CI,
     // Сборка холодная — минуты полторы на слабой машине.

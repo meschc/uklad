@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { card } from "@/components/ui/card";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { EmptyState } from "../ScreenShell";
+import { LIMITS } from "@/lib/numberLimits";
 
 /**
  * Грузовая приёмка (первый этап из двух): места поставки при водителе.
@@ -156,6 +157,7 @@ function NumField({
     <label className="flex items-center justify-between gap-3 text-sm">
       <span>{label}</span>
       <Input
+        max={LIMITS.count.max}
         type="number"
         min={0}
         inputMode="numeric"

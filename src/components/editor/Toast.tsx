@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { CheckCircle2, CircleAlert } from "lucide-react";
+import { CheckCircle2, CircleAlert, Undo2 } from "lucide-react";
+import { UNDO_WINDOW_MS } from "@/lib/actionRisk";
 import { useEditor } from "@/lib/store";
 import { useT } from "@/lib/i18n";
 
@@ -18,14 +19,17 @@ export function Toast() {
   const [hiddenId, setHiddenId] = useState<number | null>(null);
   const id = toast?.id;
   const toastText = toast ? t(toast.key, toast.vars) : "";
+  const undoable = Boolean(toast?.undo);
 
   useEffect(() => {
     if (!id) return;
     // Время — по длине: человек успевает прочитать текст трижды.
+    // У отменяемого действия — ровно окно отмены, чтобы кнопка не исчезла раньше.
     const len = toastText.length;
-    const hide = setTimeout(() => setHiddenId(id), Math.min(12_000, Math.max(4000, len * 150)));
+    const ms = undoable ? UNDO_WINDOW_MS : Math.min(12_000, Math.max(4000, len * 150));
+    const hide = setTimeout(() => setHiddenId(id), ms);
     return () => clearTimeout(hide);
-  }, [id, toastText.length]);
+  }, [id, toastText.length, undoable]);
 
   if (!toast) return null;
 
@@ -51,6 +55,19 @@ export function Toast() {
           <CheckCircle2 className="size-4 shrink-0 text-success" />
         )}
         {toastText}
+        {toast.undo && toast.id !== hiddenId && (
+          <button
+            type="button"
+            onClick={() => {
+              toast.undo?.();
+              setHiddenId(toast.id);
+            }}
+            className="pointer-events-auto -my-1 ml-2 inline-flex h-7 cursor-pointer items-center gap-1 rounded-md px-2 font-semibold text-primary underline-offset-2 hover:bg-muted"
+          >
+            <Undo2 className="size-3.5" />
+            {t("common.undo")}
+          </button>
+        )}
       </div>
     </div>
   );

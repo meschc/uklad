@@ -69,6 +69,32 @@ export const createOperationsSlice: SliceCreator<OperationsSlice> = (set) => ({
       serviceSettings: { ...s.serviceSettings, twoStageReceiving: on || undefined },
     })),
 
+  addCustomService: (name, unit) => {
+    const kind = `custom:${uid("svc")}` as const;
+    set((s) => ({
+      serviceSettings: {
+        ...s.serviceSettings,
+        custom: [...(s.serviceSettings.custom ?? []), { kind, name: name.trim(), unit }],
+      },
+    }));
+    return kind;
+  },
+
+  removeCustomService: (kind) =>
+    set((s) => ({
+      serviceSettings: {
+        ...s.serviceSettings,
+        custom: (s.serviceSettings.custom ?? []).filter((c) => c.kind !== kind),
+      },
+    })),
+
+  restoreCustomService: (service) =>
+    set((s) => {
+      const list = s.serviceSettings.custom ?? [];
+      if (list.some((c) => c.kind === service.kind)) return {};
+      return { serviceSettings: { ...s.serviceSettings, custom: [...list, service] } };
+    }),
+
   setServicePrice: (kind, price) =>
     set((s) => {
       const prices = { ...s.serviceSettings.prices };

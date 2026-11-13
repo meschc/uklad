@@ -60,7 +60,7 @@ export function PrintPlan() {
           <style>{`@page { size: A4 ${page.orientation}; margin: ${PAGE_MARGIN}mm; }`}</style>
           {/* Скрытая копия для принтера: видна только в @media print. */}
           <div
-            className="print-root hidden print:block"
+            className="print-root print-plan hidden print:block"
             style={{ ["--print-plan-h" as string]: `${page.planHeightMm}mm` }}
           >
             <PlanSheet t={t} />

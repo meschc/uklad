@@ -179,6 +179,7 @@ export function WarehouseDialog({
               </span>
             </Label>
             <Input
+              maxLength={12}
               value={rateText}
               inputMode="decimal"
               // Тариф — деньги, а не заметка: буквы в поле не блокируются
@@ -267,6 +268,7 @@ export function WarehouseDialog({
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <Input
+                  maxLength={12}
                   value={latText}
                   inputMode="decimal"
                   onChange={(e) => setLatText(e.target.value)}
@@ -277,6 +279,7 @@ export function WarehouseDialog({
                   )}
                 />
                 <Input
+                  maxLength={12}
                   value={lngText}
                   inputMode="decimal"
                   onChange={(e) => setLngText(e.target.value)}

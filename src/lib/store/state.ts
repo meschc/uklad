@@ -36,7 +36,10 @@ import type {
   Pallet,
   ReceivingEvent,
   ReceivingProgress,
+  CustomService,
+  CustomServiceKind,
   ServiceKind,
+  ServiceUnit,
   ServiceSettings,
   TaskStatus,
   WarehouseTask,
@@ -393,6 +396,8 @@ export interface ViewSlice {
     id: number;
     key: MsgKey;
     vars?: Record<string, string | number>;
+    /** Вернуть сделанное — у действий класса `undoable` (`lib/actionRisk`). */
+    undo?: () => void;
     /** Отказ — красный значок вместо зелёной галочки. */
     tone?: "error";
   } | null;
@@ -401,7 +406,12 @@ export interface ViewSlice {
   setZoom: (zoom: number) => void;
   setView: (zoom: number, pan: { x: number; y: number }) => void;
   setPan: (pan: { x: number; y: number }) => void;
-  showToast: (key: MsgKey, vars?: Record<string, string | number>, tone?: "error") => void;
+  showToast: (
+    key: MsgKey,
+    vars?: Record<string, string | number>,
+    undo?: () => void,
+    tone?: "error",
+  ) => void;
 }
 
 // --- Разовые подсказки онбординга --------------------------------------------
@@ -714,6 +724,8 @@ export interface StaffSlice {
   addPartner: (partner: Omit<Partner, "id">) => string;
   updatePartner: (id: string, patch: Partial<Omit<Partner, "id">>) => void;
   removePartner: (id: string) => void;
+  /** Вернуть удалённого партнёра на прежнее место (отмена из тоста). */
+  restorePartner: (partner: Partner, index: number) => void;
 }
 
 /** Тариф, менеджер и резервные копии (обещания тарифов на сайте). */
@@ -872,6 +884,15 @@ export interface OperationsSlice {
   setTwoStageReceiving: (on: boolean) => void;
   /** Цена за единицу; `null` стирает цену. */
   setServicePrice: (kind: ServiceKind, price: number | null) => void;
+  /** Своя услуга склада. Возвращает её вид (`custom:…`). */
+  addCustomService: (name: string, unit: ServiceUnit) => CustomServiceKind;
+  /**
+   * Убрать свою услугу из каталога. Задания по ней остаются в истории — счёт
+   * за прошлый месяц не должен меняться от того, что услугу больше не продают.
+   */
+  removeCustomService: (kind: CustomServiceKind) => void;
+  /** Вернуть удалённую свою услугу (отмена из тоста). */
+  restoreCustomService: (service: CustomService) => void;
 }
 
 export type EditorState = AccountSlice &

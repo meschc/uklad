@@ -1,7 +1,7 @@
 import { LEGAL_DOCS } from "../data/legal";
 import { warehousesRepository } from "../data/warehousesRepository";
 import { LANGS } from "./lang";
-import { href, routePath, type Route } from "./route";
+import { href, isPagePaused, routePath, type Route } from "./route";
 
 /**
  * Полный список адресов витрины.
@@ -16,7 +16,7 @@ import { href, routePath, type Route } from "./route";
  * в таком же виде страницы попадут и в карту сайта, и человеку, который её
  * откроет, будет видно устройство витрины.
  */
-export const SITE_ROUTES: readonly Route[] = [
+export const ALL_SITE_ROUTES: readonly Route[] = [
   { page: "landing" },
   // Склад идёт раньше селлера: покупатель Уклада — склад, он берёт систему и
   // вместе с ней поток клиентов. Тот же порядок в шапке и в подвале.
@@ -30,6 +30,9 @@ export const SITE_ROUTES: readonly Route[] = [
   ...LEGAL_DOCS.map((doc) => ({ page: "legal" as const, id: doc.slug })),
   ...warehousesRepository.list().map((w) => ({ page: "warehouse" as const, id: w.id })),
 ];
+
+/** Адреса, которые сейчас видны: без страниц витрины на паузе. */
+export const SITE_ROUTES: readonly Route[] = ALL_SITE_ROUTES.filter((r) => !isPagePaused(r.page));
 
 /**
  * Вес страницы для карты сайта.

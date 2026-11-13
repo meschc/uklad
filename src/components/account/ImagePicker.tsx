@@ -35,7 +35,9 @@ export function ImagePicker({
   return (
     <div className="flex flex-col items-end gap-1">
       <div className="flex items-center gap-3">
-        {value ? <img src={value} alt="" className="size-10 rounded-xl object-cover" /> : fallback}
+        {/* Картинка и кнопка — одной высоты 36, как поле рядом: иначе кнопка
+            «Загрузить» встаёт на пару пикселей ниже имени (Кирилл 12 ноя). */}
+        {value ? <img src={value} alt="" className="size-9 rounded-lg object-cover" /> : fallback}
         <Button size="sm" variant="outline" className="h-9" onClick={() => input.current?.click()}>
           <ImagePlus className="size-4" />
           {t(value ? "profile.image.replace" : "profile.image.upload")}

@@ -19,6 +19,7 @@ import { ScreenShell } from "@/components/fulfillment/ScreenShell";
 import { card } from "@/components/ui/card";
 import { WarehouseContacts } from "./WarehouseContacts";
 import { ShowcaseFields } from "./ShowcaseFields";
+import { MARKET_PAUSED } from "@/lib/features";
 import {
   BoolValue,
   ChipsValue,
@@ -114,8 +115,10 @@ export function WarehouseSpecScreen() {
   const patch = (p: Partial<WarehouseSpec>) => updateSpec(warehouse.id, p);
   // Глаз «видно на витрине» у поля паспорта. Продавцу его не показываем.
   const hidden = spec.showcaseHidden ?? [];
+  // Пока витрина на паузе, глаз не показываем вовсе: «видно на витрине» при
+  // скрытой витрине — обещание, которого кабинет не держит.
   const eye = (f: ShowcaseField) =>
-    ro
+    ro || MARKET_PAUSED
       ? undefined
       : {
           shown: !hidden.includes(f),
@@ -144,7 +147,8 @@ export function WarehouseSpecScreen() {
       subtitle={t("spec.subtitle", { name: warehouse.name })}
       wide
       actions={
-        !ro && (
+        !ro &&
+        !MARKET_PAUSED && (
           <>
             {/* Публичность карточки — решение склада, а не Уклада. */}
             <label
@@ -208,7 +212,7 @@ export function WarehouseSpecScreen() {
                     placeholder={t("spec.addressPlaceholder")}
                     onCommit={(v) => updateWarehouse(warehouse.id, { address: v ?? "" })}
                   />
-                  <ShowcaseEye {...eye("address")!} />
+                  {eye("address") && <ShowcaseEye {...eye("address")!} />}
                 </div>
               </div>
             ) : (
@@ -228,6 +232,7 @@ export function WarehouseSpecScreen() {
           <Tile label={t("spec.storageArea")} eye={eye("area")}>
             <StatValue
               value={spec.storageAreaM2}
+              range="area"
               unit={t("spec.unit.m2")}
               readOnly={ro}
               onCommit={(v) => patch({ storageAreaM2: v })}
@@ -236,6 +241,7 @@ export function WarehouseSpecScreen() {
           <Tile label={t("spec.ceiling")}>
             <StatValue
               value={spec.ceilingHeightM}
+              range="meters"
               unit={t("spec.unit.m")}
               readOnly={ro}
               onCommit={(v) => patch({ ceilingHeightM: v })}
@@ -244,16 +250,23 @@ export function WarehouseSpecScreen() {
           <Tile label={t("spec.palletCapacity")} eye={eye("cells")}>
             <StatValue
               value={spec.palletCapacity}
+              range="count"
               readOnly={ro}
               onCommit={(v) => patch({ palletCapacity: v })}
             />
           </Tile>
           <Tile label={t("spec.docks")}>
-            <StatValue value={spec.docks} readOnly={ro} onCommit={(v) => patch({ docks: v })} />
+            <StatValue
+              value={spec.docks}
+              range="small"
+              readOnly={ro}
+              onCommit={(v) => patch({ docks: v })}
+            />
           </Tile>
           <Tile label={t("spec.floorLoad")}>
             <StatValue
               value={spec.floorLoadKgM2}
+              range="kg"
               unit={t("spec.unit.kgM2")}
               readOnly={ro}
               onCommit={(v) => patch({ floorLoadKgM2: v })}
@@ -262,6 +275,7 @@ export function WarehouseSpecScreen() {
           <Tile label={t("spec.builtYear")} eye={eye("since")}>
             <StatValue
               value={spec.builtYear}
+              range="year"
               readOnly={ro}
               onCommit={(v) => patch({ builtYear: v })}
             />
@@ -275,6 +289,7 @@ export function WarehouseSpecScreen() {
             <Tile label={t("spec.totalArea")}>
               <StatValue
                 value={spec.totalAreaM2}
+                range="area"
                 unit={t("spec.unit.m2")}
                 readOnly={ro}
                 onCommit={(v) => patch({ totalAreaM2: v })}
@@ -283,6 +298,7 @@ export function WarehouseSpecScreen() {
             <Tile label={t("spec.maxShelfKg")}>
               <StatValue
                 value={spec.maxShelfKg}
+                range="kg"
                 unit={t("spec.unit.kg")}
                 readOnly={ro}
                 onCommit={(v) => patch({ maxShelfKg: v })}
@@ -358,6 +374,7 @@ export function WarehouseSpecScreen() {
             <Tile label={t("spec.rampHeight")}>
               <StatValue
                 value={spec.rampHeightCm}
+                range="size"
                 unit={t("spec.unit.cm")}
                 readOnly={ro}
                 onCommit={(v) => patch({ rampHeightCm: v })}
@@ -366,6 +383,7 @@ export function WarehouseSpecScreen() {
             <Tile label={t("spec.parking")}>
               <StatValue
                 value={spec.parkingSpots}
+                range="small"
                 readOnly={ro}
                 onCommit={(v) => patch({ parkingSpots: v })}
               />
@@ -499,6 +517,7 @@ export function WarehouseSpecScreen() {
             <Tile label={t("spec.cctv")}>
               <StatValue
                 value={spec.cctvCount}
+                range="small"
                 readOnly={ro}
                 onCommit={(v) => patch({ cctvCount: v })}
               />
@@ -565,7 +584,7 @@ export function WarehouseSpecScreen() {
       </div>
 
       {!ro && <WarehouseContacts />}
-      {!ro && (
+      {!ro && !MARKET_PAUSED && (
         <ShowcaseFields
           only={["prices", "services", "marketplaces"]}
           hidden={spec.showcaseHidden ?? []}

@@ -7,6 +7,12 @@
 export const ru = {
   // --- Задания (§7.3) -------------------------------------------------------
   "tasks.title": "Задания",
+  "tasks.section.requests": "Заявки на сборку",
+  "tasks.section.work": "Работы склада",
+  "tasks.workSubtitle":
+    "Маркировка, переупаковка, возвраты и свои услуги склада — кто делает и что уже готово",
+  "tasks.takeMine": "Взять себе",
+  "tasks.assignee": "Исполнитель",
   "tasks.subtitle": "Заявки продавца во всех статусах, сгруппированы по назначению",
   "ship.action": "Отгрузить ({n})",
   "ship.title": "Погрузка машины",
@@ -117,6 +123,12 @@ export const ru = {
 export const en: Record<keyof typeof ru, string> = {
   // --- Tasks (§7.3) ----------------------------------------------------------
   "tasks.title": "Tasks",
+  "tasks.section.requests": "Pick requests",
+  "tasks.section.work": "Warehouse work",
+  "tasks.workSubtitle":
+    "Marking, repacking, returns and custom services — who does what and what is done",
+  "tasks.takeMine": "Take it",
+  "tasks.assignee": "Assignee",
   "tasks.subtitle": "Seller requests in every status, grouped by destination",
   "ship.action": "Ship ({n})",
   "ship.title": "Loading the truck",

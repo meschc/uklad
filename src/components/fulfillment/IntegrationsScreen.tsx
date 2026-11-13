@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ExternalLink, ShieldAlert } from "lucide-react";
+import { ExternalLink, MessageCircleQuestion, ShieldAlert } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import {
   INTEGRATIONS,
@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { card } from "@/components/ui/card";
 import { ScreenShell } from "./ScreenShell";
+import { ReportProblemDialog } from "@/components/support/ReportProblemDialog";
 
 /**
  * Интеграции с внешними системами (п.22, п.9). По каждой системе указано, какой
@@ -29,6 +30,7 @@ export function IntegrationsScreen() {
   const integrations = useEditor((s) => s.integrations);
   const updateIntegration = useEditor((s) => s.updateIntegration);
 
+  const [asking, setAsking] = useState(false);
   const connected = INTEGRATIONS.filter((s) => integrations[s.id]?.enabled).length;
   const soon = INTEGRATIONS.filter((s) => s.soon).length;
 
@@ -41,7 +43,14 @@ export function IntegrationsScreen() {
         soon,
       })}
       wide
+      actions={
+        <Button size="sm" variant="outline" onClick={() => setAsking(true)}>
+          <MessageCircleQuestion className="size-3.5" />
+          {t("support.integration.ask")}
+        </Button>
+      }
     >
+      {asking && <ReportProblemDialog preset="integration" onClose={() => setAsking(false)} />}
       <div className="flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning">
         <ShieldAlert className="mt-px size-3.5 shrink-0" />
         <span>{t("integr.securityNote")}</span>
@@ -91,41 +100,43 @@ export function IntegrationsScreen() {
  * в списке из двадцати одной, не читая подписи.
  */
 function BrandMark({ brand }: { brand: BrandMarkSpec }) {
-  // Логотип не загрузился — показываем монограмму: битая картинка в списке
+  // Логотип не загрузился — остаётся монограмма: битая картинка в списке
   // подключений читается как сломанная интеграция, хотя сломан только файл.
   const [logoFailed, setLogoFailed] = useState(false);
-
-  if (brand.logo && !logoFailed) {
-    return (
-      <span
-        aria-hidden
-        className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white ring-1 ring-black/10 dark:ring-white/15"
-      >
-        <img
-          // BASE_URL, а не «/brands/…»: при сборке в подкаталог (GitHub Pages)
-          // абсолютный путь от корня ведёт в никуда.
-          src={`${import.meta.env.BASE_URL}brands/${brand.logo}`}
-          alt=""
-          loading="lazy"
-          onError={() => setLogoFailed(true)}
-          // У части знаков (Яндекс Маркет) в файле широкие белые поля —
-          // увеличиваем их, чтобы знак заполнял круг.
-          style={brand.logoScale ? { transform: `scale(${brand.logoScale})` } : undefined}
-          className="size-full object-contain"
-        />
-      </span>
-    );
-  }
+  const [loaded, setLoaded] = useState(false);
+  const withLogo = brand.logo && !logoFailed;
 
   return (
     <span
       aria-hidden
+      // Монограмма на фирменном цвете — сразу, а логотип проявляется поверх,
+      // когда загрузится (Кирилл 12 ноя: «пролаг есть, поставь заглушку»).
       // Тонкая обводка: у тёмных марок (Lamoda) плитка иначе сливается с
       // карточкой в тёмной теме и читается как дырка в вёрстке.
-      className="flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-bold tracking-tight ring-1 ring-black/10 dark:ring-white/15"
+      className="relative flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full text-xs font-bold tracking-tight ring-1 ring-black/10 dark:ring-white/15"
       style={{ backgroundColor: brand.bg, color: brand.fg ?? "#ffffff" }}
     >
       {brand.short}
+      {withLogo && (
+        <img
+          // BASE_URL, а не «/brands/…»: при сборке в подкаталог (GitHub Pages)
+          // абсолютный путь от корня ведёт в никуда. Без lazy: знаков два
+          // десятка, все в первом экране, и ленивая загрузка только добавляла
+          // задержку перед показом.
+          src={`${import.meta.env.BASE_URL}brands/${brand.logo}`}
+          alt=""
+          decoding="async"
+          onLoad={() => setLoaded(true)}
+          onError={() => setLogoFailed(true)}
+          // У части знаков (Яндекс Маркет) в файле широкие белые поля —
+          // увеличиваем их, чтобы знак заполнял круг.
+          style={brand.logoScale ? { transform: `scale(${brand.logoScale})` } : undefined}
+          className={cn(
+            "absolute inset-0 size-full bg-white object-contain transition-opacity duration-base",
+            loaded ? "opacity-100" : "opacity-0",
+          )}
+        />
+      )}
     </span>
   );
 }

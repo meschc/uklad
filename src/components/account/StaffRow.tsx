@@ -161,7 +161,7 @@ export function StaffRow({
             onClick={async () => {
               const res = await issue.run();
               if (res.ok) setBadge(res.data);
-              else showToast(res.error, undefined, "error");
+              else showToast(res.error, undefined, undefined, "error");
             }}
             disabled={issue.pending}
             title={t("staff.badge.issue")}
@@ -174,7 +174,7 @@ export function StaffRow({
           <button
             onClick={async () => {
               const res = await remove.run();
-              if (!res.ok) showToast(res.error, undefined, "error");
+              if (!res.ok) showToast(res.error, undefined, undefined, "error");
             }}
             disabled={remove.pending}
             title={t("staff.remove")}

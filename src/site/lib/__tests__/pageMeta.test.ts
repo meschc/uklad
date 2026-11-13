@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { LEGAL_DOCS } from "../../data/legal";
 import { WAREHOUSES } from "../../data/warehouses";
 import { pageMeta } from "../pageMeta";
-import { buildSitemap, SITE_ROUTES } from "../routes";
+import { ALL_SITE_ROUTES, buildSitemap, SITE_ROUTES } from "../routes";
+import { isPagePaused, MARKET_PAUSED, visibleRoute } from "../route";
 
 /**
  * Шапка документа и список адресов.
@@ -72,10 +73,17 @@ describe("Список адресов", () => {
     // поисковик найдёт только случайно, по ссылке из каталога.
     // Восемь разделов: лендинг, страница склада, страница селлера, каталог,
     // тарифы, дорожная карта, контакты и список правовых документов.
-    expect(SITE_ROUTES.length).toBe(8 + LEGAL_DOCS.length + WAREHOUSES.length);
+    expect(ALL_SITE_ROUTES.length).toBe(8 + LEGAL_DOCS.length + WAREHOUSES.length);
     for (const w of WAREHOUSES) {
-      expect(SITE_ROUTES.some((r) => r.page === "warehouse" && r.id === w.id)).toBe(true);
+      expect(ALL_SITE_ROUTES.some((r) => r.page === "warehouse" && r.id === w.id)).toBe(true);
     }
+  });
+
+  it("не отдаёт наружу витрину на паузе", () => {
+    // Пауза витрины (12 ноя): каталог, склады и страница селлера не должны
+    // попасть ни в карту сайта, ни в предрендер.
+    expect(SITE_ROUTES.some((r) => isPagePaused(r.page))).toBe(!MARKET_PAUSED);
+    expect(visibleRoute({ page: "market" }).page).toBe(MARKET_PAUSED ? "notfound" : "market");
   });
 
   it("не содержит страниц, закрытых от индексации", () => {
@@ -89,7 +97,7 @@ describe("buildSitemap", () => {
   const xml = buildSitemap("https://example.test", "2026-01-01");
 
   it("перечисляет русские адреса как основные", () => {
-    expect(xml).toContain("<loc>https://example.test/market/</loc>");
+    expect(xml).toContain("<loc>https://example.test/pricing/</loc>");
     expect(xml).toContain("<loc>https://example.test/legal/offer/</loc>");
     expect((xml.match(/<url>/g) ?? []).length).toBe(SITE_ROUTES.length);
   });
@@ -97,7 +105,7 @@ describe("buildSitemap", () => {
   it("связывает языковые версии, а не плодит копии", () => {
     // Два адреса с одинаковым смыслом — это дубль в глазах поисковика, если
     // между ними нет `hreflang`. Английская версия перечислена внутри записи.
-    expect(xml).toContain('hreflang="en" href="https://example.test/en/market/"');
+    expect(xml).toContain('hreflang="en" href="https://example.test/en/pricing/"');
     expect(xml).toContain('hreflang="x-default" href="https://example.test/"');
     expect(xml).not.toContain("<loc>https://example.test/en/");
   });

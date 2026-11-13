@@ -75,7 +75,7 @@ export function BulkBar({
   const act = (run: () => Promise<Result<unknown>>) => async () => {
     const res = await command.run(run);
     if (res.ok) onDone();
-    else showToast(res.error, undefined, "error");
+    else showToast(res.error, undefined, undefined, "error");
   };
 
   const autoPlace = async () => {
@@ -85,7 +85,7 @@ export function BulkBar({
     // со списком товаров (п.7). Это не сбой связи, и тост тут не годится.
     const res = await place.run(ids);
     if (!res.ok) {
-      showToast(res.error, undefined, "error");
+      showToast(res.error, undefined, undefined, "error");
       return;
     }
     if (res.data.length) onPlaceFailed(res.data);

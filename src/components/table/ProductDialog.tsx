@@ -485,6 +485,7 @@ function NumInput({
   return (
     <div className={cn("relative", className)}>
       <Input
+        maxLength={8}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="0"

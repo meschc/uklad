@@ -16,9 +16,9 @@ import { requestsRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
 import { downloadSheet } from "@/lib/sheets";
 import { groupRequestsByTarget } from "@/lib/fulfillment";
-import { SortTh, TableSearch, useDataTable } from "@/components/ui/data-table";
+import { SortTh, TableFilters, TableSearch, useDataTable } from "@/components/ui/data-table";
 import { useT, type MsgKey, type TFunc } from "@/lib/i18n";
-import { isOrderSource } from "@/lib/types";
+import { isOrderSource, type RequestStatus } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/segmented";
 import { Input } from "@/components/ui/input";
@@ -95,7 +95,7 @@ function RequestsTab({ t }: { t: TFunc }) {
     { id: "name", value: (r) => products.find((x) => x.id === r.productId)?.name },
     { id: "qty", value: (r) => r.qty },
     { id: "ship", value: (r) => r.truckDate },
-    { id: "status", value: (r) => r.status },
+    { id: "status", value: (r) => r.status, facet: (v) => t(`req.status.${v as RequestStatus}`) },
   ]);
   const groups = useMemo(() => groupRequestsByTarget(reqTable.rows), [reqTable.rows]);
   const [creating, setCreating] = useState(false);
@@ -149,11 +149,20 @@ function RequestsTab({ t }: { t: TFunc }) {
       )}
 
       {requests.length > 0 && (
-        <TableSearch
-          value={reqTable.query}
-          onChange={reqTable.setQuery}
-          placeholder={t("common.search")}
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          <TableSearch
+            value={reqTable.query}
+            onChange={reqTable.setQuery}
+            placeholder={t("common.search")}
+          />
+          <TableFilters
+            facets={reqTable.facets}
+            filters={reqTable.filters}
+            onChange={reqTable.setFilter}
+            labels={{ status: t("tasks.col.status") }}
+            allLabel={(col) => t("common.filterAll", { col })}
+          />
+        </div>
       )}
       {requests.length === 0 ? (
         <EmptyState

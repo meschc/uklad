@@ -7,6 +7,10 @@ export const ru = {
   "support.nav": "Сообщить о проблеме",
   "support.title": "Сообщить о проблеме",
   "support.lead": "Опишите, что случилось. Мы разберём обращение и ответим.",
+  "support.integration.title": "Вопрос по интеграции",
+  "support.integration.lead":
+    "Какую систему подключаете и что не получается или непонятно? Ответим в будни с 10 до 18 по Москве.",
+  "support.integration.ask": "Задать вопрос",
   "support.message": "Что случилось",
   "support.message.placeholder": "Например: после сканирования коробки пропала строка приёмки",
   "support.journal": "Журнал событий за 7 дней: {n}",
@@ -52,6 +56,10 @@ export const en: Record<keyof typeof ru, string> = {
   "support.nav": "Report a problem",
   "support.title": "Report a problem",
   "support.lead": "Tell us what happened. We will look into it and reply.",
+  "support.integration.title": "Question about an integration",
+  "support.integration.lead":
+    "Which system are you connecting and what is unclear? We reply on weekdays 10:00–18:00 Moscow time.",
+  "support.integration.ask": "Ask a question",
   "support.message": "What happened",
   "support.message.placeholder": "For example: a receiving line disappeared after scanning a box",
   "support.journal": "Event log for 7 days: {n}",

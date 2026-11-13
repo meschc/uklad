@@ -239,6 +239,7 @@ function Stepper(props: {
             в фокусе — обычный ввод. */}
         <span className="relative">
           <input
+            maxLength={9}
             inputMode="numeric"
             aria-label={label}
             value={draft ?? money(value)}

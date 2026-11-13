@@ -14,7 +14,24 @@
  * руками значило бы посчитать одно и то же дважды. Остальные выполняются
  * заданием: их факт появляется только тогда, когда сотрудник его закрыл.
  */
-export type ServiceKind =
+export type ServiceKind = BuiltinServiceKind | CustomServiceKind;
+
+/**
+ * Своя услуга склада (Кирилл 12 ноя: «до сих пор нельзя добавить свои
+ * услуги»): фотосъёмка на манекене, вложение открытки, сушка — всё, чего нет в
+ * каталоге. Выполняется заданием, как и ручные услуги каталога. Префикс
+ * `custom:` отличает её от встроенных: встроенным подпись берётся из словаря,
+ * своим — из названия, которое дал склад.
+ */
+export type CustomServiceKind = `custom:${string}`;
+
+export interface CustomService {
+  kind: CustomServiceKind;
+  name: string;
+  unit: ServiceUnit;
+}
+
+type BuiltinServiceKind =
   // считаются сами
   | "cargo_pallet"
   | "cargo_box"
@@ -78,6 +95,8 @@ export interface ServiceSettings {
    * пересчёт штук. Выключено — один проход, как раньше.
    */
   twoStageReceiving?: boolean;
+  /** Свои услуги склада — в конце каталога, в порядке добавления. */
+  custom?: CustomService[];
 }
 
 /**

@@ -3,6 +3,7 @@ import type { ChatMessage } from "@/lib/types";
 import type { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { formatChatTime } from "./chatFormat";
+import { useOpenTopic } from "./useOpenTopic";
 
 type T = ReturnType<typeof useT>;
 
@@ -44,6 +45,7 @@ export function ChatBubble({
   actions: BubbleActions;
 }) {
   const deleted = Boolean(message.deletedAt);
+  const openTopic = useOpenTopic();
   return (
     <div
       id={`msg-${message.id}`}
@@ -75,10 +77,17 @@ export function ChatBubble({
           </button>
         )}
         {message.topic && !deleted && (
-          <p className="mb-1 text-2xs font-semibold opacity-80">
+          // Тема — ссылка на предмет разговора: товар открывается в таблице,
+          // заявка и рейс — в «Заданиях», поставка — на приёмке.
+          <button
+            type="button"
+            onClick={() => openTopic(message.topic!)}
+            title={t("chat.topic.open")}
+            className="mb-1 block text-left text-2xs font-semibold underline-offset-2 opacity-80 hover:underline hover:opacity-100"
+          >
             {t(`chat.topic.${message.topic.kind}`)}
             {message.topic.label ? ` · ${message.topic.label}` : ""}
-          </p>
+          </button>
         )}
         {deleted ? (
           <p className="italic opacity-70">{t("chat.deleted")}</p>

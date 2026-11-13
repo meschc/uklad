@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Segmented } from "@/components/ui/segmented";
 import { ORDER_SOURCES, type OrderSource } from "@/lib/types";
 import { Modal, Field } from "./Modal";
+import { digitsFor } from "@/lib/numberLimits";
 
 /** Сколько подсказок показываем: список под полем, а не второй каталог. */
 const MAX_MATCHES = 8;
@@ -150,6 +151,7 @@ export function RequestDialog({
                   <p className="truncate font-mono text-xs text-muted-foreground">{p?.sku}</p>
                 </div>
                 <Input
+                  maxLength={digitsFor("count")}
                   value={l.qty}
                   inputMode="numeric"
                   onChange={(e) =>

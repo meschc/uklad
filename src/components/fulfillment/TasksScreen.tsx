@@ -10,6 +10,7 @@ import {
   Printer,
   ScanLine,
   Truck,
+  Wrench,
   X,
 } from "lucide-react";
 import { useEditor } from "@/lib/store";
@@ -31,6 +32,7 @@ import { card } from "@/components/ui/card";
 import { RequestCalendar } from "./RequestCalendar";
 import { printLabels } from "@/lib/printLabels";
 import { LabelPrint } from "./LabelPrint";
+import { WorkTasksPanel } from "./WorkTasksPanel";
 import { ShipConfirm } from "./ShipConfirm";
 
 /**
@@ -44,10 +46,44 @@ import { ShipConfirm } from "./ShipConfirm";
  * подсвечиваются.
  */
 
+type Section = "requests" | "work";
+
+/**
+ * «Задания» — всё, что склад должен сделать: заявки на сборку и работы склада
+ * (маркировка, переупаковка, свои услуги). Работы раньше жили в «Операциях и
+ * услугах», и найти их там было нельзя (Кирилл 12 ноя).
+ */
+export function TasksScreen() {
+  const t = useT();
+  const [section, setSection] = useState<Section>("requests");
+  const sections = (
+    <Segmented
+      size="md"
+      className="self-start"
+      value={section}
+      onChange={setSection}
+      ariaLabel={t("tasks.title")}
+      options={[
+        { value: "requests" as const, label: t("tasks.section.requests"), icon: <ClipboardList /> },
+        { value: "work" as const, label: t("tasks.section.work"), icon: <Wrench /> },
+      ]}
+    />
+  );
+  if (section === "requests") return <RequestsTasks sections={sections} />;
+  return (
+    <ScreenShell title={t("tasks.title")} subtitle={t("tasks.workSubtitle")} wide>
+      {sections}
+      <div className="animate-tab-in">
+        <WorkTasksPanel />
+      </div>
+    </ScreenShell>
+  );
+}
+
 // Порядок = путь заявки: ждёт → собирается → собрана → уехала → отменена.
 const STATUS_ORDER: RequestStatus[] = ["new", "in_progress", "done", "shipped", "cancelled"];
 
-export function TasksScreen() {
+function RequestsTasks({ sections }: { sections: React.ReactNode }) {
   const requests = useEditor((s) => s.requests);
   const products = useEditor((s) => s.products);
   const warehouse = useEditor((s) => s.warehouse);
@@ -90,7 +126,7 @@ export function TasksScreen() {
   );
   const setStatus = async (id: string, next: RequestStatus) => {
     const res = await status.run(id, next);
-    if (!res.ok) showToast(res.error, undefined, "error");
+    if (!res.ok) showToast(res.error, undefined, undefined, "error");
   };
 
   const [filter, setFilter] = useState<RequestStatus | "all">("all");
@@ -135,6 +171,7 @@ export function TasksScreen() {
         </Button>
       }
     >
+      {sections}
       {/* Список или календарь: представления одних и тех же заявок (п.10.4).
           self-start — иначе тело ScreenShell (flex-колонка) растянет
           переключатель во всю ширину экрана. */}

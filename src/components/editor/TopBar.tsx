@@ -46,16 +46,20 @@ export function TopBar() {
             icon: <m.icon />,
           }))}
         />
-        <button
+        {/* Та же высота и тот же угол, что у переключателя рядом: две
+            соседние плашки с разным скруглением видно сразу (Кирилл 12 ноя). */}
+        <Button
+          variant="ghost"
+          size="sm"
           // Без строки features window.open открывает обычную новую вкладку;
           // именованный target переиспользует уже открытую карту.
           onClick={() => window.open(`${window.location.pathname}?heatmap=1`, "uklad-heatmap")}
           title={t("heat.title")}
-          className="flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          className="gap-1.5 rounded-lg bg-muted px-2.5 text-muted-foreground hover:text-foreground [&_svg]:size-3.5"
         >
-          <Gauge className="size-3.5" />
+          <Gauge />
           {t("heat.open")}
-        </button>
+        </Button>
       </div>
 
       {/* Справа: статус автосохранения + печать плана. Смена темы переехала в
