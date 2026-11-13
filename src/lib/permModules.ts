@@ -6,13 +6,13 @@ import type { MsgKey } from "./i18n";
  * миграции 002 и 024); здесь только группировка для экрана «Доступ».
  *
  * `where` — честно, где сервер проверяет право уже сейчас: у стола (вход по
- * бейджу), в кабинете (запись по полям, `server/api/src/cabinet/writeScope.js`),
- * там и там или пока нигде (право записано в роли, раздела под него ещё нет
- * или его правит только «Персонал»).
+ * бейджу), в кабинете (каталог и план — запись по полям,
+ * `server/api/src/cabinet/writeScope.js`) или пока нигде (право записано в
+ * роли, а раздел правит только «Персонал»).
  */
 
 export type PermLevel = "write" | "read" | "none";
-type PermWhere = "desk" | "cabinet" | "both" | "later";
+type PermWhere = "desk" | "cabinet" | "later";
 
 export interface PermModule {
   id: string;
@@ -53,7 +53,7 @@ export const PERM_MODULES: PermModule[] = [
     title: "perm.mod.stock",
     read: ["stock.view"],
     write: ["stock.move"],
-    // Чтение открывает кабинет на просмотр; перемещение — запись ячеек.
+    // Чтение открывает кабинет на просмотр; перемещение — у стола операциями.
     where: "cabinet",
   },
   {
@@ -61,18 +61,18 @@ export const PERM_MODULES: PermModule[] = [
     title: "perm.mod.receiving",
     read: [],
     write: ["receiving.do"],
-    where: "both",
+    where: "desk",
   },
-  { id: "picking", title: "perm.mod.picking", read: [], write: ["picking.do"], where: "both" },
-  { id: "packing", title: "perm.mod.packing", read: [], write: ["packing.do"], where: "both" },
-  { id: "shipping", title: "perm.mod.shipping", read: [], write: ["shipping.do"], where: "both" },
-  { id: "goods", title: "perm.mod.goods", read: [], write: ["goods.decide"], where: "both" },
+  { id: "picking", title: "perm.mod.picking", read: [], write: ["picking.do"], where: "desk" },
+  { id: "packing", title: "perm.mod.packing", read: [], write: ["packing.do"], where: "desk" },
+  { id: "shipping", title: "perm.mod.shipping", read: [], write: ["shipping.do"], where: "desk" },
+  { id: "goods", title: "perm.mod.goods", read: [], write: ["goods.decide"], where: "desk" },
   {
     id: "inventory",
     title: "perm.mod.inventory",
     read: [],
     write: ["inventory.count"],
-    where: "both",
+    where: "desk",
   },
   {
     id: "seller",

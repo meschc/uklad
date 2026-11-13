@@ -16,7 +16,6 @@ const LEVEL_KEYS: Record<Exclude<PermLevel, "none">, MsgKey> = {
 const WHERE_KEYS = {
   desk: "perm.where.desk",
   cabinet: "perm.where.cabinet",
-  both: "perm.where.both",
   later: "perm.where.later",
 } as const satisfies Record<string, MsgKey>;
 

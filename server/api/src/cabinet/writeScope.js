@@ -4,7 +4,7 @@
  * Кто держит «Персонал» (`staff.manage`), видит кабинет целиком и пишет его
  * целиком, как раньше. Остальные члены команды получают кабинет на просмотр
  * (`viewer.js`) и пишут только то, на что у роли есть право: товары — с
- * `products.edit`, план — с `plan.edit`, приёмку — с `receiving.do` и т.д.
+ * `products.edit`, план — с `plan.edit`.
  *
  * Разрешённый список, а не запретный: поле, которого здесь нет, такой
  * человек не меняет вовсе. Закрытое смотрящему (`VIEWER_HIDDEN`: реквизиты,
@@ -12,29 +12,19 @@
  * сервер берёт эти поля из того, что уже лежит в базе. Иначе урезанная
  * копия в браузере затёрла бы цены и ставки пустыми.
  *
- * Строки работы склада (`cabinet_records`) проверяются по списку: строка
- * чужого модуля — отказ всей записи, а не тихий пропуск, чтобы копия в
- * браузере не разошлась с базой.
+ * Строки работы склада (`cabinet_records`) такой роли закрыты: любая — отказ
+ * всей записи, а не тихий пропуск, чтобы копия в браузере не разошлась с базой.
  */
 /* global module */
 
 const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 
-const RECEIVE = ["receiving.do"];
-const ORDERS = ["picking.do", "packing.do", "shipping.do"];
-const CELLS = [
-  "stock.move",
-  "receiving.do",
-  "picking.do",
-  "packing.do",
-  "shipping.do",
-  "inventory.count",
-];
-
 /**
- * Поле кабинета → права, любое из которых даёт его менять. Списки работы
- * склада лежат строками, но называются так же, поэтому одна таблица на оба
- * пути: поле документа и строку.
+ * Поле кабинета → права, любое из которых даёт его менять. Только то, где
+ * право буквально значит «редактировать»: каталог и план. Работу склада
+ * (тара, ячейки, заявки, спорное, документы) роль без «Персонала» делает
+ * операциями, как стол, где сервер сверяет движение товара: право «делать
+ * приёмку» не значит «править итог приёмки».
  */
 const KEY_PERMS = {
   products: ["products.edit"],
@@ -45,19 +35,6 @@ const KEY_PERMS = {
   templates: ["plan.edit"],
   layoutTemplates: ["plan.edit"],
   addressing: ["plan.edit"],
-  placements: CELLS,
-  expectedShipments: RECEIVE,
-  receivingEvents: RECEIVE,
-  boxes: ["receiving.do", "packing.do", "stock.move"],
-  pallets: ["receiving.do", "shipping.do", "stock.move"],
-  boxSeq: ["receiving.do", "packing.do", "stock.move"],
-  palletSeq: ["receiving.do", "shipping.do", "stock.move"],
-  requests: ORDERS,
-  shipments: ["shipping.do"],
-  outboundBoxes: ["packing.do", "shipping.do"],
-  tasks: [...ORDERS, "receiving.do", "stock.move", "inventory.count"],
-  disputes: ["receiving.do", "packing.do", "goods.decide", "inventory.count"],
-  docRecords: ["receiving.do", "shipping.do", "goods.decide"],
 };
 
 /** Поля склада, которые меняет план (`plan.edit`); остальное — у «Персонала». */
@@ -79,8 +56,7 @@ function foreignRows(rows, can) {
 
 /**
  * Документ, который ляжет в базу: разрешённые поля — из присланного,
- * остальные — из того, что уже лежит. Метки строк (`{"$rows": n}`) идут из
- * присланного: их сверяет со строками сама запись. Товары лежат своей
+ * остальные (и метки строк) — из того, что уже лежит. Товары лежат своей
  * таблицей и пишутся отдельно.
  */
 function mergeScoped(cur, next, can) {
@@ -89,8 +65,9 @@ function mergeScoped(cur, next, can) {
   const out = { ...base };
   for (const key of Object.keys(KEY_PERMS)) {
     if (key === "products" || !allowed(key, can)) continue;
+    // Нет поля в присланном — оставляем, что лежит: копия без категорий не
+    // должна их стереть.
     if (key in sent) out[key] = sent[key];
-    else delete out[key];
   }
   if (can("plan.edit") && isObject(base.warehouse) && isObject(sent.warehouse)) {
     const w = { ...base.warehouse };

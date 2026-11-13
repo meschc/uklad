@@ -641,54 +641,53 @@ test(
       body: { version: 0, format: 8, data },
     });
     assert.equal(first.status, 200);
-    const keeper = await join(boss, "keeper-scope@example.com", r["Кладовщик"]);
-    const seen = (await call("GET", "/api/cabinet/snapshot", keeper)).json.snapshot;
-    assert.ok(seen.writable.includes("boxSeq"));
-    assert.ok(!seen.writable.includes("products"));
+    const editorRole = await post("/api/team/roles/save", {
+      ...boss,
+      body: { name: "Товаровед", permissions: ["stock.view", "products.edit"] },
+    });
+    const editor = await join(boss, "editor-scope@example.com", editorRole.json.roleId);
+    const seen = (await call("GET", "/api/cabinet/snapshot", editor)).json.snapshot;
+    assert.ok(seen.writable.includes("categories"));
+    assert.ok(!seen.writable.includes("boxSeq"));
     assert.ok(!seen.writable.includes("warehouse"));
     const doc = { ...seen.data };
     delete doc.products;
-    const changes = (body) =>
+    const changes = (who, version, body) =>
       post("/api/cabinet/snapshot/changes", {
-        ...keeper,
-        body: { version: seen.version, format: 8, slots: [], upsert: [], remove: [], ...body },
+        ...who,
+        body: { version, format: 8, slots: [], upsert: [], remove: [], ...body },
       });
-    // Чужое: каталог, журнал смен строкой — отказ всей записи.
-    assert.equal((await changes({ doc, products: [] })).status, 403);
+    // Строка работы склада (тут журнал смен) — отказ всей записи.
     const row = { w: "", d: "staffEvents", ref: "e1", pos: 0, data: { id: "e1" } };
     const withRow = {
       doc: { ...doc, staffEvents: { $rows: 1 } },
       slots: [{ w: "", d: "staffEvents" }],
       upsert: [row],
     };
-    assert.equal((await changes(withRow)).status, 403);
-    // Своё (тара) ложится; цены, ставки и персонал, которых у него в копии
-    // нет или которые он поменял, остаются как в базе.
-    const own = await changes({
+    assert.equal((await changes(editor, seen.version, withRow)).status, 403);
+    // Каталог ложится; тара, цены, ставки и персонал, которых у него в
+    // копии нет или которые он поменял, остаются как в базе.
+    const own = await changes(editor, seen.version, {
       doc: {
         ...doc,
+        categories: [{ id: "c1", name: "Посуда" }],
         boxSeq: 7,
         warehouse: { ...doc.warehouse, staff: [{ id: "stf-ivan", name: "Взломщик" }] },
       },
     });
     assert.equal(own.status, 200);
     const full = (await call("GET", "/api/cabinet/snapshot", boss)).json.snapshot.data;
-    assert.equal(full.boxSeq, 7);
+    assert.deepEqual(full.categories, [{ id: "c1", name: "Посуда" }]);
+    assert.equal(full.boxSeq, 1);
     assert.equal(full.serviceSettings.prices.pack, 25);
     assert.equal(full.warehouse.staff[0].name, "Иван");
     assert.equal(full.warehouse.staff[0].hourlyRate, 300);
-    // Роль только со «Остатками» не пишет ничего.
-    const viewOnly = await post("/api/team/roles/save", {
-      ...boss,
-      body: { name: "Только смотреть", permissions: ["stock.view"] },
-    });
-    const looker = await join(boss, "looker-scope@example.com", viewOnly.json.roleId);
-    const v = (await call("GET", "/api/cabinet/snapshot", looker)).json.snapshot;
+    // Кладовщик работу склада делает у стола операциями: итог (тару,
+    // ячейки, заявки) снимком не правит вовсе.
+    const keeper = await join(boss, "keeper-scope@example.com", r["Кладовщик"]);
+    const v = (await call("GET", "/api/cabinet/snapshot", keeper)).json.snapshot;
     assert.deepEqual(v.writable, []);
-    const tried = await post("/api/cabinet/snapshot/changes", {
-      ...looker,
-      body: { version: v.version, format: 8, slots: [], upsert: [], remove: [], doc },
-    });
+    const tried = await changes(keeper, v.version, { doc: { ...doc, boxSeq: 9 } });
     assert.equal(tried.status, 403);
   },
 );
