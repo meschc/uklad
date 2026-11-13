@@ -46,7 +46,20 @@ function savedState(): unknown | null {
 const now = () => Date.now();
 const msSince = (t: number) => Date.now() - t;
 
-export function ReportProblemDialog({ onClose }: { onClose: () => void }) {
+/**
+ * Повод обращения. По умолчанию — проблема; «вопрос» — та же отправка в
+ * поддержку, но с другим заголовком и подсказкой: со страницы интеграций
+ * пишут не про сломанное, а «как подключить» (Кирилл 12 ноя).
+ */
+type Preset = "problem" | "integration";
+
+export function ReportProblemDialog({
+  onClose,
+  preset = "problem",
+}: {
+  onClose: () => void;
+  preset?: Preset;
+}) {
   const t = useT();
   const view = useEditor((s) => s.appView);
   const [message, setMessage] = useState("");
@@ -86,13 +99,15 @@ export function ReportProblemDialog({ onClose }: { onClose: () => void }) {
       <aside
         role="dialog"
         aria-modal="true"
-        aria-label={t("support.title")}
+        aria-label={t(preset === "integration" ? "support.integration.title" : "support.title")}
         className="absolute inset-y-0 right-0 flex w-[min(480px,100vw)] animate-slide-in-right flex-col border-l border-border bg-card shadow-2xl"
       >
         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-5 py-3">
           <div className="flex items-center gap-2">
             <LifeBuoy className="size-4 text-muted-foreground" />
-            <p className="text-sm font-semibold">{t("support.title")}</p>
+            <p className="text-sm font-semibold">
+              {t(preset === "integration" ? "support.integration.title" : "support.title")}
+            </p>
           </div>
           <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label={t("support.close")}>
             <X className="size-4" />
@@ -107,7 +122,9 @@ export function ReportProblemDialog({ onClose }: { onClose: () => void }) {
           </div>
         ) : (
           <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5 py-4">
-            <p className="text-sm text-muted-foreground">{t("support.lead")}</p>
+            <p className="text-sm text-muted-foreground">
+              {t(preset === "integration" ? "support.integration.lead" : "support.lead")}
+            </p>
 
             <label className="flex flex-col gap-1.5">
               <Label>{t("support.message")}</Label>
