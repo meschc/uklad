@@ -120,7 +120,7 @@ export function StaffRow({
         <button onClick={onEdit} className="flex min-w-0 items-center gap-3 text-left">
           {/* shrink-0: фото не сжимается, когда соседний текст длинный
               (Кирилл 13.11: «размер фотографии уменьшается кратно»). */}
-          <Avatar name={m.name} src={m.photoUrl} seed={m.id} />
+          <Avatar src={m.photoUrl} seed={m.id} />
           <span className="flex min-w-0 flex-col">
             <span className="font-medium">
               {m.name}

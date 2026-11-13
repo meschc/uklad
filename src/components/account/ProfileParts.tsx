@@ -1,3 +1,4 @@
+import { asciiAvatar } from "@/lib/asciiAvatar";
 import { useState } from "react";
 import { Bell, Check, MessageSquareText } from "lucide-react";
 import type { Theme } from "@/lib/types";
@@ -37,21 +38,14 @@ export function ProfileHero({
   org?: string;
   tariff: string | null;
 }) {
-  const initials = name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase())
-    .join("");
   return (
     <div className="flex flex-wrap items-center gap-4 pb-2">
-      {avatar ? (
-        <img src={avatar} alt="" className="size-14 shrink-0 rounded-2xl object-cover" />
-      ) : (
-        <span className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-primary text-xl font-semibold text-primary-foreground">
-          {initials || "·"}
-        </span>
-      )}
+      {/* Без фото — ASCII-аватарка из почты (lib/asciiAvatar.ts). */}
+      <img
+        src={avatar || asciiAvatar(email || name, "full")}
+        alt=""
+        className="size-14 shrink-0 rounded-2xl bg-black object-cover"
+      />
       <div className="min-w-0 flex-1">
         <p className="truncate text-base font-semibold">{name}</p>
         <p className="truncate text-sm text-muted-foreground">
