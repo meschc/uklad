@@ -360,7 +360,7 @@ export const INTEGRATIONS: IntegrationSpec[] = [
     id: "honest-sign",
     category: "gov",
     title: "Честный знак",
-    brand: { short: "ЧЗ", bg: "#0E4C92", logo: "honest-sign.png" },
+    brand: { short: "ЧЗ", bg: "#F6F42E", fg: "#63666A", logo: "honest-sign.svg" },
     descriptionKey: "integr.chz.desc",
     docsUrl: "https://честныйзнак.рф/business/projects/",
     auth: "oauth",
