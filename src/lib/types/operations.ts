@@ -31,7 +31,7 @@ export interface CustomService {
   unit: ServiceUnit;
 }
 
-export type BuiltinServiceKind =
+type BuiltinServiceKind =
   // считаются сами
   | "cargo_pallet"
   | "cargo_box"

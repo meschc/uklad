@@ -21,7 +21,7 @@ function reducedMotion(): boolean {
   );
 }
 
-export function useAnimatedNumber(value: number): number {
+function useAnimatedNumber(value: number): number {
   const [shown, setShown] = useState(value);
   const from = useRef(value);
   const frame = useRef(0);

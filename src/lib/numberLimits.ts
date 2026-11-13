@@ -47,11 +47,6 @@ export const LIMITS = {
 
 export type LimitName = keyof typeof LIMITS;
 
-/** Атрибуты поля для предела: `<input type="number" {...limit("small")} />`. */
-export function limit(name: LimitName): Range {
-  return { min: LIMITS[name].min, max: LIMITS[name].max };
-}
-
 /** Сколько знаков вмещает предел — `maxLength` для текстовых числовых полей. */
 export function digitsFor(name: LimitName): number {
   return String(LIMITS[name].max).length;
