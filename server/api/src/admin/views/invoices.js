@@ -11,8 +11,8 @@ const { esc, day, money, hidden, errorBox } = b;
 
 function payButtons(session, i, back) {
   if (i.status !== "issued") return "";
-  return `<form method="post" action="/invoices/${i.id}/paid" style="display:inline">${hidden(session)}<input type="hidden" name="back" value="${back}"><button class="sm">Оплачено</button></form>
-    <form method="post" action="/invoices/${i.id}/cancel" style="display:inline">${hidden(session)}<input type="hidden" name="back" value="${back}"><button class="ghost sm">Отменить</button></form>`;
+  return `<form method="post" action="/invoices/${i.id}/paid" class="inline">${hidden(session)}<input type="hidden" name="back" value="${back}"><button class="sm">Оплачено</button></form>
+    <form method="post" action="/invoices/${i.id}/cancel" class="inline">${hidden(session)}<input type="hidden" name="back" value="${back}"><button class="soft sm">Отменить</button></form>`;
 }
 
 function invoicesPage({ session, rows, q, ready, error }) {
@@ -33,14 +33,14 @@ function invoicesPage({ session, rows, q, ready, error }) {
     ${
       ready
         ? ""
-        : `<div class="card notice" style="margin-bottom:16px"><strong>Счета сами не выставляются</strong><p class="muted">На сервере не заданы реквизиты получателя (PAYEE_* в deploy/.env).</p></div>`
+        : `<div class="note warn"><strong>Счета сами не выставляются</strong><p>На сервере не заданы реквизиты получателя (PAYEE_* в deploy/.env).</p></div>`
     }
     ${errorBox(error)}
     <form class="actions" method="get" action="/invoices">
-      <input name="q" value="${esc(q)}" maxlength="100" placeholder="Номер счёта, сумма или склад из выписки" style="flex:1">
-      <button class="ghost">Найти</button>
+      <input name="q" value="${esc(q)}" maxlength="100" placeholder="Номер счёта, сумма или склад из выписки" class="q">
+      <button class="soft">Найти</button>
     </form>
-    <section style="margin-top:16px">${list}</section>`,
+    <section class="mt">${list}</section>`,
   });
 }
 
@@ -54,11 +54,11 @@ function invoicesCard(session, a, invoices) {
         .join("")}</tbody></table>`
     : `<p class="muted">Счетов пока не было. Первый выставится сам за 7 дней до конца срока.</p>`;
   const canIssue = a.kind === "warehouse" && !invoices.some((i) => i.status === "issued");
-  return `<div class="card stack">
+  return `<div class="panel">
     <h2>Счета</h2>${list}
     ${
       canIssue
-        ? `<form class="actions" method="post" action="/accounts/${a.id}/invoice">${hidden(session)}<button class="ghost">Выставить счёт сейчас</button></form>`
+        ? `<form class="actions" method="post" action="/accounts/${a.id}/invoice">${hidden(session)}<button class="soft">Выставить счёт сейчас</button></form>`
         : ""
     }
   </div>`;

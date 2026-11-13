@@ -54,7 +54,7 @@ function leadsList({ session, leads, status, ready }) {
     <p class="lede">Заявки живут здесь 180 дней, потом стираются: рабочая копия — письмо в почте.</p>
     <div class="bar"><div class="seg">${tab("", "Все")}${Object.entries(LEAD)
       .map(([k, v]) => tab(k, v))
-      .join("")}</div></div>
+      .join("")}${tab("archived", "Архив")}</div></div>
     ${body}`,
   );
 }
@@ -68,24 +68,24 @@ function leadPage({ session, lead: l, fields, account }) {
     "/leads",
     `Заявка #${l.id}`,
     `<a class="back" href="/leads">${icon("back", 16)}Заявки</a>
-    ${head(`Заявка #${l.id} · ${when(l.created_at)}`, l.subject, `${kindTag(l.kind)} ${leadBadge(l.status)}`)}
+    ${head(`Заявка #${l.id} · ${when(l.created_at)}`, l.subject, `${kindTag(l.kind)} ${leadBadge(l.status)}${l.archived_at ? ` <span class="badge">в архиве</span>` : ""}`)}
     <div class="side-col">
       <section>
         <h2>Что написал человек</h2>
         <dl>${list}<dt>Язык</dt><dd>${esc(l.lang)}</dd><dt>Реклама</dt><dd>${l.consent_ads ? "согласен" : "нет"}</dd>
           <dt>Письмо</dt><dd>${l.mailed ? "ушло" : "не ушло — ответьте по контактам выше"}</dd></dl>
       </section>
-      <div>
+      <div class="stack">
         <div class="panel">
           <h2>Клиент</h2>
           ${
             account
               ? `<p>Связана с <a href="/accounts/${account.id}">${esc(account.name)}</a>.</p>`
-              : `<p class="hint" style="margin-bottom:14px">Откроем форму нового аккаунта с данными из заявки — проверите и создадите.</p>
+              : `<p class="hint">Откроем форму нового аккаунта с данными из заявки — проверите и создадите.</p>
                  <a class="btn" href="/accounts/new?lead=${l.id}">${icon("plus")}Сделать клиентом</a>`
           }
         </div>
-        <form class="form sec" method="post" action="/leads/${l.id}">${hidden(session)}
+        <form class="form" method="post" action="/leads/${l.id}">${hidden(session)}
           <h2>Что с заявкой</h2>
           <label>Статус<select name="status">${Object.entries(LEAD)
             .map(([k, v]) => opt(k, v, l.status))
@@ -93,6 +93,14 @@ function leadPage({ session, lead: l, fields, account }) {
           <label>Заметка<textarea name="note" maxlength="2000">${esc(l.note)}</textarea></label>
           <div class="actions"><button class="soft">Сохранить</button></div>
         </form>
+        <div>
+          <h2>Убрать заявку</h2>
+          <p class="hint">Архив прячет заявку из списка, вернуть можно в любой момент. Удаление — по просьбе человека стереть его данные.</p>
+          <div class="actions mt">
+            <form method="post" action="/leads/${l.id}/archive">${hidden(session)}<button class="soft">${l.archived_at ? "Вернуть из архива" : "В архив"}</button></form>
+            <form method="post" action="/leads/${l.id}/delete">${hidden(session)}<button class="soft danger-text">Удалить насовсем</button></form>
+          </div>
+        </div>
       </div>
     </div>`,
   );
@@ -170,10 +178,10 @@ function settingsPage({ session, admin, sessions, now, error, done }) {
           .join("")}</tbody></table>
         ${
           sessions.length > 1
-            ? `<form method="post" action="/settings/sessions" style="margin-top:14px">${hidden(session)}<button class="soft">Закрыть все, кроме этой</button></form>`
-            : `<p class="hint" style="margin-top:14px">Других входов нет.</p>`
+            ? `<form class="mt" method="post" action="/settings/sessions">${hidden(session)}<button class="soft">Закрыть все, кроме этой</button></form>`
+            : `<p class="hint mt">Других входов нет.</p>`
         }
-        <p class="hint" style="margin-top:14px">Сессия живёт 12 часов и закрывается после часа без действий. Сейчас ${when(now)} по Москве.</p>
+        <p class="hint mt">Сессия живёт 12 часов и закрывается после часа без действий. Сейчас ${when(now)} по Москве.</p>
       </section>
     </div>`,
   );

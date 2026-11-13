@@ -154,6 +154,7 @@ function adminStore(db) {
       status: "TEXT NOT NULL DEFAULT 'new'",
       note: "TEXT",
       account_id: "INTEGER",
+      archived_at: "TEXT",
     });
   }
 
@@ -227,12 +228,20 @@ function adminStore(db) {
   const leadQ = hasLeads
     ? {
         leads: db.prepare(
-          `SELECT * FROM leads WHERE (?1 = '' OR status = ?1) ORDER BY id DESC LIMIT 500`,
+          `SELECT * FROM leads
+           WHERE (?1 = 'archived' AND archived_at IS NOT NULL)
+              OR (?1 <> 'archived' AND archived_at IS NULL AND (?1 = '' OR status = ?1))
+           ORDER BY id DESC LIMIT 500`,
         ),
+        archiveLead: db.prepare(`UPDATE leads SET archived_at = ? WHERE id = ?`),
+        unlinkLeadDemos: db.prepare(`UPDATE demo_links SET lead_id = NULL WHERE lead_id = ?`),
+        deleteLead: db.prepare(`DELETE FROM leads WHERE id = ?`),
         lead: db.prepare(`SELECT * FROM leads WHERE id = ?`),
         setLead: db.prepare(`UPDATE leads SET status = ?, note = ? WHERE id = ?`),
         linkLead: db.prepare(`UPDATE leads SET account_id = ?, status = 'won' WHERE id = ?`),
-        countNew: db.prepare(`SELECT COUNT(*) AS n FROM leads WHERE status = 'new'`),
+        countNew: db.prepare(
+          `SELECT COUNT(*) AS n FROM leads WHERE status = 'new' AND archived_at IS NULL`,
+        ),
         demos: db.prepare(
           `SELECT d.rowid AS id, d.*,
              (SELECT COUNT(DISTINCT visitor) FROM demo_events e WHERE e.token = d.token) AS people,
@@ -338,6 +347,13 @@ function adminStore(db) {
     lead: (id) => leadQ?.lead.get(id),
     setLead: (id, status, note) => leadQ?.setLead.run(status, note ?? null, id),
     linkLead: (id, accountId) => leadQ?.linkLead.run(accountId, id),
+    /** В архив (дата) или обратно (null): заявка не теряется, просто не мешает. */
+    archiveLead: (id, at) => leadQ?.archiveLead.run(at, id),
+    /** Насовсем — по просьбе человека стереть данные. Демо-ссылки остаются без заявки. */
+    deleteLead: (id) => {
+      leadQ?.unlinkLeadDemos.run(id);
+      leadQ?.deleteLead.run(id);
+    },
     countNewLeads: () => (leadQ ? leadQ.countNew.get().n : 0),
     demos: () => (leadQ ? leadQ.demos.all() : []),
     demo: (id) => leadQ?.demo.get(id),

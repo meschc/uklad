@@ -203,7 +203,7 @@ function createRoutes({ store, cfg, invoices }) {
     }
 
     if (path === "/leads") {
-      const status = LEAD_STATUSES.includes(url.searchParams.get("status"))
+      const status = [...LEAD_STATUSES, "archived"].includes(url.searchParams.get("status"))
         ? url.searchParams.get("status")
         : "";
       return page(
@@ -537,10 +537,45 @@ function createRoutes({ store, cfg, invoices }) {
       return redirect(`/support/${r.id}`);
     }
 
-    const lead = /^\/leads\/(\d{1,10})(\/convert)?$/.exec(path);
+    const lead = /^\/leads\/(\d{1,10})(\/convert|\/archive|\/delete)?$/.exec(path);
     if (lead) {
       const l = store.lead(Number(lead[1]));
       if (!l) return notFound();
+      if (lead[2] === "/archive") {
+        // Отменяемое действие: без подтверждения, вернуть можно той же кнопкой.
+        const back = l.archived_at ? null : nowIso;
+        store.archiveLead(l.id, back);
+        store.log(t, by, back ? "lead_archive" : "lead_restore", `lead:${l.id}`, {});
+        return redirect(back ? "/leads" : `/leads/${l.id}`);
+      }
+      if (lead[2] === "/delete") {
+        if (!confirmed(form)) {
+          return page(
+            views.confirmPage({
+              session: s,
+              active: "/leads",
+              eyebrow: `Заявка #${l.id}`,
+              title: "Удалить заявку насовсем?",
+              lines: [
+                ["Тема", l.subject],
+                ["Пришла", l.created_at.slice(0, 10)],
+                [
+                  "Что будет",
+                  "Текст заявки и контакты сотрутся, вернуть нельзя. Демо-ссылки останутся без заявки.",
+                ],
+              ],
+              action: `/leads/${l.id}/delete`,
+              form,
+              back: `/leads/${l.id}`,
+              danger: true,
+            }),
+          );
+        }
+        store.deleteLead(l.id);
+        // В журнал — только номер: удаляем как раз ради того, чтобы данных не осталось.
+        store.log(t, by, "lead_delete", `lead:${l.id}`, {});
+        return redirect("/leads");
+      }
       if (!lead[2]) {
         const status = form.get("status");
         if (!LEAD_STATUSES.includes(status)) return notFound();

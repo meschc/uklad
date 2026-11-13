@@ -57,7 +57,7 @@ function moneyPage({
     </div>
     <div class="split sec">
       <section><h2>Пробный кончается за 14 дней</h2>${shortTable(trialsEnding, now, "trial_until", "Ни у кого.")}</section>
-      <section><h2>За год</h2><p class="stat" style="background:none;padding:0"><b>${money(revenue365)}</b></p>
+      <section><h2>За год</h2><p class="stat bare"><b>${money(revenue365)}</b></p>
         <p class="hint">Платят ${paid.length} из ${live.length} действующих.</p></section>
     </div>
     <section class="sec"><h2>Все оплаты</h2>${list}</section>`,
