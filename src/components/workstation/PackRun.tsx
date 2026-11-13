@@ -171,9 +171,17 @@ export function PackRun({
               onSubmit={(c) => void onScan(c)}
             />
           </div>
-          <Button variant="ghost" className="shrink-0" onClick={() => setShowLast((v) => !v)}>
+          {/* На телефоне — только значок: подпись съела бы поле скана. */}
+          <Button
+            variant="ghost"
+            className="shrink-0 max-md:px-2.5"
+            aria-label={showLast ? t("ws.run.lastHide") : t("ws.run.last")}
+            onClick={() => setShowLast((v) => !v)}
+          >
             <History />
-            {showLast ? t("ws.run.lastHide") : t("ws.run.last")}
+            <span className="hidden md:inline">
+              {showLast ? t("ws.run.lastHide") : t("ws.run.last")}
+            </span>
           </Button>
         </div>
 
@@ -223,21 +231,28 @@ export function PackRun({
         )}
 
         {unit && product ? (
-          <div key={unit.labelCode} className="ws-in grid gap-6 pt-2 md:grid-cols-2">
+          <div key={unit.labelCode} className="ws-in grid gap-6 pt-2 md:grid-cols-[3fr_2fr]">
             {/* Картинка крупно: упаковщик сверяет, что в руках то же, что на фото. */}
             {product.imageUrl ? (
               <img
                 src={product.imageUrl}
                 alt=""
-                className="aspect-square w-full max-h-[28rem] rounded-xl object-cover"
+                className="aspect-square max-h-[36rem] w-full rounded-xl object-cover"
               />
             ) : (
-              <span className="flex aspect-square w-full max-h-[28rem] items-center justify-center rounded-xl bg-muted text-muted-foreground">
+              <span className="flex aspect-square max-h-[36rem] w-full items-center justify-center rounded-xl bg-muted text-muted-foreground">
                 <Package className="size-32" />
               </span>
             )}
             <div className="flex min-w-0 flex-col gap-3">
-              <p className="text-4xl font-semibold leading-tight tracking-tight">{product.name}</p>
+              {/* Название с площадки бывает огромным: не больше трёх строк, полное —
+                  в подсказке. Главное на экране — картинка. */}
+              <p
+                title={product.name}
+                className="line-clamp-3 break-words text-xl font-semibold leading-snug md:text-2xl"
+              >
+                {product.name}
+              </p>
               <p className="font-mono text-base text-muted-foreground">{product.sku}</p>
               <p className="text-3xl font-semibold tabular-nums">
                 {t("ws.run.unitOf", { i: doneOfProduct, n: contents.get(product.id) ?? 0 })}

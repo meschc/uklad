@@ -93,12 +93,12 @@ export function WorkstationScreen() {
   useEffect(() => clearSignal(), [member?.id, station]);
 
   return (
-    // Оболочка как у кабинета (App.tsx): шапка на фоне меню, а рабочая область —
-    // окном в рамке со скруглёнными углами. На узком экране ТСД рамки нет:
-    // поля съели бы ширину, которой там и так мало, — шапку отделяет линия.
-    <div className="flex h-full flex-col bg-card">
+    // Шапка на тёмном внешнем фоне, рабочая область — светлым окном со
+    // скруглёнными углами, и на компьютере, и на телефоне (Кирилл 13.11):
+    // рамка-сигнал опоясывает окно снаружи, по тёмному полю.
+    <div className="flex h-full flex-col bg-muted">
       {/* Высота шапки постоянная: кнопки и таймеры не должны двигать экран. */}
-      <header className="grid h-14 shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:gap-4 border-border px-4 md:border-0">
+      <header className="grid h-14 shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:gap-4">
         <div className="flex min-w-0 items-center gap-3">
           {device ? (
             // Стол, привязанный к месту, в кабинет не уходит: вместо выхода —
@@ -190,13 +190,17 @@ export function WorkstationScreen() {
       <NetworkBanner />
       {/* Рамка рабочей области — сигнал скана (`scanSignal`): зелёная вспышка —
           принято, жёлтая держится, пока дело не доделано, красная — до верного
-          скана. Кольцо внутрь, чтобы на ТСД без полей его тоже было видно. */}
+          скана. Обводка снаружи окна, по тёмному полю вокруг: её не перекроет
+          прокрученный список. */}
       <main
         className={cn(
-          "min-h-0 flex-1 overflow-y-auto bg-background ring-inset transition-shadow duration-150 md:mx-2 md:mb-2 md:rounded-2xl md:border md:border-border",
-          signalLevel === "ok" && "ring-4 ring-success",
-          signalLevel === "warn" && "ring-[6px] ring-warning",
-          signalLevel === "error" && "ring-[6px] ring-destructive",
+          "mx-3 mb-3 min-h-0 flex-1 overflow-y-auto rounded-2xl border border-border bg-background transition-[outline-color] duration-150",
+          signalLevel && "outline outline-[6px] outline-offset-0",
+          signalLevel === "ok" && "outline-success",
+          // Жёлтый — из палитры меток: токен `warning` тёмно-оранжевый и рядом
+          // с красным почти не отличается.
+          signalLevel === "warn" && "outline-[hsl(var(--tag-market))]",
+          signalLevel === "error" && "outline-destructive",
         )}
       >
         {!member && unbinding ? (
@@ -208,6 +212,11 @@ export function WorkstationScreen() {
           // «Устройства» в кабинете. Без привязки можно войти (демо, проверка).
           <div className="flex min-h-full items-center justify-center px-4 py-10">
             <div className="flex w-full max-w-sm flex-col gap-4">
+              <MonitorSmartphone
+                className="mx-auto size-12 text-muted-foreground"
+                strokeWidth={1.5}
+                aria-hidden
+              />
               <h2 className="text-center text-xl font-semibold">{t("devices.bindDevice")}</h2>
               <BindDeviceForm stacked />
             </div>
@@ -227,7 +236,7 @@ export function WorkstationScreen() {
       {member && (
         // Нижняя панель телефона и ТСД: смена, перерыв и журнал — крупно и
         // под большой палец, чтобы работать одной рукой.
-        <nav className="flex shrink-0 items-center justify-center gap-2 border-t border-border bg-card px-2 py-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] md:hidden">
+        <nav className="flex shrink-0 items-center justify-center gap-2 px-2 pb-[max(0.375rem,env(safe-area-inset-bottom))] md:hidden">
           <ShiftBar staffId={member.id} onOpen={() => setPanel("shift")} />
           <button
             type="button"
@@ -435,7 +444,8 @@ function ShiftCodes({ staffId }: { staffId: string }) {
   }, []);
 
   return (
-    <ul className="mt-6 flex flex-wrap justify-center gap-6 border-t border-border pt-6">
+    // На телефоне коды не нужны: смена и перерыв — в нижней панели.
+    <ul className="mt-6 hidden flex-wrap justify-center gap-6 border-t border-border pt-6 md:flex">
       {marks.map((m) => (
         <li key={m} className="flex flex-col items-center gap-1.5 text-xs text-muted-foreground">
           <QrSvg code={shiftMarkCode(m)} size={72} showCode={false} />
