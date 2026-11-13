@@ -306,12 +306,17 @@ export function startServerSync(orgId: string): () => void {
    * Режим просмотра — по ответу сервера, а не по сохранённому: роль могли
    * поменять. Включился — человеку говорим один раз, почему правки не идут.
    */
-  const markReadOnly = (on: boolean) => {
+  const markReadOnly = (on: boolean, writable: string[] = []) => {
     const s = useEditor.getState();
-    if (Boolean(s.session.readOnly) === on) return;
-    useEditor.setState({ session: { ...s.session, readOnly: on || undefined } });
-    if (on) s.showToast("sync.readOnly");
+    const keys = on && writable.length > 0 ? writable : undefined;
+    const same = JSON.stringify(s.session.writable ?? null) === JSON.stringify(keys ?? null);
+    if (Boolean(s.session.readOnly) === on && same) return;
+    useEditor.setState({ session: { ...s.session, readOnly: on || undefined, writable: keys } });
+    if (on && !keys && !s.session.readOnly) s.showToast("sync.readOnly");
   };
+  // Роль пишет часть кабинета: правка уходит «только изменённым», а копию
+  // целиком сервер у неё не примет.
+  let scoped = false;
 
   const forbid = () => {
     if (stopped) return;
@@ -341,6 +346,12 @@ export function startServerSync(orgId: string): () => void {
       }
       const next = splitCabinet(data);
       const changes = base && meta.version > 0 && base.version === meta.version ? base : null;
+      if (scoped && !changes) {
+        // Целиком пишет только «Персонал»: забираем свежее и считаем от него.
+        writeMeta({ ...meta, dirty: true });
+        void inLane(boot);
+        return false;
+      }
       const res = changes
         ? await snapshotRepository.saveChanges(
             meta.version,
@@ -360,8 +371,13 @@ export function startServerSync(orgId: string): () => void {
       }
       if ("diverged" in res.data) {
         // Правка считалась не от того, что на сервере: ничего не записано,
-        // сразу пишем кабинет целиком.
+        // сразу пишем кабинет целиком (роль с частью модулей — забирает свежее).
         base = null;
+        if (scoped) {
+          writeMeta({ ...meta, dirty: true });
+          void inLane(boot);
+          return false;
+        }
         writeMeta({ ...meta, dirty: true });
         schedule(0);
         return false;
@@ -396,7 +412,8 @@ export function startServerSync(orgId: string): () => void {
     const meta = readMeta();
     const current = persistedState(useEditor.getState());
     const snap = res.data;
-    markReadOnly(snap?.viewer === true);
+    markReadOnly(snap?.viewer === true, snap?.writable);
+    scoped = snap?.viewer === true && (snap.writable?.length ?? 0) > 0;
 
     // Чистая пометка — копия совпадает с сервером (своя) или здесь после
     // выхода только демо: терять нечего. Незаписанные правки и копию без
@@ -435,7 +452,7 @@ export function startServerSync(orgId: string): () => void {
       return replaceWith(blank, PERSIST_VERSION, { orgId, version: 0, dirty: true });
     }
 
-    if ((snap.desk || snap.viewer) && meta?.orgId === orgId) {
+    if ((snap.desk || (snap.viewer && !scoped)) && meta?.orgId === orgId) {
       // Стол копию не пишет, поэтому «незаписанного» у него нет.
       desk = true;
       booted = true;

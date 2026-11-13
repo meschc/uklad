@@ -32,13 +32,14 @@ function fakePort(server: boolean, over: Partial<EditorState> = {}): StorePort {
 
 /** Сервер знает один бейдж — случайный код Ивана — и один бейдж руководителя. */
 function fakeServer(): BadgeServer {
-  const known: Record<string, string> = {
-    "UK-STF-AAAAAAAAAAAAAAAAAAAAAA": "stf-ivan",
-    "UK-STF-BBBBBBBBBBBBBBBBBBBBBB": "stf-boss",
+  const known: Record<string, [string, string[] | null]> = {
+    "UK-STF-AAAAAAAAAAAAAAAAAAAAAA": ["stf-ivan", ["packing.do"]],
+    "UK-STF-BBBBBBBBBBBBBBBBBBBBBB": ["stf-boss", ["staff.manage"]],
+    "UK-STF-DDDDDDDDDDDDDDDDDDDDDD": ["stf-anna", null],
   };
   return {
     check: vi.fn(async (code: string) =>
-      ok(known[code] ? { staffId: known[code], permissions: null } : null),
+      ok(known[code] ? { staffId: known[code][0], permissions: known[code][1] } : null),
     ),
     issue: vi.fn(async () => ok("UK-STF-CCCCCCCCCCCCCCCCCCCCCC")),
     revoke: vi.fn(async () => ok(undefined)),
@@ -89,9 +90,19 @@ describe("workstationRepository: вход по бейджу на сервере"
       ok: true,
       data: "stf-ivan",
     });
-    expect(port.get().openStation).toHaveBeenCalledWith("stf-ivan", "pack", null);
+    expect(port.get().openStation).toHaveBeenCalledWith("stf-ivan", "pack", ["packing.do"]);
     // Разбор демо-кода в обход сервера не вызывается вовсе.
     expect(port.get().badgeLogin).not.toHaveBeenCalled();
+  });
+
+  it("без роли у стола не пускает и говорит, к кому идти", async () => {
+    const port = fakePort(true);
+    const repo = createWorkstationRepository(port, fakeServer());
+    expect(await repo.login("UK-STF-DDDDDDDDDDDDDDDDDDDDDD", "pack")).toEqual({
+      ok: false,
+      error: "ws.badgeNoRole",
+    });
+    expect(port.get().openStation).not.toHaveBeenCalled();
   });
 
   it("бейдж из номера сотрудника на сервере не пускает", async () => {

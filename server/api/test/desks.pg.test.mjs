@@ -278,8 +278,10 @@ test("стол: вход руководителя гаснет, стол вид�
 
   const who = await call("/api/cabinet/badges/check", { desk, body: { code: ivan } });
   assert.equal(who.json.staffRef, "stf-ivan");
-  // У Ивана роли нет: стол по бейджу никаких прав роли не открывает.
-  assert.equal(who.json.permissions, null);
+  // Своей роли Ивану не давали: выпуск бейджа дал «Кладовщика» — вся
+  // работа, без решений по товару (028).
+  assert.ok(who.json.permissions.includes("receiving.do"));
+  assert.ok(!who.json.permissions.includes("goods.decide"));
   const boss = await call("/api/cabinet/badges/check", { desk, body: { code: bossCode } });
   assert.ok(boss.json.permissions.includes("goods.decide"));
 });

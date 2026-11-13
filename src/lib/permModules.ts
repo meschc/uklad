@@ -6,8 +6,9 @@ import type { MsgKey } from "./i18n";
  * миграции 002 и 024); здесь только группировка для экрана «Доступ».
  *
  * `where` — честно, где сервер проверяет право уже сейчас: у стола (вход по
- * бейджу), кабинетом целиком или пока нигде (право записано в роли и начнёт
- * действовать, когда раздел кабинета переедет со снимка на сервер).
+ * бейджу), в кабинете (каталог и план — запись по полям,
+ * `server/api/src/cabinet/writeScope.js`) или пока нигде (право записано в
+ * роли, а раздел правит только «Персонал»).
  */
 
 export type PermLevel = "write" | "read" | "none";
@@ -39,20 +40,20 @@ export const PERM_MODULES: PermModule[] = [
     write: ["contracts.manage"],
     where: "later",
   },
-  { id: "plan", title: "perm.mod.plan", read: [], write: ["plan.edit"], where: "later" },
+  { id: "plan", title: "perm.mod.plan", read: [], write: ["plan.edit"], where: "cabinet" },
   {
     id: "products",
     title: "perm.mod.products",
     read: [],
     write: ["products.edit"],
-    where: "later",
+    where: "cabinet",
   },
   {
     id: "stock",
     title: "perm.mod.stock",
     read: ["stock.view"],
     write: ["stock.move"],
-    // Чтение открывает кабинет в режиме просмотра; перемещение — позже.
+    // Чтение открывает кабинет на просмотр; перемещение — у стола операциями.
     where: "cabinet",
   },
   {
