@@ -189,15 +189,19 @@ export function WorkstationScreen() {
       <NetworkBanner />
       {/* Рамка рабочей области — сигнал скана (`scanSignal`): зелёная вспышка —
           принято, жёлтая держится, пока дело не доделано, красная — до верного
-          скана. Обводка внутрь и поверх содержимого: на ТСД без полей её не
-          перекроет прокрученный список. */}
+          скана. Окно одно на компьютере и телефоне, на телефоне рамка тоньше.
+          Обводка внутрь и поверх содержимого: её не перекроет прокрученный
+          список. */}
       <main
         className={cn(
-          "min-h-0 flex-1 overflow-y-auto bg-background transition-[outline-color] duration-150 md:mx-2 md:mb-2 md:rounded-2xl md:border md:border-border",
-          signalLevel === "ok" && "outline outline-4 -outline-offset-4 outline-success",
-          signalLevel === "warn" && "outline outline-[6px] -outline-offset-[6px] outline-warning",
-          signalLevel === "error" &&
-            "outline outline-[6px] -outline-offset-[6px] outline-destructive",
+          "mx-2 mb-2 min-h-0 flex-1 overflow-y-auto rounded-2xl border border-border bg-background transition-[outline-color] duration-150",
+          signalLevel && "outline outline-2 -outline-offset-2 md:outline-4 md:-outline-offset-4",
+          signalLevel !== "ok" &&
+            signalLevel &&
+            "outline-[3px] -outline-offset-[3px] md:outline-[6px] md:-outline-offset-[6px]",
+          signalLevel === "ok" && "outline-success",
+          signalLevel === "warn" && "outline-warning",
+          signalLevel === "error" && "outline-destructive",
         )}
       >
         {!member && unbinding ? (
@@ -439,7 +443,8 @@ function ShiftCodes({ staffId }: { staffId: string }) {
   }, []);
 
   return (
-    <ul className="mt-6 flex flex-wrap justify-center gap-6 border-t border-border pt-6">
+    // На телефоне коды не нужны: смена и перерыв — в нижней панели.
+    <ul className="mt-6 hidden flex-wrap justify-center gap-6 border-t border-border pt-6 md:flex">
       {marks.map((m) => (
         <li key={m} className="flex flex-col items-center gap-1.5 text-xs text-muted-foreground">
           <QrSvg code={shiftMarkCode(m)} size={72} showCode={false} />

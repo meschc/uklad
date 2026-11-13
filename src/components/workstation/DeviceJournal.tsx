@@ -105,13 +105,13 @@ export function DeviceJournal({
                 r.type === "device" ? (
                   <li
                     key={`${r.kind}-${r.at}`}
-                    className="flex items-baseline justify-between gap-3 py-1.5 pl-6"
+                    className="flex items-center justify-between gap-3 px-2 py-1.5"
                   >
-                    <span className="flex items-center gap-2 text-sm font-medium">
+                    <span className="flex min-w-0 items-center gap-2 text-sm font-medium">
                       {r.kind === "bound" ? (
-                        <Link2 className="-ml-6 size-4 text-muted-foreground" />
+                        <Link2 className="size-4 shrink-0 text-muted-foreground" />
                       ) : (
-                        <Unlink className="-ml-6 size-4 text-muted-foreground" />
+                        <Unlink className="size-4 shrink-0 text-muted-foreground" />
                       )}
                       {t(`devices.journal.${r.kind}`)}
                     </span>
@@ -164,12 +164,12 @@ function Stint({
         type="button"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className="flex items-baseline justify-between gap-3 rounded-md py-1.5 text-left hover:bg-muted/60"
+        className="flex items-center justify-between gap-3 rounded-md px-2 py-1.5 text-left hover:bg-muted/60"
       >
         <span className="flex min-w-0 items-center gap-2">
           <ChevronRight
             className={cn(
-              "size-4 shrink-0 self-center text-muted-foreground transition-transform",
+              "size-4 shrink-0 text-muted-foreground transition-transform",
               open && "rotate-90",
             )}
           />
@@ -183,12 +183,12 @@ function Stint({
         </span>
       </button>
       {stint.flagged > 0 && (
-        <p className="pl-6 text-xs text-warning">
+        <p className="pl-8 text-xs text-warning">
           {t("devices.journal.flagged", { n: stint.flagged })}
         </p>
       )}
       {open && (
-        <div className="pb-2 pl-2">
+        <div className="pb-2 pl-4">
           <JournalActions
             items={stint.entries.map((e, i) => ({
               key: `${e.at}-${i}`,
