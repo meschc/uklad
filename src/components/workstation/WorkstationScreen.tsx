@@ -92,12 +92,12 @@ export function WorkstationScreen() {
   useEffect(() => clearSignal(), [member?.id, station]);
 
   return (
-    // Оболочка как у кабинета (App.tsx): шапка на фоне меню, а рабочая область —
-    // окном в рамке со скруглёнными углами. На узком экране ТСД рамки нет:
-    // поля съели бы ширину, которой там и так мало, — шапку отделяет линия.
-    <div className="flex h-full flex-col bg-card">
+    // Шапка на тёмном внешнем фоне, рабочая область — светлым окном со
+    // скруглёнными углами, и на компьютере, и на телефоне (Кирилл 13.11):
+    // рамка-сигнал опоясывает окно снаружи, по тёмному полю.
+    <div className="flex h-full flex-col bg-muted">
       {/* Высота шапки постоянная: кнопки и таймеры не должны двигать экран. */}
-      <header className="grid h-14 shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:gap-4 border-border px-4 md:border-0">
+      <header className="grid h-14 shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:gap-4">
         <div className="flex min-w-0 items-center gap-3">
           {device ? (
             // Стол, привязанный к месту, в кабинет не уходит: вместо выхода —
@@ -189,18 +189,16 @@ export function WorkstationScreen() {
       <NetworkBanner />
       {/* Рамка рабочей области — сигнал скана (`scanSignal`): зелёная вспышка —
           принято, жёлтая держится, пока дело не доделано, красная — до верного
-          скана. Окно одно на компьютере и телефоне, на телефоне рамка тоньше.
-          Обводка внутрь и поверх содержимого: её не перекроет прокрученный
-          список. */}
+          скана. Обводка снаружи окна, по тёмному полю вокруг: её не перекроет
+          прокрученный список. */}
       <main
         className={cn(
-          "mx-2 mb-2 min-h-0 flex-1 overflow-y-auto rounded-2xl border border-border bg-background transition-[outline-color] duration-150",
-          signalLevel && "outline outline-2 -outline-offset-2 md:outline-4 md:-outline-offset-4",
-          signalLevel !== "ok" &&
-            signalLevel &&
-            "outline-[3px] -outline-offset-[3px] md:outline-[6px] md:-outline-offset-[6px]",
+          "mx-3 mb-3 min-h-0 flex-1 overflow-y-auto rounded-2xl border border-border bg-background transition-[outline-color] duration-150",
+          signalLevel && "outline outline-[6px] outline-offset-0",
           signalLevel === "ok" && "outline-success",
-          signalLevel === "warn" && "outline-warning",
+          // Жёлтый — из палитры меток: токен `warning` тёмно-оранжевый и рядом
+          // с красным почти не отличается.
+          signalLevel === "warn" && "outline-[hsl(var(--tag-market))]",
           signalLevel === "error" && "outline-destructive",
         )}
       >
@@ -237,7 +235,7 @@ export function WorkstationScreen() {
       {member && (
         // Нижняя панель телефона и ТСД: смена, перерыв и журнал — крупно и
         // под большой палец, чтобы работать одной рукой.
-        <nav className="flex shrink-0 items-center justify-center gap-2 border-t border-border bg-card px-2 py-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] md:hidden">
+        <nav className="flex shrink-0 items-center justify-center gap-2 px-2 pb-[max(0.375rem,env(safe-area-inset-bottom))] md:hidden">
           <ShiftBar staffId={member.id} onOpen={() => setPanel("shift")} />
           <button
             type="button"

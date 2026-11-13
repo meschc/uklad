@@ -31,7 +31,7 @@ export function Toast() {
 
   // На телефоне тост — над нижней панелью рабочего места, иначе он закрывает смену.
   return (
-    <div className="pointer-events-none fixed bottom-24 left-4 right-4 md:bottom-6 md:left-auto md:right-6 z-50 flex justify-end">
+    <div className="pointer-events-none fixed bottom-24 left-4 right-4 md:bottom-6 md:left-auto md:right-6 z-50 flex justify-center md:justify-end">
       {/*
         `key` по идентификатору тоста: следующий тост — это новый элемент, и
         появление проигрывается заново. Появление на анимации, а не на

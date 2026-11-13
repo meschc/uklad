@@ -114,6 +114,7 @@ export function ScanField({
             id="scan-input"
             ref={inputRef}
             data-scanner-target="1"
+            enterKeyHint="done"
             value={value}
             disabled={disabled}
             autoComplete="off"
@@ -148,9 +149,11 @@ export function ScanField({
           />
         </div>
         <CameraScanButton disabled={disabled} onCode={submit} />
+        {/* На телефоне кнопку не показываем: сканер и клавиатура жмут Enter,
+            а ширина нужна полю. */}
         <Button
           variant="outline"
-          className="h-11 shrink-0"
+          className="hidden h-11 shrink-0 md:inline-flex"
           disabled={disabled || !value.trim()}
           onClick={() => submit(value)}
         >
