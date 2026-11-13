@@ -32,6 +32,9 @@ export interface Box {
   /** Когда ярлык напечатали в последний раз и сколько раз. Нет — не печатали. */
   printedAt?: number;
   printCount?: number;
+  /** Инвентаризация: когда тару последний раз пересчитали и кто. */
+  countedAt?: number;
+  countedBy?: string;
 }
 
 /** Паллета: группа коробок под одним ярлыком. */
@@ -291,7 +294,8 @@ export interface FulfillmentRequest {
  * сотрудник подходит, прикладывает бейдж и работает. Сборка и размещение
  * остаются на ТСД — там человек ходит по складу, а не стоит у стола.
  */
-export type WorkstationKind = "pack" | "receiving" | "picking" | "marking" | "returns" | "shipping";
+export type WorkstationKind =
+  "pack" | "receiving" | "picking" | "marking" | "returns" | "shipping" | "inventory";
 
 /**
  * Отметка в журнале сотрудника. Журнал собирается из того, что человек и так

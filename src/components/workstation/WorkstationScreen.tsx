@@ -45,6 +45,7 @@ import { ShiftBar } from "./ShiftBar";
 import { PackStation } from "./PackStation";
 import { PrinterPanel } from "./PrinterPanel";
 import { ShipStation } from "./ShipStation";
+import { InventoryStation } from "./InventoryStation";
 import { StaffLog } from "./StaffLog";
 import { DisputesScreen } from "./DisputesScreen";
 import { formatTime, useNow } from "./useNow";
@@ -316,6 +317,8 @@ function StationTask({ station, staffId }: { station: WorkstationKind; staffId: 
       );
     case "shipping":
       return <ShipStation staffId={staffId} />;
+    case "inventory":
+      return <InventoryStation />;
     case "pack":
       return <PackStation staffId={staffId} />;
     default:

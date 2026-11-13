@@ -37,7 +37,8 @@ export type DeskOpKind =
   | "recv_close"
   | "ship_run"
   | "dispute_resolve"
-  | "recv_cargo";
+  | "recv_cargo"
+  | "inv_count";
 const KINDS: readonly DeskOpKind[] = [
   "shift_mark",
   "shift_undo",
@@ -53,6 +54,7 @@ const KINDS: readonly DeskOpKind[] = [
   "ship_run",
   "dispute_resolve",
   "recv_cargo",
+  "inv_count",
 ];
 export interface DeskOpBody {
   eventId: string;
@@ -318,6 +320,7 @@ async function sayFlagged(kinds: DeskOpKind[]) {
   const receiving = kinds.some((k) => k.startsWith("recv_"));
   const shipping = kinds.includes("ship_run");
   const deciding = kinds.includes("dispute_resolve");
+  const counting = kinds.includes("inv_count");
   useEditor
     .getState()
     .showToast(
@@ -331,7 +334,9 @@ async function sayFlagged(kinds: DeskOpKind[]) {
               ? "ws.opShipRejected"
               : deciding
                 ? "ws.opDisputeRejected"
-                : "ws.opRejected",
+                : counting
+                  ? "ws.opCountRejected"
+                  : "ws.opRejected",
     );
 }
 

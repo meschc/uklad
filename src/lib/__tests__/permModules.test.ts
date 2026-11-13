@@ -18,11 +18,11 @@ describe("права по модулям", () => {
   });
 
   it("неизвестное право не теряется — уходит в «Прочее»", () => {
-    const g = groupPermissions(["stock.view", "inventory.count", "chat.use"]);
+    const g = groupPermissions(["stock.view", "future.perm", "chat.use"]);
     expect(g.map((x) => [x.module?.id ?? null, x.codes])).toEqual([
       ["stock", ["stock.view"]],
       ["chat", ["chat.use"]],
-      [null, ["inventory.count"]],
+      [null, ["future.perm"]],
     ]);
   });
 });

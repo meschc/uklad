@@ -92,6 +92,7 @@ const STATION_RU: Record<WorkstationKind, string> = {
   marking: "Маркировка",
   returns: "Возвраты",
   shipping: "Отгрузка",
+  inventory: "Инвентаризация",
 };
 
 const byStationText = (b: StaffOutput["byStation"]) =>

@@ -9,12 +9,13 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 /** Места, у которых уже есть свой экран. Остальные видны в списке как «скоро». */
-const READY: WorkstationKind[] = ["pack", "receiving", "picking", "shipping"];
+const READY: WorkstationKind[] = ["pack", "receiving", "picking", "shipping", "inventory"];
 const STATIONS: WorkstationKind[] = [
   "pack",
   "receiving",
   "picking",
   "shipping",
+  "inventory",
   "marking",
   "returns",
 ];

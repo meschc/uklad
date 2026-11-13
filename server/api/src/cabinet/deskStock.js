@@ -8,6 +8,9 @@
  *
  *   ушло из тары (D) = принято новыми событиями приёмки − прирост в таре.
  *
+ * Прибавиться в таре без приёмки он может одним путём: старший оприходовал
+ * излишек инвентаризации (`adopted`, вычитается из правой части).
+ *
  * Товар уходит из тары только в работу: в собранное по заявкам (`pickedQty`),
  * в короб отгрузки, в списание недостачи (решение старшего) или снятием
  * размещения со склада. Поэтому, ровно:
@@ -160,7 +163,7 @@ function overageDisputes(shipments, events, known, boxes, existing) {
   }
   return out;
 }
-const WRITE_OFF = new Set(["shortage", "not_packable", "receive_overage"]);
+const WRITE_OFF = new Set(["shortage", "not_packable", "receive_overage", "inventory_short"]);
 
 /**
  * Свести остатки стола. `merged` — запись после остальных правил (заявки и
@@ -234,6 +237,15 @@ function mergeDeskStock(current, merged, people) {
       add(writtenOff, d.productId, num(d.qty));
     }
   }
+  // Излишек по инвентаризации, оприходованный старшим: товар в таре
+  // прибавился, и это единственный путь, на котором он появляется вне приёмки.
+  const adopted = new Map();
+  for (const d of list(merged.disputes)) {
+    const prev = wasOpen.get(d.id);
+    if (prev && !prev.resolution && d.resolution === "accepted" && d.kind === "inventory_over") {
+      add(adopted, d.productId, num(d.qty));
+    }
+  }
   const unplaced = new Map();
   for (const p of Object.keys(isObject(current.placements) ? current.placements : {})) {
     if (!(p in placements)) unplaced.set(p, 1);
@@ -245,6 +257,7 @@ function mergeDeskStock(current, merged, people) {
     ...received.keys(),
     ...picked.keys(),
     ...pickedToTote.keys(),
+    ...adopted.keys(),
   ]);
   const mismatch = [];
   for (const p of ids) {
@@ -254,7 +267,7 @@ function mergeDeskStock(current, merged, people) {
     // Ушедшее из коробов пришло ровно туда, куда могло: в короб отгрузки, в
     // собранное без тары, в списание старшим. Снятое с ячейки размещения в
     // коробах не лежало — его сборка в коробы не возвращает.
-    const want = o + pk + (writtenOff.get(p) ?? 0) - (unplaced.get(p) ?? 0);
+    const want = o + pk + (writtenOff.get(p) ?? 0) - (unplaced.get(p) ?? 0) - (adopted.get(p) ?? 0);
     const intoTote = (pickedToTote.get(p) ?? 0) > (toteGain.get(p) ?? 0) + Math.max(0, o);
     if (o < 0 || left !== want || intoTote) mismatch.push(p);
   }
