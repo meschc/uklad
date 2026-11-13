@@ -1,7 +1,15 @@
 import { useMemo, useState } from "react";
-import { Receipt } from "lucide-react";
+import { Plus, Receipt, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import type { ServiceUnit } from "@/lib/types";
 import { useEditor } from "@/lib/store";
-import { isServiceOn, operationLog, SERVICES, serviceReport } from "@/lib/operations";
+import {
+  allServices,
+  isCustomKind,
+  isServiceOn,
+  operationLog,
+  serviceReport,
+} from "@/lib/operations";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { cn, nowMs } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -12,6 +20,7 @@ import { EmptyState } from "./ScreenShell";
 import { useWithArchive } from "@/lib/store/archive";
 import { ArchiveNote } from "./ArchiveNote";
 import { ReportExport } from "./ReportExport";
+import { useServiceName } from "./useServiceName";
 import { LIMITS } from "@/lib/numberLimits";
 
 /**
@@ -28,10 +37,12 @@ const money = (n: number, lang: string) =>
 /** Какие операции склад оказывает и почём — по строке на услугу. */
 export function ServicesPanel() {
   const t = useT();
+  const svcName = useServiceName();
   const settings = useEditor((s) => s.serviceSettings);
   const setEnabled = useEditor((s) => s.setServiceEnabled);
   const setPrice = useEditor((s) => s.setServicePrice);
   const setTwoStage = useEditor((s) => s.setTwoStageReceiving);
+  const removeCustom = useEditor((s) => s.removeCustomService);
 
   return (
     <div className="flex flex-col gap-3">
@@ -52,7 +63,7 @@ export function ServicesPanel() {
       </label>
       <p className="text-sm text-muted-foreground">{t("ops.services.hint")}</p>
       <ul className={cn(card({ pad: "none" }), "divide-y divide-border")}>
-        {SERVICES.map((s) => {
+        {allServices(settings).map((s) => {
           const on = isServiceOn(settings, s.kind);
           const unit = t(`ops.unit.${s.unit}` as MsgKey);
           const price = settings.prices?.[s.kind];
@@ -66,7 +77,7 @@ export function ServicesPanel() {
                   onChange={(e) => setEnabled(s.kind, e.target.checked)}
                   className="size-4 accent-primary"
                 />
-                <span className="text-sm">{t(`ops.svc.${s.kind}` as MsgKey)}</span>
+                <span className="text-sm">{svcName(s.kind)}</span>
                 {s.auto && (
                   <span className="text-xs text-muted-foreground">{t("ops.services.auto")}</span>
                 )}
@@ -93,11 +104,79 @@ export function ServicesPanel() {
               <span className="w-24 whitespace-nowrap text-xs text-muted-foreground">
                 ₽ / {unit}
               </span>
+              {isCustomKind(s.kind) ? (
+                <Button
+                  size="icon-sm"
+                  variant="ghost"
+                  aria-label={t("ops.custom.remove")}
+                  title={t("ops.custom.remove")}
+                  onClick={() => isCustomKind(s.kind) && removeCustom(s.kind)}
+                >
+                  <Trash2 className="size-4" />
+                </Button>
+              ) : (
+                <span className="w-8" aria-hidden />
+              )}
             </li>
           );
         })}
       </ul>
+      <CustomServiceForm />
     </div>
+  );
+}
+
+const UNITS: ServiceUnit[] = ["unit", "order", "box", "pallet", "cell", "trip", "vehicle"];
+
+/**
+ * Своя услуга — название и единица (Кирилл 12 ноя: «это просто поле новое,
+ * которое потом можно добавить в задание»). Цена ставится в строке каталога,
+ * как у остальных: одно место для всех цен.
+ */
+function CustomServiceForm() {
+  const t = useT();
+  const add = useEditor((s) => s.addCustomService);
+  const [name, setName] = useState("");
+  const [unit, setUnit] = useState<ServiceUnit>("unit");
+  const ok = name.trim().length >= 2;
+  return (
+    <form
+      className="flex flex-col gap-2 pt-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!ok) return;
+        add(name, unit);
+        setName("");
+      }}
+    >
+      <h3 className="text-sm font-semibold">{t("ops.custom.title")}</h3>
+      <p className="text-xs text-muted-foreground">{t("ops.custom.hint")}</p>
+      <div className="flex flex-wrap items-center gap-2">
+        <Input
+          value={name}
+          maxLength={80}
+          onChange={(e) => setName(e.target.value)}
+          placeholder={t("ops.custom.name")}
+          aria-label={t("ops.custom.name")}
+          className="h-8 w-64"
+        />
+        <select
+          className={SELECT}
+          value={unit}
+          aria-label={t("ops.task.qty")}
+          onChange={(e) => setUnit(e.target.value as ServiceUnit)}
+        >
+          {UNITS.map((u) => (
+            <option key={u} value={u}>
+              {t(`ops.unit.${u}` as MsgKey)}
+            </option>
+          ))}
+        </select>
+        <Button type="submit" size="sm" disabled={!ok}>
+          <Plus /> {t("ops.custom.add")}
+        </Button>
+      </div>
+    </form>
   );
 }
 
@@ -107,6 +186,7 @@ const DAY = 24 * 60 * 60 * 1000;
 /** Отчёт по услугам за период — основа счёта продавцу. */
 export function ReportPanel() {
   const t = useT();
+  const svcName = useServiceName();
   const settings = useEditor((s) => s.serviceSettings);
   // Счёт за всё время — с архивом старше 45 дней (`store/archive.ts`).
   const tasks = useWithArchive("tasks");
@@ -153,7 +233,7 @@ export function ReportPanel() {
     };
   }, [log, settings, period, partnerId]);
   const repTable = useDataTable(report.rows, [
-    { id: "service", value: (r) => t(`ops.svc.${r.kind}` as MsgKey) },
+    { id: "service", value: (r) => svcName(r.kind) },
     { id: "qty", value: (r) => r.qty },
     { id: "price", value: (r) => r.price },
     { id: "sum", value: (r) => r.sum },
@@ -225,7 +305,7 @@ export function ReportPanel() {
             <tbody className="tabular-nums">
               {repTable.rows.map((r) => (
                 <tr key={r.kind} className="border-b border-border last:border-0">
-                  <td className="px-4 py-2">{t(`ops.svc.${r.kind}` as MsgKey)}</td>
+                  <td className="px-4 py-2">{svcName(r.kind)}</td>
                   <td className="px-4 py-2 text-right">{money(r.qty, t.lang)}</td>
                   <td className="hidden whitespace-nowrap px-4 py-2 text-right sm:table-cell">
                     {r.price == null

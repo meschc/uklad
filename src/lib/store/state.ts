@@ -35,7 +35,9 @@ import type {
   Pallet,
   ReceivingEvent,
   ReceivingProgress,
+  CustomServiceKind,
   ServiceKind,
+  ServiceUnit,
   ServiceSettings,
   TaskStatus,
   WarehouseTask,
@@ -852,6 +854,13 @@ export interface OperationsSlice {
   setTwoStageReceiving: (on: boolean) => void;
   /** Цена за единицу; `null` стирает цену. */
   setServicePrice: (kind: ServiceKind, price: number | null) => void;
+  /** Своя услуга склада. Возвращает её вид (`custom:…`). */
+  addCustomService: (name: string, unit: ServiceUnit) => CustomServiceKind;
+  /**
+   * Убрать свою услугу из каталога. Задания по ней остаются в истории — счёт
+   * за прошлый месяц не должен меняться от того, что услугу больше не продают.
+   */
+  removeCustomService: (kind: CustomServiceKind) => void;
 }
 
 export type EditorState = AccountSlice &

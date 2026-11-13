@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { isServiceOn, operationLog, serviceReport, taskKinds } from "../operations";
+import {
+  customServiceName,
+  isServiceOn,
+  myStaffId,
+  operationLog,
+  serviceReport,
+  taskKinds,
+} from "../operations";
 import type { OperationFacts } from "../operations";
 import type { ServiceSettings } from "../types";
 import { makeProduct } from "./fixtures";
@@ -275,5 +282,46 @@ describe("отгрузка местами", () => {
     const report = serviceReport(log, SETTINGS, ALL);
     expect(report.rows.map((r) => r.kind)).not.toContain("loading");
     expect(report.rows.map((r) => r.kind)).toContain("ship_box");
+  });
+});
+
+describe("свои услуги склада", () => {
+  const custom = {
+    enabled: {},
+    prices: { "custom:a": 40 },
+    custom: [{ kind: "custom:a" as const, name: "Вложение открытки", unit: "order" as const }],
+  };
+
+  it("попадают в задания и в отчёт со своей ценой", () => {
+    expect(taskKinds(custom)).toContain("custom:a");
+    expect(customServiceName(custom, "custom:a")).toBe("Вложение открытки");
+    const report = serviceReport(
+      [{ id: "1", kind: "custom:a", qty: 3, at: 10, source: "task" }],
+      custom,
+      { from: 0, to: 100 },
+    );
+    expect(report.rows).toEqual([{ kind: "custom:a", unit: "order", qty: 3, price: 40, sum: 120 }]);
+  });
+
+  it("убранная из каталога не идёт в счёт", () => {
+    const gone = { ...custom, custom: [] };
+    const report = serviceReport(
+      [{ id: "1", kind: "custom:a", qty: 3, at: 10, source: "task" }],
+      gone,
+      { from: 0, to: 100 },
+    );
+    expect(report.rows).toEqual([]);
+  });
+});
+
+describe("myStaffId", () => {
+  const staff = [
+    { id: "s1", name: "Игорь Панов", role: "", email: "Panov@uklad.ru" },
+    { id: "s2", name: "Анна Фролова", role: "" },
+  ];
+  it("находит вошедшего по почте, иначе по имени", () => {
+    expect(myStaffId(staff, { email: "panov@uklad.ru" })).toBe("s1");
+    expect(myStaffId(staff, { email: "x@y.ru", name: "Анна Фролова" })).toBe("s2");
+    expect(myStaffId(staff, { email: "x@y.ru" })).toBeUndefined();
   });
 });

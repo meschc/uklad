@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { FileDown, FileSpreadsheet } from "lucide-react";
 import { useEditor } from "@/lib/store";
+import { useServiceName } from "./useServiceName";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { downloadBook } from "@/lib/sheets";
 import { Button } from "@/components/ui/button";
@@ -41,7 +42,7 @@ export function ReportExport({
   const partners = new Map((warehouse.partners ?? []).map((p) => [p.id, p.name]));
   const period = `${from ? date(from) : "…"} — ${date(to)}`;
   const seller = partnerName ?? t("ops.report.allPartners");
-  const svc = (kind: string) => t(`ops.svc.${kind}` as MsgKey);
+  const svc = useServiceName();
   const unit = (u: string) => t(`ops.unit.${u}` as MsgKey);
   const money = (n: number) => n.toLocaleString(locale, { maximumFractionDigits: 2 });
 

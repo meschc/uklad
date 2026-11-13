@@ -4,10 +4,15 @@
  */
 
 export const ru = {
-  "ops.title": "Операции и услуги",
-  "ops.subtitle":
-    "Задания на операции, какие услуги оказывает склад и сколько их набралось для счёта",
-  "ops.tab.tasks": "Задания",
+  "ops.title": "Услуги и цены",
+  "ops.subtitle": "Какие услуги оказывает склад, почём и сколько их набралось для счёта",
+  "ops.svc.removed": "Услуга удалена",
+  "ops.custom.title": "Свои услуги",
+  "ops.custom.name": "Название услуги",
+  "ops.custom.add": "Добавить услугу",
+  "ops.custom.remove": "Убрать из каталога",
+  "ops.custom.hint":
+    "Чего нет в списке выше: фото на манекене, вложение открытки, сушка. Своя услуга выполняется заданием.",
   "ops.tab.services": "Услуги",
   "ops.tab.report": "Отчёт",
 
@@ -118,10 +123,15 @@ export const ru = {
 } as const;
 
 export const en: Record<keyof typeof ru, string> = {
-  "ops.title": "Operations and services",
-  "ops.subtitle":
-    "Operation tasks, which services the warehouse provides and how much has accrued for billing",
-  "ops.tab.tasks": "Tasks",
+  "ops.title": "Services and prices",
+  "ops.subtitle": "Which services the warehouse provides, at what price and how much has accrued",
+  "ops.svc.removed": "Service removed",
+  "ops.custom.title": "Custom services",
+  "ops.custom.name": "Service name",
+  "ops.custom.add": "Add service",
+  "ops.custom.remove": "Remove from catalog",
+  "ops.custom.hint":
+    "Anything not listed above: mannequin photos, gift cards, drying. A custom service is done as a task.",
   "ops.tab.services": "Services",
   "ops.tab.report": "Report",
 

@@ -7,10 +7,13 @@ import type {
   Pallet,
   Product,
   ReceivingEvent,
+  CustomService,
+  CustomServiceKind,
   ServiceKind,
   ServiceSettings,
   ServiceUnit,
   Shipment,
+  StaffMember,
   WarehouseTask,
 } from "./types";
 
@@ -56,20 +59,63 @@ export const SERVICES: ServiceSpec[] = [
   { kind: "photo", unit: "unit", auto: false, defaultOn: false },
 ];
 
-const SPEC = new Map(SERVICES.map((s) => [s.kind, s]));
+const SPEC = new Map<ServiceKind, ServiceSpec>(SERVICES.map((s) => [s.kind, s]));
 
-export function serviceSpec(kind: ServiceKind): ServiceSpec | undefined {
-  return SPEC.get(kind);
+export function isCustomKind(kind: ServiceKind): kind is CustomServiceKind {
+  return kind.startsWith("custom:");
+}
+
+/** Своя услуга как строка каталога: ручная, включена с момента добавления. */
+function customSpec(c: CustomService): ServiceSpec {
+  return { kind: c.kind, unit: c.unit, auto: false, defaultOn: true };
+}
+
+/** Весь каталог склада: встроенные услуги и свои — в конце. */
+export function allServices(settings?: ServiceSettings): ServiceSpec[] {
+  return [...SERVICES, ...(settings?.custom ?? []).map(customSpec)];
+}
+
+export function serviceSpec(
+  kind: ServiceKind,
+  settings?: ServiceSettings,
+): ServiceSpec | undefined {
+  const own = settings?.custom?.find((c) => c.kind === kind);
+  return own ? customSpec(own) : SPEC.get(kind);
+}
+
+/** Название своей услуги; у встроенной — `undefined`, подпись берётся из словаря. */
+export function customServiceName(
+  settings: ServiceSettings | undefined,
+  kind: ServiceKind,
+): string | undefined {
+  return isCustomKind(kind) ? settings?.custom?.find((c) => c.kind === kind)?.name : undefined;
 }
 
 /** Включена ли услуга у склада: явная настройка, иначе — значение по умолчанию. */
 export function isServiceOn(settings: ServiceSettings, kind: ServiceKind): boolean {
-  return settings.enabled?.[kind] ?? SPEC.get(kind)?.defaultOn ?? false;
+  return settings.enabled?.[kind] ?? serviceSpec(kind, settings)?.defaultOn ?? false;
 }
 
 /** Услуги, на которые можно завести задание: включённые и не авто. */
 export function taskKinds(settings: ServiceSettings): ServiceKind[] {
-  return SERVICES.filter((s) => !s.auto && isServiceOn(settings, s.kind)).map((s) => s.kind);
+  return allServices(settings)
+    .filter((s) => !s.auto && isServiceOn(settings, s.kind))
+    .map((s) => s.kind);
+}
+
+/**
+ * Кто из персонала склада — вошедший человек: по почте, иначе по имени.
+ * Пусто — вошедшего нет в списке персонала, «Взять себе» не показываем.
+ */
+export function myStaffId(
+  staff: StaffMember[] | undefined,
+  user: { email?: string; name?: string },
+): string | undefined {
+  const mail = user.email?.trim().toLowerCase();
+  const byMail = mail ? staff?.find((m) => m.email?.trim().toLowerCase() === mail) : undefined;
+  if (byMail) return byMail.id;
+  const name = user.name?.trim();
+  return name ? staff?.find((m) => m.name.trim() === name)?.id : undefined;
 }
 
 export interface OperationFacts {
@@ -220,7 +266,7 @@ export function serviceReport(
   const rows: ReportRow[] = [];
   let total = 0;
   let unpriced = false;
-  for (const s of SERVICES) {
+  for (const s of allServices(settings)) {
     const n = qty.get(s.kind) ?? 0;
     if (n === 0 || !isServiceOn(settings, s.kind)) continue;
     const price = settings.prices?.[s.kind] ?? null;
