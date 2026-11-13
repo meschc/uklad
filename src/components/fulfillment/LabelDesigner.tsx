@@ -182,6 +182,7 @@ export function LabelDesigner({
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Input
+            maxLength={3}
             value={draft.widthMm || ""}
             inputMode="numeric"
             onChange={(e) => setSide("widthMm", e.target.value)}
@@ -189,6 +190,7 @@ export function LabelDesigner({
           />
           <span className="text-xs text-muted-foreground">×</span>
           <Input
+            maxLength={3}
             value={draft.heightMm || ""}
             inputMode="numeric"
             onChange={(e) => setSide("heightMm", e.target.value)}

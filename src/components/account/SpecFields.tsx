@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { useDismiss } from "@/lib/useDismiss";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { card } from "@/components/ui/card";
+import { digitsFor, LIMITS, type LimitName } from "@/lib/numberLimits";
 
 /**
  * Кирпичики паспорта склада (п.1). Вынесены из экрана: экран отвечает за то,
@@ -126,20 +127,37 @@ export function ShowcaseEye({ shown, onToggle }: EyeProps) {
 
 // --- Значения -----------------------------------------------------------------
 
-/** Крупное число с единицей измерения. Единица — подпись, а не часть значения. */
+/**
+ * Крупное число с единицей измерения. Единица — подпись, а не часть значения.
+ *
+ * Предел — по смыслу поля (`range`, см. lib/numberLimits): длиннее предела
+ * набрать нельзя, а вышедшее за него при сохранении прижимается к границе.
+ * Enter сохраняет, Escape отменяет набранное и возвращает прежнее значение.
+ */
 export function StatValue({
   value,
   unit,
   readOnly,
+  range = "count",
   onCommit,
 }: {
   value?: number;
   unit?: string;
   readOnly: boolean;
+  range?: LimitName;
   onCommit: (v: number | undefined) => void;
 }) {
   const t = useT();
-  const [v, setV] = useState(value != null ? String(value) : "");
+  const shown = value != null ? String(value) : "";
+  const [v, setV] = useState(shown);
+  const { min, max } = LIMITS[range];
+  const commit = () => {
+    if (!v.trim()) return onCommit(undefined);
+    const n = Math.min(max, Math.max(min, Number(v)));
+    if (Number.isNaN(n)) return setV(shown);
+    setV(String(n));
+    onCommit(n);
+  };
 
   if (readOnly) {
     return (
@@ -162,9 +180,20 @@ export function StatValue({
       <input
         value={v}
         inputMode="decimal"
+        // Знаков предела плюс дробная часть: «4.25» в поле высоты.
+        maxLength={digitsFor(range) + 3}
         placeholder={t("spec.notSet")}
+        title={t("spec.range", { min, max })}
         onChange={(e) => setV(e.target.value.replace(/[^\d.]/g, ""))}
-        onBlur={() => onCommit(v.trim() ? Number(v) : undefined)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") e.currentTarget.blur();
+          if (e.key === "Escape") {
+            setV(shown);
+            // Значение возвращаем до потери фокуса, чтобы blur сохранил прежнее.
+            requestAnimationFrame(() => e.currentTarget?.blur());
+          }
+        }}
         className={cn(GHOST, "text-lg font-semibold leading-tight tabular-nums")}
       />
       {unit && <span className="shrink-0 text-xs text-muted-foreground">{unit}</span>}
@@ -347,6 +376,7 @@ export function RangeValue({
 
   const field = (val: string, set: (s: string) => void): React.ReactNode => (
     <input
+      maxLength={6}
       value={val}
       inputMode="decimal"
       onChange={(e) => set(e.target.value.replace(/[^\d.-]/g, ""))}

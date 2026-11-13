@@ -1,5 +1,7 @@
 import { useWarehouseProducts } from "@/lib/warehouseProducts";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useEditor } from "@/lib/store";
 import { useOwnPrint } from "@/lib/printOwner";
 import { buildPickDocFromProducts } from "@/lib/documents";
@@ -14,8 +16,11 @@ import { Modal } from "@/components/fulfillment/Modal";
  * переживёт переход только вместе с собой — то есть никак. Кладовщик отметил,
  * посмотрел, напечатал и вернулся к тем же отмеченным строкам.
  *
- * Документ здесь только показывают и печатают: сохранять его некуда — на складе
- * лист сборки существует на бумаге, а не в списке файлов.
+ * Документ здесь не сохраняется — на складе лист сборки существует на бумаге,
+ * а не в списке файлов. Но шапку перед печатью заполнить можно (Кирилл 12 ноя:
+ * «в листе сборки нет возможности редактирования полей назначения»):
+ * назначение, ответственный и комментарий сразу видны в предпросмотре и уходят
+ * на печать.
  */
 
 /** Масштаб предпросмотра: A4 шириной 210 мм в колонку диалога не влезает. */
@@ -32,9 +37,24 @@ export function PickListDialog({ ids, onClose }: { ids: string[]; onClose: () =>
   // Считаем один раз на набор: дату документа берёт сам сборщик документа, и
   // пересчёт на каждый рендер менял бы её под руками — предпросмотр и
   // распечатка разъехались бы номерами.
-  const doc = useMemo(
+  const base = useMemo(
     () => buildPickDocFromProducts(ids, products, warehouse, placements, boxes),
     [ids, products, warehouse, placements, boxes],
+  );
+  const [counterparty, setCounterparty] = useState("");
+  const [responsible, setResponsible] = useState("");
+  const [comment, setComment] = useState("");
+  const doc = {
+    ...base,
+    counterparty: counterparty.trim() || undefined,
+    responsible: responsible.trim() || undefined,
+    comment: comment.trim() || undefined,
+  };
+  const field = (id: string, label: string, value: string, set: (v: string) => void) => (
+    <div className="flex flex-col gap-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      <Input id={id} value={value} maxLength={120} onChange={(e) => set(e.target.value)} />
+    </div>
   );
 
   return (
@@ -49,7 +69,14 @@ export function PickListDialog({ ids, onClose }: { ids: string[]; onClose: () =>
         submitLabel={t("doc.print")}
       >
         <style>{`@page { size: A4 portrait; margin: 0; }`}</style>
-        <div className="overflow-auto rounded-lg border border-border bg-muted/40 p-3 scrollbar-thin">
+        <div className="grid gap-3 sm:grid-cols-2">
+          {field("pick-to", t("doc.counterparty"), counterparty, setCounterparty)}
+          {field("pick-resp", t("doc.responsible"), responsible, setResponsible)}
+          <div className="sm:col-span-2">
+            {field("pick-comment", t("doc.comment"), comment, setComment)}
+          </div>
+        </div>
+        <div className="overflow-auto rounded-lg bg-muted/40 p-3 scrollbar-thin">
           <div
             style={{
               width: `calc(210mm * ${PREVIEW_SCALE})`,

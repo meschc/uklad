@@ -213,8 +213,10 @@ export const ru = {
   // Управление складами (§3.4) + общие действия
   "common.create": "Создать",
   "common.save": "Сохранить",
+  "common.undo": "Отменить",
   "common.cancel": "Отмена",
   "common.search": "Поиск",
+  "common.filterAll": "{col}: все",
   "common.delete": "Удалить",
   "common.edit": "Редактировать",
   "common.ok": "Понятно",
@@ -515,8 +517,10 @@ export const en: Record<keyof typeof ru, string> = {
   // Warehouse management (§3.4) + common actions
   "common.create": "Create",
   "common.save": "Save",
+  "common.undo": "Undo",
   "common.cancel": "Cancel",
   "common.search": "Search",
+  "common.filterAll": "{col}: all",
   "common.delete": "Delete",
   "common.edit": "Edit",
   "common.ok": "Got it",

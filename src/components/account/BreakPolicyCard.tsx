@@ -3,6 +3,7 @@ import type { BreakPolicy } from "@/lib/types";
 import { useT } from "@/lib/i18n";
 import { Input } from "@/components/ui/input";
 import { TimeSelect } from "./TimeSelect";
+import { LIMITS } from "@/lib/numberLimits";
 
 const DAY = 24 * 60;
 
@@ -19,6 +20,7 @@ export function BreakPolicyCard() {
 
   const num = (key: keyof BreakPolicy) => (
     <Input
+      max={LIMITS.minutes.max}
       key={`${key}-${policy[key]}`}
       type="number"
       inputMode="numeric"

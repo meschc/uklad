@@ -4,6 +4,7 @@ import App from "./App";
 import { embedView, isEmbed, parseDeepLink } from "./lib/appViews";
 import { useEditor } from "./lib/store";
 import { describeError, journal } from "./lib/support/journal";
+import { installNumberLimits } from "./lib/numberLimits";
 import "./index.css";
 // Печать плана и наклеек — только в бандле приложения: правило прячет всё,
 // кроме `.print-root`, и на витрине оставляло бы пустые листы. Порядок важен:
@@ -15,6 +16,9 @@ import "./print.css";
 // тот экран, на котором остановился в прошлый раз, и только потом его
 // подменяет ссылка. Роль идёт первой — она сама уводит на «свой» стартовый
 // экран, и порядок наоборот затёр бы то, что просили открыть.
+// Пределы чисел для всех полей кабинета разом (см. lib/numberLimits).
+installNumberLimits();
+
 const link = parseDeepLink(window.location.search);
 if (link.role) useEditor.getState().setRole(link.role);
 if (link.view) useEditor.getState().goToView(link.view);

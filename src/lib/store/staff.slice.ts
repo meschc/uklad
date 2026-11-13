@@ -128,6 +128,15 @@ export const createStaffSlice: SliceCreator<StaffSlice> = (set) => ({
       warehouse: patchPartners(s.warehouse, (list) => list.filter((p) => p.id !== id)),
     })),
 
+  restorePartner: (partner, index) =>
+    set((s) => ({
+      warehouse: patchPartners(s.warehouse, (list) =>
+        list.some((p) => p.id === partner.id)
+          ? list
+          : [...list.slice(0, index), partner, ...list.slice(index)],
+      ),
+    })),
+
   updateWarehouseContacts: (id, patch) =>
     set((s) => {
       const apply = (w: Warehouse): Warehouse => ({

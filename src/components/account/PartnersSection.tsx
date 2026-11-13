@@ -1,13 +1,14 @@
 import { useWarehouseProducts } from "@/lib/warehouseProducts";
 import { useState } from "react";
-import { Plus, Store, Trash2 } from "lucide-react";
+import { ChevronRight, Plus, Store } from "lucide-react";
 import { useEditor } from "@/lib/store";
-import { formatPhone } from "@/lib/phone";
+import { formatPhone, PHONE_MAX_LENGTH } from "@/lib/phone";
 import { useT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { EmailInput } from "./EmailInput";
+import { PartnerCard } from "./PartnerCard";
 
 /** Почта латиницей: имя, «@», домен с точкой — без пробелов и кириллицы. */
 const EMAIL_RE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
@@ -22,8 +23,7 @@ type Draft = { name: string; contact: string; person: string; phone: string };
 export function PartnersSection() {
   const partners = useEditor((s) => s.warehouse.partners);
   const addPartner = useEditor((s) => s.addPartner);
-  const updatePartner = useEditor((s) => s.updatePartner);
-  const removePartner = useEditor((s) => s.removePartner);
+  const [openId, setOpenId] = useState<string | null>(null);
   const products = useWarehouseProducts();
   const t = useT();
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -34,6 +34,7 @@ export function PartnersSection() {
   const emailErr = !EMAIL_RE.test(draft?.contact.trim() ?? "");
 
   const list = partners ?? [];
+  const open = list.find((p) => p.id === openId) ?? null;
 
   return (
     <section className="flex flex-col gap-3">
@@ -81,6 +82,7 @@ export function PartnersSection() {
             <Input
               value={draft.phone}
               inputMode="tel"
+              maxLength={PHONE_MAX_LENGTH}
               onChange={(e) => setDraft({ ...draft, phone: formatPhone(e.target.value) })}
               placeholder="+7 900 000-00-00"
               className="h-9"
@@ -128,46 +130,32 @@ export function PartnersSection() {
         <p className="text-xs text-muted-foreground">{t("partners.empty")}</p>
       ) : (
         <div className="flex flex-col divide-y divide-border/60">
+          {/* Строки — для чтения, правка в карточке партнёра (Кирилл 12 ноя).
+              Без полей и рамок в строке: контакт и телефон рядом — «кому
+              звонить» читается одним взглядом. */}
           {list.map((p) => {
             const n = products.filter((x) => x.partnerId === p.id).length;
             return (
-              <div key={p.id} className="group flex items-center gap-2 py-1.5">
-                <Input
-                  value={p.name}
-                  onChange={(e) => updatePartner(p.id, { name: e.target.value })}
-                  className="h-8 flex-1"
-                />
-                <Input
-                  value={p.person ?? ""}
-                  onChange={(e) => updatePartner(p.id, { person: e.target.value })}
-                  placeholder={t("partners.personPlaceholder")}
-                  className="h-8 flex-1"
-                />
-                <span className="w-48 shrink-0 truncate text-sm text-muted-foreground">
-                  {p.contact || "—"}
-                </span>
-                <Input
-                  value={p.phone ?? ""}
-                  inputMode="tel"
-                  onChange={(e) => updatePartner(p.id, { phone: formatPhone(e.target.value) })}
-                  placeholder="+7 900 000-00-00"
-                  className="h-8 w-40 shrink-0"
-                />
-                <span className="w-24 shrink-0 text-right text-xs text-muted-foreground">
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setOpenId(p.id)}
+                className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_9rem_6rem_1rem] items-center gap-3 rounded-md px-2 py-2 text-left text-sm transition-colors duration-fast hover:bg-muted/60"
+              >
+                <span className="truncate font-medium">{p.name}</span>
+                <span className="truncate text-muted-foreground">{p.contact || "—"}</span>
+                <span className="truncate">{p.person || "—"}</span>
+                <span className="truncate tabular-nums">{p.phone || "—"}</span>
+                <span className="text-right text-xs text-muted-foreground">
                   {t("partners.goods", { n })}
                 </span>
-                <button
-                  onClick={() => removePartner(p.id)}
-                  title={t("partners.remove")}
-                  className="flex size-7 shrink-0 items-center justify-center rounded text-muted-foreground opacity-0 transition hover:text-destructive group-hover:opacity-100"
-                >
-                  <Trash2 className="size-3.5" />
-                </button>
-              </div>
+                <ChevronRight className="size-4 text-muted-foreground" />
+              </button>
             );
           })}
         </div>
       )}
+      {open && <PartnerCard partner={open} onClose={() => setOpenId(null)} />}
     </section>
   );
 }

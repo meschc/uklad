@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { Row } from "./fields";
 import { RowSidedControl } from "./RowSidedControl";
+import { LIMITS } from "@/lib/numberLimits";
 
 /**
  * Адрес секции: этаж, ряд, номер. Показываем ДЕЙСТВУЮЩИЙ номер — свой, если
@@ -66,6 +67,7 @@ export function SectionNumber({
         <>
           <Row label={t("insp.rowNo")}>
             <Input
+              max={LIMITS.small.max}
               type="number"
               min={1}
               className={cn("h-7 w-16 text-right", rowPinned && "border-primary/50")}
@@ -96,6 +98,7 @@ export function SectionNumber({
 
       <Row label={t("insp.number")}>
         <Input
+          max={LIMITS.small.max}
           type="number"
           min={1}
           className={cn("h-7 w-16 text-right", duplicate && "border-destructive")}

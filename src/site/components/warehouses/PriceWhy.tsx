@@ -51,7 +51,7 @@ export function PriceSheet({ onClose }: { onClose: () => void }) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="price-sheet-title"
-        className="absolute inset-x-0 bottom-0 flex max-h-[90vh] animate-slide-up flex-col rounded-t-[22px] bg-[var(--wh-ground)] text-[var(--wh-ink)] shadow-2xl sm:inset-y-0 sm:left-auto sm:right-0 sm:max-h-none sm:w-[min(600px,100vw)] sm:animate-slide-in-right sm:rounded-none sm:rounded-l-[22px]"
+        className="absolute inset-x-0 bottom-0 flex max-h-[90vh] animate-slide-up flex-col rounded-t-[22px] bg-[var(--wh-ground)] text-[var(--wh-ink)] shadow-2xl sm:inset-y-0 sm:left-auto sm:right-0 sm:max-h-none sm:w-[min(600px,100vw)] sm:animate-slide-in-right sm:rounded-none"
       >
         <span
           aria-hidden

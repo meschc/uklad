@@ -2,6 +2,7 @@ import { cn } from "@/lib/utils";
 import { useT } from "../../lib/copy";
 import { VOLUME_FIELDS } from "../../lib/volume";
 import type { SellerVolume } from "../../lib/estimate";
+import { digitsFor } from "@/lib/numberLimits";
 
 /**
  * Четыре числа оборота — одни и те же в расчёте и в заявке.
@@ -51,6 +52,7 @@ export function VolumeFields({
             {t(f.label)}
           </label>
           <input
+            maxLength={digitsFor("count")}
             id={`${idPrefix}-${f.key}`}
             // Не type="number": колесо мыши над таким полем меняет число, и
             // селлер, прокручивая витрину, незаметно правит свой же расчёт.

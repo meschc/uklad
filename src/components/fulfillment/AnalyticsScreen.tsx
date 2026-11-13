@@ -165,11 +165,14 @@ export function AnalyticsScreen() {
               <Donut
                 centerValue={requests.length}
                 centerLabel={t("an.total")}
+                // Цвета статусов — только токены ДС (Кирилл 12 ноя): новая —
+                // warning, в работе — primary, собрана — success, отгружена —
+                // фиолетовая метка палитры, отменена — приглушённый текст.
                 segments={[
                   {
                     label: t("req.status.new"),
                     value: req.new,
-                    color: "hsl(38 92% 55%)",
+                    color: "hsl(var(--warning))",
                   },
                   {
                     label: t("req.status.in_progress"),
@@ -179,12 +182,12 @@ export function AnalyticsScreen() {
                   {
                     label: t("req.status.done"),
                     value: req.done,
-                    color: "hsl(152 60% 45%)",
+                    color: "hsl(var(--success))",
                   },
                   {
                     label: t("req.status.shipped"),
                     value: req.shipped,
-                    color: "hsl(200 80% 50%)",
+                    color: "hsl(var(--tag-staff))",
                   },
                   {
                     label: t("req.status.cancelled"),

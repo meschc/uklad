@@ -21,6 +21,7 @@ import { ScanField, type ScanStatus } from "./ScanField";
 import { ScreenShell, EmptyState } from "./ScreenShell";
 import { printLabels } from "@/lib/printLabels";
 import { LabelPrint } from "./LabelPrint";
+import { LookupBrowser } from "./LookupBrowser";
 
 /**
  * «Что это?» — справка по любому коду склада (п.4).
@@ -94,6 +95,7 @@ export function LookupScreen() {
           <p className="text-sm text-muted-foreground">{t("lookup.subtitle")}</p>
         </div>
         {field}
+        <LookupBrowser onCode={onScan} />
       </div>
     );
 
@@ -117,6 +119,7 @@ export function LookupScreen() {
       )}
 
       <ResultCard result={result} t={t} />
+      <LookupBrowser onCode={onScan} />
     </ScreenShell>
   );
 }

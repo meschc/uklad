@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Row } from "./fields";
 import { RowSidedControl } from "./RowSidedControl";
+import { LIMITS } from "@/lib/numberLimits";
 
 /**
  * Свойства РЯДА — обычная панель характеристик (как у секции), без особого
@@ -30,6 +31,7 @@ export function RowInspector({ row, floor, t }: { row: number; floor: Floor; t: 
     <div className="flex flex-col gap-3">
       <Row label={t("insp.rowNo")}>
         <Input
+          max={LIMITS.small.max}
           type="number"
           min={1}
           value={value}

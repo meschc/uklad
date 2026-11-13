@@ -1,76 +1,109 @@
+import { useState } from "react";
 import { createPortal } from "react-dom";
-import { Download, X } from "lucide-react";
+import { Printer, X } from "lucide-react";
 import { isValidEan13, toEan13 } from "@/lib/barcode";
-import { QR_QUIET_ZONE, qrMatrix } from "@/lib/qr";
+import { useEditor } from "@/lib/store";
 import { useT } from "@/lib/i18n";
-import { DialogHeader, DialogShell } from "@/components/ui/dialog-shell";
+import { printLabels } from "@/lib/printLabels";
+import type { LabelTemplate, Product } from "@/lib/types";
+import { DialogFooter, DialogHeader, DialogShell } from "@/components/ui/dialog-shell";
 import { Button } from "@/components/ui/button";
-import { QrSvg } from "./QrSvg";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { LabelCard } from "@/components/fulfillment/LabelCard";
+import { LabelPrint } from "@/components/fulfillment/LabelPrint";
+import { FitToWidth } from "@/components/fulfillment/FitToWidth";
+
+/** Сколько ярлыков товара можно отправить на печать за раз. */
+const MAX_COPIES = 500;
 
 /**
- * Модальное окно кода товара с экспортом в PNG (белый фон). В QR уходит тот же
- * EAN-13, что и в карточке товара: номер остаётся стандартным GS1, меняется
- * только носитель — печатаем и клеим мы уже один тип кода на весь склад (п.5).
+ * Ярлык товара из таблицы — печать, а не картинка (Кирилл 12 ноя: «странно
+ * что штрихкод, а по факту QR; тогда не скачать PNG, а напечатать, и шаблон
+ * такой же, как на странице ярлыков»).
  *
- * Рисуем на canvas прямо из матрицы модулей — растеризация не зависит от SVG и
- * всегда даёт чёткий PNG без «мыла» на границах модулей.
+ * Шаблон — первый сохранённый на странице «Ярлыки», то есть тот же, по которому
+ * склад печатает товар оттуда. Код на ярлыке товара — всегда штрихкод EAN-13:
+ * это номер из каталога, его читает и наш сканер, и сканер маркетплейса.
+ * Порядкового номера «1/12» у товара нет — это не тара.
  */
-export function BarcodeModal({ code, onClose }: { code: string; onClose: () => void }) {
-  const t = useT();
-  const normalized = isValidEan13(code) ? code : toEan13(code);
+const FALLBACK: LabelTemplate = {
+  id: "product-default",
+  name: "",
+  widthMm: 58,
+  heightMm: 40,
+  layout: "horizontal",
+  codeType: "barcode",
+  elements: ["title", "code"],
+  codeScale: 0.6,
+  createdAt: 0,
+};
 
-  const exportPng = () => {
-    const matrix = qrMatrix(normalized);
-    const scale = 8;
-    const span = matrix.length + QR_QUIET_ZONE * 2;
-    const textH = 34;
-    const w = span * scale;
-    const h = w + textH;
-    const canvas = document.createElement("canvas");
-    canvas.width = w;
-    canvas.height = h;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    ctx.fillStyle = "#fff";
-    ctx.fillRect(0, 0, w, h);
-    ctx.fillStyle = "#000";
-    for (let r = 0; r < matrix.length; r++) {
-      for (let c = 0; c < matrix[r].length; c++) {
-        if (!matrix[r][c]) continue;
-        ctx.fillRect((c + QR_QUIET_ZONE) * scale, (r + QR_QUIET_ZONE) * scale, scale, scale);
-      }
-    }
-    ctx.font = `${textH - 12}px monospace`;
-    ctx.textAlign = "center";
-    ctx.fillText(normalized, w / 2, h - 8);
-    canvas.toBlob((blob) => {
-      if (!blob) return;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `qr-${normalized}.png`;
-      a.click();
-      URL.revokeObjectURL(url);
-    });
+export function BarcodeModal({ product, onClose }: { product: Product; onClose: () => void }) {
+  const t = useT();
+  const templates = useEditor((s) => s.labelTemplates);
+  const warehouseName = useEditor((s) => s.warehouse.name);
+  const [copies, setCopies] = useState(1);
+  const code = isValidEan13(product.barcode) ? product.barcode : toEan13(product.barcode);
+  const base = templates[0] ?? FALLBACK;
+  const tpl: LabelTemplate = {
+    ...base,
+    codeType: "barcode",
+    elements: base.elements.filter((e) => e !== "seq"),
   };
+  const n = Math.max(1, Math.min(MAX_COPIES, Math.round(copies) || 1));
 
   return createPortal(
-    <DialogShell size="sm" onClose={onClose}>
+    <DialogShell size="md" onClose={onClose}>
       <DialogHeader>
         <p className="text-sm font-semibold">{t("barcode.title")}</p>
-        <Button variant="ghost" size="icon-sm" onClick={onClose}>
+        <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label={t("support.close")}>
           <X className="size-4" />
         </Button>
       </DialogHeader>
-      <div className="flex flex-col items-center gap-4 px-5 py-5">
-        <div className="w-full rounded-md border border-border bg-white p-4">
-          <QrSvg code={normalized} size={180} className="w-full" />
+      <div className="flex flex-col gap-4 px-5 py-5">
+        <FitToWidth widthMm={tpl.widthMm} heightMm={tpl.heightMm}>
+          <LabelCard
+            tpl={tpl}
+            code={code}
+            kind="custom"
+            headline={product.name}
+            warehouseName={warehouseName}
+            index={1}
+            total={n}
+          />
+        </FitToWidth>
+        <p className="text-xs text-muted-foreground">
+          {t("barcode.template", { name: base.name || `${tpl.widthMm}×${tpl.heightMm}` })}
+        </p>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="barcode-copies">{t("barcode.copies")}</Label>
+          <Input
+            id="barcode-copies"
+            type="number"
+            min={1}
+            max={MAX_COPIES}
+            value={copies}
+            onChange={(e) => setCopies(+e.target.value)}
+            className="w-28 text-right tabular-nums"
+          />
         </div>
-        <Button size="sm" className="w-full" onClick={exportPng}>
-          <Download className="size-4" />
-          {t("barcode.exportPng")}
-        </Button>
       </div>
+      <DialogFooter>
+        <Button variant="ghost" onClick={onClose}>
+          {t("common.cancel")}
+        </Button>
+        <Button onClick={() => printLabels()}>
+          <Printer className="size-4" />
+          {t("labels.printN", { n })}
+        </Button>
+      </DialogFooter>
+      <LabelPrint
+        tpl={tpl}
+        items={Array.from({ length: n }, () => ({ code, headline: product.name }))}
+        kind="custom"
+        warehouseName={warehouseName}
+      />
     </DialogShell>,
     document.body,
   );

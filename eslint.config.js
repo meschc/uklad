@@ -120,6 +120,26 @@ export default tseslint.config(
           message: "Свой набор кнопок-табов. Переключатель — только ui/segmented.",
         },
         {
+          // Пределы чисел (Кирилл 12 ноя: «уже не в первый раз»): числовое
+          // поле без предела принимает 34223413242134 камер. Предел — из
+          // lib/numberLimits (`{...limit("small")}`) или явный `max`.
+          selector:
+            'JSXOpeningElement[name.name=/^(input|Input)$/]:has(JSXAttribute[name.name="type"][value.value="number"]):not(:has(JSXAttribute[name.name="max"])):not(:has(JSXSpreadAttribute))',
+          message:
+            'Числовое поле без предела. Добавьте {...limit("…")} из lib/numberLimits или max.',
+        },
+        {
+          selector:
+            'JSXOpeningElement[name.name=/^(input|Input)$/]:has(JSXAttribute[name.name="inputMode"][value.value=/^(numeric|decimal)$/]):not(:has(JSXAttribute[name.name=/^(max|maxLength)$/])):not(:has(JSXSpreadAttribute))',
+          message:
+            "Числовое текстовое поле без maxLength. Возьмите digitsFor(…) из lib/numberLimits.",
+        },
+        {
+          selector:
+            'JSXOpeningElement[name.name=/^(input|Input)$/]:matches(:has(JSXAttribute[name.name=/^(type|inputMode)$/][value.value="tel"]), :has(CallExpression[callee.name="formatPhone"])):not(:has(JSXAttribute[name.name="maxLength"]))',
+          message: "Телефон без maxLength. Возьмите PHONE_MAX_LENGTH из lib/phone.",
+        },
+        {
           selector: 'MemberExpression[object.name="localStorage"]',
           message:
             "localStorage напрямую. Настройки устройства — readLocal/writeLocal (lib/safeStorage), данные — через репозиторий.",

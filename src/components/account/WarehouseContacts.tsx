@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Check } from "lucide-react";
 import { useEditor } from "@/lib/store";
-import { formatPhone } from "@/lib/phone";
+import { formatPhone, PHONE_MAX_LENGTH } from "@/lib/phone";
 import { useT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +34,7 @@ export function WarehouseContacts() {
       <div className="flex flex-wrap items-start gap-3">
         <Input
           value={c.phone}
+          maxLength={PHONE_MAX_LENGTH}
           onChange={(e) => setC({ ...c, phone: formatPhone(e.target.value) })}
           placeholder="+7 495 000-00-00"
           aria-label={t("staff.phone")}

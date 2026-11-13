@@ -10,6 +10,7 @@ import { TemplateLibrary } from "./TemplateLibrary";
 import { AddressingButton } from "./AddressingDialog";
 import { PanelSection } from "./PanelSection";
 import { LayersTree } from "./LayersTree";
+import { LIMITS } from "@/lib/numberLimits";
 
 export function StructurePanel() {
   const floor = useEditor((s) => s.activeFloor());
@@ -305,6 +306,7 @@ function FloorNumberInput({
   };
   return (
     <input
+      max={LIMITS.small.max}
       ref={inputRef}
       type="number"
       min={1}

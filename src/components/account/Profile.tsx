@@ -315,7 +315,7 @@ export function Profile() {
                   <ImagePicker
                     value={account.avatar}
                     fallback={
-                      <span className="flex size-10 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                      <span className="flex size-9 items-center justify-center rounded-lg bg-muted text-muted-foreground">
                         <User className="size-5" />
                       </span>
                     }
@@ -417,7 +417,7 @@ export function Profile() {
                     <ImagePicker
                       value={account.orgLogo}
                       fallback={
-                        <span className="flex size-10 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                        <span className="flex size-9 items-center justify-center rounded-lg bg-muted text-muted-foreground">
                           <Building2 className="size-5" />
                         </span>
                       }

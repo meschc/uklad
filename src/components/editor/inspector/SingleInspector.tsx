@@ -14,6 +14,7 @@ import { AssignRow } from "./AssignRow";
 import { Row, Stepper } from "./fields";
 import { SectionNumber } from "./SectionNumber";
 import { ShelfEditor } from "./ShelfEditor";
+import { LIMITS } from "@/lib/numberLimits";
 
 /** Панель одного выделенного модуля: тип, размер, адрес, полки, позиция. */
 export function SingleInspector({ module: m, t }: { module: PlacedModule; t: TFunc }) {
@@ -89,6 +90,7 @@ export function SingleInspector({ module: m, t }: { module: PlacedModule; t: TFu
       <div className="flex flex-col gap-2.5">
         <Row label={t("insp.xCell")}>
           <Input
+            max={LIMITS.small.max}
             type="number"
             className="h-7 w-16 text-right"
             value={m.x}
@@ -97,6 +99,7 @@ export function SingleInspector({ module: m, t }: { module: PlacedModule; t: TFu
         </Row>
         <Row label={t("insp.yCell")}>
           <Input
+            max={LIMITS.small.max}
             type="number"
             className="h-7 w-16 text-right"
             value={m.y}
@@ -121,6 +124,7 @@ export function SingleInspector({ module: m, t }: { module: PlacedModule; t: TFu
         </div>
         <Row label={t("insp.width")}>
           <Input
+            max={LIMITS.size.max}
             type="number"
             className="h-7 w-20 text-right"
             value={m.realWidthCm ?? ""}
@@ -129,6 +133,7 @@ export function SingleInspector({ module: m, t }: { module: PlacedModule; t: TFu
         </Row>
         <Row label={t("insp.depth")}>
           <Input
+            max={LIMITS.size.max}
             type="number"
             className="h-7 w-20 text-right"
             value={m.realDepthCm ?? ""}
@@ -138,6 +143,7 @@ export function SingleInspector({ module: m, t }: { module: PlacedModule; t: TFu
         {m.type === "section" && (
           <Row label={t("insp.height")}>
             <Input
+              max={LIMITS.size.max}
               type="number"
               className="h-7 w-20 text-right"
               value={m.realHeightCm ?? ""}

@@ -31,7 +31,7 @@ export function SidePanel({
         role="dialog"
         aria-modal="true"
         aria-label={label}
-        className="wh absolute inset-y-0 right-0 flex w-full animate-slide-in-right flex-col bg-[var(--wh-ground)] text-[var(--wh-ink)] shadow-2xl sm:w-[min(560px,100vw)] sm:rounded-l-[22px]"
+        className="wh absolute inset-y-0 right-0 flex w-full animate-slide-in-right flex-col bg-[var(--wh-ground)] text-[var(--wh-ink)] shadow-2xl sm:w-[min(560px,100vw)]"
       >
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">{children}</div>
       </div>

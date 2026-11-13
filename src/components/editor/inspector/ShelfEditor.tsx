@@ -19,6 +19,7 @@ import { eyebrow } from "@/components/ui/eyebrow";
 import { CellStrip, Stepper } from "./fields";
 import { SaveTemplateButton } from "./SaveTemplateButton";
 import { cellsWord } from "./words";
+import { LIMITS } from "@/lib/numberLimits";
 
 /** Редактор полок/ячеек секции + раскрытый 2D-вид выбранной полки (ТЗ 2.3). */
 export function ShelfEditor({ module: m, t }: { module: PlacedModule; t: TFunc }) {
@@ -82,6 +83,7 @@ export function ShelfEditor({ module: m, t }: { module: PlacedModule; t: TFunc }
                   {t("insp.shelfNo")}
                 </span>
                 <Input
+                  max={LIMITS.small.max}
                   type="number"
                   min={1}
                   className={cn(

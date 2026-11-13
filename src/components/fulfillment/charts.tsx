@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { AnimatedNumber } from "@/components/ui/animated-number";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { card } from "@/components/ui/card";
 
@@ -36,7 +37,10 @@ export function StatCard({
         {icon}
         {label}
       </div>
-      <div className={cn("text-2xl font-bold tabular-nums", toneClass)}>{value}</div>
+      <div className={cn("text-2xl font-bold tabular-nums", toneClass)}>
+        {/* Число добегает до нового значения, а не перескакивает (ДС, движение). */}
+        {typeof value === "number" ? <AnimatedNumber value={value} /> : value}
+      </div>
       {hint && <div className="text-xs text-muted-foreground">{hint}</div>}
     </div>
   );

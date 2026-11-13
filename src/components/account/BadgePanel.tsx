@@ -5,6 +5,7 @@ import { badgeRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
 import type { TFunc } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
+import { DialogHeader, DialogShell } from "@/components/ui/dialog-shell";
 import { QrSvg } from "@/components/table/QrSvg";
 
 /**
@@ -29,21 +30,14 @@ export function BadgePanel({
   const [revoked, setRevoked] = useState(false);
 
   return (
-    <div className="fixed inset-0 z-40 flex justify-end">
-      <button
-        type="button"
-        aria-label={t("ws.panel.close")}
-        className="absolute inset-0 cursor-default bg-black/30"
-        onClick={onClose}
-      />
-      <aside className="relative flex h-full w-full max-w-md animate-slide-in-right flex-col gap-5 overflow-y-auto bg-background p-5 shadow-2xl">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">{t("staff.badge.title")}</h2>
-          <Button variant="ghost" size="sm" aria-label={t("ws.panel.close")} onClick={onClose}>
-            <X />
-          </Button>
-        </div>
-
+    <DialogShell size="md" scroll onClose={onClose}>
+      <DialogHeader>
+        <h2 className="text-sm font-semibold">{t("staff.badge.title")}</h2>
+        <Button variant="ghost" size="icon-sm" aria-label={t("ws.panel.close")} onClick={onClose}>
+          <X />
+        </Button>
+      </DialogHeader>
+      <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-5">
         {revoked ? (
           <p className="text-sm">{t("staff.badge.revoked")}</p>
         ) : (
@@ -85,7 +79,7 @@ export function BadgePanel({
             )}
           </>
         )}
-      </aside>
-    </div>
+      </div>
+    </DialogShell>
   );
 }
