@@ -17,7 +17,7 @@ export interface JournalStint {
   flagged: number;
 }
 
-export interface JournalDeviceEvent {
+interface JournalDeviceEvent {
   type: "device";
   kind: "bound" | "revoked";
   at: number;
