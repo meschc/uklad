@@ -1,4 +1,4 @@
-import { writeOffProblem } from "../disputes";
+import { needsSecondPair, writeOffProblem } from "../disputes";
 import type { Dispute, DisputeResolution } from "../types";
 import { isDispute } from "./guards";
 import { onServer } from "./badgeRepository";
@@ -29,11 +29,13 @@ export function createDisputesRepository(
   return {
     list: () => readList(() => port.get().disputes, isDispute, "disputes"),
     resolve: async (id, resolution, by, note) => {
-      if (resolution === "written_off") {
+      const found = port.get().disputes.find((x) => x.id === id);
+      if (found && needsSecondPair(found, resolution)) {
         if (!note?.trim()) return fail("disputes.noteRequired");
-        const d = port.get().disputes.find((x) => x.id === id);
-        if (d && d.raisedBy === by) return fail("disputes.selfWriteOff");
-        if (d && writeOffProblem(port.get().boxes, d)) return fail("disputes.notInTote");
+        if (found.raisedBy === by) return fail("disputes.selfWriteOff");
+      }
+      if (found && resolution === "written_off" && writeOffProblem(port.get().boxes, found)) {
+        return fail("disputes.notInTote");
       }
       const res = await attempt(() => port.get().resolveDispute(id, resolution, by, note));
       if (!res.ok) return res;

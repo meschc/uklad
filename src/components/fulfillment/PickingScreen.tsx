@@ -9,6 +9,7 @@ import {
   ScanLine,
 } from "lucide-react";
 import { useEditor } from "@/lib/store";
+import { levelFor, signal } from "@/lib/scanSignal";
 import { workstationRepository } from "@/lib/data/workstationRepository";
 import { addressKey, formatAddress, parseAddress } from "@/lib/address";
 import { stockAt, stockByProduct } from "@/lib/fulfillment";
@@ -90,10 +91,15 @@ export function PickingScreen({ autoStart = false }: { autoStart?: boolean } = {
   const product = active ? products.find((p) => p.id === active.productId) : undefined;
   const picked = active?.pickedQty ?? 0;
 
-  const fail = (key: MsgKey, vars?: Record<string, string | number>) =>
-    setScan({ status: "error", msg: t(key, vars) });
-  const ok = (key: MsgKey, vars?: Record<string, string | number>) =>
+  const fail = (key: MsgKey, vars?: Record<string, string | number>) => {
+    const level = levelFor(key);
+    signal(level);
+    setScan({ status: level, msg: t(key, vars) });
+  };
+  const ok = (key: MsgKey, vars?: Record<string, string | number>) => {
+    signal("ok");
     setScan({ status: "ok", msg: t(key, vars) });
+  };
 
   const toteFor = (r: FulfillmentRequest, id: string | null) => {
     const box = id ? boxes.find((b) => b.id === id) : undefined;

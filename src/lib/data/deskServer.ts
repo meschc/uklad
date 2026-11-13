@@ -7,6 +7,17 @@ import { attempt, fail, ok, type Result } from "./result";
  * получает пропуск стола с узким правом. Стол гасят бейджем руководителя на
  * самом столе или с экрана «Устройства» другого компьютера.
  */
+/** Строка журнала устройства: операция стола и кто был за ним. */
+export interface DeviceJournalEntry {
+  at: number;
+  /** Сотрудник (`warehouse.staff[].id`); нет — за столом никого не было. */
+  staffRef: string | null;
+  /** Вид операции стола (`DeskOpKind` на сервере) или отметки в демо. */
+  kind: string;
+  /** Сервер не смог применить факт как есть — разбирает старший. */
+  flagged?: boolean;
+}
+
 export interface DeskServer {
   /**
    * Сделать этот браузер столом. Перед этим правки руководителя дописываются
@@ -14,6 +25,8 @@ export interface DeskServer {
    */
   open: (deviceRef: string, name: string) => Promise<Result<void>>;
   revoke: (deviceRef: string) => Promise<Result<void>>;
+  /** Журнал устройства (миграция 026), новые сверху. */
+  journal: (deviceRef: string) => Promise<Result<DeviceJournalEntry[]>>;
   /**
    * Отвязать стол бейджем руководителя: `false` — бейдж не руководителя,
    * `null` — этот браузер не стол с пропуском (привязан ещё под входом
@@ -42,6 +55,15 @@ export const serverDesks: DeskServer = {
     const res = await attempt(() => apiRequest("POST", "/cabinet/desks/revoke", { deviceRef }));
     if (!res.ok) return res;
     return res.data.status === 200 ? ok(undefined) : fail("data.failed");
+  },
+  journal: async (deviceRef) => {
+    const res = await attempt(() =>
+      apiRequest("GET", `/cabinet/desks/journal?device=${encodeURIComponent(deviceRef)}`),
+    );
+    if (!res.ok) return res;
+    if (res.data.status !== 200) return fail("data.failed");
+    const entries = (res.data.body as { entries?: DeviceJournalEntry[] }).entries;
+    return ok(Array.isArray(entries) ? entries : []);
   },
   unbind: async (code) => {
     const res = await attempt(() => apiRequest("POST", "/desk/unbind", { code }));

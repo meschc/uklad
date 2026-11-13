@@ -50,6 +50,7 @@ function legacyDesks(over: Partial<DeskServer> = {}): DeskServer {
   return {
     open: vi.fn(async () => ok(undefined)),
     revoke: vi.fn(async () => ok(undefined)),
+    journal: vi.fn(async () => ok([])),
     unbind: vi.fn(async () => ok(null)),
     leave: vi.fn(async () => ok(undefined)),
     ...over,

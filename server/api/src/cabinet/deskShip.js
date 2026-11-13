@@ -116,8 +116,14 @@ function applyShipRun(data, body, staffRef) {
   };
 }
 
-const WRITES_OFF = new Set(["shortage", "not_packable", "receive_overage"]);
+const WRITES_OFF = new Set(["shortage", "not_packable", "receive_overage", "inventory_short"]);
 const RESOLUTIONS = new Set(["returned", "moved", "written_off", "accepted"]);
+/** Решения по видам спорного: у остальных — вернуть, переложить, списать. */
+const RESOLUTIONS_BY_KIND = {
+  receive_overage: ["accepted", "written_off"],
+  inventory_short: ["returned", "written_off"],
+  inventory_over: ["returned", "accepted"],
+};
 
 function applyDisputeResolve(data, body, staffRef, who) {
   if (!isId(body.disputeId) || !RESOLUTIONS.has(body.resolution)) return { flag: "bad" };
@@ -132,11 +138,31 @@ function applyDisputeResolve(data, body, staffRef, who) {
   }
   // Решение по товару — право роли (`goods.decide`), а не должность.
   if (!may(who, staffRef, GOODS_DECIDE)) return { flag: "not_yours" };
-  const overage = d.kind === "receive_overage";
-  const allowed = overage ? ["accepted", "written_off"] : ["returned", "moved", "written_off"];
+  const allowed = RESOLUTIONS_BY_KIND[d.kind] ?? ["returned", "moved", "written_off"];
   if (!allowed.includes(body.resolution)) return { flag: "bad" };
   const note = typeof body.note === "string" ? body.note.trim().slice(0, 200) : "";
   let boxes = data.boxes;
+  // Оприходование излишка по инвентаризации — товар из ничего: те же четыре
+  // глаза и причина, что у списания.
+  const adopting = body.resolution === "accepted" && d.kind === "inventory_over";
+  if (adopting) {
+    if (!note || d.raisedBy === staffRef) return { flag: "not_yours" };
+    if (!d.boxId || !isId(d.productId) || !list(data.boxes).some((b) => b.id === d.boxId)) {
+      return { flag: "stock" };
+    }
+    boxes = list(data.boxes).map((b) =>
+      b.id !== d.boxId
+        ? b
+        : {
+            ...b,
+            lines: list(b.lines).some((l) => l.productId === d.productId)
+              ? list(b.lines).map((l) =>
+                  l.productId === d.productId ? { ...l, qty: Number(l.qty) + Number(d.qty) } : l,
+                )
+              : [...list(b.lines), { productId: d.productId, qty: Number(d.qty) }],
+          },
+    );
+  }
   if (body.resolution === "written_off") {
     // Четыре глаза и причина.
     if (!note || d.raisedBy === staffRef) return { flag: "not_yours" };

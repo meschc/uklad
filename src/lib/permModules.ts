@@ -67,6 +67,13 @@ export const PERM_MODULES: PermModule[] = [
   { id: "shipping", title: "perm.mod.shipping", read: [], write: ["shipping.do"], where: "desk" },
   { id: "goods", title: "perm.mod.goods", read: [], write: ["goods.decide"], where: "desk" },
   {
+    id: "inventory",
+    title: "perm.mod.inventory",
+    read: [],
+    write: ["inventory.count"],
+    where: "desk",
+  },
+  {
     id: "seller",
     title: "perm.mod.seller",
     read: [],
@@ -91,6 +98,7 @@ export const PERM_KEYS: Record<string, MsgKey> = {
   "packing.do": "perm.packing.do",
   "shipping.do": "perm.shipping.do",
   "goods.decide": "perm.goods.decide",
+  "inventory.count": "perm.inventory.count",
   "seller.requests": "perm.seller.requests",
   "chat.use": "perm.chat.use",
 };

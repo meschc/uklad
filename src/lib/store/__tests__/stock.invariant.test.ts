@@ -219,9 +219,61 @@ describe("товар не теряется и не двоится на пути 
     expect(s().boxes[0].lines).toEqual([{ productId: "p-a", qty: 2 }]);
   });
 
+  it("инвентаризация: пересчёт товар не двигает, правит только старший с причиной", () => {
+    const w = warehouse();
+    const { s, check } = w;
+    const box = stock(w, "p-a", 10, C1);
+    const count = (qty: number, eventId: string) =>
+      s().countBox({
+        boxId: box.id,
+        lines: [{ productId: "p-a", qty }],
+        staffId: "s1",
+        at: 1,
+        eventId,
+      });
+
+    // Сошлось: отметка есть, спорного нет.
+    expect(count(10, "e1")).toEqual({ diffs: [] });
+    expect(s().boxes[0].countedBy).toBe("s1");
+    expect(s().disputes).toEqual([]);
+    check("сошлось");
+
+    // Нашли 7 из 10: пересчёт сам остаток не двигает.
+    expect("diffs" in count(7, "e2")).toBe(true);
+    check("недостача заведена");
+    expect(s().boxes[0].lines).toEqual([{ productId: "p-a", qty: 10 }]);
+    // Пока старший не решил, второй пересчёт той же тары не принимается.
+    expect(count(9, "e3")).toEqual({ problem: "open" });
+    const short = s().disputes[0];
+    expect(short.kind).toBe("inventory_short");
+    // Нашедший не решает, причина обязательна, оприходовать недостачу нельзя.
+    expect(s().resolveDispute(short.id, "written_off", "s1", "нет")).toBe(false);
+    expect(s().resolveDispute(short.id, "written_off", "s2", "")).toBe(false);
+    expect(s().resolveDispute(short.id, "accepted", "s2", "нет")).toBe(false);
+    expect(s().resolveDispute(short.id, "written_off", "s2", "пересчитали дважды")).toBe(true);
+    check("недостача списана");
+    expect(s().boxes[0].lines).toEqual([{ productId: "p-a", qty: 7 }]);
+
+    // Теперь нашли 9 при учёте 7: излишек оприходует старший, не нашедший.
+    expect("diffs" in count(9, "e4")).toBe(true);
+    const over = s().disputes.find((d) => d.kind === "inventory_over")!;
+    expect(s().resolveDispute(over.id, "written_off", "s2", "нет")).toBe(false);
+    expect(s().resolveDispute(over.id, "accepted", "s1", "нашли")).toBe(false);
+    expect(s().resolveDispute(over.id, "accepted", "s2", "нашли за стеллажом")).toBe(true);
+    check("излишек оприходован");
+    expect(s().boxes[0].lines).toEqual([{ productId: "p-a", qty: 9 }]);
+    // Закрытие без правки учёта остаток не трогает.
+    expect("diffs" in count(5, "e5")).toBe(true);
+    const close = s().disputes.find((d) => !d.resolution)!;
+    expect(s().resolveDispute(close.id, "returned", "s2")).toBe(true);
+    check("закрыто без правки");
+    expect(s().boxes[0].lines).toEqual([{ productId: "p-a", qty: 9 }]);
+  });
+
   it("случайная смена склада: шаги в любом порядке, книга сходится всегда", () => {
     let shipped = 0;
     let writtenOff = 0;
+    let adopted = 0;
     for (const start of [7, 11, 23, 42, 99]) {
       // Свой генератор с затравкой: падение повторяется один в один.
       let seed = start;
@@ -288,8 +340,32 @@ describe("товар не теряется и не двоится на пути 
         },
         () => {
           const d = s().disputes.find((x) => !x.resolution);
-          if (d) s().resolveDispute(d.id, rnd(3) ? "returned" : "written_off", "s2", "решил");
-          return "решение старшего";
+          const res =
+            d?.kind === "inventory_over"
+              ? rnd(2)
+                ? "accepted"
+                : "returned"
+              : rnd(3)
+                ? "returned"
+                : "written_off";
+          if (d) s().resolveDispute(d.id, res, "s2", "решил");
+          return `решение старшего: ${res}`;
+        },
+        () => {
+          // Пересчёт тары на полке: то совпадает, то нет — от нуля до «в два раза больше».
+          const shelf = s().boxes.filter((b) => b.address);
+          const b = shelf[rnd(shelf.length)];
+          if (!b) return "нечего считать";
+          const had = b.lines.find((l) => l.productId === "p-a")?.qty ?? 0;
+          const qty = rnd(3) === 0 ? had : rnd(2 * had + 2);
+          s().countBox({
+            boxId: b.id,
+            lines: [{ productId: "p-a", qty }],
+            staffId: "s1",
+            at: 1,
+            eventId: `e${rnd(1_000_000)}`,
+          });
+          return `пересчёт ${b.barcode}: ${qty} при учёте ${had}`;
         },
         () => {
           const done = s().requests.filter((r) => r.status === "done");
@@ -308,9 +384,12 @@ describe("товар не теряется и не двоится на пути 
       }
       shipped += s().outboundBoxes.filter((b) => b.shipmentId).length;
       writtenOff += s().disputes.filter((d) => d.resolution === "written_off").length;
+      adopted += s().disputes.filter((d) => d.resolution === "accepted").length;
     }
     // Прогоны действительно дошли до упаковки, списаний и рейсов.
     expect(shipped).toBeGreaterThan(0);
     expect(writtenOff).toBeGreaterThan(0);
+    // И до оприходования излишка по инвентаризации.
+    expect(adopted).toBeGreaterThan(0);
   });
 });

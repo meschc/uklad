@@ -140,6 +140,7 @@ export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get)
           type,
           at: now,
           station: s.stationSession?.station,
+          ...(s.stationSession?.deviceId ? { deviceId: s.stationSession.deviceId } : {}),
           ...(type === "idle_start" ? { reason: reason ?? "other" } : {}),
         }),
       ],
@@ -258,7 +259,15 @@ export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get)
     const now = nowMs();
     const res = classifyItemScan(ps, box, toteOrders(s.requests, box), s.products, code);
     const log = (type: StaffEvent["type"], productId?: string) =>
-      event({ staffId: ps.staffId, type, at: now, station: "pack", code, productId });
+      event({
+        staffId: ps.staffId,
+        type,
+        at: now,
+        station: "pack",
+        code,
+        productId,
+        ...(s.stationSession?.deviceId ? { deviceId: s.stationSession.deviceId } : {}),
+      });
     if (res.kind === "ok") {
       const seq = ps.labelSeq + 1;
       set({

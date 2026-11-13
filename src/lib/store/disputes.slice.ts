@@ -1,11 +1,20 @@
 import { nowMs, uid } from "../utils";
-import { resolutionsFor, writeOffProblem, writesOffGoods } from "../disputes";
+import {
+  adoptInto,
+  adoptsGoods,
+  needsSecondPair,
+  resolutionsFor,
+  writeOffProblem,
+  writesOffGoods,
+} from "../disputes";
+import { planCount } from "../inventory";
 import type { DisputesSlice, SliceCreator } from "./state";
 
 /**
- * Спорное склада (недостачи, ошибки скана). Срез только пишет факты и фиксирует
- * решение старшего; сам он остатков не двигает, кроме одного случая: списание
- * недостачи убирает товар из строк тары, в которой его не оказалось.
+ * Спорное склада (недостачи, ошибки скана, расхождения инвентаризации). Срез
+ * только пишет факты и фиксирует решение старшего; остатки двигает лишь
+ * решение старшего: списание недостачи убирает товар из строк тары, а
+ * оприходование излишка по инвентаризации добавляет его в ту же тару.
  */
 export const createDisputesSlice: SliceCreator<DisputesSlice> = (set, get) => ({
   disputes: [],
@@ -49,9 +58,10 @@ export const createDisputesSlice: SliceCreator<DisputesSlice> = (set, get) => ({
     if (!d || d.resolution) return false;
     // У лишнего с приёмки свои решения: оставить на складе или списать.
     if (!resolutionsFor(d).includes(resolution)) return false;
-    // Списание — необратимая потеря чужого товара: нужна причина, и решает не
-    // тот, кто сам нашёл недостачу (четыре глаза).
-    if (resolution === "written_off" && (!note?.trim() || d.raisedBy === by)) return false;
+    // Списание — необратимая потеря чужого товара, оприходование излишка —
+    // товар из ничего: нужна причина, и решает не тот, кто сам нашёл
+    // расхождение (четыре глаза).
+    if (needsSecondPair(d, resolution) && (!note?.trim() || d.raisedBy === by)) return false;
     // Списать можно только то, что лежит в таре: иначе списание больше
     // остатка — товар, который «ушёл», не уходя (`writeOffProblem`).
     if (resolution === "written_off" && writeOffProblem(get().boxes, d)) return false;
@@ -62,21 +72,37 @@ export const createDisputesSlice: SliceCreator<DisputesSlice> = (set, get) => ({
           ? { ...x, resolution, resolvedBy: by, resolvedAt: now, note: note?.trim() || undefined }
           : x,
       ),
-      // Списали недостачу или брак — в таре этого товара больше нет.
+      // Списали недостачу или брак — в таре этого товара больше нет;
+      // оприходовали излишек — он лёг в ту же тару.
       boxes:
-        resolution === "written_off" && writesOffGoods(d) && d.boxId && d.productId
-          ? s.boxes.map((b) =>
-              b.id === d.boxId
-                ? {
-                    ...b,
-                    lines: b.lines
-                      .map((l) => (l.productId === d.productId ? { ...l, qty: l.qty - d.qty } : l))
-                      .filter((l) => l.qty > 0),
-                  }
-                : b,
-            )
-          : s.boxes,
+        resolution === "accepted" && adoptsGoods(d)
+          ? adoptInto(s.boxes, d)
+          : resolution === "written_off" && writesOffGoods(d) && d.boxId && d.productId
+            ? s.boxes.map((b) =>
+                b.id === d.boxId
+                  ? {
+                      ...b,
+                      lines: b.lines
+                        .map((l) =>
+                          l.productId === d.productId ? { ...l, qty: l.qty - d.qty } : l,
+                        )
+                        .filter((l) => l.qty > 0),
+                    }
+                  : b,
+              )
+            : s.boxes,
     }));
     return true;
+  },
+
+  countBox: (input) => {
+    const s = get();
+    const plan = planCount(s.boxes, s.disputes, new Set(s.products.map((p) => p.id)), input);
+    if ("problem" in plan) return plan;
+    set((x) => ({
+      boxes: x.boxes.map((b) => (b.id === plan.box.id ? plan.box : b)),
+      disputes: [...plan.disputes, ...x.disputes],
+    }));
+    return { diffs: plan.diffs };
   },
 });

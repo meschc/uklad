@@ -21,7 +21,7 @@ import { targetCode } from "@/lib/packing";
 import { useLabelPrinter } from "@/lib/labelPrinter";
 import { SortTh, TableSearch, useDataTable } from "@/components/ui/data-table";
 import { groupRequestsByTarget, stockByProduct } from "@/lib/fulfillment";
-import type { LabelTemplate, RequestStatus } from "@/lib/types";
+import type { FulfillmentRequest, LabelTemplate, RequestStatus } from "@/lib/types";
 import { useT, type TFunc } from "@/lib/i18n";
 import { cn, nowMs } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -33,6 +33,7 @@ import { RequestCalendar } from "./RequestCalendar";
 import { printLabels } from "@/lib/printLabels";
 import { LabelPrint } from "./LabelPrint";
 import { WorkTasksPanel } from "./WorkTasksPanel";
+import { ShipConfirm } from "./ShipConfirm";
 
 /**
  * «Задания» (п.7.3) — общий обзор заявок продавца во ВСЕХ статусах, включая
@@ -98,6 +99,9 @@ function RequestsTasks({ sections }: { sections: React.ReactNode }) {
   // появляется в дереве после установки, поэтому печать запускает эффект.
   const printer = useLabelPrinter();
   const [labelTarget, setLabelTarget] = useState<string | null>(null);
+  const [shipAsk, setShipAsk] = useState<{ target: string; items: FulfillmentRequest[] } | null>(
+    null,
+  );
   useEffect(() => {
     if (labelTarget) printLabels(() => setLabelTarget(null));
   }, [labelTarget]);
@@ -280,7 +284,9 @@ function RequestsTasks({ sections }: { sections: React.ReactNode }) {
                       size="sm"
                       variant="outline"
                       className="ml-auto h-7"
-                      onClick={() => goToView("workstation")}
+                      onClick={() =>
+                        setShipAsk({ target: g.target ?? t("tasks.noTarget"), items: ready })
+                      }
                     >
                       <Truck className="size-3.5" />
                       {t("ship.action", { n: ready.length })}
@@ -402,6 +408,13 @@ function RequestsTasks({ sections }: { sections: React.ReactNode }) {
             </section>
           ))}
         </div>
+      )}
+      {shipAsk && (
+        <ShipConfirm
+          target={shipAsk.target}
+          items={shipAsk.items}
+          onClose={() => setShipAsk(null)}
+        />
       )}
       {labelTarget && (
         <LabelPrint

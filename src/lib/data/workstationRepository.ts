@@ -1,4 +1,5 @@
 import type { ItemScan } from "../packing";
+import type { CountLine } from "../inventory";
 import type {
   CellAddress,
   Device,
@@ -8,7 +9,7 @@ import type {
   WorkstationKind,
 } from "../types";
 import { onServer, serverBadges, type BadgeServer } from "./badgeRepository";
-import { serverDesks, type DeskServer } from "./deskServer";
+import { serverDesks, type DeskServer, type DeviceJournalEntry } from "./deskServer";
 import { isStaffEvent } from "./guards";
 import { deskOps, type OpQueue } from "./opQueue";
 import { readList, storePort, type StorePort } from "./repository";
@@ -35,6 +36,8 @@ export interface WorkstationRepository {
    */
   addDevice: (name: string, station: WorkstationKind) => Promise<Result<Device>>;
   revokeDevice: (id: string) => Promise<Result<void>>;
+  /** Журнал устройства: кто и что делал за ним, новые сверху. */
+  deviceJournal: (id: string) => Promise<Result<DeviceJournalEntry[]>>;
   /** Отвязать этот браузер бейджем руководителя. Чужой бейдж — `ws.device.notManager`. */
   unbindDevice: (managerBadge: string) => Promise<Result<void>>;
   /** Начать тару: скан тары с товаром и короба отгрузки. */
@@ -65,6 +68,12 @@ export interface WorkstationRepository {
     requestIds: string[],
     info: { vehicle: string; staffId: string; units: string[] },
   ) => Promise<Result<string | null>>;
+  /**
+   * Инвентаризация: слепой пересчёт тары на полке. Ответ — сошлось ли с
+   * учётом; сами числа учёта сотруднику не возвращаются. Не получилось —
+   * отказ `ws.count.<причина>`.
+   */
+  countBox: (boxId: string, lines: CountLine[]) => Promise<Result<{ matched: boolean }>>;
 }
 
 export function createWorkstationRepository(
@@ -194,6 +203,18 @@ export function createWorkstationRepository(
       }
       return attempt(() => port.get().revokeDevice(id));
     },
+    deviceJournal: async (id) => {
+      if (onServer(port)) return desks.journal(id);
+      // Демо: отметки и сканы, пришедшие с этого устройства.
+      return attempt(() =>
+        port
+          .get()
+          .staffEvents.filter((e) => e.deviceId === id)
+          .map((e) => ({ at: e.at, staffRef: e.staffId, kind: e.type }))
+          .sort((a, b) => b.at - a.at)
+          .slice(0, 200),
+      );
+    },
     unbindDevice: async (code) => {
       if (onServer(port)) {
         // Неотправленная работа живёт только в очереди этого стола: под входом
@@ -276,6 +297,23 @@ export function createWorkstationRepository(
         }
         return id;
       }),
+    // Пересчёт на сервере уходит операцией (`cabinet/deskInventory.js`):
+    // сервер сам сравнит с учётом и заведёт спорное, стол числа учёта не знает.
+    countBox: async (boxId, lines) => {
+      const by = port.get().stationSession?.staffId;
+      if (!by) return fail("ws.count.nobody");
+      const eventId = uid("ic");
+      const at = nowMs();
+      const res = await attempt(() =>
+        port.get().countBox({ boxId, lines, staffId: by, at, eventId }),
+      );
+      if (!res.ok) return res;
+      if ("problem" in res.data) return fail(`ws.count.${res.data.problem}`);
+      if (onServer(port)) {
+        ops.enqueue("inv_count", { eventId, staffId: by, at, boxId, lines });
+      }
+      return ok({ matched: res.data.diffs.length === 0 });
+    },
     pickDone: (requestId, partial) =>
       attempt(() => {
         port.get().completeRequest(requestId, partial);
