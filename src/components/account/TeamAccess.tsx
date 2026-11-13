@@ -71,7 +71,7 @@ export function TeamAccess({ staff }: { staff: StaffMember[] }) {
   // Правка на месте: роль и отключение — команды строки, отказ — тостом.
   const run = async (op: () => ReturnType<typeof teamRepository.setDeskRole>) => {
     const res = await op();
-    if (!res.ok) showToast(res.error);
+    if (!res.ok) showToast(res.error, undefined, undefined, "error");
     reload();
   };
 

@@ -30,6 +30,7 @@ import { ScanField } from "@/components/fulfillment/ScanField";
 import { ScanBanner, type BannerTone } from "./ScanBanner";
 import { useDemoHints } from "./useDemoHints";
 import { DestinationChip } from "./DestinationChip";
+import { palletBoxes } from "@/lib/sorting";
 
 /**
  * Отгрузка за столом: собранные заявки одного назначения уезжают одной
@@ -191,6 +192,19 @@ function ShipGroup({
       (x) => x.barcode.toUpperCase() === code && (x.address || x.sealed),
     );
     if (stored) return flash("error", t("ws.ship.stored", { code }));
+    // Паллета со станции сортировки грузится целиком: её посылки уже сверены
+    // по назначению, пересканировать каждую не нужно — но в эту машину все.
+    const sorted = units.includes(code) ? [] : palletBoxes(outbound ?? [], code);
+    if (sorted.length > 0) {
+      const fit = sorted
+        .filter((b) => !units.includes(b.code.toUpperCase()))
+        .every((b) => classifyLoadScan(outbound ?? [], ids, units, b.code).kind === "ok");
+      if (!fit) return flash("error", t("ws.ship.palletForeign", { code }));
+      setUnits((u) => [...new Set([...u, code, ...sorted.map((b) => b.code)])]);
+      beepNotes(destinationMark(target).notes);
+      signal("ok", { quiet: true });
+      return show("ok", t("ws.ship.palletOk", { code, n: sorted.length }));
+    }
     const res = classifyLoadScan(outbound ?? [], ids, units, raw);
     switch (res.kind) {
       case "not_unit":

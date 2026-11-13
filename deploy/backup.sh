@@ -8,7 +8,8 @@ set -eu
 
 cd "$(dirname "$0")"
 # shellcheck disable=SC1091
-[ -f .env ] && . ./.env
+. ./env.sh
+load_env .env
 
 BACKUP_DIR=${BACKUP_DIR:-/var/backups/uklad}
 BACKUP_KEEP_DAYS=${BACKUP_KEEP_DAYS:-30}

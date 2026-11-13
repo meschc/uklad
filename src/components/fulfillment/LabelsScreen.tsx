@@ -201,7 +201,7 @@ export function LabelsScreen() {
   const generate = async () => {
     const res = await create.run(n, kind);
     if (res.ok) setBatch(res.data);
-    else showToast(res.error);
+    else showToast(res.error, undefined, undefined, "error");
   };
 
   /** Выбрать уже созданные номера «с … по …» — для перепечатки порванных. */

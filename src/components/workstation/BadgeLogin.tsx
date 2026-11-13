@@ -22,7 +22,14 @@ import { useDemoHints } from "./useDemoHints";
  * сервером их быть не должно: показывать только в демо-режиме.
  */
 /** Столы, у которых уже есть свой экран. */
-const OPEN_STATIONS: WorkstationKind[] = ["receiving", "picking", "pack", "shipping", "inventory"];
+const OPEN_STATIONS: WorkstationKind[] = [
+  "receiving",
+  "picking",
+  "pack",
+  "sorting",
+  "shipping",
+  "inventory",
+];
 
 export function BadgeLogin() {
   const demoHints = useDemoHints();

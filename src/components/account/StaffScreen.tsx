@@ -121,7 +121,7 @@ export function StaffScreen() {
     }
     const res = await load.run(parsed);
     if (res.ok) showToast("staff.imported", { n: parsed.length });
-    else showToast(res.error);
+    else showToast(res.error, undefined, undefined, "error");
   };
 
   if (readOnly) {

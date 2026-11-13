@@ -38,7 +38,8 @@ export type DeskOpKind =
   | "ship_run"
   | "dispute_resolve"
   | "recv_cargo"
-  | "inv_count";
+  | "inv_count"
+  | "sort_place";
 const KINDS: readonly DeskOpKind[] = [
   "shift_mark",
   "shift_undo",
@@ -55,6 +56,7 @@ const KINDS: readonly DeskOpKind[] = [
   "dispute_resolve",
   "recv_cargo",
   "inv_count",
+  "sort_place",
 ];
 export interface DeskOpBody {
   eventId: string;
@@ -97,6 +99,8 @@ export interface DeskOpBody {
   units?: string[];
   disputeId?: string;
   resolution?: string;
+  // Сортировка (`sort_place`): короб отгрузки → паллета назначения.
+  pallet?: string;
   note?: string;
 }
 export interface DeskOp {
@@ -318,7 +322,7 @@ async function sayFlagged(kinds: DeskOpKind[]) {
   const packing = kinds.some((k) => k === "pack_event" || k === "pack_done");
   const picking = kinds.some((k) => k === "pick_unit" || k === "pick_done");
   const receiving = kinds.some((k) => k.startsWith("recv_"));
-  const shipping = kinds.includes("ship_run");
+  const shipping = kinds.includes("ship_run") || kinds.includes("sort_place");
   const deciding = kinds.includes("dispute_resolve");
   const counting = kinds.includes("inv_count");
   useEditor

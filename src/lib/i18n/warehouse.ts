@@ -335,6 +335,8 @@ export const ru = {
   "staff.remove": "Удалить сотрудника",
   "staff.badge": "Бейдж",
   "staff.badge.issue": "Выпустить бейдж",
+  "staff.badge.forbidden":
+    "Выпустить бейдж нельзя: у этого сотрудника роль выше вашей или у вас нет права «Персонал»",
   "staff.badge.title": "Бейдж сотрудника",
   "staff.badge.print": "Напечатать",
   "staff.badge.revoke": "Погасить бейдж",
@@ -749,6 +751,8 @@ export const en: Record<keyof typeof ru, string> = {
   "staff.remove": "Remove person",
   "staff.badge": "Badge",
   "staff.badge.issue": "Issue badge",
+  "staff.badge.forbidden":
+    "You can't issue this badge: the employee's role is above yours or you lack the Staff permission",
   "staff.badge.title": "Staff badge",
   "staff.badge.print": "Print",
   "staff.badge.revoke": "Revoke badge",

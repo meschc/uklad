@@ -74,6 +74,8 @@ export interface WorkstationRepository {
    * отказ `ws.count.<причина>`.
    */
   countBox: (boxId: string, lines: CountLine[]) => Promise<Result<{ matched: boolean }>>;
+  /** Сортировка: короб отгрузки — на паллету назначения. Правила проверяет стол. */
+  sort: (boxCode: string, pallet: string) => Promise<Result<boolean>>;
 }
 
 export function createWorkstationRepository(
@@ -314,6 +316,23 @@ export function createWorkstationRepository(
       }
       return ok({ matched: res.data.diffs.length === 0 });
     },
+    // Сортировка уходит операцией `sort_place`: сервер сам сверит, что
+    // паллета того же назначения и короб ещё не лежит на другой.
+    sort: (boxCode, pallet) =>
+      attempt(() => {
+        const s = port.get();
+        const placed = s.sortToPallet(boxCode, pallet);
+        const by = s.stationSession?.staffId;
+        if (!placed || !by || !onServer(port)) return placed;
+        ops.enqueue("sort_place", {
+          eventId: uid("sort"),
+          staffId: by,
+          at: nowMs(),
+          outboundCode: boxCode,
+          pallet,
+        });
+        return placed;
+      }),
     pickDone: (requestId, partial) =>
       attempt(() => {
         port.get().completeRequest(requestId, partial);

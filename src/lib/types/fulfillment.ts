@@ -219,6 +219,8 @@ export interface OutboundBox {
   updatedAt: number;
   shipmentId?: string;
   shippedAt?: number;
+  /** Паллета сортировки (`UK-PLT-`), на которую положили короб (`lib/sorting.ts`). */
+  palletCode?: string;
 }
 
 /**
@@ -295,7 +297,7 @@ export interface FulfillmentRequest {
  * остаются на ТСД — там человек ходит по складу, а не стоит у стола.
  */
 export type WorkstationKind =
-  "pack" | "receiving" | "picking" | "marking" | "returns" | "shipping" | "inventory";
+  "pack" | "receiving" | "picking" | "sorting" | "marking" | "returns" | "shipping" | "inventory";
 
 /**
  * Отметка в журнале сотрудника. Журнал собирается из того, что человек и так

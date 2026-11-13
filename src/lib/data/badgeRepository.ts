@@ -43,8 +43,10 @@ export const serverBadges: BadgeServer = {
     );
     if (!res.ok) return res;
     const { status, body } = res.data;
-    if (status !== 200 || typeof body.code !== "string") return fail("data.failed");
-    return ok(body.code);
+    if (status === 200 && typeof body.code === "string") return ok(body.code);
+    // Отказ по праву — не «проверьте связь»: связь тут ни при чём.
+    if (status === 403) return fail("staff.badge.forbidden");
+    return fail("data.failed");
   },
   revoke: async (staffId) => {
     const res = await attempt(() =>

@@ -89,6 +89,7 @@ const STATION_RU: Record<WorkstationKind, string> = {
   pack: "Упаковка",
   receiving: "Приёмка",
   picking: "Сборка",
+  sorting: "Сортировка",
   marking: "Маркировка",
   returns: "Возвраты",
   shipping: "Отгрузка",

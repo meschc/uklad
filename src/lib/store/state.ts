@@ -398,13 +398,20 @@ export interface ViewSlice {
     vars?: Record<string, string | number>;
     /** Вернуть сделанное — у действий класса `undoable` (`lib/actionRisk`). */
     undo?: () => void;
+    /** Отказ — красный значок вместо зелёной галочки. */
+    tone?: "error";
   } | null;
 
   setMode: (mode: ViewMode) => void;
   setZoom: (zoom: number) => void;
   setView: (zoom: number, pan: { x: number; y: number }) => void;
   setPan: (pan: { x: number; y: number }) => void;
-  showToast: (key: MsgKey, vars?: Record<string, string | number>, undo?: () => void) => void;
+  showToast: (
+    key: MsgKey,
+    vars?: Record<string, string | number>,
+    undo?: () => void,
+    tone?: "error",
+  ) => void;
 }
 
 // --- Разовые подсказки онбординга --------------------------------------------
@@ -605,6 +612,12 @@ export interface RequestsSlice {
     requestIds: string[],
     info?: { vehicle?: string; staffId?: string; units?: string[] },
   ) => string | null;
+  /**
+   * Сортировка: положить открытый короб отгрузки на паллету назначения.
+   * Правила — `lib/sorting.ts`; здесь только запись. `false` — короба нет
+   * или он уже на паллете.
+   */
+  sortToPallet: (boxCode: string, pallet: string) => boolean;
   /**
    * Короба отгрузки с составом: их пишет упаковка (`packFinish`), закрывает
    * погрузка (`shipRequests`).

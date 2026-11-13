@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
-import { CheckCircle2, Undo2 } from "lucide-react";
+import { CheckCircle2, CircleAlert, Undo2 } from "lucide-react";
 import { UNDO_WINDOW_MS } from "@/lib/actionRisk";
 import { useEditor } from "@/lib/store";
 import { useT } from "@/lib/i18n";
 
 /**
- * Транзиентное уведомление внизу экрана: подтверждает действие (назначен ряд и
+ * Транзиентное уведомление внизу экрана в цвет темы (светлое в светлой): подтверждает действие (назначен ряд и
  * т.п.). Живёт ~2.6 с, затем плавно уходит. Источник — `store.toast` (ключ +
  * переменные), локализуется здесь. Не перехватывает клики.
  */
@@ -46,10 +46,14 @@ export function Toast() {
         key={toast.id}
         className={cnVisible(
           toast.id !== hiddenId,
-          "flex max-w-[70ch] animate-scale-in items-center gap-2 rounded-lg bg-foreground px-3.5 py-2 text-sm font-medium text-background shadow-lg",
+          "flex max-w-[70ch] animate-scale-in items-center gap-2 rounded-lg border border-border bg-card px-3.5 py-2 text-sm font-medium text-foreground shadow-lg",
         )}
       >
-        <CheckCircle2 className="size-4 shrink-0 text-success" />
+        {toast.tone === "error" ? (
+          <CircleAlert className="size-4 shrink-0 text-destructive" />
+        ) : (
+          <CheckCircle2 className="size-4 shrink-0 text-success" />
+        )}
         {toastText}
         {toast.undo && toast.id !== hiddenId && (
           <button
@@ -58,7 +62,7 @@ export function Toast() {
               toast.undo?.();
               setHiddenId(toast.id);
             }}
-            className="pointer-events-auto -my-1 ml-2 inline-flex h-7 cursor-pointer items-center gap-1 rounded-md px-2 font-semibold text-background underline-offset-2 hover:bg-background/15"
+            className="pointer-events-auto -my-1 ml-2 inline-flex h-7 cursor-pointer items-center gap-1 rounded-md px-2 font-semibold text-primary underline-offset-2 hover:bg-muted"
           >
             <Undo2 className="size-3.5" />
             {t("common.undo")}

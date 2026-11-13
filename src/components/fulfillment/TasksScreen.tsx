@@ -126,7 +126,7 @@ function RequestsTasks({ sections }: { sections: React.ReactNode }) {
   );
   const setStatus = async (id: string, next: RequestStatus) => {
     const res = await status.run(id, next);
-    if (!res.ok) showToast(res.error);
+    if (!res.ok) showToast(res.error, undefined, undefined, "error");
   };
 
   const [filter, setFilter] = useState<RequestStatus | "all">("all");

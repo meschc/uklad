@@ -354,7 +354,7 @@ export function startServerSync(orgId: string): () => void {
         else schedule(RETRY_MS);
         // Сервер не принял данные — повтор не поможет, человеку нужно знать.
         if (res.error === "sync.err.badData" || res.error === "sync.err.tooBig") {
-          useEditor.getState().showToast(res.error);
+          useEditor.getState().showToast(res.error, undefined, undefined, "error");
         }
         return false;
       }
