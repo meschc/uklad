@@ -12,10 +12,12 @@ import {
   outboundUnits,
   planLoad,
 } from "@/lib/outbound";
-import { beep, beepNotes } from "@/lib/beep";
+import { beepNotes } from "@/lib/beep";
+import { levelFor, signal } from "@/lib/scanSignal";
 import { destinationMark } from "@/lib/destinationMark";
 import { parseBadge } from "@/lib/workstation";
-import { isSenior } from "@/lib/docFlow";
+import { isDecider } from "@/lib/docFlow";
+import { useDeskDeciders } from "@/lib/useDeskDeciders";
 import type { FulfillmentRequest } from "@/lib/types";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -120,6 +122,9 @@ function ShipGroup({
   const products = useEditor((s) => s.products);
   const allRequests = useEditor((s) => s.requests);
   const staff = useEditor((s) => s.warehouse.staff);
+  // Снять остановку вправе тот, кто решает по товару: на сервере — по роли.
+  const deciders = useDeskDeciders();
+  const onServer = useEditor((s) => s.session.source === "server");
   const outbound = useEditor((s) => s.outboundBoxes);
   const boxes = useEditor((s) => s.boxes);
   const pallets = useEditor((s) => s.pallets);
@@ -137,12 +142,13 @@ function ShipGroup({
   const timer = useRef<number | undefined>(undefined);
   useEffect(() => () => window.clearTimeout(timer.current), []);
 
-  const flash = (tone: "ok" | "error", text: string) => {
-    beep(tone);
-    show(tone, text);
+  const flash = (tone: "ok" | "error", text: string, key?: string) => {
+    const level = tone === "ok" || !key ? tone : levelFor(key);
+    signal(level);
+    show(level, text);
   };
   // Без общего писка: у принятого короба свой звук назначения.
-  const show = (tone: "ok" | "error", text: string) => {
+  const show = (tone: "ok" | "warn" | "error", text: string) => {
     window.clearTimeout(timer.current);
     setBanner({ tone, text });
     // Ошибка висит до следующего скана, «принято» гаснет само.
@@ -166,14 +172,15 @@ function ShipGroup({
     if (locked) {
       const id = parseBadge(raw);
       const senior = id ? staff?.find((m) => m.id === id) : undefined;
-      if (!senior || !isSenior(senior))
+      if (!senior || !isDecider(senior, deciders, onServer))
         return flash("error", t("ws.ship.locked", { code: locked }));
       setLocked(null);
       return flash("ok", t("ws.ship.unlocked", { name: senior.name }));
     }
     if (!vehicle) {
       const plate = parseVehicle(raw);
-      if (!plate) return flash("error", t("ws.ship.notVehicle", { code: raw }));
+      if (!plate)
+        return flash("error", t("ws.ship.notVehicle", { code: raw }), "ws.ship.notVehicle");
       setVehicle(plate);
       return flash("ok", t("ws.ship.vehicleOk", { v: plate }));
     }
@@ -187,7 +194,7 @@ function ShipGroup({
     const res = classifyLoadScan(outbound ?? [], ids, units, raw);
     switch (res.kind) {
       case "not_unit":
-        return flash("error", t("ws.ship.notUnit", { code: raw }));
+        return flash("error", t("ws.ship.notUnit", { code: raw }), "ws.ship.notUnit");
       case "dup":
         setLocked(res.code);
         return flash("error", t("ws.ship.locked", { code: res.code }));
@@ -205,6 +212,7 @@ function ShipGroup({
       case "ok":
         setUnits((u) => [...u, res.code]);
         beepNotes(destinationMark(target).notes);
+        signal("ok", { quiet: true });
         return show(
           "ok",
           res.box

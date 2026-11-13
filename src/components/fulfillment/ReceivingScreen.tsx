@@ -1,6 +1,7 @@
 import { useLayoutEffect, useMemo, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { useEditor } from "@/lib/store";
+import { levelFor, signal } from "@/lib/scanSignal";
 import { fulfillmentRepository, type Result } from "@/lib/data";
 import { addressKey, formatAddress, parseAddress } from "@/lib/address";
 import { buildOccupancy, occupantsAt } from "@/lib/placement";
@@ -131,10 +132,15 @@ export function ReceivingScreen({ staffId: badgeStaffId }: { staffId?: string } 
   const crossDock = !!shipment?.crossDock;
   const occupancy = useMemo(() => buildOccupancy(placements, boxes), [placements, boxes]);
 
-  const fail = (msgKey: MsgKey, vars?: Record<string, string | number>) =>
-    setScan({ status: "error", msg: t(msgKey, vars) });
-  const ok = (msgKey: MsgKey, vars?: Record<string, string | number>) =>
+  const fail = (msgKey: MsgKey, vars?: Record<string, string | number>) => {
+    const level = levelFor(msgKey);
+    signal(level);
+    setScan({ status: level, msg: t(msgKey, vars) });
+  };
+  const ok = (msgKey: MsgKey, vars?: Record<string, string | number>) => {
+    signal("ok");
     setScan({ status: "ok", msg: t(msgKey, vars) });
+  };
 
   /**
    * Команда приёмки через слой данных (п.3.2.1). Отдельного `useCommand` здесь

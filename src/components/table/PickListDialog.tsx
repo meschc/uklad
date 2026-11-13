@@ -1,6 +1,7 @@
 import { useWarehouseProducts } from "@/lib/warehouseProducts";
 import { useMemo } from "react";
 import { useEditor } from "@/lib/store";
+import { useOwnPrint } from "@/lib/printOwner";
 import { buildPickDocFromProducts } from "@/lib/documents";
 import { useT } from "@/lib/i18n";
 import { DocumentSheet } from "@/components/fulfillment/DocumentSheet";
@@ -26,6 +27,7 @@ export function PickListDialog({ ids, onClose }: { ids: string[]; onClose: () =>
   const products = useWarehouseProducts();
   const placements = useEditor((s) => s.placements);
   const boxes = useEditor((s) => s.boxes);
+  useOwnPrint();
 
   // Считаем один раз на набор: дату документа берёт сам сборщик документа, и
   // пересчёт на каждый рендер менял бы её под руками — предпросмотр и

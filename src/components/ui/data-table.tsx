@@ -50,6 +50,12 @@ export function useDataTable<T>(
           .includes(needle),
       );
     },
+    // Страниц у наших таблиц нет. Без этого флага TanStack на каждый новый
+    // массив `data` (экраны собирают его фильтром при каждом рендере)
+    // сбрасывает номер страницы через setState — и экран перерисовывается
+    // бесконечно: так «Этикетка отправления» в «Заданиях» вешала вкладку.
+    autoResetPageIndex: false,
+    autoResetExpanded: false,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),

@@ -16,7 +16,8 @@ import {
 import type { PackSession } from "@/lib/types";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { sizeLabel, useLabelPrinter } from "@/lib/labelPrinter";
-import { beep, beepNotes } from "@/lib/beep";
+import { beepNotes } from "@/lib/beep";
+import { holdSignal, levelFor, signal } from "@/lib/scanSignal";
 import { destinationMark } from "@/lib/destinationMark";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -59,18 +60,27 @@ export function PackRun({
   const okTimer = useRef<number | undefined>(undefined);
   useEffect(() => () => window.clearTimeout(okTimer.current), []);
   const flashOk = (text: string, quiet = false) => {
-    if (!quiet) beep("ok");
+    signal("ok", { quiet });
     setFeedback(null);
     setOkText(text);
     window.clearTimeout(okTimer.current);
     okTimer.current = window.setTimeout(() => setOkText(null), 2200);
   };
   const flashError = (f: NonNullable<Feedback>) => {
-    beep("error");
+    const level = levelFor(f.key);
+    signal(level);
+    f = { ...f, status: level };
     window.clearTimeout(okTimer.current);
     setOkText(null);
     setFeedback(f);
   };
+
+  // Заказ из нескольких штук собран не весь — долгий жёлтый, пока не наполнится.
+  const partial = !!box && orderIncomplete(session, toteOrders(requests, box));
+  useEffect(() => {
+    holdSignal(partial ? "warn" : null);
+    return () => holdSignal(null);
+  }, [partial]);
 
   if (!box) return null;
   const contents = toteContents(box);
@@ -137,7 +147,10 @@ export function PackRun({
 
   const idleText = closing ? t("ws.idle.close") : label ? t("ws.idle.label") : t("ws.idle.item");
   const missing = [...remaining].filter(([, n]) => n > 0);
-  const isError = feedback?.status === "error";
+  // Жёлтое (не тот порядок, лишняя штука) показываем так же, как ошибку, но
+  // своим цветом: рамка стола и полоса горят одинаково.
+  const isError = feedback?.status === "error" || feedback?.status === "warn";
+  const warn = feedback?.status === "warn";
   const bannerText = isError
     ? t(feedback.key, { name: feedback.name ?? "", box: feedback.box ?? "" })
     : okText
@@ -153,7 +166,7 @@ export function PackRun({
           <div className="min-w-0 flex-1">
             <ScanField
               label={t("ws.run.scan")}
-              status={isError ? "error" : okText ? "ok" : "idle"}
+              status={isError ? (warn ? "warn" : "error") : okText ? "ok" : "idle"}
               actionLabel={t(label ? "ws.act.confirm" : "ws.act.pack")}
               onSubmit={(c) => void onScan(c)}
             />
@@ -171,7 +184,9 @@ export function PackRun({
           className={cn(
             "flex min-h-14 items-center gap-3 rounded-xl px-4 py-3 text-xl font-semibold transition-colors duration-200",
             isError
-              ? "bg-destructive text-destructive-foreground"
+              ? warn
+                ? "bg-warning text-black"
+                : "bg-destructive text-destructive-foreground"
               : okText
                 ? "bg-success text-white"
                 : "bg-muted text-muted-foreground",
@@ -517,4 +532,12 @@ function DemoCodes({
       </ul>
     </div>
   );
+}
+
+/** Последний упакованный заказ ещё не полон: часть его штук впереди. */
+function orderIncomplete(session: PackSession, orders: ReturnType<typeof toteOrders>): boolean {
+  const last = session.units.filter((u) => u.confirmedAt).at(-1);
+  const order = last?.orderId ? orders.find((o) => o.id === last.orderId) : undefined;
+  if (!order) return false;
+  return session.units.filter((u) => u.orderId === order.id && u.confirmedAt).length < order.units;
 }

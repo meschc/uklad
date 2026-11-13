@@ -69,6 +69,9 @@ export const ru = {
   "ws.ship.unitOk": "Загружено: {code}",
   "ws.ship.notVehicle": "Это не машина: {code}",
   "ws.ship.notUnit": "Это не паллета и не короб: {code}",
+  "ws.net.offline":
+    "Нет связи с сервером. Сканы сохраняются на этом столе и уйдут, когда связь вернётся",
+  "ws.net.weak": "Слабая связь: экран может отвечать медленно, сканы не пропадут",
   "ws.ship.locked":
     "{code} уже загружено. Повторный скан: погрузка остановлена, позовите старшего — он сканирует свой бейдж",
   "ws.ship.unlocked": "{name} разрешил продолжить погрузку",
@@ -144,6 +147,15 @@ export const ru = {
   "devices.col.since": "Привязано",
   "devices.this": "это устройство",
   "devices.revoked": "отключено {d}",
+  "devices.revokeTitle": "Отключить «{name}»?",
+  "devices.revokeBody":
+    "Это устройство больше не откроет рабочее место: вход по бейджу на нём перестанет работать. Работа, уже отправленная с него, останется в журнале.",
+  "devices.revokeWho": "Сейчас за ним {name} — его вход закончится сразу.",
+  "devices.revokeBack": "Вернуть устройство можно только новой привязкой за этим же компьютером.",
+  "devices.unboundTitle": "Этот компьютер ещё не стол склада",
+  "devices.unboundHint":
+    "Привяжите его один раз: дальше здесь будут входить только по бейджу. Привязать может руководитель, который вошёл в кабинет.",
+  "devices.skipBind": "Войти без привязки",
   "devices.revoke": "Отключить",
   "devices.nobody": "никого",
   "devices.open": "Открыть рабочее место",
@@ -400,6 +412,9 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.ship.unitOk": "Loaded: {code}",
   "ws.ship.notVehicle": "Not a vehicle: {code}",
   "ws.ship.notUnit": "Not a pallet or box: {code}",
+  "ws.net.offline":
+    "No connection to the server. Scans are kept on this desk and sent when it is back",
+  "ws.net.weak": "Weak connection: the screen may respond slowly, scans won't be lost",
   "ws.ship.locked":
     "{code} is already loaded. Repeat scan: loading is stopped, call a senior to scan their badge",
   "ws.ship.unlocked": "{name} allowed loading to continue",
@@ -477,6 +492,15 @@ export const en: Record<keyof typeof ru, string> = {
   "devices.col.since": "Bound",
   "devices.this": "this device",
   "devices.revoked": "disabled {d}",
+  "devices.revokeTitle": "Disconnect “{name}”?",
+  "devices.revokeBody":
+    "This device will no longer open the workstation: badge sign-in on it stops working. Work already sent from it stays in the log.",
+  "devices.revokeWho": "{name} is signed in there now — their session ends immediately.",
+  "devices.revokeBack": "The device can only come back by binding it again at the same computer.",
+  "devices.unboundTitle": "This computer is not a warehouse desk yet",
+  "devices.unboundHint":
+    "Bind it once: after that people sign in here only with a badge. A manager signed in to the cabinet can bind it.",
+  "devices.skipBind": "Sign in without binding",
   "devices.revoke": "Disable",
   "devices.nobody": "nobody",
   "devices.open": "Open workstation",

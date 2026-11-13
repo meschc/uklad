@@ -1,6 +1,7 @@
 import { createPortal } from "react-dom";
 import { Printer, X } from "lucide-react";
 import { useEditor } from "@/lib/store";
+import { usePrintTaken } from "@/lib/printOwner";
 import { sectionNumber } from "@/lib/address";
 import { rowNumbers } from "@/lib/numbering";
 import { planBounds } from "@/lib/planGeometry";
@@ -48,18 +49,24 @@ export function PrintPlan() {
   // Ориентацию выбираем по пропорциям плана: широкий этаж на книжной странице
   // ужимается вдвое сильнее, чем нужно.
   const page = pageFor(floor);
+  // Лист сборки и другие окна со своей печатью: план им не мешает.
+  const taken = usePrintTaken();
 
   return (
     <>
       {/* Размер страницы задаётся здесь, а не в index.css: он зависит от плана. */}
-      <style>{`@page { size: A4 ${page.orientation}; margin: ${PAGE_MARGIN}mm; }`}</style>
-      {/* Скрытая копия для принтера: видна только в @media print. */}
-      <div
-        className="print-root hidden print:block"
-        style={{ ["--print-plan-h" as string]: `${page.planHeightMm}mm` }}
-      >
-        <PlanSheet t={t} />
-      </div>
+      {!taken && (
+        <>
+          <style>{`@page { size: A4 ${page.orientation}; margin: ${PAGE_MARGIN}mm; }`}</style>
+          {/* Скрытая копия для принтера: видна только в @media print. */}
+          <div
+            className="print-root hidden print:block"
+            style={{ ["--print-plan-h" as string]: `${page.planHeightMm}mm` }}
+          >
+            <PlanSheet t={t} />
+          </div>
+        </>
+      )}
 
       {previewOpen && <PrintPreview onClose={() => setPreview(false)} page={page} t={t} />}
     </>
