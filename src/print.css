@@ -43,6 +43,11 @@
   .print-root * {
     visibility: visible;
   }
+  /* План склада смонтирован в редакторе всегда. Когда поверх открыт другой
+     лист (лист сборки из таблицы, ярлык товара), печатается тот лист. */
+  body:has(.print-root:not(.print-plan)) .print-plan {
+    display: none !important;
+  }
   .print-root {
     position: absolute;
     inset: 0;

@@ -16,6 +16,7 @@ import { labelNumber } from "@/lib/barcode";
 import { LabelCard, type LabelKind } from "./LabelCard";
 import { printLabels } from "@/lib/printLabels";
 import { LabelPrint } from "./LabelPrint";
+import { FitToWidth } from "./FitToWidth";
 import { LabelDesigner, type LabelDraft } from "./LabelDesigner";
 import { ScreenShell } from "./ScreenShell";
 
@@ -333,7 +334,14 @@ export function LabelsScreen() {
                       className="h-9 w-24 text-right"
                     />
                   </label>
-                  <Button className="h-9" onClick={() => void generate()} disabled={create.pending}>
+                  {/* Не главная кнопка: главное действие экрана — «Печать»
+                      справа, а это подготовка к нему (Кирилл 12 ноя). */}
+                  <Button
+                    className="h-9"
+                    variant="outline"
+                    onClick={() => void generate()}
+                    disabled={create.pending}
+                  >
                     {create.pending && <Loader2 className="animate-spin" />}
                     {create.pending ? t("data.busy") : t("labels.generate")}
                   </Button>
@@ -418,7 +426,9 @@ export function LabelsScreen() {
               })}
             </span>
           </div>
-          <div className="flex flex-wrap items-start gap-4">
+          {/* Крупный ярлык (150×100) в натуральную величину шире колонки —
+              предпросмотр ужимается под ширину, печать идёт в размер. */}
+          <FitToWidth widthMm={previewTpl.widthMm} heightMm={previewTpl.heightMm}>
             <LabelCard
               tpl={previewTpl}
               code={previewCode}
@@ -428,7 +438,7 @@ export function LabelsScreen() {
               index={1}
               total={batch.length || Math.max(1, Math.round(count))}
             />
-          </div>
+          </FitToWidth>
 
           <Button disabled={batch.length === 0} onClick={print}>
             <Printer className="size-3.5" />

@@ -54,8 +54,11 @@ export function PrintPlan() {
       {/* Размер страницы задаётся здесь, а не в index.css: он зависит от плана. */}
       <style>{`@page { size: A4 ${page.orientation}; margin: ${PAGE_MARGIN}mm; }`}</style>
       {/* Скрытая копия для принтера: видна только в @media print. */}
+      {/* `print-plan`: план — печать «по умолчанию» для экрана редактора.
+          Если поверх открыт другой лист (лист сборки, ярлык товара), печатается
+          он, а не план (print.css; Кирилл 12 ноя: «печатает план склада»). */}
       <div
-        className="print-root hidden print:block"
+        className="print-root print-plan hidden print:block"
         style={{ ["--print-plan-h" as string]: `${page.planHeightMm}mm` }}
       >
         <PlanSheet t={t} />

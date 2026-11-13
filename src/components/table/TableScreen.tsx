@@ -74,7 +74,7 @@ export function TableScreen() {
   const [fieldsOpen, setFieldsOpen] = useState(false);
   /** Открыт ли импорт товаров (ТЗ, разд. 2.5). */
   const [importOpen, setImportOpen] = useState(false);
-  const [barcodeModal, setBarcodeModal] = useState<string | null>(null);
+  const [barcodeModal, setBarcodeModal] = useState<Product | null>(null);
   /** Карточка товара: null — закрыта, {product:null} — новый, {product} — правка. */
   const [productDialog, setProductDialog] = useState<{ product: Product | null } | null>(null);
   /** Товары, которым не нашлось места при групповом размещении (п.7). */
@@ -138,7 +138,7 @@ export function TableScreen() {
                 onReveal={() => revealOnPlan(placements[row.product.id])}
                 onAssign={() => setAssign(row.product)}
                 onEdit={() => setProductDialog({ product: row.product })}
-                onBarcode={() => setBarcodeModal(row.product.barcode)}
+                onBarcode={() => setBarcodeModal(row.product)}
                 onRequest={() => setRequestIds([row.product.id])}
                 order={columns.cols}
               />
@@ -181,7 +181,7 @@ export function TableScreen() {
       {fieldsOpen && <FieldConstructor onClose={() => setFieldsOpen(false)} />}
       {importOpen && <ImportDialog onClose={() => setImportOpen(false)} />}
       {barcodeModal !== null && (
-        <BarcodeModal code={barcodeModal} onClose={() => setBarcodeModal(null)} />
+        <BarcodeModal product={barcodeModal} onClose={() => setBarcodeModal(null)} />
       )}
       {productDialog && (
         <ProductDialog product={productDialog.product} onClose={() => setProductDialog(null)} />
