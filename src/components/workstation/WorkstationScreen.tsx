@@ -14,6 +14,8 @@ import {
   Printer,
   ScanLine,
   Scale,
+  Wifi,
+  WifiOff,
 } from "lucide-react";
 import { boundDevice, useEditor } from "@/lib/store";
 import { STUCK_MS, usePendingOps, workstationRepository } from "@/lib/data";
@@ -25,12 +27,15 @@ import { allowedMarks, parseShiftMarkCode, shiftMarkCode, shiftState } from "@/l
 import { QrSvg } from "@/components/table/QrSvg";
 import { lastScanAt, SCAN_EVENT, SHIFT_SCAN_EVENT } from "@/components/fulfillment/ScanField";
 import { cn } from "@/lib/utils";
+import { clearSignal, useStationSignal } from "@/lib/scanSignal";
+import { useNetwork } from "@/lib/useNetwork";
 import { Button } from "@/components/ui/button";
 import { EmbeddedShell } from "@/components/fulfillment/embeddedShell";
 import { ReceivingScreen } from "@/components/fulfillment/ReceivingScreen";
 import { PickingScreen } from "@/components/fulfillment/PickingScreen";
 import { EmptyState } from "@/components/fulfillment/ScreenShell";
 import { BadgeLogin } from "./BadgeLogin";
+import { BindDeviceForm } from "./BindDeviceForm";
 import { UnbindDevice } from "./UnbindDevice";
 import { KeyHint } from "./KeyHint";
 import { ShiftGate } from "./ShiftGate";
@@ -82,6 +87,9 @@ export function WorkstationScreen() {
   // Кнопки ТСД: F1 — смена, F2 — перерыв, F3 — журнал, F4 — конец смены.
   useStationKeys(member?.id, (p) => setPanel(panel === p ? null : p));
   const station = session?.station ?? "pack";
+  const signalLevel = useStationSignal();
+  // Сменился человек или участок — прошлый сигнал к нему не относится.
+  useEffect(() => clearSignal(), [member?.id, station]);
 
   return (
     // Оболочка как у кабинета (App.tsx): шапка на фоне меню, а рабочая область —
@@ -178,11 +186,31 @@ export function WorkstationScreen() {
         )}
       </header>
 
-      <main className="min-h-0 flex-1 overflow-y-auto bg-background md:mx-2 md:mb-2 md:rounded-2xl md:border md:border-border">
+      <NetworkBanner />
+      {/* Рамка рабочей области — сигнал скана (`scanSignal`): зелёная вспышка —
+          принято, жёлтая держится, пока дело не доделано, красная — до верного
+          скана. Кольцо внутрь, чтобы на ТСД без полей его тоже было видно. */}
+      <main
+        className={cn(
+          "min-h-0 flex-1 overflow-y-auto bg-background ring-inset transition-shadow duration-150 md:mx-2 md:mb-2 md:rounded-2xl md:border md:border-border",
+          signalLevel === "ok" && "ring-4 ring-success",
+          signalLevel === "warn" && "ring-[6px] ring-warning",
+          signalLevel === "error" && "ring-[6px] ring-destructive",
+        )}
+      >
         {!member && unbinding ? (
           // Вместо входа, а не поверх него: иначе бейдж руководителя прочитал
           // бы и вход и пустил его за стол.
           <UnbindDevice onDone={() => setUnbinding(false)} />
+        ) : !member && !device ? (
+          // Компьютер ещё не стол: сначала привязать его здесь же, а не искать
+          // «Устройства» в кабинете. Без привязки можно войти (демо, проверка).
+          <div className="flex min-h-full items-center justify-center px-4 py-10">
+            <div className="flex w-full max-w-sm flex-col gap-4">
+              <h2 className="text-center text-xl font-semibold">{t("devices.bindDevice")}</h2>
+              <BindDeviceForm stacked />
+            </div>
+          </div>
         ) : !member ? (
           <BadgeLogin />
         ) : (
@@ -424,6 +452,28 @@ function useLastScan(): number | null {
     return () => window.removeEventListener(SCAN_EVENT, on);
   }, []);
   return at;
+}
+
+/**
+ * Плохая связь — полосой под шапкой, а не значком: человек должен понять,
+ * почему экран медлит, и что сканы не пропадут, а уйдут позже.
+ */
+function NetworkBanner() {
+  const t = useT();
+  const net = useNetwork();
+  if (net === "ok") return null;
+  return (
+    <p
+      role="status"
+      className={cn(
+        "flex shrink-0 items-center gap-2 px-4 py-1.5 text-sm font-medium md:mx-2 md:mb-2 md:rounded-lg",
+        net === "offline" ? "bg-destructive text-destructive-foreground" : "bg-warning text-black",
+      )}
+    >
+      {net === "offline" ? <WifiOff className="size-4" /> : <Wifi className="size-4" />}
+      {t(net === "offline" ? "ws.net.offline" : "ws.net.weak")}
+    </p>
+  );
 }
 
 /**

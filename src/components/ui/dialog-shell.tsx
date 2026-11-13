@@ -1,6 +1,5 @@
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
-import { card } from "./card";
 import { Backdrop } from "./backdrop";
 
 /**
@@ -31,14 +30,12 @@ import { Backdrop } from "./backdrop";
  * `fulfillment/Modal`, и оно построено на этом же каркасе.
  */
 
-// Поверхность окна — та же карточка, что и везде (`card`), только без
-// внутреннего отступа: поля рисуют шапка, тело и подвал по отдельности.
+// Поверхность панели — по образцу «Сообщить о проблеме» (Кирилл 12 ноя:
+// «сайдбар везде разный, образец — как у сообщить о проблеме»): на всю
+// высоту, без скруглений, одна рамка слева. Скругление у края экрана читалось
+// как карточка, которая выпала из сетки, и у части панелей его не было.
 const panel = cva(
-  card({
-    pad: "none",
-    className:
-      "relative flex h-full w-full animate-slide-in-right flex-col overflow-hidden !rounded-none !rounded-l-2xl !border-y-0 !border-r-0 shadow-2xl",
-  }),
+  "relative flex h-full w-full animate-slide-in-right flex-col overflow-hidden border-l border-border bg-card shadow-2xl",
   {
     variants: {
       size: {
@@ -79,7 +76,9 @@ export function DialogShell({
   return (
     <div className={cn("fixed inset-0 z-50 flex items-stretch justify-end", className)}>
       <Backdrop onClose={onClose} />
-      <div className={panel({ size, scroll })}>{children}</div>
+      <div role="dialog" aria-modal="true" className={panel({ size, scroll })}>
+        {children}
+      </div>
     </div>
   );
 }

@@ -127,12 +127,41 @@ export function seedWork(
   for (let i = 0; i < 3; i++) addTask("in_progress", morning + i * 20 * MIN);
   for (let i = 0; i < 4; i++) addTask("open", morning + i * 30 * MIN);
 
+  // --- Столы и ТСД склада, привязанные заранее; один отвязан.
+  const device = (name: string, station: Device["station"], daysAgo: number): Device => ({
+    id: uid("dev"),
+    name,
+    station,
+    createdAt: day0 - daysAgo * DAY,
+  });
+  const devices: Device[] = [
+    device("Стол упаковки 1", "pack", 40),
+    device("Стол упаковки 2", "pack", 40),
+    device("Приёмка, ворота 1", "receiving", 35),
+    device("ТСД 3", "picking", 20),
+    { ...device("ТСД 1", "picking", 60), revokedAt: day0 - 12 * DAY },
+  ];
+
   // --- Смены: две недели будней, у кладовщиков и комплектовщиков — пики.
   const staffEvents: StaffEvent[] = [];
+  // Журнал устройства: упаковщики работают за столами упаковки, сборщики — с
+  // ТСД. Стол закреплён за человеком, чтобы журнал читался как настоящий.
+  const packDesks = devices.filter((d) => d.station === "pack" && !d.revokedAt);
+  const pickDesk = devices.find((d) => d.station === "picking" && !d.revokedAt);
+  const deskOf = new Map<string, string>();
   const ev = (e: Omit<StaffEvent, "id">) => {
-    if (e.at <= now) staffEvents.push({ id: uid("sev"), ...e });
+    if (e.at > now) return;
+    const deviceId = deskOf.get(e.staffId);
+    staffEvents.push({ id: uid("sev"), ...e, ...(deviceId ? { deviceId } : {}) });
   };
   const packers = new Set(floor.filter((s) => /кладов|комплект/i.test(s.role)).map((s) => s.id));
+  // Стол — одному человеку: двое за одним столом в одну смену не работают.
+  let packN = 0;
+  for (const s of floor) {
+    if (!packers.has(s.id)) continue;
+    const desk = /кладов/i.test(s.role) ? packDesks[packN++] : pickDesk;
+    if (desk) deskOf.set(s.id, desk.id);
+  }
   for (let d = 14; d >= 0; d--) {
     const dayAt = day0 - d * DAY;
     const wd = new Date(dayAt).getDay();
@@ -174,21 +203,6 @@ export function seedWork(
     }
   }
   staffEvents.sort((a, b) => a.at - b.at);
-
-  // --- Столы и ТСД склада, привязанные заранее; один отвязан.
-  const device = (name: string, station: Device["station"], daysAgo: number): Device => ({
-    id: uid("dev"),
-    name,
-    station,
-    createdAt: day0 - daysAgo * DAY,
-  });
-  const devices: Device[] = [
-    device("Стол упаковки 1", "pack", 40),
-    device("Стол упаковки 2", "pack", 40),
-    device("Приёмка, ворота 1", "receiving", 35),
-    device("ТСД 3", "picking", 20),
-    { ...device("ТСД 1", "picking", 60), revokedAt: day0 - 12 * DAY },
-  ];
 
   return { serviceSettings, tasks, staffEvents, devices };
 }

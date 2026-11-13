@@ -19,7 +19,9 @@ export function ScanStatusLine({ status, msg }: { status: ScanStatus; msg?: stri
         "flex items-center gap-2 rounded-lg border px-3 py-2 text-xs",
         good
           ? "border-success/40 bg-success/10 text-success"
-          : "border-destructive/40 bg-destructive/10 text-destructive",
+          : status === "warn"
+            ? "border-warning/40 bg-warning/10 text-warning"
+            : "border-destructive/40 bg-destructive/10 text-destructive",
       )}
       role="status"
     >

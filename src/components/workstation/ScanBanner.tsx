@@ -2,11 +2,11 @@ import type { ReactNode } from "react";
 import { Check, TriangleAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type BannerTone = "idle" | "ok" | "error";
+export type BannerTone = "idle" | "ok" | "warn" | "error";
 
 /**
- * Результат скана одной широкой полосой: зелёное — принято, красное — стоп,
- * серое — ждём следующий скан. Читается краем глаза; текст дублирует цвет для
+ * Результат скана одной широкой полосой: зелёное — принято, жёлтое — «не
+ * всё, нужен следующий шаг», красное — стоп, серое — ждём следующий скан. Читается краем глаза; текст дублирует цвет для
  * тех, кто всё же смотрит. Одна и та же полоса на всех столах.
  */
 export function ScanBanner({ tone, children }: { tone: BannerTone; children: ReactNode }) {
@@ -19,10 +19,12 @@ export function ScanBanner({ tone, children }: { tone: BannerTone; children: Rea
           ? "bg-destructive text-destructive-foreground"
           : tone === "ok"
             ? "bg-success text-white"
-            : "bg-muted text-muted-foreground",
+            : tone === "warn"
+              ? "bg-warning text-black"
+              : "bg-muted text-muted-foreground",
       )}
     >
-      {tone === "error" ? (
+      {tone === "error" || tone === "warn" ? (
         <TriangleAlert className="size-6 shrink-0" />
       ) : tone === "ok" ? (
         <Check className="size-6 shrink-0" />

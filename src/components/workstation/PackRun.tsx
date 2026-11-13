@@ -7,6 +7,7 @@ import {
   explainScan,
   packSummary,
   pendingLabel,
+  targetCode,
   toteContents,
   toteOrders,
   toteRemaining,
@@ -15,7 +16,9 @@ import {
 import type { PackSession } from "@/lib/types";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { sizeLabel, useLabelPrinter } from "@/lib/labelPrinter";
-import { beep } from "@/lib/beep";
+import { beepNotes } from "@/lib/beep";
+import { holdSignal, levelFor, signal } from "@/lib/scanSignal";
+import { destinationMark } from "@/lib/destinationMark";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { eyebrow } from "@/components/ui/eyebrow";
@@ -24,6 +27,7 @@ import { ScanField, type ScanStatus } from "@/components/fulfillment/ScanField";
 import { PrintableLabel } from "./PrintableLabel";
 import { shortId } from "./useNow";
 import { useDemoHints } from "./useDemoHints";
+import { DestinationChip } from "./DestinationChip";
 
 export type PackResult = ReturnType<typeof packSummary> & { source: string; target: string };
 
@@ -55,19 +59,28 @@ export function PackRun({
   const [okText, setOkText] = useState<string | null>(null);
   const okTimer = useRef<number | undefined>(undefined);
   useEffect(() => () => window.clearTimeout(okTimer.current), []);
-  const flashOk = (text: string) => {
-    beep("ok");
+  const flashOk = (text: string, quiet = false) => {
+    signal("ok", { quiet });
     setFeedback(null);
     setOkText(text);
     window.clearTimeout(okTimer.current);
     okTimer.current = window.setTimeout(() => setOkText(null), 2200);
   };
   const flashError = (f: NonNullable<Feedback>) => {
-    beep("error");
+    const level = levelFor(f.key);
+    signal(level);
+    f = { ...f, status: level };
     window.clearTimeout(okTimer.current);
     setOkText(null);
     setFeedback(f);
   };
+
+  // Заказ из нескольких штук собран не весь — долгий жёлтый, пока не наполнится.
+  const partial = !!box && orderIncomplete(session, toteOrders(requests, box));
+  useEffect(() => {
+    holdSignal(partial ? "warn" : null);
+    return () => holdSignal(null);
+  }, [partial]);
 
   if (!box) return null;
   const contents = toteContents(box);
@@ -77,6 +90,8 @@ export function PackRun({
   const unit = session.units.find((u) => !u.confirmedAt);
   const orderLabel = !unit ? session.orderLabels.find((l) => !l.confirmedAt) : undefined;
   const summary = packSummary(session, box);
+  // Назначение короба отгрузки этой сессии: короб один на адрес (`targetCode`).
+  const dest = orders.find((o) => o.target && targetCode(o.target) === session.targetCode)?.target;
   const nameOf = (id: string) => products.find((p) => p.id === id)?.name ?? id;
 
   const onScan = async (code: string) => {
@@ -89,7 +104,11 @@ export function PackRun({
     if (mistake) return flashError({ status: "error", key: `ws.chk.${mistake}` });
     if (label) {
       const res = await workstationRepository.packLabel(code);
-      if (res.ok) return flashOk(t("ws.ok.label"));
+      if (res.ok) {
+        // Свой звук назначения: на слух ясно, в какой короб класть.
+        if (dest) beepNotes(destinationMark(dest).notes);
+        return flashOk(t("ws.ok.label"), !!dest);
+      }
       // Не этикетка, а товар — значит, этикетку ещё не наклеили.
       const item = await workstationRepository.packItem(code);
       return flashError({
@@ -128,7 +147,10 @@ export function PackRun({
 
   const idleText = closing ? t("ws.idle.close") : label ? t("ws.idle.label") : t("ws.idle.item");
   const missing = [...remaining].filter(([, n]) => n > 0);
-  const isError = feedback?.status === "error";
+  // Жёлтое (не тот порядок, лишняя штука) показываем так же, как ошибку, но
+  // своим цветом: рамка стола и полоса горят одинаково.
+  const isError = feedback?.status === "error" || feedback?.status === "warn";
+  const warn = feedback?.status === "warn";
   const bannerText = isError
     ? t(feedback.key, { name: feedback.name ?? "", box: feedback.box ?? "" })
     : okText
@@ -144,7 +166,7 @@ export function PackRun({
           <div className="min-w-0 flex-1">
             <ScanField
               label={t("ws.run.scan")}
-              status={isError ? "error" : okText ? "ok" : "idle"}
+              status={isError ? (warn ? "warn" : "error") : okText ? "ok" : "idle"}
               actionLabel={t(label ? "ws.act.confirm" : "ws.act.pack")}
               onSubmit={(c) => void onScan(c)}
             />
@@ -162,7 +184,9 @@ export function PackRun({
           className={cn(
             "flex min-h-14 items-center gap-3 rounded-xl px-4 py-3 text-xl font-semibold transition-colors duration-200",
             isError
-              ? "bg-destructive text-destructive-foreground"
+              ? warn
+                ? "bg-warning text-black"
+                : "bg-destructive text-destructive-foreground"
               : okText
                 ? "bg-success text-white"
                 : "bg-muted text-muted-foreground",
@@ -219,8 +243,9 @@ export function PackRun({
                 {t("ws.run.unitOf", { i: doneOfProduct, n: contents.get(product.id) ?? 0 })}
               </p>
               {order && (
-                <p className="text-sm text-muted-foreground">
-                  {t("ws.run.forOrder", { id: shortId(order.id), target: order.target ?? "—" })}
+                <p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                  {t("ws.run.forOrder", { id: shortId(order.id) })}
+                  {order.target && <DestinationChip destination={order.target} />}
                 </p>
               )}
               <div className="mt-auto flex flex-col items-start gap-3">
@@ -358,6 +383,7 @@ export function PackRun({
         <div className="ml-auto flex flex-wrap items-center gap-3">
           <p className="text-xs text-muted-foreground">
             {t("ws.run.outTote")} <span className="font-mono">{session.targetCode}</span>
+            {dest && <DestinationChip destination={dest} className="ml-2 text-xs" />}
           </p>
           <Button
             size="lg"
@@ -506,4 +532,12 @@ function DemoCodes({
       </ul>
     </div>
   );
+}
+
+/** Последний упакованный заказ ещё не полон: часть его штук впереди. */
+function orderIncomplete(session: PackSession, orders: ReturnType<typeof toteOrders>): boolean {
+  const last = session.units.filter((u) => u.confirmedAt).at(-1);
+  const order = last?.orderId ? orders.find((o) => o.id === last.orderId) : undefined;
+  if (!order) return false;
+  return session.units.filter((u) => u.orderId === order.id && u.confirmedAt).length < order.units;
 }

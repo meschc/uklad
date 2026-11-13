@@ -8,7 +8,7 @@ import type {
   WorkstationKind,
 } from "../types";
 import { onServer, serverBadges, type BadgeServer } from "./badgeRepository";
-import { serverDesks, type DeskServer } from "./deskServer";
+import { serverDesks, type DeskServer, type DeviceJournalEntry } from "./deskServer";
 import { isStaffEvent } from "./guards";
 import { deskOps, type OpQueue } from "./opQueue";
 import { readList, storePort, type StorePort } from "./repository";
@@ -35,6 +35,8 @@ export interface WorkstationRepository {
    */
   addDevice: (name: string, station: WorkstationKind) => Promise<Result<Device>>;
   revokeDevice: (id: string) => Promise<Result<void>>;
+  /** Журнал устройства: кто и что делал за ним, новые сверху. */
+  deviceJournal: (id: string) => Promise<Result<DeviceJournalEntry[]>>;
   /** Отвязать этот браузер бейджем руководителя. Чужой бейдж — `ws.device.notManager`. */
   unbindDevice: (managerBadge: string) => Promise<Result<void>>;
   /** Начать тару: скан тары с товаром и короба отгрузки. */
@@ -193,6 +195,18 @@ export function createWorkstationRepository(
         if (!off.ok) return off;
       }
       return attempt(() => port.get().revokeDevice(id));
+    },
+    deviceJournal: async (id) => {
+      if (onServer(port)) return desks.journal(id);
+      // Демо: отметки и сканы, пришедшие с этого устройства.
+      return attempt(() =>
+        port
+          .get()
+          .staffEvents.filter((e) => e.deviceId === id)
+          .map((e) => ({ at: e.at, staffRef: e.staffId, kind: e.type }))
+          .sort((a, b) => b.at - a.at)
+          .slice(0, 200),
+      );
     },
     unbindDevice: async (code) => {
       if (onServer(port)) {

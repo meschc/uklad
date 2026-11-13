@@ -30,7 +30,7 @@ export const SCAN_EVENT = "uklad:scan";
 
 export let lastScanAt: number | null = null;
 
-export type ScanStatus = "idle" | "ok" | "error";
+export type ScanStatus = "idle" | "ok" | "warn" | "error";
 
 export function ScanField({
   label,
@@ -105,7 +105,9 @@ export function ScanField({
                 ? "text-success"
                 : shown === "error"
                   ? "text-destructive"
-                  : "text-muted-foreground",
+                  : shown === "warn"
+                    ? "text-warning"
+                    : "text-muted-foreground",
             )}
           />
           <input
