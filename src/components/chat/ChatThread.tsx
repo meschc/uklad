@@ -12,7 +12,7 @@ import {
   X,
 } from "lucide-react";
 import type { ChatMessage, ChatTopic, ChatTopicKind, Partner, UserRole } from "@/lib/types";
-import { visibleProducts } from "@/lib/warehouseProducts";
+import { ChatTopicPicker } from "./ChatTopicPicker";
 import { groupMessagesByDay, lastEditable, searchMessages } from "@/lib/chat";
 import { chatRepository } from "@/lib/data";
 import { useEditor } from "@/lib/store";
@@ -64,13 +64,6 @@ export function ChatThread({
   // после отправки, чтобы следующее сообщение не уехало не в ту тему.
   const [topic, setTopic] = useState<ChatTopic | null>(null);
   const [topicOpen, setTopicOpen] = useState(false);
-  const products = useEditor((s) => s.products);
-  const warehouseNow = useEditor((s) => s.warehouse);
-  const user = useEditor((s) => s.session.user);
-  const topicProducts = useMemo(
-    () => visibleProducts(products, warehouseNow, user),
-    [products, warehouseNow, user],
-  );
   const [atBottom, setAtBottom] = useState(true);
   const [flash, setFlash] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -363,11 +356,11 @@ export function ChatThread({
           <TopicPanel
             topic={topic}
             open={topicOpen}
-            products={topicProducts}
             onPick={(next) => {
               setTopic(next);
-              // Товар выбирают в два шага: вид темы, затем сам товар.
-              setTopicOpen(next?.kind === "product" && !next.productId);
+              // Тему выбирают в два шага: вид, затем предмет из таблицы.
+              // Предмет выбран — таблица сворачивается, тема остаётся строкой.
+              setTopicOpen(!!next && next.kind !== "other" && !next.refId && !next.productId);
             }}
             onClose={() => {
               setTopic(null);
@@ -457,13 +450,11 @@ const TOPIC_KINDS: ChatTopicKind[] = ["product", "request", "receiving", "shipme
 function TopicPanel({
   topic,
   open,
-  products,
   onPick,
   onClose,
 }: {
   topic: ChatTopic | null;
   open: boolean;
-  products: { id: string; name: string }[];
   onPick: (topic: ChatTopic | null) => void;
   onClose: () => void;
 }) {
@@ -489,23 +480,18 @@ function TopicPanel({
           <X className="size-4" />
         </Button>
       </div>
-      {open && topic?.kind === "product" && (
-        <select
-          aria-label={t("chat.topic.pickProduct")}
-          value={topic.productId ?? ""}
-          onChange={(e) => {
-            const p = products.find((x) => x.id === e.target.value);
-            onPick(p ? { kind: "product", productId: p.id, label: p.name } : { kind: "product" });
-          }}
-          className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+      {/* Выбранный предмет виден до отправки — по нажатию снова таблица. */}
+      {!open && topic?.label && (
+        <button
+          type="button"
+          onClick={() => onPick({ kind: topic.kind })}
+          className="self-start truncate text-left text-xs font-medium text-primary hover:underline"
         >
-          <option value="">{t("chat.topic.pickProduct")}</option>
-          {products.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
+          {topic.label}
+        </button>
+      )}
+      {open && topic && topic.kind !== "other" && (
+        <ChatTopicPicker kind={topic.kind} value={topic} onPick={onPick} />
       )}
     </div>
   );
