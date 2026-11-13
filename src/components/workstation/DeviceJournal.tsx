@@ -103,9 +103,13 @@ export function DeviceJournal({
                       {day(s.from)} · {time(s.from)}–{time(s.to)}
                     </span>
                   </div>
+                  {/* Сколько раз человек сделал это действие с устройства. */}
                   <p className="text-xs text-muted-foreground">
                     {Object.entries(s.kinds)
-                      .map(([k, n]) => `${kind(k)}: ${n}`)
+                      .map(
+                        ([k, n]) =>
+                          `${kind(k)} — ${n} ${t.plural(n, ["раз", "раза", "раз"], ["time", "times"])}`,
+                      )
                       .join(" · ")}
                   </p>
                   {s.flagged > 0 && (

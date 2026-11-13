@@ -207,6 +207,11 @@ export function WorkstationScreen() {
           // «Устройства» в кабинете. Без привязки можно войти (демо, проверка).
           <div className="flex min-h-full items-center justify-center px-4 py-10">
             <div className="flex w-full max-w-sm flex-col gap-4">
+              <MonitorSmartphone
+                className="mx-auto size-12 text-muted-foreground"
+                strokeWidth={1.5}
+                aria-hidden
+              />
               <h2 className="text-center text-xl font-semibold">{t("devices.bindDevice")}</h2>
               <BindDeviceForm stacked />
             </div>
