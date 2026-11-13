@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Backdrop } from "@/components/ui/backdrop";
 import { eyebrow } from "@/components/ui/eyebrow";
+import { LIMITS } from "@/lib/numberLimits";
 
 /**
  * Панель документа справа — правка черновика и подтверждение. Не окно поверх
@@ -143,6 +144,7 @@ export function DocPanel({
                     {l.qty}
                   </span>
                   <Input
+                    max={LIMITS.count.max}
                     className="w-20 text-right tabular-nums"
                     type="number"
                     min={0}

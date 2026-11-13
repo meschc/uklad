@@ -12,6 +12,7 @@ import { Segmented } from "@/components/ui/segmented";
 import { card } from "@/components/ui/card";
 import { ScreenShell, EmptyState } from "./ScreenShell";
 import { ReportPanel, ServicesPanel } from "./ServicesPanels";
+import { LIMITS } from "@/lib/numberLimits";
 
 /**
  * «Операции» — задания на операции склада и учёт услуг.
@@ -242,6 +243,7 @@ function NewTaskForm({ kinds }: { kinds: ServiceKind[] }) {
         label={`${t("ops.task.qty")} (${t(`ops.unit.${serviceSpec(current)?.unit ?? "unit"}` as MsgKey)})`}
       >
         <Input
+          max={LIMITS.count.max}
           type="number"
           min={1}
           inputMode="numeric"

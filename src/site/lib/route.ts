@@ -2,6 +2,7 @@ import { useSyncExternalStore } from "react";
 import { stripBase, withBase } from "./basePath";
 import { EN_PREFIX, LANG_PARAM, getLang, setLang, splitLangPath, type SiteLang } from "./lang";
 import { scrollPageTop } from "./useSmoothScroll";
+import { MARKET_PAUSED } from "@/lib/features";
 
 /**
  * Маршрутизация витрины — на настоящих путях, без роутера.
@@ -84,6 +85,29 @@ export function parsePath(pathname: string): Route {
 }
 
 /**
+ * Витрина складов на паузе (Кирилл, 12 ноя: «витрину пока на стоп ставим,
+ * после запуска доработаем»). Каталог, карточка склада и страница селлера
+ * остаются в коде, но наружу не видны: прямой адрес отвечает «не найдено»,
+ * а в карту сайта и предрендер они не попадают (`lib/routes`).
+ *
+ * Пауза — здесь, а не в `parsePath`: разбор адреса остаётся честным (его
+ * проверяют тесты и им пользуются ссылки), а скрывает страницы один флаг.
+ * Снять паузу — поставить `false`.
+ */
+export { MARKET_PAUSED };
+const PAUSED_PAGES: ReadonlySet<Page> = new Set<Page>(["market", "warehouse", "sellers"]);
+
+/** Видна ли страница сейчас, с учётом паузы витрины. */
+export function isPagePaused(page: Page): boolean {
+  return MARKET_PAUSED && PAUSED_PAGES.has(page);
+}
+
+/** Маршрут, который человек увидит: страница на паузе — «не найдено». */
+export function visibleRoute(route: Route): Route {
+  return isPagePaused(route.page) ? { page: "notfound" } : route;
+}
+
+/**
  * Путь маршрута без языка: `{ page: "warehouse", id: "w-1" }` → `warehouse/w-1`.
  *
  * Обратная операция к `parsePath` — нужна там, где адрес собирают не из клика,
@@ -130,7 +154,7 @@ let currentSearch: string | null = null;
 const listeners = new Set<() => void>();
 
 function readRoute(): Route {
-  if (!current) current = parsePath(window.location.pathname);
+  if (!current) current = visibleRoute(parsePath(window.location.pathname));
   return current;
 }
 
@@ -141,7 +165,7 @@ function readSearch(): string {
 
 /** Перечитать адрес и разбудить подписчиков. */
 function refresh(): void {
-  const next = parsePath(window.location.pathname);
+  const next = visibleRoute(parsePath(window.location.pathname));
   // Прежний объект маршрута переживает смену хвоста намеренно: отбор на
   // витрине правят десятками кликов, и новый объект на каждый из них
   // перерисовывал бы весь сайт вместе с шапкой, подвалом и картой.

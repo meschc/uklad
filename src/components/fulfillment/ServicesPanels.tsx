@@ -12,6 +12,7 @@ import { EmptyState } from "./ScreenShell";
 import { useWithArchive } from "@/lib/store/archive";
 import { ArchiveNote } from "./ArchiveNote";
 import { ReportExport } from "./ReportExport";
+import { LIMITS } from "@/lib/numberLimits";
 
 /**
  * Вкладки «Услуги» и «Отчёт» экрана операций. Вынесены отдельно: это
@@ -71,6 +72,7 @@ export function ServicesPanel() {
                 )}
               </label>
               <Input
+                max={LIMITS.money.max}
                 type="number"
                 min={0}
                 step="0.5"

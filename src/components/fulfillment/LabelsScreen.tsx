@@ -256,6 +256,7 @@ export function LabelsScreen() {
 
   const num = (v: string, set: (s: string) => void) => (
     <Input
+      maxLength={7}
       inputMode="numeric"
       value={v}
       onChange={(e) => set(e.target.value.replace(/\D/g, "").slice(0, 7))}

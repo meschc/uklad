@@ -4,6 +4,7 @@ import type { TFunc } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { LIMITS } from "@/lib/numberLimits";
 
 /**
  * «Вот это — ряд N» для всего выделения. Закреплённый ряд становится якорем:
@@ -31,6 +32,7 @@ export function AssignRow({ count, t }: { count: number; t: TFunc }) {
       </p>
       <div className="flex items-center gap-2">
         <Input
+          max={LIMITS.small.max}
           type="number"
           min={1}
           value={value}

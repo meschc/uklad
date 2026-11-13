@@ -1,5 +1,6 @@
 import { Minus, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { digitsFor } from "@/lib/numberLimits";
 
 /**
  * Ввод фактического количества. Именно ручной ввод, а не серия сканирований
@@ -35,6 +36,7 @@ export function QtyStepper({
         <Minus className="size-4" />
       </button>
       <input
+        maxLength={digitsFor("count")}
         type="text"
         inputMode="numeric"
         // eslint-disable-next-line jsx-a11y/no-autofocus -- решает вызывающий экран: на приёмке карточка открывается по скану, и курсор сразу должен стоять в количестве

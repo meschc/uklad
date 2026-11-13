@@ -2,7 +2,7 @@ import { useWarehouseProducts } from "@/lib/warehouseProducts";
 import { useState } from "react";
 import { Plus, Store, Trash2 } from "lucide-react";
 import { useEditor } from "@/lib/store";
-import { formatPhone } from "@/lib/phone";
+import { formatPhone, PHONE_MAX_LENGTH } from "@/lib/phone";
 import { useT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -81,6 +81,7 @@ export function PartnersSection() {
             <Input
               value={draft.phone}
               inputMode="tel"
+              maxLength={PHONE_MAX_LENGTH}
               onChange={(e) => setDraft({ ...draft, phone: formatPhone(e.target.value) })}
               placeholder="+7 900 000-00-00"
               className="h-9"
@@ -149,6 +150,7 @@ export function PartnersSection() {
                 <Input
                   value={p.phone ?? ""}
                   inputMode="tel"
+                  maxLength={PHONE_MAX_LENGTH}
                   onChange={(e) => updatePartner(p.id, { phone: formatPhone(e.target.value) })}
                   placeholder="+7 900 000-00-00"
                   className="h-8 w-40 shrink-0"

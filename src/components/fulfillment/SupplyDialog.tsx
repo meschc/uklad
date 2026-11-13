@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { Modal, Field } from "./Modal";
+import { digitsFor } from "@/lib/numberLimits";
 
 /**
  * «Везу товар» — заявка продавца на ПРИЁМКУ, зеркало заявки на отгрузку.
@@ -105,6 +106,7 @@ export function SupplyDialog({ onClose }: { onClose: () => void }) {
             <label className="flex w-20 flex-col gap-1">
               <span className={eyebrow()}>{t("supply.qty")}</span>
               <Input
+                maxLength={digitsFor("count")}
                 value={l.qty}
                 inputMode="numeric"
                 onChange={(e) => setLine(i, { qty: e.target.value.replace(/\D/g, "") })}

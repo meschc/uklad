@@ -4,6 +4,7 @@ import type { TFunc } from "@/lib/i18n";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Row, Stepper } from "./fields";
+import { LIMITS } from "@/lib/numberLimits";
 
 /**
  * Размер сразу для всего выделения (п.8): растянуть двадцать секций по одной —
@@ -66,6 +67,7 @@ export function MultiSize({ selected, t }: { selected: PlacedModule[]; t: TFunc 
       </Row>
       <Row label={t("insp.realWidth")}>
         <Input
+          max={LIMITS.size.max}
           type="number"
           className="h-7 w-20 text-right"
           placeholder={common((m) => m.realWidthCm) == null ? "—" : undefined}
@@ -75,6 +77,7 @@ export function MultiSize({ selected, t }: { selected: PlacedModule[]; t: TFunc 
       </Row>
       <Row label={t("insp.depth")}>
         <Input
+          max={LIMITS.size.max}
           type="number"
           className="h-7 w-20 text-right"
           placeholder={common((m) => m.realDepthCm) == null ? "—" : undefined}
@@ -85,6 +88,7 @@ export function MultiSize({ selected, t }: { selected: PlacedModule[]; t: TFunc 
       {hasSections && (
         <Row label={t("insp.height")}>
           <Input
+            max={LIMITS.size.max}
             type="number"
             className="h-7 w-20 text-right"
             placeholder={common((m) => m.realHeightCm) == null ? "—" : undefined}

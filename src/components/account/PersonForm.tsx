@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { UserRound } from "lucide-react";
-import { formatPhone } from "@/lib/phone";
+import { formatPhone, PHONE_MAX_LENGTH } from "@/lib/phone";
 import type { TFunc } from "@/lib/i18n";
 import { isKnownStaffRole, staffRoleOptions } from "@/lib/staffRoles";
 import { Input } from "@/components/ui/input";
@@ -47,6 +47,7 @@ export function PersonForm({
         <RoleField value={value.role} onChange={(role) => onChange({ role })} t={t} />
         <Input
           value={value.phone}
+          maxLength={PHONE_MAX_LENGTH}
           onChange={(e) => onChange({ phone: formatPhone(e.target.value) })}
           placeholder="+7 495 000-00-00"
           inputMode="tel"
@@ -71,6 +72,7 @@ export function PersonForm({
           <label className="flex h-9 items-center gap-2 rounded-md border border-input px-2 text-sm shadow-sm focus-within:ring-2 focus-within:ring-ring">
             <span className="shrink-0 text-muted-foreground">{t("staff.rate")}</span>
             <input
+              maxLength={10}
               value={value.rate ?? ""}
               onChange={(e) => onChange({ rate: formatRate(e.target.value) })}
               inputMode="decimal"
