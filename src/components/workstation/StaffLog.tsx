@@ -1,8 +1,8 @@
 import { useEditor } from "@/lib/store";
 import { startOfDay } from "@/lib/workstation";
 import { useT, type MsgKey } from "@/lib/i18n";
-import { cn } from "@/lib/utils";
 import { formatTime } from "./useNow";
+import { JournalActions } from "./JournalActions";
 
 /**
  * Свой журнал за сегодня (узел cab-staff-log). Сотрудник видит ровно то же,
@@ -25,16 +25,13 @@ export function StaffLog({ staffId, now }: { staffId: string; now: number }) {
       {today.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t("ws.log.empty")}</p>
       ) : (
-        <ol className="divide-y divide-border">
-          {today.map((e) => (
-            <li
-              key={e.id}
-              className="grid grid-cols-[4.5rem_minmax(0,1fr)] gap-3 px-4 py-2 text-sm"
-            >
-              <span className="tabular-nums text-muted-foreground">
-                {formatTime(e.at, t.lang, true)}
-              </span>
-              <span className={cn(e.type === "pack_error" && "text-destructive")}>
+        <JournalActions
+          items={today.map((e) => ({
+            key: e.id,
+            time: formatTime(e.at, t.lang, true),
+            tone: e.type === "pack_error" ? ("error" as const) : undefined,
+            label: (
+              <>
                 {t(`ws.ev.${e.type}` as MsgKey)}
                 {e.productId && products.get(e.productId) && ` · ${products.get(e.productId)}`}
                 {e.ms != null && (
@@ -45,10 +42,10 @@ export function StaffLog({ staffId, now }: { staffId: string; now: number }) {
                 {e.code && (
                   <span className="ml-2 font-mono text-xs text-muted-foreground">{e.code}</span>
                 )}
-              </span>
-            </li>
-          ))}
-        </ol>
+              </>
+            ),
+          }))}
+        />
       )}
     </section>
   );

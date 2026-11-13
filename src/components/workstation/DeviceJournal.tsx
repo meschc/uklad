@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
-import { History, X } from "lucide-react";
+import { ChevronRight, History, Link2, Unlink, X } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { workstationRepository } from "@/lib/data";
 import type { DeviceJournalEntry } from "@/lib/data/deskServer";
-import { groupJournal } from "@/lib/deviceJournal";
+import { journalRows, type JournalStint } from "@/lib/deviceJournal";
 import { useT, type MsgKey } from "@/lib/i18n";
 import type { Device } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { DialogHeader, DialogShell } from "@/components/ui/dialog-shell";
 import { eyebrow } from "@/components/ui/eyebrow";
+import { cn } from "@/lib/utils";
+import { JournalActions } from "./JournalActions";
 
 /** Виды операций стола на сервере (`desk_ops.kind`) — подписи в словаре. */
 const SERVER_KINDS = new Set([
@@ -62,10 +64,14 @@ export function DeviceJournal({
   const name = (ref: string | null) =>
     (ref && staff.find((m) => m.id === ref)?.name) || t("devices.journal.nobody");
   const kind = (k: string) => t((SERVER_KINDS.has(k) ? `devices.op.${k}` : `ws.ev.${k}`) as MsgKey);
-  const time = (ms: number) =>
-    new Date(ms).toLocaleTimeString(t.lang, { hour: "2-digit", minute: "2-digit" });
+  const time = (ms: number, sec = false) =>
+    new Date(ms).toLocaleTimeString(t.lang, {
+      hour: "2-digit",
+      minute: "2-digit",
+      ...(sec ? { second: "2-digit" } : {}),
+    });
   const day = (ms: number) => new Date(ms).toLocaleDateString(t.lang);
-  const stints = entries ? groupJournal(entries) : [];
+  const rows = entries ? journalRows(entries, device) : [];
 
   return (
     <DialogShell size="lg" scroll onClose={onClose}>
@@ -91,38 +97,108 @@ export function DeviceJournal({
             <p className="text-sm text-destructive">{t("data.failed")}</p>
           ) : !entries ? (
             <p className="text-sm text-muted-foreground">{t("data.busy")}</p>
-          ) : stints.length === 0 ? (
+          ) : rows.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t("devices.journal.empty")}</p>
           ) : (
-            <ul className="flex flex-col gap-4">
-              {stints.map((s) => (
-                <li key={`${s.staffRef}-${s.from}`} className="flex flex-col gap-0.5">
-                  <div className="flex items-baseline justify-between gap-3">
-                    <span className="text-sm font-medium">{name(s.staffRef)}</span>
-                    <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-                      {day(s.from)} · {time(s.from)}–{time(s.to)}
+            <ul className="flex flex-col gap-1">
+              {rows.map((r) =>
+                r.type === "device" ? (
+                  <li
+                    key={`${r.kind}-${r.at}`}
+                    className="flex items-baseline justify-between gap-3 py-1.5 pl-6"
+                  >
+                    <span className="flex items-center gap-2 text-sm font-medium">
+                      {r.kind === "bound" ? (
+                        <Link2 className="-ml-6 size-4 text-muted-foreground" />
+                      ) : (
+                        <Unlink className="-ml-6 size-4 text-muted-foreground" />
+                      )}
+                      {t(`devices.journal.${r.kind}`)}
                     </span>
-                  </div>
-                  {/* Сколько раз человек сделал это действие с устройства. */}
-                  <p className="text-xs text-muted-foreground">
-                    {Object.entries(s.kinds)
-                      .map(
-                        ([k, n]) =>
-                          `${kind(k)} — ${n} ${t.plural(n, ["раз", "раза", "раз"], ["time", "times"])}`,
-                      )
-                      .join(" · ")}
-                  </p>
-                  {s.flagged > 0 && (
-                    <p className="text-xs text-warning">
-                      {t("devices.journal.flagged", { n: s.flagged })}
-                    </p>
-                  )}
-                </li>
-              ))}
+                    <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                      {day(r.at)} · {time(r.at)}
+                    </span>
+                  </li>
+                ) : (
+                  <Stint
+                    key={`${r.staffRef}-${r.from}`}
+                    stint={r}
+                    name={name(r.staffRef)}
+                    kind={kind}
+                    time={time}
+                    day={day}
+                  />
+                ),
+              )}
             </ul>
           )}
         </section>
       </div>
     </DialogShell>
+  );
+}
+
+/**
+ * Человек за устройством: имя и время работы, под ними — раскрывающийся
+ * список его действий, как в журнале рабочего места.
+ */
+function Stint({
+  stint,
+  name,
+  kind,
+  time,
+  day,
+}: {
+  stint: JournalStint;
+  name: string;
+  kind: (k: string) => string;
+  time: (ms: number, sec?: boolean) => string;
+  day: (ms: number) => string;
+}) {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+  const n = stint.entries.length;
+  return (
+    <li className="flex flex-col">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-baseline justify-between gap-3 rounded-md py-1.5 text-left hover:bg-muted/60"
+      >
+        <span className="flex min-w-0 items-center gap-2">
+          <ChevronRight
+            className={cn(
+              "size-4 shrink-0 self-center text-muted-foreground transition-transform",
+              open && "rotate-90",
+            )}
+          />
+          <span className="truncate text-sm font-medium">{name}</span>
+          <span className="shrink-0 text-xs text-muted-foreground">
+            {n} {t.plural(n, ["действие", "действия", "действий"], ["action", "actions"])}
+          </span>
+        </span>
+        <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+          {day(stint.from)} · {time(stint.from)}–{time(stint.to)}
+        </span>
+      </button>
+      {stint.flagged > 0 && (
+        <p className="pl-6 text-xs text-warning">
+          {t("devices.journal.flagged", { n: stint.flagged })}
+        </p>
+      )}
+      {open && (
+        <div className="pb-2 pl-2">
+          <JournalActions
+            items={stint.entries.map((e, i) => ({
+              key: `${e.at}-${i}`,
+              time: time(e.at, true),
+              label: kind(e.kind),
+              tone: e.flagged ? ("warn" as const) : undefined,
+            }))}
+          />
+        </div>
+      )}
+    </li>
   );
 }
