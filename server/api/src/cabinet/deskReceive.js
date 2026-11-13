@@ -14,7 +14,9 @@
  * и сам выдаёт им номера — стол печатает ярлыки по его ответу.
  */
 
-/* global module */
+/* global module, require */
+/* eslint-disable @typescript-eslint/no-require-imports */
+const { INVENTORY_KINDS } = require("./deskInventory");
 
 const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 const list = (v) => (Array.isArray(v) ? v.filter(isObject) : []);
@@ -25,6 +27,12 @@ const DISCREPANCY = new Set(["shortage", "overage"]);
 const OPEN = new Set(["new", "in_progress"]);
 
 /** Тара, в которую сейчас собирают открытые заявки: принимать в неё нельзя. */
+// Тара с нерешённым расхождением инвентаризации заморожена (`deskInventory.js`):
+// приёмка в неё и перенос изменили бы состав, по которому решает старший.
+const frozenBox = (data, boxId) =>
+  list(data.disputes).some(
+    (d) => !d.resolution && INVENTORY_KINDS.has(d.kind) && d.boxId === boxId,
+  );
 const collecting = (data, boxId) =>
   list(data.requests).some(
     (r) => r.toteId === boxId && !r.packedAt && r.status !== "shipped" && r.status !== "cancelled",
@@ -103,6 +111,7 @@ function applyRecvUnit(data, body, staffRef) {
   if (!box) return { flag: "bad" };
   // Невскрытое место, тара на полке или тара сборки — не тара приёмки.
   if (box.sealed || box.address || collecting(data, box.id)) return { flag: "tote" };
+  if (frozenBox(data, box.id)) return { flag: "stock" };
 
   const shipments = list(data.expectedShipments);
   let shipment = null;
@@ -240,6 +249,7 @@ function applyRecvPlace(data, body) {
   const box = boxes.find((b) => b.id === body.boxId);
   if (!box) return { flag: "bad" };
   if (box.address) return sameCell(box.address, body.cell) ? { data } : { flag: "tote" };
+  if (frozenBox(data, box.id)) return { flag: "stock" };
   if (box.sealed || collecting(data, box.id)) return { flag: "tote" };
   if (cellBusy(data, box, body.cell)) return { flag: "busy" };
   const c = body.cell;
@@ -260,6 +270,7 @@ function applyRecvAttach(data, body) {
   const box = boxes.find((b) => b.id === body.boxId);
   const pallet = pallets.find((p) => p.id === body.palletId);
   if (!box || !pallet || pallet.sealed) return { flag: "bad" };
+  if (frozenBox(data, box.id)) return { flag: "stock" };
   const ids = Array.isArray(pallet.boxIds) ? pallet.boxIds : [];
   if (box.palletId === pallet.id && ids.includes(box.id)) return { data };
   if (box.palletId && box.palletId !== pallet.id) return { flag: "bad" };
