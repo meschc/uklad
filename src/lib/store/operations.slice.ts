@@ -88,6 +88,13 @@ export const createOperationsSlice: SliceCreator<OperationsSlice> = (set) => ({
       },
     })),
 
+  restoreCustomService: (service) =>
+    set((s) => {
+      const list = s.serviceSettings.custom ?? [];
+      if (list.some((c) => c.kind === service.kind)) return {};
+      return { serviceSettings: { ...s.serviceSettings, custom: [...list, service] } };
+    }),
+
   setServicePrice: (kind, price) =>
     set((s) => {
       const prices = { ...s.serviceSettings.prices };

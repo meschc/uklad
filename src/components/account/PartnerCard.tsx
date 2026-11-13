@@ -26,6 +26,8 @@ export function PartnerCard({ partner, onClose }: { partner: Partner; onClose: (
   const t = useT();
   const updatePartner = useEditor((s) => s.updatePartner);
   const removePartner = useEditor((s) => s.removePartner);
+  const restorePartner = useEditor((s) => s.restorePartner);
+  const showToast = useEditor((s) => s.showToast);
   const goods = useWarehouseProducts().filter((x) => x.partnerId === partner.id);
   const [draft, setDraft] = useState({
     name: partner.name,
@@ -129,7 +131,14 @@ export function PartnerCard({ partner, onClose }: { partner: Partner; onClose: (
           variant="ghost"
           className="text-destructive hover:text-destructive"
           onClick={() => {
+            // Класс `undoable`: убираем сразу, вернуть можно из тоста.
+            const index = (useEditor.getState().warehouse.partners ?? []).findIndex(
+              (p) => p.id === partner.id,
+            );
             removePartner(partner.id);
+            showToast("partners.removed", { name: partner.name }, () =>
+              restorePartner(partner, Math.max(0, index)),
+            );
             onClose();
           }}
         >

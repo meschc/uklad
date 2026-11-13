@@ -11,6 +11,7 @@ export const ru = {
   "ops.custom.name": "Название услуги",
   "ops.custom.add": "Добавить услугу",
   "ops.custom.remove": "Убрать из каталога",
+  "ops.custom.removed": "Услуга «{name}» убрана",
   "ops.custom.hint":
     "Чего нет в списке выше: фото на манекене, вложение открытки, сушка. Своя услуга выполняется заданием.",
   "ops.tab.services": "Услуги",
@@ -130,6 +131,7 @@ export const en: Record<keyof typeof ru, string> = {
   "ops.custom.name": "Service name",
   "ops.custom.add": "Add service",
   "ops.custom.remove": "Remove from catalog",
+  "ops.custom.removed": "Service “{name}” removed",
   "ops.custom.hint":
     "Anything not listed above: mannequin photos, gift cards, drying. A custom service is done as a task.",
   "ops.tab.services": "Services",

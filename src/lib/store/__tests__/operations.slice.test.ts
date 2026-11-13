@@ -20,6 +20,17 @@ describe("operations.slice", () => {
     expect(store.getState().tasks[0].doneAt).toBeUndefined();
   });
 
+  it("возвращает убранную свою услугу отменой из тоста, без дубля", () => {
+    const store = makeOperationsStore({ serviceSettings: { enabled: {}, prices: {} } });
+    const kind = store.getState().addCustomService("Фотосъёмка", "unit");
+    const service = store.getState().serviceSettings.custom![0];
+    store.getState().removeCustomService(kind);
+    expect(store.getState().serviceSettings.custom).toEqual([]);
+    store.getState().restoreCustomService(service);
+    store.getState().restoreCustomService(service);
+    expect(store.getState().serviceSettings.custom).toEqual([service]);
+  });
+
   it("не даёт завести задание на ноль", () => {
     const store = makeOperationsStore();
     store.getState().createTask({ kind: "packing", qty: 0 });

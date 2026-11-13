@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Plus, Receipt, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { ServiceUnit } from "@/lib/types";
+import type { CustomServiceKind, ServiceUnit } from "@/lib/types";
 import { useEditor } from "@/lib/store";
 import {
   allServices,
@@ -43,6 +43,14 @@ export function ServicesPanel() {
   const setPrice = useEditor((s) => s.setServicePrice);
   const setTwoStage = useEditor((s) => s.setTwoStageReceiving);
   const removeCustom = useEditor((s) => s.removeCustomService);
+  const restoreCustom = useEditor((s) => s.restoreCustomService);
+  const showToast = useEditor((s) => s.showToast);
+  const removeService = (kind: CustomServiceKind) => {
+    const service = settings.custom?.find((c) => c.kind === kind);
+    removeCustom(kind);
+    if (service)
+      showToast("ops.custom.removed", { name: service.name }, () => restoreCustom(service));
+  };
 
   return (
     <div className="flex flex-col gap-3">
@@ -110,7 +118,7 @@ export function ServicesPanel() {
                   variant="ghost"
                   aria-label={t("ops.custom.remove")}
                   title={t("ops.custom.remove")}
-                  onClick={() => isCustomKind(s.kind) && removeCustom(s.kind)}
+                  onClick={() => isCustomKind(s.kind) && removeService(s.kind)}
                 >
                   <Trash2 className="size-4" />
                 </Button>
