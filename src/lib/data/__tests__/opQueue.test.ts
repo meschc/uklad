@@ -200,7 +200,7 @@ describe("workstationRepository: отметки смены операциями"
       requestIds: ["r1"],
       shortages: [],
     };
-    (p.get() as unknown as { packFinish: () => unknown }).packFinish = () => facts;
+    (p.get() as unknown as { packFinish: () => unknown }).packFinish = () => [facts];
     const repo = createWorkstationRepository(p, badges, desks, q);
     await repo.packFinish();
     expect(q.enqueue).toHaveBeenCalledWith("pack_done", facts);

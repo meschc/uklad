@@ -170,6 +170,36 @@ describe("стол упаковки от тары", () => {
   });
 });
 
+describe("тара посылок (FBS)", () => {
+  it("короб не выбирают: каждый заказ площадки — своя посылка по своей этикетке", () => {
+    const { s, packOne } = stand(
+      [
+        { productId: "p1", qty: 2 },
+        { productId: "p2", qty: 1 },
+      ],
+      [
+        req({ id: "a", note: "Коледино", productId: "p1", toteId: "b1", externalId: "1" }),
+        req({ id: "b", note: "Коледино", productId: "p1", toteId: "b1", externalId: "2" }),
+        req({ id: "b2", note: "Коледино", productId: "p2", toteId: "b1", externalId: "2" }),
+      ],
+    );
+    expect(s().packSession!.targetCode).toBe("");
+    packOne("4600000000017");
+    packOne("4600000000017");
+    packOne("4600000000024");
+    const orderLabel = s().packSession!.orderLabels[0];
+    expect(s().packScanLabel(orderLabel.labelCode)).toBe(true);
+    const facts = s().packFinish()!;
+    expect(facts).toHaveLength(2);
+    const out = s().outboundBoxes!;
+    expect(out.map((b) => b.requestIds)).toEqual([["a"], ["b", "b2"]]);
+    expect(out[1].code).toBe(orderLabel.labelCode);
+    expect(out[0].code.startsWith("UK-LBL-")).toBe(true);
+    expect(s().boxes[0].lines).toEqual([]);
+    expect(s().requests.every((r) => r.packedAt)).toBe(true);
+  });
+});
+
 describe("заказ отменили после сборки", () => {
   const lines = [
     { productId: "p1", qty: 1 },

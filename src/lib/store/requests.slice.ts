@@ -3,7 +3,14 @@ import { nowMs, uid } from "../utils";
 import { addressKey } from "../address";
 import { planLoad, shipOutbound } from "../outbound";
 import { normalizeCode } from "../barcode";
-import { isOrderSource, type Box, type FulfillmentRequest, type Shipment } from "../types";
+import { isSortClosed, placeCodes, pointParcels } from "../sorting";
+import {
+  isOrderSource,
+  type Box,
+  type FulfillmentRequest,
+  type OutboundBox,
+  type Shipment,
+} from "../types";
 import type { RequestsSlice, SliceCreator } from "./state";
 
 const MAX_EXTERNAL_ID = 64;
@@ -305,17 +312,40 @@ export const createRequestsSlice: SliceCreator<RequestsSlice> = (set, get) => ({
     return used;
   },
 
-  sortToPallet: (boxCode, pallet) => {
-    const code = normalizeCode(boxCode);
-    const p = normalizeCode(pallet);
-    const box = get().outboundBoxes.find((b) => !b.shipmentId && normalizeCode(b.code) === code);
-    if (!box || box.palletCode) return false;
+  sortPlace: (parcelCode, sortCode) => {
+    const code = normalizeCode(parcelCode);
+    const point = normalizeCode(sortCode);
+    const box = get().outboundBoxes.find(
+      (b) => !b.shipmentId && !b.place && normalizeCode(b.code) === code,
+    );
+    if (!box || box.sortCode || isSortClosed(get().outboundBoxes, point)) return false;
     set((s) => ({
       outboundBoxes: s.outboundBoxes.map((b) =>
-        b.id === box.id ? { ...b, palletCode: p, updatedAt: nowMs() } : b,
+        b.id === box.id ? { ...b, sortCode: point, updatedAt: nowMs() } : b,
       ),
     }));
     return true;
+  },
+
+  sortClose: (sortCode, pallets, boxes) => {
+    const point = normalizeCode(sortCode);
+    const list = get().outboundBoxes;
+    if (isSortClosed(list, point) || pointParcels(list, point).length === 0) return null;
+    if (!(pallets >= 0 && boxes >= 0 && pallets + boxes > 0 && pallets + boxes <= 200)) return null;
+    const at = nowMs();
+    const places: OutboundBox[] = placeCodes(point, pallets, boxes).map((p) => ({
+      id: uid("place"),
+      code: p.code,
+      lines: [],
+      requestIds: [],
+      packedBy: [],
+      createdAt: at,
+      updatedAt: at,
+      sortCode: point,
+      place: p.place,
+    }));
+    set((s) => ({ outboundBoxes: [...s.outboundBoxes, ...places] }));
+    return places;
   },
 
   shipRequests: (requestIds, info) => {
