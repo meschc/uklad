@@ -17,6 +17,12 @@ export const ru = {
   "ws.soon": "скоро",
   "ws.exit": "В кабинет",
   "ws.logout": "Выйти",
+  "ws.out.title": "Выйти со стола",
+  "ws.out.body":
+    "Смена идёт с {t}. Если работа на сегодня закончена — закончите смену. Если идёте к другому столу или на ТСД — просто выйдите, смена продолжится.",
+  "ws.out.end": "Закончить смену и выйти",
+  "ws.out.keep": "Выйти, смена продолжится",
+  "ws.out.hint": "Пока смена открыта, время идёт в отработанные часы.",
   "ws.sessionUntil": "вход до {t}",
 
   "ws.equip.scanner": "Сканер",
@@ -37,6 +43,10 @@ export const ru = {
   "ws.login.demoHint": "Демо: нажмите на бейдж вместо скана.",
   "ws.login.noStaff": "В персонале склада никого нет. Добавьте сотрудников на экране «Персонал».",
   "ws.badgeUnknown": "Бейдж не найден среди сотрудников склада",
+  "ws.badgeNoRole":
+    "У вас нет роли на складе. Попросите руководителя назначить её в «Персонале» → «Доступ»",
+  "ws.badgeNoRoleIssue":
+    "Сначала назначьте сотруднику роль у стола в «Доступе»: без роли бейдж не работает",
   "ws.markRejected": "Эту отметку сейчас поставить нельзя",
   "ws.keys.endAgain": "Нажмите F4 ещё раз, чтобы завершить смену",
   "ws.keys.noShift": "Смена не начата",
@@ -351,7 +361,16 @@ export const ru = {
   "ws.run.rejected": "Отмечено как брак: {name}",
   "ws.label.wrong": "Это не та этикетка. Отсканируйте ту, что только что напечаталась.",
   "ws.run.tote": "В таре",
-  "ws.run.outTote": "Упаковываем в",
+  "ws.run.outTote": "Короб отгрузки",
+  "ws.run.cancelled":
+    "{name} — заказ {id} отменён. Не упаковывайте, оставьте в таре: старший вернёт товар на полку.",
+  "ws.run.cancelledPacked": "Заказ {id} отменили, пока вы упаковывали: {n} шт. уже в коробе.",
+  "ws.run.cancelledPackedHint":
+    "Выньте их и положите обратно в тару {box}. В короб отгрузки они не пойдут.",
+  "ws.reject.title": "Отметить как брак?",
+  "ws.reject.body":
+    "Штука не пойдёт в короб и останется в таре {box} на учёте. Решит старший смены: списать или вернуть.",
+  "ws.reject.label": "Напечатанную этикетку не клейте, выбросьте.",
   "ws.run.orders": "Заказы в таре",
   "ws.run.ordersNone": "Заказов нет — поставка без деления по заказам",
   "ws.run.packed": "Упаковано",
@@ -447,6 +466,12 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.soon": "soon",
   "ws.exit": "Back to dashboard",
   "ws.logout": "Sign out",
+  "ws.out.title": "Leave the desk",
+  "ws.out.body":
+    "Your shift has been running since {t}. If you're done for today, end the shift. If you're going to another desk or a handheld, just sign out and the shift goes on.",
+  "ws.out.end": "End shift and sign out",
+  "ws.out.keep": "Sign out, keep the shift",
+  "ws.out.hint": "While the shift is open, the time counts as worked hours.",
   "ws.sessionUntil": "signed in until {t}",
 
   "ws.equip.scanner": "Scanner",
@@ -467,6 +492,10 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.login.demoHint": "Demo: click a badge instead of scanning.",
   "ws.login.noStaff": "No staff on this warehouse yet. Add people on the Staff screen.",
   "ws.badgeUnknown": "This badge doesn't belong to anyone on the warehouse staff",
+  "ws.badgeNoRole":
+    "You have no warehouse role yet. Ask your manager to assign one in Staff → Access",
+  "ws.badgeNoRoleIssue":
+    "Assign this person a desk role in Access first: a badge without a role does nothing",
   "ws.markRejected": "This mark can't be set right now",
   "ws.keys.endAgain": "Press F4 again to end the shift",
   "ws.keys.noShift": "Shift not started",
@@ -783,7 +812,17 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.run.rejected": "Marked as defect: {name}",
   "ws.label.wrong": "Wrong label. Scan the one that has just printed.",
   "ws.run.tote": "In the tote",
-  "ws.run.outTote": "Packing into",
+  "ws.run.outTote": "Shipping box",
+  "ws.run.cancelled":
+    "{name} — order {id} is cancelled. Don't pack it, leave it in the tote: the shift lead will put it back on the shelf.",
+  "ws.run.cancelledPacked":
+    "Order {id} was cancelled while you were packing: {n} pcs are already in the box.",
+  "ws.run.cancelledPackedHint":
+    "Take them out and put them back into tote {box}. They won't go into the shipping box.",
+  "ws.reject.title": "Mark as defect?",
+  "ws.reject.body":
+    "The unit won't go into the box and stays on record in tote {box}. The shift lead decides: write off or return.",
+  "ws.reject.label": "Don't stick the printed label, throw it away.",
   "ws.run.orders": "Orders in the tote",
   "ws.run.ordersNone": "No orders — a supply not split by order",
   "ws.run.packed": "Packed",

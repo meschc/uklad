@@ -59,6 +59,12 @@ const minutes = (sec) =>
       ? `${Math.round(sec / 60)} мин`
       : `${(sec / 3600).toFixed(1).replace(".", ",")} ч`;
 
+/**
+ * Люди считаются по событиям, а события пишутся с 11.11 (PR #109). Переходы
+ * до этого есть только счётчиком — для них честнее «—», чем ноль.
+ */
+const peopleCell = (d) => (d.people ? d.people : d.opens ? "—" : 0);
+
 function demosList({ session, demos, now, error, days }) {
   const body = demos.length
     ? `<table><thead><tr><th>Для кого</th><th>Состояние</th><th class="r">Открытий</th><th class="r">Людей</th><th>Последний раз</th><th>Работает до</th></tr></thead><tbody>${demos
@@ -67,8 +73,8 @@ function demosList({ session, demos, now, error, days }) {
             d,
           ) => `<tr><td><a href="/demos/${d.id}">${esc(d.label || d.email || `Ссылка #${d.id}`)}</a>
             <div class="muted small">${d.label && d.email ? esc(d.email) : d.lead_id ? `по заявке #${d.lead_id}` : d.issued_by ? "выдана из админки" : ""}</div></td>
-          <td>${state(d, now)}</td><td class="num r">${d.opens}</td><td class="num r">${d.people ?? 0}</td>
-          <td class="num muted">${when(d.last_at)}</td><td class="num">${day(d.expires_at)}</td></tr>`,
+          <td>${state(d, now)}</td><td class="num r">${d.opens}</td><td class="num r">${peopleCell(d)}</td>
+          <td class="num muted">${when(d.last_at || d.opened_at)}</td><td class="num">${day(d.expires_at)}</td></tr>`,
         )
         .join("")}</tbody></table>`
     : `<p class="empty">Демо-ссылок пока не выдавали.</p>`;
@@ -78,7 +84,7 @@ function demosList({ session, demos, now, error, days }) {
     active: "/demos",
     badges: session.badges,
     body: `${head("Клиенты", `Демо-ссылки · ${demos.length}`)}
-    <form class="panel form" method="post" action="/demos" style="margin-bottom:44px">${hidden(session)}
+    <form class="panel form mb" method="post" action="/demos">${hidden(session)}
       <h2>Выдать ссылку</h2>
       ${errorBox(error)}
       <div class="row3">
@@ -173,9 +179,14 @@ function demoPage({ session, demo: d, link, events, now }) {
         ? `<div class="note"><strong>Ссылка для человека</strong><p>Работает до ${day(d.expires_at)}. Отправьте её сами — в мессенджер или почтой.</p><code class="copy">${esc(link)}</code></div>`
         : ""
     }
+    ${
+      d.opens && !events.length
+        ? `<div class="note warn"><strong>Подробностей нет</strong><p>Ссылку открывали до того, как админка начала записывать шаги (11.11). Видно только число переходов и первый переход. Новые открытия запишутся полностью.</p></div>`
+        : ""
+    }
     <div class="stats">
       ${stat("Открытий", d.opens, { ico: "link" })}
-      ${stat("Людей", people, { ico: "users", tone: people > 1 ? "primary" : "" })}
+      ${stat("Людей", people || (d.opens ? "—" : 0), { ico: "users", tone: people > 1 ? "primary" : "" })}
       ${stat("Пробыли на экране", minutes(active), { ico: "clock" })}
       ${stat("Нажатий", clicks, { ico: "click" })}
     </div>
@@ -185,7 +196,7 @@ function demoPage({ session, demo: d, link, events, now }) {
           ? `<div class="bars">${topViews
               .map(
                 (v) =>
-                  `<div class="b"><span>${esc(viewName(v.k))}</span><i style="width:${Math.max(4, Math.round((v.t / maxT) * 100))}%"></i><span class="num muted small r">${minutes(v.t)}</span></div>`,
+                  `<div class="b"><span>${esc(viewName(v.k))}</span><i class="w${Math.max(1, Math.round((v.t / maxT) * 20)) * 5}"></i><span class="num muted small r">${minutes(v.t)}</span></div>`,
               )
               .join("")}</div>`
           : `<p class="empty">Пока ничего.</p>`

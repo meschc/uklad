@@ -53,7 +53,7 @@ function stand(lines: Box["lines"], requests: FulfillmentRequest[] = []) {
       expect(s().packScanLabel(s().packSession!.units.at(-1)!.labelCode)).toBe(true);
     return r.kind;
   };
-  return { s, packOne };
+  return { s, packOne, store };
 }
 
 describe("стол упаковки от тары", () => {
@@ -167,6 +167,52 @@ describe("стол упаковки от тары", () => {
       req({ id: "tula", note: "Тула", productId: "p1", qty: 3, toteId: tote.id }),
     ];
     expect(toteOrders(requests, tote).map((o) => o.requestIds)).toEqual([["tula"]]);
+  });
+});
+
+describe("заказ отменили после сборки", () => {
+  const lines = [
+    { productId: "p1", qty: 1 },
+    { productId: "p2", qty: 1 },
+  ];
+  const requests = () => [
+    req({ id: "live", note: "Тула", productId: "p1", toteId: "b1" }),
+    req({ id: "gone", note: "Тула", productId: "p2", toteId: "b1", status: "cancelled" }),
+  ];
+
+  it("штуку отменённого не пакуют и не пишут в недостачу: она остаётся в таре", () => {
+    const { s, packOne } = stand(lines, requests());
+    expect(packOne("4600000000017")).toBe("ok");
+    const r = s().packScanItem("4600000000024");
+    expect(r).toMatchObject({ kind: "cancelled", orderId: "gone" });
+    s().packFinish();
+    // Старшему — «лишнее в таре», не недостача: товар есть, его вернут на полку.
+    expect(s().disputes.map((d) => [d.kind, d.productId])).toEqual([["extra", "p2"]]);
+    expect(s().outboundBoxes?.[0].lines).toEqual([{ productId: "p1", qty: 1 }]);
+    expect(s().boxes[0].lines).toEqual([{ productId: "p2", qty: 1 }]);
+  });
+
+  it("несканированная штука отменённого заказа тоже не недостача", () => {
+    const { s, packOne } = stand(lines, requests());
+    packOne("4600000000017");
+    s().packFinish();
+    expect(s().disputes.filter((d) => d.kind === "shortage")).toEqual([]);
+  });
+
+  it("отменили, пока паковали: упакованное для него в короб не идёт", () => {
+    const { s, packOne, store } = stand(lines, [
+      req({ id: "live", note: "Тула", productId: "p1", toteId: "b1" }),
+      req({ id: "gone", note: "Тула", productId: "p2", toteId: "b1", externalId: "9" }),
+    ]);
+    packOne("4600000000017");
+    packOne("4600000000024");
+    store.setState({
+      requests: s().requests.map((r) => (r.id === "gone" ? { ...r, status: "cancelled" } : r)),
+    });
+    s().packFinish();
+    expect(s().outboundBoxes?.[0].lines).toEqual([{ productId: "p1", qty: 1 }]);
+    expect(s().boxes[0].lines).toEqual([{ productId: "p2", qty: 1 }]);
+    expect(s().disputes.filter((d) => d.kind === "shortage")).toEqual([]);
   });
 });
 

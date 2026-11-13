@@ -422,6 +422,7 @@ test("все страницы открываются и экранируют в�
     "/demos",
     "/money",
     "/logo.svg",
+    "/chevron.svg",
     "/managers",
     "/audit",
     "/settings",
@@ -429,6 +430,47 @@ test("все страницы открываются и экранируют в�
   ]) {
     const res = await app.get(p, cookie);
     assert.equal(res.status, 200, p);
-    assert.ok(!(await res.text()).includes("<script>"), p);
+    const html = await res.text();
+    assert.ok(!html.includes("<script>"), p);
+    // CSP запрещает встроенные стили: style="…" молча не работает.
+    assert.ok(!/\sstyle="/.test(html), `${p}: встроенный style`);
   }
+});
+
+test("заявку можно убрать в архив и вернуть, удалить — только с подтверждением", async (t) => {
+  const app = await start();
+  t.after(app.stop);
+  for (const subject of ["Первая", "Вторая"]) {
+    app.db.addLead(
+      { kind: "contact", lang: "ru", subject, message: "Почта: a@b.ru", consent: { ads: false } },
+      new Date("2026-10-21T09:00:00Z"),
+    );
+  }
+  const store = require("../src/admin/store").adminStore(app.db.raw);
+  const { cookie } = await app.login();
+  const csrf = await app.csrf(cookie);
+
+  await app.post("/leads/1/archive", { csrf }, cookie);
+  assert.ok(store.lead(1).archived_at, "в архиве");
+  assert.deepEqual(
+    store.leads("").map((l) => l.id),
+    [2],
+    "из списка пропала",
+  );
+  assert.deepEqual(
+    store.leads("archived").map((l) => l.id),
+    [1],
+    "видна в архиве",
+  );
+  await app.post("/leads/1/archive", { csrf }, cookie);
+  assert.equal(store.lead(1).archived_at, null, "вернулась");
+
+  const ask = await app.post("/leads/2/delete", { csrf }, cookie);
+  assert.equal(ask.status, 200);
+  assert.match(await ask.text(), /Удалить заявку насовсем/);
+  assert.ok(store.lead(2), "без подтверждения не удалена");
+  await app.post("/leads/2/delete", { csrf, confirmed: "1" }, cookie);
+  assert.equal(store.lead(2), undefined, "удалена");
+  const log = app.db.raw.prepare(`SELECT action FROM admin_audit ORDER BY id`).all();
+  assert.ok(log.some((r) => r.action === "lead_delete"));
 });

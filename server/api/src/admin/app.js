@@ -74,6 +74,7 @@ const file = (name) => {
 };
 const ASSETS = {
   "/logo.svg": { type: "image/svg+xml", body: file("logo.svg") },
+  "/chevron.svg": { type: "image/svg+xml", body: file("chevron.svg") },
   "/fonts/medeo-sans-cyrillic.woff2": {
     type: "font/woff2",
     body: file("medeo-sans-cyrillic.woff2"),

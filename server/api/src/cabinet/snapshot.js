@@ -33,6 +33,7 @@
 /* global require, module, Buffer */
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { createRateLimit } = require("../rateLimit");
+const { writableKeys, foreignRows, mergeScoped } = require("./writeScope");
 const { recordMoves, invalidWork } = require("./moves");
 const {
   WAREHOUSE_LISTS,
@@ -236,7 +237,12 @@ function createSnapshot({ auth, send, log }) {
       if (viewer) {
         // Смотрящий архив не двигает: это работа руководителя.
         const { forViewer } = require("./viewer");
-        return { ...rows[0], viewer, data: forViewer(await loadCabinet(c, rows[0].data)) };
+        return {
+          ...rows[0],
+          viewer,
+          writable: writableKeys(ctx.can),
+          data: forViewer(await loadCabinet(c, rows[0].data)),
+        };
       }
       await archiveDaily(c);
       return { ...rows[0], data: await loadCabinet(c, rows[0].data) };
@@ -251,7 +257,7 @@ function createSnapshot({ auth, send, log }) {
         format: out.format,
         data: out.data,
         updatedAt: out.updated_at,
-        ...(out.viewer ? { viewer: true } : {}),
+        ...(out.viewer ? { viewer: true, writable: out.writable } : {}),
       },
     });
   }
@@ -365,9 +371,15 @@ function createSnapshot({ auth, send, log }) {
     const b = await readJson(req, res, MAX_SNAPSHOT_BYTES);
     if (!b) return;
     if (badChanges(b)) return send(res, 400, { ok: false, error: "bad_request" });
-    const doc = JSON.stringify(b.doc);
+    let doc = JSON.stringify(b.doc);
     const out = await withSession(req, async (c, ctx) => {
-      if (!mayUse(ctx)) return FORBIDDEN;
+      // Без «Персонала» — только то, на что есть право роли (`writeScope.js`).
+      const scoped = !mayUse(ctx);
+      if (scoped && !(mayView(ctx) && writableKeys(ctx.can).length > 0)) return FORBIDDEN;
+      if (scoped && (foreignRows(b.upsert, ctx.can) || foreignRows(b.remove, ctx.can))) {
+        return FORBIDDEN;
+      }
+      if (scoped && "products" in b && !ctx.can("products.edit")) return FORBIDDEN;
       if (!writes.take(ctx.orgId)) return LIMITED;
       const { rows } = await c.query(
         `SELECT version, data FROM uklad.cabinet_snapshots
@@ -375,6 +387,11 @@ function createSnapshot({ auth, send, log }) {
       );
       const cur = rows[0];
       if (!cur || cur.version !== b.version) return { conflict: true };
+      if (scoped) {
+        // Закрытое смотрящему он не получал — берём из базы, а не из копии.
+        b.doc = mergeScoped(cur.data, b.doc, ctx.can);
+        doc = JSON.stringify(b.doc);
+      }
       if ("products" in b && (await massDelete(c, b))) {
         return { conflict: true, error: "products_mass_delete" };
       }

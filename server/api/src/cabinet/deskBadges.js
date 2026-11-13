@@ -38,6 +38,32 @@ const sha256 = (s) => createHash("sha256").update(s).digest();
 /** Тот же круг, что у снимка: персонал и журнал смен видит руководитель. */
 const mayBadge = async (c, staffRef) =>
   (await c.query(`SELECT auth.may_badge($1) AS ok`, [staffRef])).rows[0].ok === true;
+const NO_ROLE = Symbol("no_role");
+/** Роль у стола по умолчанию для бейджа без роли. */
+const DEFAULT_DESK_ROLE = "Кладовщик";
+
+/**
+ * Есть ли у сотрудника роль у стола; нет — назначить роль по умолчанию той же
+ * функцией, что и экран «Доступ» (права выпускающего проверяет она).
+ * `false` — роли нет и назначить нечего (у компании нет такой роли).
+ */
+async function ensureDeskRole(c, ctx, staffRef) {
+  const has = await c.query(`SELECT 1 FROM uklad.desk_staff_permissions(ARRAY[$1]::text[])`, [
+    staffRef,
+  ]);
+  if (has.rows.length > 0) return true;
+  const role = await c.query(
+    `SELECT id, permissions FROM uklad.roles
+     WHERE org_id = uklad.current_org() AND is_default AND name = $1 AND deleted_at IS NULL`,
+    [DEFAULT_DESK_ROLE],
+  );
+  const r = role.rows[0];
+  // Роль шире прав выпускающего база не даст: роль назначит тот, кто вправе.
+  if (!r || !r.permissions.every((p) => ctx.can(p))) return false;
+  await c.query(`SELECT auth.set_desk_staff_role($1, $2)`, [staffRef, r.id]);
+  return true;
+}
+
 const mayUse = (ctx) => Boolean(ctx.accountId) && ctx.can("staff.manage");
 
 /**
@@ -86,6 +112,7 @@ function createDeskBadges({ auth, send, log }) {
     if (out === null) return send(res, 401, { ok: false });
     if (out === FORBIDDEN) return send(res, 403, { ok: false });
     if (out === LIMITED) return send(res, 429, { ok: false }, { "Retry-After": "30" });
+    if (out === NO_ROLE) return send(res, 409, { ok: false, error: "no_role" });
     return ok(out);
   }
 
@@ -99,6 +126,9 @@ function createDeskBadges({ auth, send, log }) {
       if (!mayUse(ctx)) return FORBIDDEN;
       // Бейдж на строку с ролью выше своей не выпустить и не погасить (024).
       if (!(await mayBadge(c, staffRef))) return FORBIDDEN;
+      // Без роли стол не примет ни одной операции (Кирилл 13.11): бейдж без
+      // роли выдаёт её сам — «Кладовщик», вся работа без решений по товару.
+      if (!(await ensureDeskRole(c, ctx, staffRef))) return NO_ROLE;
       // Сначала гасим старый, потом выпускаем новый: индекс «один живой»
       // не даст двум одновременным выпускам оставить оба бейджа.
       await c.query(

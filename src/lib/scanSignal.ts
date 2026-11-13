@@ -23,6 +23,7 @@ export type SignalLevel = "ok" | "warn" | "error";
 const WARN_KEYS = new Set<string>([
   "ws.run.label_pending",
   "ws.run.extra",
+  "ws.run.cancelled",
   "ws.chk.label_not_item",
   "ws.chk.product_not_label",
   "ws.chk.tote_code",

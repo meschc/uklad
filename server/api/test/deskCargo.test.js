@@ -94,7 +94,11 @@ test("снимок, который не влезет в лимит, не пиш�
     },
   };
   const op = { key: "key-cargo-big", kind: "recv_cargo", body: { ...body(), staffId: "stf-ivan" } };
-  const who = { staff: "stf-ivan", staffSince: AT - 60_000 };
+  const who = {
+    staff: "stf-ivan",
+    staffSince: AT - 60_000,
+    perms: { "stf-ivan": ["receiving.do"] },
+  };
   const out = await runDeskOps(c, "desk-1", [op], who, AT, {
     maxBytes: 100,
     load: async (_c, d) => d,
@@ -102,6 +106,35 @@ test("снимок, который не влезет в лимит, не пиш�
   });
   assert.deepEqual(out, { tooLarge: true });
   assert.deepEqual(writes, []);
+});
+
+test("без роли у стола операция не проходит, с чужой ролью — тоже (13.11)", async () => {
+  const { runDeskOps } = require("../src/cabinet/deskOps");
+  const c = {
+    query: async (sql) => {
+      if (/FROM uklad\.cabinet_snapshots/.test(sql))
+        return { rows: [{ version: 1, data: data() }] };
+      return { rows: [] };
+    },
+  };
+  const op = {
+    key: "key-cargo-role",
+    kind: "recv_cargo",
+    body: { ...body(), staffId: "stf-ivan" },
+  };
+  for (const perms of [undefined, {}, { "stf-ivan": ["packing.do"] }]) {
+    const who = { staff: "stf-ivan", staffSince: AT - 60_000, perms };
+    const out = await runDeskOps(c, "desk-1", [op], who, AT, {
+      maxBytes: 100,
+      load: async (_c, d) => d,
+      split: (d) => ({ doc: d, items: [] }),
+    });
+    assert.deepEqual(
+      out.results.map((x) => x.reason),
+      ["not_yours"],
+      JSON.stringify(perms),
+    );
+  }
 });
 
 test("снимок у потолка — предупреждение нам с компанией, до лимита — тишина", () => {

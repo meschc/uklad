@@ -125,6 +125,12 @@ export interface Session {
    * ответу сервера.
    */
   readOnly?: boolean;
+  /**
+   * При `readOnly` — поля кабинета, которые роль всё же вправе менять
+   * (товары с `products.edit`, приёмка с `receiving.do`…). Список даёт
+   * сервер (`writeScope.js`); он же проверяет каждую запись.
+   */
+  writable?: string[];
 }
 
 /**
