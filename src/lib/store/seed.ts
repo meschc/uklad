@@ -58,6 +58,9 @@ export function seedCategoryFields(): CategoryField[] {
  * «кто принял» на приёмке выглядит как недоделанная заглушка.
  */
 export function seedStaff(): StaffMember[] {
+  // Двадцать человек на все участки: приёмка, хранение, сборка, упаковка,
+  // отгрузка и техника. У всех есть телефон и почта, у работающих по часам —
+  // ставка: без них расчёт оплаты и журнал смены в демо пустые.
   return [
     {
       id: uid("staff"),
@@ -79,22 +82,62 @@ export function seedStaff(): StaffMember[] {
       role: "Старший кладовщик",
       phone: "+7 916 200-11-08",
       email: "soloveva@uklad.ru",
+      hourlyRate: 420,
     },
-    { id: uid("staff"), name: "Тимур Ахметов", role: "Кладовщик", phone: "+7 916 200-11-12" },
-    { id: uid("staff"), name: "Сергей Гаврилов", role: "Кладовщик", phone: "+7 916 200-11-14" },
+    {
+      id: uid("staff"),
+      name: "Константин Рябов",
+      role: "Старший смены",
+      phone: "+7 916 200-11-09",
+      email: "ryabov@uklad.ru",
+      hourlyRate: 420,
+    },
+    {
+      id: uid("staff"),
+      name: "Тимур Ахметов",
+      role: "Кладовщик",
+      phone: "+7 916 200-11-12",
+      email: "akhmetov@uklad.ru",
+      hourlyRate: 380,
+    },
+    {
+      id: uid("staff"),
+      name: "Сергей Гаврилов",
+      role: "Кладовщик",
+      phone: "+7 916 200-11-14",
+      email: "gavrilov@uklad.ru",
+      hourlyRate: 380,
+    },
+    {
+      id: uid("staff"),
+      name: "Анна Фролова",
+      role: "Кладовщик",
+      phone: "+7 916 200-11-15",
+      email: "frolova@uklad.ru",
+      hourlyRate: 380,
+    },
     {
       id: uid("staff"),
       name: "Дарья Кузьмина",
       role: "Оператор приёмки",
       phone: "+7 916 200-11-17",
       email: "kuzmina@uklad.ru",
+      hourlyRate: 360,
     },
-    { id: uid("staff"), name: "Алексей Ким", role: "Оператор приёмки", phone: "+7 916 200-11-19" },
+    {
+      id: uid("staff"),
+      name: "Алексей Ким",
+      role: "Оператор приёмки",
+      phone: "+7 916 200-11-19",
+      email: "kim@uklad.ru",
+      hourlyRate: 360,
+    },
     {
       id: uid("staff"),
       name: "Рустам Юсупов",
       role: "Комплектовщик",
       phone: "+7 916 200-11-23",
+      email: "yusupov@uklad.ru",
       hourlyRate: 350,
     },
     {
@@ -102,38 +145,132 @@ export function seedStaff(): StaffMember[] {
       name: "Ольга Демидова",
       role: "Комплектовщик",
       phone: "+7 916 200-11-25",
+      email: "demidova@uklad.ru",
       hourlyRate: 350,
+    },
+    {
+      id: uid("staff"),
+      name: "Илья Сорокин",
+      role: "Комплектовщик",
+      phone: "+7 916 200-11-26",
+      email: "sorokin@uklad.ru",
+      hourlyRate: 350,
+    },
+    {
+      id: uid("staff"),
+      name: "Екатерина Новикова",
+      role: "Упаковщик",
+      phone: "+7 916 200-11-27",
+      email: "novikova@uklad.ru",
+      hourlyRate: 340,
+    },
+    {
+      id: uid("staff"),
+      name: "Максим Зайцев",
+      role: "Упаковщик",
+      phone: "+7 916 200-11-28",
+      email: "zaytsev@uklad.ru",
+      hourlyRate: 340,
+    },
+    {
+      id: uid("staff"),
+      name: "Светлана Попова",
+      role: "Упаковщик",
+      phone: "+7 916 200-11-29",
+      email: "popova@uklad.ru",
+      hourlyRate: 340,
     },
     {
       id: uid("staff"),
       name: "Виктор Лапин",
       role: "Водитель погрузчика",
       phone: "+7 916 200-11-31",
+      email: "lapin@uklad.ru",
+      hourlyRate: 450,
     },
     {
       id: uid("staff"),
       name: "Андрей Мешков",
       role: "Водитель погрузчика",
       phone: "+7 916 200-11-33",
+      email: "meshkov@uklad.ru",
+      hourlyRate: 450,
+    },
+    {
+      id: uid("staff"),
+      name: "Денис Орехов",
+      role: "Грузчик",
+      phone: "+7 916 200-11-35",
+      email: "orekhov@uklad.ru",
+      hourlyRate: 320,
+    },
+    {
+      id: uid("staff"),
+      name: "Галина Петрова",
+      role: "Оператор отгрузки",
+      phone: "+7 916 200-11-37",
+      email: "petrova@uklad.ru",
+      hourlyRate: 360,
     },
     {
       id: uid("staff"),
       name: "Пётр Савельев",
       role: "Охрана, пост на въезде",
       phone: "+7 916 200-11-40",
+      email: "savelev@uklad.ru",
+      hourlyRate: 300,
     },
   ];
 }
 
 /** Партнёры-продавцы: чьи товары лежат на складе (п.15). */
 function seedPartners(): Partner[] {
+  // Контакт — почта продавца (на неё уходит приглашение в кабинет), а
+  // контактное лицо и телефон — заполнены у всех: пустые поля в демо
+  // выглядят как недоделка (Кирилл 12 ноя).
   return [
-    { id: uid("ptn"), name: "ООО «Ромашка Трейд»", contact: "+7 495 780-12-40" },
-    { id: uid("ptn"), name: "ИП Ковалёв А. С.", contact: "kovalev.shop@mail.ru" },
-    { id: uid("ptn"), name: "ООО «Северный склад»", contact: "+7 812 640-33-11" },
-    { id: uid("ptn"), name: "ООО «ТехноЛайн»", contact: "sales@technoline.ru" },
-    { id: uid("ptn"), name: "ИП Мамедова Л. Р.", contact: "+7 926 445-70-02" },
-    { id: uid("ptn"), name: "ООО «Дом и Сад»", contact: "opt@domisad.ru" },
+    {
+      id: uid("ptn"),
+      name: "ООО «Ромашка Трейд»",
+      contact: "orders@romashka-trade.ru",
+      person: "Елена Жукова",
+      phone: "+7 495 780-12-40",
+    },
+    {
+      id: uid("ptn"),
+      name: "ИП Ковалёв А. С.",
+      contact: "kovalev.shop@mail.ru",
+      person: "Андрей Ковалёв",
+      phone: "+7 903 512-44-19",
+    },
+    {
+      id: uid("ptn"),
+      name: "ООО «Северный склад»",
+      contact: "info@sever-sklad.ru",
+      person: "Павел Ершов",
+      phone: "+7 812 640-33-11",
+    },
+    {
+      id: uid("ptn"),
+      name: "ООО «ТехноЛайн»",
+      contact: "sales@technoline.ru",
+      person: "Ирина Белова",
+      phone: "+7 495 118-90-27",
+    },
+    {
+      id: uid("ptn"),
+      name: "ИП Мамедова Л. Р.",
+      contact: "mamedova.lr@yandex.ru",
+      person: "Лейла Мамедова",
+      phone: "+7 926 445-70-02",
+    },
+    {
+      id: uid("ptn"),
+      name: "ООО «Дом и Сад»",
+      contact: "opt@domisad.ru",
+      person: "Григорий Орлов",
+      phone: "+7 499 230-61-58",
+    },
   ];
 }
 

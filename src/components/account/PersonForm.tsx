@@ -31,7 +31,7 @@ export function PersonForm({
       <ImagePicker
         value={value.photoUrl || undefined}
         fallback={
-          <span className="flex size-11 items-center justify-center rounded-full bg-muted text-muted-foreground">
+          <span className="flex size-9 items-center justify-center rounded-full bg-muted text-muted-foreground">
             <UserRound className="size-5" />
           </span>
         }
