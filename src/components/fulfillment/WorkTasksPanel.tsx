@@ -7,7 +7,7 @@ import { useT, type MsgKey } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { TableSearch, useDataTable } from "@/components/ui/data-table";
+import { TableFilters, TableSearch, useDataTable } from "@/components/ui/data-table";
 import { Segmented } from "@/components/ui/segmented";
 import { card } from "@/components/ui/card";
 import { EmptyState } from "./ScreenShell";
@@ -57,7 +57,12 @@ export function WorkTasksPanel() {
   const taskTable = useDataTable(
     shown,
     [
-      { id: "kind", value: (x) => svcName(x.kind) },
+      { id: "kind", value: (x) => svcName(x.kind), facet: (v) => v },
+      {
+        id: "assignee",
+        value: (x) => (x.staffId ? nameOf.get(x.staffId) : undefined),
+        facet: (v) => v,
+      },
       {
         id: "who",
         value: (x) => [x.partnerId, x.staffId].map((id) => (id ? nameOf.get(id) : "")).join(" "),
@@ -84,6 +89,13 @@ export function WorkTasksPanel() {
             { value: "active", label: t("ops.task.filter.active") },
             { value: "done", label: t("ops.task.filter.done") },
           ]}
+        />
+        <TableFilters
+          facets={taskTable.facets}
+          filters={taskTable.filters}
+          onChange={taskTable.setFilter}
+          labels={{ kind: t("ops.task.kind"), assignee: t("tasks.assignee") }}
+          allLabel={(col) => t("common.filterAll", { col })}
         />
         <TableSearch
           className="ml-auto"
