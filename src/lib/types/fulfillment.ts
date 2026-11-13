@@ -219,8 +219,13 @@ export interface OutboundBox {
   updatedAt: number;
   shipmentId?: string;
   shippedAt?: number;
-  /** Паллета сортировки (`UK-PLT-`), на которую положили короб (`lib/sorting.ts`). */
-  palletCode?: string;
+  /** Место сортировки (`UK-SORT-`), куда положили посылку (`lib/sorting.ts`). */
+  sortCode?: string;
+  /**
+   * Грузовое место закрытой отгрузки (ярлык `UK-OUT-…`): паллета или коробка
+   * с посылками места `sortCode`. Товара у записи нет — он у посылок.
+   */
+  place?: "pallet" | "box";
 }
 
 /**

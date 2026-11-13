@@ -30,7 +30,7 @@ import { ScanField } from "@/components/fulfillment/ScanField";
 import { ScanBanner, type BannerTone } from "./ScanBanner";
 import { useDemoHints } from "./useDemoHints";
 import { DestinationChip } from "./DestinationChip";
-import { palletBoxes } from "@/lib/sorting";
+import { shipmentOfPlace } from "@/lib/sorting";
 
 /**
  * Отгрузка за столом: собранные заявки одного назначения уезжают одной
@@ -192,18 +192,27 @@ function ShipGroup({
       (x) => x.barcode.toUpperCase() === code && (x.address || x.sealed),
     );
     if (stored) return flash("error", t("ws.ship.stored", { code }));
-    // Паллета со станции сортировки грузится целиком: её посылки уже сверены
-    // по назначению, пересканировать каждую не нужно — но в эту машину все.
-    const sorted = units.includes(code) ? [] : palletBoxes(outbound ?? [], code);
-    if (sorted.length > 0) {
-      const fit = sorted
-        .filter((b) => !units.includes(b.code.toUpperCase()))
-        .every((b) => classifyLoadScan(outbound ?? [], ids, units, b.code).kind === "ok");
-      if (!fit) return flash("error", t("ws.ship.palletForeign", { code }));
-      setUnits((u) => [...new Set([...u, code, ...sorted.map((b) => b.code)])]);
+    // Грузовое место закрытой отгрузки (ярлык `UK-OUT-…` со станции
+    // сортировки): посылки в нём уже сверены по направлению, пересканировать
+    // каждую не нужно. Отгрузка уходит в машину, когда погружены все её места.
+    const group = units.includes(code) ? [] : shipmentOfPlace(outbound ?? [], code);
+    if (group.length > 0) {
+      const parcels = group.filter((b) => !b.place);
+      const fit = parcels.every(
+        (b) =>
+          units.includes(b.code.toUpperCase()) ||
+          classifyLoadScan(outbound ?? [], ids, units, b.code).kind !== "foreign",
+      );
+      if (!fit) return flash("error", t("ws.ship.placeForeign", { code }));
+      const places = group.filter((b) => b.place).map((b) => b.code.toUpperCase());
+      const got = places.filter((c) => c === code || units.includes(c)).length;
+      const all = got === places.length;
+      setUnits((u) => [
+        ...new Set([...u, code, ...(all ? parcels.map((b) => b.code.toUpperCase()) : [])]),
+      ]);
       beepNotes(destinationMark(target).notes);
       signal("ok", { quiet: true });
-      return show("ok", t("ws.ship.palletOk", { code, n: sorted.length }));
+      return show("ok", t("ws.ship.placeOk", { code, i: got, n: places.length }));
     }
     const res = classifyLoadScan(outbound ?? [], ids, units, raw);
     switch (res.kind) {

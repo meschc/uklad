@@ -613,11 +613,16 @@ export interface RequestsSlice {
     info?: { vehicle?: string; staffId?: string; units?: string[] },
   ) => string | null;
   /**
-   * Сортировка: положить открытый короб отгрузки на паллету назначения.
-   * Правила — `lib/sorting.ts`; здесь только запись. `false` — короба нет
-   * или он уже на паллете.
+   * Сортировка: положить открытую посылку на место сортировки (`UK-SORT-`).
+   * Правила — `lib/sorting.ts`; здесь только запись. `false` — посылки нет
+   * или она уже на месте.
    */
-  sortToPallet: (boxCode: string, pallet: string) => boolean;
+  sortPlace: (parcelCode: string, sortCode: string) => boolean;
+  /**
+   * Закрыть отгрузку места сортировки: завести грузовые места (`UK-OUT-`),
+   * сначала паллеты, потом коробки. `null` — места уже закрыты или пусты.
+   */
+  sortClose: (sortCode: string, pallets: number, boxes: number) => OutboundBox[] | null;
   /**
    * Короба отгрузки с составом: их пишет упаковка (`packFinish`), закрывает
    * погрузка (`shipRequests`).
@@ -797,7 +802,7 @@ export interface WorkstationSlice {
    * Начать тару: скан тары с товаром и короба отгрузки. Возвращает ключ ошибки
    * или null при успехе.
    */
-  packStart: (sourceCode: string, targetCode: string) => MsgKey | null;
+  packStart: (sourceCode: string, targetCode?: string) => MsgKey | null;
   /** Скан товара: этикетка единицы появляется сама, брак и лишнее — в отказы. */
   packScanItem: (code: string) => ItemScan;
   /** Скан наклеенной этикетки. false — это не та этикетка, которую ждём. */
@@ -808,7 +813,7 @@ export interface WorkstationSlice {
    * Закрыть тару: ушедшее — в короб отгрузки, закрытые заказы — упакованы.
    * Возвращает факты закрытия — для операции стола на сервере.
    */
-  packFinish: () => PackDoneFacts | null;
+  packFinish: () => PackDoneFacts[] | null;
   /** Демо: тара из собранных заказов — пока сборка не пишет, что положила в тару. */
   prepareDemoTote: () => string | null;
 }

@@ -198,7 +198,10 @@ function applyPackDone(data, body, staffRef) {
   const tote = boxes.find((b) => b.id === body.toteId);
   const packed = cleanLines(body.lines);
   const code = typeof body.outboundCode === "string" ? normalizeCode(body.outboundCode) : "";
-  if (!tote || !packed || !code || code.length > 100) {
+  // Тара посылок, где ни один заказ не закрылся, ничего никуда не кладёт:
+  // кода короба у такой операции нет, она несёт только недостачу.
+  const empty = !!packed && packed.size === 0 && !(body.requestIds ?? []).length;
+  if (!tote || !packed || (!code && !empty) || code.length > 100) {
     return { flag: "bad" };
   }
   if (code === normalizeCode(String(tote.barcode ?? ""))) return { flag: "bad" };

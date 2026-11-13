@@ -5,7 +5,7 @@ import { signal } from "@/lib/scanSignal";
 import { workstationRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
 import { findByCode } from "@/lib/barcode";
-import { TARGET_PREFIX, toteContents } from "@/lib/packing";
+import { isParcelTote, TARGET_PREFIX, toteContents, toteOrders } from "@/lib/packing";
 import { cn, uid } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
@@ -15,8 +15,10 @@ import { ScanField, type ScanStatus } from "@/components/fulfillment/ScanField";
 import { useDemoHints } from "./useDemoHints";
 
 /**
- * Два скана перед началом: тара с товаром и короб отгрузки. Ниже, только в
- * демо, — тара, которая есть на складе: клик по ней делает то же, что скан.
+ * Сканы перед началом: тара с товаром и, для поставки (FBO), короб поставки.
+ * Тара посылок (заказы площадок, FBS) короба не ждёт: каждый заказ уйдёт
+ * своей посылкой на сортировку (Кирилл 13.11). Ниже, только в демо, — тара,
+ * которая есть на складе: клик по ней делает то же, что скан.
  */
 export function ToteStart() {
   const t = useT();
@@ -42,10 +44,18 @@ export function ToteStart() {
       setHint(t(box ? "ws.tote.empty" : "ws.tote.unknown"));
       return;
     }
+    setHint(null);
+    if (isParcelTote(toteOrders(useEditor.getState().requests, box))) {
+      void start.run(box.barcode).then((res) => {
+        setStatus(res.ok ? "ok" : "error");
+        signal(res.ok ? "ok" : "error");
+        if (!res.ok && res.error) setHint(t(res.error));
+      });
+      return;
+    }
     setSource(box.barcode);
     setStatus("ok");
     signal("ok");
-    setHint(null);
   };
 
   const pickTarget = async (code: string) => {

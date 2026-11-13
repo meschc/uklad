@@ -31,7 +31,7 @@ const WARN_KEYS = new Set<string>([
   "ws.ship.notUnit",
   "pick.item.duplicate",
   "recv.box.picking",
-  "ws.sort.palletFirst",
+  "ws.sort.pointFirst",
   "ws.sort.parcelPending",
 ]);
 

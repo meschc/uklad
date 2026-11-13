@@ -39,7 +39,8 @@ export type DeskOpKind =
   | "dispute_resolve"
   | "recv_cargo"
   | "inv_count"
-  | "sort_place";
+  | "sort_place"
+  | "sort_close";
 const KINDS: readonly DeskOpKind[] = [
   "shift_mark",
   "shift_undo",
@@ -57,6 +58,7 @@ const KINDS: readonly DeskOpKind[] = [
   "recv_cargo",
   "inv_count",
   "sort_place",
+  "sort_close",
 ];
 export interface DeskOpBody {
   eventId: string;
@@ -99,8 +101,10 @@ export interface DeskOpBody {
   units?: string[];
   disputeId?: string;
   resolution?: string;
-  // Сортировка (`sort_place`): короб отгрузки → паллета назначения.
-  pallet?: string;
+  // Сортировка: посылка → место (`sort_place`), закрытие отгрузки (`sort_close`,
+  // сколько паллет и коробок — те же `pallets`/`boxes`, что у грузовой приёмки).
+  sortCode?: string;
+  placeIds?: string[];
   note?: string;
 }
 export interface DeskOp {
@@ -322,7 +326,8 @@ async function sayFlagged(kinds: DeskOpKind[]) {
   const packing = kinds.some((k) => k === "pack_event" || k === "pack_done");
   const picking = kinds.some((k) => k === "pick_unit" || k === "pick_done");
   const receiving = kinds.some((k) => k.startsWith("recv_"));
-  const shipping = kinds.includes("ship_run") || kinds.includes("sort_place");
+  const shipping =
+    kinds.includes("ship_run") || kinds.includes("sort_place") || kinds.includes("sort_close");
   const deciding = kinds.includes("dispute_resolve");
   const counting = kinds.includes("inv_count");
   useEditor

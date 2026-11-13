@@ -1,20 +1,45 @@
-import { normalizeCode, PALLET_PREFIX } from "./barcode";
+import { normalizeCode } from "./barcode";
+import { targetCode, TARGET_PREFIX } from "./packing";
 import type { FulfillmentRequest, OutboundBox } from "./types";
 
 /**
- * Сортировка: посылки и короба отгрузки — на паллеты по назначению (склад
- * площадки, ПВЗ). Чистые правила; стол — `SortStation`, запись — операция
- * `sort_place`.
+ * Сортировка по местам отгрузки (Кирилл 13.11). Чистые правила; стол —
+ * `SortStation`, запись — операции `sort_place` и `sort_close`.
  *
- * Два скана на место: сначала посылка (код короба отгрузки), экран крупно
- * показывает её назначение цветом и звуком; потом паллета этого назначения.
- * Паллета принимает назначение первой посылки и дальше берёт только его.
- * Посылку, уже лежащую на паллете, второй раз не кладут: повторный скан
- * останавливает стол до старшего — обычно это значит, что похожая посылка
- * ушла не туда.
+ * Место сортировки (`UK-SORT-…`) — одна отгрузка в одно направление:
+ * «Константиново, отгрузка 2». QR места один на всю отгрузку: начали новую
+ * коробку для мелочи — QR тот же. Сортировщик сканирует посылку (этикетку
+ * заказа или короб поставки), экран крупно показывает направление, потом —
+ * QR места этого направления. Отгрузку закрывает старший: говорит, сколько
+ * получилось паллет и коробок, и печатает ярлык на каждое грузовое место
+ * (`UK-OUT-…`, «место 2 из 5»). По ярлыкам мест потом грузят машину. Следующая
+ * отгрузка в то же направление — следующий номер места.
+ *
+ * Отдельной таблицы мест нет: номер места выводится из кода (хеш направления
+ * и порядковый номер), открытое место — то, у которого ещё нет грузовых мест,
+ * закрытое — то, у которого они есть. Грузовые места — записи коробов
+ * отгрузки с полем `place` и без товара.
  */
 
-/** Назначение заявок короба: одно, если все заявки едут в одно место. */
+const SORT_PREFIX = "UK-SORT-";
+
+/** Хеш направления — тот же, что у этикетки отправления (`targetCode`). */
+function destKey(destination: string): string {
+  return targetCode(destination).slice(TARGET_PREFIX.length);
+}
+
+/** Код места сортировки: направление и номер отгрузки в него. */
+export function sortPointCode(destination: string, n: number): string {
+  return `${SORT_PREFIX}${destKey(destination)}-${n}`;
+}
+
+/** Разобрать код места: ключ направления и номер. */
+export function parseSortCode(raw: string): { key: string; n: number } | null {
+  const m = /^UK-SORT-([A-Z0-9]{6})-(\d{1,5})$/.exec(normalizeCode(raw));
+  return m ? { key: m[1], n: Number(m[2]) } : null;
+}
+
+/** Назначение заявок посылки: одно, если все заявки едут в одно место. */
 function boxDestination(box: OutboundBox, requests: readonly FulfillmentRequest[]): string | null {
   const dests = new Set(
     requests
@@ -25,43 +50,57 @@ function boxDestination(box: OutboundBox, requests: readonly FulfillmentRequest[
   return dests.size === 1 ? [...dests][0] : null;
 }
 
-/** Открытые короба на паллете сортировки. */
-export function palletBoxes(list: readonly OutboundBox[], pallet: string): OutboundBox[] {
-  const code = normalizeCode(pallet);
-  return list.filter((b) => !b.shipmentId && b.palletCode && normalizeCode(b.palletCode) === code);
+const same = (a: string | undefined, b: string) => !!a && normalizeCode(a) === normalizeCode(b);
+
+/** Закрыта ли отгрузка: у неё уже есть грузовые места (в том числе уехавшие). */
+export function isSortClosed(list: readonly OutboundBox[], sortCode: string): boolean {
+  return list.some((b) => b.place && same(b.sortCode, sortCode));
 }
 
-/** Назначение паллеты — по первой посылке на ней; пустая — `null`. */
-function palletDestination(
-  list: readonly OutboundBox[],
-  requests: readonly FulfillmentRequest[],
-  pallet: string,
-): string | null {
-  const first = palletBoxes(list, pallet)[0];
-  return first ? boxDestination(first, requests) : null;
+/**
+ * Место сортировки, в которое сейчас кладут это направление: последнее
+ * незакрытое, а если последнее закрыто — следующий номер.
+ */
+export function currentSortPoint(list: readonly OutboundBox[], destination: string): string {
+  const key = destKey(destination);
+  let max = 0;
+  for (const b of list) {
+    const p = b.sortCode ? parseSortCode(b.sortCode) : null;
+    if (p && p.key === key && p.n > max) max = p.n;
+  }
+  if (max === 0) return sortPointCode(destination, 1);
+  const last = sortPointCode(destination, max);
+  return isSortClosed(list, last) ? sortPointCode(destination, max + 1) : last;
 }
 
-type SortScan =
-  /** Посылка принята, ждём паллету её назначения. */
-  | { kind: "parcel"; box: OutboundBox; destination: string }
-  /** Посылка легла на паллету. */
-  | { kind: "placed"; box: OutboundBox; pallet: string; destination: string }
-  /** Код не посылка и не паллета, или такой посылки нет среди открытых. */
+/** Открытые посылки (не грузовые места) на месте сортировки. */
+export function pointParcels(list: readonly OutboundBox[], sortCode: string): OutboundBox[] {
+  return list.filter((b) => !b.shipmentId && !b.place && same(b.sortCode, sortCode));
+}
+
+export type SortScan =
+  /** Посылка принята, ждём QR места её направления. */
+  | { kind: "parcel"; box: OutboundBox; destination: string; point: string }
+  /** Посылка легла на место сортировки. */
+  | { kind: "placed"; box: OutboundBox; point: string; destination: string }
+  /** Код не посылка и не место, или такой посылки нет среди открытых. */
   | { kind: "unknown"; code: string }
-  /** У посылки нет одного назначения (без заявок или в разные места). */
+  /** У посылки нет одного направления (без заявок или в разные места). */
   | { kind: "no_destination"; code: string }
-  /** Посылка уже лежит на паллете — повторный скан, стоп до старшего. */
-  | { kind: "dup"; code: string; pallet: string }
-  /** Паллета другого назначения. */
-  | { kind: "wrong_pallet"; pallet: string; palletDestination: string; destination: string }
-  /** Паллету сканируют, а посылки ещё не было. */
-  | { kind: "pallet_first"; pallet: string }
-  /** Вместо паллеты — снова посылка: сначала положите прежнюю. */
+  /** Посылка уже на месте сортировки — повторный скан, стоп до старшего. */
+  | { kind: "dup"; code: string; point: string }
+  /** Место другого направления. */
+  | { kind: "wrong_point"; point: string; destination: string; pointDestination: string | null }
+  /** Отгрузка этого места уже закрыта: класть в следующее. */
+  | { kind: "point_closed"; point: string; next: string }
+  /** Место сканируют, а посылки ещё не было. */
+  | { kind: "point_first"; point: string }
+  /** Вместо места — снова посылка: сначала положите прежнюю. */
   | { kind: "parcel_pending"; code: string };
 
 /**
- * Разобрать скан. `pending` — код посылки, назначение которой показано и
- * ждёт паллету.
+ * Разобрать скан. `pending` — код посылки, направление которой показано и
+ * ждёт место.
  */
 export function classifySortScan(
   list: readonly OutboundBox[],
@@ -70,56 +109,102 @@ export function classifySortScan(
   raw: string,
 ): SortScan {
   const code = normalizeCode(raw);
-  if (code.startsWith(PALLET_PREFIX)) {
-    if (!pending) return { kind: "pallet_first", pallet: code };
-    const box = openBox(list, pending);
+  const point = parseSortCode(code);
+  if (point) {
+    if (!pending) return { kind: "point_first", point: code };
+    const box = openParcel(list, pending);
     const destination = box && boxDestination(box, requests);
     if (!box || !destination) return { kind: "unknown", code: pending };
-    const has = palletDestination(list, requests, code);
-    if (has && has !== destination) {
-      return { kind: "wrong_pallet", pallet: code, palletDestination: has, destination };
+    if (point.key !== destKey(destination)) {
+      const other = list.find((b) => same(b.sortCode, code) && !b.place);
+      return {
+        kind: "wrong_point",
+        point: code,
+        destination,
+        pointDestination: other ? boxDestination(other, requests) : null,
+      };
     }
-    return { kind: "placed", box, pallet: code, destination };
+    if (isSortClosed(list, code)) {
+      return { kind: "point_closed", point: code, next: currentSortPoint(list, destination) };
+    }
+    return { kind: "placed", box, point: code, destination };
   }
-  const box = openBox(list, code);
+  const box = openParcel(list, code);
   if (!box) return { kind: "unknown", code };
-  if (box.palletCode) return { kind: "dup", code, pallet: box.palletCode };
+  if (box.sortCode) return { kind: "dup", code, point: box.sortCode };
   if (pending && normalizeCode(pending) !== code) return { kind: "parcel_pending", code };
   const destination = boxDestination(box, requests);
   if (!destination) return { kind: "no_destination", code };
-  return { kind: "parcel", box, destination };
+  return { kind: "parcel", box, destination, point: currentSortPoint(list, destination) };
 }
 
-function openBox(list: readonly OutboundBox[], code: string): OutboundBox | undefined {
+function openParcel(list: readonly OutboundBox[], code: string): OutboundBox | undefined {
   const c = normalizeCode(code);
-  return list.find((b) => !b.shipmentId && normalizeCode(b.code) === c);
+  return list.find((b) => !b.shipmentId && !b.place && normalizeCode(b.code) === c);
 }
 
-/** Что ещё не разложено: открытые короба с назначением и без паллеты. */
+/** Что ещё не разложено: открытые посылки с направлением и без места. */
 export function unsorted(
   list: readonly OutboundBox[],
   requests: readonly FulfillmentRequest[],
 ): { box: OutboundBox; destination: string }[] {
   return list
-    .filter((b) => !b.shipmentId && !b.palletCode)
+    .filter((b) => !b.shipmentId && !b.place && !b.sortCode)
     .map((box) => ({ box, destination: boxDestination(box, requests) }))
     .filter((x): x is { box: OutboundBox; destination: string } => !!x.destination);
 }
 
-/** Паллеты сортировки в работе: код, назначение, сколько посылок. */
-export function sortPallets(
+export interface SortPointView {
+  code: string;
+  n: number;
+  destination: string | null;
+  /** Посылок на месте. */
+  parcels: number;
+  /** Грузовые места закрытой отгрузки; пусто — отгрузка открыта. */
+  places: OutboundBox[];
+}
+
+/** Места сортировки в работе: открытые и закрытые, но ещё не уехавшие. */
+export function sortPoints(
   list: readonly OutboundBox[],
   requests: readonly FulfillmentRequest[],
-): { pallet: string; destination: string | null; count: number }[] {
+): SortPointView[] {
   const by = new Map<string, OutboundBox[]>();
   for (const b of list) {
-    if (b.shipmentId || !b.palletCode) continue;
-    const k = normalizeCode(b.palletCode);
+    if (b.shipmentId || !b.sortCode) continue;
+    const k = normalizeCode(b.sortCode);
     by.set(k, [...(by.get(k) ?? []), b]);
   }
-  return [...by].map(([pallet, boxes]) => ({
-    pallet,
-    destination: boxDestination(boxes[0], requests),
-    count: boxes.length,
-  }));
+  return [...by].map(([code, boxes]) => {
+    const parcels = boxes.filter((b) => !b.place);
+    return {
+      code,
+      n: parseSortCode(code)?.n ?? 0,
+      destination: parcels.length ? boxDestination(parcels[0], requests) : null,
+      parcels: parcels.length,
+      places: boxes.filter((b) => b.place),
+    };
+  });
+}
+
+/** Коды грузовых мест отгрузки: сначала паллеты, потом коробки. */
+export function placeCodes(
+  sortCode: string,
+  pallets: number,
+  boxes: number,
+): { code: string; place: "pallet" | "box" }[] {
+  const base = normalizeCode(sortCode).replace(SORT_PREFIX, TARGET_PREFIX);
+  const kinds = [
+    ...Array.from({ length: pallets }, () => "pallet" as const),
+    ...Array.from({ length: boxes }, () => "box" as const),
+  ];
+  return kinds.map((place, i) => ({ code: `${base}-${i + 1}`, place }));
+}
+
+/** Все открытые записи отгрузки по коду грузового места: посылки и места. */
+export function shipmentOfPlace(list: readonly OutboundBox[], raw: string): OutboundBox[] {
+  const place = list.find((b) => b.place && !b.shipmentId && same(b.code, raw));
+  if (!place?.sortCode) return [];
+  const code = place.sortCode;
+  return list.filter((b) => !b.shipmentId && same(b.sortCode, code));
 }

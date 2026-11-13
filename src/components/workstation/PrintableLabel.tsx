@@ -16,10 +16,13 @@ import { LabelPrint } from "@/components/fulfillment/LabelPrint";
 export function PrintableLabel({
   code,
   lines,
+  items,
   printer,
 }: {
-  code: string;
-  lines: string[];
+  code?: string;
+  lines?: string[];
+  /** Несколько этикеток подряд — ярлыки грузовых мест отгрузки. */
+  items?: { code: string; lines: string[] }[];
   printer: Pick<LabelPrinter, "widthMm" | "heightMm">;
 }) {
   const warehouseName = useEditor((s) => s.warehouse.name);
@@ -36,6 +39,11 @@ export function PrintableLabel({
     createdAt: 0,
   };
   return (
-    <LabelPrint tpl={tpl} items={[{ code, lines }]} kind="custom" warehouseName={warehouseName} />
+    <LabelPrint
+      tpl={tpl}
+      items={items ?? [{ code: code ?? "", lines: lines ?? [] }]}
+      kind="custom"
+      warehouseName={warehouseName}
+    />
   );
 }

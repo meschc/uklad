@@ -14,7 +14,9 @@ import {
   cancelledInTote,
   classifyItemScan,
   isOrderComplete,
+  isParcelTote,
   orderLabelCode,
+  parcelsOf,
   pendingLabel,
   toteContents,
   toteOrders,
@@ -22,7 +24,7 @@ import {
   toteShortage,
   unitLabelCode,
 } from "../packing";
-import { addToOutbound, openOutbound, packTargetProblem } from "../outbound";
+import { addToOutbound, openOutbound, packTargetProblem, type PackedLine } from "../outbound";
 import type { Device, PackSession, StaffEvent } from "../types";
 import type { EditorState, SliceCreator, WorkstationSlice } from "./state";
 
@@ -223,17 +225,22 @@ export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get)
     const box = findByCode(s.boxes, sourceCode);
     if (!box) return "ws.tote.unknown";
     if (toteContents(box).size === 0) return "ws.tote.empty";
-    const target = normalizeCode(targetCode);
-    if (!target || target === normalizeCode(box.barcode)) return "ws.tote.targetBad";
+    const orders = toteOrders(s.requests, box);
+    // Тара посылок (FBS): короб не выбирают, каждый заказ — своя посылка.
+    const target = isParcelTote(orders) ? "" : normalizeCode(targetCode ?? "");
+    if (!isParcelTote(orders) && (!target || target === normalizeCode(box.barcode)))
+      return "ws.tote.targetBad";
     // Один короб — один продавец и одно назначение: смешанный короб нельзя ни
     // честно выставить в счёт, ни отправить одной машиной.
-    const problem = packTargetProblem({
-      open: openOutbound(s.outboundBoxes ?? [], target),
-      toteLines: box.lines,
-      toteTargets: toteOrders(s.requests, box).map((o) => o.target ?? ""),
-      products: s.products,
-      requests: s.requests,
-    });
+    const problem = !target
+      ? null
+      : packTargetProblem({
+          open: openOutbound(s.outboundBoxes ?? [], target),
+          toteLines: box.lines,
+          toteTargets: toteOrders(s.requests, box).map((o) => o.target ?? ""),
+          products: s.products,
+          requests: s.requests,
+        });
     if (problem === "tote_mixed_seller") return "ws.tote.mixedSeller";
     if (problem === "target_other_seller") return "ws.tote.otherSeller";
     if (problem === "target_other_target") return "ws.tote.otherTarget";
@@ -433,12 +440,12 @@ export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get)
     // Заказ отменили, пока тара была на столе: его штуки вынимают из короба,
     // они остаются в таре вместе с остальным отменённым.
     const pulled = new Set(packedForCancelled(done, cancelled));
-    const closed = toteOrders(s.requests, box).filter(
+    const orders = toteOrders(s.requests, box);
+    const closed = orders.filter(
       (o) =>
         isOrderComplete(done, o) &&
         (o.units === 1 || done.orderLabels.some((l) => l.orderId === o.id && l.confirmedAt)),
     );
-    const packedIds = new Set(closed.flatMap((o) => o.requestIds));
     // Недостачу сотрудник не оформляет: тара с остатком уходит старшему, а в
     // системе остаётся запись — что не нашли, в какой таре и кто закрывал.
     const shortages: string[] = [];
@@ -455,36 +462,57 @@ export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get)
           }),
         );
     }
-    // Что легло в короб отгрузки: подтверждённые этикетками штуки и закрытые
-    // заказы. По этому составу погрузка потом сверяет машину. Больше, чем
+    // Что уходит из тары: тара посылок (FBS) — каждый закрытый заказ своей
+    // посылкой; тара поставки — всё подтверждённое в один короб поставки. По
+    // этому составу сортировка и погрузка потом сверяют машину. Больше, чем
     // сейчас лежит в таре, взять нельзя: пока тара была на столе, старший мог
     // списать из неё брак.
     const content = toteContents(box);
-    const packed = new Map<string, number>();
-    for (const u of done.units)
-      if (!pulled.has(u)) packed.set(u.productId, (packed.get(u.productId) ?? 0) + 1);
-    for (const [p, n] of packed) packed.set(p, Math.min(n, content.get(p) ?? 0));
-    // В таре остаётся всё, что не легло в короб: недостача и брак — на
-    // учёте, пока их не решит старший. Считаем от того, что в таре сейчас, а
-    // не от начала упаковки, иначе списанное за это время вернулось бы.
-    const kept = new Map<string, number>();
-    for (const [p, n] of content) kept.set(p, n - (packed.get(p) ?? 0));
-    const doneEvent = event({
-      staffId: ps.staffId,
-      type: "pack_done",
-      at: now,
-      station: "pack",
-      code: box.barcode,
-    });
-    set({
-      outboundBoxes: addToOutbound(get().outboundBoxes ?? [], {
-        code: ps.targetCode,
-        lines: [...packed].map(([productId, qty]) => ({ productId, qty })),
-        requestIds: [...packedIds],
+    const parcels: { code: string; requestIds: string[]; lines: PackedLine[] }[] = ps.targetCode
+      ? [
+          {
+            code: ps.targetCode,
+            requestIds: closed.flatMap((o) => o.requestIds),
+            lines: countLines(done.units.filter((u) => !pulled.has(u))),
+          },
+        ]
+      : parcelsOf(done, closed);
+    const left = new Map(content);
+    for (const p of parcels) {
+      p.lines = p.lines
+        .map((l) => {
+          const qty = Math.min(l.qty, left.get(l.productId) ?? 0);
+          left.set(l.productId, (left.get(l.productId) ?? 0) - qty);
+          return { productId: l.productId, qty };
+        })
+        .filter((l) => l.qty > 0);
+    }
+    const packedIds = new Set(parcels.flatMap((p) => p.requestIds));
+    // В таре остаётся всё, что не ушло: недостача и брак — на учёте, пока их
+    // не решит старший. Считаем от того, что в таре сейчас, а не от начала
+    // упаковки, иначе списанное за это время вернулось бы.
+    const kept = left;
+    const doneEvents = (parcels.length ? parcels : [null]).map((p) =>
+      event({
+        staffId: ps.staffId,
+        type: "pack_done",
+        at: now,
+        station: "pack",
+        code: p?.code ?? box.barcode,
+      }),
+    );
+    let outboundBoxes = get().outboundBoxes ?? [];
+    for (const p of parcels)
+      outboundBoxes = addToOutbound(outboundBoxes, {
+        code: p.code,
+        lines: p.lines,
+        requestIds: p.requestIds,
         staffId: ps.staffId,
         at: now,
         newId: () => uid("out"),
-      }),
+      });
+    set({
+      outboundBoxes,
       boxes: get().boxes.map((b) =>
         b.id === box.id
           ? {
@@ -500,23 +528,37 @@ export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get)
           ? { ...r, packedAt: now, packedBy: ps.staffId, updatedAt: now }
           : r,
       ),
-      staffEvents: [...get().staffEvents, doneEvent],
+      staffEvents: [...get().staffEvents, ...doneEvents],
       packSession: null,
     });
     const disputes = get().disputes;
-    return {
-      eventId: doneEvent.id,
-      staffId: ps.staffId,
-      at: now,
-      toteId: box.id,
-      outboundCode: ps.targetCode,
-      outboundId: openOutbound(get().outboundBoxes ?? [], ps.targetCode)?.id ?? null,
-      lines: [...packed].map(([productId, qty]) => ({ productId, qty })),
-      requestIds: [...packedIds],
-      shortages: shortages.flatMap((id) => {
-        const d = disputes.find((x) => x.id === id);
-        return d?.productId ? [{ id, productId: d.productId, qty: d.qty }] : [];
-      }),
-    };
+    const shortageFacts = shortages.flatMap((id) => {
+      const d = disputes.find((x) => x.id === id);
+      return d?.productId ? [{ id, productId: d.productId, qty: d.qty }] : [];
+    });
+    // Одна операция на посылку: сервер повторяет их по очереди, недостача —
+    // в последней, когда в таре уже осталось только неупакованное.
+    return doneEvents.map((ev, i) => {
+      const p = parcels[i];
+      const last = i === doneEvents.length - 1;
+      return {
+        eventId: ev.id,
+        staffId: ps.staffId,
+        at: now,
+        toteId: box.id,
+        outboundCode: p?.code ?? "",
+        outboundId: p ? (openOutbound(outboundBoxes, p.code)?.id ?? null) : null,
+        lines: p?.lines ?? [],
+        requestIds: p?.requestIds ?? [],
+        shortages: last ? shortageFacts : [],
+      };
+    });
   },
 });
+
+/** Штуки → строки состава. */
+function countLines(units: readonly { productId: string }[]): PackedLine[] {
+  const m = new Map<string, number>();
+  for (const u of units) m.set(u.productId, (m.get(u.productId) ?? 0) + 1);
+  return [...m].map(([productId, qty]) => ({ productId, qty }));
+}
