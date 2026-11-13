@@ -399,7 +399,7 @@ interface PackedUnit {
 }
 
 /** Что пошло не так со штукой: брак, её нет в таре, она лишняя. */
-type PackRejectReason = "defect" | "not_in_tote" | "extra";
+type PackRejectReason = "defect" | "not_in_tote" | "extra" | "cancelled";
 
 interface PackReject {
   productId: string;

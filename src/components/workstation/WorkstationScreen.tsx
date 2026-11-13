@@ -43,6 +43,7 @@ import { ShiftGate } from "./ShiftGate";
 import { useStationKeys } from "./useStationKeys";
 import { ShiftMenu } from "./ShiftMenu";
 import { ShiftBar } from "./ShiftBar";
+import { LogoutPanel } from "./LogoutPanel";
 import { PackStation } from "./PackStation";
 import { PrinterPanel } from "./PrinterPanel";
 import { ShipStation } from "./ShipStation";
@@ -63,13 +64,13 @@ import { formatTime, useNow } from "./useNow";
  * документы и аналитика — контроль, а не работа.
  */
 
-type Panel = "shift" | "log" | "printer" | "disputes" | null;
+type Panel = "shift" | "log" | "printer" | "disputes" | "logout" | null;
 
 /** Текст шапки и нижней панели поверх залитого сигналом поля. */
 const ON_COLOR_LIGHT =
-  "[&>header]:text-white [&>nav]:text-white [&>header_.text-muted-foreground]:text-white/85 [&>nav_.text-muted-foreground]:text-white/85 [&>header_.text-success]:text-white [&>nav_.text-success]:text-white [&>header_.ring-success]:ring-white [&>nav_.ring-success]:ring-white";
+  "[&>header]:text-white [&>nav]:text-white [&>header_.text-muted-foreground]:text-white/85 [&>nav_.text-muted-foreground]:text-white/85 [&>header_.text-success]:text-white [&>nav_.text-success]:text-white [&>header_[data-overdue]]:bg-white/20 [&>nav_[data-overdue]]:bg-white/20";
 const ON_COLOR_DARK =
-  "[&>header]:text-[hsl(var(--tag-ink))] [&>nav]:text-[hsl(var(--tag-ink))] [&>header_.text-muted-foreground]:text-[hsl(var(--tag-ink)/0.75)] [&>nav_.text-muted-foreground]:text-[hsl(var(--tag-ink)/0.75)] [&>header_.text-success]:text-[hsl(var(--tag-ink))] [&>nav_.text-success]:text-[hsl(var(--tag-ink))] [&>header_.ring-success]:ring-[hsl(var(--tag-ink))] [&>nav_.ring-success]:ring-[hsl(var(--tag-ink))]";
+  "[&>header]:text-[hsl(var(--tag-ink))] [&>nav]:text-[hsl(var(--tag-ink))] [&>header_.text-muted-foreground]:text-[hsl(var(--tag-ink)/0.75)] [&>nav_.text-muted-foreground]:text-[hsl(var(--tag-ink)/0.75)] [&>header_.text-success]:text-[hsl(var(--tag-ink))] [&>nav_.text-success]:text-[hsl(var(--tag-ink))] [&>header_[data-overdue]]:bg-black/10 [&>nav_[data-overdue]]:bg-black/10";
 
 export function WorkstationScreen() {
   const t = useT();
@@ -118,14 +119,18 @@ export function WorkstationScreen() {
       )}
     >
       {/* Высота шапки постоянная: кнопки и таймеры не должны двигать экран. */}
-      <header className="grid h-14 shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:gap-4">
-        <div className="flex min-w-0 items-center gap-3">
+      {/* Фон при наведении — от цвета текста: шапка лежит на сером поле, и
+          `hover:bg-accent` кнопок на нём не виден (Кирилл 13.11). */}
+      <header className="grid h-14 shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:gap-4 [&_button:not(:disabled):hover]:bg-foreground/[0.06]">
+        <div className="flex min-w-0 items-center gap-1">
           {device ? (
             // Стол, привязанный к месту, в кабинет не уходит: вместо выхода —
             // имя места, чтобы по экрану было видно, какой это стол.
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <MonitorSmartphone className="size-4 text-muted-foreground" />
-              {device.name}
+            <div className="flex items-center gap-1 text-sm font-semibold">
+              <span className="flex h-8 items-center gap-2 px-3">
+                <MonitorSmartphone className="size-4 text-muted-foreground" />
+                {device.name}
+              </span>
               {!member && (
                 <Button
                   variant="ghost"
@@ -147,9 +152,10 @@ export function WorkstationScreen() {
               {t("ws.exit")}
             </Button>
           )}
-          {member && (
-            // Процесс стола — заголовком: по нему видно, чьё это задание.
-            <h1 className="hidden text-sm font-semibold sm:block">
+          {member && !sameName(device?.name, t(`ws.station.${station}` as MsgKey)) && (
+            // Процесс стола — заголовком: по нему видно, чьё это задание. Стол,
+            // названный по процессу («Упаковка»), второй раз его не повторяет.
+            <h1 className="hidden h-8 items-center px-3 text-sm font-semibold sm:flex">
               {t(`ws.station.${station}` as MsgKey)}
             </h1>
           )}
@@ -197,7 +203,12 @@ export function WorkstationScreen() {
               size="sm"
               className="text-foreground"
               aria-label={t("ws.logout")}
-              onClick={() => void workstationRepository.logout()}
+              onClick={() =>
+                // Открытая смена — сначала спросить, закончить ли её.
+                shiftState(useEditor.getState().staffEvents, member.id) === "off"
+                  ? void workstationRepository.logout()
+                  : setPanel("logout")
+              }
             >
               <LogOut />
               <span className="hidden sm:inline">{t("ws.logout")}</span>
@@ -289,7 +300,9 @@ export function WorkstationScreen() {
                       ? "ws.printer.title"
                       : panel === "disputes"
                         ? "disputes.title"
-                        : "ws.history",
+                        : panel === "logout"
+                          ? "ws.out.title"
+                          : "ws.history",
                 )}
               </h2>
               <Button
@@ -305,6 +318,8 @@ export function WorkstationScreen() {
               <ShiftMenu member={member} now={now} />
             ) : panel === "printer" ? (
               <PrinterPanel />
+            ) : panel === "logout" ? (
+              <LogoutPanel member={member} />
             ) : panel === "disputes" ? (
               <EmbeddedShell.Provider value={true}>
                 <DisputesScreen />
@@ -524,4 +539,9 @@ function PendingOps() {
       {t("ws.opPending", { n: count })}
     </p>
   );
+}
+
+/** Имя стола совпадает с процессом — «Упаковка» и «Упаковка». */
+function sameName(a: string | undefined, b: string): boolean {
+  return !!a && a.trim().toLowerCase() === b.trim().toLowerCase();
 }

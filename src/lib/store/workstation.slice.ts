@@ -11,13 +11,15 @@ import {
 } from "../workstation";
 import { findByCode, normalizeCode } from "../barcode";
 import {
+  cancelledInTote,
   classifyItemScan,
   isOrderComplete,
   orderLabelCode,
   pendingLabel,
   toteContents,
   toteOrders,
-  toteRemaining,
+  packedForCancelled,
+  toteShortage,
   unitLabelCode,
 } from "../packing";
 import { addToOutbound, openOutbound, packTargetProblem } from "../outbound";
@@ -257,7 +259,14 @@ export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get)
     const box = ps && s.boxes.find((b) => b.id === ps.sourceBoxId);
     if (!ps || !box) return { kind: "unknown" };
     const now = nowMs();
-    const res = classifyItemScan(ps, box, toteOrders(s.requests, box), s.products, code);
+    const res = classifyItemScan(
+      ps,
+      box,
+      toteOrders(s.requests, box),
+      s.products,
+      code,
+      cancelledInTote(s.requests, box),
+    );
     const log = (type: StaffEvent["type"], productId?: string) =>
       event({
         staffId: ps.staffId,
@@ -286,10 +295,11 @@ export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get)
         },
         staffEvents: [...s.staffEvents, log("pack_scan", res.productId)],
       });
-    } else if (res.kind === "not_in_tote" || res.kind === "extra") {
+    } else if (res.kind === "not_in_tote" || res.kind === "extra" || res.kind === "cancelled") {
       // Ошибка скана не мешает работе: товар откладывают, а решает старший.
+      // Штука отменённого заказа для старшего — лишнее в таре: вернуть на полку.
       get().raiseDispute({
-        kind: res.kind,
+        kind: res.kind === "cancelled" ? "extra" : res.kind,
         boxId: box.id,
         toteCode: box.barcode,
         productId: res.productId,
@@ -418,7 +428,11 @@ export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get)
     const now = nowMs();
     // Неподтверждённая штука в упаковку не легла — она остаётся в таре.
     const done: PackSession = { ...ps, units: ps.units.filter((u) => u.confirmedAt) };
-    const remaining = toteRemaining(done, box);
+    const cancelled = cancelledInTote(s.requests, box);
+    const remaining = toteShortage(done, box, cancelled);
+    // Заказ отменили, пока тара была на столе: его штуки вынимают из короба,
+    // они остаются в таре вместе с остальным отменённым.
+    const pulled = new Set(packedForCancelled(done, cancelled));
     const closed = toteOrders(s.requests, box).filter(
       (o) =>
         isOrderComplete(done, o) &&
@@ -447,7 +461,8 @@ export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get)
     // списать из неё брак.
     const content = toteContents(box);
     const packed = new Map<string, number>();
-    for (const u of done.units) packed.set(u.productId, (packed.get(u.productId) ?? 0) + 1);
+    for (const u of done.units)
+      if (!pulled.has(u)) packed.set(u.productId, (packed.get(u.productId) ?? 0) + 1);
     for (const [p, n] of packed) packed.set(p, Math.min(n, content.get(p) ?? 0));
     // В таре остаётся всё, что не легло в короб: недостача и брак — на
     // учёте, пока их не решит старший. Считаем от того, что в таре сейчас, а

@@ -121,12 +121,87 @@ function splitByOrder<G extends { items: FulfillmentRequest[] }>(g: G): G[] {
 function takenFromTote(session: PackSession, productId: string): number {
   return (
     session.units.filter((u) => u.productId === productId).length +
-    session.rejects.filter((r) => r.productId === productId && r.reason === "defect").length
+    session.rejects.filter(
+      (r) => r.productId === productId && (r.reason === "defect" || r.reason === "cancelled"),
+    ).length
   );
 }
 
+/** Отменённый заказ, чей товар уже лежит в таре. */
+export interface CancelledOrder {
+  id: string;
+  /** Товар → сколько штук этого заказа собрано в тару. */
+  need: Map<string, number>;
+}
+
+/**
+ * Заказы, которые отменили после сборки: товар собран в эту тару, а паковать
+ * его некуда. Такую штуку не кладут в короб и не считают недостачей: она
+ * остаётся в таре, и старший возвращает её на полку.
+ */
+export function cancelledInTote(
+  requests: readonly FulfillmentRequest[],
+  box: Box,
+): CancelledOrder[] {
+  const byOrder = new Map<string, CancelledOrder>();
+  for (const r of requests) {
+    if (r.toteId !== box.id || r.status !== "cancelled" || r.packedAt) continue;
+    const n = r.partial ? (r.pickedQty ?? 0) : r.qty;
+    if (n <= 0) continue;
+    const key = r.externalId ? `${r.source ?? ""}:${r.externalId.trim().toLowerCase()}` : r.id;
+    const o = byOrder.get(key) ?? { id: r.id, need: new Map<string, number>() };
+    o.need.set(r.productId, (o.need.get(r.productId) ?? 0) + n);
+    byOrder.set(key, o);
+  }
+  return [...byOrder.values()];
+}
+
+/**
+ * Сколько штук отменённых заказов ещё лежит в таре несканированными: их не
+ * ищут и в недостачу не пишут.
+ */
+function cancelledLeft(
+  session: PackSession,
+  cancelled: readonly CancelledOrder[],
+  productId: string,
+): number {
+  const ids = new Set(cancelled.map((o) => o.id));
+  const reserved = cancelled.reduce((a, o) => a + (o.need.get(productId) ?? 0), 0);
+  const seen =
+    session.rejects.filter((r) => r.productId === productId && r.reason === "cancelled").length +
+    session.units.filter((u) => u.productId === productId && u.orderId && ids.has(u.orderId))
+      .length;
+  return Math.max(0, reserved - seen);
+}
+
+/**
+ * Штуки, упакованные для заказа, который отменили, пока тара была на столе:
+ * их вынимают из короба, и в короб отгрузки они не идут.
+ */
+export function packedForCancelled(
+  session: PackSession,
+  cancelled: readonly CancelledOrder[],
+): PackSession["units"] {
+  const ids = new Set(cancelled.map((o) => o.id));
+  return session.units.filter((u) => u.orderId && ids.has(u.orderId));
+}
+
+/** Недостача: чего нет в упакованном и браке, за вычетом отменённого. */
+export function toteShortage(
+  session: PackSession,
+  box: Box,
+  cancelled: readonly CancelledOrder[] = [],
+): Map<string, number> {
+  const m = new Map<string, number>();
+  for (const [p, n] of toteRemaining(session, box)) {
+    const left = n - cancelledLeft(session, cancelled, p);
+    if (left > 0) m.set(p, left);
+  }
+  return m;
+}
+
 /** Что осталось в таре: состав минус упакованное и брак. */
-export function toteRemaining(session: PackSession, box: Box): Map<string, number> {
+function toteRemaining(session: PackSession, box: Box): Map<string, number> {
   const m = new Map<string, number>();
   for (const [p, n] of toteContents(box)) {
     const left = n - takenFromTote(session, p);
@@ -172,6 +247,8 @@ export type ItemScan =
   | { kind: "not_in_tote"; productId: string }
   /** Товар из тары, но все его штуки уже прошли — лишняя штука. */
   | { kind: "extra"; productId: string }
+  /** Товар отменённого заказа: не паковать, оставить в таре. */
+  | { kind: "cancelled"; productId: string; orderId: string }
   /** Предыдущая этикетка ещё не отсканирована: сначала наклеить её. */
   | { kind: "label_pending" }
   | { kind: "unknown" };
@@ -193,6 +270,7 @@ export function classifyItemScan(
   orders: readonly ToteOrder[],
   products: readonly Product[],
   raw: string,
+  cancelled: readonly CancelledOrder[] = [],
 ): ItemScan {
   if (!normalizeCode(raw)) return { kind: "unknown" };
   if (pendingLabel(session)) return { kind: "label_pending" };
@@ -209,6 +287,12 @@ export function classifyItemScan(
     const need = o.need.get(product.id) ?? 0;
     return need > 0 && (packedForOrder(session, o.id).get(product.id) ?? 0) < need;
   });
+  // Живой заказ важнее отменённого: штуку отменённого берём, только если
+  // она больше никому не нужна.
+  if (!order && cancelledLeft(session, cancelled, product.id) > 0) {
+    const c = cancelled.find((o) => (o.need.get(product.id) ?? 0) > 0)!;
+    return { kind: "cancelled", productId: product.id, orderId: c.id };
+  }
   return { kind: "ok", productId: product.id, orderId: order?.id };
 }
 
@@ -225,12 +309,16 @@ function average(xs: readonly number[]): number | null {
  * Итог тары при закрытии. Недостача — то, что по составу должно было быть, но
  * не прошло ни упаковкой, ни браком: её не прячем, она уходит в отчёт.
  */
-export function packSummary(session: PackSession, box: Box) {
-  const shortage = toteRemaining(session, box);
+export function packSummary(
+  session: PackSession,
+  box: Box,
+  cancelled: readonly CancelledOrder[] = [],
+) {
+  const shortage = toteShortage(session, box, cancelled);
   return {
     packed: session.units.filter((u) => u.confirmedAt).length,
     defects: session.rejects.filter((r) => r.reason === "defect").length,
-    errors: session.rejects.filter((r) => r.reason !== "defect").length,
+    errors: session.rejects.filter((r) => r.reason !== "defect" && r.reason !== "cancelled").length,
     shortage: [...shortage.values()].reduce((a, b) => a + b, 0),
     avgMs: average(unitTimes(session)),
   };

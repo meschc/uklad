@@ -4,13 +4,15 @@ import { useEditor } from "@/lib/store";
 import { workstationRepository } from "@/lib/data";
 import {
   boxesHolding,
+  cancelledInTote,
   explainScan,
   packSummary,
   pendingLabel,
   targetCode,
   toteContents,
   toteOrders,
-  toteRemaining,
+  packedForCancelled,
+  toteShortage,
   type ItemScan,
 } from "@/lib/packing";
 import type { PackSession } from "@/lib/types";
@@ -24,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { QrSvg } from "@/components/table/QrSvg";
 import { ScanField, type ScanStatus } from "@/components/fulfillment/ScanField";
+import { Modal } from "@/components/fulfillment/Modal";
 import { PrintableLabel } from "./PrintableLabel";
 import { shortId } from "./useNow";
 import { useDemoHints } from "./useDemoHints";
@@ -31,7 +34,13 @@ import { DestinationChip } from "./DestinationChip";
 
 export type PackResult = ReturnType<typeof packSummary> & { source: string; target: string };
 
-type Feedback = { status: ScanStatus; key: MsgKey; name?: string; box?: string } | null;
+type Feedback = {
+  status: ScanStatus;
+  key: MsgKey;
+  name?: string;
+  box?: string;
+  order?: string;
+} | null;
 
 /**
  * Поштучный цикл упаковки. Поле скана одно и всегда в фокусе: сканер сам
@@ -55,6 +64,8 @@ export function PackRun({
   const [closing, setClosing] = useState(false);
   // Недостача идёт к старшему, а не оформляется сама: сначала показываем, чего нет.
   const [handoff, setHandoff] = useState(false);
+  // Брак — решение про учёт: переспрашиваем в панели справа (класс `confirm`).
+  const [rejecting, setRejecting] = useState(false);
   // Зелёная вспышка «принято»: гаснет сама, ошибка остаётся до следующего скана.
   const [okText, setOkText] = useState<string | null>(null);
   const okTimer = useRef<number | undefined>(undefined);
@@ -84,12 +95,15 @@ export function PackRun({
 
   if (!box) return null;
   const contents = toteContents(box);
-  const remaining = toteRemaining(session, box);
+  const cancelled = cancelledInTote(requests, box);
+  const remaining = toteShortage(session, box, cancelled);
   const orders = toteOrders(requests, box);
+  // Заказ отменили, пока тара на столе: его штуки нужно вынуть из короба.
+  const pulled = packedForCancelled(session, cancelled).filter((u) => u.confirmedAt);
   const label = pendingLabel(session);
   const unit = session.units.find((u) => !u.confirmedAt);
   const orderLabel = !unit ? session.orderLabels.find((l) => !l.confirmedAt) : undefined;
-  const summary = packSummary(session, box);
+  const summary = packSummary(session, box, cancelled);
   // Назначение короба отгрузки этой сессии: короб один на адрес (`targetCode`).
   const dest = orders.find((o) => o.target && targetCode(o.target) === session.targetCode)?.target;
   const nameOf = (id: string) => products.find((p) => p.id === id)?.name ?? id;
@@ -152,11 +166,11 @@ export function PackRun({
   const isError = feedback?.status === "error" || feedback?.status === "warn";
   const warn = feedback?.status === "warn";
   const bannerText = isError
-    ? t(feedback.key, { name: feedback.name ?? "", box: feedback.box ?? "" })
+    ? t(feedback.key, fbVars(feedback))
     : okText
       ? okText
       : feedback
-        ? t(feedback.key, { name: feedback.name ?? "", box: feedback.box ?? "" })
+        ? t(feedback.key, fbVars(feedback))
         : idleText;
 
   return (
@@ -268,7 +282,7 @@ export function PackRun({
                 {/* Брак — средняя по опасности: жёлтая, красная оставлена для необратимого. */}
                 <Button
                   className="bg-warning text-black shadow-sm hover:bg-warning"
-                  onClick={() => void workstationRepository.packReject()}
+                  onClick={() => setRejecting(true)}
                 >
                   <Ban />
                   {t("ws.run.defect")}
@@ -344,34 +358,58 @@ export function PackRun({
         </div>
       </div>
 
-      {handoff && (
-        <div role="alert" className="flex flex-col gap-3 rounded-xl bg-warning/10 p-4">
-          <p className="flex items-center gap-2 text-lg font-semibold">
-            <TriangleAlert className="size-5 text-warning" />
-            {t("ws.handoff.title")}
+      {pulled.length > 0 && (
+        <div role="alert" className="flex items-start gap-2 rounded-xl bg-destructive/10 p-4">
+          <TriangleAlert className="mt-0.5 size-5 shrink-0 text-destructive" />
+          <p className="text-sm">
+            <span className="font-semibold">
+              {t("ws.run.cancelledPacked", {
+                id: shortId(pulled[0].orderId ?? ""),
+                n: pulled.length,
+              })}
+            </span>{" "}
+            {t("ws.run.cancelledPackedHint", { box: box.barcode })}
           </p>
+        </div>
+      )}
+
+      {rejecting && unit && (
+        <Modal
+          title={t("ws.reject.title")}
+          icon={<Ban className="size-4 text-muted-foreground" />}
+          submitLabel={t("ws.run.defect")}
+          onClose={() => setRejecting(false)}
+          onSubmit={async () => {
+            const res = await workstationRepository.packReject();
+            setRejecting(false);
+            if (res.ok) flashOk(t("ws.run.rejected", { name: nameOf(unit.productId) }), true);
+          }}
+        >
+          <p className="text-base font-medium">{nameOf(unit.productId)}</p>
+          <p className="text-sm">{t("ws.reject.body", { box: box.barcode })}</p>
+          <p className="text-sm text-muted-foreground">{t("ws.reject.label")}</p>
+        </Modal>
+      )}
+
+      {handoff && (
+        <Modal
+          title={t("ws.handoff.title")}
+          icon={<TriangleAlert className="size-4 text-muted-foreground" />}
+          submitLabel={t("ws.handoff.confirm")}
+          onClose={() => setHandoff(false)}
+          onSubmit={() => {
+            setHandoff(false);
+            setClosing(true);
+            setFeedback({ status: "idle", key: "ws.chk.closeBody", box: session.targetCode });
+          }}
+        >
           <p className="text-sm">{t("ws.handoff.body", { box: box.barcode })}</p>
           <ul className="flex flex-col gap-1 text-base font-medium">
             {missing.map(([id, n]) => (
               <li key={id}>{t("ws.handoff.line", { name: nameOf(id), n })}</li>
             ))}
           </ul>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              className="bg-warning text-white hover:bg-warning/90"
-              onClick={() => {
-                setHandoff(false);
-                setClosing(true);
-                setFeedback({ status: "idle", key: "ws.chk.closeBody", box: session.targetCode });
-              }}
-            >
-              {t("ws.handoff.confirm")}
-            </Button>
-            <Button variant="ghost" onClick={() => setHandoff(false)}>
-              {t("ws.chk.closeCancel")}
-            </Button>
-          </div>
-        </div>
+        </Modal>
       )}
 
       <footer className="flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-border pt-4">
@@ -435,11 +473,22 @@ export function PackRun({
   );
 }
 
+function fbVars(f: NonNullable<Feedback>) {
+  return { name: f.name ?? "", box: f.box ?? "", id: f.order ? shortId(f.order) : "" };
+}
+
 function feedbackFor(r: ItemScan, nameOf: (id: string) => string): Feedback {
   // Удачный скан говорит сам за себя: товар крупно и этикетка рядом.
   if (r.kind === "ok") return null;
   if (r.kind === "not_in_tote" || r.kind === "extra")
     return { status: "error", key: `ws.run.${r.kind}`, name: nameOf(r.productId) };
+  if (r.kind === "cancelled")
+    return {
+      status: "error",
+      key: "ws.run.cancelled",
+      name: nameOf(r.productId),
+      order: r.orderId,
+    };
   return { status: "error", key: `ws.run.${r.kind}` };
 }
 
