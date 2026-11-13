@@ -6,14 +6,22 @@ import { isSessionLive } from "@/lib/workstation";
 import { disputesRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
 import { mayDecideGoods, mayWriteOffGoods } from "@/lib/docFlow";
-import { isInventoryDispute, needsSecondPair, resolutionsFor } from "@/lib/disputes";
+import {
+  inTote,
+  isInventoryDispute,
+  moveTargets,
+  needsSecondPair,
+  resolutionsFor,
+} from "@/lib/disputes";
 import type { Dispute, DisputeKind, DisputeResolution } from "@/lib/types";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { EmptyState, ScreenShell } from "@/components/fulfillment/ScreenShell";
+import { formatAddress } from "@/lib/address";
 import { useNow } from "./useNow";
 
 /** Поле причины открывается под рукой: сразу в него и печатают. */
@@ -80,6 +88,8 @@ export function DisputesScreen() {
   const t = useT();
   const disputes = useEditor((s) => s.disputes);
   const products = useEditor((s) => s.products);
+  const boxes = useEditor((s) => s.boxes);
+  const warehouse = useEditor((s) => s.warehouse);
   const staff = useEditor((s) => s.warehouse.staff) ?? [];
   const session = useEditor((s) => s.stationSession);
   const onServer = useEditor((s) => s.session.source === "server");
@@ -92,6 +102,8 @@ export function DisputesScreen() {
     resolution: DisputeResolution;
     /** Без права начальника списание только просят. */
     request?: boolean;
+    /** «Переложить»: выбранная тара. */
+    to?: string;
   } | null>(null);
   const [reason, setReason] = useState("");
 
@@ -163,18 +175,48 @@ export function DisputesScreen() {
               />
               {canResolve &&
                 mayAdjust(d) &&
-                (writing?.id === d.id ? (
+                (writing?.id === d.id && writing.resolution === "moved" ? (
+                  // Переложить — с выбором тары и подтверждением (Кирилл 13.11).
                   <form
                     className="flex flex-wrap items-center gap-2"
                     onSubmit={async (e) => {
                       e.preventDefault();
-                      const res = await resolve.run(
-                        d.id,
-                        writing.resolution,
-                        by,
-                        reason,
-                        writing.request,
-                      );
+                      if (!writing.to) return;
+                      const res = await resolve.run(d.id, "moved", by, undefined, {
+                        to: writing.to,
+                      });
+                      if (res.ok) setWriting(null);
+                    }}
+                  >
+                    <Select
+                      className="w-64"
+                      aria-label={t("disputes.moveTo")}
+                      value={writing.to ?? ""}
+                      onChange={(e) => setWriting({ ...writing, to: e.target.value || undefined })}
+                    >
+                      <option value="">{t("disputes.moveTo")}</option>
+                      {moveTargets(boxes, d).map((b) => (
+                        <option key={b.id} value={b.id}>
+                          {b.barcode}
+                          {b.address ? ` · ${formatAddress(warehouse, b.address) ?? ""}` : ""}
+                        </option>
+                      ))}
+                    </Select>
+                    <Button type="submit" disabled={!writing.to}>
+                      {t("disputes.confirmMove")}
+                    </Button>
+                    <Button type="button" variant="ghost" onClick={() => setWriting(null)}>
+                      {t("disputes.cancel")}
+                    </Button>
+                  </form>
+                ) : writing?.id === d.id ? (
+                  <form
+                    className="flex flex-wrap items-center gap-2"
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      const res = await resolve.run(d.id, writing.resolution, by, reason, {
+                        request: writing.request,
+                      });
                       if (res.ok) {
                         setWriting(null);
                         setReason("");
@@ -231,6 +273,17 @@ export function DisputesScreen() {
                         >
                           {t("disputes.askWriteOff")}
                         </Button>
+                      ) : r === "moved" ? (
+                        // Перекладывать можно только то, что лежит в таре.
+                        inTote(boxes, d) ? (
+                          <Button
+                            key={r}
+                            variant="outline"
+                            onClick={() => setWriting({ id: d.id, resolution: r })}
+                          >
+                            {t(actKey(d, r))}
+                          </Button>
+                        ) : null
                       ) : needsSecondPair(d, r) ? (
                         <Button
                           key={r}
@@ -277,7 +330,10 @@ export function DisputesScreen() {
                   {t(KIND_KEY[d.kind])} · {nameOf(d.productId)} · {d.qty}
                 </span>
                 <span>
-                  {t(resKey(d))} · {who(d.resolvedBy!)} · {fmt(d.resolvedAt!)}
+                  {t(resKey(d))}
+                  {d.movedTo
+                    ? ` → ${boxes.find((b) => b.id === d.movedTo)?.barcode ?? "—"}`
+                    : ""} · {who(d.resolvedBy!)} · {fmt(d.resolvedAt!)}
                   {d.note ? ` · ${d.note}` : ""}
                 </span>
               </li>
@@ -306,8 +362,10 @@ function Line({
       <p className="flex flex-wrap items-baseline gap-x-3">
         <span
           className={cn(
-            "text-sm font-semibold",
-            d.kind === "shortage" || isInventoryDispute(d) ? "text-warning" : "text-destructive",
+            "rounded-md px-1.5 py-0.5 text-sm font-semibold",
+            d.kind === "shortage" || isInventoryDispute(d)
+              ? "bg-warning-fill text-warning-foreground"
+              : "bg-destructive text-destructive-foreground",
           )}
         >
           {t(KIND_KEY[d.kind])}

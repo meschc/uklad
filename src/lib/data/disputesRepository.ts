@@ -19,8 +19,8 @@ export interface DisputesRepository {
     resolution: DisputeResolution,
     by: string,
     note?: string,
-    /** Только попросить списать — подтвердит начальник. */
-    request?: boolean,
+    /** `request` — только попросить списать; `to` — куда переложить. */
+    opts?: { request?: boolean; to?: string },
   ) => Promise<Result<void>>;
 }
 
@@ -30,7 +30,7 @@ export function createDisputesRepository(
 ): DisputesRepository {
   return {
     list: () => readList(() => port.get().disputes, isDispute, "disputes"),
-    resolve: async (id, resolution, by, note, request) => {
+    resolve: async (id, resolution, by, note, opts) => {
       const found = port.get().disputes.find((x) => x.id === id);
       const asked = resolution === "written_off" ? found?.writeOffRequest : undefined;
       if (found && needsSecondPair(found, resolution)) {
@@ -40,7 +40,8 @@ export function createDisputesRepository(
       if (found && resolution === "written_off" && writeOffProblem(port.get().boxes, found)) {
         return fail("disputes.notInTote");
       }
-      const res = await attempt(() => port.get().resolveDispute(id, resolution, by, note, request));
+      if (found && resolution === "moved" && !opts?.to) return fail("disputes.pickTarget");
+      const res = await attempt(() => port.get().resolveDispute(id, resolution, by, note, opts));
       if (!res.ok) return res;
       if (!res.data) return fail("disputes.resolveFailed");
       // Старший за столом на сервере решает операцией (`cabinet/deskShip.js`):
@@ -55,6 +56,7 @@ export function createDisputesRepository(
           disputeId: id,
           resolution,
           ...(note?.trim() ? { note: note.trim() } : {}),
+          ...(opts?.to ? { toBoxId: opts.to } : {}),
         });
       }
       return ok(undefined);

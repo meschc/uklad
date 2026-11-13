@@ -114,8 +114,8 @@ describe("disputes.slice", () => {
       .getState()
       .raiseDispute({ kind: "not_packable", boxId: "b1", productId: "p1", raisedBy: "s1" });
     const st = () => store.getState();
-    expect(st().resolveDispute(id, "written_off", "s2", "", true)).toBe(false);
-    expect(st().resolveDispute(id, "written_off", "s2", "разбит", true)).toBe(true);
+    expect(st().resolveDispute(id, "written_off", "s2", "", { request: true })).toBe(false);
+    expect(st().resolveDispute(id, "written_off", "s2", "разбит", { request: true })).toBe(true);
     expect(st().disputes[0].resolution).toBeUndefined();
     expect(st().disputes[0].writeOffRequest).toMatchObject({ by: "s2", note: "разбит" });
     expect(st().boxes[0].lines).toEqual([{ productId: "p1", qty: 2 }]);
@@ -125,6 +125,26 @@ describe("disputes.slice", () => {
     expect(st().resolveDispute(id, "written_off", "boss")).toBe(true);
     expect(st().disputes[0]).toMatchObject({ resolution: "written_off", note: "разбит" });
     expect(st().boxes[0].lines).toEqual([{ productId: "p1", qty: 1 }]);
+  });
+
+  it("переложить — только в выбранную тару, итог по товару тот же", () => {
+    const boxes = [
+      makeBox({ id: "b1", lines: [{ productId: "p1", qty: 3 }] }),
+      makeBox({ id: "b2", lines: [] }),
+    ];
+    const store = makeDisputesStore({ boxes });
+    const id = store
+      .getState()
+      .raiseDispute({ kind: "extra", boxId: "b1", productId: "p1", raisedBy: "s1" });
+    const st = () => store.getState();
+    expect(st().resolveDispute(id, "moved", "boss")).toBe(false);
+    expect(st().resolveDispute(id, "moved", "boss", undefined, { to: "b1" })).toBe(false);
+    expect(st().resolveDispute(id, "moved", "boss", undefined, { to: "b2" })).toBe(true);
+    expect(st().boxes.map((b) => b.lines)).toEqual([
+      [{ productId: "p1", qty: 2 }],
+      [{ productId: "p1", qty: 1 }],
+    ]);
+    expect(st().disputes[0]).toMatchObject({ resolution: "moved", movedTo: "b2" });
   });
 
   it("лишнее с приёмки: оставить или вернуть поставщику, «вернуть на место» нельзя", () => {

@@ -2,6 +2,7 @@ import { nowMs, uid } from "../utils";
 import {
   adoptInto,
   adoptsGoods,
+  moveInto,
   needsSecondPair,
   resolutionsFor,
   writeOffProblem,
@@ -53,12 +54,12 @@ export const createDisputesSlice: SliceCreator<DisputesSlice> = (set, get) => ({
     return id;
   },
 
-  resolveDispute: (id, resolution, by, note, request) => {
+  resolveDispute: (id, resolution, by, note, opts) => {
     const d = get().disputes.find((x) => x.id === id);
     if (!d || d.resolution) return false;
     // У лишнего с приёмки свои решения: оставить на складе или списать.
     if (!resolutionsFor(d).includes(resolution)) return false;
-    if (request) {
+    if (opts?.request) {
       // Просьба списать: причина обязательна, товар остаётся в таре.
       if (resolution !== "written_off" || !note?.trim()) return false;
       const ask = { by, at: nowMs(), note: note.trim() };
@@ -79,17 +80,29 @@ export const createDisputesSlice: SliceCreator<DisputesSlice> = (set, get) => ({
     // Списать можно только то, что лежит в таре: иначе списание больше
     // остатка — товар, который «ушёл», не уходя (`writeOffProblem`).
     if (resolution === "written_off" && writeOffProblem(get().boxes, d)) return false;
+    // Переложить — только найденное, что лежит в таре, и только в выбранную.
+    const moved =
+      resolution === "moved" && opts?.to ? moveInto(get().boxes, d, opts.to) : undefined;
+    if (resolution === "moved" && !moved) return false;
     const now = nowMs();
     set((s) => ({
       disputes: s.disputes.map((x) =>
         x.id === id
-          ? { ...x, resolution, resolvedBy: by, resolvedAt: now, note: reason || undefined }
+          ? {
+              ...x,
+              resolution,
+              resolvedBy: by,
+              resolvedAt: now,
+              note: reason || undefined,
+              ...(moved ? { movedTo: opts!.to } : {}),
+            }
           : x,
       ),
       // Списали недостачу или брак — в таре этого товара больше нет;
       // оприходовали излишек — он лёг в ту же тару.
-      boxes:
-        resolution === "accepted" && adoptsGoods(d)
+      boxes: moved
+        ? (moveInto(s.boxes, d, opts!.to!) ?? s.boxes)
+        : resolution === "accepted" && adoptsGoods(d)
           ? adoptInto(s.boxes, d)
           : resolution === "written_off" && writesOffGoods(d) && d.boxId && d.productId
             ? s.boxes.map((b) =>

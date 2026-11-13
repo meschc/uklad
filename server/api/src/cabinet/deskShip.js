@@ -117,6 +117,46 @@ function applyShipRun(data, body, staffRef) {
 }
 
 const WRITES_OFF = new Set(["shortage", "not_packable", "receive_overage", "inventory_short"]);
+/**
+ * Переложить найденное в другую тару — то же правило, что в браузере
+ * (`src/lib/disputes.ts`, `moveInto`). Нечего или некуда — `null`.
+ */
+function moveInto(boxes, d, toId) {
+  const from = boxes.find((b) => b.id === d.boxId);
+  const to = boxes.find((b) => b.id === toId);
+  if (!from || !to || to === from || to.sealed || !isId(d.productId)) return null;
+  const qty = Number(d.qty);
+  const lines = list(from.lines);
+  const have = lines
+    .filter((l) => l.productId === d.productId)
+    .reduce((n, l) => n + Number(l.qty), 0);
+  if (!(qty > 0) || have < qty) return null;
+  let left = qty;
+  return boxes.map((b) => {
+    if (b === from) {
+      return {
+        ...b,
+        lines: lines
+          .map((l) => {
+            if (l.productId !== d.productId || left <= 0) return l;
+            const take = Math.min(Number(l.qty), left);
+            left -= take;
+            return { ...l, qty: Number(l.qty) - take };
+          })
+          .filter((l) => Number(l.qty) > 0),
+      };
+    }
+    if (b !== to) return b;
+    const toLines = list(b.lines);
+    return {
+      ...b,
+      lines: toLines.some((l) => l.productId === d.productId)
+        ? toLines.map((l) => (l.productId === d.productId ? { ...l, qty: Number(l.qty) + qty } : l))
+        : [...toLines, { productId: d.productId, qty }],
+    };
+  });
+}
+
 const RESOLUTIONS = new Set(["returned", "moved", "written_off", "accepted"]);
 /** Решения по видам спорного: у остальных — вернуть, переложить, списать. */
 const RESOLUTIONS_BY_KIND = {
@@ -142,6 +182,12 @@ function applyDisputeResolve(data, body, staffRef, who) {
   if (!allowed.includes(body.resolution)) return { flag: "bad" };
   const note = typeof body.note === "string" ? body.note.trim().slice(0, 200) : "";
   let boxes = data.boxes;
+  if (body.resolution === "moved") {
+    // Переложить — найденное из своей тары в выбранную (Кирилл 13.11): итог
+    // по товару тот же, сверка остатков (`deskStock.js`) это и проверит.
+    boxes = moveInto(list(data.boxes), d, body.toBoxId);
+    if (!boxes) return { flag: "stock" };
+  }
   // Оприходование излишка по инвентаризации — товар из ничего: те же четыре
   // глаза и причина, что у списания.
   const adopting = body.resolution === "accepted" && d.kind === "inventory_over";
@@ -219,6 +265,7 @@ function applyDisputeResolve(data, body, staffRef, who) {
               resolvedBy: staffRef,
               resolvedAt: body.at,
               ...(note || x.writeOffRequest?.note ? { note: note || x.writeOffRequest.note } : {}),
+              ...(body.resolution === "moved" ? { movedTo: body.toBoxId } : {}),
             }
           : x,
       ),

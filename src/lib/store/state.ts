@@ -852,13 +852,16 @@ export interface DisputesSlice {
     raisedBy: string;
   }) => string;
   /** Решить. Уже решённое не трогаем: первое решение остаётся. */
-  /** `request` — только попросить списать: решит начальник (`writeOffRequest`). */
+  /**
+   * `request` — только попросить списать: решит начальник (`writeOffRequest`);
+   * `to` — тара, в которую перекладывают («moved»).
+   */
   resolveDispute: (
     id: string,
     resolution: DisputeResolution,
     by: string,
     note?: string,
-    request?: boolean,
+    opts?: { request?: boolean; to?: string },
   ) => boolean;
   /**
    * Инвентаризация: записать пересчёт тары. Ставит отметку «считали» и заводит

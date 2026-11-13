@@ -279,3 +279,53 @@ test("решение старшего — только от того, кто з�
   assert.deepEqual(statuses(ok), [["k-dr0001", "applied", null]]);
   assert.equal(ok.data.disputes[0].resolution, "written_off");
 });
+
+test("переложить: найденное уходит в выбранную тару, сверка остатков сходится", () => {
+  const data = {
+    staffEvents: [],
+    warehouse: { staff: [{ id: "stf-olga", role: "Старший смены" }] },
+    boxes: [
+      { id: "t1", lines: [{ productId: "p1", qty: 3 }] },
+      { id: "t2", lines: [] },
+      { id: "t3", sealed: true, lines: [] },
+    ],
+    disputes: [
+      {
+        id: "d1",
+        kind: "not_packable",
+        boxId: "t1",
+        productId: "p1",
+        qty: 2,
+        raisedBy: "stf-ivan",
+      },
+    ],
+  };
+  const op = (key, toBoxId) => ({
+    key,
+    kind: "dispute_resolve",
+    body: {
+      eventId: key,
+      at: NOW - 1000,
+      staffId: "stf-olga",
+      disputeId: "d1",
+      resolution: "moved",
+      toBoxId,
+    },
+  });
+  const who = { staff: "stf-olga", perms: DECIDES, staffSince: NOW - 60_000 };
+  // Без тары, в невскрытую и в ту же — нельзя.
+  for (const [k, to] of [
+    ["k-mv0001", undefined],
+    ["k-mv0002", "t3"],
+    ["k-mv0003", "t1"],
+  ]) {
+    const r = applyDeskOps(data, [op(k, to)], who, NOW);
+    assert.equal(statuses(r)[0][1], "flagged");
+    assert.equal(r.data.disputes[0].resolution, undefined);
+  }
+  const ok = applyDeskOps(data, [op("k-mv0004", "t2")], who, NOW);
+  assert.deepEqual(statuses(ok), [["k-mv0004", "applied", null]]);
+  assert.deepEqual(ok.data.boxes[0].lines, [{ productId: "p1", qty: 1 }]);
+  assert.deepEqual(ok.data.boxes[1].lines, [{ productId: "p1", qty: 2 }]);
+  assert.equal(ok.data.disputes[0].movedTo, "t2");
+});
