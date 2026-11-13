@@ -1,6 +1,7 @@
 import { nowMs, uid } from "../utils";
 import type { Partner, StaffMember, Warehouse } from "../types";
 import type { SliceCreator, StaffSlice } from "./state";
+import { nextStaffNumber } from "../staffNumber";
 
 /**
  * Персонал и контакты склада (п.6). Хранятся в самом складе, а не отдельным
@@ -23,9 +24,10 @@ function patchPartners(warehouse: Warehouse, fn: (partners: Partner[]) => Partne
  * разъехавшись, они дают две разные записи об одном и том же человеке — так
  * фото и терялось, приезжая из CSV в форму и пропадая на пути в список.
  */
-function makeMember(member: Omit<StaffMember, "id">): StaffMember {
+function makeMember(member: Omit<StaffMember, "id">, number: number): StaffMember {
   return {
     id: uid("staff"),
+    number,
     name: member.name.trim() || "Без имени",
     role: member.role.trim(),
     phone: member.phone?.trim() || undefined,
@@ -38,9 +40,9 @@ function makeMember(member: Omit<StaffMember, "id">): StaffMember {
   };
 }
 
-export const createStaffSlice: SliceCreator<StaffSlice> = (set) => ({
+export const createStaffSlice: SliceCreator<StaffSlice> = (set, get) => ({
   addStaffMember: (member) => {
-    const created = makeMember(member);
+    const created = makeMember(member, nextStaffNumber(get().warehouse.staff ?? []));
     set((s) => ({
       warehouse: patchActive(s.warehouse, (staff) => [...staff, created]),
     }));
@@ -54,7 +56,10 @@ export const createStaffSlice: SliceCreator<StaffSlice> = (set) => ({
    */
   importStaff: (members) =>
     set((s) => ({
-      warehouse: patchActive(s.warehouse, (staff) => [...staff, ...members.map(makeMember)]),
+      warehouse: patchActive(s.warehouse, (staff) => {
+        const first = nextStaffNumber(staff);
+        return [...staff, ...members.map((m, i) => makeMember(m, first + i))];
+      }),
     })),
 
   updateStaffMember: (id, patch) =>
@@ -75,6 +80,15 @@ export const createStaffSlice: SliceCreator<StaffSlice> = (set) => ({
   removeStaffMember: (id) =>
     set((s) => ({
       warehouse: patchActive(s.warehouse, (staff) => staff.filter((m) => m.id !== id)),
+    })),
+
+  restoreStaffMember: (member, index) =>
+    set((s) => ({
+      warehouse: patchActive(s.warehouse, (staff) =>
+        staff.some((m) => m.id === member.id)
+          ? staff
+          : [...staff.slice(0, index), member, ...staff.slice(index)],
+      ),
     })),
 
   updateManager: (patch) =>

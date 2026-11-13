@@ -85,7 +85,7 @@ const pick = (obj, keys) => {
   return out;
 };
 
-const person = (m) => (isObject(m) ? pick(m, ["id", "name", "role", "photoUrl"]) : m);
+const person = (m) => (isObject(m) ? pick(m, ["id", "name", "role", "photoUrl", "number"]) : m);
 
 function forViewer(data) {
   const out = pick(isObject(data) ? data : {}, VIEWER_KEYS);

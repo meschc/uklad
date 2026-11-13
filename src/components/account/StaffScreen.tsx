@@ -22,6 +22,7 @@ import { StaffOutput } from "./StaffOutput";
 import { PersonForm } from "./PersonForm";
 import { draftToMember, type PersonDraft } from "@/lib/personDraft";
 import { StaffRow } from "./StaffRow";
+import { staffNumbers } from "@/lib/staffNumber";
 import { useWithArchive } from "@/lib/store/archive";
 import { ArchiveNote } from "@/components/fulfillment/ArchiveNote";
 
@@ -56,6 +57,7 @@ export function StaffScreen() {
   const t = useT();
 
   const staff = warehouse.staff ?? [];
+  const numbers = staffNumbers(staff);
   // Нагрузка считается из фактов приёмки и отгрузки (см. fulfillment.ts).
   // Нагрузка за всё время — с архивом старше 45 дней (`store/archive.ts`).
   const events = useWithArchive("receivingEvents");
@@ -305,6 +307,7 @@ export function StaffScreen() {
                         <StaffRow
                           key={m.id}
                           member={m}
+                          number={numbers.get(m.id)}
                           load={workload.get(m.id)}
                           editing={editing === m.id}
                           onEdit={() => setEditing(m.id)}

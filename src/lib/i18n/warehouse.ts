@@ -334,6 +334,8 @@ export const ru = {
   "staff.add": "Добавить сотрудника",
   "staff.save": "Добавить",
   "staff.remove": "Удалить сотрудника",
+  "staff.edit": "Изменить",
+  "staff.removed": "Сотрудник «{name}» удалён, бейдж погашен",
   "staff.badge": "Бейдж",
   "staff.badge.issue": "Выпустить бейдж",
   "staff.badge.forbidden":
@@ -751,6 +753,8 @@ export const en: Record<keyof typeof ru, string> = {
   "staff.add": "Add a person",
   "staff.save": "Add",
   "staff.remove": "Remove person",
+  "staff.edit": "Edit",
+  "staff.removed": "“{name}” removed, badge revoked",
   "staff.badge": "Badge",
   "staff.badge.issue": "Issue badge",
   "staff.badge.forbidden":

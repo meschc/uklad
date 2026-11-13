@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AtSign, Check, IdCard, Phone, Trash2, UserRound } from "lucide-react";
+import { AtSign, Check, IdCard, Pencil, Phone, Trash2, UserRound } from "lucide-react";
 import type { StaffMember } from "@/lib/types";
 import type { StaffWorkload } from "@/lib/fulfillment";
 import { useEditor } from "@/lib/store";
@@ -26,6 +26,7 @@ import { BadgePanel } from "./BadgePanel";
  */
 export function StaffRow({
   member: m,
+  number,
   load,
   editing,
   onEdit,
@@ -33,6 +34,8 @@ export function StaffRow({
   t,
 }: {
   member: StaffMember;
+  /** Табельный номер (`staffNumbers`) — тот же, что на бейдже. */
+  number?: number;
   /** Нагрузка по фактам приёмки и отгрузки — в той же строке, что и человек. */
   load?: StaffWorkload;
   editing: boolean;
@@ -42,6 +45,7 @@ export function StaffRow({
   t: TFunc;
 }) {
   const showToast = useEditor((s) => s.showToast);
+  const restore = useEditor((s) => s.restoreStaffMember);
   const [form, setForm] = useState<PersonDraft>({
     name: m.name,
     role: m.role,
@@ -117,7 +121,14 @@ export function StaffRow({
             </span>
           )}
           <span className="flex min-w-0 flex-col">
-            <span className="font-medium">{m.name}</span>
+            <span className="font-medium">
+              {m.name}
+              {number != null && (
+                <span className="ml-2 text-xs font-normal tabular-nums text-muted-foreground">
+                  № {number}
+                </span>
+              )}
+            </span>
             {(m.phone || m.email) && (
               <span className="flex flex-wrap items-center gap-x-3 text-xs text-muted-foreground">
                 {m.phone && (
@@ -170,11 +181,37 @@ export function StaffRow({
           >
             <IdCard className="size-3.5" />
           </button>
-          {badge && <BadgePanel member={m} code={badge} onClose={() => setBadge(null)} t={t} />}
+          {badge && (
+            <BadgePanel
+              member={m}
+              number={number}
+              code={badge}
+              onClose={() => setBadge(null)}
+              t={t}
+            />
+          )}
+          {/* Правка — отдельной кнопкой: нажатие на имя неочевидно (Кирилл 13.11). */}
+          <button
+            onClick={onEdit}
+            title={t("staff.edit")}
+            aria-label={t("staff.edit")}
+            className="flex size-7 items-center justify-center rounded text-muted-foreground transition hover:text-foreground"
+          >
+            <Pencil className="size-3.5" />
+          </button>
           <button
             onClick={async () => {
+              // Класс `undoable`: убираем сразу, вернуть можно из тоста.
+              // Бейдж при удалении гаснет — после отмены его выпускают заново.
+              const index = (useEditor.getState().warehouse.staff ?? []).findIndex(
+                (x) => x.id === m.id,
+              );
               const res = await remove.run();
               if (!res.ok) showToast(res.error, undefined, undefined, "error");
+              else
+                showToast("staff.removed", { name: m.name }, () =>
+                  restore({ ...m, number: m.number ?? number }, Math.max(0, index)),
+                );
             }}
             disabled={remove.pending}
             title={t("staff.remove")}

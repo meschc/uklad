@@ -710,6 +710,8 @@ export interface StaffSlice {
   importStaff: (members: Omit<StaffMember, "id">[]) => void;
   updateStaffMember: (id: string, patch: Partial<Omit<StaffMember, "id">>) => void;
   removeStaffMember: (id: string) => void;
+  /** «Отменить» после удаления: запись на прежнее место (бейдж выпускают заново). */
+  restoreStaffMember: (member: StaffMember, index: number) => void;
   /** Контакты склада: телефон, email, ответственное лицо. */
   updateWarehouseContacts: (
     id: string,
