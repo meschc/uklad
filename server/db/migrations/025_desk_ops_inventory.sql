@@ -12,10 +12,17 @@ ALTER TABLE uklad.desk_ops ADD CONSTRAINT desk_ops_kind_check
 INSERT INTO uklad.permissions (code, title) VALUES
   ('inventory.count', 'Инвентаризация: пересчёт');
 
--- Уже заведённые роли по умолчанию: владелец, начальник склада и кладовщик считают.
+-- Уже заведённые роли по умолчанию: владелец, начальник склада и кладовщик
+-- считают. Отбор не по имени (роль могли переименовать), а по правам, как в
+-- 024. Роли закрыты RLS и от владельца таблиц (FORCE), а `current_org` в
+-- миграции пуст: без снятия защиты UPDATE молча не обновил бы ни строки.
+ALTER TABLE uklad.roles NO FORCE ROW LEVEL SECURITY;
 UPDATE uklad.roles SET permissions = permissions || ARRAY['inventory.count']
-  WHERE is_default AND name IN ('Владелец', 'Начальник склада', 'Кладовщик')
+  WHERE is_default
+    AND ('org.manage' = ANY (permissions) OR 'staff.manage' = ANY (permissions)
+         OR 'stock.move' = ANY (permissions))
     AND NOT ('inventory.count' = ANY (permissions));
+ALTER TABLE uklad.roles FORCE ROW LEVEL SECURITY;
 
 CREATE OR REPLACE FUNCTION uklad.create_default_roles() RETURNS trigger
 LANGUAGE plpgsql AS $$
