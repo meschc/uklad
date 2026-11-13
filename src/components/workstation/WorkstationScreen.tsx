@@ -189,13 +189,15 @@ export function WorkstationScreen() {
       <NetworkBanner />
       {/* Рамка рабочей области — сигнал скана (`scanSignal`): зелёная вспышка —
           принято, жёлтая держится, пока дело не доделано, красная — до верного
-          скана. Кольцо внутрь, чтобы на ТСД без полей его тоже было видно. */}
+          скана. Обводка внутрь и поверх содержимого: на ТСД без полей её не
+          перекроет прокрученный список. */}
       <main
         className={cn(
-          "min-h-0 flex-1 overflow-y-auto bg-background ring-inset transition-shadow duration-150 md:mx-2 md:mb-2 md:rounded-2xl md:border md:border-border",
-          signalLevel === "ok" && "ring-4 ring-success",
-          signalLevel === "warn" && "ring-[6px] ring-warning",
-          signalLevel === "error" && "ring-[6px] ring-destructive",
+          "min-h-0 flex-1 overflow-y-auto bg-background transition-[outline-color] duration-150 md:mx-2 md:mb-2 md:rounded-2xl md:border md:border-border",
+          signalLevel === "ok" && "outline outline-4 -outline-offset-4 outline-success",
+          signalLevel === "warn" && "outline outline-[6px] -outline-offset-[6px] outline-warning",
+          signalLevel === "error" &&
+            "outline outline-[6px] -outline-offset-[6px] outline-destructive",
         )}
       >
         {!member && unbinding ? (
