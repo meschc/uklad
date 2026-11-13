@@ -220,3 +220,16 @@ test("тара с нерешённым расхождением замороже
   d.disputes = [open("inventory_short", 2, { resolution: "returned", resolvedBy: "stf-olga" })];
   assert.equal(applyPickUnit(d, body, "stf-ivan").flag, undefined);
 });
+
+test("тара с нерешённым расхождением: в неё не принимают, её не ставят на паллету", () => {
+  const { applyRecvUnit, applyRecvAttach } = require("../src/cabinet/deskReceive");
+  const d = data();
+  d.products.push({ id: "p3" });
+  d.pallets = [{ id: "pl1", barcode: "UK-PLT-1", boxIds: [] }];
+  d.disputes = [open("inventory_short", 2, { boxId: "b2" })];
+  const unit = { eventId: "r1", at: AT, productId: "p1", boxId: "b2", qty: 1 };
+  assert.equal(applyRecvUnit(d, unit, "stf-ivan").flag, "stock");
+  assert.equal(applyRecvAttach(d, { boxId: "b2", palletId: "pl1" }).flag, "stock");
+  d.disputes = [];
+  assert.equal(applyRecvAttach(d, { boxId: "b2", palletId: "pl1" }).flag, undefined);
+});

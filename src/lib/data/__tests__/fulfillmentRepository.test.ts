@@ -23,6 +23,37 @@ function fakePort(state: Partial<EditorState>): StorePort {
 }
 
 describe("createFulfillmentRepository", () => {
+  it("тара с нерешённым расхождением инвентаризации заморожена: не кладут, не переносят, не грузят", async () => {
+    const placeBox = vi.fn();
+    const receiveProduct = vi.fn();
+    const attachBoxToPallet = vi.fn();
+    const disputes = [
+      {
+        id: "d1",
+        kind: "inventory_short",
+        boxId: "b1",
+        productId: "p1",
+        qty: 1,
+        raisedBy: "s",
+        raisedAt: 1,
+      },
+    ];
+    const repo = createFulfillmentRepository(
+      fakePort({ disputes, placeBox, receiveProduct, attachBoxToPallet } as never),
+    );
+    const addr = { floorId: "f", moduleId: "m", shelfIndex: 0, cellIndex: 0 };
+    expect(await repo.placeBox("b1", addr)).toEqual({ ok: false, error: "ws.count.frozen" });
+    expect(await repo.attachBox("b1", "pl1")).toEqual({ ok: false, error: "ws.count.frozen" });
+    expect(await repo.receive({ productId: "p1", qty: 1, boxId: "b1" })).toEqual({
+      ok: false,
+      error: "ws.count.frozen",
+    });
+    expect(placeBox).not.toHaveBeenCalled();
+    expect(receiveProduct).not.toHaveBeenCalled();
+    // Другая тара не заморожена.
+    expect((await repo.placeBox("b2", addr)).ok).toBe(true);
+  });
+
   it("отдаёт список ожидаемых поставок из порта", async () => {
     // Arrange
     const ship = makeShipment({ lines: [makeShipmentLine()] });

@@ -60,6 +60,8 @@ export const ru = {
   "ws.count.scanBoxHint": "Код UK-BOX с ярлыка. Сколько должно быть по учёту, экран не покажет",
   "ws.count.boxUnknown": "Не нашли такую тару на полке. Проверьте ярлык",
   "ws.count.cellEmpty": "В этой ячейке нет тары на учёте",
+  "ws.count.frozen":
+    "По этой таре не решено расхождение инвентаризации. Пока старший не решит, в неё не кладут и её не переносят",
   "ws.count.cellMany": "В ячейке тар: {n}. Выберите или отсканируйте ту, что считаете",
   "ws.count.matched": "Сошлось. Тара отмечена пересчитанной",
   "ws.count.diff":
@@ -453,6 +455,8 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.count.scanBoxHint": "The UK-BOX code from the label. The screen won't show the book quantity",
   "ws.count.boxUnknown": "No such box on a shelf. Check the label",
   "ws.count.cellEmpty": "No boxes on record in this cell",
+  "ws.count.frozen":
+    "This box has an unresolved stocktake discrepancy. Until a supervisor decides, nothing goes in and it stays put",
   "ws.count.cellMany": "Boxes in this cell: {n}. Pick or scan the one you are counting",
   "ws.count.matched": "Matches. The box is marked as counted",
   "ws.count.diff":
