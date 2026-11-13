@@ -25,7 +25,7 @@ const events: StaffEvent[] = [
   ev("a", "idle_end", 3 * H),
   ev("a", "shift_end", 5 * H),
   ev("b", "shift_start", 0),
-  ev("b", "pick_scan", 1 * H),
+  ev("b", "pick_scan", 1 * H, { station: "picking" }),
   ev("b", "shift_end", 2 * H),
   // Вне периода — не считается.
   ev("b", "pick_scan", 30 * H),
@@ -45,7 +45,7 @@ describe("staffReport", () => {
   it("CSV: без ставки пустая ячейка, а не ноль; ; в имени экранируется", () => {
     const csv = staffReportCsv(staffReport(events, [anna, boris], 0, 24 * H)).split("\n");
     expect(csv[0].split(";")[0]).toBe("Сотрудник");
-    expect(csv[1]).toBe('Анна;Упаковщик;"4,00";"1,00";2;0;2;1;1;300;1200');
-    expect(csv[2]).toBe('"Борис; ст.";Сборщик;"2,00";"0,00";0;1;1;0;0;;');
+    expect(csv[1]).toBe('Анна;Упаковщик;"4,00";"1,00";2;0;2;1;1;300;1200;');
+    expect(csv[2]).toBe('"Борис; ст.";Сборщик;"2,00";"0,00";0;1;1;0;0;;;"Сборка 2,00"');
   });
 });

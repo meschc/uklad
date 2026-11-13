@@ -169,6 +169,7 @@ export const ru = {
   "staff.tab.access": "Доступ",
   "staff.tab.output": "Выработка",
   "staff.out.period": "Период",
+  "staff.out.now": "сейчас: {station} с {time}",
   "staff.out.today": "Сегодня",
   "staff.out.week": "7 дней",
   "staff.out.month": "Этот месяц",
@@ -274,13 +275,15 @@ export const ru = {
   "perm.where.later": "позже",
   "team.matrix": "Права по модулям",
   "team.matrixLead":
-    "Сейчас сервер проверяет приёмку, сборку, упаковку, отгрузку и решения по товару у стола, а «Персонал и роли» открывает кабинет руководителя целиком. Остальные права уже записаны в роли и включатся, когда раздел переедет на сервер.",
+    "Сейчас сервер проверяет приёмку, сборку, упаковку, отгрузку и решения по товару у стола, а «Персонал и роли» открывает кабинет руководителя целиком. Роль с «Остатками», но без «Персонала» входит в кабинет по почте только смотреть, без ставок и контактов. Остальные права уже записаны в роли и включатся, когда раздел переедет на сервер.",
   "team.matrixModule": "Модуль",
   "team.matrixWhere": "Где действует",
   "team.desk": "Роли у стола",
   "team.deskLead":
     "Роль решает, что сотрудник может у стола по бейджу. Без роли работа идёт как раньше, но списать, принять излишек или решить по браку нельзя.",
   "team.deskNone": "Без роли",
+  "team.deskMissing":
+    "Без роли у стола: {n}. Назначьте роль, иначе решения по товару им недоступны.",
   "team.deskEmpty": "Сотрудников пока нет. Добавьте их во вкладке «Сотрудники».",
   "partners.goods": "товаров: {n}",
   "partners.remove": "Удалить партнёра",
@@ -561,6 +564,7 @@ export const en: Record<keyof typeof ru, string> = {
   "staff.tab.access": "Access",
   "staff.tab.output": "Output",
   "staff.out.period": "Period",
+  "staff.out.now": "now: {station} since {time}",
   "staff.out.today": "Today",
   "staff.out.week": "7 days",
   "staff.out.month": "This month",
@@ -667,13 +671,15 @@ export const en: Record<keyof typeof ru, string> = {
   "perm.where.later": "later",
   "team.matrix": "Permissions by module",
   "team.matrixLead":
-    "Right now the server checks receiving, picking, packing, shipping and goods decisions at the desk, and “Staff and roles” opens the whole manager cabinet. Other permissions are already saved in roles and take effect when their section moves to the server.",
+    "Right now the server checks receiving, picking, packing, shipping and goods decisions at the desk, and “Staff and roles” opens the whole manager cabinet. A role with “Stock” but without “Staff” signs in by email to view the cabinet only, without rates and contacts. Other permissions are already saved in roles and take effect when their section moves to the server.",
   "team.matrixModule": "Module",
   "team.matrixWhere": "Where it applies",
   "team.desk": "Roles at the desk",
   "team.deskLead":
     "The role decides what a person can do at the desk with their badge. Without a role, work goes on as before, but write-offs, accepting surplus and defect decisions are off.",
   "team.deskNone": "No role",
+  "team.deskMissing":
+    "Without a desk role: {n}. Assign a role, otherwise goods decisions are off for them.",
   "team.deskEmpty": "No staff yet. Add people on the “Staff” tab.",
   "partners.goods": "items: {n}",
   "partners.remove": "Delete partner",

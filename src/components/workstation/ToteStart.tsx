@@ -1,6 +1,7 @@
 import { ArrowRight, Check, PackageOpen, PackagePlus } from "lucide-react";
 import { useState } from "react";
 import { useEditor } from "@/lib/store";
+import { signal } from "@/lib/scanSignal";
 import { workstationRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
 import { findByCode } from "@/lib/barcode";
@@ -37,17 +38,20 @@ export function ToteStart() {
     const box = findByCode(useEditor.getState().boxes, code);
     if (!box || toteContents(box).size === 0) {
       setStatus("error");
+      signal("error");
       setHint(t(box ? "ws.tote.empty" : "ws.tote.unknown"));
       return;
     }
     setSource(box.barcode);
     setStatus("ok");
+    signal("ok");
     setHint(null);
   };
 
   const pickTarget = async (code: string) => {
     const res = await start.run(source!, code);
     setStatus(res.ok ? "ok" : "error");
+    signal(res.ok ? "ok" : "error");
   };
 
   const makeDemo = () => {

@@ -1,4 +1,4 @@
-import { Loader2 } from "lucide-react";
+import { Loader2, X } from "lucide-react";
 import { DialogFooter, DialogHeader, DialogShell } from "@/components/ui/dialog-shell";
 import { Button } from "@/components/ui/button";
 import { eyebrow } from "@/components/ui/eyebrow";
@@ -18,6 +18,7 @@ import { useT, type MsgKey } from "@/lib/i18n";
  */
 export function Modal({
   title,
+  icon,
   children,
   onClose,
   onSubmit,
@@ -27,6 +28,8 @@ export function Modal({
   error,
 }: {
   title: string;
+  /** Значок в шапке, `size-4 text-muted-foreground`, как у «Сообщить о проблеме». */
+  icon?: React.ReactNode;
   children: React.ReactNode;
   onClose: () => void;
   onSubmit: () => void;
@@ -40,8 +43,15 @@ export function Modal({
   const t = useT();
   return (
     <DialogShell size="lg" scroll onClose={onClose}>
+      {/* Шапка по образцу «Сообщить о проблеме»: значок, заголовок и крестик. */}
       <DialogHeader>
-        <p className="text-sm font-semibold">{title}</p>
+        <div className="flex min-w-0 items-center gap-2">
+          {icon}
+          <p className="text-sm font-semibold">{title}</p>
+        </div>
+        <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label={t("support.close")}>
+          <X className="size-4" />
+        </Button>
       </DialogHeader>
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-5 py-4">{children}</div>
       <DialogFooter spread={!!error}>

@@ -168,7 +168,7 @@ test("без сессии, без компании, не объект и сли�
 });
 
 test(
-  "снимок только руководителю: бейдж и роль без staff.manage — 403",
+  "снимок пишет только руководитель: бейдж — 403, роль без staff.manage — только просмотр",
   { skip: SKIP },
   async () => {
     const helpers = await import("../../db/test/helpers.js");
@@ -210,15 +210,25 @@ test(
     });
     assert.equal(write.status, 403);
 
-    // Вход паролем, но в роли без права на персонал — тоже нет.
+    // Вход паролем, но в роли без права на персонал — только просмотр (без
+    // ставок), запись — нет.
     await db.root.query(
-      `UPDATE uklad.roles SET permissions = array_remove(permissions, 'staff.manage')
+      `UPDATE uklad.roles
+       SET permissions = array_remove(array_remove(permissions, 'staff.manage'), 'seller.requests')
      WHERE org_id = $1 AND name = 'Владелец'`,
       [a.org],
     );
-    assert.equal((await call("/api/cabinet/snapshot", a)).status, 403);
+    const viewed = await call("/api/cabinet/snapshot", a);
+    assert.equal(viewed.status, 200);
+    assert.equal(viewed.json.snapshot.viewer, true);
+    const noWrite = await call("/api/cabinet/snapshot", {
+      ...a,
+      body: { version: viewed.json.snapshot.version, format: 8, data: data("чужое") },
+    });
+    assert.equal(noWrite.status, 403);
     await db.root.query(
-      `UPDATE uklad.roles SET permissions = array_append(permissions, 'staff.manage')
+      `UPDATE uklad.roles
+       SET permissions = permissions || ARRAY['staff.manage', 'seller.requests']
      WHERE org_id = $1 AND name = 'Владелец'`,
       [a.org],
     );

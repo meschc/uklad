@@ -20,6 +20,11 @@ export interface Snapshot {
    * (`opQueue.ts`), а свежее он подтягивает сам.
    */
   desk?: boolean;
+  /**
+   * Снимок отдан на просмотр: роль без «Персонала» (кладовщик, приёмщик…)
+   * кабинет смотрит, но не пишет — запись сервер всё равно не примет.
+   */
+  viewer?: boolean;
 }
 
 /** Итог записи: новая версия или «на сервере уже новее». */
@@ -77,6 +82,7 @@ export const snapshotRepository = {
       format: s.format,
       data: s.data,
       ...(body.desk === true ? { desk: true } : {}),
+      ...((s as { viewer?: unknown }).viewer === true ? { viewer: true } : {}),
     });
   },
 

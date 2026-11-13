@@ -108,6 +108,13 @@ async function inventoryDecided(c, items) {
 }
 
 const mayUse = (ctx) => Boolean(ctx.accountId) && ctx.can("staff.manage");
+// Член команды без «Персонала» (кладовщик, приёмщик…) кабинет только
+// смотрит: снимок по разрешённому списку (`viewer.js` — без реквизитов,
+// цен, ставок, контактов, журнала смен), запись — только `staff.manage`.
+// Роль продавца (`seller.requests`) склад так не видит: там товар всех
+// партнёров, а продавцу — только свой.
+const mayView = (ctx) =>
+  Boolean(ctx.accountId) && ctx.can("stock.view") && !ctx.can("seller.requests");
 
 /**
  * Документ компании из базы → кабинет целиком, как его видит браузер:
@@ -206,7 +213,8 @@ function createSnapshot({ auth, send, log }) {
 
   async function load(req, res) {
     const out = await withSession(req, async (c, ctx) => {
-      if (!mayUse(ctx)) return FORBIDDEN;
+      const viewer = !mayUse(ctx);
+      if (viewer && !mayView(ctx)) return FORBIDDEN;
       const { rows } = await c.query(
         `SELECT version, format, data, updated_at FROM uklad.cabinet_snapshots
          WHERE org_id = uklad.current_org()`,
@@ -214,6 +222,11 @@ function createSnapshot({ auth, send, log }) {
       if (!rows[0]) return false;
       // Законченное старше окна — в архив, до того как собрать кабинет: так
       // браузер держит живую работу и последние недели, а не всю историю.
+      if (viewer) {
+        // Смотрящий архив не двигает: это работа руководителя.
+        const { forViewer } = require("./viewer");
+        return { ...rows[0], viewer, data: forViewer(await loadCabinet(c, rows[0].data)) };
+      }
       await archiveDaily(c);
       return { ...rows[0], data: await loadCabinet(c, rows[0].data) };
     });
@@ -227,6 +240,7 @@ function createSnapshot({ auth, send, log }) {
         format: out.format,
         data: out.data,
         updatedAt: out.updated_at,
+        ...(out.viewer ? { viewer: true } : {}),
       },
     });
   }

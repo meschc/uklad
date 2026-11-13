@@ -1,4 +1,5 @@
-import type { StaffEvent, StaffMember } from "./types";
+import type { StaffEvent, StaffMember, WorkstationKind } from "./types";
+import { processMs } from "./staffProcess";
 import { earnings, idleMs, peaksByStaff, workedMs } from "./workstation";
 import { cell } from "./staffIO";
 
@@ -17,6 +18,8 @@ export interface StaffOutput {
   name: string;
   role: string;
   workedMs: number;
+  /** Часы на смене по участкам: сам перешёл — часы ушли новому участку. */
+  byStation: Partial<Record<WorkstationKind, number>>;
   idleMs: number;
   packed: number;
   picked: number;
@@ -51,6 +54,7 @@ export function staffReport(
       name: m.name,
       role: m.role,
       workedMs: worked,
+      byStation: processMs(events, m.id, from, to),
       idleMs: idleMs(events, m.id, from, to),
       packed: p?.pack ?? 0,
       picked: p?.pick ?? 0,
@@ -77,7 +81,25 @@ const STAFF_REPORT_HEADERS = [
   "Брак",
   "Ставка, ₽/ч",
   "По ставке, ₽",
+  "Часы по участкам",
 ];
+
+/** Участки в выгрузке — по-русски, как и колонки. */
+const STATION_RU: Record<WorkstationKind, string> = {
+  pack: "Упаковка",
+  receiving: "Приёмка",
+  picking: "Сборка",
+  marking: "Маркировка",
+  returns: "Возвраты",
+  shipping: "Отгрузка",
+  inventory: "Инвентаризация",
+};
+
+const byStationText = (b: StaffOutput["byStation"]) =>
+  (Object.keys(STATION_RU) as WorkstationKind[])
+    .filter((k) => (b[k] ?? 0) > 0)
+    .map((k) => `${STATION_RU[k]} ${hours(b[k] ?? 0)}`)
+    .join(" · ");
 
 /**
  * Выгрузка для расчёта зарплаты. Колонки — по-русски, разделитель «;»: файл
@@ -97,6 +119,7 @@ export function staffReportCsv(rows: readonly StaffOutput[]): string {
       String(r.rejects),
       r.rate == null ? "" : String(r.rate),
       r.earned == null ? "" : String(r.earned),
+      byStationText(r.byStation),
     ]
       .map(cell)
       .join(";"),

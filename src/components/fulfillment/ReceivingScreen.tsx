@@ -1,6 +1,7 @@
 import { useLayoutEffect, useMemo, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { useEditor } from "@/lib/store";
+import { levelFor, signal } from "@/lib/scanSignal";
 import { fulfillmentRepository, type Result } from "@/lib/data";
 import { addressKey, formatAddress, parseAddress } from "@/lib/address";
 import { buildOccupancy, occupantsAt } from "@/lib/placement";
@@ -14,7 +15,7 @@ import { ProductDialog } from "@/components/table/ProductDialog";
 import { ScreenShell } from "./ScreenShell";
 import { type ScanStatus } from "./ScanField";
 import { ShipmentPicker } from "./ShipmentPicker";
-import { isSenior } from "@/lib/docFlow";
+import { mayDecideGoods } from "@/lib/docFlow";
 import { DiscrepancyAlert } from "./DiscrepancyAlert";
 import { BoxStep } from "./receiving/BoxStep";
 import { CargoStep } from "./receiving/CargoStep";
@@ -62,9 +63,17 @@ export function ReceivingScreen({ staffId: badgeStaffId }: { staffId?: string } 
   // тары выдаёт счётчик склада, два стола получили бы один номер.
   const deskOnServer = useEditor((s) => s.session.source === "server" && !!s.stationSession);
   const staff = useEditor((s) => s.warehouse.staff ?? []);
-  // За столом по бейджу поставку заводит только старший смены; руководитель
-  // в кабинете (бейджа нет) — всегда.
-  const canCreateShipment = !badgeStaffId || isSenior(staff.find((m) => m.id === badgeStaffId));
+  // За столом по бейджу поставку заводит только тот, у кого в роли «Решения по
+  // товару» (в демо — старший по должности); руководитель в кабинете — всегда.
+  const station = useEditor((s) => s.stationSession);
+  const onServer = useEditor((s) => s.session.source === "server");
+  const canCreateShipment =
+    !badgeStaffId ||
+    mayDecideGoods(
+      station,
+      staff.find((m) => m.id === badgeStaffId),
+      onServer,
+    );
   const twoStage = useEditor((s) => !!s.serviceSettings.twoStageReceiving);
   const [stage, setStage] = useState<"cargo" | "items">("cargo");
 
@@ -123,10 +132,15 @@ export function ReceivingScreen({ staffId: badgeStaffId }: { staffId?: string } 
   const crossDock = !!shipment?.crossDock;
   const occupancy = useMemo(() => buildOccupancy(placements, boxes), [placements, boxes]);
 
-  const fail = (msgKey: MsgKey, vars?: Record<string, string | number>) =>
-    setScan({ status: "error", msg: t(msgKey, vars) });
-  const ok = (msgKey: MsgKey, vars?: Record<string, string | number>) =>
+  const fail = (msgKey: MsgKey, vars?: Record<string, string | number>) => {
+    const level = levelFor(msgKey);
+    signal(level);
+    setScan({ status: level, msg: t(msgKey, vars) });
+  };
+  const ok = (msgKey: MsgKey, vars?: Record<string, string | number>) => {
+    signal("ok");
     setScan({ status: "ok", msg: t(msgKey, vars) });
+  };
 
   /**
    * Команда приёмки через слой данных (п.3.2.1). Отдельного `useCommand` здесь

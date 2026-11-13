@@ -1,5 +1,6 @@
 import { createPortal } from "react-dom";
 import type { LabelTemplate } from "@/lib/types";
+import { useOwnPrint } from "@/lib/printOwner";
 import { LabelCard, type LabelKind } from "./LabelCard";
 
 /**
@@ -21,6 +22,7 @@ export function LabelPrint({
   kind: LabelKind;
   warehouseName: string;
 }) {
+  useOwnPrint();
   if (items.length === 0) return null;
   // Прямо в <body>: печать прячет всех остальных детей body через display:none
   // (см. print.css). Спрятанные visibility:hidden они бы занимали место, и

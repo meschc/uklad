@@ -803,6 +803,13 @@ export interface DocsSlice {
     sourceId: string,
     staffId: string,
   ) => "ok" | "notSenior" | "locked" | "missing";
+  /**
+   * Кто из персонала вправе решать по товару и подписывать документы — по
+   * ролям на сервере (`goods.decide`, миграция 024). `null` — не загружено
+   * или демо без сервера: тогда решает должность (`isSenior`). Не сохраняется.
+   */
+  deskDeciders: string[] | null;
+  setDeskDeciders: (ids: string[] | null) => void;
   /** Какой документ открыть на экране «Документы» — переход из задания или приёмки. */
   docFocus: { kind: DocRecord["kind"]; sourceId: string } | null;
   openDoc: (kind: DocRecord["kind"], sourceId: string) => void;

@@ -71,6 +71,9 @@ export const ru = {
   "doc.confirmBy": "Кто подтверждает",
   "doc.confirm": "Подтвердить",
   "doc.confirmedBy": "Подтвердил {who}, {d}",
+  "doc.loadingSigners": "Загружаем, кто может подписать…",
+  "doc.noDeciders":
+    "Подписать некому: ни у кого из персонала нет роли с правом «Решения по товару». Назначьте её в «Персонал» → «Доступ».",
   "doc.noSeniors":
     "В персонале нет старших. Укажите должность «Старший кладовщик» в карточке сотрудника.",
   "doc.stamp.draft": "ЧЕРНОВИК",
@@ -185,6 +188,9 @@ export const en: Record<keyof typeof ru, string> = {
   "doc.confirmBy": "Confirmed by",
   "doc.confirm": "Confirm",
   "doc.confirmedBy": "Confirmed by {who}, {d}",
+  "doc.loadingSigners": "Loading who can sign…",
+  "doc.noDeciders":
+    "Nobody can sign: no staff member has a role with “Goods decisions”. Assign it in Staff → Access.",
   "doc.noSeniors": "No seniors on staff. Set a position like “Senior storekeeper” on a staff card.",
   "doc.stamp.draft": "DRAFT",
   "doc.err.locked": "The document is already confirmed and can’t be edited",

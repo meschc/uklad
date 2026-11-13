@@ -82,6 +82,7 @@ export function DisputesScreen() {
   const products = useEditor((s) => s.products);
   const staff = useEditor((s) => s.warehouse.staff) ?? [];
   const session = useEditor((s) => s.stationSession);
+  const onServer = useEditor((s) => s.session.source === "server");
   const resolve = useCommand(disputesRepository.resolve);
 
   const role = useEditor(selectRole);
@@ -99,7 +100,8 @@ export function DisputesScreen() {
   const live = isSessionLive(session, now);
   const badgeStaff = live ? staff.find((m) => m.id === session!.staffId) : undefined;
   const canResolve =
-    role === "warehouse" && (session ? !!badgeStaff && mayDecideGoods(session, badgeStaff) : true);
+    role === "warehouse" &&
+    (session ? !!badgeStaff && mayDecideGoods(session, badgeStaff, onServer) : true);
   const by = badgeStaff?.id ?? "manager";
   // Правка учёта по инвентаризации в кабинете — право роли `goods.decide`;
   // за столом его уже проверил `mayDecideGoods`.
