@@ -9,8 +9,8 @@ import type { DocModel } from "@/lib/documents";
 import type { DocEdits, DocRecord } from "@/lib/types";
 import { useT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
+import { DialogHeader, DialogShell } from "@/components/ui/dialog-shell";
 import { Input } from "@/components/ui/input";
-import { Backdrop } from "@/components/ui/backdrop";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { LIMITS } from "@/lib/numberLimits";
 
@@ -85,21 +85,19 @@ export function DocPanel({
   const who = staff.find((m) => m.id === record?.confirmedBy)?.name ?? "—";
 
   return (
-    <div className="fixed inset-0 z-40 flex justify-end">
-      <Backdrop onClose={onClose} />
-      <aside className="relative flex h-full w-full max-w-md animate-slide-in-right flex-col gap-5 overflow-y-auto bg-background p-5 shadow-2xl">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold leading-tight">{doc.number}</h2>
-            <p className="text-sm text-muted-foreground">
-              {t(locked ? "doc.status.confirmed" : "doc.status.draft")}
-            </p>
-          </div>
-          <Button variant="ghost" size="sm" aria-label={t("doc.panel.close")} onClick={onClose}>
-            <X />
-          </Button>
+    <DialogShell size="md" scroll onClose={onClose}>
+      <DialogHeader align="start">
+        <div>
+          <h2 className="text-sm font-semibold leading-tight">{doc.number}</h2>
+          <p className="text-xs text-muted-foreground">
+            {t(locked ? "doc.status.confirmed" : "doc.status.draft")}
+          </p>
         </div>
-
+        <Button variant="ghost" size="icon-sm" aria-label={t("doc.panel.close")} onClick={onClose}>
+          <X />
+        </Button>
+      </DialogHeader>
+      <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-5">
         <section className="flex flex-col gap-3">
           <Field label={t("doc.responsible")}>
             <Input
@@ -218,8 +216,8 @@ export function DocPanel({
             </section>
           </>
         )}
-      </aside>
-    </div>
+      </div>
+    </DialogShell>
   );
 }
 
