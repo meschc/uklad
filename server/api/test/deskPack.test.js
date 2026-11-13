@@ -300,3 +300,46 @@ test("заказ не закрывается без своего товара в
   assert.equal(r.flag, undefined);
   assert.equal(r.data.requests[1].packedAt, undefined);
 });
+
+test("тара посылок: каждая посылка своей операцией, пустое закрытие несёт только недостачу", () => {
+  const a = applyPackDone(
+    data(),
+    done({
+      eventId: "ev-a",
+      outboundCode: "UK-LBL-AB12-001",
+      outboundId: "oa",
+      lines: [{ productId: "p1", qty: 2 }],
+      requestIds: ["r1"],
+    }),
+    "stf-ivan",
+  );
+  assert.equal(a.flag, undefined);
+  const b = applyPackDone(
+    a.data,
+    done({
+      eventId: "ev-b",
+      outboundCode: "UK-ORD-R2",
+      outboundId: "ob",
+      lines: [{ productId: "p2", qty: 1 }],
+      requestIds: ["r2"],
+    }),
+    "stf-ivan",
+  );
+  assert.deepEqual(
+    b.data.outboundBoxes.map((o) => o.code),
+    ["UK-LBL-AB12-001", "UK-ORD-R2"],
+  );
+  assert.deepEqual(b.data.boxes[0].lines, [{ productId: "p1", qty: 1 }]);
+  const none = applyPackDone(
+    data(),
+    done({ outboundCode: "", outboundId: undefined, lines: [], requestIds: [] }),
+    "stf-ivan",
+  );
+  assert.equal(none.flag, undefined);
+  assert.deepEqual(none.data.outboundBoxes, []);
+  assert.equal(
+    applyPackDone(data(), done({ outboundCode: "", lines: [{ productId: "p1", qty: 1 }] }), "x")
+      .flag,
+    "bad",
+  );
+});

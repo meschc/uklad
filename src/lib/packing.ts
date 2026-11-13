@@ -39,6 +39,44 @@ export function targetCode(destination: string): string {
   return `${TARGET_PREFIX}${h.toString(36).toUpperCase().padStart(6, "0").slice(-6)}`;
 }
 
+/**
+ * Тара посылок (FBS, Кирилл 13.11): все заказы в ней — заказы площадки. Короб
+ * отгрузки упаковщик тогда не выбирает: каждый заказ — своя посылка со своей
+ * этикеткой, посылки идут в любую тару и дальше на сортировку. Тара поставки
+ * (FBO, заказы без номера) пакуется в короба поставки, как раньше.
+ */
+export function isParcelTote(orders: readonly ToteOrder[]): boolean {
+  return orders.length > 0 && orders.every((o) => o.external);
+}
+
+/**
+ * Посылки закрытой тары: каждый заказ, упакованный целиком, — запись со
+ * своим кодом (этикетка заказа, у заказа из одной штуки — этикетка штуки).
+ */
+export function parcelsOf(
+  session: PackSession,
+  orders: readonly ToteOrder[],
+): { code: string; requestIds: string[]; lines: { productId: string; qty: number }[] }[] {
+  const out = [];
+  for (const o of orders) {
+    const units = session.units.filter((u) => u.orderId === o.id && u.confirmedAt);
+    if (!isOrderComplete(session, o)) continue;
+    const label =
+      o.units === 1
+        ? units[0]?.labelCode
+        : session.orderLabels.find((l) => l.orderId === o.id && l.confirmedAt)?.labelCode;
+    if (!label) continue;
+    const m = new Map<string, number>();
+    for (const u of units) m.set(u.productId, (m.get(u.productId) ?? 0) + 1);
+    out.push({
+      code: normalizeCode(label),
+      requestIds: o.requestIds,
+      lines: [...m].map(([productId, qty]) => ({ productId, qty })),
+    });
+  }
+  return out;
+}
+
 export function unitLabelCode(sessionId: string, seq: number): string {
   return `${UNIT_LABEL_PREFIX}${sessionId.slice(-4).toUpperCase()}-${String(seq).padStart(3, "0")}`;
 }
@@ -60,6 +98,8 @@ export interface ToteOrder {
   target: string | null;
   /** Заявки заказа: при закрытии тары они получают отметку «упакована». */
   requestIds: string[];
+  /** Заказ площадки (есть номер): уходит отдельной посылкой. */
+  external: boolean;
   /** Товар → сколько штук этого заказа. */
   need: Map<string, number>;
   units: number;
@@ -94,6 +134,7 @@ export function toteOrders(requests: readonly FulfillmentRequest[], box: Box): T
       id: g.items[0].id,
       target: g.target,
       requestIds: g.items.map((r) => r.id),
+      external: !!g.items[0].externalId,
       need,
       units: [...need.values()].reduce((a, b) => a + b, 0),
     });

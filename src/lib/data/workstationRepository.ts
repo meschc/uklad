@@ -4,6 +4,7 @@ import type {
   CellAddress,
   Device,
   IdleReason,
+  OutboundBox,
   ShiftMark,
   StaffEvent,
   WorkstationKind,
@@ -41,7 +42,7 @@ export interface WorkstationRepository {
   /** Отвязать этот браузер бейджем руководителя. Чужой бейдж — `ws.device.notManager`. */
   unbindDevice: (managerBadge: string) => Promise<Result<void>>;
   /** Начать тару: скан тары с товаром и короба отгрузки. */
-  packStart: (sourceCode: string, targetCode: string) => Promise<Result<void>>;
+  packStart: (sourceCode: string, targetCode?: string) => Promise<Result<void>>;
   packItem: (code: string) => Promise<Result<ItemScan>>;
   /** Скан наклеенной этикетки. Не та этикетка — отказ `ws.label.wrong`. */
   packLabel: (code: string) => Promise<Result<void>>;
@@ -75,7 +76,9 @@ export interface WorkstationRepository {
    */
   countBox: (boxId: string, lines: CountLine[]) => Promise<Result<{ matched: boolean }>>;
   /** Сортировка: короб отгрузки — на паллету назначения. Правила проверяет стол. */
-  sort: (boxCode: string, pallet: string) => Promise<Result<boolean>>;
+  sort: (parcelCode: string, sortCode: string) => Promise<Result<boolean>>;
+  /** Закрыть отгрузку места сортировки: грузовые места (`UK-OUT-`) для ярлыков. */
+  sortClose: (sortCode: string, pallets: number, boxes: number) => Promise<Result<OutboundBox[]>>;
 }
 
 export function createWorkstationRepository(
@@ -327,23 +330,41 @@ export function createWorkstationRepository(
       }
       return ok({ matched: res.data.diffs.length === 0 });
     },
-    // Сортировка уходит операцией `sort_place`: сервер сам сверит, что
-    // паллета того же назначения и короб ещё не лежит на другой.
-    sort: (boxCode, pallet) =>
+    // Сортировка уходит операциями `sort_place` и `sort_close`: сервер сам
+    // сверит направление места и что отгрузка ещё не закрыта.
+    sort: (parcelCode, sortCode) =>
       attempt(() => {
         const s = port.get();
-        const placed = s.sortToPallet(boxCode, pallet);
+        const placed = s.sortPlace(parcelCode, sortCode);
         const by = s.stationSession?.staffId;
         if (!placed || !by || !onServer(port)) return placed;
         ops.enqueue("sort_place", {
           eventId: uid("sort"),
           staffId: by,
           at: nowMs(),
-          outboundCode: boxCode,
-          pallet,
+          outboundCode: parcelCode,
+          sortCode,
         });
         return placed;
       }),
+    sortClose: async (sortCode, pallets, boxes) => {
+      const res = await attempt(() => port.get().sortClose(sortCode, pallets, boxes));
+      if (!res.ok) return res;
+      if (!res.data) return fail("ws.sort.closeFailed");
+      const by = port.get().stationSession?.staffId;
+      if (by && onServer(port)) {
+        ops.enqueue("sort_close", {
+          eventId: uid("sortc"),
+          staffId: by,
+          at: res.data[0].createdAt,
+          sortCode,
+          pallets,
+          boxes,
+          placeIds: res.data.map((p) => p.id),
+        });
+      }
+      return ok(res.data);
+    },
     pickDone: (requestId, partial) =>
       attempt(() => {
         port.get().completeRequest(requestId, partial);
@@ -361,8 +382,7 @@ export function createWorkstationRepository(
     packFinish: async () => {
       const res = await attempt(() => port.get().packFinish());
       if (!res.ok) return res;
-      const f = res.data;
-      if (f && onServer(port)) {
+      for (const f of onServer(port) ? (res.data ?? []) : []) {
         ops.enqueue("pack_done", {
           eventId: f.eventId,
           staffId: f.staffId,

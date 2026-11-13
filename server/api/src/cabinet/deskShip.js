@@ -25,7 +25,9 @@ const code = (v) =>
   String(v ?? "")
     .trim()
     .toUpperCase();
-const LOAD_RE = /^UK-(BOX|PLT|OUT)-[A-Z0-9-]{1,40}$/;
+// Посылки FBS (этикетки `UK-LBL-`/`UK-ORD-`) грузятся вместе с грузовым
+// местом сортировки (`UK-OUT-`), а не по одной.
+const LOAD_RE = /^UK-(BOX|PLT|OUT|LBL|ORD)-[A-Z0-9-]{1,40}$/;
 const target = (r) => String(r.note ?? "").trim();
 
 function applyShipRun(data, body, staffRef) {

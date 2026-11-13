@@ -147,6 +147,14 @@ export function PackRun({
     flashOk(t("ws.ok.item", { name: nameOf((res.data as { productId: string }).productId) }));
   };
 
+  // Закрытие короба поставки подтверждается сканом короба: упакованное не
+  // уедет в чужой. У тары посылок короба нет — посылки идут на сортировку.
+  const startClose = () => {
+    if (!session.targetCode) return void finish();
+    setClosing(true);
+    setFeedback({ status: "idle", key: "ws.chk.closeBody", box: session.targetCode });
+  };
+
   const finish = async () => {
     const result: PackResult = { ...summary, source: box.barcode, target: session.targetCode };
     const res = await workstationRepository.packFinish();
@@ -399,8 +407,7 @@ export function PackRun({
           onClose={() => setHandoff(false)}
           onSubmit={() => {
             setHandoff(false);
-            setClosing(true);
-            setFeedback({ status: "idle", key: "ws.chk.closeBody", box: session.targetCode });
+            startClose();
           }}
         >
           <p className="text-sm">{t("ws.handoff.body", { box: box.barcode })}</p>
@@ -435,8 +442,14 @@ export function PackRun({
         </dl>
         <div className="ml-auto flex flex-wrap items-center gap-3">
           <p className="text-xs text-muted-foreground">
-            {t("ws.run.outTote")} <span className="font-mono">{session.targetCode}</span>
-            {dest && <DestinationChip destination={dest} className="ml-2 text-xs" />}
+            {session.targetCode ? (
+              <>
+                {t("ws.run.outTote")} <span className="font-mono">{session.targetCode}</span>
+                {dest && <DestinationChip destination={dest} className="ml-2 text-xs" />}
+              </>
+            ) : (
+              t("ws.run.parcels")
+            )}
           </p>
           <Button
             size="lg"
@@ -448,8 +461,7 @@ export function PackRun({
             onClick={() => {
               // Недостача: сначала старшему, потом закрытие.
               if (summary.shortage > 0) return setHandoff(true);
-              setClosing(true);
-              setFeedback({ status: "idle", key: "ws.chk.closeBody", box: session.targetCode });
+              startClose();
             }}
           >
             {summary.shortage > 0
