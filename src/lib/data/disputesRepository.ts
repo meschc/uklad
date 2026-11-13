@@ -19,6 +19,8 @@ export interface DisputesRepository {
     resolution: DisputeResolution,
     by: string,
     note?: string,
+    /** Только попросить списать — подтвердит начальник. */
+    request?: boolean,
   ) => Promise<Result<void>>;
 }
 
@@ -28,20 +30,22 @@ export function createDisputesRepository(
 ): DisputesRepository {
   return {
     list: () => readList(() => port.get().disputes, isDispute, "disputes"),
-    resolve: async (id, resolution, by, note) => {
+    resolve: async (id, resolution, by, note, request) => {
       const found = port.get().disputes.find((x) => x.id === id);
+      const asked = resolution === "written_off" ? found?.writeOffRequest : undefined;
       if (found && needsSecondPair(found, resolution)) {
-        if (!note?.trim()) return fail("disputes.noteRequired");
-        if (found.raisedBy === by) return fail("disputes.selfWriteOff");
+        if (!note?.trim() && !asked) return fail("disputes.noteRequired");
+        if (found.raisedBy === by || asked?.by === by) return fail("disputes.selfWriteOff");
       }
       if (found && resolution === "written_off" && writeOffProblem(port.get().boxes, found)) {
         return fail("disputes.notInTote");
       }
-      const res = await attempt(() => port.get().resolveDispute(id, resolution, by, note));
+      const res = await attempt(() => port.get().resolveDispute(id, resolution, by, note, request));
       if (!res.ok) return res;
       if (!res.data) return fail("disputes.resolveFailed");
       // Старший за столом на сервере решает операцией (`cabinet/deskShip.js`):
-      // сервер сам проверит, что он старший и что списание не своё.
+      // сервер сам проверит, что он старший и что списание не своё. Просьбу
+      // и подтверждение сервер различает сам — по праву `goods.writeoff`.
       const at = port.get().stationSession?.staffId;
       if (at && at === by && onServer(port)) {
         ops.enqueue("dispute_resolve", {

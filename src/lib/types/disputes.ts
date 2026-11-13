@@ -52,4 +52,10 @@ export interface Dispute {
   resolvedAt?: number;
   resolution?: DisputeResolution;
   note?: string;
+  /**
+   * Просьба списать от старшего без права начальника (Кирилл 13.11:
+   * «старший может списать, но начальник должен подтверждать»). Товар не
+   * трогаем, пока начальник не подтвердит; подтверждает не тот, кто просил.
+   */
+  writeOffRequest?: { by: string; at: number; note: string };
 }

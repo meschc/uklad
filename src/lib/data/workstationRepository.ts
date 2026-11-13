@@ -215,7 +215,15 @@ export function createWorkstationRepository(
         port
           .get()
           .staffEvents.filter((e) => e.deviceId === id)
-          .map((e) => ({ at: e.at, staffRef: e.staffId, kind: e.type }))
+          .map((e) => ({
+            at: e.at,
+            staffRef: e.staffId,
+            kind: e.type,
+            refs:
+              e.productId || e.orderId || e.code
+                ? { productId: e.productId, orderId: e.orderId, code: e.code }
+                : undefined,
+          }))
           .sort((a, b) => b.at - a.at)
           .slice(0, 200),
       );

@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { QrSvg } from "./QrSvg";
+import { Select } from "@/components/ui/select";
 
 /**
  * Ручное добавление и редактирование товара (ТЗ, разд. 2.5): артикул, штрихкод,
@@ -282,7 +283,7 @@ export function ProductDialog({
             {fields.map((f) => (
               <Field key={f.id} label={`${f.name} · ${t("product.weightOpt")}`}>
                 {f.type === "select" ? (
-                  <select
+                  <Select
                     value={fieldValue(f.id)}
                     onChange={(e) => setField(f.id, e.target.value)}
                     className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
@@ -293,7 +294,7 @@ export function ProductDialog({
                         {o}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 ) : (
                   <Input
                     value={fieldValue(f.id)}
@@ -308,7 +309,7 @@ export function ProductDialog({
         )}
 
         <Field label={t("product.partner")}>
-          <select
+          <Select
             value={form.partnerId}
             onChange={(e) => set({ partnerId: e.target.value })}
             className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
@@ -319,7 +320,7 @@ export function ProductDialog({
                 {p.name}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
 
         <Field label={t("product.imageUrl")}>

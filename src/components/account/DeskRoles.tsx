@@ -2,6 +2,7 @@ import type { StaffMember } from "@/lib/types";
 import type { TeamRole } from "@/lib/data/teamRepository";
 import { useT } from "@/lib/i18n";
 import { selectClass } from "./teamSelect";
+import { Select } from "@/components/ui/select";
 
 /**
  * «Роли у стола»: роль каждого сотрудника, который входит за стол по
@@ -46,7 +47,7 @@ export function DeskRoles({
                 {!assigned[m.id] && <p className="text-xs text-warning">{t("team.deskNone")}</p>}
                 {m.role && <p className="truncate text-xs text-muted-foreground">{m.role}</p>}
               </div>
-              <select
+              <Select
                 aria-label={t("team.role")}
                 className={`${selectClass} w-44`}
                 value={assigned[m.id] ?? ""}
@@ -58,7 +59,7 @@ export function DeskRoles({
                     {r.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </li>
           ))}
         </ul>

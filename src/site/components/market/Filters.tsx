@@ -71,6 +71,7 @@ export function Filters({
       </div>
 
       <Group title={t(T.city)}>
+        {/* eslint-disable-next-line no-restricted-syntax -- витрина на паузе, список переведём при её запуске */}
         <select
           value={value.city}
           onChange={(e) => set({ city: e.target.value })}

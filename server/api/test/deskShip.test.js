@@ -10,7 +10,7 @@ const assert = require("node:assert/strict");
 const { applyShipRun, applyDisputeResolve } = require("../src/cabinet/deskShip");
 
 // Право решать — у роли Ольги (миграция 024), должность тут ни при чём.
-const DECIDES = { "stf-olga": ["goods.decide"] };
+const DECIDES = { "stf-olga": ["goods.decide", "goods.writeoff"] };
 const resolve = (data, body, ref) => applyDisputeResolve(data, body, ref, { perms: DECIDES });
 
 const AT = 1_800_000_000_000;
@@ -172,4 +172,30 @@ test("должность «Старший смены» без права рол�
     applyDisputeResolve(data(), body, "stf-ivan", ivan).data.disputes[0].resolvedBy,
     "stf-ivan",
   );
+});
+
+test("списание без права начальника — только просьба; подтверждает другой с правом", () => {
+  const who = {
+    perms: {
+      "stf-petr": ["goods.decide"],
+      "stf-olga": ["goods.decide", "goods.writeoff"],
+    },
+  };
+  const ask = { eventId: "wo-1", at: AT, disputeId: "d1", resolution: "written_off" };
+  // Без причины не просят.
+  assert.equal(applyDisputeResolve(data(), ask, "stf-petr", who).flag, "not_yours");
+  const asked = applyDisputeResolve(data(), { ...ask, note: "разбили" }, "stf-petr", who);
+  const d1 = asked.data.disputes[0];
+  assert.equal(d1.resolution, undefined);
+  assert.deepEqual(d1.writeOffRequest, { by: "stf-petr", at: AT, note: "разбили" });
+  assert.ok(asked.check(asked.data));
+  // Просивший сам не подтверждает, даже если право потом появилось.
+  const both = { perms: { "stf-petr": ["goods.decide", "goods.writeoff"] } };
+  const self = { ...ask, eventId: "wo-2" };
+  assert.equal(applyDisputeResolve(asked.data, self, "stf-petr", both).flag, "not_yours");
+  // Начальник подтверждает, причина берётся из просьбы.
+  const ok = applyDisputeResolve(asked.data, { ...ask, eventId: "wo-3" }, "stf-olga", who).data;
+  assert.equal(ok.disputes[0].resolution, "written_off");
+  assert.equal(ok.disputes[0].resolvedBy, "stf-olga");
+  assert.equal(ok.disputes[0].note, "разбили");
 });

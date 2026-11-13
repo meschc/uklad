@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { DialogFooter, DialogHeader, DialogShell } from "@/components/ui/dialog-shell";
 import { Button } from "@/components/ui/button";
 import { eyebrow } from "@/components/ui/eyebrow";
+import { Select } from "@/components/ui/select";
 
 /**
  * Назначение товара на ячейку (ТЗ, разд. 3.6 — только здесь, не в 3D).
@@ -235,7 +236,7 @@ export function AssignDialog({ product, onClose }: { product: Product; onClose: 
         {/* Выбор адреса: этаж → секция → полка */}
         <div className="grid grid-cols-3 gap-2">
           <Field label={t("assign.floor")}>
-            <select
+            <Select
               value={draft.floorId}
               onChange={(e) => {
                 const f = warehouse.floors.find((x) => x.id === e.target.value);
@@ -262,11 +263,11 @@ export function AssignDialog({ product, onClose }: { product: Product; onClose: 
                   </option>
                 );
               })}
-            </select>
+            </Select>
           </Field>
 
           <Field label={t("assign.section")}>
-            <select
+            <Select
               value={draft.moduleId}
               onChange={(e) =>
                 setDraft({
@@ -287,11 +288,11 @@ export function AssignDialog({ product, onClose }: { product: Product; onClose: 
                   </option>
                 );
               })}
-            </select>
+            </Select>
           </Field>
 
           <Field label={t("assign.shelf")}>
-            <select
+            <Select
               value={draft.shelfIndex}
               onChange={(e) =>
                 setDraft({
@@ -307,7 +308,7 @@ export function AssignDialog({ product, onClose }: { product: Product; onClose: 
                   {i + 1} · {sh.cells} {cellsWord(t, sh.cells)}
                 </option>
               ))}
-            </select>
+            </Select>
           </Field>
         </div>
 

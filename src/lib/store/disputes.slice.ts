@@ -53,15 +53,29 @@ export const createDisputesSlice: SliceCreator<DisputesSlice> = (set, get) => ({
     return id;
   },
 
-  resolveDispute: (id, resolution, by, note) => {
+  resolveDispute: (id, resolution, by, note, request) => {
     const d = get().disputes.find((x) => x.id === id);
     if (!d || d.resolution) return false;
     // У лишнего с приёмки свои решения: оставить на складе или списать.
     if (!resolutionsFor(d).includes(resolution)) return false;
+    if (request) {
+      // Просьба списать: причина обязательна, товар остаётся в таре.
+      if (resolution !== "written_off" || !note?.trim()) return false;
+      const ask = { by, at: nowMs(), note: note.trim() };
+      set((s) => ({
+        disputes: s.disputes.map((x) => (x.id === id ? { ...x, writeOffRequest: ask } : x)),
+      }));
+      return true;
+    }
+    // Подтверждая просьбу, причину можно не повторять; просивший сам себе
+    // не подтверждает.
+    const asked = resolution === "written_off" ? d.writeOffRequest : undefined;
+    if (asked?.by === by) return false;
+    const reason = note?.trim() || asked?.note;
     // Списание — необратимая потеря чужого товара, оприходование излишка —
     // товар из ничего: нужна причина, и решает не тот, кто сам нашёл
     // расхождение (четыре глаза).
-    if (needsSecondPair(d, resolution) && (!note?.trim() || d.raisedBy === by)) return false;
+    if (needsSecondPair(d, resolution) && (!reason || d.raisedBy === by)) return false;
     // Списать можно только то, что лежит в таре: иначе списание больше
     // остатка — товар, который «ушёл», не уходя (`writeOffProblem`).
     if (resolution === "written_off" && writeOffProblem(get().boxes, d)) return false;
@@ -69,7 +83,7 @@ export const createDisputesSlice: SliceCreator<DisputesSlice> = (set, get) => ({
     set((s) => ({
       disputes: s.disputes.map((x) =>
         x.id === id
-          ? { ...x, resolution, resolvedBy: by, resolvedAt: now, note: note?.trim() || undefined }
+          ? { ...x, resolution, resolvedBy: by, resolvedAt: now, note: reason || undefined }
           : x,
       ),
       // Списали недостачу или брак — в таре этого товара больше нет;

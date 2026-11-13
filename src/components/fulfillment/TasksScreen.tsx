@@ -19,7 +19,7 @@ import { useCommand } from "@/lib/useCommand";
 import { formatAddress } from "@/lib/address";
 import { targetCode } from "@/lib/packing";
 import { useLabelPrinter } from "@/lib/labelPrinter";
-import { SortTh, TableSearch, useDataTable } from "@/components/ui/data-table";
+import { SortTh, TableFilters, TableSearch, useDataTable } from "@/components/ui/data-table";
 import { groupRequestsByTarget, stockByProduct } from "@/lib/fulfillment";
 import type { FulfillmentRequest, LabelTemplate, RequestStatus } from "@/lib/types";
 import { useT, type TFunc } from "@/lib/i18n";
@@ -143,12 +143,22 @@ function RequestsTasks({ sections }: { sections: React.ReactNode }) {
 
   // Внутри группы сначала то, что ждёт работы; заголовки колонок меняют
   // порядок. Сортируем и ищем ДО группировки — группировка порядок сохраняет.
+  const partners = useEditor((s) => s.warehouse.partners);
   const reqTable = useDataTable(
     visible,
     [
       { id: "name", value: (r) => products.find((x) => x.id === r.productId)?.name },
       { id: "qty", value: (r) => r.qty },
       { id: "status", value: (r) => STATUS_ORDER.indexOf(r.status) * 1e13 - r.createdAt },
+      {
+        // Склад работает на нескольких продавцов — заявки разбирают по одному.
+        id: "partner",
+        value: (r) => {
+          const pid = products.find((x) => x.id === r.productId)?.partnerId;
+          return partners?.find((x) => x.id === pid)?.name;
+        },
+        facet: (v) => v,
+      },
     ],
     [{ id: "status", desc: false }],
   );
@@ -216,6 +226,13 @@ function RequestsTasks({ sections }: { sections: React.ReactNode }) {
             n={c.n}
           />
         ))}
+        <TableFilters
+          facets={reqTable.facets}
+          filters={reqTable.filters}
+          onChange={reqTable.setFilter}
+          labels={{ partner: t("ops.task.partner") }}
+          allLabel={(col) => t("common.filterAll", { col })}
+        />
         <TableSearch
           className="ml-auto"
           value={reqTable.query}

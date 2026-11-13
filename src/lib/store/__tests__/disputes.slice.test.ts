@@ -107,6 +107,26 @@ describe("disputes.slice", () => {
     expect(store.getState().resolveDispute(id, "returned", "s1")).toBe(true);
   });
 
+  it("старший просит списать — товар на месте, пока начальник не подтвердит", () => {
+    const box = makeBox({ id: "b1", lines: [{ productId: "p1", qty: 2 }] });
+    const store = makeDisputesStore({ boxes: [box] });
+    const id = store
+      .getState()
+      .raiseDispute({ kind: "not_packable", boxId: "b1", productId: "p1", raisedBy: "s1" });
+    const st = () => store.getState();
+    expect(st().resolveDispute(id, "written_off", "s2", "", true)).toBe(false);
+    expect(st().resolveDispute(id, "written_off", "s2", "разбит", true)).toBe(true);
+    expect(st().disputes[0].resolution).toBeUndefined();
+    expect(st().disputes[0].writeOffRequest).toMatchObject({ by: "s2", note: "разбит" });
+    expect(st().boxes[0].lines).toEqual([{ productId: "p1", qty: 2 }]);
+    expect(isDispute(st().disputes[0])).toBe(true);
+    // Просивший сам не подтверждает; начальник — да, причина из просьбы.
+    expect(st().resolveDispute(id, "written_off", "s2")).toBe(false);
+    expect(st().resolveDispute(id, "written_off", "boss")).toBe(true);
+    expect(st().disputes[0]).toMatchObject({ resolution: "written_off", note: "разбит" });
+    expect(st().boxes[0].lines).toEqual([{ productId: "p1", qty: 1 }]);
+  });
+
   it("лишнее с приёмки: оставить или вернуть поставщику, «вернуть на место» нельзя", () => {
     const box = makeBox({ id: "b1", lines: [{ productId: "p1", qty: 12 }] });
     // Заводит его сервер при приёмке со стола — здесь оно уже пришло.

@@ -5,7 +5,7 @@ import { selectRole } from "@/lib/store/session.slice";
 import { isSessionLive } from "@/lib/workstation";
 import { disputesRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
-import { mayDecideGoods } from "@/lib/docFlow";
+import { mayDecideGoods, mayWriteOffGoods } from "@/lib/docFlow";
 import { isInventoryDispute, needsSecondPair, resolutionsFor } from "@/lib/disputes";
 import type { Dispute, DisputeKind, DisputeResolution } from "@/lib/types";
 import { useT, type MsgKey } from "@/lib/i18n";
@@ -87,9 +87,12 @@ export function DisputesScreen() {
 
   const role = useEditor(selectRole);
   const now = useNow();
-  const [writing, setWriting] = useState<{ id: string; resolution: DisputeResolution } | null>(
-    null,
-  );
+  const [writing, setWriting] = useState<{
+    id: string;
+    resolution: DisputeResolution;
+    /** Без права начальника списание только просят. */
+    request?: boolean;
+  } | null>(null);
   const [reason, setReason] = useState("");
 
   // Решает тот, кто явно вправе: руководитель склада из кабинета (роль склада,
@@ -108,6 +111,11 @@ export function DisputesScreen() {
   const perms = useEditor((s) => s.session.permissions);
   const mayAdjust = (d: Dispute) =>
     !isInventoryDispute(d) || !!badgeStaff || !perms || perms.includes("goods.decide");
+  // Списание подтверждает начальник склада (Кирилл 13.11): право роли
+  // `goods.writeoff`, в демо — должность. Старший без него только просит.
+  const mayWriteOff = badgeStaff
+    ? mayWriteOffGoods(session, badgeStaff, onServer)
+    : !perms || perms.includes("goods.writeoff");
 
   const open = disputes.filter((d) => !d.resolution);
   // Лишнее с приёмки списывают «вернули поставщику»: руководитель должен
@@ -147,7 +155,12 @@ export function DisputesScreen() {
               key={d.id}
               className="flex flex-wrap items-center justify-between gap-4 border-t border-border py-4 first:border-t-0 first:pt-0"
             >
-              <Line d={d} name={nameOf(d.productId)} who={who(d.raisedBy)} />
+              <Line
+                d={d}
+                name={nameOf(d.productId)}
+                who={who(d.raisedBy)}
+                askedBy={d.writeOffRequest && who(d.writeOffRequest.by)}
+              />
               {canResolve &&
                 mayAdjust(d) &&
                 (writing?.id === d.id ? (
@@ -155,7 +168,13 @@ export function DisputesScreen() {
                     className="flex flex-wrap items-center gap-2"
                     onSubmit={async (e) => {
                       e.preventDefault();
-                      const res = await resolve.run(d.id, writing.resolution, by, reason);
+                      const res = await resolve.run(
+                        d.id,
+                        writing.resolution,
+                        by,
+                        reason,
+                        writing.request,
+                      );
                       if (res.ok) {
                         setWriting(null);
                         setReason("");
@@ -175,9 +194,11 @@ export function DisputesScreen() {
                       disabled={!reason.trim()}
                     >
                       {t(
-                        writing.resolution === "written_off"
-                          ? "disputes.confirmWriteOff"
-                          : "disputes.confirmAdopt",
+                        writing.request
+                          ? "disputes.sendWriteOffRequest"
+                          : writing.resolution === "written_off"
+                            ? "disputes.confirmWriteOff"
+                            : "disputes.confirmAdopt",
                       )}
                     </Button>
                     <Button type="button" variant="ghost" onClick={() => setWriting(null)}>
@@ -187,7 +208,30 @@ export function DisputesScreen() {
                 ) : (
                   <div className="flex flex-wrap gap-2">
                     {resolutionsFor(d).map((r) =>
-                      needsSecondPair(d, r) ? (
+                      r === "written_off" && d.writeOffRequest ? (
+                        // Просьба уже есть: начальник подтверждает одним
+                        // нажатием (причина — из просьбы), остальным ждать.
+                        mayWriteOff && d.writeOffRequest.by !== by ? (
+                          <Button
+                            key={r}
+                            variant="destructive"
+                            onClick={() => void resolve.run(d.id, r, by)}
+                          >
+                            {t("disputes.approveWriteOff")}
+                          </Button>
+                        ) : null
+                      ) : r === "written_off" && !mayWriteOff ? (
+                        <Button
+                          key={r}
+                          variant="outline"
+                          onClick={() => {
+                            setReason("");
+                            setWriting({ id: d.id, resolution: r, request: true });
+                          }}
+                        >
+                          {t("disputes.askWriteOff")}
+                        </Button>
+                      ) : needsSecondPair(d, r) ? (
                         <Button
                           key={r}
                           variant={r === "written_off" ? "destructive" : "default"}
@@ -245,7 +289,17 @@ export function DisputesScreen() {
   );
 }
 
-function Line({ d, name, who }: { d: Dispute; name: string; who: string }) {
+function Line({
+  d,
+  name,
+  who,
+  askedBy,
+}: {
+  d: Dispute;
+  name: string;
+  who: string;
+  askedBy?: string;
+}) {
   const t = useT();
   return (
     <div className="flex min-w-0 flex-col gap-1">
@@ -265,6 +319,14 @@ function Line({ d, name, who }: { d: Dispute; name: string; who: string }) {
         {d.toteCode && <span className="font-mono">{d.toteCode} · </span>}
         {t("disputes.raised", { who, at: fmt(d.raisedAt) })}
       </p>
+      {d.writeOffRequest && (
+        <p className="text-sm font-medium text-warning">
+          {t("disputes.writeOffAsked", {
+            who: askedBy ?? "—",
+            note: d.writeOffRequest.note,
+          })}
+        </p>
+      )}
     </div>
   );
 }

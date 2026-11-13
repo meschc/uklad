@@ -6,6 +6,8 @@ export interface JournalAction {
   /** Время уже по-человечески: «14:03:21». */
   time: string;
   label: ReactNode;
+  /** С чем было действие: товар, тара, заказ — строкой под действием. */
+  detail?: string;
   tone?: "error" | "warn";
 }
 
@@ -27,6 +29,9 @@ export function JournalActions({ items }: { items: readonly JournalAction[] }) {
             )}
           >
             {a.label}
+            {a.detail && (
+              <span className="block truncate text-xs text-muted-foreground">{a.detail}</span>
+            )}
           </span>
         </li>
       ))}

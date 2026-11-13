@@ -13,6 +13,7 @@ import { card } from "@/components/ui/card";
 import { EmptyState } from "./ScreenShell";
 import { useServiceName } from "./useServiceName";
 import { LIMITS } from "@/lib/numberLimits";
+import { Select } from "@/components/ui/select";
 
 /**
  * Работы склада — задания на операции, которые система сама не видит:
@@ -163,7 +164,7 @@ function TaskRow({
       </div>
       {active && (
         <div className="flex items-center gap-1.5">
-          <select
+          <Select
             className={cn(SELECT, "w-44")}
             aria-label={t("tasks.assignee")}
             value={task.staffId ?? ""}
@@ -175,7 +176,7 @@ function TaskRow({
                 {p.name}
               </option>
             ))}
-          </select>
+          </Select>
           {/* «Взять себе» — одной кнопкой, без поиска себя в списке
               (Кирилл 12 ноя: «не могу назначить своё задание»). */}
           {me && task.staffId !== me && (
@@ -255,7 +256,7 @@ function NewTaskForm({ kinds }: { kinds: ServiceKind[] }) {
       aria-label={t("ops.task.new")}
     >
       <Field label={t("ops.task.kind")}>
-        <select
+        <Select
           className={SELECT}
           value={current}
           onChange={(e) => setKind(e.target.value as ServiceKind)}
@@ -265,7 +266,7 @@ function NewTaskForm({ kinds }: { kinds: ServiceKind[] }) {
               {svcName(k)}
             </option>
           ))}
-        </select>
+        </Select>
       </Field>
       <Field
         label={`${t("ops.task.qty")} (${t(`ops.unit.${serviceSpec(current, settings)?.unit ?? "unit"}` as MsgKey)})`}
@@ -281,24 +282,24 @@ function NewTaskForm({ kinds }: { kinds: ServiceKind[] }) {
         />
       </Field>
       <Field label={t("ops.task.partner")}>
-        <select className={SELECT} value={partnerId} onChange={(e) => setPartnerId(e.target.value)}>
+        <Select className={SELECT} value={partnerId} onChange={(e) => setPartnerId(e.target.value)}>
           <option value="">{t("ops.task.none")}</option>
           {(partners ?? []).map((p) => (
             <option key={p.id} value={p.id}>
               {p.name}
             </option>
           ))}
-        </select>
+        </Select>
       </Field>
       <Field label={t("ops.task.staff")}>
-        <select className={SELECT} value={staffId} onChange={(e) => setStaffId(e.target.value)}>
+        <Select className={SELECT} value={staffId} onChange={(e) => setStaffId(e.target.value)}>
           <option value="">{t("ops.task.none")}</option>
           {(staff ?? []).map((p) => (
             <option key={p.id} value={p.id}>
               {p.name}
             </option>
           ))}
-        </select>
+        </Select>
       </Field>
       <div className="flex items-end gap-3 sm:col-span-4">
         <Field label={t("ops.task.note")} className="flex-1">

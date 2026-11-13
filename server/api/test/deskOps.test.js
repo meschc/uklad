@@ -10,7 +10,7 @@ const assert = require("node:assert/strict");
 const { applyDeskOps, isOp } = require("../src/cabinet/deskOps");
 
 // Право решать по товару — у роли Ольги (миграция 024), не у должности.
-const DECIDES = { "stf-olga": ["goods.decide"] };
+const DECIDES = { "stf-olga": ["goods.decide", "goods.writeoff"] };
 
 const NOW = 1_800_000_000_000;
 const mark = (key, eventId, type, at = NOW - 1000, extra = {}) => ({

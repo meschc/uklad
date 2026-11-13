@@ -61,6 +61,23 @@ export const mayDecideGoods = (
 ): boolean =>
   onServer ? Boolean(m) && (session?.permissions ?? []).includes("goods.decide") : isSenior(m);
 
+/** Начальник склада и выше — подтверждает списание в демо по должности. */
+const HEAD_ROLE = /начальник|управля|заместител|руковод|директор|head|manager|director/i;
+
+/**
+ * Подтверждает ли списание (Кирилл 13.11, миграция 030). На сервере — право
+ * роли `goods.writeoff`; без него старший списание только просит. В демо —
+ * по должности.
+ */
+export const mayWriteOffGoods = (
+  session: Pick<StationSession, "permissions"> | null | undefined,
+  m: Pick<StaffMember, "role"> | undefined,
+  onServer: boolean,
+): boolean =>
+  onServer
+    ? Boolean(m) && (session?.permissions ?? []).includes("goods.writeoff")
+    : !!m && HEAD_ROLE.test(m.role);
+
 export type DocSourceKind = DocRecord["kind"];
 
 export interface DocSources {

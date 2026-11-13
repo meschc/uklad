@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { CategoryTools } from "./CategoryTools";
+import { Select } from "@/components/ui/select";
 
 /** Слово «товаре/товарах» (предложный) / «product/products». */
 function productsWord(t: TFunc, n: number): string {
@@ -277,7 +278,7 @@ function AddFieldForm({ category, t }: { category: ProductCategory; t: TFunc }) 
           placeholder={t("fields.namePlaceholder")}
           className={cn("h-9 flex-1", error && "border-destructive")}
         />
-        <select
+        <Select
           value={type}
           onChange={(e) => setType(e.target.value as FieldType)}
           className="h-9 rounded-md border border-input bg-background px-2 text-sm"
@@ -285,7 +286,7 @@ function AddFieldForm({ category, t }: { category: ProductCategory; t: TFunc }) 
           <option value="text">{t("ftype.text")}</option>
           <option value="number">{t("ftype.number")}</option>
           <option value="select">{t("ftype.select")}</option>
-        </select>
+        </Select>
       </div>
 
       {type === "select" && (

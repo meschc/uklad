@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
-import { Plus, Receipt, Trash2 } from "lucide-react";
+import { Plus, Receipt, Trash2, X } from "lucide-react";
+import { DialogFooter, DialogHeader, DialogShell } from "@/components/ui/dialog-shell";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import type { CustomServiceKind, ServiceUnit } from "@/lib/types";
 import { useEditor } from "@/lib/store";
@@ -22,14 +24,14 @@ import { ArchiveNote } from "./ArchiveNote";
 import { ReportExport } from "./ReportExport";
 import { useServiceName } from "./useServiceName";
 import { LIMITS } from "@/lib/numberLimits";
+import { Select } from "@/components/ui/select";
+import { DateRangePicker } from "@/components/ui/date-picker";
+import { toIso, type DateRange } from "@/components/ui/dates";
 
 /**
  * Вкладки «Услуги» и «Отчёт» экрана операций. Вынесены отдельно: это
  * настройка и расчёт, а не работа смены, и меняются они по другим причинам.
  */
-
-const SELECT =
-  "h-8 cursor-pointer rounded-md border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 const money = (n: number, lang: string) =>
   n.toLocaleString(lang === "en" ? "en-US" : "ru-RU", { maximumFractionDigits: 2 });
@@ -45,6 +47,7 @@ export function ServicesPanel() {
   const removeCustom = useEditor((s) => s.removeCustomService);
   const restoreCustom = useEditor((s) => s.restoreCustomService);
   const showToast = useEditor((s) => s.showToast);
+  const [adding, setAdding] = useState(false);
   const removeService = (kind: CustomServiceKind) => {
     const service = settings.custom?.find((c) => c.kind === kind);
     removeCustom(kind);
@@ -69,7 +72,14 @@ export function ServicesPanel() {
           </span>
         </span>
       </label>
-      <p className="text-sm text-muted-foreground">{t("ops.services.hint")}</p>
+      {/* Кнопка над списком, форма — панелью справа (Кирилл 13 ноя): так
+          действие видно сразу, а не после прокрутки всего каталога. */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground">{t("ops.services.hint")}</p>
+        <Button size="sm" onClick={() => setAdding(true)}>
+          <Plus /> {t("ops.custom.add")}
+        </Button>
+      </div>
       <ul className={cn(card({ pad: "none" }), "divide-y divide-border")}>
         {allServices(settings).map((s) => {
           const on = isServiceOn(settings, s.kind);
@@ -129,7 +139,7 @@ export function ServicesPanel() {
           );
         })}
       </ul>
-      <CustomServiceForm />
+      {adding && <CustomServicePanel onClose={() => setAdding(false)} />}
     </div>
   );
 }
@@ -141,54 +151,77 @@ const UNITS: ServiceUnit[] = ["unit", "order", "box", "pallet", "cell", "trip", 
  * которое потом можно добавить в задание»). Цена ставится в строке каталога,
  * как у остальных: одно место для всех цен.
  */
-function CustomServiceForm() {
+function CustomServicePanel({ onClose }: { onClose: () => void }) {
   const t = useT();
   const add = useEditor((s) => s.addCustomService);
   const [name, setName] = useState("");
   const [unit, setUnit] = useState<ServiceUnit>("unit");
   const ok = name.trim().length >= 2;
   return (
-    <form
-      className="flex flex-col gap-2 pt-2"
-      onSubmit={(e) => {
-        e.preventDefault();
-        if (!ok) return;
-        add(name, unit);
-        setName("");
-      }}
-    >
-      <h3 className="text-sm font-semibold">{t("ops.custom.title")}</h3>
-      <p className="text-xs text-muted-foreground">{t("ops.custom.hint")}</p>
-      <div className="flex flex-wrap items-center gap-2">
-        <Input
-          value={name}
-          maxLength={80}
-          onChange={(e) => setName(e.target.value)}
-          placeholder={t("ops.custom.name")}
-          aria-label={t("ops.custom.name")}
-          className="h-8 w-64"
-        />
-        <select
-          className={SELECT}
-          value={unit}
-          aria-label={t("ops.task.qty")}
-          onChange={(e) => setUnit(e.target.value as ServiceUnit)}
-        >
-          {UNITS.map((u) => (
-            <option key={u} value={u}>
-              {t(`ops.unit.${u}` as MsgKey)}
-            </option>
-          ))}
-        </select>
-        <Button type="submit" size="sm" disabled={!ok}>
-          <Plus /> {t("ops.custom.add")}
-        </Button>
-      </div>
-    </form>
+    <DialogShell size="sm" onClose={onClose}>
+      <form
+        className="flex min-h-0 flex-1 flex-col"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!ok) return;
+          add(name, unit);
+          onClose();
+        }}
+      >
+        <DialogHeader>
+          <h2 className="text-sm font-semibold">{t("ops.custom.title")}</h2>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label={t("support.close")}
+            onClick={onClose}
+          >
+            <X className="size-4" />
+          </Button>
+        </DialogHeader>
+        <div className="flex flex-1 flex-col gap-4 p-5">
+          <p className="text-sm text-muted-foreground">{t("ops.custom.hint")}</p>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="svc-name">{t("ops.custom.name")}</Label>
+            <Input
+              id="svc-name"
+              value={name}
+              maxLength={80}
+              onChange={(e) => setName(e.target.value)}
+              // eslint-disable-next-line jsx-a11y/no-autofocus -- панель открыта ради этого поля
+              autoFocus
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="svc-unit">{t("ops.custom.unit")}</Label>
+            <Select
+              id="svc-unit"
+              value={unit}
+              onChange={(e) => setUnit(e.target.value as ServiceUnit)}
+            >
+              {UNITS.map((u) => (
+                <option key={u} value={u}>
+                  {t(`ops.unit.${u}` as MsgKey)}
+                </option>
+              ))}
+            </Select>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button type="button" variant="ghost" onClick={onClose}>
+            {t("common.cancel")}
+          </Button>
+          <Button type="submit" disabled={!ok}>
+            <Plus /> {t("ops.custom.add")}
+          </Button>
+        </DialogFooter>
+      </form>
+    </DialogShell>
   );
 }
 
-type Period = "7" | "30" | "all";
+type Period = "7" | "30" | "all" | "custom";
 const DAY = 24 * 60 * 60 * 1000;
 
 /** Отчёт по услугам за период — основа счёта продавцу. */
@@ -207,6 +240,9 @@ export function ReportPanel() {
   const outboundBoxes = useWithArchive("outboundBoxes");
   const partners = useEditor((s) => s.warehouse.partners);
   const [period, setPeriod] = useState<Period>("30");
+  // Свой период — календарём (Кирилл 13 ноя): счёт продавцу выставляют за
+  // месяц или с даты прошлого счёта, а не «за 30 дней от сегодня».
+  const [custom, setCustom] = useState<DateRange>();
   const [partnerId, setPartnerId] = useState("");
 
   const log = useMemo(
@@ -224,8 +260,11 @@ export function ReportPanel() {
     [tasks, pallets, boxes, receivingEvents, requests, shipments, products, outboundBoxes],
   );
   const { report, range, entries } = useMemo(() => {
-    const to = nowMs();
-    const from = period === "all" ? 0 : to - Number(period) * DAY;
+    const now = nowMs();
+    const [from, to] =
+      period === "custom" && custom
+        ? [new Date(`${custom.from}T00:00`).getTime(), new Date(`${custom.to}T23:59:59`).getTime()]
+        : [period === "all" ? 0 : now - Number(period) * DAY, now];
     const pid = partnerId || undefined;
     return {
       report: serviceReport(log, settings, { from, to, partnerId: pid }),
@@ -239,7 +278,7 @@ export function ReportPanel() {
           isServiceOn(settings, e.kind),
       ),
     };
-  }, [log, settings, period, partnerId]);
+  }, [log, settings, period, custom, partnerId]);
   const repTable = useDataTable(report.rows, [
     { id: "service", value: (r) => svcName(r.kind) },
     { id: "qty", value: (r) => r.qty },
@@ -252,7 +291,8 @@ export function ReportPanel() {
       {period === "all" && <ArchiveNote />}
       <div className="flex flex-wrap items-center gap-3">
         <Segmented
-          value={period}
+          size="md"
+          value={period === "custom" ? ("" as Period) : period}
           onChange={setPeriod}
           options={[
             { value: "7", label: t("ops.report.period.7") },
@@ -260,8 +300,20 @@ export function ReportPanel() {
             { value: "all", label: t("ops.report.period.all") },
           ]}
         />
-        <select
-          className={SELECT}
+        <DateRangePicker
+          value={custom}
+          active={period === "custom"}
+          onChange={(r) => {
+            setCustom(r);
+            setPeriod("custom");
+          }}
+          lang={t.lang}
+          max={toIso(new Date())}
+          placeholder={t("ops.report.period.custom")}
+          aria-label={t("ops.report.period.custom")}
+        />
+        <Select
+          className="w-56"
           value={partnerId}
           onChange={(e) => setPartnerId(e.target.value)}
           aria-label={t("ops.task.partner")}
@@ -272,7 +324,7 @@ export function ReportPanel() {
               {p.name}
             </option>
           ))}
-        </select>
+        </Select>
         {report.rows.length > 0 && (
           <ReportExport
             report={report}

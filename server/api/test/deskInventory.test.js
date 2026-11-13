@@ -34,7 +34,9 @@ const data = () => ({
   outboundBoxes: [],
 });
 // Права роли за столом: у Ольги есть решения по товару, у Ивана — нет.
-const WHO = { perms: { "stf-olga": ["goods.decide"], "stf-ivan": ["inventory.count"] } };
+const WHO = {
+  perms: { "stf-olga": ["goods.decide", "goods.writeoff"], "stf-ivan": ["inventory.count"] },
+};
 const count = (lines, over = {}) => ({ eventId: "ic-1", at: AT, boxId: "b1", lines, ...over });
 const open = (kind, qty, over = {}) => ({
   id: "inv-ic-1-p1",

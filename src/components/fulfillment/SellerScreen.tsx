@@ -21,7 +21,6 @@ import { useT, type MsgKey, type TFunc } from "@/lib/i18n";
 import { isOrderSource, type RequestStatus } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/segmented";
-import { Input } from "@/components/ui/input";
 import { TableScreen } from "@/components/table/TableScreen";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { EmptyState } from "./ScreenShell";
@@ -29,6 +28,8 @@ import { Modal, Field } from "./Modal";
 import { SupplyDialog } from "./SupplyDialog";
 import { RequestDialog } from "./RequestDialog";
 import { StatusBadge } from "./TasksScreen";
+import { DatePicker } from "@/components/ui/date-picker";
+import { toIso } from "@/components/ui/dates";
 
 /**
  * Кабинет продавца (п.7). Те же локальные данные, другой набор экранов и без
@@ -367,11 +368,13 @@ function BulkRequestDialog({ onClose, t }: { onClose: () => void; t: TFunc }) {
         </Button>
       </div>
       <Field label={t("seller.col.shipDate")}>
-        <Input
-          type="date"
+        <DatePicker
           value={truck}
-          onChange={(e) => setTruck(e.target.value)}
-          className="h-9 max-w-48"
+          onChange={setTruck}
+          lang={t.lang}
+          min={toIso(new Date())}
+          aria-label={t("seller.col.shipDate")}
+          className="max-w-56"
         />
       </Field>
       <Field label={t("seller.bulkRows")}>

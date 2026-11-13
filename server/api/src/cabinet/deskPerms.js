@@ -8,6 +8,9 @@
 
 // Списание, брак, недостача, излишек — решения по товару.
 const GOODS_DECIDE = "goods.decide";
+// Подтвердить списание — начальник склада (миграция 030). С одним
+// `goods.decide` списание только просят.
+const GOODS_WRITEOFF = "goods.writeoff";
 // Отвязать стол — руководитель с правом на персонал.
 const STAFF_MANAGE = "staff.manage";
 
@@ -25,4 +28,4 @@ async function loadDeskPerms(c, refs) {
   return Object.fromEntries(rows.map((r) => [r.staff_ref, r.permissions ?? []]));
 }
 
-module.exports = { GOODS_DECIDE, STAFF_MANAGE, may, loadDeskPerms };
+module.exports = { GOODS_DECIDE, GOODS_WRITEOFF, STAFF_MANAGE, may, loadDeskPerms };

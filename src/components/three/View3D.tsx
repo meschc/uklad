@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { Engine } from "./engine";
+import { Select } from "@/components/ui/select";
 
 /** Ответ «есть ли видеокарта» на вкладку один — переспрашивать нечего. */
 let webglAnswer: boolean | null = null;
@@ -482,7 +483,7 @@ function CustomFieldInput({ productId, field }: { productId: string; field: Cate
     <label className="flex flex-col gap-1 py-1">
       <span className="text-xs text-muted-foreground">{field.name}</span>
       {field.type === "select" ? (
-        <select
+        <Select
           value={draft}
           disabled={save.pending}
           onChange={(e) => {
@@ -497,7 +498,7 @@ function CustomFieldInput({ productId, field }: { productId: string; field: Cate
               {o}
             </option>
           ))}
-        </select>
+        </Select>
       ) : (
         <input
           type={field.type === "number" ? "number" : "text"}

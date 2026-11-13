@@ -85,18 +85,17 @@ const FORBIDDEN = Symbol("forbidden");
 const LIMITED = Symbol("limited");
 /** Снимок — весь кабинет: только руководитель, вошедший паролем. */
 /**
- * Решение по расхождению инвентаризации — правка учёта (право
- * `goods.decide`, миграция 024). Есть ли в записи такое решение, которого
- * на сервере ещё нет: строка спорного вида `inventory_*` с решением, которое
- * у той же строки на сервере другое или отсутствует.
+ * Есть ли в записи новое решение по спорному, подходящее под `match`:
+ * строка `disputes` с решением, которое у той же строки на сервере другое
+ * или отсутствует.
  */
-async function inventoryDecided(c, items) {
+async function newDecision(c, items, match) {
   const decided = items.filter(
     (i) =>
       i.d === "disputes" &&
       isObject(i.data) &&
-      (i.data.kind === "inventory_short" || i.data.kind === "inventory_over") &&
-      typeof i.data.resolution === "string",
+      typeof i.data.resolution === "string" &&
+      match(i.data),
   );
   if (decided.length === 0) return false;
   const { rows } = await c.query(
@@ -106,6 +105,18 @@ async function inventoryDecided(c, items) {
   );
   const was = new Map(rows.map((r) => [`${r.w}\u0000${r.ref}`, r.res]));
   return decided.some((i) => was.get(`${i.w}\u0000${i.ref}`) !== i.data.resolution);
+}
+
+/**
+ * Права на решения в записи кабинета: правка учёта по инвентаризации —
+ * `goods.decide` (миграция 024), списание — `goods.writeoff`, начальник
+ * склада (миграция 030, Кирилл 13.11).
+ */
+async function decisionsForbidden(c, ctx, items) {
+  const inventory = (d) => d.kind === "inventory_short" || d.kind === "inventory_over";
+  if (!ctx.can("goods.decide") && (await newDecision(c, items, inventory))) return true;
+  const writeOff = (d) => d.resolution === "written_off";
+  return !ctx.can("goods.writeoff") && (await newDecision(c, items, writeOff));
 }
 
 const mayUse = (ctx) => Boolean(ctx.accountId) && ctx.can("staff.manage");
@@ -281,9 +292,7 @@ function createSnapshot({ auth, send, log }) {
       }
       // Архив не переписывается: копия забирает свежие данные.
       if (await archivedChanged(c, split.items)) return { conflict: true };
-      if (!ctx.can("goods.decide") && (await inventoryDecided(c, split.items))) {
-        return FORBIDDEN;
-      }
+      if (await decisionsForbidden(c, ctx, split.items)) return FORBIDDEN;
       // Список, лежавший строками, пропал вовсе (ключа нет, не список) —
       // кабинет показал бы пустоту, а массовое удаление этого не увидело бы.
       const prev = await c.query(
@@ -394,7 +403,7 @@ function createSnapshot({ auth, send, log }) {
         return { conflict: true, error: "diverged" };
       if (await massRemoved(c, b.remove)) return { conflict: true, error: "records_mass_delete" };
       if (await archivedChanged(c, b.upsert)) return { conflict: true };
-      if (!ctx.can("goods.decide") && (await inventoryDecided(c, b.upsert))) return FORBIDDEN;
+      if (await decisionsForbidden(c, ctx, b.upsert)) return FORBIDDEN;
       const before = await loadRecords(c, cur.data, MOVE_LISTS);
       await c.query(`SAVEPOINT changes`);
       await upsertRecords(c, b.upsert);
