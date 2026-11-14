@@ -333,6 +333,7 @@ export const ru = {
   "staff.panel.new": "Новый сотрудник",
   "staff.panel.edit": "Сотрудник",
   "staff.panel.access": "Доступ",
+  "staff.panel.photoOrLink": "или вставьте ссылку на фото",
   "staff.panel.ratePlaceholder": "Не задана",
   "staff.panel.roleHint":
     "Роль — что человек может за столом по бейджу и в кабинете. Подсказана по должности, можно выбрать другую.",
@@ -760,6 +761,7 @@ export const en: Record<keyof typeof ru, string> = {
   "staff.panel.new": "New person",
   "staff.panel.edit": "Person",
   "staff.panel.access": "Access",
+  "staff.panel.photoOrLink": "or paste a photo link",
   "staff.panel.ratePlaceholder": "Not set",
   "staff.panel.roleHint":
     "The role is what the person may do at the desk with a badge and in the cabinet. Suggested by position; you can pick another.",

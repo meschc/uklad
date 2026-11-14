@@ -101,18 +101,29 @@ export function StaffPanel({
         </Button>
       </DialogHeader>
       <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-5 py-4">
-        <ImagePicker
-          large
-          value={form.photoUrl || undefined}
-          fallback={
-            <img
-              src={asciiAvatar(member?.id ?? "new", "full")}
-              alt=""
-              className="size-24 shrink-0 rounded-2xl bg-black object-cover"
-            />
-          }
-          onChange={(photoUrl) => patch({ photoUrl: photoUrl ?? "" })}
-        />
+        {/* Фото: файлом или ссылкой — рядом, одним выбором (Кирилл 14.11). */}
+        <div className="flex flex-col gap-2">
+          <ImagePicker
+            large
+            value={form.photoUrl || undefined}
+            fallback={
+              <img
+                src={asciiAvatar(member?.id ?? "new", "full")}
+                alt=""
+                className="size-24 shrink-0 rounded-2xl bg-black object-cover"
+              />
+            }
+            onChange={(photoUrl) => patch({ photoUrl: photoUrl ?? "" })}
+          />
+          <Input
+            type="url"
+            aria-label={t("staff.photoUrl")}
+            // Загруженный файл живёт в поле как data:-адрес — его не показываем.
+            value={form.photoUrl.startsWith("data:") ? "" : form.photoUrl}
+            onChange={(e) => patch({ photoUrl: e.target.value })}
+            placeholder={t("staff.panel.photoOrLink")}
+          />
+        </div>
 
         <div className="flex flex-col gap-4">
           <Field label={t("staff.col.name")}>
@@ -152,15 +163,6 @@ export function StaffPanel({
               inputMode="decimal"
               placeholder={t("staff.panel.ratePlaceholder")}
               className="tabular-nums"
-            />
-          </Field>
-          <Field label={t("staff.photoUrl")}>
-            <Input
-              type="url"
-              // Загруженный файл живёт в поле как data:-адрес — его не показываем.
-              value={form.photoUrl.startsWith("data:") ? "" : form.photoUrl}
-              onChange={(e) => patch({ photoUrl: e.target.value })}
-              placeholder="https://"
             />
           </Field>
         </div>
