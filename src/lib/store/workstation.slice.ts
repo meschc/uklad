@@ -384,6 +384,18 @@ export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get)
     return true;
   },
 
+  packLogReprint: (code) => {
+    const s = get();
+    const ps = s.packSession;
+    if (!ps || !code) return;
+    set({
+      staffEvents: [
+        ...s.staffEvents,
+        event({ staffId: ps.staffId, type: "pack_reprint", at: nowMs(), station: "pack", code }),
+      ],
+    });
+  },
+
   packRejectPending: () => {
     const s = get();
     const ps = s.packSession;

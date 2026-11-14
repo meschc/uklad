@@ -47,6 +47,8 @@ export interface WorkstationRepository {
   /** Скан наклеенной этикетки. Не та этикетка — отказ `ws.label.wrong`. */
   packLabel: (code: string) => Promise<Result<void>>;
   packReject: () => Promise<Result<void>>;
+  /** Перепечатка этикетки — запись в журнал стола, без подтверждения. */
+  packReprint: (code: string) => Promise<Result<void>>;
   packFinish: () => Promise<Result<void>>;
   /**
    * Снять штуку с места в тару под заявку. Ответ — сколько собрано теперь;
@@ -269,6 +271,7 @@ export function createWorkstationRepository(
       return res.data ? ok(undefined) : fail("ws.label.wrong");
     },
     packReject: () => attempt(() => queuePack(() => port.get().packRejectPending())),
+    packReprint: (code) => attempt(() => queuePack(() => port.get().packLogReprint(code))),
     // Сборка на сервере уходит операциями (`cabinet/deskPick.js`): стор уже
     // снял штуку, очередь донесёт факт «откуда, куда, под какую заявку».
     pickUnit: (requestId, productId, addr, toteId) =>

@@ -20,6 +20,11 @@ export interface LabelPrinter {
   name: string;
   widthMm: number;
   heightMm: number;
+  /**
+   * Печатать этикетку сразу после скана, без кнопки. С тихой печатью
+   * (`silentPrint.ts`) лента выходит сама; без неё само открывается окно.
+   */
+  autoPrint: boolean;
 }
 
 export const LABEL_SIZES: { widthMm: number; heightMm: number }[] = [
@@ -29,7 +34,12 @@ export const LABEL_SIZES: { widthMm: number; heightMm: number }[] = [
   { widthMm: 100, heightMm: 150 },
 ];
 
-export const DEFAULT_LABEL_PRINTER: LabelPrinter = { name: "", widthMm: 58, heightMm: 40 };
+export const DEFAULT_LABEL_PRINTER: LabelPrinter = {
+  name: "",
+  widthMm: 58,
+  heightMm: 40,
+  autoPrint: true,
+};
 
 const KEY = "uklad-label-printer-v1";
 const MAX_NAME = 60;
@@ -58,6 +68,7 @@ export function normalizeLabelPrinter(v: Partial<LabelPrinter>): LabelPrinter {
     name: typeof v.name === "string" ? v.name.trim().slice(0, MAX_NAME) : "",
     widthMm: mm(v.widthMm, DEFAULT_LABEL_PRINTER.widthMm),
     heightMm: mm(v.heightMm, DEFAULT_LABEL_PRINTER.heightMm),
+    autoPrint: typeof v.autoPrint === "boolean" ? v.autoPrint : DEFAULT_LABEL_PRINTER.autoPrint,
   };
 }
 

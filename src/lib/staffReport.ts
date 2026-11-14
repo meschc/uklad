@@ -25,6 +25,8 @@ export interface StaffOutput {
   picked: number;
   errors: number;
   rejects: number;
+  /** Перепечатки этикеток: без подтверждения, но старший их видит. */
+  reprints: number;
   rate: number | null;
   earned: number | null;
 }
@@ -36,13 +38,14 @@ export function staffReport(
   to: number,
 ): StaffOutput[] {
   const peaks = peaksByStaff(events, from, to);
-  const faults = new Map<string, { errors: number; rejects: number }>();
+  const faults = new Map<string, { errors: number; rejects: number; reprints: number }>();
+  const FAULT = { pack_error: "errors", pack_reject: "rejects", pack_reprint: "reprints" } as const;
   for (const e of events) {
     if (e.at < from || e.at >= to) continue;
-    if (e.type !== "pack_error" && e.type !== "pack_reject") continue;
-    const f = faults.get(e.staffId) ?? { errors: 0, rejects: 0 };
-    if (e.type === "pack_error") f.errors += 1;
-    else f.rejects += 1;
+    const key = FAULT[e.type as keyof typeof FAULT];
+    if (!key) continue;
+    const f = faults.get(e.staffId) ?? { errors: 0, rejects: 0, reprints: 0 };
+    f[key] += 1;
     faults.set(e.staffId, f);
   }
   return staff.map((m) => {
@@ -60,6 +63,7 @@ export function staffReport(
       picked: p?.pick ?? 0,
       errors: f?.errors ?? 0,
       rejects: f?.rejects ?? 0,
+      reprints: f?.reprints ?? 0,
       rate: m.hourlyRate && m.hourlyRate > 0 ? m.hourlyRate : null,
       earned: earnings(worked, m.hourlyRate),
     };
@@ -79,6 +83,7 @@ const STAFF_REPORT_HEADERS = [
   "Пики всего",
   "Ошибки упаковки",
   "Брак",
+  "Перепечатки",
   "Ставка, ₽/ч",
   "По ставке, ₽",
   "Часы по участкам",
@@ -118,6 +123,7 @@ export function staffReportCsv(rows: readonly StaffOutput[]): string {
       String(r.packed + r.picked),
       String(r.errors),
       String(r.rejects),
+      String(r.reprints),
       r.rate == null ? "" : String(r.rate),
       r.earned == null ? "" : String(r.earned),
       byStationText(r.byStation),

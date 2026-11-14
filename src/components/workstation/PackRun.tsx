@@ -18,6 +18,7 @@ import {
 import type { PackSession } from "@/lib/types";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { sizeLabel, useLabelPrinter } from "@/lib/labelPrinter";
+import { autoPrintOnce, printByHand, usePrintMode } from "@/lib/silentPrint";
 import { beepNotes } from "@/lib/beep";
 import { holdSignal, levelFor, signal } from "@/lib/scanSignal";
 import { destinationMark } from "@/lib/destinationMark";
@@ -505,28 +506,45 @@ function feedbackFor(r: ItemScan, nameOf: (id: string) => string): Feedback {
 }
 
 /**
- * Этикетка, которая «вышла из принтера». Принтер ещё не подключён: печать идёт
- * окном браузера, а код виден мелко — на сервере этикетка печатается сама, и
- * картинку этикетки на экране показывать незачем.
+ * Этикетка, которая «вышла из принтера». Печатается сама, как только появилась
+ * (если стол не переключили на печать по кнопке): в Chrome с тихой печатью
+ * лента выходит без окна, в обычном браузере окно открывается само. Кнопка
+ * остаётся — перепечатать, если этикетка не вышла или помялась.
  */
 function LabelBlock({ code, title }: { code: string; title: string }) {
   const t = useT();
   const printer = useLabelPrinter();
+  const mode = usePrintMode();
   const size = sizeLabel(printer);
+  useEffect(() => {
+    if (printer.autoPrint) autoPrintOnce(code);
+    // Печать — один раз на появление этикетки, правка настройки её не повторяет.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [code]);
   return (
     <div className="flex w-full flex-wrap items-center gap-x-3 gap-y-1 py-1 text-sm">
       <PrintableLabel code={code} lines={[]} printer={printer} />
       <Tag className="size-4 shrink-0 text-primary" />
       <span className="font-medium text-primary">{title}</span>
       <span className="font-mono text-xs text-muted-foreground">{code}</span>
-      <Button variant="ghost" size="sm" className="ml-auto" onClick={() => window.print()}>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="ml-auto"
+        onClick={() => {
+          // Перепечатка без подтверждения, но в журнал: старший видит дубли.
+          if (printByHand(code)) void workstationRepository.packReprint(code);
+        }}
+      >
         <Printer />
-        {t("ws.run.print")}
+        {t(printer.autoPrint ? "ws.run.reprint" : "ws.run.print")}
       </Button>
       <p className="basis-full text-xs text-muted-foreground">
-        {printer.name
-          ? t("ws.run.printerOn", { name: printer.name, size })
-          : t("ws.run.printerSizeOnly", { size })}
+        {mode === "silent"
+          ? t("ws.run.printedSilent", { size })
+          : printer.name
+            ? t("ws.run.printerOn", { name: printer.name, size })
+            : t("ws.run.printerSizeOnly", { size })}
       </p>
     </div>
   );
