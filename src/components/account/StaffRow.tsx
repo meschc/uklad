@@ -1,72 +1,36 @@
 import { useState } from "react";
-import { AtSign, Check, IdCard, Pencil, Phone, Trash2 } from "lucide-react";
+import { AtSign, IdCard, Pencil, Phone, Trash2 } from "lucide-react";
 import type { StaffMember } from "@/lib/types";
-import type { TeamRole } from "@/lib/data/teamRepository";
 import { useEditor } from "@/lib/store";
 import { badgeRepository, staffRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
 import type { TFunc } from "@/lib/i18n";
-import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/select";
 import { Avatar } from "@/components/ui/avatar";
-import { PersonForm } from "./PersonForm";
-import { draftToMember, formatRate, type PersonDraft } from "@/lib/personDraft";
 import { BadgePanel } from "./BadgePanel";
 
 /**
- * Строка сотрудника: просмотр, правка на месте, удаление.
+ * Строка сотрудника: просмотр и удаление. Правка — панелью справа
+ * (`StaffPanel`, Кирилл 14.11), строка только зовёт её через `onEdit`.
  *
- * Команды живут здесь, а не в экране (п.3.2.1): строки независимы, и отказ по
- * одному человеку не должен красить ошибкой всю таблицу. Показываются они по
- * общему правилу п.3.2.2, только в третьей его форме — подвала у строки нет,
- * а форма есть:
- *
- *  · правка не сохранилась — строка остаётся раскрытой, набранное на месте,
- *    красная строка под формой, а галочка сохранения зовётся «Повторить»
- *    (кнопка иконочная, поэтому надпись живёт в `title`/`aria-label`);
- *  · удаление формы не имеет и терять ему нечего — отказ уходит тостом.
+ * Удаление формы не имеет и терять ему нечего — отказ уходит тостом.
  */
 export function StaffRow({
   member: m,
-  number,
-  access,
-  editing,
+  roleName,
   onEdit,
-  onDone,
   t,
 }: {
   member: StaffMember;
-  /** Табельный номер (`staffNumbers`) — тот же, что на бейдже. */
-  number?: number;
   /**
-   * Роль у стола: что сотрудник может по бейджу. Нет — колонки нет (демо или
-   * нет права на персонал).
+   * Роль сотрудника: что он может по бейджу. `undefined` — колонки нет (демо
+   * или нет права на персонал), `null` — роль не назначена.
    */
-  access?: {
-    roles: TeamRole[];
-    roleId: string | null;
-    onChange: (id: string | null) => void;
-  } | null;
-  editing: boolean;
+  roleName?: string | null;
   onEdit: () => void;
-  /** Правка закончена — экрану остаётся свернуть строку. */
-  onDone: () => void;
   t: TFunc;
 }) {
   const showToast = useEditor((s) => s.showToast);
   const restore = useEditor((s) => s.restoreStaffMember);
-  const [form, setForm] = useState<PersonDraft>({
-    name: m.name,
-    role: m.role,
-    phone: m.phone ?? "",
-    email: m.email ?? "",
-    photoUrl: m.photoUrl ?? "",
-    rate: m.hourlyRate ? formatRate(String(m.hourlyRate)) : "",
-  });
-
-  const save = useCommand((patch: Partial<Omit<StaffMember, "id">>) =>
-    staffRepository.update(m.id, patch),
-  );
   // Ушедший сотрудник не должен входить за стол старым бейджем: на сервере
   // бейдж гаснет до удаления, и если погасить не вышло, человек остаётся.
   const remove = useCommand(async () => {
@@ -76,44 +40,6 @@ export function StaffRow({
   const issue = useCommand(() => badgeRepository.issue(m.id));
   const [badge, setBadge] = useState<string | null>(null);
 
-  const submit = async () => {
-    const res = await save.run(draftToMember(form));
-    if (res.ok) onDone();
-  };
-
-  if (editing) {
-    const label = t(save.error ? "data.retry" : "common.save");
-    return (
-      <tr className="border-t border-border/60 bg-accent/40">
-        <td className="px-3 py-2" colSpan={access ? 4 : 3}>
-          <PersonForm
-            withRate
-            value={form}
-            onChange={(patch) => setForm({ ...form, ...patch })}
-            t={t}
-          />
-          {save.error && (
-            <p role="alert" className="pt-2 text-xs text-destructive">
-              {t(save.error)}
-            </p>
-          )}
-        </td>
-        <td className="px-3 py-2 align-top">
-          <Button
-            size="icon-sm"
-            variant="ghost"
-            title={label}
-            aria-label={label}
-            disabled={save.pending}
-            onClick={submit}
-          >
-            <Check className="size-4" />
-          </Button>
-        </td>
-      </tr>
-    );
-  }
-
   return (
     <tr className="group border-t border-border/60">
       <td className="px-3 py-2">
@@ -122,14 +48,7 @@ export function StaffRow({
               (Кирилл 13.11: «размер фотографии уменьшается кратно»). */}
           <Avatar src={m.photoUrl} seed={m.id} />
           <span className="flex min-w-0 flex-col">
-            <span className="font-medium">
-              {m.name}
-              {number != null && (
-                <span className="ml-2 text-xs font-normal tabular-nums text-muted-foreground">
-                  № {number}
-                </span>
-              )}
-            </span>
+            <span className="font-medium">{m.name}</span>
             {(m.phone || m.email) && (
               <span className="flex flex-wrap items-center gap-x-3 text-xs text-muted-foreground">
                 {m.phone && (
@@ -161,22 +80,13 @@ export function StaffRow({
           </button>
         )}
       </td>
-      {access && (
+      {roleName !== undefined && (
         <td className="px-3 py-2">
-          <Select
-            size="sm"
-            aria-label={t("team.role")}
-            className="w-44"
-            value={access.roleId ?? ""}
-            onChange={(e) => access.onChange(e.target.value || null)}
-          >
-            <option value="">{t("team.deskNone")}</option>
-            {access.roles.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.name}
-              </option>
-            ))}
-          </Select>
+          {roleName ?? (
+            <span className="rounded-full bg-warning-fill px-2 py-0.5 text-xs font-medium text-warning-foreground">
+              {t("team.deskNone")}
+            </span>
+          )}
         </td>
       )}
       <td className="px-3 py-2">
@@ -194,15 +104,7 @@ export function StaffRow({
           >
             <IdCard className="size-3.5" />
           </button>
-          {badge && (
-            <BadgePanel
-              member={m}
-              number={number}
-              code={badge}
-              onClose={() => setBadge(null)}
-              t={t}
-            />
-          )}
+          {badge && <BadgePanel member={m} code={badge} onClose={() => setBadge(null)} t={t} />}
           {/* Правка — отдельной кнопкой: нажатие на имя неочевидно (Кирилл 13.11). */}
           <button
             onClick={onEdit}
@@ -222,9 +124,7 @@ export function StaffRow({
               const res = await remove.run();
               if (!res.ok) showToast(res.error, undefined, undefined, "error");
               else
-                showToast("staff.removed", { name: m.name }, () =>
-                  restore({ ...m, number: m.number ?? number }, Math.max(0, index)),
-                );
+                showToast("staff.removed", { name: m.name }, () => restore(m, Math.max(0, index)));
             }}
             disabled={remove.pending}
             title={t("staff.remove")}

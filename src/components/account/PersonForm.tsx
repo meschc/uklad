@@ -103,7 +103,7 @@ const OTHER = "__other__";
  * Поэтому незнакомая должность сразу открывает форму в режиме свободного ввода,
  * а не приводится к ближайшей из списка.
  */
-function RoleField({
+export function RoleField({
   value,
   onChange,
   t,

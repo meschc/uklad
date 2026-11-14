@@ -24,10 +24,13 @@ export function StatCard({
   tone?: "neutral" | "good" | "warn" | "bad";
   icon?: ReactNode;
 }) {
+  // Жёлтый текст на белом не читается (Кирилл 14.11: «в светлой теме
+  // херобора»): «внимание» — обычное число с жёлтой меткой рядом, а не
+  // горчичная цифра. Зелёный и красный читаются и остаются цветом числа.
   const toneClass = {
     neutral: "text-foreground",
     good: "text-success",
-    warn: "text-warning",
+    warn: "text-foreground",
     bad: "text-destructive",
   }[tone];
 
@@ -37,13 +40,19 @@ export function StatCard({
         {icon}
         {label}
       </div>
-      <div className={cn("text-2xl font-bold tabular-nums", toneClass)}>
+      <div className={cn("flex items-center gap-2 text-2xl font-bold tabular-nums", toneClass)}>
         {/* Число добегает до нового значения, а не перескакивает (ДС, движение). */}
         {typeof value === "number" ? <AnimatedNumber value={value} /> : value}
+        {tone === "warn" && <WarnMark />}
       </div>
       {hint && <div className="text-xs text-muted-foreground">{hint}</div>}
     </div>
   );
+}
+
+/** Жёлтая метка «обратите внимание» рядом с числом — заливкой ДС. */
+export function WarnMark() {
+  return <span aria-hidden className="size-2.5 shrink-0 rounded-full bg-warning-fill" />;
 }
 
 /** Столбики по дням. Подписи — только по краям и максимуму, иначе каша. */
