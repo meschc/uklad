@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { OFFER, monthsRu } from "../../data/offer";
+import { FIRST_WAREHOUSES, OFFER, monthsRu, num } from "../../data/offer";
 import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Reveal } from "../Reveal";
@@ -49,7 +49,7 @@ const QA: { q: Copy; a: Copy }[] = [
   {
     q: ru(`Что будет через ${monthsRu(OFFER.freeMonths)}?`),
     a: ru(
-      "Вы продолжаете работу по выбранному тарифу. Первые десять складов фиксируют специальную цену: тариф «Склад» за 6 900 ₽ в месяц на 6 месяцев.",
+      `Вы продолжаете работу по выбранному тарифу. Первые ${FIRST_WAREHOUSES.places} складов фиксируют специальную цену: тариф «Склад» за ${num(FIRST_WAREHOUSES.price)}\u00a0₽ в месяц на ${monthsRu(FIRST_WAREHOUSES.months)}.`,
     ),
   },
 ];

@@ -26,8 +26,8 @@ import type { SiteLang } from "./lang";
 const PHRASES: readonly (readonly [ru: string, en: string])[] = [
   ["Здесь нужен JavaScript", "This page needs JavaScript"],
   [
-    "Витрина складов, фильтры и карта работают скриптами. Включите JavaScript или отключите блокировщик для этого сайта — и страница откроется.",
-    "Warehouse listings, filters and the map are drawn by scripts. Turn JavaScript on or allow this site in your blocker, and the page will open.",
+    "Сайт и демо кабинета работают скриптами. Включите JavaScript или отключите блокировщик для этого сайта — и страница откроется.",
+    "The site and the cabinet demo run on scripts. Turn JavaScript on or allow this site in your blocker, and the page will open.",
   ],
   ["Если проще написать:", "Easier to write:"],
 ];

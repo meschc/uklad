@@ -9,6 +9,7 @@ import { CabinetFrame } from "./LiveCabinet";
 import type { AppView } from "@/lib/types";
 import { SITE_NAV_H } from "../frame/SiteNav";
 import { Button } from "@/components/ui/button";
+import { freeMonthsTitle } from "../../data/offer";
 
 // Демо открывает только личная ссылка из письма: кнопка ведёт к заявке на неё
 // в конце страницы (`FinalConnect`, якорь `#demo`).
@@ -22,7 +23,7 @@ const T = {
   connect: ru("Подключить склад"),
   title: ru("Уклад — адаптивная система управления складом"),
   lead: ru(
-    "Хранение и учёт товара, сотрудники и задачи, связь с селлерами в одной системе. Три\u00a0месяца бесплатно.",
+    `Хранение и учёт товара, сотрудники и задачи, связь с селлерами в одной системе. ${freeMonthsTitle()}.`,
   ),
   look: ru("Посмотреть кабинет"),
   tabs: ru("Экраны кабинета"),

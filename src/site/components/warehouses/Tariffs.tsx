@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { Reveal } from "../Reveal";
 import { PLANS, monthlyFor, type PayPeriod, type Plan } from "../../data/plans";
 import { money } from "../../data/warehouses";
+import { FIRST_WAREHOUSES, monthsRu, num } from "../../data/offer";
 import { ru, useT, type Copy } from "../../lib/copy";
 import { AsciiField } from "./AsciiField";
 import { PriceSheet } from "./PriceWhy";
@@ -28,6 +29,7 @@ const T = {
   year: ru("год"),
   saving: ru(", выгода {sum} ₽"),
   monthNote: ru("оплата каждый месяц"),
+  firstPrice: ru("Первым {places} складам — {price} ₽ в месяц на {months}"),
   customTitle: ru("Нужны отдельные условия?"),
   customBody: ru(
     "Больше трёх складов, своя схема оплаты или нестандартные процессы: обсудим и предложим тариф.",
@@ -212,6 +214,15 @@ export function Tariffs({ page = false }: { page?: boolean }) {
               >
                 {note(plan)}
               </p>
+              {plan.id === FIRST_WAREHOUSES.plan && (
+                <p className={cn("text-[13px] font-medium", blue ? "text-white" : "")}>
+                  {t(T.firstPrice, {
+                    places: String(FIRST_WAREHOUSES.places),
+                    price: num(FIRST_WAREHOUSES.price),
+                    months: monthsRu(FIRST_WAREHOUSES.months),
+                  })}
+                </p>
+              )}
               <Button
                 asChild
                 size="lg"
