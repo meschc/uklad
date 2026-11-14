@@ -679,6 +679,7 @@
     gap: 4px;
   }
   .card select,
+  .card input[type="text"],
   .card textarea {
     font: inherit;
     font-size: 13px;
@@ -688,9 +689,19 @@
     border-radius: 6px;
     padding: 6px 8px;
   }
-  .card select {
+  .card select,
+  .card input[type="text"] {
     height: 32px;
     padding-block: 0;
+  }
+  .card .newtask {
+    display: grid;
+    gap: 8px;
+    border-top: 1px solid var(--line);
+    padding-top: 12px;
+  }
+  .card .newtask .lbl {
+    margin: 0;
   }
   .card textarea {
     min-height: 90px;
@@ -862,6 +873,20 @@
     }
   };
 
+  // Фильтр: мультивыбор статусов, по умолчанию готовое скрыто (ключ uklad-map-show)
+  function readShow() {
+    try {
+      const v = JSON.parse(localStorage.getItem("uklad-map-show") || "null");
+      if (Array.isArray(v)) return new Set(v.filter((st) => STATUS[st]));
+    } catch {}
+    return new Set(STATUS_ORDER.filter((st) => st !== "done"));
+  }
+  const saveShow = () => {
+    try {
+      localStorage.setItem("uklad-map-show", JSON.stringify([...state.show]));
+    } catch {}
+  };
+
   const state = {
     nodes: new Map(),
     links: [],
@@ -869,7 +894,8 @@
     cps: [],
     open: new Set(["root"]),
     sel: null,
-    filter: null,
+    // какие статусы показывать; по умолчанию всё, кроме готового (запоминается в браузере)
+    show: readShow(),
     initOpened: false,
     centered: false,
     linkMode: "sel",
@@ -902,6 +928,12 @@
           (a.order ?? 99) - (b.order ?? 99) || String(a.title).localeCompare(String(b.title), "ru"),
       );
   }
+  // Узел виден, если показан его статус (или статуса нет в списке) либо виден кто-то из потомков:
+  // открытое под готовым не теряется
+  function subtreeShown(n) {
+    return !STATUS[n.status] || state.show.has(n.status) || childrenOf(n.id).some(subtreeShown);
+  }
+  const visKids = (id) => childrenOf(id).filter(subtreeShown);
   function pathOf(n) {
     const out = [];
     let cur = state.nodes.get(n.parent);
@@ -916,15 +948,6 @@
     while (cur && cur.parent && cur.parent !== "root") cur = state.nodes.get(cur.parent);
     return cur;
   }
-  function countSub(id, st) {
-    let c = 0;
-    for (const k of childrenOf(id)) {
-      if (k.status === st) c++;
-      c += countSub(k.id, st);
-    }
-    return c;
-  }
-
   /* ---------- этапы ---------- */
   function renderStages() {
     const box = $("stages");
@@ -942,6 +965,12 @@
   }
 
   /* ---------- сейчас ---------- */
+  // Сколько дней узел не правили: застывшее «в работе» — первый признак, что карта отстала от дел
+  const STALE_DAYS = 7;
+  const ageDays = (n) =>
+    n.updated ? Math.floor((Date.now() - Date.parse(n.updated)) / 86400000) : null;
+  const isStale = (n) =>
+    ["now", "blocked", "question"].includes(n.status) && (ageDays(n) ?? 0) > STALE_DAYS;
   function renderNow() {
     const list = [...state.nodes.values()]
       .filter((n) => n.status === "now" || n.status === "blocked")
@@ -961,7 +990,7 @@
             el("button", { type: "button", text: n.title, onclick: () => select(n.id, true) }),
             el("span", {
               class: "where",
-              text: `  ${branchOf(n)?.title || ""}${n.owner ? " · " + n.owner : ""}`,
+              text: `  ${branchOf(n)?.title || ""}${n.owner ? " · " + n.owner : ""}${isStale(n) ? " · не правили " + ageDays(n) + " дн." : ""}`,
             }),
           ]),
         ]),
@@ -1015,24 +1044,45 @@
     const counts = {};
     for (const n of state.nodes.values())
       if (n.id !== "root") counts[n.status] = (counts[n.status] || 0) + 1;
-    $("legend").replaceChildren(
-      ...STATUS_ORDER.map((st) =>
-        el(
-          "button",
-          {
-            type: "button",
-            class: "chip",
-            "data-st": st,
-            "aria-pressed": String(state.filter === st),
-            onclick: () => {
-              state.filter = state.filter === st ? null : st;
-              if (state.filter) openMatching(st);
-              render();
-            },
+    const chips = STATUS_ORDER.map((st) =>
+      el(
+        "button",
+        {
+          type: "button",
+          class: "chip",
+          "data-st": st,
+          title: state.show.has(st)
+            ? "Показан — нажмите, чтобы скрыть"
+            : "Скрыт — нажмите, чтобы показать",
+          "aria-pressed": String(state.show.has(st)),
+          onclick: () => {
+            if (state.show.has(st)) state.show.delete(st);
+            else {
+              state.show.add(st);
+              openMatching(st);
+            }
+            saveShow();
+            render();
           },
-          [dot(st), STATUS[st].label, el("span", { class: "k", text: String(counts[st] || 0) })],
-        ),
+        },
+        [dot(st), STATUS[st].label, el("span", { class: "k", text: String(counts[st] || 0) })],
       ),
+    );
+    const doneShown = state.show.has("done");
+    $("legend").replaceChildren(
+      el("span", { class: "k", text: "Показывать:" }),
+      ...chips,
+      el("button", {
+        type: "button",
+        class: "btn mini",
+        text: doneShown ? "Скрыть готовое" : "Показать готовое",
+        onclick: () => {
+          if (doneShown) state.show.delete("done");
+          else state.show.add("done");
+          saveShow();
+          render();
+        },
+      }),
     );
   }
   function openMatching(st) {
@@ -1055,12 +1105,12 @@
   function layoutSide(side) {
     let rows = 0;
     const walk = (n, depth) => {
-      const kids = state.open.has(n.id) ? childrenOf(n.id) : [];
+      const kids = state.open.has(n.id) ? visKids(n.id) : [];
       if (!kids.length) return { n, depth, y: rows++, kids: [] };
       const laid = kids.map((k) => walk(k, depth + 1));
       return { n, depth, y: (laid[0].y + laid[laid.length - 1].y) / 2, kids: laid };
     };
-    const trees = childrenOf("root")
+    const trees = visKids("root")
       .filter((b) => sideOf(b) === side)
       .map((b) => walk(b, 1));
     const flat = [];
@@ -1072,7 +1122,7 @@
     return { trees, flat, rows, depth: Math.max(0, ...flat.map((t) => t.depth)) };
   }
   function nodeEl(n, side, style) {
-    const kids = childrenOf(n.id),
+    const kids = visKids(n.id),
       hasKids = kids.length > 0,
       isOpen = state.open.has(n.id),
       isRoot = n.id === "root";
@@ -1082,12 +1132,7 @@
       side === "dev" ? "left" : "",
       isRoot ? "root" : n.parent === "root" ? "branch" : "",
       state.sel === n.id ? "sel" : "",
-      state.filter &&
-      !isRoot &&
-      n.status !== state.filter &&
-      !(hasKids && countSub(n.id, state.filter))
-        ? "dim"
-        : "",
+      "",
     ].join(" ");
     const tag = hasKids && !isRoot ? (isOpen ? "−" : `+${kids.length}`) : null;
     return el(
@@ -1412,6 +1457,12 @@
   /* ---------- карточка ---------- */
   function select(id, reveal) {
     state.sel = id;
+    const target = state.nodes.get(id);
+    if (reveal && target && STATUS[target.status] && !state.show.has(target.status)) {
+      state.show.add(target.status); // переход по ссылке к скрытому узлу его открывает
+      saveShow();
+      renderLegend();
+    }
     if (reveal) {
       let p = state.nodes.get(id)?.parent;
       while (p) {
@@ -1664,6 +1715,112 @@
     return box;
   }
 
+  // Правка узла из карточки: закрыть задачу одной кнопкой и завести новую внутри выбранного узла
+  const today = () => new Date().toISOString().slice(0, 10);
+  const failText = (e) =>
+    e?.code === "not_granted"
+      ? "Нет права на правку — менять может владелец и редакторы."
+      : "Не сохранилось: " + (e?.message || "ошибка связи") + ". Попробуйте ещё раз.";
+  function closeButton(n, msg) {
+    const isDone = n.status === "done";
+    const btn = el("button", {
+      type: "button",
+      class: isDone ? "btn" : "btn pri",
+      text: isDone ? "Открыть снова" : "Закрыть задачу",
+      title: isDone ? "Вернуть узел в «следующее»" : "Пометить узел как готовый",
+    });
+    btn.addEventListener("click", async () => {
+      if (!db) {
+        msg.textContent = "Сохранять можно только в открытом артефакте с доступом на правку.";
+        return;
+      }
+      btn.setAttribute("disabled", "");
+      msg.textContent = "Сохраняю…";
+      try {
+        await db
+          .doc("nodes/" + n.id)
+          .update({ status: isDone ? "next" : "done", updated: today() });
+        msg.textContent = isDone ? "Задача снова открыта." : "Задача закрыта.";
+      } catch (e) {
+        msg.textContent = failText(e);
+      } finally {
+        btn.removeAttribute("disabled");
+      }
+    });
+    return btn;
+  }
+  function newTaskForm(n) {
+    const isRoot = n.id === "root";
+    const title = el("input", {
+      type: "text",
+      id: "nt-title",
+      maxlength: "120",
+      placeholder: "Название",
+    });
+    const st = el(
+      "select",
+      { id: "nt-status" },
+      STATUS_ORDER.map((s) => {
+        const o = el("option", { value: s, text: STATUS[s].label });
+        if (s === "next") o.selected = true;
+        return o;
+      }),
+    );
+    const side = isRoot
+      ? el("select", { id: "nt-side" }, [
+          el("option", { value: "dev", text: SIDES.dev }),
+          el("option", { value: "sense", text: SIDES.sense }),
+        ])
+      : null;
+    const note = el("textarea", { id: "nt-note", placeholder: "Заметка (необязательно)" });
+    note.style.minHeight = "60px";
+    const msg = el("span", { class: "msg" });
+    const add = el("button", { type: "button", class: "btn", text: "Добавить" });
+    add.addEventListener("click", async () => {
+      const t = title.value.trim();
+      if (!t) {
+        msg.textContent = "Впишите название.";
+        title.focus();
+        return;
+      }
+      if (!db) {
+        msg.textContent = "Сохранять можно только в открытом артефакте с доступом на правку.";
+        return;
+      }
+      add.setAttribute("disabled", "");
+      msg.textContent = "Сохраняю…";
+      const id = "t-" + Date.now().toString(36);
+      const order = Math.max(0, ...childrenOf(n.id).map((k) => k.order ?? 0)) + 1;
+      try {
+        await db.doc("nodes/" + id).set({
+          title: t.slice(0, 120),
+          parent: n.id,
+          status: st.value,
+          order,
+          updated: today(),
+          ...(side ? { side: side.value } : {}),
+          ...(note.value.trim() ? { note: note.value.trim().slice(0, 4000) } : {}),
+        });
+        state.open.add(n.id);
+        title.value = "";
+        note.value = "";
+        msg.textContent = "Добавлено.";
+      } catch (e) {
+        msg.textContent = failText(e);
+      } finally {
+        add.removeAttribute("disabled");
+      }
+    });
+    return el("div", { class: "newtask" }, [
+      el("div", { class: "lbl", text: isRoot ? "Новая ветка" : "Новая задача внутри" }),
+      el("label", { for: "nt-title" }, ["Название", title]),
+      el("label", { for: "nt-status" }, ["Статус", st]),
+      side ? el("label", { for: "nt-side" }, ["Сторона карты", side]) : null,
+      el("label", { for: "nt-note" }, ["Заметка", note]),
+      el("div", { class: "row" }, [add, msg]),
+    ]);
+  }
+
   function renderCard() {
     const card = $("card");
     const n = state.nodes.get(state.sel);
@@ -1743,7 +1900,8 @@
         ]),
         isRoot ? null : el("label", { for: "f-status" }, ["Статус", statusSel]),
         isRoot ? null : el("label", { for: "f-note" }, ["Заметка", noteTa]),
-        isRoot ? null : el("div", { class: "row" }, [save, msg]),
+        isRoot ? null : el("div", { class: "row" }, [save, closeButton(n, msg), msg]),
+        newTaskForm(n),
       ].filter(Boolean),
     );
   }
@@ -1805,8 +1963,9 @@
       .filter(Boolean)
       .sort();
     const last = dates[dates.length - 1];
+    const stale = [...state.nodes.values()].filter(isStale).length;
     $("meta").textContent =
-      `${state.nodes.size ? state.nodes.size - 1 : 0} узлов · ${state.links.length} связей${last ? " · обновлено " + last : ""}`;
+      `${state.nodes.size ? state.nodes.size - 1 : 0} узлов · ${state.links.length} связей${last ? " · обновлено " + last : ""}${stale ? " · не правили больше недели: " + stale : ""}`;
   }
   renderSwitches();
   (async () => {
@@ -1826,7 +1985,7 @@
       state.nodes = new Map(snap.docs.map((d) => [d.id, { id: d.id, ...d.data() }]));
       if (!state.initOpened) {
         for (const n of state.nodes.values())
-          if (n.parent === "root" && n.status !== "done") state.open.add(n.id);
+          if (n.parent === "root" && subtreeShown(n)) state.open.add(n.id);
         state.initOpened = state.nodes.size > 0;
       }
       updateMeta();
