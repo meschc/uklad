@@ -34,10 +34,12 @@ export interface ConnectorTransport {
   request(req: ConnectorRequest): Promise<Result<unknown>>;
 }
 
-/** HTTP-статус ответа площадки → ключ ошибки для экрана. */
-function statusToError(status: number): MsgKey {
-  if (status === 401 || status === 403) return "integr.error.rejected";
-  if (status === 429) return "integr.error.rateLimit";
+/** Отказ сервера или площадки → ключ ошибки для экрана. */
+function toError(status: number, error: unknown): MsgKey {
+  if (error === "rejected") return "integr.error.rejected";
+  if (error === "rate_limit" || status === 429) return "integr.error.rateLimit";
+  if (error === "not_configured" || error === "no_connection") return "integr.error.notConfigured";
+  if (status === 403) return "integr.error.forbidden";
   return "data.failed";
 }
 
@@ -51,42 +53,28 @@ export const offlineTransport: ConnectorTransport = {
   },
 };
 
+/** Запрос к своему серверу: путь от `/api`, тело — JSON. */
+export type ApiCall = (
+  path: string,
+  body: Record<string, unknown>,
+) => Promise<{ status: number; body: Record<string, unknown> }>;
+
 /**
- * Требования к серверному прокси (проверка безопасности PR #23), без них
- * включать нельзя:
- * 1. Белый список method + шаблон пути на каждую систему; прочее — 403.
- * 2. `account` проверяется по сессии: подключение принадлежит компании
- *    пользователя, роль имеет право на вызов.
- * 3. Origin строго u-klad.ru, CORS без `*`; `baseUrl` — только свой домен,
- *    из адресной строки не настраивается.
- * 4. Ключи селлеров зашифрованы (ключ шифрования в env, не в базе), в журналы
- *    и ответы не попадают; ответ площадки — без её заголовков.
- * 5. Лимит частоты на пользователя и на подключение.
- * 6. Токен ГИС МТ и коды с криптохвостом — только на сервере, коротко, без
- *    записи в журналы.
- *
- * Транспорт через сервер Уклада. `fetchImpl` подменяется в тестах. Включается
- * одной строкой в `connectors/index.ts`, когда сервер поднят.
+ * Транспорт через сервер Уклада (`server/api/src/cabinet/connectors.js`).
+ * Сервер держит белый список путей, шифрованный ключ селлера и лимиты; ответ
+ * — `{ ok, data }`, где `data` — JSON площадки как есть. Отказ площадки
+ * приходит 502 с причиной, а не её 401: тот означал бы конец сессии Уклада.
  */
-export function createServerTransport(
-  baseUrl: string,
-  fetchImpl: typeof fetch = fetch,
-): ConnectorTransport {
+export function createServerTransport(call: ApiCall): ConnectorTransport {
   return {
     async request(req) {
       try {
-        const res = await fetchImpl(`${baseUrl}/api/connectors/${req.system}/proxy`, {
-          method: "POST",
-          credentials: "include", // сессия пользователя Уклада, не ключ селлера
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(req),
-        });
-        if (!res.ok) return fail(statusToError(res.status));
-        const text = await res.text();
-        return ok(text ? (JSON.parse(text) as unknown) : null);
+        const { status, body } = await call(`/connectors/${req.system}/proxy`, { ...req });
+        if (status !== 200 || body.ok !== true) return fail(toError(status, body.error));
+        return ok(body.data ?? null);
       } catch (e) {
         console.error("[uklad] подключение не ответило:", e);
-        return fail("data.failed");
+        return fail("integr.error.noServer");
       }
     },
   };

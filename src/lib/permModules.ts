@@ -53,6 +53,7 @@ export const PERM_AREAS: PermArea[] = [
   // поэтому это два раздела, а не «выборочно» в одном.
   area("goods", "goods.view", ["goods.decide"]),
   area("writeoff", null, ["goods.writeoff"]),
+  area("integrations", null, ["integrations.manage"]),
   area("staff", "staff.view", ["staff.manage"]),
   area("contracts", "billing.view", ["contracts.manage"]),
   // Переписка — одно право: читать чат и не отвечать продавцу складу не нужно.

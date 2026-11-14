@@ -280,6 +280,8 @@ export const ru = {
   "perm.area.goods": "Спорный товар",
   "perm.area.goods.read": "Видеть брак, недостачи, излишки и просьбы списать.",
   "perm.area.goods.write": "Решать по спорному. Списание — только просить.",
+  "perm.area.integrations": "Интеграции с площадками",
+  "perm.area.integrations.write": "Подключать WB, Ozon и Маркет и обмениваться с ними",
   "perm.area.writeoff": "Списание",
   "perm.area.writeoff.write":
     "Подтверждать списание. Видеть просьбы списать — это чтение «Спорного товара».",
@@ -709,6 +711,8 @@ export const en: Record<keyof typeof ru, string> = {
   "perm.area.goods": "Disputed goods",
   "perm.area.goods.read": "See defects, shortages, surpluses and write-off requests.",
   "perm.area.goods.write": "Decide on disputed goods. Write-off — request only.",
+  "perm.area.integrations": "Marketplace integrations",
+  "perm.area.integrations.write": "Connect WB, Ozon and Market and exchange data",
   "perm.area.writeoff": "Write-off",
   "perm.area.writeoff.write":
     "Confirm write-offs. Seeing write-off requests is reading “Disputed goods”.",

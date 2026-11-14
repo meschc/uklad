@@ -175,12 +175,18 @@ describe("адаптеры и транспорт", () => {
     expect(t.calls[1].body).toEqual({ uuid: "u", data: "SIG" });
   });
 
-  it("серверный транспорт переводит 401 и 429 в ключи словаря", async () => {
-    const mk = (status: number) =>
-      createServerTransport("", (async () => new Response("", { status })) as typeof fetch);
+  it("серверный транспорт: ответ площадки из data, отказ — ключом словаря", async () => {
+    const mk = (status: number, body: Record<string, unknown>) =>
+      createServerTransport(async () => ({ status, body }));
     const req: ConnectorRequest = { system: "ozon", account: "a", method: "POST", path: "/x" };
-    expect(await mk(401).request(req)).toEqual(fail("integr.error.rejected"));
-    expect(await mk(429).request(req)).toEqual(fail("integr.error.rateLimit"));
+    expect(await mk(200, { ok: true, data: { a: 1 } }).request(req)).toEqual(ok({ a: 1 }));
+    expect(await mk(502, { error: "rejected" }).request(req)).toEqual(
+      fail("integr.error.rejected"),
+    );
+    expect(await mk(429, {}).request(req)).toEqual(fail("integr.error.rateLimit"));
+    expect(await mk(503, { error: "not_configured" }).request(req)).toEqual(
+      fail("integr.error.notConfigured"),
+    );
   });
 });
 
