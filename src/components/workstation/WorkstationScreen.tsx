@@ -253,14 +253,14 @@ export function WorkstationScreen() {
           </div>
         ) : !member ? (
           <>
+            <BadgeLogin />
             {/* Стол печатает этикетки, а печать без окна ещё не включена:
-                настроить до начала смены, а не посреди упаковки. */}
+                строка-подсказка под входом, настроить до смены. */}
             {PRINT_STATIONS.has(device?.station ?? "pack") && printMode !== "silent" && (
-              <div className="mx-auto mt-8 w-full max-w-xl rounded-xl bg-muted/50 p-4">
-                <PrintSetup compact />
+              <div className="mx-auto mb-10 w-full max-w-xl px-4">
+                <PrintSetup />
               </div>
             )}
-            <BadgeLogin />
           </>
         ) : (
           <div className="mx-auto flex max-w-5xl flex-col gap-5 px-4 py-6">

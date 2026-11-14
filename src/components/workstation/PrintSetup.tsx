@@ -1,55 +1,35 @@
 import { useState } from "react";
 import { Check, ChevronDown, Copy, Download, Printer } from "lucide-react";
-import { sizeLabel, useLabelPrinter } from "@/lib/labelPrinter";
-import {
-  deskUrl,
-  downloadWindowsShortcut,
-  macCommand,
-  printNow,
-  usePrintMode,
-} from "@/lib/silentPrint";
+import { deskUrl, downloadWindowsShortcut, macCommand, usePrintMode } from "@/lib/silentPrint";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { PrintableLabel } from "./PrintableLabel";
 
 /**
- * Печать без окна: работает ли она на этом компьютере и как её включить.
- * Стоит в двух местах: на экране входа стола, который печатает, — чтобы
- * настроить до начала работы, — и в панели принтера.
+ * Печать без окна: строка «работает / открывается окно» и свёрнутая
+ * инструкция. Это справка, а не главное: стоит под входом стола, который
+ * печатает (настроить до смены), и внизу панели принтера.
  */
-export function PrintSetup({ compact }: { compact?: boolean }) {
+export function PrintSetup() {
   const t = useT();
   const mode = usePrintMode();
-  const printer = useLabelPrinter();
   const url = deskUrl(window.location.origin, import.meta.env.BASE_URL);
 
   return (
-    <section className="flex flex-col gap-3 text-sm">
-      <h3 className="font-medium">{t("ws.printer.silentTitle")}</h3>
+    <div className="flex flex-col gap-1 text-sm">
       {mode === "silent" ? (
         <p className="flex items-center gap-2 text-success">
           <Check className="size-4 shrink-0" />
           {t("ws.printer.silentOn")}
         </p>
       ) : (
-        <p className="text-muted-foreground">
+        <p className="flex items-center gap-2 text-muted-foreground">
+          <Printer className="size-4 shrink-0" />
           {t(mode === "dialog" ? "ws.printer.silentOff" : "ws.printer.silentUnknown")}
         </p>
       )}
-      <Button
-        className="self-start"
-        variant={compact ? "outline" : "default"}
-        onClick={() => printNow()}
-      >
-        <Printer />
-        {t("ws.printer.test")}
-      </Button>
-      {/* Уже работает — инструкция нужна только для другого стола. */}
-      <Fold
-        label={mode === "silent" ? "ws.printer.otherDesk" : "ws.printer.howTo"}
-        open={mode !== "silent"}
-      >
+      {/* Инструкция — справка по запросу, свёрнута: главное на экране не она. */}
+      <Fold label={mode === "silent" ? "ws.printer.otherDesk" : "ws.printer.howTo"}>
         <ol className="flex list-decimal flex-col gap-2 pl-5 text-muted-foreground">
           <li>
             {t("ws.printer.step1")}
@@ -86,27 +66,14 @@ export function PrintSetup({ compact }: { compact?: boolean }) {
           ))}
         </Fold>
       </Fold>
-      <PrintableLabel
-        code="UK-TEST-0001"
-        lines={[t("ws.printer.testLine"), sizeLabel(printer)]}
-        printer={printer}
-      />
-    </section>
+    </div>
   );
 }
 
 /** Сворачиваемый блок: призрачная кнопка со стрелкой, как «Устройства» стола. */
-function Fold({
-  label,
-  open: initial = false,
-  children,
-}: {
-  label: MsgKey;
-  open?: boolean;
-  children: React.ReactNode;
-}) {
+function Fold({ label, children }: { label: MsgKey; children: React.ReactNode }) {
   const t = useT();
-  const [open, setOpen] = useState(initial);
+  const [open, setOpen] = useState(false);
   return (
     <div className="flex flex-col gap-3">
       <Button

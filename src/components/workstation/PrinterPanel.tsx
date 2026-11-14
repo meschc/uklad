@@ -4,6 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Segmented } from "@/components/ui/segmented";
 import { PrintSetup } from "./PrintSetup";
+import { PrintableLabel } from "./PrintableLabel";
+import { printNow } from "@/lib/silentPrint";
+import { Printer } from "lucide-react";
 
 /**
  * Принтер этикеток этого стола — правая панель, как смена и журнал. Здесь же
@@ -61,9 +64,18 @@ export function PrinterPanel() {
         <span className="text-xs text-muted-foreground">{t("ws.printer.sizeHint")}</span>
       </div>
 
-      <div className="border-t pt-4">
-        <PrintSetup />
-      </div>
+      <Button className="self-start" onClick={() => printNow()}>
+        <Printer />
+        {t("ws.printer.test")}
+      </Button>
+
+      <PrintSetup />
+
+      <PrintableLabel
+        code="UK-TEST-0001"
+        lines={[t("ws.printer.testLine"), current]}
+        printer={printer}
+      />
     </div>
   );
 }

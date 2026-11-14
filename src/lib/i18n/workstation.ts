@@ -368,12 +368,10 @@ export const ru = {
   "ws.printer.sizeHint": "Ширина × высота. Этикетка станет ровно такой.",
   "ws.printer.test": "Тестовая печать",
   "ws.printer.testLine": "Проверка печати",
-  "ws.printer.silentTitle": "Печать без окна",
   "ws.printer.silentOn": "Работает: этикетки уходят на принтер сами, без окна.",
   "ws.printer.silentOff":
     "Сейчас открывается окно печати. Чтобы этикетка выходила сразу после скана, откройте стол через ярлык с тихой печатью.",
-  "ws.printer.silentUnknown":
-    "Нажмите «Тестовая печать»: если окно не появилось, печать без окна уже работает. Если появилось — настройте ярлык.",
+  "ws.printer.silentUnknown": "Печать без окна на этом компьютере ещё не проверяли.",
   "ws.printer.step1":
     "Скачайте файл и запустите его. Он создаст на рабочем столе ярлык «Уклад — упаковка» и откроет кабинет. Если Windows предупредит о файле, нажмите «Подробнее» → «Выполнить».",
   "ws.printer.step2":
@@ -864,12 +862,11 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.printer.sizeHint": "Width × height. The label is printed exactly this size.",
   "ws.printer.test": "Test print",
   "ws.printer.testLine": "Print check",
-  "ws.printer.silentTitle": "Printing without the window",
   "ws.printer.silentOn": "Working: labels go straight to the printer, no window.",
   "ws.printer.silentOff":
     "The print window opens now. To print the label right after the scan, open the desk with the silent printing shortcut.",
   "ws.printer.silentUnknown":
-    "Press “Test print”: if no window appears, silent printing already works. If it does, set up the shortcut.",
+    "Printing without the window hasn't been checked on this computer yet.",
   "ws.printer.step1":
     "Download the file and run it. It puts the packing desk shortcut on the desktop and opens the account. If Windows warns about the file, press “More info” → “Run anyway”.",
   "ws.printer.step2":
