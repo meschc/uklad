@@ -21,6 +21,16 @@ export interface TeamMember {
   hasBadge: boolean;
   lastSeenAt: string | null;
   inviteExpiresAt: string | null;
+  /** Склад человека в кабинете (id склада); `null` — не назначен. */
+  warehouseRef?: string | null;
+  /** Карточка сотрудника на этом складе; `null` — входа у карточки нет. */
+  staffRef?: string | null;
+}
+
+/** Где человек работает: склад и (если есть) его карточка на складе. */
+export interface TeamPlace {
+  warehouseRef: string;
+  staffRef?: string;
 }
 
 export interface TeamRole {
@@ -73,6 +83,10 @@ function teamError(res: ApiResponse): MsgKey {
       return "team.err.tooManyInvites";
     case "not_found":
       return "team.err.notFound";
+    case "no_warehouse":
+      return "team.err.noWarehouse";
+    case "card_taken":
+      return "team.err.cardTaken";
     case "bad_name":
     case "bad_request":
       return "team.err.badInput";
@@ -96,8 +110,11 @@ export const teamRepository = {
     const state = body as unknown as TeamState;
     return ok({ ...state, deskRoles: state.deskRoles ?? {} });
   },
-  invite: (email: string, roleId: string, name: string) =>
-    act("/team/invite", { email, roleId, name }),
+  /** Склад обязателен роли без «Персонала»: кабинет ей показывается только по нему. */
+  invite: (email: string, roleId: string, name: string, place: TeamPlace) =>
+    act("/team/invite", { email, roleId, name, ...place }),
+  /** Перевести человека на склад и привязать к карточке. */
+  setPlace: (memberId: string, place: TeamPlace) => act("/team/place", { memberId, ...place }),
   revokeInvite: (memberId: string) => act("/team/invite/revoke", { memberId }),
   changeRole: (memberId: string, roleId: string) => act("/team/role", { memberId, roleId }),
   setDisabled: (memberId: string, disabled: boolean) =>

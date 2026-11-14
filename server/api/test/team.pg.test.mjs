@@ -98,13 +98,38 @@ async function owner(email, ip) {
 const tokenIn = (mail) => /#invite=([A-Za-z0-9_-]{43})/.exec(mail.text)[1];
 
 async function roles(who) {
+  await ensureCabinet(who);
   const r = await call("GET", "/api/team", who);
   return Object.fromEntries(r.json.roles.map((x) => [x.name, x.id]));
 }
 
+/** Склад, на который зовут в этих тестах (миграция 034: без склада смотрящего не зовут). */
+const WH = "w1";
+
+/** Текущая версия кабинета компании. */
+async function version(who) {
+  return (await call("GET", "/api/cabinet/snapshot", who)).json.snapshot?.version ?? 0;
+}
+
+/** У компании ещё нет кабинета — завести с одним складом `WH`. */
+async function ensureCabinet(who) {
+  const cur = await call("GET", "/api/cabinet/snapshot", who);
+  if (cur.json?.snapshot) return;
+  const data = { warehouse: { id: WH, name: "Склад", staff: [] } };
+  const r = await post("/api/cabinet/snapshot", { ...who, body: { version: 0, format: 8, data } });
+  assert.equal(r.status, 200, JSON.stringify(r.json));
+}
+
+/** Тело приглашения со складом `WH`. */
+async function inviteBody(who, body) {
+  await ensureCabinet(who);
+  return { warehouseRef: WH, ...body };
+}
+
 /** Пригласить и принять новым человеком → его кука. */
-async function join(who, email, roleId) {
-  const inv = await post("/api/team/invite", { ...who, body: { email, roleId } });
+async function join(who, email, roleId, place = {}) {
+  const body = await inviteBody(who, { email, roleId, ...place });
+  const inv = await post("/api/team/invite", { ...who, body });
   assert.equal(inv.status, 200, JSON.stringify(inv.json));
   const token = tokenIn(await lastMail(email));
   const acc = await post("/api/auth/invite/accept", {
@@ -120,7 +145,12 @@ test("пригласить начальника: ссылка из письма,
   const r = await roles(boss);
   const inv = await post("/api/team/invite", {
     ...boss,
-    body: { email: "Chief@Example.com", roleId: r["Начальник склада"], name: "Пётр" },
+    body: {
+      warehouseRef: WH,
+      email: "Chief@Example.com",
+      roleId: r["Начальник склада"],
+      name: "Пётр",
+    },
   });
   assert.equal(inv.status, 200);
   const mail = await lastMail("chief@example.com");
@@ -170,7 +200,7 @@ test("начальник не может выше себя и не может с
   // Дать роль владельца нельзя ни приглашением, ни сменой роли.
   const up = await post("/api/team/invite", {
     ...chief,
-    body: { email: "x@example.com", roleId: r["Владелец"] },
+    body: { warehouseRef: WH, email: "x@example.com", roleId: r["Владелец"] },
   });
   assert.equal(up.status, 403);
   // Владельца не переназначить и не отключить.
@@ -264,7 +294,7 @@ test(
       (
         await post("/api/team/invite", {
           ...clerk,
-          body: { email: "z@example.com", roleId: r["Приёмщик"] },
+          body: { warehouseRef: WH, email: "z@example.com", roleId: r["Приёмщик"] },
         })
       ).status,
       403,
@@ -281,7 +311,7 @@ test(
     // И роль чужой компании не назначить своему.
     const foreignRole = await post("/api/team/invite", {
       ...other,
-      body: { email: "n@example.com", roleId: r["Приёмщик"] },
+      body: { warehouseRef: WH, email: "n@example.com", roleId: r["Приёмщик"] },
     });
     assert.equal(foreignRole.status, 404);
   },
@@ -295,7 +325,7 @@ test(
     const r = await roles(boss);
     const first = await post("/api/team/invite", {
       ...boss,
-      body: { email: "p5@example.com", roleId: r["Приёмщик"] },
+      body: { warehouseRef: WH, email: "p5@example.com", roleId: r["Приёмщик"] },
     });
     assert.equal(first.status, 200);
     const old = tokenIn(await lastMail("p5@example.com"));
@@ -303,7 +333,7 @@ test(
     sent.length = 0;
     await post("/api/team/invite", {
       ...boss,
-      body: { email: "p5@example.com", roleId: r["Сборщик"] },
+      body: { warehouseRef: WH, email: "p5@example.com", roleId: r["Сборщик"] },
     });
     const fresh = tokenIn(await lastMail("p5@example.com"));
     assert.notEqual(fresh, old);
@@ -324,7 +354,7 @@ test(
     const guest = await owner("guest5@example.com", "10.1.0.7");
     await post("/api/team/invite", {
       ...boss,
-      body: { email: "guest5@example.com", roleId: r["Кладовщик"] },
+      body: { warehouseRef: WH, email: "guest5@example.com", roleId: r["Кладовщик"] },
     });
     const token = tokenIn(await lastMail("guest5@example.com"));
     const info = await post("/api/auth/invite/info", { body: { token } });
@@ -347,13 +377,13 @@ test(
     // Тот же человек не принимает второй раз.
     await post("/api/team/invite", {
       ...boss,
-      body: { email: "guest5@example.com", roleId: r["Приёмщик"] },
+      body: { warehouseRef: WH, email: "guest5@example.com", roleId: r["Приёмщик"] },
     });
     assert.equal(
       (
         await post("/api/team/invite", {
           ...boss,
-          body: { email: "guest5@example.com", roleId: r["Приёмщик"] },
+          body: { warehouseRef: WH, email: "guest5@example.com", roleId: r["Приёмщик"] },
         })
       ).status,
       409,
@@ -406,7 +436,7 @@ test(
     // Начальник перед увольнением зовёт свою вторую почту.
     await post("/api/team/invite", {
       ...chief,
-      body: { email: "backdoor7@example.com", roleId: r["Начальник склада"] },
+      body: { warehouseRef: WH, email: "backdoor7@example.com", roleId: r["Начальник склада"] },
     });
     const token = tokenIn(await lastMail("backdoor7@example.com"));
     assert.equal((await post("/api/auth/invite/info", { body: { token } })).status, 200);
@@ -420,7 +450,7 @@ test(
     await post("/api/team/disable", { ...boss, body: { memberId: chiefId, disabled: false } });
     await post("/api/team/invite", {
       ...chief,
-      body: { email: "second7@example.com", roleId: r["Начальник склада"] },
+      body: { warehouseRef: WH, email: "second7@example.com", roleId: r["Начальник склада"] },
     });
     const t2 = tokenIn(await lastMail("second7@example.com"));
     await post("/api/team/role", { ...boss, body: { memberId: chiefId, roleId: r["Кладовщик"] } });
@@ -432,7 +462,7 @@ test(
     });
     await post("/api/team/invite", {
       ...boss,
-      body: { email: "own7@example.com", roleId: r["Владелец"] },
+      body: { warehouseRef: WH, email: "own7@example.com", roleId: r["Владелец"] },
     });
     const ownerId = (await call("GET", "/api/team", boss)).json.members.find(
       (m) => m.email === "own7@example.com",
@@ -589,7 +619,7 @@ test("кладовщик с почтой смотрит кабинет без с
   };
   const first = await post("/api/cabinet/snapshot", {
     ...boss,
-    body: { version: 0, format: 8, data },
+    body: { version: await version(boss), format: 8, data },
   });
   assert.equal(first.status, 200);
   const keeper = await join(boss, "keeper-view@example.com", r["Кладовщик"]);
@@ -642,7 +672,7 @@ test(
     };
     const first = await post("/api/cabinet/snapshot", {
       ...boss,
-      body: { version: 0, format: 8, data },
+      body: { version: await version(boss), format: 8, data },
     });
     assert.equal(first.status, 200);
     const editorRole = await post("/api/team/roles/save", {

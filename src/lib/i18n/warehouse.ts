@@ -241,6 +241,8 @@ export const ru = {
   "team.err.roleInUse": "Роль занята: сначала переведите людей на другую.",
   "team.err.tooManyInvites": "Слишком много неоткрытых приглашений. Отзовите лишние.",
   "team.err.notFound": "Не найдено. Обновите страницу.",
+  "team.err.noWarehouse": "Выберите склад, на котором человек работает.",
+  "team.err.cardTaken": "У этого сотрудника уже есть вход в кабинет.",
   "team.err.badInput": "Проверьте почту и название.",
   "team.err.forbidden": "У вас нет права на это действие.",
   "team.invite.title": "Вас приглашают в Уклад",
@@ -337,6 +339,7 @@ export const ru = {
     "Роль — что человек может за столом по бейджу и в кабинете. Подсказана по должности, можно выбрать другую.",
   "staff.panel.hasLogin": "Входит в кабинет · {role}",
   "staff.panel.invite": "Пригласить в кабинет",
+  "staff.panel.inviteAgain": "Отправить приглашение ещё раз",
   "staff.panel.inviteHint":
     "На почту придёт ссылка: человек сам задаст пароль и войдёт с этой ролью. Ссылка действует 7 дней.",
   "staff.save": "Добавить",
@@ -667,6 +670,8 @@ export const en: Record<keyof typeof ru, string> = {
   "team.err.roleInUse": "The role is in use: move people to another role first.",
   "team.err.tooManyInvites": "Too many unopened invitations. Revoke some.",
   "team.err.notFound": "Not found. Reload the page.",
+  "team.err.noWarehouse": "Choose the warehouse this person works at.",
+  "team.err.cardTaken": "This employee already has a cabinet login.",
   "team.err.badInput": "Check the email and the name.",
   "team.err.forbidden": "You don't have the right to do this.",
   "team.invite.title": "You are invited to Uklad",
@@ -763,6 +768,7 @@ export const en: Record<keyof typeof ru, string> = {
     "The role is what the person may do at the desk with a badge and in the cabinet. Suggested by position; you can pick another.",
   "staff.panel.hasLogin": "Signs in to the cabinet · {role}",
   "staff.panel.invite": "Invite to the cabinet",
+  "staff.panel.inviteAgain": "Send the invitation again",
   "staff.panel.inviteHint":
     "They get a link by email, set a password and sign in with this role. The link works for 7 days.",
   "staff.save": "Add",

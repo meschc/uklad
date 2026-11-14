@@ -200,7 +200,12 @@ function InvitePanel({
   const [roleId, setRoleId] = useState(
     roles.find((r) => r.name === "Кладовщик")?.id ?? roles[0]?.id ?? "",
   );
-  const send = useCommand(() => teamRepository.invite(email.trim(), roleId, name.trim()));
+  // Без карточки — на склад, открытый сейчас: кабинет человеку покажется
+  // только по нему (миграция 034).
+  const warehouseRef = useEditor((s) => s.warehouse.id);
+  const send = useCommand(() =>
+    teamRepository.invite(email.trim(), roleId, name.trim(), { warehouseRef }),
+  );
   const valid = isEmail(email) && roleId;
   const submit = async () => {
     const res = await send.run();

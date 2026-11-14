@@ -197,6 +197,8 @@ export const ru = {
     "Ваша роль даёт только просмотр кабинета. Менять данные может руководитель склада, работа с товаром — за столом по бейджу.",
   "sync.err.forbidden":
     "Ваша роль не даёт доступа ко всему кабинету. Правки на этом устройстве на сервер не уходят — попросите руководителя склада.",
+  "sync.err.noWarehouse":
+    "Руководитель ещё не назначил вам склад. Попросите его открыть вашу карточку в «Персонале» и сохранить.",
   "profile.logoutConfirm": "Выйти и стереть",
   "login.loggedOutOffline":
     "Вы вышли на этом устройстве, но сервер не ответил: там сессия ещё жива. Если компьютер чужой, войдите и выйдите снова, когда появится связь.",
@@ -518,6 +520,8 @@ export const en: Record<keyof typeof ru, string> = {
     "Your role gives view-only access to the cabinet. A warehouse manager changes data; goods work happens at the desk with a badge.",
   "sync.err.forbidden":
     "Your role doesn't give access to the whole cabinet. Changes on this device are not sent to the server — ask your warehouse manager.",
+  "sync.err.noWarehouse":
+    "Your manager hasn't assigned you a warehouse yet. Ask them to open your card in Staff and save it.",
   "profile.logoutConfirm": "Sign out and erase",
   "login.loggedOutOffline":
     "You're signed out on this device, but the server didn't respond, so the session is still alive there. On a shared computer, sign in and out again once you're back online.",

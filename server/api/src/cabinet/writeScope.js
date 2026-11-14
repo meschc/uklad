@@ -59,7 +59,12 @@ function foreignRows(rows, can) {
  * остальные (и метки строк) — из того, что уже лежит. Товары лежат своей
  * таблицей и пишутся отдельно.
  */
-function mergeScoped(cur, next, can) {
+/**
+ * `ref` — склад этого человека (миграция 034): план он правит только у
+ * своего склада, где бы тот ни лежал в снимке — активным у руководителя или
+ * среди остальных. Без `ref` — активный, как раньше.
+ */
+function mergeScoped(cur, next, can, ref) {
   const base = isObject(cur) ? cur : {};
   const sent = isObject(next) ? next : {};
   const out = { ...base };
@@ -69,10 +74,21 @@ function mergeScoped(cur, next, can) {
     // должна их стереть.
     if (key in sent) out[key] = sent[key];
   }
-  if (can("plan.edit") && isObject(base.warehouse) && isObject(sent.warehouse)) {
-    const w = { ...base.warehouse };
-    for (const f of WAREHOUSE_PLAN) if (f in sent.warehouse) w[f] = sent.warehouse[f];
-    out.warehouse = w;
+  if (!can("plan.edit") || !isObject(sent.warehouse)) return out;
+  const target = ref ?? (isObject(base.warehouse) ? base.warehouse.id : undefined);
+  // Прислали план не своего склада — не трогаем ничего.
+  if (sent.warehouse.id !== target) return out;
+  const withPlan = (w) => {
+    const copy = { ...w };
+    for (const f of WAREHOUSE_PLAN) if (f in sent.warehouse) copy[f] = sent.warehouse[f];
+    return copy;
+  };
+  if (isObject(base.warehouse) && base.warehouse.id === target) {
+    out.warehouse = withPlan(base.warehouse);
+  } else if (Array.isArray(base.otherWarehouses)) {
+    out.otherWarehouses = base.otherWarehouses.map((w) =>
+      isObject(w) && w.id === target ? withPlan(w) : w,
+    );
   }
   return out;
 }

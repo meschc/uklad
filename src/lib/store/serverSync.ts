@@ -318,11 +318,24 @@ export function startServerSync(orgId: string): () => void {
   // целиком сервер у неё не примет.
   let scoped = false;
 
-  const forbid = () => {
+  const forbid = (error: "sync.err.forbidden" | "sync.err.noWarehouse" = "sync.err.forbidden") => {
     if (stopped) return;
     stopped = true;
     clearTimeout(timer);
-    useEditor.getState().notify("error", "sync.err.forbidden");
+    // В браузере не копия этой компании (демо после выхода, другая
+    // компания): показать её под этим входом нельзя — человек принял бы
+    // демо-склады за свои. Пустой кабинет, и запись не идёт.
+    const meta = readMeta();
+    if (meta?.orgId !== orgId) {
+      // Отказ повторится после перезагрузки — тогда человек его и увидит.
+      const current = persistedState(useEditor.getState());
+      return replaceWith(blankCabinet(current, current.session.user.email), PERSIST_VERSION, {
+        orgId,
+        version: 0,
+        dirty: false,
+      });
+    }
+    useEditor.getState().notify("error", error);
   };
 
   const schedule = (ms = SAVE_DELAY_MS) => {
@@ -405,7 +418,9 @@ export function startServerSync(orgId: string): () => void {
     const res = await snapshotRepository.load();
     if (stopped) return;
     if (!res.ok) {
-      if (res.error === "sync.err.forbidden") return forbid();
+      if (res.error === "sync.err.forbidden" || res.error === "sync.err.noWarehouse") {
+        return forbid(res.error);
+      }
       schedule(RETRY_MS);
       return;
     }
