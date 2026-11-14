@@ -6,6 +6,8 @@ import { useT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { EmailInput } from "./EmailInput";
+import { FieldError } from "@/components/ui/field";
+import { checkEmail, checkPhone } from "@/lib/validate";
 
 /**
  * Телефон и почта самого склада — в паспорте, рядом с остальным, что видит
@@ -23,7 +25,13 @@ export function WarehouseContacts() {
   });
   const [saved, setSaved] = useState(false);
   const dirty = c.phone !== (warehouse.phone ?? "") || c.email !== (warehouse.email ?? "");
+  // Ошибки — с первой попытки сохранить: красное поле посреди ввода мешает.
+  const [tried, setTried] = useState(false);
+  const phoneErr = tried ? checkPhone(c.phone) : null;
+  const emailErr = tried ? checkEmail(c.email) : null;
   const save = () => {
+    setTried(true);
+    if (checkPhone(c.phone) || checkEmail(c.email)) return;
     updateWarehouseContacts(warehouse.id, c);
     setSaved(true);
     window.setTimeout(() => setSaved(false), 1600);
@@ -32,23 +40,29 @@ export function WarehouseContacts() {
     <section key={warehouse.id} className="flex flex-col gap-3">
       <h2 className="text-sm font-semibold">{t("staff.contacts")}</h2>
       <div className="flex flex-wrap items-start gap-3">
-        <Input
-          value={c.phone}
-          maxLength={PHONE_MAX_LENGTH}
-          onChange={(e) => setC({ ...c, phone: formatPhone(e.target.value) })}
-          placeholder="+7 495 000-00-00"
-          aria-label={t("staff.phone")}
-          inputMode="tel"
-          className="h-9 w-48"
-        />
+        <div className="flex w-48 flex-col gap-1">
+          <Input
+            value={c.phone}
+            maxLength={PHONE_MAX_LENGTH}
+            onChange={(e) => setC({ ...c, phone: formatPhone(e.target.value) })}
+            placeholder="+7 495 000-00-00"
+            aria-label={t("staff.phone")}
+            inputMode="tel"
+            aria-invalid={!!phoneErr || undefined}
+            className="h-9"
+          />
+          {phoneErr && <FieldError>{t(phoneErr)}</FieldError>}
+        </div>
         <div className="flex w-64 flex-col gap-1">
           <EmailInput
             value={c.email}
             onValueChange={(email) => setC({ ...c, email })}
             placeholder="sklad@example.com"
             aria-label={t("staff.email")}
+            aria-invalid={!!emailErr || undefined}
             className="h-9"
           />
+          {emailErr && <FieldError>{t(emailErr)}</FieldError>}
         </div>
         <Button
           size="sm"

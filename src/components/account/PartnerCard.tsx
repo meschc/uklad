@@ -8,9 +8,9 @@ import type { Partner } from "@/lib/types";
 import { DialogFooter, DialogHeader, DialogShell } from "@/components/ui/dialog-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { EmailInput } from "./EmailInput";
-import { FieldError } from "@/components/ui/field";
+import { Field } from "@/components/ui/field";
+import { checkPartner } from "@/lib/validate";
 
 /** Сколько товаров партнёра показать в карточке: дальше — таблица товаров. */
 const GOODS_SHOWN = 8;
@@ -36,7 +36,9 @@ export function PartnerCard({ partner, onClose }: { partner: Partner; onClose: (
     person: partner.person ?? "",
     phone: partner.phone ?? "",
   });
-  const nameErr = draft.name.trim().length < 2;
+  const errors = checkPartner(draft);
+  const invalid = Object.keys(errors).length > 0;
+  const errOf = (f: keyof typeof errors) => (errors[f] ? t(errors[f]) : undefined);
   const dirty =
     draft.name !== partner.name ||
     draft.contact !== (partner.contact ?? "") ||
@@ -44,8 +46,9 @@ export function PartnerCard({ partner, onClose }: { partner: Partner; onClose: (
     draft.phone !== (partner.phone ?? "");
 
   const save = () => {
-    if (nameErr) return;
+    if (invalid) return;
     updatePartner(partner.id, { ...draft, name: draft.name.trim(), contact: draft.contact.trim() });
+    notify("success", "partners.saved", { vars: { name: draft.name.trim() } });
     onClose();
   };
 
@@ -61,46 +64,36 @@ export function PartnerCard({ partner, onClose }: { partner: Partner; onClose: (
         </Button>
       </DialogHeader>
       <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-5">
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="partner-name">{t("partners.namePlaceholder")}</Label>
+        <Field label={t("partners.namePlaceholder")} error={errOf("name")}>
           <Input
-            id="partner-name"
             value={draft.name}
             maxLength={120}
             onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-            className={nameErr ? "border-destructive" : undefined}
           />
-          {nameErr && <FieldError>{t("partners.badName")}</FieldError>}
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="partner-mail">{t("partners.contactPlaceholder")}</Label>
+        </Field>
+        <Field label={t("partners.contactPlaceholder")} error={errOf("contact")}>
           <EmailInput
-            id="partner-mail"
             value={draft.contact}
             onValueChange={(contact) => setDraft({ ...draft, contact })}
           />
-        </div>
+        </Field>
         <div className="grid gap-3 sm:grid-cols-2">
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="partner-person">{t("partners.personPlaceholder")}</Label>
+          <Field label={t("partners.personPlaceholder")} error={errOf("person")}>
             <Input
-              id="partner-person"
               value={draft.person}
               maxLength={120}
               onChange={(e) => setDraft({ ...draft, person: e.target.value })}
             />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="partner-phone">{t("partners.phone")}</Label>
+          </Field>
+          <Field label={t("partners.phone")} error={errOf("phone")}>
             <Input
-              id="partner-phone"
               value={draft.phone}
               inputMode="tel"
               maxLength={PHONE_MAX_LENGTH}
               placeholder="+7 900 000-00-00"
               onChange={(e) => setDraft({ ...draft, phone: formatPhone(e.target.value) })}
             />
-          </div>
+          </Field>
         </div>
 
         <div className="flex flex-col gap-2">
@@ -166,7 +159,7 @@ export function PartnerCard({ partner, onClose }: { partner: Partner; onClose: (
           <Button variant="ghost" onClick={onClose}>
             {t("common.cancel")}
           </Button>
-          <Button onClick={save} disabled={!dirty || nameErr}>
+          <Button onClick={save} disabled={!dirty || invalid}>
             {t("common.save")}
           </Button>
         </div>

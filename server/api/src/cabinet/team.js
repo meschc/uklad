@@ -22,6 +22,7 @@
  */
 /* global require, module */
 /* eslint-disable @typescript-eslint/no-require-imports */
+const { isEmail } = require("../validate");
 const { randomBytes, createHash } = require("node:crypto");
 const { hashPassword, checkPassword, isAcceptable } = require("./password");
 const { createRateLimit, clientIp } = require("../rateLimit");
@@ -29,7 +30,6 @@ const { inviteLetter } = require("./letters");
 const { FAIL_WINDOW_MS, FAIL_PAIR, FAIL_EMAIL } = require("./auth");
 
 const INVITE_TTL_MS = 7 * 86_400_000;
-const EMAIL_RE = /^[^\s@]{1,64}@[^\s@]{1,255}\.[^\s@]{2,}$/;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const TOKEN_RE = /^[A-Za-z0-9_-]{43}$/;
 
@@ -136,7 +136,7 @@ function createTeam({ auth, cfg, send, log }) {
       .trim()
       .toLowerCase();
     const roleId = uuid(b.roleId);
-    if (!EMAIL_RE.test(email) || !roleId) return bad(res);
+    if (!isEmail(email) || !roleId) return bad(res);
     const token = randomBytes(32).toString("base64url");
     const out = await withSession(req, async (c, ctx) => {
       if (!mayUse(ctx)) return { status: 403, error: "forbidden" };

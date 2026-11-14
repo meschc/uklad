@@ -261,6 +261,7 @@ export function StaffScreen() {
         <section className="flex flex-col gap-3">
           <h2 className="text-sm font-semibold">{t("staff.manager")}</h2>
           <PersonForm
+            key={warehouse.id}
             value={{
               name: warehouse.manager?.name ?? warehouse.contactPerson ?? "",
               role: warehouse.manager?.role ?? "",
@@ -268,7 +269,7 @@ export function StaffScreen() {
               email: warehouse.manager?.email ?? "",
               photoUrl: warehouse.manager?.photoUrl ?? "",
             }}
-            onChange={(patch) => updateManager(patch)}
+            onSave={(person) => updateManager(person)}
             t={t}
           />
         </section>

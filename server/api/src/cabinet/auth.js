@@ -27,6 +27,7 @@
  */
 /* global require, module */
 /* eslint-disable @typescript-eslint/no-require-imports */
+const { isEmail, looksLikeEmail } = require("../validate");
 const { randomBytes, randomInt, createHash } = require("node:crypto");
 const { hashPassword, checkPassword, isAcceptable } = require("./password");
 const { createRateLimit, clientIp } = require("../rateLimit");
@@ -52,7 +53,6 @@ const CODES_PER_DAY = 10;
 
 const BADGE_PREFIX = "UKB-";
 const DEFAULT_COMPANY = "Новая компания";
-const EMAIL_RE = /^[^\s@]{1,64}@[^\s@]{1,255}\.[^\s@]{2,}$/;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Ответ и ошибка SMTP часто повторяют адрес целиком: в журнал — без него. */
@@ -192,7 +192,7 @@ function createAuth({ pool, cfg, send, readBody, log, mail, onRegister = null })
     const company = String(b.company ?? "").trim() || DEFAULT_COMPANY;
     // Без согласия на обработку данных регистрироваться нельзя (152-ФЗ).
     if (
-      !EMAIL_RE.test(email) ||
+      !isEmail(email) ||
       !isAcceptable(b.password) ||
       company.length < 1 ||
       company.length > 200 ||
@@ -337,7 +337,7 @@ function createAuth({ pool, cfg, send, readBody, log, mail, onRegister = null })
       return send(res, 429, { ok: false }, { "Retry-After": "60" });
     }
     const email = readEmail(b);
-    if (EMAIL_RE.test(email)) {
+    if (looksLikeEmail(email)) {
       const t = await codeTarget(email, purpose);
       if (t && (purpose === "reset" || !t.verified))
         await sendCode(t.account_id, email, purpose, t);

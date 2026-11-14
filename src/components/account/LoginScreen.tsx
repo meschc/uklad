@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { isEmail } from "@/lib/validate";
 import { Lock, Mail, Store, Warehouse } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import type { UserRole } from "@/lib/types";
@@ -29,7 +30,6 @@ import { FieldError } from "@/components/ui/field";
 type Mode = "signIn" | "signUp" | "reset";
 
 const MIN_PASSWORD = 8;
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 export function LoginScreen() {
   const goToDashboard = useEditor((s) => s.goToDashboard);
@@ -51,7 +51,7 @@ export function LoginScreen() {
     hasCabinetServer ? inviteTokenFromUrl() : null,
   );
 
-  const emailErr = !EMAIL_RE.test(email.trim()) ? t("login.err.email") : null;
+  const emailErr = !isEmail(email) ? t("login.err.email") : null;
   const passErr =
     mode === "reset"
       ? null

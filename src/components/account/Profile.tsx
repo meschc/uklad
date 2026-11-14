@@ -17,11 +17,10 @@ import { flushServerSync, hasDeferredCopy } from "@/lib/store/serverSync";
 import { downloadBackup, downloadDeferredCopy } from "./backupDownload";
 import { PERSIST_KEY, selectRole, useEditor } from "@/lib/store";
 import { removeSaved } from "@/lib/store/persistStorage";
-import { isValidInn } from "@/lib/company";
+import { checkEmail, checkInn, checkKpp, checkOgrn, checkPersonName } from "@/lib/validate";
 import { companyRepository } from "@/lib/data/companyRepository";
 import type { Lang } from "@/lib/types";
 import { useT } from "@/lib/i18n";
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/segmented";
 import { Input } from "@/components/ui/input";
@@ -150,10 +149,17 @@ export function Profile() {
   };
   const close = () => setEdit(null);
 
-  const innErr = draft.inn.trim() !== "" && !isValidInn(draft.inn) ? t("profile.innErr") : null;
+  const innErr = checkInn(draft.inn) ? t("profile.innErr") : null;
+  const nameErr = draft.name.trim()
+    ? (checkPersonName(draft.name) ?? null)
+    : ("profile.nameEmpty" as const);
+  const emailErr = draft.email.trim() ? checkEmail(draft.email) : ("valid.email" as const);
+  const kppErr = checkKpp(draft.kpp);
+  const ogrnErr = checkOgrn(draft.ogrn);
+  const detailsErr = kppErr ?? ogrnErr;
 
   const saveName = () => {
-    if (!draft.name.trim()) return;
+    if (nameErr) return;
     updateProfile({ name: draft.name.trim() });
     close();
   };
@@ -161,7 +167,8 @@ export function Profile() {
   // Почта меняется не сразу: сначала подтверждение нового адреса.
   const saveEmail = () => {
     const next = draft.email.trim();
-    if (!next || next === profile.email) return close();
+    if (emailErr) return;
+    if (next === profile.email) return close();
     setPendingEmail(next);
     setCode("");
     close();
@@ -209,6 +216,7 @@ export function Profile() {
   };
 
   const saveDetails = () => {
+    if (detailsErr) return;
     updateAccount({
       kpp: draft.kpp.trim() || undefined,
       ogrn: draft.ogrn.trim() || undefined,
@@ -330,10 +338,8 @@ export function Profile() {
                     <RowEditor
                       onSave={saveName}
                       onCancel={close}
-                      canSave={!!draft.name.trim()}
-                      hint={
-                        draft.name.trim() ? null : { text: t("profile.nameEmpty"), error: true }
-                      }
+                      canSave={!nameErr}
+                      hint={nameErr ? { text: t(nameErr), error: true } : null}
                     >
                       <Input
                         // eslint-disable-next-line jsx-a11y/no-autofocus -- строчный редактор открыт по клику «изменить»: фокус обязан уйти в поле
@@ -341,7 +347,8 @@ export function Profile() {
                         value={draft.name}
                         onChange={(e) => set({ name: e.target.value })}
                         placeholder={t("profile.namePlaceholder")}
-                        className={cn("h-9 w-full", !draft.name.trim() && "border-destructive")}
+                        aria-invalid={!!nameErr || undefined}
+                        className="h-9 w-full"
                       />
                     </RowEditor>
                   ) : (
@@ -355,7 +362,12 @@ export function Profile() {
                     <RowEditor
                       onSave={saveEmail}
                       onCancel={close}
-                      hint={{ text: t("profile.emailNeedsConfirm") }}
+                      canSave={!emailErr}
+                      hint={
+                        emailErr && draft.email.trim()
+                          ? { text: t(emailErr), error: true }
+                          : { text: t("profile.emailNeedsConfirm") }
+                      }
                     >
                       <Input
                         // eslint-disable-next-line jsx-a11y/no-autofocus -- строчный редактор открыт по клику «изменить»: фокус обязан уйти в поле
@@ -364,6 +376,7 @@ export function Profile() {
                         value={draft.email}
                         onChange={(e) => set({ email: e.target.value })}
                         placeholder={t("profile.emailPlaceholder")}
+                        aria-invalid={(!!emailErr && !!draft.email.trim()) || undefined}
                         className="h-9 w-full"
                       />
                     </RowEditor>
@@ -401,7 +414,8 @@ export function Profile() {
                           maxLength={12}
                           onChange={(e) => set({ inn: e.target.value.replace(/\D/g, "") })}
                           placeholder="7712345678"
-                          className={cn("h-9 w-full font-mono", innErr && "border-destructive")}
+                          aria-invalid={!!innErr || undefined}
+                          className="h-9 w-full font-mono"
                         />
                       </RowEditor>
                     ) : (
@@ -445,7 +459,12 @@ export function Profile() {
 
                   <Row icon={<Building2 className="size-4" />} label={t("profile.companyDetails")}>
                     {edit === "details" ? (
-                      <RowEditor onSave={saveDetails} onCancel={close}>
+                      <RowEditor
+                        onSave={saveDetails}
+                        onCancel={close}
+                        canSave={!detailsErr}
+                        hint={detailsErr ? { text: t(detailsErr), error: true } : null}
+                      >
                         <div className="flex w-full flex-col gap-1.5">
                           <Input
                             // eslint-disable-next-line jsx-a11y/no-autofocus -- строчный редактор открыт по клику «изменить»: фокус обязан уйти в поле
@@ -453,12 +472,14 @@ export function Profile() {
                             value={draft.kpp}
                             onChange={(e) => set({ kpp: e.target.value })}
                             placeholder={t("profile.kpp")}
+                            aria-invalid={!!kppErr || undefined}
                             className="h-9 font-mono"
                           />
                           <Input
                             value={draft.ogrn}
                             onChange={(e) => set({ ogrn: e.target.value })}
                             placeholder={t("profile.ogrn")}
+                            aria-invalid={!!ogrnErr || undefined}
                             className="h-9 font-mono"
                           />
                           <Input

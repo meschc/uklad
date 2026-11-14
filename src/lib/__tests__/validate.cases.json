@@ -1,0 +1,31 @@
+{
+  "email": {
+    "ok": [
+      "name@company.ru",
+      "12kirk2005@gmail.com",
+      "first.last+tag@sub.domain.co.uk",
+      "orders@romashka-trade.ru",
+      "info@почта.рф",
+      "a@xn--80a1acny.xn--p1ai",
+      "  Upper@Example.COM  "
+    ],
+    "bad": [
+      "12kirk2005@gmail.com32r23sfddsfsaфыавфыа",
+      "12kirk2005@gmail.xn--com32r23sfddsfsa-x7k3b8bwa1b",
+      "name@company",
+      "name@company.r",
+      "name@company.ru1",
+      "name@@company.ru",
+      "name@-company.ru",
+      "name@company-.ru",
+      ".name@company.ru",
+      "na..me@company.ru",
+      "name@company..ru",
+      "имя@company.ru",
+      "name@почта.ru",
+      "name company@mail.ru",
+      "@mail.ru",
+      "name@.ru"
+    ]
+  }
+}
