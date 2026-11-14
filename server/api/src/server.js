@@ -179,12 +179,10 @@ function createApp({
   cabinet = null,
   now = () => new Date(),
   log = console,
-  clientErrors = createClientErrors({
-    store: errorStore(db.raw),
-    mail,
-    adminOrigin: cfg.adminOrigin,
-    log,
-  }),
+  // Без файла SQLite (тесты кабинета подают пустую базу) приём ошибок выключен.
+  clientErrors = db.raw
+    ? createClientErrors({ store: errorStore(db.raw), mail, adminOrigin: cfg.adminOrigin, log })
+    : null,
 }) {
   const limiter = createRateLimit({
     capacity: cfg.rateCapacity,
@@ -371,6 +369,7 @@ function createApp({
     if (req.method === "OPTIONS") return send(res, allowed ? 204 : 403, undefined, cors);
     if (req.method !== "POST") return send(res, 405, { ok: false }, cors);
     if (!allowed) return send(res, 403, { ok: false });
+    if (!clientErrors) return send(res, 503, { ok: false }, cors);
     if (!errorLimiter.take(clientIp(req, cfg.trustProxy)))
       return send(res, 429, { ok: false }, cors);
     const body = await readBody(req, MAX_ERROR_BYTES);
