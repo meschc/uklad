@@ -770,7 +770,7 @@ test("матрица ролей: свой склад, запись и чужая
   const r = await roles(boss);
   const first = await post("/api/cabinet/snapshot", {
     ...boss,
-    body: { version: 0, format: 8, data: WORK },
+    body: { version: await version(boss), format: 8, data: WORK },
   });
   assert.equal(first.status, 200);
   let n = 0;
@@ -815,8 +815,68 @@ test("матрица ролей: свой склад, запись и чужая
   }
 });
 
-test(
-  "матрица ролей: второй склад компании и создание склада",
-  { skip: SKIP || "тред «Закрыть вход сотрудника на чужой склад» снимет skip в своём PR" },
-  () => {},
-);
+test("матрица ролей: второй склад компании и создание склада", { skip: SKIP }, async () => {
+  // У руководителя открыт склад Б («w2»), сотрудник позван на склад А («w1»,
+  // лежит среди остальных, его работа — в `warehouseData`). Миграция 034.
+  const boss = await owner("boss-matrix-wh@example.com", "10.1.0.42");
+  const r = await roles(boss);
+  const other = {
+    id: "w2",
+    name: "Склад Б",
+    floors: [{ id: "f2", name: "План Б", modules: [] }],
+    staff: [{ id: "stf-2", name: "Пётр", role: "Кладовщик", hourlyRate: 500 }],
+  };
+  const workOf = (tag) => Object.fromEntries(AREAS.map((k) => [k, [{ id: `${k}-${tag}` }]]));
+  const data = {
+    ...WORK,
+    ...workOf("b"),
+    warehouse: other,
+    otherWarehouses: [{ ...WORK.warehouse, floors: [{ id: "f1", name: "План А", modules: [] }] }],
+    warehouseData: { w1: workOf("a") },
+  };
+  const put = await post("/api/cabinet/snapshot", {
+    ...boss,
+    body: { version: await version(boss), format: 8, data },
+  });
+  assert.equal(put.status, 200);
+  let n = 0;
+  for (const [name, open] of Object.entries(MATRIX)) {
+    if (open === null) continue; // руководитель видит и пишет всю компанию
+    const who = await join(boss, `matrix-wh-${n++}@example.com`, r[name], { warehouseRef: "w1" });
+    const snap = (await call("GET", "/api/cabinet/snapshot", who)).json.snapshot;
+    assert.equal(snap.data.warehouse.id, "w1", name);
+    assert.deepEqual(snap.data.otherWarehouses, [], name);
+    assert.deepEqual(snap.data.warehouseData, {}, name);
+    // Работа — склада А, а не открытого у руководителя склада Б.
+    for (const key of AREAS) {
+      assert.deepEqual(snap.data[key], open.includes(key) ? [{ id: `${key}-a` }] : [], name);
+    }
+    assert.ok(!JSON.stringify(snap.data).includes("Склад Б"), name);
+    assert.ok(!JSON.stringify(snap.data).includes('-b"'), name);
+    // План склада Б не пишет — ни как свой, ни под видом своего.
+    const doc = { ...snap.data, warehouse: { id: "w2", floors: [] } };
+    delete doc.products;
+    const plan = await post("/api/cabinet/snapshot/changes", {
+      ...who,
+      body: { version: snap.version, format: 8, slots: [], upsert: [], remove: [], doc },
+    });
+    assert.equal(plan.status, 403, name);
+    // Новый склад — запись кабинета целиком: нельзя.
+    const add = await post("/api/cabinet/snapshot", {
+      ...who,
+      body: {
+        version: snap.version,
+        format: 8,
+        data: { ...snap.data, otherWarehouses: [{ id: "w-new", name: "Новый", staff: [] }] },
+      },
+    });
+    assert.equal(add.status, 403, name);
+  }
+  const full = (await call("GET", "/api/cabinet/snapshot", boss)).json.snapshot.data;
+  assert.equal(full.warehouse.id, "w2");
+  assert.deepEqual(full.warehouse.floors, other.floors);
+  assert.deepEqual(
+    full.otherWarehouses.map((w) => w.id),
+    ["w1"],
+  );
+});
