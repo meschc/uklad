@@ -43,6 +43,10 @@ export const ru = {
   "ws.login.demoHint": "Демо: нажмите на бейдж вместо скана.",
   "ws.login.noStaff": "В персонале склада никого нет. Добавьте сотрудников на экране «Персонал».",
   "ws.badgeUnknown": "Бейдж не найден среди сотрудников склада",
+  "ws.badgeOtherWarehouse":
+    "Этот бейдж выдан на другом складе компании. За этим столом работают сотрудники только его склада",
+  "ws.deskNoWarehouse":
+    "Этот компьютер не числится ни на одном складе: его убрали из «Устройств». Попросите руководителя заново сделать его столом",
   "ws.badgeNoRole":
     "У вас нет роли на складе. Попросите руководителя назначить её в «Персонале» → «Доступ»",
   "ws.badgeNoRoleIssue":
@@ -516,6 +520,10 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.login.demoHint": "Demo: click a badge instead of scanning.",
   "ws.login.noStaff": "No staff on this warehouse yet. Add people on the Staff screen.",
   "ws.badgeUnknown": "This badge doesn't belong to anyone on the warehouse staff",
+  "ws.badgeOtherWarehouse":
+    "This badge was issued at another warehouse of the company. Only that warehouse's staff work at this desk",
+  "ws.deskNoWarehouse":
+    "This computer isn't listed at any warehouse: it was removed from Devices. Ask your manager to make it a desk again",
   "ws.badgeNoRole":
     "You have no warehouse role yet. Ask your manager to assign one in Staff → Access",
   "ws.badgeNoRoleIssue":

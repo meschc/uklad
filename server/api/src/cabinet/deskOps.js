@@ -335,6 +335,26 @@ function cleanBody(body) {
 }
 
 /**
+ * Операции на складе стола. `who` — кто за столом; сотрудник другого склада
+ * компании за этим столом не считается (`place.staffHere`). `view` — склад
+ * стола после операций, `applied.data` — снимок компании с ним на своём месте.
+ */
+function applyAtPlace(place, base, fresh, who, now, received, verify) {
+  const here = (ref) => (place.staffHere ? place.staffHere(ref) : true);
+  const atDesk = {
+    ...who,
+    staff: here(who.staff) ? who.staff : null,
+    prev: here(who.prev) ? who.prev : null,
+  };
+  const check = verify ? (before, after) => verify(before, after, atDesk) : null;
+  const r = applyDeskOps(place.data, fresh, atDesk, now, received, check);
+  return {
+    applied: { ...r, data: r.changed ? place.back(r.data) : base },
+    view: r.data,
+  };
+}
+
+/**
  * Принять пачку операций в транзакции стола. Снимок берётся FOR UPDATE: две
  * пачки одного стола (или стол и руководитель) не применяются наложением.
  * Ответ на каждую операцию — в порядке пачки; уже принятый ключ отвечает
@@ -379,7 +399,24 @@ async function runDeskOps(c, deskId, ops, who, now, deps = {}) {
   // склада и журнал смен — со строк (миграция 021). Товары стол не пишет.
   const packing = fresh.some((op) => WORK.has(op.kind));
   const base = deps.load ? await deps.load(c, cur.data) : cur.data;
-  const applied = applyDeskOps(base, fresh, who, now, received, deps.verify ?? null);
+  // Склад стола (`deskPlace.js`): операции видят только его, а не склад,
+  // открытый сейчас у руководителя. Нет склада — каждая операция помечена.
+  const place = deps.place ? deps.place(base) : { data: base, back: (x) => x };
+  const { applied, view } = place
+    ? applyAtPlace(place, base, fresh, who, now, received, deps.verify ?? null)
+    : {
+        applied: {
+          data: base,
+          changed: false,
+          results: fresh.map((op) => ({
+            op,
+            status: "flagged",
+            reason: "warehouse",
+            staffRef: null,
+          })),
+        },
+        view: {},
+      };
   // Снимок, который не влезет в лимит, не пишем вовсе — ни снимок, ни журнал
   // операций: стол получает понятный отказ, а не 500.
   const split = applied.changed
@@ -454,7 +491,7 @@ async function runDeskOps(c, deskId, ops, who, now, deps = {}) {
       // Повтор ключа отвечает по телу первой операции, а не по присланному:
       // иначе другим eventId можно было бы получить чужие места.
       ...((old ? old.kind : op.kind) === "recv_cargo" && status === "applied"
-        ? { made: cargoMade(applied.data, old ? old.body : first.op.body) }
+        ? { made: cargoMade(view, old ? old.body : first.op.body) }
         : {}),
     };
   });
