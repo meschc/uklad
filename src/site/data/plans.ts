@@ -83,10 +83,6 @@ export const PLANS: Plan[] = [
         "Label and barcode printing, scanner support",
       ),
       c("Импорт остатков из XLSX", "Stock import from XLSX"),
-      c(
-        "Карточка склада на витрине с отметкой «учёт в Укладе»",
-        "A catalogue card marked “runs on Uklad”",
-      ),
     ],
   },
   {
@@ -103,8 +99,8 @@ export const PLANS: Plan[] = [
       `Start: ${OFFER.freeMonths} month${OFFER.freeMonths === 1 ? "" : "s"} free`,
     ),
     firstScreen: c(
-      "И в бесплатный период, и после оплаты первый экран один: мастер склада — назвать склад, разметить стеллажи (можно взять готовую схему) и залить остатки из XLSX. Принимать поставки можно в тот же день; карточка на витрине появляется после проверки данных.",
-      "The first screen is the same in the free period and after payment: the warehouse wizard — name the warehouse, lay out the racks (a ready-made layout will do) and import stock from XLSX. You can take deliveries the same day; the catalogue card appears once the data is verified.",
+      "И в бесплатный период, и после оплаты первый экран один: мастер склада — назвать склад, разметить стеллажи (можно взять готовую схему) и залить остатки из XLSX. Принимать поставки можно в тот же день.",
+      "The first screen is the same in the free period and after payment: the warehouse wizard — name the warehouse, lay out the racks (a ready-made layout will do) and import stock from XLSX. You can take deliveries the same day.",
     ),
     features: [
       c(
@@ -127,10 +123,6 @@ export const PLANS: Plan[] = [
       c(
         "Счёт селлерам за услуги склада и отгрузку местами",
         "Seller invoices for warehouse services and shipped parcels, boxes and pallets",
-      ),
-      c(
-        "Карточка склада на витрине с отметкой «учёт в Укладе»",
-        "A catalogue card marked “runs on Uklad”",
       ),
     ],
   },
@@ -160,10 +152,7 @@ export const PLANS: Plan[] = [
         "Учёт по клиентам: остатки, отгрузки и биллинг раздельно",
         "Per-client accounting: stock, shipments and billing kept apart",
       ),
-      c(
-        "Тарификация услуг клиентам и выгрузка актов",
-        "Client service billing and statement export",
-      ),
+      c("Тарификация услуг клиентам", "Billing clients for services"),
       c(
         "Приоритетная поддержка, первая реакция за 4 рабочих часа",
         "Priority support, first reply within 4 business hours",
