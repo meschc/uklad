@@ -3,6 +3,7 @@ import { c, useT } from "../../lib/copy";
 import type { RoadmapComment } from "../../lib/roadmap/port";
 import { loadComments, openDialog, postComment, useRoadmap } from "../../lib/roadmap/store";
 import { Button } from "@/components/ui/button";
+import { FieldError } from "@/components/ui/field";
 
 const T = {
   title: c("Обсуждение", "Discussion"),
@@ -110,7 +111,7 @@ export function RoadmapComments({ itemId }: { itemId: string }) {
             />
             {t(T.aliasConsent)}
           </label>
-          {failed && <p className="text-xs text-destructive">{t(T.failed)}</p>}
+          {failed && <FieldError>{t(T.failed)}</FieldError>}
           <Button
             type="submit"
             disabled={busy || !text.trim()}

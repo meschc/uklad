@@ -7,6 +7,7 @@ import { useT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { card } from "@/components/ui/card";
 import { downloadBackup } from "./backupDownload";
+import { FieldError } from "@/components/ui/field";
 
 /**
  * Напоминание сделать копию — в кабинете, куда человек заходит первым делом.
@@ -44,7 +45,7 @@ export function BackupReminder() {
         <div className="min-w-0">
           <p className="text-sm font-semibold">{t("backup.due.title")}</p>
           <p className="text-xs text-muted-foreground">{body}</p>
-          {download.error && <p className="text-xs text-destructive">{t(download.error)}</p>}
+          {download.error && <FieldError>{t(download.error)}</FieldError>}
         </div>
       </div>
       <div className="flex items-center gap-2">

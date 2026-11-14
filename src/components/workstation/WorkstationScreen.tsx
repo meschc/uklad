@@ -469,7 +469,12 @@ function ShiftCodes({ staffId }: { staffId: string }) {
       const mark = parseShiftMarkCode(String((e as CustomEvent).detail));
       void (async () => {
         const res = mark ? await workstationRepository.mark(mark as ShiftMark) : null;
-        useEditor.getState().showToast(res?.ok ? (`ws.ev.${mark}` as MsgKey) : "ws.markRejected");
+        useEditor
+          .getState()
+          .notify(
+            res?.ok ? "success" : "error",
+            res?.ok ? (`ws.ev.${mark}` as MsgKey) : "ws.markRejected",
+          );
       })();
     };
     window.addEventListener(SHIFT_SCAN_EVENT, onScan);

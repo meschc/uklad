@@ -5,11 +5,12 @@ import { fulfillmentRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
 import type { LabelTemplate, Product } from "@/lib/types";
 import { useWarehouseProducts } from "@/lib/warehouseProducts";
-import { useT } from "@/lib/i18n";
+import { useT, type MsgKey } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/segmented";
 import { Input } from "@/components/ui/input";
+import { FieldError } from "@/components/ui/field";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { card } from "@/components/ui/card";
 import { labelNumber } from "@/lib/barcode";
@@ -74,7 +75,7 @@ export function LabelsScreen() {
   const t = useT();
   const boxes = useEditor((s) => s.boxes);
   const pallets = useEditor((s) => s.pallets);
-  const showToast = useEditor((s) => s.showToast);
+  const notify = useEditor((s) => s.notify);
   const warehouseName = useEditor((s) => s.warehouse.name);
   const templates = useEditor((s) => s.labelTemplates);
   const saveTemplate = useEditor((s) => s.saveLabelTemplate);
@@ -89,6 +90,7 @@ export function LabelsScreen() {
   const [count, setCount] = useState(12);
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [rangeErr, setRangeErr] = useState<MsgKey | null>(null);
   /** Коды текущей пачки — то, что уйдёт на печать. */
   const [taraBatch, setBatch] = useState<string[]>([]);
   const n = Math.max(1, Math.min(MAX_BATCH, Math.round(count)));
@@ -201,7 +203,7 @@ export function LabelsScreen() {
   const generate = async () => {
     const res = await create.run(n, kind);
     if (res.ok) setBatch(res.data);
-    else showToast(res.error, undefined, undefined, "error");
+    else notify("error", res.error);
   };
 
   /** Выбрать уже созданные номера «с … по …» — для перепечатки порванных. */
@@ -212,8 +214,10 @@ export function LabelsScreen() {
     const lo = Math.min(a, b);
     const hi = Math.max(a, b);
     const found = all.filter((x) => x.n !== null && x.n >= lo && x.n <= hi);
-    if (found.length === 0) return showToast("labels.rangeEmpty");
-    if (found.length > MAX_BATCH) return showToast("labels.tooMany");
+    // Ошибка диапазона — под полями «с … по …», а не тостом в углу.
+    if (found.length === 0) return setRangeErr("labels.rangeEmpty");
+    if (found.length > MAX_BATCH) return setRangeErr("labels.tooMany");
+    setRangeErr(null);
     setBatch(found.map((x) => x.code));
   };
 
@@ -260,7 +264,12 @@ export function LabelsScreen() {
       maxLength={7}
       inputMode="numeric"
       value={v}
-      onChange={(e) => set(e.target.value.replace(/\D/g, "").slice(0, 7))}
+      aria-invalid={rangeErr ? true : undefined}
+      aria-describedby={rangeErr ? "labels-range-err" : undefined}
+      onChange={(e) => {
+        setRangeErr(null);
+        set(e.target.value.replace(/\D/g, "").slice(0, 7));
+      }}
       className="h-9 w-28 text-right tabular-nums"
     />
   );
@@ -347,18 +356,25 @@ export function LabelsScreen() {
                   </Button>
                 </div>
 
-                <div className="flex items-end gap-2">
-                  <label className="flex flex-col gap-1">
-                    <span className={eyebrow()}>{t("labels.from")}</span>
-                    {num(from, setFrom)}
-                  </label>
-                  <label className="flex flex-col gap-1">
-                    <span className={eyebrow()}>{t("labels.to")}</span>
-                    {num(to, setTo)}
-                  </label>
-                  <Button className="h-9" variant="outline" onClick={pickRange} disabled={!from}>
-                    {t("labels.pick")}
-                  </Button>
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-end gap-2">
+                    <label className="flex flex-col gap-1">
+                      <span className={eyebrow()}>{t("labels.from")}</span>
+                      {num(from, setFrom)}
+                    </label>
+                    <label className="flex flex-col gap-1">
+                      <span className={eyebrow()}>{t("labels.to")}</span>
+                      {num(to, setTo)}
+                    </label>
+                    <Button className="h-9" variant="outline" onClick={pickRange} disabled={!from}>
+                      {t("labels.pick")}
+                    </Button>
+                  </div>
+                  {rangeErr && (
+                    <FieldError id="labels-range-err" className="max-w-[22rem]">
+                      {t(rangeErr)}
+                    </FieldError>
+                  )}
                 </div>
 
                 {unprinted.length > 0 && (

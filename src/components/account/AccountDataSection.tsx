@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Row } from "./ProfileRow";
 import { Section } from "./ProfileParts";
 import { downloadBackup } from "./backupDownload";
+import { FormError } from "@/components/ui/field";
 
 /**
  * «Безопасность и данные» — то, что человек ищет в профиле любого сервиса,
@@ -119,7 +120,7 @@ export function AccountDataSection() {
               }}
               className="h-9 sm:max-w-xs"
             />
-            {remove.error && <p className="text-sm text-destructive">{t(remove.error)}</p>}
+            {remove.error && <FormError>{t(remove.error)}</FormError>}
             <div className="flex flex-wrap gap-2">
               <Button
                 type="submit"

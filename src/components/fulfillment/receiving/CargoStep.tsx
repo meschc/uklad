@@ -13,6 +13,7 @@ import { eyebrow } from "@/components/ui/eyebrow";
 import { EmptyState } from "../ScreenShell";
 import { LIMITS } from "@/lib/numberLimits";
 import { Select } from "@/components/ui/select";
+import { FieldError } from "@/components/ui/field";
 
 /**
  * Грузовая приёмка (первый этап из двух): места поставки при водителе.
@@ -106,7 +107,7 @@ export function CargoStep({ staffId, t }: { staffId: string; t: TFunc }) {
             <Truck className="size-3.5" />
             {t("cargo.accept")}
           </Button>
-          {error && <span className="text-xs text-destructive">{t(error)}</span>}
+          {error && <FieldError>{t(error)}</FieldError>}
         </div>
       </form>
 

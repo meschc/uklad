@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { Engine } from "./engine";
 import { Select } from "@/components/ui/select";
+import { FieldError } from "@/components/ui/field";
 
 /** Ответ «есть ли видеокарта» на вкладку один — переспрашивать нечего. */
 let webglAnswer: boolean | null = null;
@@ -514,11 +515,7 @@ function CustomFieldInput({ productId, field }: { productId: string; field: Cate
           className={ctrl}
         />
       )}
-      {save.error && (
-        <span role="alert" className="text-xs text-destructive">
-          {t(save.error)}
-        </span>
-      )}
+      {save.error && <FieldError>{t(save.error)}</FieldError>}
     </label>
   );
 }

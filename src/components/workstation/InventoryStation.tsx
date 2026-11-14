@@ -12,6 +12,7 @@ import { eyebrow } from "@/components/ui/eyebrow";
 import { QtyStepper } from "@/components/fulfillment/QtyStepper";
 import { ScanField, type ScanStatus } from "@/components/fulfillment/ScanField";
 import { useNow } from "./useNow";
+import { FormError } from "@/components/ui/field";
 
 /** Сколько давно не считанной тары показываем: куда идти дальше. */
 const NEXT_LIMIT = 8;
@@ -122,9 +123,7 @@ export function InventoryStation() {
             onSubmit={scanBox}
           />
           {status === "error" && (
-            <p role="alert" className="text-sm text-destructive">
-              {t(choice ? "ws.count.cellEmpty" : "ws.count.boxUnknown")}
-            </p>
+            <FormError>{t(choice ? "ws.count.cellEmpty" : "ws.count.boxUnknown")}</FormError>
           )}
           {choice && choice.length > 1 && (
             <section className="flex flex-col gap-2">
@@ -221,11 +220,7 @@ export function InventoryStation() {
               ))}
             </ul>
           )}
-          {count.error && (
-            <p role="alert" className="text-sm text-destructive">
-              {t(count.error)}
-            </p>
-          )}
+          {count.error && <FormError>{t(count.error)}</FormError>}
           <div>
             <Button disabled={count.pending} onClick={() => void finish()} size="lg">
               <ClipboardCheck />

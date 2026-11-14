@@ -8,6 +8,7 @@ import type { TFunc } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FieldError } from "@/components/ui/field";
 
 /**
  * Правка самого списка категорий (п.15): добавить, переименовать, удалить.
@@ -85,11 +86,7 @@ export function CategoryTools({
   /** Сбой связи той команды, которую сейчас показывает форма. */
   const failed = mode === "add" ? add.error : rename.error;
 
-  const alert = error && (
-    <p role="alert" className="w-full pt-1.5 text-xs text-destructive">
-      {error}
-    </p>
-  );
+  const alert = error && <FieldError className="w-full pt-1.5">{error}</FieldError>;
 
   if (mode !== "idle") {
     return (

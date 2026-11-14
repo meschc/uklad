@@ -1,3 +1,4 @@
+import { pushNotice } from "../notice";
 import { clamp, nowMs } from "../utils";
 import type { PrintSlice, SliceCreator, ViewSlice } from "./state";
 
@@ -16,11 +17,11 @@ export const createPrintSlice: SliceCreator<PrintSlice> = (set) => ({
   setPrintPreview: (open) => set({ printPreviewOpen: open }),
 });
 
-export const createViewSlice: SliceCreator<ViewSlice> = (set) => ({
+export const createViewSlice: SliceCreator<ViewSlice> = (set, get) => ({
   mode: "table",
   zoom: 1,
   pan: { x: 0, y: 0 },
-  toast: null,
+  toasts: [],
 
   setMode: (mode) => set({ mode }),
 
@@ -28,6 +29,13 @@ export const createViewSlice: SliceCreator<ViewSlice> = (set) => ({
   setView: (zoom, pan) => set({ zoom: clamp(zoom, ZOOM_LO, ZOOM_HI), pan }),
   setPan: (pan) => set({ pan }),
 
-  showToast: (key, vars, undo, tone) =>
-    set({ toast: { id: nowMs() + Math.random(), key, vars, undo, tone } }),
+  notify: (tone, key, opts) =>
+    set({
+      toasts: pushNotice(
+        get().toasts,
+        { tone, key, vars: opts?.vars, undo: opts?.undo },
+        nowMs() + Math.random(),
+      ),
+    }),
+  dismissToast: (id) => set({ toasts: get().toasts.filter((n) => n.id !== id) }),
 });

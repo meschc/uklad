@@ -17,6 +17,7 @@ import { eyebrow } from "@/components/ui/eyebrow";
 import { DialogFooter, DialogHeader, DialogShell } from "@/components/ui/dialog-shell";
 import { ImagePicker } from "./ImagePicker";
 import { RoleField } from "./PersonForm";
+import { FieldError } from "@/components/ui/field";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -215,11 +216,7 @@ export function StaffPanel({
           </section>
         )}
 
-        {err && (
-          <p role="alert" className="text-xs text-destructive">
-            {t(err)}
-          </p>
-        )}
+        {err && <FieldError>{t(err)}</FieldError>}
       </div>
       <DialogFooter>
         <Button variant="ghost" size="sm" onClick={onClose}>

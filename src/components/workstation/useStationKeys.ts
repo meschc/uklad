@@ -41,17 +41,19 @@ export function useStationKeys(
         if (marks.includes("break_start")) return void mark("break_start");
         return toggleRef.current("shift");
       }
-      if (!marks.includes("shift_end")) return s.showToast("ws.keys.noShift");
+      if (!marks.includes("shift_end")) return s.notify("warning", "ws.keys.noShift");
       if (Date.now() - endArmed.current > CONFIRM_MS) {
         endArmed.current = Date.now();
-        return s.showToast("ws.keys.endAgain");
+        return s.notify("warning", "ws.keys.endAgain");
       }
       endArmed.current = 0;
       void mark("shift_end");
     };
     const mark = async (type: "break_start" | "break_end" | "shift_end") => {
       const res = await workstationRepository.mark(type);
-      useEditor.getState().showToast(res?.ok ? `ws.ev.${type}` : "ws.markRejected");
+      useEditor
+        .getState()
+        .notify(res?.ok ? "success" : "error", res?.ok ? `ws.ev.${type}` : "ws.markRejected");
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);

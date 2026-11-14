@@ -3,6 +3,7 @@ import { ImagePlus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { imageToDataUrl } from "@/lib/image";
 import { useT } from "@/lib/i18n";
+import { FieldError } from "@/components/ui/field";
 
 /**
  * Квадратная картинка с кнопками «Загрузить / Убрать»: фото человека или
@@ -89,7 +90,7 @@ export function ImagePicker({
           }}
         />
       </div>
-      {error && <span className="text-xs text-destructive">{error}</span>}
+      {error && <FieldError>{error}</FieldError>}
     </div>
   );
 }

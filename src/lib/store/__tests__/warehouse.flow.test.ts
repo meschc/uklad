@@ -20,7 +20,7 @@ const CELL: CellAddress = { floorId: "f1", moduleId: "m1", shelfIndex: 0, cellIn
 
 describe("склад от приёмки до отгрузки, приёмка в два этапа", () => {
   it("проходит весь путь и даёт отчёт по услугам", () => {
-    const store = makeFlowStore({ products: [A, B], placements: {}, showToast: () => {} });
+    const store = makeFlowStore({ products: [A, B], placements: {}, notify: () => {} });
     const s = () => store.getState();
     s().setTwoStageReceiving(true);
 

@@ -332,7 +332,8 @@ async function sayFlagged(kinds: DeskOpKind[]) {
   const counting = kinds.includes("inv_count");
   useEditor
     .getState()
-    .showToast(
+    .notify(
+      "error",
       packing
         ? "ws.opPackRejected"
         : picking
@@ -360,7 +361,7 @@ async function resync() {
 
 async function sayLost(n: number) {
   const { useEditor } = await import("../store");
-  useEditor.getState().showToast("ws.opLost", { n });
+  useEditor.getState().notify("error", "ws.opLost", { vars: { n } });
 }
 
 export const deskOps: OpQueue = createOpQueue({

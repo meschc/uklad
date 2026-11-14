@@ -12,6 +12,7 @@ import { eyebrow } from "@/components/ui/eyebrow";
 import { cn } from "@/lib/utils";
 import { JournalActions } from "./JournalActions";
 import type { JournalRefs } from "@/lib/data/deskServer";
+import { FormError } from "@/components/ui/field";
 
 /** Виды операций стола на сервере (`desk_ops.kind`) — подписи в словаре. */
 const SERVER_KINDS = new Set([
@@ -97,7 +98,7 @@ export function DeviceJournal({
         <section className="flex flex-col gap-3">
           <h3 className={eyebrow()}>{t("devices.journal.before")}</h3>
           {failed ? (
-            <p className="text-sm text-destructive">{t("data.failed")}</p>
+            <FormError>{t("data.failed")}</FormError>
           ) : !entries ? (
             <p className="text-sm text-muted-foreground">{t("data.busy")}</p>
           ) : rows.length === 0 ? (

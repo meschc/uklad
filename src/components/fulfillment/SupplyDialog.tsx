@@ -8,7 +8,8 @@ import { uid } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { eyebrow } from "@/components/ui/eyebrow";
-import { Modal, Field } from "./Modal";
+import { Modal } from "./Modal";
+import { Field } from "@/components/ui/field";
 import { digitsFor } from "@/lib/numberLimits";
 import { Select } from "@/components/ui/select";
 

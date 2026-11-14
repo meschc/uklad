@@ -23,6 +23,7 @@ module.exports = {
   ...money,
   ...demos,
   confirmPage: base.confirmPage,
+  toast: base.toast,
   auditPage: audit.auditPage,
   CSS: base.CSS,
   esc: base.esc,

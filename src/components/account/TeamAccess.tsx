@@ -12,6 +12,7 @@ import { selectClass } from "./teamSelect";
 import { RoleList } from "./RoleList";
 import { useTeam } from "./useTeam";
 import { Select } from "@/components/ui/select";
+import { FieldError } from "@/components/ui/field";
 
 /**
  * Вкладка «Доступ» в «Персонале»: кто входит в кабинет и с какой ролью.
@@ -36,14 +37,14 @@ const STATUS_KEYS: Record<TeamMember["status"], MsgKey> = {
  */
 export function TeamAccess() {
   const t = useT();
-  const showToast = useEditor((s) => s.showToast);
+  const notify = useEditor((s) => s.notify);
   const { state, failed, reload } = useTeam();
   const [inviting, setInviting] = useState(false);
 
   // Правка на месте: роль и отключение — команды строки, отказ — тостом.
   const run = async (op: () => ReturnType<typeof teamRepository.setDisabled>) => {
     const res = await op();
-    if (!res.ok) showToast(res.error, undefined, undefined, "error");
+    if (!res.ok) notify("error", res.error);
     reload();
   };
 
@@ -103,7 +104,7 @@ export function TeamAccess() {
           onClose={() => setInviting(false)}
           onDone={async (email) => {
             setInviting(false);
-            showToast("team.sent", { email });
+            notify("success", "team.sent", { vars: { email } });
             reload();
           }}
         />
@@ -244,11 +245,7 @@ function InvitePanel({
             ))}
           </Select>
         </label>
-        {send.error && (
-          <p role="alert" className="text-xs text-destructive">
-            {t(send.error)}
-          </p>
-        )}
+        {send.error && <FieldError>{t(send.error)}</FieldError>}
       </div>
       <DialogFooter>
         <Button variant="ghost" size="sm" onClick={onClose}>

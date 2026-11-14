@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/segmented";
 import { Row } from "./ProfileRow";
 import { downloadBackup } from "./backupDownload";
+import { FieldError } from "@/components/ui/field";
 
 /**
  * Резервная копия: скачать архив, восстановить из него, срок напоминания и
@@ -73,7 +74,7 @@ export function BackupSection() {
     <div className="flex flex-col divide-y divide-border/60">
       <Row icon={<Download className="size-4" />} label={t("backup.archive")}>
         <div className="flex flex-wrap items-center justify-end gap-2">
-          {download.error && <span className="text-xs text-destructive">{t(download.error)}</span>}
+          {download.error && <FieldError>{t(download.error)}</FieldError>}
           <span className="text-xs text-muted-foreground">
             {backup.lastBackupAt
               ? t("backup.last", { date: fmt(backup.lastBackupAt) })
@@ -92,16 +93,16 @@ export function BackupSection() {
 
       <Row icon={<Upload className="size-4" />} label={t("backup.restore")}>
         <div className="flex flex-col items-end gap-2">
-          {restoreError && <span className="text-xs text-destructive">{t(restoreError)}</span>}
+          {restoreError && <FieldError>{t(restoreError)}</FieldError>}
           {pending ? (
             <>
               {/* Предупреждение отдельной строкой над кнопками: в одну линию с
                   ними оно переносилось по слову и толкало кнопки. */}
-              <p className="max-w-64 text-right text-xs text-destructive">
+              <FieldError className="max-w-64 text-right">
                 {t("backup.restoreWarn", {
                   date: pending.createdAt ? fmt(pending.createdAt) : "—",
                 })}
-              </p>
+              </FieldError>
               <div className="flex items-center gap-2">
                 <Button size="sm" variant="outline" onClick={() => setPending(null)}>
                   {t("common.cancel")}
@@ -163,7 +164,7 @@ export function BackupSection() {
             </span>
           )}
         </Row>
-        {weekly.error && <p className="px-4 pb-3 text-xs text-destructive">{t(weekly.error)}</p>}
+        {weekly.error && <FieldError className="px-4 pb-3">{t(weekly.error)}</FieldError>}
         {canEmail && backup.emailWeekly && (
           <p className="px-4 pb-3 text-xs text-muted-foreground">
             {t("backup.emailNote", { email })}

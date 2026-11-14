@@ -9,6 +9,7 @@ import { eyebrow } from "@/components/ui/eyebrow";
 import { Row } from "./fields";
 import { RowSidedControl } from "./RowSidedControl";
 import { LIMITS } from "@/lib/numberLimits";
+import { FieldError } from "@/components/ui/field";
 
 /**
  * Адрес секции: этаж, ряд, номер. Показываем ДЕЙСТВУЮЩИЙ номер — свой, если
@@ -123,7 +124,7 @@ export function SectionNumber({
           </button>
         )}
       </div>
-      {duplicate && <span className="text-xs text-destructive">{t("insp.numberDup")}</span>}
+      {duplicate && <FieldError>{t("insp.numberDup")}</FieldError>}
     </div>
   );
 }

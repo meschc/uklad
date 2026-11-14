@@ -7,6 +7,7 @@ import type { StaffMember } from "@/lib/types";
 import { useT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { formatTime } from "./useNow";
+import { FormError } from "@/components/ui/field";
 
 /**
  * Выход со стола при открытой смене (Кирилл 13.11: «заканчивается ли смена
@@ -44,11 +45,7 @@ export function LogoutPanel({ member }: { member: StaffMember }) {
         </Button>
       </div>
       <p className="text-xs text-muted-foreground">{t("ws.out.hint")}</p>
-      {(mark.error || logout.error) && (
-        <p role="alert" className="text-sm text-destructive">
-          {t((mark.error ?? logout.error)!)}
-        </p>
-      )}
+      {(mark.error || logout.error) && <FormError>{t((mark.error ?? logout.error)!)}</FormError>}
     </div>
   );
 }

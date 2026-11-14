@@ -16,6 +16,7 @@ import { DialogFooter, DialogHeader, DialogShell } from "@/components/ui/dialog-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { FieldError } from "@/components/ui/field";
 
 /**
  * Карта — отдельным куском: её открывают по кнопке и далеко не всегда, а
@@ -232,7 +233,7 @@ export function WarehouseDialog({
               {geocoding ? t("wh.geocoding") : t("wh.findOnMap")}
             </Button>
           </div>
-          {geoErr && <span className="text-xs text-destructive">{t("wh.geocodeFail")}</span>}
+          {geoErr && <FieldError>{t("wh.geocodeFail")}</FieldError>}
         </label>
 
         {/* Карта — по кнопке, чтобы не занимать полдиалога при создании */}
@@ -319,13 +320,13 @@ export function WarehouseDialog({
 
         {/* Подтверждение удаления */}
         {confirmDelete && (
-          <div className="flex gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-2.5 text-xs text-destructive">
-            <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+          <div role="alert" className="flex gap-2 text-xs">
+            <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-destructive" />
             <div className="min-w-0">
-              <p className="font-semibold">
+              <p className="font-semibold text-destructive">
                 {t("wh.delete.confirm", { name: warehouse?.name ?? "" })}
               </p>
-              <p className="mt-0.5 opacity-90">{t("wh.delete.note")}</p>
+              <p className="mt-0.5 text-muted-foreground">{t("wh.delete.note")}</p>
               {mustType && work && (
                 <>
                   <p className="mt-1.5 font-medium">
@@ -337,7 +338,7 @@ export function WarehouseDialog({
                     })}
                   </p>
                   <Input
-                    className="mt-1.5 h-8 bg-background text-foreground"
+                    className="mt-1.5 h-8"
                     placeholder={t("wh.delete.typeName", { name: warehouse?.name ?? "" })}
                     value={typedName}
                     onChange={(e) => setTypedName(e.target.value)}

@@ -91,7 +91,7 @@ function RequestsTasks({ sections }: { sections: React.ReactNode }) {
   const warehouse = useEditor((s) => s.warehouse);
   const placements = useEditor((s) => s.placements);
   const boxes = useEditor((s) => s.boxes);
-  const showToast = useEditor((s) => s.showToast);
+  const notify = useEditor((s) => s.notify);
   const goToView = useEditor((s) => s.goToView);
   const trips = useEditor((s) => s.shipments);
   const openDoc = useEditor((s) => s.openDoc);
@@ -128,7 +128,7 @@ function RequestsTasks({ sections }: { sections: React.ReactNode }) {
   );
   const setStatus = async (id: string, next: RequestStatus) => {
     const res = await status.run(id, next);
-    if (!res.ok) showToast(res.error, undefined, undefined, "error");
+    if (!res.ok) notify("error", res.error);
   };
 
   const [filter, setFilter] = useState<RequestStatus | "all">("all");

@@ -15,7 +15,7 @@ import { SideNav } from "@/components/nav/SideNav";
 import { navFor } from "@/components/nav/navItems";
 import type { AppView } from "@/lib/types";
 import { ChatWatcher } from "@/components/chat/ChatWatcher";
-import { Toast } from "@/components/editor/Toast";
+import { Toaster } from "@/components/Toaster";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 /**
@@ -289,7 +289,7 @@ export default function App() {
       {/* За столом сообщения продавцов не всплывают: экран общий, переписка
           — дело руководителя. */}
       {!kiosk && !locked && <ChatWatcher />}
-      <Toast />
+      <Toaster />
     </>
   );
 

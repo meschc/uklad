@@ -12,6 +12,7 @@ import { AsciiBanner } from "./frame/AsciiBanner";
 import { c, useT, type Copy } from "../lib/copy";
 import type { LeadField } from "../lib/leads";
 import { useLeadSend } from "../lib/useLeadSend";
+import { FieldError } from "@/components/ui/field";
 
 const T = {
   title: c("Контакты", "Contacts"),
@@ -270,11 +271,7 @@ function ContactForm() {
       <ConsentChecks value={consent} onChange={setConsent} className="mt-5" />
 
       <LeadSubmit lead={lead} idle={t(T.send)} type="submit" icon className="mt-auto pt-5" />
-      {tried && !consent.data && (
-        <p role="alert" className="mt-2 text-xs leading-relaxed text-destructive">
-          {t(T.consentNote)}
-        </p>
-      )}
+      {tried && !consent.data && <FieldError className="mt-2">{t(T.consentNote)}</FieldError>}
     </form>
   );
 }

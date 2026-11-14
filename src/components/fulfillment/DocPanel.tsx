@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { LIMITS } from "@/lib/numberLimits";
 import { Select } from "@/components/ui/select";
+import { FormError } from "@/components/ui/field";
 
 /**
  * Панель документа справа — правка черновика и подтверждение. Не окно поверх
@@ -182,7 +183,7 @@ export function DocPanel({
             >
               {t("doc.save")}
             </Button>
-            {save.error && <p className="text-sm text-destructive">{t(save.error)}</p>}
+            {save.error && <FormError>{t(save.error)}</FormError>}
 
             <section className="flex flex-col gap-2 border-t border-border pt-4">
               <h3 className={eyebrow({ tone: "muted" })}>{t("doc.confirmTitle")}</h3>
@@ -213,7 +214,7 @@ export function DocPanel({
                   </Button>
                 </div>
               )}
-              {confirm.error && <p className="text-sm text-destructive">{t(confirm.error)}</p>}
+              {confirm.error && <FormError>{t(confirm.error)}</FormError>}
             </section>
           </>
         )}

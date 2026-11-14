@@ -2,6 +2,7 @@ import type { StateCreator } from "zustand";
 // Только тип: `import type` стирается при сборке, поэтому кольца
 // «словарь → хранилище → словарь» не возникает.
 import type { MsgKey } from "../i18n";
+import type { Notice, NoticeInput, NoticeTone } from "../notice";
 import type { ItemScan, PackDoneFacts } from "../packing";
 import type { CountDiff, CountInput, CountProblem } from "../inventory";
 import type {
@@ -394,27 +395,16 @@ export interface ViewSlice {
   mode: ViewMode;
   zoom: number;
   pan: { x: number; y: number };
-  /** Транзиентное уведомление: локализуется в UI по ключу + переменным. */
-  toast: {
-    id: number;
-    key: MsgKey;
-    vars?: Record<string, string | number>;
-    /** Вернуть сделанное — у действий класса `undoable` (`lib/actionRisk`). */
-    undo?: () => void;
-    /** Отказ — красный значок вместо зелёной галочки. */
-    tone?: "error";
-  } | null;
+  /** Стопка уведомлений (`lib/notice`): локализуются в UI по ключу. */
+  toasts: Notice[];
 
   setMode: (mode: ViewMode) => void;
   setZoom: (zoom: number) => void;
   setView: (zoom: number, pan: { x: number; y: number }) => void;
   setPan: (pan: { x: number; y: number }) => void;
-  showToast: (
-    key: MsgKey,
-    vars?: Record<string, string | number>,
-    undo?: () => void,
-    tone?: "error",
-  ) => void;
+  /** Уведомление. Тон обязателен: отказ не должен выглядеть успехом. */
+  notify: (tone: NoticeTone, key: MsgKey, opts?: NoticeInput) => void;
+  dismissToast: (id: number) => void;
 }
 
 // --- Разовые подсказки онбординга --------------------------------------------

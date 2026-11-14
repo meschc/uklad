@@ -7,6 +7,7 @@ import { closeDialog, port, requestCode, verifyCode } from "../../lib/roadmap/st
 import type { RoadmapError } from "../../lib/roadmap/port";
 import { SidePanel } from "../frame/SidePanel";
 import { Button } from "@/components/ui/button";
+import { FieldError } from "@/components/ui/field";
 
 const T = {
   title: ru("Аккаунт Уклада"),
@@ -232,9 +233,5 @@ export function SubmitButton({
 }
 
 export function Hint({ text }: { text: string }) {
-  return (
-    <p role="alert" className="-mt-1 text-xs leading-relaxed text-destructive">
-      {text}
-    </p>
-  );
+  return <FieldError className="-mt-1">{text}</FieldError>;
 }

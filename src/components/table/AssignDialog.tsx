@@ -21,6 +21,7 @@ import { DialogFooter, DialogHeader, DialogShell } from "@/components/ui/dialog-
 import { Button } from "@/components/ui/button";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { Select } from "@/components/ui/select";
+import { Field, FormError } from "@/components/ui/field";
 
 /**
  * Назначение товара на ячейку (ТЗ, разд. 3.6 — только здесь, не в 3D).
@@ -454,12 +455,7 @@ export function AssignDialog({ product, onClose }: { product: Product; onClose: 
       {/* Отказ отдельной строкой над подвалом: слева в подвале уже стоит
           «Снять с места», и сообщению там не хватило бы ширины. */}
       {error && (
-        <p
-          role="alert"
-          className="shrink-0 border-t border-border bg-destructive/10 px-5 py-2 text-xs text-destructive"
-        >
-          {t(error)}
-        </p>
+        <FormError className="shrink-0 border-t border-border px-5 py-2.5">{t(error)}</FormError>
       )}
 
       {/* Действия */}
@@ -542,15 +538,6 @@ function Shell({
       </DialogHeader>
       {children}
     </DialogShell>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="flex flex-col gap-1">
-      <span className={eyebrow()}>{label}</span>
-      {children}
-    </label>
   );
 }
 

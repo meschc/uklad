@@ -1,8 +1,8 @@
 import { Loader2, X } from "lucide-react";
 import { DialogFooter, DialogHeader, DialogShell } from "@/components/ui/dialog-shell";
 import { Button } from "@/components/ui/button";
-import { eyebrow } from "@/components/ui/eyebrow";
 import { useT, type MsgKey } from "@/lib/i18n";
+import { FormError } from "@/components/ui/field";
 
 /**
  * Модальное окно фулфилмента: шапка, тело с прокруткой, подвал с двумя
@@ -55,11 +55,7 @@ export function Modal({
       </DialogHeader>
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-5 py-4">{children}</div>
       <DialogFooter spread={!!error}>
-        {error && (
-          <p role="alert" className="min-w-0 flex-1 text-xs text-destructive">
-            {t(error)}
-          </p>
-        )}
+        {error && <FormError className="flex-1 text-xs">{t(error)}</FormError>}
         {/* Отмену не блокируем даже во время команды: если запрос повис,
             единственный выход из окна не должен быть заперт вместе с ним. */}
         <div className="flex shrink-0 items-center gap-2">
@@ -77,15 +73,5 @@ export function Modal({
         </div>
       </DialogFooter>
     </DialogShell>
-  );
-}
-
-/** Поле формы диалога: подпись сверху, контрол снизу. */
-export function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="flex flex-col gap-1">
-      <span className={eyebrow()}>{label}</span>
-      {children}
-    </label>
   );
 }

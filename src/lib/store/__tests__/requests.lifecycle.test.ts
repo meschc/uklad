@@ -326,7 +326,7 @@ describe("shipRequests", () => {
         makeRequest({ id: "в работе", productId: "p1", qty: 1, status: "in_progress" }),
       ],
       shipments: [],
-      showToast: vi.fn(),
+      notify: vi.fn(),
     });
 
     // Act
@@ -348,7 +348,7 @@ describe("shipRequests", () => {
         makeRequest({ id: "r1", productId: "p1", qty: 1, status: "done", note: "  Тула  " }),
       ],
       shipments: [],
-      showToast: vi.fn(),
+      notify: vi.fn(),
     });
 
     // Act
@@ -367,7 +367,7 @@ describe("shipRequests", () => {
     const store = makeRequestsStore({
       requests: [makeRequest({ id: "r1", productId: "p1", qty: 1, status: "done", note: "Тула" })],
       shipments: [],
-      showToast: vi.fn(),
+      notify: vi.fn(),
     });
 
     // Act
@@ -384,7 +384,7 @@ describe("shipRequests", () => {
     const store = makeRequestsStore({
       requests: [makeRequest({ id: "r1", productId: "p1", qty: 1, status: "done" })],
       shipments: [],
-      showToast: vi.fn(),
+      notify: vi.fn(),
     });
 
     // Act
@@ -396,11 +396,11 @@ describe("shipRequests", () => {
 
   it("возвращает null и не создаёт рейс, когда отгружать нечего", () => {
     // Arrange
-    const showToast = vi.fn();
+    const notify = vi.fn();
     const store = makeRequestsStore({
       requests: [makeRequest({ id: "r1", productId: "p1", qty: 1, status: "new" })],
       shipments: [],
-      showToast,
+      notify,
     });
 
     // Act
@@ -409,7 +409,7 @@ describe("shipRequests", () => {
     // Assert
     expect(shipmentId).toBeNull();
     expect(store.getState().shipments).toEqual([]);
-    expect(showToast).not.toHaveBeenCalled();
+    expect(notify).not.toHaveBeenCalled();
   });
 });
 
@@ -427,7 +427,7 @@ describe("shipRequests и короба отгрузки", () => {
         { ...base, id: "o1", code: "UK-OUT-TULA01", requestIds: ["r1"] },
         { ...base, id: "o2", code: "UK-OUT-TULA02", requestIds: ["r2"] },
       ],
-      showToast: vi.fn(),
+      notify: vi.fn(),
     });
 
     // Act
@@ -450,7 +450,7 @@ describe("shipRequests и короба отгрузки", () => {
         { ...base, id: "o1", code: "UK-OUT-TULA01", requestIds: ["r1"] },
         { ...base, id: "o2", code: "UK-OUT-TULA02", requestIds: ["r1"] },
       ],
-      showToast: vi.fn(),
+      notify: vi.fn(),
     });
 
     expect(store.getState().shipRequests(["r1"], { units: ["UK-OUT-TULA01"] })).toBeNull();

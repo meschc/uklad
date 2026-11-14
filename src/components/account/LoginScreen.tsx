@@ -14,6 +14,7 @@ import { AsciiBackdrop } from "./AsciiBackdrop";
 import { ServerLoginForm } from "./ServerLoginForm";
 import { InviteAccept } from "./InviteAccept";
 import { inviteTokenFromUrl } from "@/lib/inviteLink";
+import { FieldError } from "@/components/ui/field";
 
 /**
  * Вход, регистрация и восстановление пароля (п.28). Сборка с сервером
@@ -269,7 +270,7 @@ function LoginField({
         {label}
       </Label>
       {children}
-      {error && <span className="text-xs text-destructive">{error}</span>}
+      {error && <FieldError>{error}</FieldError>}
     </div>
   );
 }

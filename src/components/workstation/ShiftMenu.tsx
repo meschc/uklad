@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { formatTime } from "./useNow";
+import { FormError } from "@/components/ui/field";
 
 /**
  * Меню сотрудника: смена, перерыв, часы и заработок. Вёрстка одна на стол,
@@ -134,7 +135,7 @@ export function ShiftMenu({ member, now }: { member: StaffMember; now: number })
           </div>
         </div>
       )}
-      {mark.error && <p className="text-sm text-destructive">{t(mark.error)}</p>}
+      {mark.error && <FormError>{t(mark.error)}</FormError>}
 
       <dl className="grid grid-cols-2 gap-2">
         <Stat label={t("ws.hours.today")} value={hours(t, today)} />

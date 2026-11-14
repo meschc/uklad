@@ -8,7 +8,7 @@ type Mini = {
   products: string[];
   warehouse: { floors: number[]; staff: string[] };
   zoom: number;
-  showToast: () => void;
+  notify: () => void;
 };
 
 function stand(readOnly: boolean, writable?: string[]) {
@@ -24,7 +24,7 @@ function stand(readOnly: boolean, writable?: string[]) {
       products: ["p1"],
       warehouse: { floors: [1], staff: ["a"] },
       zoom: 1,
-      showToast: toast,
+      notify: toast,
       guarded,
     } as Mini & {
       guarded: typeof set;
@@ -40,7 +40,7 @@ describe("режим просмотра в сторе", () => {
     guarded({ products: ["p1", "p2"], zoom: 2 });
     expect(store.getState().products).toEqual(["p1"]);
     expect(store.getState().zoom).toBe(2);
-    expect(toast).toHaveBeenCalledWith("sync.readOnly");
+    expect(toast).toHaveBeenCalledWith("info", "sync.readOnly");
     // Вход и смена у стола — не данные компании.
     guarded({ session: { readOnly: false } });
     expect(store.getState().session.readOnly).toBe(false);
@@ -64,6 +64,6 @@ describe("режим просмотра в сторе", () => {
     // Персонал — не план: такая правка не ложится.
     guarded({ warehouse: { ...store.getState().warehouse, staff: ["b"] } });
     expect(store.getState().warehouse.staff).toEqual(["a"]);
-    expect(toast).toHaveBeenCalledWith("sync.readOnly");
+    expect(toast).toHaveBeenCalledWith("info", "sync.readOnly");
   });
 });

@@ -16,6 +16,7 @@ import {
 import { Segmented } from "@/components/ui/segmented";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FieldError } from "@/components/ui/field";
 
 /**
  * Роли во вкладке «Доступ» — списком, как у GitHub (Кирилл 13.11): строка
@@ -190,11 +191,7 @@ function RoleEditor({
           />
         ))}
       </div>
-      {err && (
-        <p role="alert" className="text-xs text-destructive">
-          {t(err)}
-        </p>
-      )}
+      {err && <FieldError>{t(err)}</FieldError>}
       {!locked && (
         <div className="flex flex-wrap items-center gap-2">
           <Button
