@@ -41,7 +41,10 @@ for v in SUPERUSER OWNER APP NOTIFIER; do
 done
 
 # Копия базы перед выкладкой: новая версия может поменять её схему.
-[ -f data/uklad.db ] && ./backup.sh
+# Код 3 — копия есть, но не ушла в S3: выкладку это не останавливает.
+if [ -f data/uklad.db ]; then
+  ./backup.sh || { rc=$?; [ "$rc" -eq 3 ] || exit "$rc"; echo "Внимание: копия не ушла в S3"; }
+fi
 
 UKLAD_TAG=$TAG docker compose build
 UKLAD_TAG=$TAG docker compose up -d
