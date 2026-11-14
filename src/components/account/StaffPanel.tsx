@@ -4,7 +4,6 @@ import type { StaffMember } from "@/lib/types";
 import { staffRepository } from "@/lib/data";
 import { teamRepository, type TeamState } from "@/lib/data/teamRepository";
 import { useCommand } from "@/lib/useCommand";
-import { useEditor } from "@/lib/store";
 import { flushServerSync } from "@/lib/store/serverSync";
 import { formatPhone, PHONE_MAX_LENGTH } from "@/lib/phone";
 import { draftToMember, formatRate, type PersonDraft } from "@/lib/personDraft";
