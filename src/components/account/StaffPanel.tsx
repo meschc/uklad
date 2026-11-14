@@ -11,15 +11,14 @@ import { asciiAvatar } from "@/lib/asciiAvatar";
 import type { TFunc } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { DialogFooter, DialogHeader, DialogShell } from "@/components/ui/dialog-shell";
 import { ImagePicker } from "./ImagePicker";
 import { RoleField } from "./PersonForm";
-import { FieldError } from "@/components/ui/field";
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+import { Field, FormError } from "@/components/ui/field";
+import { checkPerson, isEmail } from "@/lib/validate";
+import { useEditor } from "@/lib/store";
 
 /**
  * Карточка сотрудника — панелью справа (Кирилл 14.11: «при нажатии
@@ -66,6 +65,14 @@ export function StaffPanel({
     if (p.role != null && team && !roleTouched) setRoleId(suggestRoleId(p.role, team.roles));
   };
 
+  const notify = useEditor((s) => s.notify);
+  // Ошибки поля — под полем: с первой попытки сохранить или как только
+  // человек ушёл из поля. Пока есть ошибка, сохранить нельзя.
+  const [shown, setShown] = useState<Set<string>>(new Set());
+  const errors = checkPerson(form);
+  const show = (f: string) => setShown((s) => (s.has(f) ? s : new Set(s).add(f)));
+  const errOf = (f: keyof typeof errors) => (shown.has(f) && errors[f] ? t(errors[f]) : undefined);
+
   const save = useCommand(async () => {
     const fields = draftToMember(form);
     const res = member
@@ -87,7 +94,14 @@ export function StaffPanel({
   const [sent, setSent] = useState(false);
 
   const submit = async () => {
-    if ((await save.run()).ok) onClose();
+    if (Object.keys(errors).length) {
+      setShown(new Set(Object.keys(errors)));
+      return;
+    }
+    if ((await save.run()).ok) {
+      notify("success", "staff.saved", { vars: { name: form.name.trim() } });
+      onClose();
+    }
   };
   const err = save.error ?? invite.error;
 
@@ -116,19 +130,22 @@ export function StaffPanel({
             }
             onChange={(photoUrl) => patch({ photoUrl: photoUrl ?? "" })}
           />
-          <Input
-            type="url"
-            aria-label={t("staff.photoUrl")}
-            // Загруженный файл живёт в поле как data:-адрес — его не показываем.
-            value={form.photoUrl.startsWith("data:") ? "" : form.photoUrl}
-            onChange={(e) => patch({ photoUrl: e.target.value })}
-            placeholder={t("staff.panel.photoOrLink")}
-          />
+          <Field label={t("staff.photoUrl")} error={errOf("photoUrl")}>
+            <Input
+              type="url"
+              onBlur={() => show("photoUrl")}
+              // Загруженный файл живёт в поле как data:-адрес — его не показываем.
+              value={form.photoUrl.startsWith("data:") ? "" : form.photoUrl}
+              onChange={(e) => patch({ photoUrl: e.target.value })}
+              placeholder={t("staff.panel.photoOrLink")}
+            />
+          </Field>
         </div>
 
         <div className="flex flex-col gap-4">
-          <Field label={t("staff.col.name")}>
+          <Field label={t("staff.col.name")} error={errOf("name")}>
             <Input
+              onBlur={() => show("name")}
               value={form.name}
               // eslint-disable-next-line jsx-a11y/no-autofocus -- панель открыта действием человека
               autoFocus={!member}
@@ -136,11 +153,17 @@ export function StaffPanel({
               placeholder={t("staff.namePlaceholder")}
             />
           </Field>
-          <Field label={t("staff.col.role")}>
-            <RoleField value={form.role} onChange={(role) => patch({ role })} t={t} />
+          <Field label={t("staff.col.role")} error={errOf("role")}>
+            <RoleField
+              value={form.role}
+              onChange={(role) => patch({ role })}
+              onBlur={() => show("role")}
+              t={t}
+            />
           </Field>
-          <Field label={t("staff.phone")}>
+          <Field label={t("staff.phone")} error={errOf("phone")}>
             <Input
+              onBlur={() => show("phone")}
               value={form.phone}
               maxLength={PHONE_MAX_LENGTH}
               onChange={(e) => patch({ phone: formatPhone(e.target.value) })}
@@ -148,8 +171,9 @@ export function StaffPanel({
               inputMode="tel"
             />
           </Field>
-          <Field label={t("staff.email")}>
+          <Field label={t("staff.email")} error={errOf("email")}>
             <Input
+              onBlur={() => show("email")}
               type="email"
               value={form.email}
               onChange={(e) => patch({ email: e.target.value })}
@@ -199,7 +223,7 @@ export function StaffPanel({
                 <Button
                   size="sm"
                   variant="outline"
-                  disabled={!EMAIL_RE.test(email) || !roleId || invite.pending}
+                  disabled={!isEmail(email) || !roleId || invite.pending}
                   onClick={async () => {
                     if ((await invite.run()).ok) {
                       setSent(true);
@@ -216,7 +240,7 @@ export function StaffPanel({
           </section>
         )}
 
-        {err && <FieldError>{t(err)}</FieldError>}
+        {err && <FormError>{t(err)}</FormError>}
       </div>
       <DialogFooter>
         <Button variant="ghost" size="sm" onClick={onClose}>
@@ -227,14 +251,5 @@ export function StaffPanel({
         </Button>
       </DialogFooter>
     </DialogShell>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="flex flex-col gap-1.5">
-      <Label>{label}</Label>
-      {children}
-    </label>
   );
 }

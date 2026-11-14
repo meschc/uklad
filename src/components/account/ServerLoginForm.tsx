@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { isEmail } from "@/lib/validate";
 import { Check, Store, Warehouse } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import type { UserRole } from "@/lib/types";
@@ -27,7 +28,6 @@ import { FieldError, FormError } from "@/components/ui/field";
 type Step = "signIn" | "signUp" | "verify" | "reset" | "resetCode";
 
 const MIN_PASSWORD = 10;
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 export function ServerLoginForm() {
   const t = useT();
@@ -59,7 +59,7 @@ export function ServerLoginForm() {
 
   const needsPassword = step === "signIn" || step === "signUp" || step === "resetCode";
   const needsCode = step === "verify" || step === "resetCode";
-  const emailErr = EMAIL_RE.test(email.trim()) ? null : t("login.err.email");
+  const emailErr = isEmail(email) ? null : t("login.err.email");
   const passErr =
     needsPassword && password.length < MIN_PASSWORD
       ? t("login.err.password", { n: MIN_PASSWORD })

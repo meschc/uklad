@@ -6,12 +6,10 @@ import { formatPhone, PHONE_MAX_LENGTH } from "@/lib/phone";
 import { useT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
+import { checkPartner } from "@/lib/validate";
+import { FieldError } from "@/components/ui/field";
 import { EmailInput } from "./EmailInput";
 import { PartnerCard } from "./PartnerCard";
-
-/** Почта латиницей: имя, «@», домен с точкой — без пробелов и кириллицы. */
-const EMAIL_RE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
 
 /**
  * Партнёры-продавцы склада (п.15). Товар на складе принадлежит разным
@@ -30,8 +28,12 @@ export function PartnersSection() {
   // Проверка — по нажатию «Сохранить», а не с первой буквы: красное поле до
   // того, как человек закончил ввод, только мешает.
   const [tried, setTried] = useState(false);
-  const nameErr = (draft?.name.trim().length ?? 0) < 2;
-  const emailErr = !EMAIL_RE.test(draft?.contact.trim() ?? "");
+  const errors = draft ? checkPartner(draft, true) : {};
+  const errOf = (f: keyof typeof errors) => (tried && errors[f] ? t(errors[f]) : null);
+  const under = (f: keyof typeof errors) => {
+    const e = errOf(f);
+    return e ? <FieldError>{e}</FieldError> : null;
+  };
 
   const list = partners ?? [];
   const open = list.find((p) => p.id === openId) ?? null;
@@ -57,43 +59,57 @@ export function PartnersSection() {
       {draft && (
         <div className="flex flex-col gap-2">
           <div className="grid gap-2 sm:grid-cols-[1fr_1fr_1fr_10rem_auto] sm:items-start">
-            <Input
-              // eslint-disable-next-line jsx-a11y/no-autofocus -- строка добавлена по клику пользователя: фокус обязан уйти в неё, иначе курсор остаётся на кнопке
-              autoFocus
-              value={draft.name}
-              onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-              placeholder={t("partners.namePlaceholder")}
-              className={cn("h-9", tried && nameErr && "border-destructive")}
-            />
+            <div className="flex w-full flex-col gap-1">
+              <Input
+                // eslint-disable-next-line jsx-a11y/no-autofocus -- строка добавлена по клику пользователя: фокус обязан уйти в неё, иначе курсор остаётся на кнопке
+                autoFocus
+                value={draft.name}
+                onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+                placeholder={t("partners.namePlaceholder")}
+                aria-invalid={!!errOf("name") || undefined}
+                className="h-9"
+              />
+              {under("name")}
+            </div>
             <div className="flex w-full flex-col gap-1">
               <EmailInput
                 value={draft.contact}
                 onValueChange={(contact) => setDraft({ ...draft, contact })}
                 placeholder={t("partners.contactPlaceholder")}
-                className={cn("h-9", tried && emailErr && "border-destructive")}
+                aria-invalid={!!errOf("contact") || undefined}
+                className="h-9"
               />
+              {under("contact")}
             </div>
-            <Input
-              value={draft.person}
-              onChange={(e) => setDraft({ ...draft, person: e.target.value })}
-              placeholder={t("partners.personPlaceholder")}
-              className="h-9"
-            />
-            <Input
-              value={draft.phone}
-              inputMode="tel"
-              maxLength={PHONE_MAX_LENGTH}
-              onChange={(e) => setDraft({ ...draft, phone: formatPhone(e.target.value) })}
-              placeholder="+7 900 000-00-00"
-              className="h-9"
-            />
+            <div className="flex w-full flex-col gap-1">
+              <Input
+                value={draft.person}
+                onChange={(e) => setDraft({ ...draft, person: e.target.value })}
+                placeholder={t("partners.personPlaceholder")}
+                aria-invalid={!!errOf("person") || undefined}
+                className="h-9"
+              />
+              {under("person")}
+            </div>
+            <div className="flex w-full flex-col gap-1">
+              <Input
+                value={draft.phone}
+                inputMode="tel"
+                maxLength={PHONE_MAX_LENGTH}
+                onChange={(e) => setDraft({ ...draft, phone: formatPhone(e.target.value) })}
+                placeholder="+7 900 000-00-00"
+                aria-invalid={!!errOf("phone") || undefined}
+                className="h-9"
+              />
+              {under("phone")}
+            </div>
             <div className="flex gap-2">
               <Button
                 size="sm"
                 className="h-9"
                 onClick={() => {
                   setTried(true);
-                  if (nameErr || emailErr) return;
+                  if (Object.keys(errors).length) return;
                   addPartner({
                     name: draft.name.trim(),
                     contact: draft.contact.trim(),
@@ -111,18 +127,7 @@ export function PartnersSection() {
               </Button>
             </div>
           </div>
-          <p
-            className={cn(
-              "text-xs",
-              tried && (nameErr || emailErr) ? "text-destructive" : "text-muted-foreground",
-            )}
-          >
-            {tried && nameErr
-              ? t("partners.badName")
-              : tried && emailErr
-                ? t("partners.badEmail")
-                : t("partners.inviteHint")}
-          </p>
+          <p className="text-xs text-muted-foreground">{t("partners.inviteHint")}</p>
         </div>
       )}
 

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { isEmail } from "@/lib/validate";
 import { Plus, X } from "lucide-react";
 import { teamRepository, type TeamMember, type TeamRole } from "@/lib/data/teamRepository";
 import { useCommand } from "@/lib/useCommand";
@@ -200,7 +201,7 @@ function InvitePanel({
     roles.find((r) => r.name === "Кладовщик")?.id ?? roles[0]?.id ?? "",
   );
   const send = useCommand(() => teamRepository.invite(email.trim(), roleId, name.trim()));
-  const valid = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim()) && roleId;
+  const valid = isEmail(email) && roleId;
   const submit = async () => {
     const res = await send.run();
     if (res.ok) await onDone(email.trim());
