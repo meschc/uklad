@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/button";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { card } from "@/components/ui/card";
 import { ScreenShell } from "./ScreenShell";
-import { BarChart, Donut, FillBar, StatCard } from "./charts";
+import { BarChart, Donut, FillBar, StatCard, WarnMark } from "./charts";
 import { useWithArchive } from "@/lib/store/archive";
 import { ArchiveNote } from "./ArchiveNote";
 
@@ -165,14 +165,15 @@ export function AnalyticsScreen() {
               <Donut
                 centerValue={requests.length}
                 centerLabel={t("an.total")}
-                // Цвета статусов — только токены ДС (Кирилл 12 ноя): новая —
-                // warning, в работе — primary, собрана — success, отгружена —
-                // фиолетовая метка палитры, отменена — приглушённый текст.
+                // Цвета статусов — только токены ДС (Кирилл 12 и 14 ноя): новая —
+                // жёлтая заливка, в работе — primary, собрана — primary светлее
+                // (ждёт погрузки), отгружена — success (дело закрыто), отменена —
+                // бледно-серая. Фиолетовой метки палитры здесь нет.
                 segments={[
                   {
                     label: t("req.status.new"),
                     value: req.new,
-                    color: "hsl(var(--warning))",
+                    color: "hsl(var(--warning-fill))",
                   },
                   {
                     label: t("req.status.in_progress"),
@@ -182,17 +183,17 @@ export function AnalyticsScreen() {
                   {
                     label: t("req.status.done"),
                     value: req.done,
-                    color: "hsl(var(--success))",
+                    color: "hsl(var(--primary) / 0.45)",
                   },
                   {
                     label: t("req.status.shipped"),
                     value: req.shipped,
-                    color: "hsl(var(--tag-staff))",
+                    color: "hsl(var(--success))",
                   },
                   {
                     label: t("req.status.cancelled"),
                     value: req.cancelled,
-                    color: "hsl(var(--muted-foreground))",
+                    color: "hsl(var(--muted-foreground) / 0.35)",
                   },
                 ]}
               />
@@ -249,18 +250,14 @@ export function AnalyticsScreen() {
   );
 }
 
+/** Число под графиком — без своей плашки: рамок в рамке карточки не рисуем. */
 function MiniStat({ label, value, tone }: { label: string; value: number; tone?: "warn" }) {
   return (
-    <div className="rounded-lg bg-muted/50 px-3 py-2">
+    <div className="py-1">
       <div className={eyebrow({ size: "xs", weight: "normal" })}>{label}</div>
-      <div
-        className={
-          tone === "warn"
-            ? "text-lg font-bold tabular-nums text-warning"
-            : "text-lg font-bold tabular-nums"
-        }
-      >
+      <div className="flex items-center gap-2 text-lg font-bold tabular-nums">
         {value}
+        {tone === "warn" && <WarnMark />}
       </div>
     </div>
   );

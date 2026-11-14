@@ -415,7 +415,9 @@ function Equipment({ onPrinter, canOpen }: { onPrinter: () => void; canOpen: boo
                   ? t("ws.equip.waitScan")
                   : t("ws.equip.lastScan", { t: formatTime(scanAt, t.lang, true) })}
               </span>
-              {dot(ready)}
+              {/* Сканер-клавиатуру браузер не видит, пока тот не «напечатает»:
+                  зелёная точка — только после первого скана (Кирилл 14.11). */}
+              {dot(ready && scanAt != null)}
             </li>
           ))}
           <li>

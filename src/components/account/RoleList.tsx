@@ -2,18 +2,26 @@ import { useState } from "react";
 import { Check, ChevronRight, Minus, Plus } from "lucide-react";
 import { teamRepository, type TeamRole } from "@/lib/data/teamRepository";
 import { useCommand } from "@/lib/useCommand";
-import { useT } from "@/lib/i18n";
+import { useT, type MsgKey } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-import { PERM_DESC, PERM_KEYS, groupPermissions } from "@/lib/permModules";
+import {
+  PERM_DESC,
+  PERM_KEYS,
+  groupPermissions,
+  sectionLevel,
+  withLevel,
+  type PermLevel,
+  type PermSection,
+} from "@/lib/permModules";
+import { Segmented } from "@/components/ui/segmented";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { eyebrow } from "@/components/ui/eyebrow";
 
 /**
  * Роли во вкладке «Доступ» — списком, как у GitHub (Кирилл 13.11): строка
- * роли раскрывается на месте, без панели сбоку. Внутри — разделы прав, у
- * каждого права одна строка: что оно даёт. Стандартные роли только
- * показываются, своя роль правится тут же.
+ * роли раскрывается на месте, без панели сбоку. Внутри — разделы прав с
+ * уровнем «нет / чтение / запись» (Кирилл 14.11), раздел раскрывается до
+ * отдельных прав. Стандартные роли только показываются, своя правится тут же.
  *
  * Права выдаёт сервер (`teamRepository`): больше своих не дать, владельца не
  * тронуть. Экран заранее гасит галочки, которых у человека нет, а отказ
@@ -168,56 +176,20 @@ function RoleEditor({
           />
         </label>
       )}
-      {groupPermissions(permissions).map((g) => (
-        <div key={g.section?.id ?? "other"} className="flex flex-col gap-1">
-          <h3 className={eyebrow({ tone: "muted" })}>{t(g.section?.title ?? "perm.mod.other")}</h3>
-          <ul className="flex flex-col">
-            {g.codes.map((code) => {
-              const has = perms.has(code);
-              // Владельца в свою роль не включают; чужого права, которого нет у
-              // самого человека, тоже не выдать (сервер всё равно откажет).
-              const allowed = !locked && code !== "org.manage" && mine.has(code);
-              const label = PERM_KEYS[code] ? t(PERM_KEYS[code]) : code;
-              const desc = PERM_DESC[code] ? t(PERM_DESC[code]) : null;
-              return (
-                <li key={code}>
-                  <label
-                    className={cn(
-                      "flex items-start gap-3 py-1.5",
-                      allowed ? "cursor-pointer" : "cursor-default",
-                    )}
-                  >
-                    {locked ? (
-                      has ? (
-                        <Check aria-hidden className="mt-0.5 size-4 shrink-0 text-primary" />
-                      ) : (
-                        <Minus
-                          aria-hidden
-                          className="mt-0.5 size-4 shrink-0 text-muted-foreground"
-                        />
-                      )
-                    ) : (
-                      <input
-                        type="checkbox"
-                        className="mt-0.5 size-4 shrink-0 accent-primary"
-                        disabled={!allowed && !has}
-                        checked={has}
-                        onChange={() => allowed && toggle(code)}
-                      />
-                    )}
-                    <span className="flex min-w-0 flex-col">
-                      <span className={cn("text-sm", !has && !allowed && "text-muted-foreground")}>
-                        {label}
-                      </span>
-                      {desc && <span className="text-xs text-muted-foreground">{desc}</span>}
-                    </span>
-                  </label>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      ))}
+      <div className="flex flex-col divide-y divide-border">
+        {groupPermissions(permissions).map((g) => (
+          <PermGroup
+            key={g.section?.id ?? "other"}
+            section={g.section}
+            codes={g.codes}
+            perms={perms}
+            locked={locked}
+            mine={mine}
+            onPerms={setPerms}
+            onToggle={toggle}
+          />
+        ))}
+      </div>
       {err && (
         <p role="alert" className="text-xs text-destructive">
           {t(err)}
@@ -251,6 +223,134 @@ function RoleEditor({
             </Button>
           )}
         </div>
+      )}
+    </div>
+  );
+}
+
+const LEVEL_KEYS: Record<PermLevel, MsgKey> = {
+  none: "perm.level.none",
+  read: "perm.level.read",
+  write: "perm.level.write",
+  custom: "perm.level.custom",
+};
+
+/**
+ * Раздел прав, раскрывающийся на месте (Кирилл 14.11): в заголовке — уровень
+ * раздела (нет / чтение / запись), внутри — каждое право с объяснением. В
+ * своей роли уровень переключается сразу, а внутри можно подобрать права
+ * поштучно; у стандартной роли всё только для просмотра.
+ */
+function PermGroup({
+  section,
+  codes,
+  perms,
+  locked,
+  mine,
+  onPerms,
+  onToggle,
+}: {
+  section: PermSection | null;
+  codes: string[];
+  perms: Set<string>;
+  locked: boolean;
+  mine: Set<string>;
+  onPerms: (next: Set<string>) => void;
+  onToggle: (code: string) => void;
+}) {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+  const level = section ? sectionLevel(perms, section) : null;
+  // Уровень не выдать, если нужных прав нет у самого человека: сервер откажет.
+  const can = (codes: string[]) => codes.every((c) => c === "org.manage" || mine.has(c));
+  const options = section
+    ? (
+        [
+          { value: "none", label: t(LEVEL_KEYS.none) },
+          ...(section.read.length > 0 && can(section.read)
+            ? [{ value: "read", label: t(LEVEL_KEYS.read) }]
+            : []),
+          ...(can(section.perms) ? [{ value: "write", label: t(LEVEL_KEYS.write) }] : []),
+          ...(level === "custom" ? [{ value: "custom", label: t(LEVEL_KEYS.custom) }] : []),
+        ] as { value: PermLevel; label: string }[]
+      ).filter((o, i, all) => all.findIndex((x) => x.value === o.value) === i)
+    : [];
+  return (
+    <div className="py-1">
+      <div className="flex items-center gap-3 py-2">
+        <button
+          type="button"
+          aria-expanded={open}
+          onClick={() => setOpen(!open)}
+          className="flex min-w-0 flex-1 items-center gap-2 text-left"
+        >
+          <ChevronRight
+            aria-hidden
+            className={cn(
+              "size-4 shrink-0 text-muted-foreground transition-transform duration-base",
+              open && "rotate-90",
+            )}
+          />
+          <span className="text-sm font-medium">{t(section?.title ?? "perm.mod.other")}</span>
+        </button>
+        {section &&
+          level &&
+          (locked ? (
+            <span className="shrink-0 text-xs text-muted-foreground">{t(LEVEL_KEYS[level])}</span>
+          ) : (
+            <Segmented<PermLevel>
+              ariaLabel={t(section.title)}
+              value={level}
+              options={options}
+              onChange={(v) => {
+                if (v !== "custom") onPerms(withLevel(perms, section, v));
+              }}
+            />
+          ))}
+      </div>
+      {open && (
+        <ul className="flex flex-col pb-2 pl-6">
+          {codes.map((code) => {
+            const has = perms.has(code);
+            // Владельца в свою роль не включают; чужого права, которого нет у
+            // самого человека, тоже не выдать (сервер всё равно откажет).
+            const allowed = !locked && code !== "org.manage" && mine.has(code);
+            const label = PERM_KEYS[code] ? t(PERM_KEYS[code]) : code;
+            const desc = PERM_DESC[code] ? t(PERM_DESC[code]) : null;
+            return (
+              <li key={code}>
+                <label
+                  className={cn(
+                    "flex items-start gap-3 py-1.5",
+                    allowed ? "cursor-pointer" : "cursor-default",
+                  )}
+                >
+                  {locked ? (
+                    has ? (
+                      <Check aria-hidden className="mt-0.5 size-4 shrink-0 text-primary" />
+                    ) : (
+                      <Minus aria-hidden className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                    )
+                  ) : (
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 size-4 shrink-0 accent-primary"
+                      disabled={!allowed && !has}
+                      checked={has}
+                      onChange={() => allowed && onToggle(code)}
+                    />
+                  )}
+                  <span className="flex min-w-0 flex-col">
+                    <span className={cn("text-sm", !has && !allowed && "text-muted-foreground")}>
+                      {label}
+                    </span>
+                    {desc && <span className="text-xs text-muted-foreground">{desc}</span>}
+                  </span>
+                </label>
+              </li>
+            );
+          })}
+        </ul>
       )}
     </div>
   );

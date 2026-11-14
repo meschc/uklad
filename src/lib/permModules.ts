@@ -12,33 +12,80 @@ export interface PermSection {
   title: MsgKey;
   /** Права раздела в порядке «от простого к сильному». */
   perms: string[];
+  /**
+   * Что значит «чтение» в разделе. Пусто — чтения нет: раздел либо выключен,
+   * либо человек в нём работает (решения по товару, работа стола).
+   */
+  read: string[];
 }
 
 /**
- * Разделы прав, как у GitHub: у каждого права своя строка с объяснением, что
- * оно даёт. Без таблицы «чтение/запись» — Кирилл 13.11: «непонятно, что на
- * чтение, что на запись». Право либо есть, либо нет.
+ * Разделы прав (Кирилл 14.11): в своей роли у раздела уровень — нет, чтение
+ * или запись, а раскрыв раздел, видно и можно поправить каждое право с
+ * объяснением, что оно даёт. Стандартные роли не правятся — только смотрят.
  */
 export const PERM_SECTIONS: PermSection[] = [
   {
     id: "stock",
     title: "perm.sec.stock",
     perms: ["stock.view", "products.edit", "plan.edit", "stock.move"],
+    read: ["stock.view"],
   },
   {
     id: "desk",
     title: "perm.sec.desk",
     perms: ["receiving.do", "picking.do", "packing.do", "shipping.do", "inventory.count"],
+    read: [],
   },
   // Списание подтверждает начальник (миграция 030): старший только просит.
-  { id: "goods", title: "perm.sec.goods", perms: ["goods.decide", "goods.writeoff"] },
+  { id: "goods", title: "perm.sec.goods", perms: ["goods.decide", "goods.writeoff"], read: [] },
   {
     id: "people",
     title: "perm.sec.people",
-    perms: ["staff.manage", "contracts.manage", "billing.view", "org.manage"],
+    perms: ["billing.view", "staff.manage", "contracts.manage", "org.manage"],
+    read: ["billing.view"],
   },
-  { id: "sellers", title: "perm.sec.sellers", perms: ["seller.requests", "chat.use"] },
+  {
+    id: "sellers",
+    title: "perm.sec.sellers",
+    perms: ["chat.use", "seller.requests"],
+    read: ["chat.use"],
+  },
 ];
+
+export type PermLevel = "none" | "read" | "write" | "custom";
+
+/**
+ * Уровень раздела у набора прав. `custom` — права подобраны поштучно и ни
+ * под один уровень не подходят. Владельца (`org.manage`) в своей роли не
+ * бывает, поэтому «запись» его не требует.
+ */
+export function sectionLevel(perms: Set<string>, sec: PermSection): PermLevel {
+  const own = sec.perms.filter((c) => c !== "org.manage");
+  const has = own.filter((c) => perms.has(c));
+  if (has.length === 0) return "none";
+  if (has.length === own.length) return "write";
+  if (sec.read.length > 0 && has.length === sec.read.length && sec.read.every((c) => perms.has(c)))
+    return "read";
+  return "custom";
+}
+
+/** Поставить разделу уровень: права раздела заменяются, остальные не трогаются. */
+export function withLevel(
+  perms: Set<string>,
+  sec: PermSection,
+  level: Exclude<PermLevel, "custom">,
+): Set<string> {
+  const next = new Set([...perms].filter((c) => !sec.perms.includes(c)));
+  const add =
+    level === "write"
+      ? sec.perms.filter((c) => c !== "org.manage")
+      : level === "read"
+        ? sec.read
+        : [];
+  for (const c of add) next.add(c);
+  return next;
+}
 
 /** Подпись права в списке галочек. */
 export const PERM_KEYS: Record<string, MsgKey> = {

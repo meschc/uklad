@@ -2,7 +2,6 @@ import { useRef, useState } from "react";
 import { Download, Plus, Upload, Users } from "lucide-react";
 import { selectRole, useEditor } from "@/lib/store";
 import { staffRepository } from "@/lib/data";
-import { teamRepository } from "@/lib/data/teamRepository";
 import { useTeam } from "./useTeam";
 import { useCommand } from "@/lib/useCommand";
 import { telHref } from "@/lib/phone";
@@ -21,9 +20,8 @@ import { PartnersSection } from "./PartnersSection";
 import { TeamAccess } from "./TeamAccess";
 import { StaffOutput } from "./StaffOutput";
 import { PersonForm } from "./PersonForm";
-import { draftToMember, type PersonDraft } from "@/lib/personDraft";
 import { StaffRow } from "./StaffRow";
-import { staffNumbers } from "@/lib/staffNumber";
+import { StaffPanel } from "./StaffPanel";
 import { ArchiveNote } from "@/components/fulfillment/ArchiveNote";
 
 /**
@@ -34,15 +32,6 @@ import { ArchiveNote } from "@/components/fulfillment/ArchiveNote";
 
 /** Кликабельный контакт: тот же вид, что у ссылок витрины. */
 const contactLink = "text-primary underline-offset-4 hover:underline";
-
-const EMPTY_DRAFT: PersonDraft = {
-  name: "",
-  role: "",
-  phone: "",
-  email: "",
-  photoUrl: "",
-  rate: "",
-};
 
 type StaffTab = "people" | "output" | "partners" | "schedule" | "access";
 
@@ -57,51 +46,29 @@ export function StaffScreen() {
   const t = useT();
 
   const staff = warehouse.staff ?? [];
-  const numbers = staffNumbers(staff);
   // Роль у стола — колонкой списка (Кирилл 13.11: «каждому сотруднику
-  // отдельно роль»). Команда приходит с сервера; в демо колонки нет.
+  // отдельно роль»), меняется в панели сотрудника. Команда приходит с
+  // сервера; в демо колонки нет.
   const team = useTeam();
-  const runRole = async (staffRef: string, roleId: string | null) => {
-    const res = await teamRepository.setDeskRole(staffRef, roleId);
-    if (!res.ok) showToast(res.error, undefined, undefined, "error");
-    team.reload();
-  };
-  const [draft, setDraft] = useState<PersonDraft | null>(null);
-  const [editing, setEditing] = useState<string | null>(null);
+  const roleName = (id: string) =>
+    team.state?.roles.find((r) => r.id === team.state?.deskRoles[id])?.name ?? null;
+  // Панель сотрудника: `null` — закрыта, `"new"` — новый, иначе id.
+  const [panel, setPanel] = useState<string | null>(null);
+  const panelMember = panel && panel !== "new" ? staff.find((m) => m.id === panel) : null;
   const staffTable = useDataTable(staff, [
     { id: "name", value: (m) => m.name },
     { id: "role", value: (m) => m.role, facet: (v) => v },
     { id: "rate", value: (m) => m.hourlyRate },
-    {
-      id: "access",
-      value: (m) => team.state?.roles.find((r) => r.id === team.state?.deskRoles[m.id])?.name ?? "",
-    },
+    { id: "access", value: (m) => roleName(m.id) ?? "" },
   ]);
   const [tab, setTab] = useState<StaffTab>("people");
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // Персонал правится через репозиторий (п.3.2.1). Заведение и загрузка из
-  // файла — команды экрана; правка и удаление строки принадлежат самой строке.
-  const create = useCommand((member: Omit<StaffMember, "id">) => staffRepository.create(member));
+  // Персонал правится через репозиторий (п.3.2.1). Загрузка из файла —
+  // команда экрана, заведение и правка — панели, удаление — строки.
   const load = useCommand((members: Omit<StaffMember, "id">[]) =>
     staffRepository.importMany(members),
   );
-
-  /**
-   * Черновик и отказ по нему живут и гаснут вместе. Иначе сбой связи переживёт
-   * закрытие формы, и на пустой, только что открытой карточке кнопка встретит
-   * человека надписью «Повторить» — повторить неизвестно что.
-   */
-  const setDraftTo = (next: PersonDraft | null) => {
-    create.reset();
-    setDraft(next);
-  };
-
-  const submitDraft = async () => {
-    if (!draft?.name.trim()) return;
-    const res = await create.run(draftToMember(draft));
-    if (res.ok) setDraft(null);
-  };
 
   const exportStaff = () => {
     // BOM в начале — иначе Excel читает кириллицу как кракозябры (см. utils).
@@ -210,52 +177,14 @@ export function StaffScreen() {
                     e.target.value = "";
                   }}
                 />
-                {!draft && (
-                  <Button size="sm" onClick={() => setDraftTo({ ...EMPTY_DRAFT })}>
-                    <Plus className="size-3.5" />
-                    {t("staff.add")}
-                  </Button>
-                )}
+                <Button size="sm" onClick={() => setPanel("new")}>
+                  <Plus className="size-3.5" />
+                  {t("staff.add")}
+                </Button>
               </div>
             </div>
 
-            {draft && (
-              <div className="flex flex-col gap-3 rounded-xl border border-primary/40 bg-primary/5 p-3.5">
-                <PersonForm
-                  withRate
-                  value={draft}
-                  onChange={(p) => setDraft({ ...draft, ...p })}
-                  t={t}
-                />
-                <div className="flex items-center gap-2">
-                  {/* Форма есть — при отказе она остаётся открытой с набранным, а
-                  кнопка становится повтором (п.3.2.2). */}
-                  <Button
-                    size="sm"
-                    disabled={!draft.name.trim() || create.pending}
-                    onClick={submitDraft}
-                  >
-                    {create.pending
-                      ? t("data.busy")
-                      : create.error
-                        ? t("data.retry")
-                        : t("staff.save")}
-                  </Button>
-                  {/* Отмену не блокируем: если запрос повис, выход не должен быть
-                  заперт вместе с ним. */}
-                  <Button size="sm" variant="ghost" onClick={() => setDraftTo(null)}>
-                    {t("common.cancel")}
-                  </Button>
-                </div>
-                {create.error && (
-                  <p role="alert" className="text-xs text-destructive">
-                    {t(create.error)}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {staff.length === 0 && !draft ? (
+            {staff.length === 0 ? (
               <EmptyState
                 icon={<Users className="size-5" />}
                 title={t("staff.emptyTitle")}
@@ -278,7 +207,7 @@ export function StaffScreen() {
                   />
                 </div>
                 {team.state && staff.some((m) => !team.state?.deskRoles[m.id]) && (
-                  <p className="text-xs font-medium text-warning">
+                  <p className="w-fit rounded-full bg-warning-fill px-2.5 py-0.5 text-xs font-medium text-warning-foreground">
                     {t("team.deskMissing", {
                       n: staff.filter((m) => !team.state?.deskRoles[m.id]).length,
                     })}
@@ -310,17 +239,8 @@ export function StaffScreen() {
                         <StaffRow
                           key={m.id}
                           member={m}
-                          number={numbers.get(m.id)}
-                          access={
-                            team.state && {
-                              roles: team.state.roles,
-                              roleId: team.state.deskRoles[m.id] ?? null,
-                              onChange: (roleId) => void runRole(m.id, roleId),
-                            }
-                          }
-                          editing={editing === m.id}
-                          onEdit={() => setEditing(m.id)}
-                          onDone={() => setEditing(null)}
+                          roleName={team.state ? roleName(m.id) : undefined}
+                          onEdit={() => setPanel(m.id)}
                           t={t}
                         />
                       ))}
@@ -355,6 +275,16 @@ export function StaffScreen() {
       )}
 
       {tab === "partners" && <PartnersSection />}
+      {panel && (panel === "new" || panelMember) && (
+        <StaffPanel
+          key={panel}
+          member={panelMember ?? null}
+          team={team.state}
+          onTeamChanged={team.reload}
+          onClose={() => setPanel(null)}
+          t={t}
+        />
+      )}
     </ScreenShell>
   );
 }
