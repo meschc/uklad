@@ -205,6 +205,11 @@ test("начальник не может выше себя и не может с
     body: { name: "Мастер смены", permissions: ["stock.view", "picking.do"] },
   });
   assert.equal(okRole.status, 200);
+  // «Делать» без «смотреть» не бывает: чтение раздела база добавляет сама (033).
+  const saved = (await call("GET", "/api/team", chief)).json.roles.find(
+    (x) => x.name === "Мастер смены",
+  );
+  assert.deepEqual([...saved.permissions].sort(), ["picking.do", "picking.view", "stock.view"]);
   // Опечатка в праве — отказ, а не роль без права.
   const typo = await post("/api/team/roles/save", {
     ...chief,
@@ -591,10 +596,9 @@ test("кладовщик с почтой смотрит кабинет без с
   const seen = await call("GET", "/api/cabinet/snapshot", keeper);
   assert.equal(seen.status, 200);
   assert.equal(seen.json.snapshot.viewer, true);
-  const ivan = seen.json.snapshot.data.warehouse.staff[0];
-  assert.equal(ivan.name, "Иван");
-  assert.equal(ivan.hourlyRate, undefined);
-  assert.equal(ivan.phone, undefined);
+  // Персонала у кладовщика нет вовсе: «Персонал: чтение» (`staff.view`) не
+  // выдан (033). Имена и должности без ставок видит старший — матрица ниже.
+  assert.deepEqual(seen.json.snapshot.data.warehouse.staff, []);
   // Записать — нельзя ни целиком, ни частью.
   const write = await post("/api/cabinet/snapshot", {
     ...keeper,
@@ -690,4 +694,99 @@ test(
     const tried = await changes(keeper, v.version, { doc: { ...doc, boxSeq: 9 } });
     assert.equal(tried.status, 403);
   },
+);
+
+// Матрица стандартных ролей (Кирилл 14.11: «начальник должен разделять права —
+// кто, куда, к чему имеет доступ; это база баз»). Каждая стандартная роль
+// входит по почте: что видит на своём складе, что может записать и что чужая
+// компания ей закрыта. Новая роль или раздел — строка в `MATRIX`.
+const WORK = {
+  placements: [{ id: "pl1" }],
+  expectedShipments: [{ id: "es1" }],
+  receivingEvents: [{ id: "re1" }],
+  requests: [{ id: "rq1" }],
+  outboundBoxes: [{ id: "ob1" }],
+  shipments: [{ id: "sh1" }],
+  disputes: [{ id: "d1" }],
+  serviceSettings: { enabled: { pack: true }, prices: { pack: 25 } },
+  warehouse: {
+    id: "w1",
+    name: "Склад",
+    storageRatePerCell: 30,
+    staff: [{ id: "stf-1", name: "Иван", role: "Упаковщик", hourlyRate: 300, phone: "+7 900" }],
+  },
+};
+const AREAS = [
+  "expectedShipments",
+  "receivingEvents",
+  "requests",
+  "outboundBoxes",
+  "shipments",
+  "disputes",
+];
+// null — руководитель: снимок целиком; иначе — какие разделы работы открыты.
+const MATRIX = {
+  "Начальник склада": null,
+  "Старший смены": AREAS,
+  Кладовщик: AREAS,
+  Приёмщик: ["expectedShipments", "receivingEvents"],
+  Сборщик: ["requests"],
+  Упаковщик: ["requests", "outboundBoxes"],
+};
+
+test("матрица ролей: свой склад, запись и чужая компания", { skip: SKIP }, async () => {
+  const boss = await owner("boss-matrix@example.com", "10.1.0.40");
+  const other = await owner("boss-matrix-2@example.com", "10.1.0.41");
+  const r = await roles(boss);
+  const first = await post("/api/cabinet/snapshot", {
+    ...boss,
+    body: { version: 0, format: 8, data: WORK },
+  });
+  assert.equal(first.status, 200);
+  let n = 0;
+  for (const [name, open] of Object.entries(MATRIX)) {
+    assert.ok(r[name], `стандартной роли «${name}» нет`);
+    const who = await join(boss, `matrix-${n++}@example.com`, r[name]);
+    const seen = await call("GET", "/api/cabinet/snapshot", who);
+    assert.equal(seen.status, 200, name);
+    const snap = seen.json.snapshot;
+    if (open === null) {
+      assert.equal(snap.viewer, undefined, name);
+      assert.equal(snap.data.serviceSettings.prices.pack, 25, name);
+    } else {
+      assert.equal(snap.viewer, true, name);
+      // Справочник (остатки, план) — всем, кто смотрит.
+      assert.deepEqual(snap.data.placements, WORK.placements, name);
+      for (const key of AREAS)
+        assert.deepEqual(snap.data[key], open.includes(key) ? WORK[key] : [], `${name}: ${key}`);
+      // Денег и контактов смотрящему нет.
+      assert.deepEqual(snap.data.serviceSettings.prices, {}, name);
+      assert.equal(snap.data.warehouse.storageRatePerCell, undefined, name);
+      // Персонал — только старшему (`staff.view`), и то без ставок и телефонов.
+      const staff = snap.data.warehouse.staff;
+      if (name === "Старший смены")
+        assert.deepEqual(staff, [{ id: "stf-1", name: "Иван", role: "Упаковщик" }], name);
+      else assert.deepEqual(staff, [], name);
+      // Записать кабинет целиком нельзя, и раздать права — тоже.
+      const write = await post("/api/cabinet/snapshot", {
+        ...who,
+        body: { version: snap.version, format: 8, data: WORK },
+      });
+      assert.equal(write.status, 403, name);
+      const grant = await post("/api/team/roles/save", {
+        ...who,
+        body: { name: "Себе", permissions: ["staff.manage"] },
+      });
+      assert.ok(grant.status >= 400, name);
+    }
+    // Чужая компания закрыта любой роли.
+    const foreign = await call("GET", "/api/cabinet/snapshot", { ...who, org: other.org });
+    assert.ok(foreign.status === 401 || foreign.status === 403, `${name}: ${foreign.status}`);
+  }
+});
+
+test(
+  "матрица ролей: второй склад компании и создание склада",
+  { skip: SKIP || "тред «Закрыть вход сотрудника на чужой склад» снимет skip в своём PR" },
+  () => {},
 );

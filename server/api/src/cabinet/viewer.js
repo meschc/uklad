@@ -10,7 +10,10 @@
  * смен (часы и простои коллег), переписка, подключения, другие склады и
  * служебное состояние устройства руководителя.
  */
-/* global module */
+/* global require, module */
+/* eslint-disable @typescript-eslint/no-require-imports */
+
+const { applyAreas } = require("./viewerAreas");
 
 const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 const list = (v) => (Array.isArray(v) ? v : []);
@@ -79,6 +82,20 @@ const WAREHOUSE_KEYS = [
   "placeholder",
 ];
 
+/** Права «смотреть», любое из которых открывает кабинет на просмотр. */
+const VIEW_PERMS = [
+  "products.view",
+  "stock.view",
+  "plan.view",
+  "receiving.view",
+  "picking.view",
+  "packing.view",
+  "shipping.view",
+  "inventory.view",
+  "goods.view",
+  "staff.view",
+];
+
 const pick = (obj, keys) => {
   const out = {};
   for (const k of keys) if (k in obj) out[k] = obj[k];
@@ -87,8 +104,13 @@ const pick = (obj, keys) => {
 
 const person = (m) => (isObject(m) ? pick(m, ["id", "name", "role", "photoUrl"]) : m);
 
-function forViewer(data) {
+/**
+ * Снимок смотрящему. `can` — право роли; без него (старые вызовы и тесты) —
+ * все разделы открыты.
+ */
+function forViewer(data, can = () => true) {
   const out = pick(isObject(data) ? data : {}, VIEWER_KEYS);
+  applyAreas(out, can);
   // Пустые значения вместо закрытого: браузер не подставит чужое из демо.
   Object.assign(out, {
     chats: {},
@@ -106,14 +128,19 @@ function forViewer(data) {
   out.account = { type: "company", name: "", ...pick(a, ["org", "orgLogo"]) };
   if (isObject(data?.warehouse)) {
     const w = data.warehouse;
+    // Персонал — только с «Персонал: чтение» (`staff.view`), и то без ставок
+    // и контактов. План (этажи) — только с «План склада: чтение». Имена
+    // продавцов — всем смотрящим: по ним подписаны заявки и поставки.
+    const staffOpen = can("staff.view");
     out.warehouse = {
       ...pick(w, WAREHOUSE_KEYS),
-      staff: list(w.staff).map(person),
+      ...(can("plan.view") ? {} : { floors: [] }),
+      staff: staffOpen ? list(w.staff).map(person) : [],
       partners: list(w.partners).map((p) => (isObject(p) ? pick(p, ["id", "name"]) : p)),
-      ...(isObject(w.manager) ? { manager: person(w.manager) } : {}),
+      ...(staffOpen && isObject(w.manager) ? { manager: person(w.manager) } : {}),
     };
   }
   return out;
 }
 
-module.exports = { forViewer, VIEWER_KEYS, VIEWER_HIDDEN };
+module.exports = { forViewer, VIEWER_KEYS, VIEWER_HIDDEN, VIEW_PERMS };

@@ -1,17 +1,17 @@
 import { useState } from "react";
-import { Check, ChevronRight, Minus, Plus } from "lucide-react";
+import { ChevronRight, Plus } from "lucide-react";
 import { teamRepository, type TeamRole } from "@/lib/data/teamRepository";
 import { useCommand } from "@/lib/useCommand";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import {
-  PERM_DESC,
-  PERM_KEYS,
+  areaLevel,
+  grantableLevels,
   groupPermissions,
-  sectionLevel,
+  normalizePerms,
   withLevel,
+  type PermArea,
   type PermLevel,
-  type PermSection,
 } from "@/lib/permModules";
 import { Segmented } from "@/components/ui/segmented";
 import { Button } from "@/components/ui/button";
@@ -21,11 +21,12 @@ import { FieldError } from "@/components/ui/field";
 /**
  * Роли во вкладке «Доступ» — списком, как у GitHub (Кирилл 13.11): строка
  * роли раскрывается на месте, без панели сбоку. Внутри — разделы прав с
- * уровнем «нет / чтение / запись» (Кирилл 14.11), раздел раскрывается до
- * отдельных прав. Стандартные роли только показываются, своя правится тут же.
+ * уровнем «нет / чтение / чтение и запись» (Кирилл 14.11), раздел раскрывается до
+ * объяснения, что даёт чтение и что добавляет запись. Стандартные роли только
+ * показываются, своя правится тут же.
  *
  * Права выдаёт сервер (`teamRepository`): больше своих не дать, владельца не
- * тронуть. Экран заранее гасит галочки, которых у человека нет, а отказ
+ * тронуть. Экран заранее не предлагает уровней, которых у человека нет, а отказ
  * сервера показывает под ролью.
  */
 export function RoleList({
@@ -149,18 +150,13 @@ function RoleEditor({
   const t = useT();
   const locked = role?.builtIn ?? false;
   const [name, setName] = useState(role?.name ?? "");
-  const [perms, setPerms] = useState<Set<string>>(new Set(role?.permissions ?? []));
+  // Роль из старой версии приводится к уровням сразу: у «делать» есть «смотреть».
+  const [perms, setPerms] = useState<Set<string>>(normalizePerms(new Set(role?.permissions ?? [])));
   const save = useCommand(() =>
     teamRepository.saveRole({ id: role?.id, name: name.trim(), permissions: [...perms] }),
   );
   const del = useCommand(() => teamRepository.deleteRole(role?.id ?? ""));
-  const toggle = (code: string) =>
-    setPerms((prev) => {
-      const next = new Set(prev);
-      if (next.has(code)) next.delete(code);
-      else next.add(code);
-      return next;
-    });
+  const groups = groupPermissions(permissions);
   const err = save.error ?? del.error;
   return (
     <div className="flex flex-col gap-5">
@@ -178,18 +174,24 @@ function RoleEditor({
         </label>
       )}
       <div className="flex flex-col divide-y divide-border">
-        {groupPermissions(permissions).map((g) => (
-          <PermGroup
-            key={g.section?.id ?? "other"}
-            section={g.section}
-            codes={g.codes}
+        {groups.areas.map((a) => (
+          <PermRow
+            key={a.id}
+            area={a}
             perms={perms}
             locked={locked}
             mine={mine}
             onPerms={setPerms}
-            onToggle={toggle}
           />
         ))}
+        {groups.rest.length > 0 && (
+          <div className="flex items-start gap-3 py-3">
+            <span className="flex-1 text-sm font-medium">{t("perm.mod.other")}</span>
+            <span className="text-xs text-muted-foreground">
+              {groups.rest.filter((c) => perms.has(c)).join(", ") || t("perm.level.none")}
+            </span>
+          </div>
+        )}
       </div>
       {err && <FieldError>{t(err)}</FieldError>}
       {!locked && (
@@ -229,52 +231,38 @@ const LEVEL_KEYS: Record<PermLevel, MsgKey> = {
   none: "perm.level.none",
   read: "perm.level.read",
   write: "perm.level.write",
-  custom: "perm.level.custom",
 };
 
 /**
- * Раздел прав, раскрывающийся на месте (Кирилл 14.11): в заголовке — уровень
- * раздела (нет / чтение / запись), внутри — каждое право с объяснением. В
- * своей роли уровень переключается сразу, а внутри можно подобрать права
- * поштучно; у стандартной роли всё только для просмотра.
+ * Раздел прав (Кирилл 14.11): уровень — нет, чтение или чтение и запись,
+ * один на весь раздел. Раскрыв раздел, видно, что даёт чтение и что
+ * добавляет запись. У стандартной роли всё только для просмотра.
  */
-function PermGroup({
-  section,
-  codes,
+function PermRow({
+  area,
   perms,
   locked,
   mine,
   onPerms,
-  onToggle,
 }: {
-  section: PermSection | null;
-  codes: string[];
+  area: PermArea;
   perms: Set<string>;
   locked: boolean;
   mine: Set<string>;
   onPerms: (next: Set<string>) => void;
-  onToggle: (code: string) => void;
 }) {
   const t = useT();
   const [open, setOpen] = useState(false);
-  const level = section ? sectionLevel(perms, section) : null;
-  // Уровень не выдать, если нужных прав нет у самого человека: сервер откажет.
-  const can = (codes: string[]) => codes.every((c) => c === "org.manage" || mine.has(c));
-  const options = section
-    ? (
-        [
-          { value: "none", label: t(LEVEL_KEYS.none) },
-          ...(section.read.length > 0 && can(section.read)
-            ? [{ value: "read", label: t(LEVEL_KEYS.read) }]
-            : []),
-          ...(can(section.perms) ? [{ value: "write", label: t(LEVEL_KEYS.write) }] : []),
-          ...(level === "custom" ? [{ value: "custom", label: t(LEVEL_KEYS.custom) }] : []),
-        ] as { value: PermLevel; label: string }[]
-      ).filter((o, i, all) => all.findIndex((x) => x.value === o.value) === i)
-    : [];
+  const level = areaLevel(perms, area);
+  // Уровень, которого нет у самого человека, не выдать: сервер откажет. Уже
+  // выданный остаётся виден, чтобы не врать, что у роли.
+  const levels = grantableLevels(area, mine);
+  const options = (["none", "read", "write"] as PermLevel[])
+    .filter((v) => (v !== "read" || area.read) && (levels.includes(v) || v === level))
+    .map((v) => ({ value: v, label: t(LEVEL_KEYS[v]) }));
   return (
     <div className="py-1">
-      <div className="flex items-center gap-3 py-2">
+      <div className="flex flex-wrap items-center gap-3 py-2">
         <button
           type="button"
           aria-expanded={open}
@@ -288,66 +276,32 @@ function PermGroup({
               open && "rotate-90",
             )}
           />
-          <span className="text-sm font-medium">{t(section?.title ?? "perm.mod.other")}</span>
+          <span className="text-sm font-medium">{t(area.title)}</span>
         </button>
-        {section &&
-          level &&
-          (locked ? (
-            <span className="shrink-0 text-xs text-muted-foreground">{t(LEVEL_KEYS[level])}</span>
-          ) : (
-            <Segmented<PermLevel>
-              ariaLabel={t(section.title)}
-              value={level}
-              options={options}
-              onChange={(v) => {
-                if (v !== "custom") onPerms(withLevel(perms, section, v));
-              }}
-            />
-          ))}
+        {locked ? (
+          <span className="shrink-0 text-xs text-muted-foreground">{t(LEVEL_KEYS[level])}</span>
+        ) : (
+          <Segmented<PermLevel>
+            ariaLabel={t(area.title)}
+            value={level}
+            options={options}
+            onChange={(v) => onPerms(withLevel(perms, area, v))}
+          />
+        )}
       </div>
       {open && (
-        <ul className="flex flex-col pb-2 pl-6">
-          {codes.map((code) => {
-            const has = perms.has(code);
-            // Владельца в свою роль не включают; чужого права, которого нет у
-            // самого человека, тоже не выдать (сервер всё равно откажет).
-            const allowed = !locked && code !== "org.manage" && mine.has(code);
-            const label = PERM_KEYS[code] ? t(PERM_KEYS[code]) : code;
-            const desc = PERM_DESC[code] ? t(PERM_DESC[code]) : null;
-            return (
-              <li key={code}>
-                <label
-                  className={cn(
-                    "flex items-start gap-3 py-1.5",
-                    allowed ? "cursor-pointer" : "cursor-default",
-                  )}
-                >
-                  {locked ? (
-                    has ? (
-                      <Check aria-hidden className="mt-0.5 size-4 shrink-0 text-primary" />
-                    ) : (
-                      <Minus aria-hidden className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                    )
-                  ) : (
-                    <input
-                      type="checkbox"
-                      className="mt-0.5 size-4 shrink-0 accent-primary"
-                      disabled={!allowed && !has}
-                      checked={has}
-                      onChange={() => allowed && onToggle(code)}
-                    />
-                  )}
-                  <span className="flex min-w-0 flex-col">
-                    <span className={cn("text-sm", !has && !allowed && "text-muted-foreground")}>
-                      {label}
-                    </span>
-                    {desc && <span className="text-xs text-muted-foreground">{desc}</span>}
-                  </span>
-                </label>
-              </li>
-            );
-          })}
-        </ul>
+        <dl className="flex flex-col gap-1.5 pb-2 pl-6 text-xs">
+          {area.readDesc && (
+            <div className="flex gap-2">
+              <dt className="w-32 shrink-0 font-medium">{t("perm.level.read")}</dt>
+              <dd className="text-muted-foreground">{t(area.readDesc)}</dd>
+            </div>
+          )}
+          <div className="flex gap-2">
+            <dt className="w-32 shrink-0 font-medium">{t("perm.level.write")}</dt>
+            <dd className="text-muted-foreground">{t(area.writeDesc)}</dd>
+          </div>
+        </dl>
       )}
     </div>
   );

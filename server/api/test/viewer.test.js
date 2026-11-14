@@ -97,3 +97,89 @@ test("запись без «Персонала» — только по поля�
     warehouse: { floors: [2], staff: [{ id: "s", hourlyRate: 300 }] },
   });
 });
+
+test("каждый ключ смотрящего привязан к разделу прав (033)", () => {
+  const { AREA_KEYS, DEVICE_KEYS } = require("../src/cabinet/viewerAreas");
+  for (const key of VIEWER_KEYS)
+    assert.ok(key in AREA_KEYS || DEVICE_KEYS.includes(key), `ключ «${key}» без раздела`);
+  for (const key of Object.keys(AREA_KEYS)) assert.ok(VIEWER_KEYS.includes(key), key);
+});
+
+test("смотрящий получает только открытые ему разделы, построчно (033)", () => {
+  const data = {
+    products: [{ id: "p" }],
+    placements: [{ id: "pl" }],
+    boxes: [{ id: "b" }],
+    templates: [{ id: "t" }],
+    expectedShipments: [{ id: "e" }],
+    requests: [{ id: "r" }],
+    outboundBoxes: [{ id: "o" }],
+    shipments: [{ id: "s" }],
+    tasks: [
+      { id: "t1", kind: "picking" },
+      { id: "t2", kind: "item_receiving" },
+      { id: "t3", kind: "inventory" },
+      { id: "t4", kind: "custom:photo" },
+    ],
+    docRecords: [
+      { id: "d1", kind: "receiving" },
+      { id: "d2", kind: "shipment" },
+    ],
+    disputes: [
+      { id: "x1", kind: "damaged" },
+      { id: "x2", kind: "inventory_short" },
+    ],
+    breakPolicy: { mode: "x" },
+    warehouse: {
+      id: "w",
+      floors: [{ id: "f" }],
+      staff: [{ id: "s", name: "Иван", role: "Упаковщик", hourlyRate: 300 }],
+      manager: { id: "m", name: "Игорь", role: "Директор" },
+    },
+  };
+  const as = (perms) => forViewer(data, (p) => perms.includes(p));
+  // Сборщик: сборка, остатки и товары; плана, персонала и спорного нет.
+  const picker = as(["picking.view", "stock.view", "products.view"]);
+  assert.deepEqual(picker.products, [{ id: "p" }]);
+  assert.deepEqual(picker.boxes, [{ id: "b" }]);
+  assert.deepEqual(picker.requests, [{ id: "r" }]);
+  assert.deepEqual(
+    picker.tasks.map((x) => x.id),
+    ["t1", "t4"],
+  );
+  assert.deepEqual(picker.templates, []);
+  assert.deepEqual(picker.warehouse.floors, []);
+  assert.deepEqual(picker.expectedShipments, []);
+  assert.deepEqual(picker.docRecords, []);
+  assert.deepEqual(picker.disputes, []);
+  assert.deepEqual(picker.breakPolicy, {});
+  assert.deepEqual(picker.warehouse.staff, []);
+  assert.equal(picker.warehouse.manager, undefined);
+  // Приёмщик: документы приёмки, задания приёмки.
+  const recv = as(["receiving.view"]);
+  assert.deepEqual(
+    recv.docRecords.map((x) => x.id),
+    ["d1"],
+  );
+  assert.deepEqual(
+    recv.tasks.map((x) => x.id),
+    ["t2", "t4"],
+  );
+  assert.deepEqual(recv.products, []);
+  assert.deepEqual(recv.boxes, []);
+  // Инвентаризация: её расхождения и задания, но не всё спорное.
+  const inv = as(["inventory.view"]);
+  assert.deepEqual(
+    inv.disputes.map((x) => x.id),
+    ["x2"],
+  );
+  assert.deepEqual(
+    inv.tasks.map((x) => x.id),
+    ["t3"],
+  );
+  // Персонал на чтение: имена и должности, без ставок.
+  const lead = as(["staff.view", "plan.view"]);
+  assert.deepEqual(lead.warehouse.staff, [{ id: "s", name: "Иван", role: "Упаковщик" }]);
+  assert.deepEqual(lead.warehouse.manager, { id: "m", name: "Игорь", role: "Директор" });
+  assert.deepEqual(lead.warehouse.floors, [{ id: "f" }]);
+});
