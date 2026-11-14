@@ -15,6 +15,9 @@ import { Input } from "@/components/ui/input";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { card } from "@/components/ui/card";
 import { ScreenShell } from "./ScreenShell";
+import { ServerConnections } from "./ServerConnections";
+import { hasCabinetServer } from "@/lib/data/api";
+import { SERVER_CONNECTOR_SYSTEMS } from "@/lib/data/connectorsRepository";
 import { ReportProblemDialog } from "@/components/support/ReportProblemDialog";
 
 /**
@@ -141,6 +144,13 @@ function BrandMark({ brand }: { brand: BrandMarkSpec }) {
   );
 }
 
+/**
+ * Площадки, ключ которых в сборке с сервером хранит сервер: у них вместо
+ * полей в браузере — список подключений на сервере (`ServerConnections`).
+ */
+const onServer = (spec: IntegrationSpec) =>
+  hasCabinetServer && (SERVER_CONNECTOR_SYSTEMS as readonly string[]).includes(spec.id);
+
 function IntegrationCard({
   spec,
   config,
@@ -201,7 +211,22 @@ function IntegrationCard({
         )}
       </div>
 
-      {open && !spec.soon && (
+      {open && !spec.soon && onServer(spec) && (
+        <div className="flex flex-col gap-3 border-t border-border bg-muted/20 px-4 py-3">
+          <ServerConnections spec={spec} t={t} />
+          <a
+            href={spec.docsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-xs text-muted-foreground underline-offset-2 hover:text-primary hover:underline"
+          >
+            <ExternalLink className="size-3" />
+            {t("integr.docs")}
+          </a>
+        </div>
+      )}
+
+      {open && !spec.soon && !onServer(spec) && (
         <div className="flex flex-col gap-3 border-t border-border bg-muted/20 px-4 py-3">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {spec.fields.map((f) => (

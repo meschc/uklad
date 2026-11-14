@@ -615,6 +615,15 @@ function main() {
       log: console,
       token: process.env.DADATA_API_KEY,
     });
+    // Площадки (WB, Ozon, Маркет): без CONNECTOR_SECRET_KEY сохранить ключ и
+    // сходить к площадке нельзя — маршрут отвечает 503.
+    const { createConnectors, readSecretKey } = require("./cabinet/connectors");
+    const connectors = createConnectors({
+      auth,
+      send,
+      log: console,
+      secretKey: readSecretKey(process.env.CONNECTOR_SECRET_KEY),
+    });
     cabinet = {
       handle: async (req, res, url) =>
         (await desks.handle(req, res, url)) ||
@@ -624,6 +633,7 @@ function main() {
         (await snapshot.handle(req, res, url)) ||
         (await deskBadges.handle(req, res, url)) ||
         (await company.handle(req, res, url)) ||
+        (await connectors.handle(req, res, url)) ||
         (await chat.handle(req, res, url)) ||
         (await telegram.handle(req, res, url)),
     };

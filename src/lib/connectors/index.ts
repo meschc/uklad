@@ -1,8 +1,8 @@
 /**
- * Точка входа подключений. Пока сервер не поднят, транспорт — `offlineTransport`:
- * каждое обращение отвечает ошибкой связи с сервером. Когда сервер поднят,
- * меняется одна строка — `transport` на `createServerTransport(адрес)`;
- * адаптеры и экраны остаются как есть. Что ещё нужно на сервере — README.md.
+ * Точка входа подключений. В сборке с сервером адаптеры ходят через него
+ * (`createServerTransport`: ключ селлера и белый список путей — на сервере);
+ * демо без сервера отвечает `offlineTransport` — ошибкой связи, а не пустым
+ * списком заказов.
  */
 
 import { createAvitoConnector } from "./avito";
@@ -10,14 +10,17 @@ import { createHonestSignConnector } from "./honestSign";
 import { createMegamarketConnector } from "./megamarket";
 import { createMoyskladConnector } from "./moysklad";
 import { createOzonConnector } from "./ozon";
-import { offlineTransport, type ConnectorTransport } from "./transport";
+import { apiRequest, hasCabinetServer } from "../data/api";
+import { createServerTransport, offlineTransport, type ConnectorTransport } from "./transport";
 import type { Connector, ExternalSystem } from "./types";
 import { createWildberriesConnector } from "./wildberries";
 import { createYandexMarketConnector } from "./yandexMarket";
 
 export * from "./types";
 export * from "./identity";
-const transport: ConnectorTransport = offlineTransport;
+const transport: ConnectorTransport = hasCabinetServer
+  ? createServerTransport((path, body) => apiRequest("POST", path, body))
+  : offlineTransport;
 
 const FACTORIES: Partial<
   Record<ExternalSystem, (t: ConnectorTransport, account: string) => Connector>

@@ -62,6 +62,16 @@ export const ru = {
   "integr.error.rejected": "Сервис отказал в доступе: проверьте ключ",
   "integr.error.rateLimit": "Сервис просит подождать: слишком много запросов",
   "integr.error.unsupported": "Этот сервис такую операцию не поддерживает",
+  "integr.error.forbidden": "Нет права на интеграции: его даёт руководитель в ролях",
+  "integr.error.serverKey":
+    "Сервер не готов хранить ключи: администратору нужно задать ключ шифрования",
+  "integr.error.badInput": "Заполните название, номер и ключ",
+  "integr.check": "Проверить связь",
+  "integr.check.running": "Спрашиваем площадку…",
+  "integr.check.ok": "Связь есть, новых заказов: {n}",
+  "integr.remove": "Удалить",
+  "integr.saveToServer": "Сохранить подключение",
+  "integr.field.label": "Чей магазин",
   "integr.securityNote":
     "Ключи хранятся на сервере Уклада в зашифрованном виде и не показываются после сохранения.",
   "integr.setup": "Настроить",
@@ -454,6 +464,16 @@ export const en: Record<keyof typeof ru, string> = {
   "integr.error.rejected": "The service denied access: check the key",
   "integr.error.rateLimit": "The service asks to wait: too many requests",
   "integr.error.unsupported": "This service does not support this operation",
+  "integr.error.forbidden": "No integrations permission: a manager grants it in roles",
+  "integr.error.serverKey":
+    "The server cannot store keys yet: the admin must set the encryption key",
+  "integr.error.badInput": "Fill in the name, number and key",
+  "integr.check": "Check connection",
+  "integr.check.running": "Asking the platform…",
+  "integr.check.ok": "Connected, new orders: {n}",
+  "integr.remove": "Remove",
+  "integr.saveToServer": "Save connection",
+  "integr.field.label": "Whose shop",
   "integr.securityNote":
     "Keys are stored encrypted on the Uklad server and are not shown again after saving.",
   "integr.setup": "Set up",
