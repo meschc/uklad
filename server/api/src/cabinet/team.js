@@ -9,7 +9,8 @@
  *
  * Маршруты руководителя (`staff.manage`, вход по паролю):
  *   GET  /api/team              — { members, roles, permissions, me }
- *   POST /api/team/invite       — { email, roleId, name? } → письмо со ссылкой
+ *   POST /api/team/invite       — { email, roleId, name?, warehouseRef, staffRef? } → письмо
+ *   POST /api/team/place        — { memberId, warehouseRef, staffRef? } — склад и карточка
  *   POST /api/team/invite/revoke — { memberId }
  *   POST /api/team/role         — { memberId, roleId }
  *   POST /api/team/disable      — { memberId, disabled }
@@ -28,6 +29,7 @@ const { hashPassword, checkPassword, isAcceptable } = require("./password");
 const { createRateLimit, clientIp } = require("../rateLimit");
 const { inviteLetter } = require("./letters");
 const { FAIL_WINDOW_MS, FAIL_PAIR, FAIL_EMAIL } = require("./auth");
+const { findPlace } = require("./viewerPlace");
 
 const INVITE_TTL_MS = 7 * 86_400_000;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -45,6 +47,8 @@ const TEAM_STATUS = {
   role_in_use: 409,
   too_many_invites: 429,
   bad_name: 400,
+  no_warehouse: 400,
+  card_taken: 409,
 };
 function teamError(err) {
   const m = /^team:(\w+)/.exec(err?.message ?? "");
@@ -122,6 +126,8 @@ function createTeam({ auth, cfg, send, log }) {
           hasBadge: m.has_badge,
           lastSeenAt: m.last_seen_at,
           inviteExpiresAt: m.invite_expires_at,
+          warehouseRef: m.warehouse_ref,
+          staffRef: m.staff_ref,
         })),
         // Роли сотрудников стола (вход по бейджу): `staffRef → roleId`.
         deskRoles: Object.fromEntries(v.deskRoles.map((d) => [d.staff_ref, d.role_id])),
@@ -136,18 +142,22 @@ function createTeam({ auth, cfg, send, log }) {
       .trim()
       .toLowerCase();
     const roleId = uuid(b.roleId);
-    if (!isEmail(email) || !roleId) return bad(res);
+    const place = placeOf(b);
+    if (!isEmail(email) || !roleId || !place) return bad(res);
     const token = randomBytes(32).toString("base64url");
     const out = await withSession(req, async (c, ctx) => {
       if (!mayUse(ctx)) return { status: 403, error: "forbidden" };
       if (!inviteLimiter.take(ctx.orgId)) return { status: 429, error: "too_often" };
       try {
-        await c.query(`SELECT auth.invite_member($1, $2, $3, $4, $5::interval)`, [
+        await assertPlace(c, place);
+        await c.query(`SELECT auth.invite_member($1, $2, $3, $4, $5::interval, $6, $7)`, [
           email,
           roleId,
           String(b.name ?? "").slice(0, 200),
           sha256(token),
           `${INVITE_TTL_MS / 1000} seconds`,
+          place.warehouseRef,
+          place.staffRef,
         ]);
       } catch (err) {
         const known = teamError(err);
@@ -168,6 +178,42 @@ function createTeam({ auth, cfg, send, log }) {
     auth.deliver(email, inviteLetter({ company: out.company, role: out.role, link }));
     return send(res, 200, { ok: true });
   }
+
+  // Склад и карточка — из кабинета компании (id склада и сотрудника в
+  // снимке). Сервер сверяет их со снимком: несуществующий склад или чужая
+  // карточка — отказ, а не «запишем, разберёмся при входе».
+  const REF_RE = /^[A-Za-z0-9_-]{1,100}$/;
+  const refOrNull = (v) =>
+    v == null || v === "" ? null : REF_RE.test(String(v)) ? String(v) : false;
+  function placeOf(b) {
+    const warehouseRef = refOrNull(b.warehouseRef);
+    const staffRef = refOrNull(b.staffRef);
+    if (warehouseRef === false || staffRef === false) return null;
+    if (staffRef && !warehouseRef) return null;
+    return { warehouseRef, staffRef };
+  }
+  async function assertPlace(c, place) {
+    if (!place.warehouseRef) return;
+    const { rows } = await c.query(
+      `SELECT data FROM uklad.cabinet_snapshots WHERE org_id = uklad.current_org()`,
+    );
+    if (!findPlace(rows[0]?.data, place.warehouseRef, place.staffRef)) {
+      throw new Error("team:not_found");
+    }
+  }
+
+  const setPlace = (req, res) =>
+    guarded(req, res, async (c, _ctx, b) => {
+      const m = uuid(b.memberId);
+      const place = placeOf(b);
+      if (!m || !place?.warehouseRef) throw new Error("team:not_found");
+      await assertPlace(c, place);
+      await c.query(`SELECT auth.set_member_place($1, $2, $3)`, [
+        m,
+        place.warehouseRef,
+        place.staffRef,
+      ]);
+    });
 
   const revokeInvite = (req, res) =>
     guarded(req, res, async (c, _ctx, b) => {
@@ -334,6 +380,7 @@ function createTeam({ auth, cfg, send, log }) {
     "POST /api/team/invite": invite,
     "POST /api/team/invite/revoke": revokeInvite,
     "POST /api/team/role": changeRole,
+    "POST /api/team/place": setPlace,
     "POST /api/team/disable": disable,
     "POST /api/team/roles/save": saveRole,
     "POST /api/team/roles/delete": deleteRole,

@@ -72,7 +72,9 @@ export const snapshotRepository = {
     const res = await attempt(() => apiRequest("GET", "/cabinet/snapshot"), "sync.err.network");
     if (!res.ok) return res;
     const { status, body } = res.data;
-    if (status === 403) return fail("sync.err.forbidden");
+    if (status === 403) {
+      return fail(body.error === "no_warehouse" ? "sync.err.noWarehouse" : "sync.err.forbidden");
+    }
     if (status !== 200) return fail("sync.err.network");
     const s = body.snapshot as Snapshot | null | undefined;
     if (!s) return ok(null);

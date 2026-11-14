@@ -4,6 +4,7 @@ import type { StaffMember } from "@/lib/types";
 import { staffRepository } from "@/lib/data";
 import { teamRepository, type TeamState } from "@/lib/data/teamRepository";
 import { useCommand } from "@/lib/useCommand";
+import { flushServerSync } from "@/lib/store/serverSync";
 import { formatPhone, PHONE_MAX_LENGTH } from "@/lib/phone";
 import { draftToMember, formatRate, type PersonDraft } from "@/lib/personDraft";
 import { suggestRoleId } from "@/lib/positionRole";
@@ -73,7 +74,19 @@ export function StaffPanel({
   const show = (f: string) => setShown((s) => (s.has(f) ? s : new Set(s).add(f)));
   const errOf = (f: keyof typeof errors) => (shown.has(f) && errors[f] ? t(errors[f]) : undefined);
 
-  const save = useCommand(async () => {
+  const warehouseId = useEditor((s) => s.warehouse.id);
+  const email = form.email.trim().toLowerCase();
+  // Вход карточки — по её id (миграция 034), а не по почте: почту в карточке
+  // можно поменять, вход от этого не теряется и второй не появляется. Вход,
+  // заведённый до привязки, узнаём по почте и привязываем при сохранении.
+  const linked = member ? team?.members.find((m) => m.staffRef === member.id) : undefined;
+  const legacy = linked
+    ? undefined
+    : team?.members.find((m) => !m.staffRef && m.hasLogin && m.email?.toLowerCase() === email);
+  const login = linked ?? legacy;
+
+  /** Записать карточку; вернуть её id. */
+  const persist = async () => {
     const fields = draftToMember(form);
     const res = member
       ? await staffRepository.update(member.id, fields)
@@ -85,12 +98,29 @@ export function StaffPanel({
       if (!role.ok) return role;
       onTeamChanged();
     }
-    return { ok: true as const, data: undefined };
-  });
+    if (legacy) {
+      const place = await teamRepository.setPlace(legacy.id, {
+        warehouseRef: warehouseId,
+        staffRef: id,
+      });
+      if (!place.ok) return place;
+      onTeamChanged();
+    }
+    return { ok: true as const, data: id };
+  };
+  const save = useCommand(persist);
 
-  const email = form.email.trim().toLowerCase();
-  const login = team?.members.find((m) => m.email?.toLowerCase() === email);
-  const invite = useCommand(() => teamRepository.invite(email, roleId ?? "", form.name.trim()));
+  // Приглашение — на этот склад и эту карточку. Карточку сначала записываем
+  // и отправляем на сервер: он сверяет, что такая карточка на складе есть.
+  const invite = useCommand(async () => {
+    const saved = await persist();
+    if (!saved.ok) return saved;
+    await flushServerSync();
+    return teamRepository.invite(email, roleId ?? "", form.name.trim(), {
+      warehouseRef: warehouseId,
+      staffRef: saved.data,
+    });
+  });
   const [sent, setSent] = useState(false);
 
   const submit = async () => {
@@ -214,12 +244,17 @@ export function StaffPanel({
             <p className="text-xs text-muted-foreground">{t("staff.panel.roleHint")}</p>
             {/* Вход в кабинет — приглашением на почту: человек сам задаёт
                 пароль по ссылке (`team.js`, `InviteAccept`). */}
-            {login ? (
+            {login?.hasLogin ? (
               <p className="text-sm">{t("staff.panel.hasLogin", { role: login.roleName })}</p>
             ) : sent ? (
               <p className="text-sm">{t("team.sent", { email })}</p>
             ) : (
               <div className="flex flex-col items-start gap-1.5">
+                {/* Ждёт ответа — можно отправить заново, в том числе на
+                    исправленную почту: прежняя ссылка погаснет. */}
+                {login?.email && (
+                  <p className="text-sm">{t("team.sent", { email: login.email })}</p>
+                )}
                 <Button
                   size="sm"
                   variant="outline"
@@ -232,7 +267,11 @@ export function StaffPanel({
                   }}
                 >
                   <Mail className="size-3.5" />
-                  {invite.pending ? t("data.busy") : t("staff.panel.invite")}
+                  {invite.pending
+                    ? t("data.busy")
+                    : login
+                      ? t("staff.panel.inviteAgain")
+                      : t("staff.panel.invite")}
                 </Button>
                 <p className="text-xs text-muted-foreground">{t("staff.panel.inviteHint")}</p>
               </div>

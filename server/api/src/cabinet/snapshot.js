@@ -35,6 +35,7 @@
 const { createRateLimit } = require("../rateLimit");
 const { writableKeys, foreignRows, mergeScoped } = require("./writeScope");
 const { forViewer, VIEW_PERMS } = require("./viewer");
+const { placeRef, focusWarehouse } = require("./viewerPlace");
 const { recordMoves, invalidWork } = require("./moves");
 const {
   WAREHOUSE_LISTS,
@@ -83,6 +84,29 @@ function warnNearLimit(log, orgId, bytes, now = Date.now()) {
 const WRITES_PER_MINUTE = 30;
 
 const FORBIDDEN = Symbol("forbidden");
+/** Смотрящему не назначен склад, а складов в компании несколько. */
+const NO_WAREHOUSE = Symbol("no_warehouse");
+
+/** Склад, карточка, имя и роль того, кто вошёл (миграция 034). */
+async function actorPlace(c) {
+  return (await c.query(`SELECT * FROM auth.actor_place()`)).rows[0] ?? null;
+}
+
+/**
+ * Кто смотрит: имя — из его карточки на складе (или из приглашения), подпись
+ * в шапке — его роль. Без этого шапка показывала «Здравствуйте!» и запасное
+ * «Кладовщик» вместо «Старшего смены».
+ */
+function withPerson(data, place, warehouse) {
+  const card = Array.isArray(warehouse?.staff)
+    ? warehouse.staff.find((m) => m && m.id === place?.staff_ref)
+    : undefined;
+  const name = String(card?.name ?? place?.name ?? "").trim();
+  return {
+    ...data,
+    account: { ...data.account, name, ...(place?.role_name ? { title: place.role_name } : {}) },
+  };
+}
 const LIMITED = Symbol("limited");
 /** Снимок — весь кабинет: только руководитель, вошедший паролем. */
 /**
@@ -238,12 +262,17 @@ function createSnapshot({ auth, send, log }) {
       // Законченное старше окна — в архив, до того как собрать кабинет: так
       // браузер держит живую работу и последние недели, а не всю историю.
       if (viewer) {
-        // Смотрящий архив не двигает: это работа руководителя.
+        // Смотрящий архив не двигает: это работа руководителя. Кабинет — на
+        // его складе (миграция 034), а не на том, что открыт у руководителя.
+        const place = await actorPlace(c);
+        const ref = placeRef(rows[0].data, place?.warehouse_ref);
+        const focused = focusWarehouse(await loadCabinet(c, rows[0].data), ref);
+        if (!focused) return NO_WAREHOUSE;
         return {
           ...rows[0],
           viewer,
           writable: writableKeys(ctx.can),
-          data: forViewer(await loadCabinet(c, rows[0].data), ctx.can),
+          data: withPerson(forViewer(focused, ctx.can), place, focused.warehouse),
         };
       }
       await archiveDaily(c);
@@ -251,6 +280,7 @@ function createSnapshot({ auth, send, log }) {
     });
     if (out === null) return send(res, 401, { ok: false });
     if (out === FORBIDDEN) return send(res, 403, { ok: false });
+    if (out === NO_WAREHOUSE) return send(res, 403, { ok: false, error: "no_warehouse" });
     if (!out) return send(res, 200, { ok: true, snapshot: null });
     return send(res, 200, {
       ok: true,
@@ -391,7 +421,10 @@ function createSnapshot({ auth, send, log }) {
       if (!cur || cur.version !== b.version) return { conflict: true };
       if (scoped) {
         // Закрытое смотрящему он не получал — берём из базы, а не из копии.
-        b.doc = mergeScoped(cur.data, b.doc, ctx.can);
+        const place = await actorPlace(c);
+        const ref = placeRef(cur.data, place?.warehouse_ref);
+        if (!ref || !focusWarehouse(cur.data, ref)) return FORBIDDEN;
+        b.doc = mergeScoped(cur.data, b.doc, ctx.can, ref);
         doc = JSON.stringify(b.doc);
       }
       if ("products" in b && (await massDelete(c, b))) {

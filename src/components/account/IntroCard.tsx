@@ -27,7 +27,10 @@ export function IntroCard() {
   const [draftOrg, setDraftOrg] = useState(account.type === "company" ? (account.org ?? "") : "");
   const [later, setLater] = useState(false);
 
-  if (name.trim() || later) return null;
+  // Смотрящему (сотрудник по приглашению) имя и компанию задаёт склад: его
+  // имя — из карточки, компания — не его, чтобы её переименовывать.
+  const viewer = useEditor((s) => Boolean(s.session.readOnly));
+  if (name.trim() || later || viewer) return null;
   const company = account.type === "company";
 
   const save = (e: React.FormEvent) => {
