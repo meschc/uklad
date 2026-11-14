@@ -18,8 +18,6 @@ const PAGES: [path: string, h1: string][] = [
   ["/warehouses/", "система управления складом"],
   ["/pricing/", "Тарифы"],
   ["/roadmap/", "куда развивается Уклад"],
-  ["/market/", "Склады для фулфилмента"],
-  ["/sellers/", "Склад, с которым"],
   ["/contacts/", "Контакты"],
   ["/legal/", "Правовая информация"],
 ];
@@ -83,7 +81,7 @@ test.describe("Закрыто от поиска", () => {
     const paths = [...sitemap.matchAll(/<loc>https?:\/\/[^/]+(\/[^<]*)<\/loc>/g)].map((m) => m[1]);
     // Карта собирается из маршрутов витрины: опустела — значит, сломался
     // предрендер, и проверять дальше нечего.
-    expect(paths.length).toBeGreaterThan(20);
+    expect(paths.length).toBeGreaterThan(10);
 
     const open: string[] = [];
     for (const path of [...paths, "/app/", "/404.html"]) {

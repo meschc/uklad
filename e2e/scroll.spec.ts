@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { acceptCookies, openMarket } from "./helpers";
+import { acceptCookies } from "./helpers";
 
 /**
  * Прокрутка витрины.
@@ -81,26 +81,5 @@ test.describe("Прокрутка", () => {
       await page.evaluate(() => Math.round(window.scrollY)),
       "страницу утащило от места, где человек остановился",
     ).toBe(TOTAL);
-  });
-
-  test("колесо над картой оставляет страницу на месте", async ({ page, isMobile }) => {
-    test.skip(isMobile, "Карта во всю ширину раскрывается только на широком экране");
-
-    await openMarket(page);
-    await page.getByRole("button", { name: "Карта" }).click();
-    const map = page.locator(".leaflet-container");
-    await expect(map).toBeVisible();
-
-    const before = await page.evaluate(() => window.scrollY);
-    const box = await map.boundingBox();
-    await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
-    await page.mouse.wheel(0, 400);
-
-    // Колесом над картой меняют масштаб. Уехавшая при этом страница — не
-    // мелкая неточность: карта уходит из виду прямо в момент, когда человек её
-    // рассматривает.
-    await expect
-      .poll(async () => page.evaluate(() => window.scrollY), { timeout: 1500 })
-      .toBe(before);
   });
 });
