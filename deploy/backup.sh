@@ -35,16 +35,27 @@ s3_put() {
   # Открытую копию в чужое облако не отдаём: только зашифрованную.
   case "$1" in *.age) ;; *) echo "S3: $1 не зашифрован, не отправлен" >&2; S3_FAILED=1; return 0 ;; esac
   url="${S3_ENDPOINT%/}/$S3_BUCKET/backups/$(basename "$1")"
+  answer=$(mktemp)
   for try in 1 2 3; do
-    if printf 'user = "%s:%s"\n' "$S3_ACCESS_KEY" "$S3_SECRET_KEY" |
-      curl -sS -f -K - --aws-sigv4 "aws:amz:$S3_REGION:s3" --retry 2 \
-        -T "$1" "$url" -o /dev/null; then
+    # x-amz-content-sha256 S3 требует в подписи PUT, без него — 403.
+    code=$(printf 'user = "%s:%s"\n' "$S3_ACCESS_KEY" "$S3_SECRET_KEY" |
+      curl -sS -K - --aws-sigv4 "aws:amz:$S3_REGION:s3" \
+        -H "x-amz-content-sha256: UNSIGNED-PAYLOAD" \
+        -T "$1" "$url" -o "$answer" -w '%{http_code}') || code=000
+    if [ "$code" = 200 ]; then
       echo "S3: отправлено $(basename "$1") ($(wc -c < "$1") байт)"
+      rm -f "$answer"
       return 0
     fi
+    # В ответе S3 — код ошибки (AccessDenied, SignatureDoesNotMatch,
+    # NoSuchBucket…), секретов в нём нет: пишем в журнал, чтобы чинить по нему.
+    echo "S3: ответ $code $(grep -o '<Code>[^<]*' "$answer" | cut -c7- | head -1)" >&2
+    # 4xx — дело в ключе, правах или имени бакета, повтор не поможет.
+    case "$code" in 4*) break ;; esac
     [ "$try" -lt 3 ] && sleep 30
   done
-  echo "S3: $(basename "$1") не ушёл после 3 попыток" >&2
+  rm -f "$answer"
+  echo "S3: $(basename "$1") не ушёл" >&2
   S3_FAILED=1
 }
 
