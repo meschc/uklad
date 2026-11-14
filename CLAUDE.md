@@ -89,3 +89,5 @@ React 18 + TypeScript + Vite 6 · Zustand 4 (`persist`) · Tailwind + shadcn/ui 
 DOM — `// @vitest-environment jsdom` первой строкой, стор целиком в тестах не
 поднимается: срез собирается стендом (`store/__tests__/harness.ts`).
 Предупреждение «на полке товар» — `GoodsConflictDialog`, а не свой диалог.
+Экономия лимита: поиск по файлам — агенту `Explore`, разбор упавших тестов и
+логов — `log-reader` (оба на Haiku, `.claude/agents/`); правки кода — сами.
