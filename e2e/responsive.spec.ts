@@ -14,8 +14,6 @@ import { acceptCookies, expectNoOverflow, scrollTo } from "./helpers";
 const PAGES: [path: string, name: string][] = [
   ["/", "лендинг"],
   ["/warehouses/", "страница для складов"],
-  ["/sellers/", "страница селлера"],
-  ["/market/", "витрина"],
   ["/pricing/", "тарифы"],
   ["/contacts/", "контакты"],
   ["/legal/", "правовая информация"],
@@ -84,52 +82,5 @@ test.describe("Телефон", () => {
     // десятка, и на телефоне она отодвинула бы сам текст на второй экран.
     await expect(page.locator("nav").filter({ hasText: "В документе" })).toBeHidden();
     await expect(page.locator("article section").first()).toBeVisible();
-  });
-
-  test("фильтры витрины прячутся в шторку", async ({ page }) => {
-    await page.goto("/market/");
-    // Колонки фильтров на телефоне нет — есть кнопка, открывающая шторку.
-    await page.getByRole("button", { name: /^Фильтры/ }).click();
-    await expect(page.getByRole("button", { name: /^Показать \d+$/ })).toBeVisible();
-
-    await page.getByRole("button", { name: "Проверенные Укладом" }).click();
-    // Счётчик на кнопке подтверждения обновляется до применения — человек
-    // видит, к чему приведёт выбор, ещё не закрыв шторку.
-    await page.getByRole("button", { name: /^Показать \d+$/ }).click();
-    await expect(page.getByRole("button", { name: /^Фильтры · \d+$/ })).toBeVisible();
-    await expectNoOverflow(page, "витрина после отбора");
-  });
-
-  test("страница склада на телефоне не едет вбок и отпускает обратно", async ({ page }) => {
-    await page.goto("/market/");
-    await page.locator('a[href^="/warehouse/"]').first().click();
-
-    await expect(page).toHaveURL(/\/warehouse\/w-\d+\/$/);
-    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-    await expectNoOverflow(page, "страница склада");
-
-    await page.getByRole("link", { name: "Все склады" }).click();
-    await expect(page).toHaveURL(/\/market\/$/);
-  });
-
-  /**
-   * Строчный контрол — пилюля. Ломается это не вбок, а вверх: текст не влез в
-   * ширину, перенёсся на вторую строку, и полностью скруглённый блок высотой в
-   * две строки перестал быть пилюлей — стал овалом с дыркой посередине.
-   * Габаритная проверка выше такое пропускает: за край ничего не выехало.
-   *
-   * Порог 44 точки — это одна строка с полями по вертикали с запасом; вторая
-   * строка любого из этих контролов сразу даёт за пятьдесят.
-   */
-  test("строчные пилюли не разъезжаются на две строки", async ({ page }) => {
-    const PILL_MAX_HEIGHT = 44;
-
-    await page.goto("/market/");
-    for (const name of ["Списком", "Карта"]) {
-      const box = await page.getByRole("button", { name }).boundingBox();
-      expect(box?.height, `переключатель «${name}» переносится`).toBeLessThanOrEqual(
-        PILL_MAX_HEIGHT,
-      );
-    }
   });
 });

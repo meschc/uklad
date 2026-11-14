@@ -64,9 +64,9 @@ export default defineConfig({
   ],
 
   webServer: {
-    // Витрина на паузе (`src/lib/features.ts`), но её код живой: тесты
-    // собирают её открытой, чтобы не разучиться её проверять.
-    command: `VITE_MARKET_OPEN=1 npm run build && npx vite preview --port ${PORT} --strictPort`,
+    // Собираем так же, как выкладываем: витрина складов на паузе
+    // (`src/lib/features.ts`) и в сборку не входит, её e2e сняты.
+    command: `npm run build && npx vite preview --port ${PORT} --strictPort`,
     url: `http://localhost:${PORT}/`,
     reuseExistingServer: !process.env.CI,
     // Сборка холодная — минуты полторы на слабой машине.

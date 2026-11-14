@@ -22,9 +22,12 @@ import { PrintPlan } from "./PrintPlan";
  * Он тянет `three` (около 340 КБ), а режим за флагом `SHOW_3D` и сейчас
  * выключен. При обычном импорте движок всё равно уезжал бы в общий файл: его
  * качал бы кладовщик, открывающий приёмку, ради экрана, которого в интерфейсе
- * нет. Динамический импорт означает «скачать, когда действительно понадобится».
+ * нет. Пока флаг выключен, импорта нет вовсе: чанк с `three` в сборку не
+ * попадает. Включили флаг — динамический импорт скачает его, когда понадобится.
  */
-const View3D = lazy(() => import("@/components/three/View3D").then((m) => ({ default: m.View3D })));
+const View3D = SHOW_3D
+  ? lazy(() => import("@/components/three/View3D").then((m) => ({ default: m.View3D })))
+  : null;
 
 export function Editor() {
   useShortcuts();
@@ -46,7 +49,7 @@ export function Editor() {
       <div key={mode} className="flex min-h-0 flex-1 animate-fade-in flex-col">
         {mode === "table" ? (
           <TableScreen />
-        ) : mode === "3d" && SHOW_3D ? (
+        ) : mode === "3d" && View3D ? (
           <Suspense
             fallback={
               <div className="grid min-h-0 flex-1 place-items-center bg-[hsl(var(--canvas-bg))]">

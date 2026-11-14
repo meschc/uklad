@@ -43,7 +43,7 @@ React 18 + TypeScript + Vite 6 · Zustand 4 (`persist`) · Tailwind + shadcn/ui 
 - `npm run dev` — порт 5174, витрина на `/`, кабинет на `/app/`.
 - `npm run check` — всё, что CI гоняет до сборки: формат, линтер, типы,
   мёртвый код (`deadcode`, knip), дубли (`dupes`, jscpd), тесты.
-- `npm run build` (обе половины + предрендер: «156 страниц, карта сайта на 78
+- `npm run build` (обе половины + предрендер: «26 страниц, карта сайта на 13
   адресов»), `npm run build:app` (кабинет один, корень `/`).
 - `npm test` (Vitest), `npm run test:e2e` (Playwright), тесты сервера —
   `cd server/api && npm test`, изоляция компаний — `server/db`.
