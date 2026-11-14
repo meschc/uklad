@@ -596,10 +596,9 @@ test("кладовщик с почтой смотрит кабинет без с
   const seen = await call("GET", "/api/cabinet/snapshot", keeper);
   assert.equal(seen.status, 200);
   assert.equal(seen.json.snapshot.viewer, true);
-  const ivan = seen.json.snapshot.data.warehouse.staff[0];
-  assert.equal(ivan.name, "Иван");
-  assert.equal(ivan.hourlyRate, undefined);
-  assert.equal(ivan.phone, undefined);
+  // Персонала у кладовщика нет вовсе: «Персонал: чтение» (`staff.view`) не
+  // выдан (033). Имена и должности без ставок видит старший — матрица ниже.
+  assert.deepEqual(seen.json.snapshot.data.warehouse.staff, []);
   // Записать — нельзя ни целиком, ни частью.
   const write = await post("/api/cabinet/snapshot", {
     ...keeper,
@@ -763,8 +762,11 @@ test("матрица ролей: свой склад, запись и чужая
       // Денег и контактов смотрящему нет.
       assert.deepEqual(snap.data.serviceSettings.prices, {}, name);
       assert.equal(snap.data.warehouse.storageRatePerCell, undefined, name);
-      assert.equal(snap.data.warehouse.staff[0].hourlyRate, undefined, name);
-      assert.equal(snap.data.warehouse.staff[0].phone, undefined, name);
+      // Персонал — только старшему (`staff.view`), и то без ставок и телефонов.
+      const staff = snap.data.warehouse.staff;
+      if (name === "Старший смены")
+        assert.deepEqual(staff, [{ id: "stf-1", name: "Иван", role: "Упаковщик" }], name);
+      else assert.deepEqual(staff, [], name);
       // Записать кабинет целиком нельзя, и раздать права — тоже.
       const write = await post("/api/cabinet/snapshot", {
         ...who,

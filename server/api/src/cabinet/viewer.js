@@ -10,7 +10,10 @@
  * смен (часы и простои коллег), переписка, подключения, другие склады и
  * служебное состояние устройства руководителя.
  */
-/* global module */
+/* global require, module */
+/* eslint-disable @typescript-eslint/no-require-imports */
+
+const { applyAreas } = require("./viewerAreas");
 
 const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 const list = (v) => (Array.isArray(v) ? v : []);
@@ -79,23 +82,6 @@ const WAREHOUSE_KEYS = [
   "placeholder",
 ];
 
-/**
- * Работа склада по разделам (миграция 033): ключ снимка уходит смотрящему,
- * только если ему открыт хотя бы один из разделов. Товары, остатки и план —
- * справочник для любой работы (сборщику нужны название товара и адрес
- * ячейки), поэтому их ключей здесь нет: они уходят всем, кто вообще смотрит.
- * Закрыт раздел — его экран кабинет прячет (`navItems.ts`).
- */
-const AREA_KEYS = {
-  expectedShipments: ["receiving.view"],
-  receivingEvents: ["receiving.view"],
-  requests: ["picking.view", "packing.view", "shipping.view"],
-  outboundBoxes: ["packing.view", "shipping.view"],
-  shipments: ["shipping.view"],
-  disputes: ["goods.view"],
-  breakPolicy: ["goods.view"],
-};
-
 /** Права «смотреть», любое из которых открывает кабинет на просмотр. */
 const VIEW_PERMS = [
   "products.view",
@@ -118,17 +104,13 @@ const pick = (obj, keys) => {
 
 const person = (m) => (isObject(m) ? pick(m, ["id", "name", "role", "photoUrl"]) : m);
 
-/** Закрытый раздел — пустое значение того же вида, а не пропуск ключа. */
-const empty = (v) => (Array.isArray(v) ? [] : isObject(v) ? {} : null);
-
 /**
  * Снимок смотрящему. `can` — право роли; без него (старые вызовы и тесты) —
  * все разделы открыты.
  */
 function forViewer(data, can = () => true) {
   const out = pick(isObject(data) ? data : {}, VIEWER_KEYS);
-  for (const [key, perms] of Object.entries(AREA_KEYS))
-    if (key in out && !perms.some((p) => can(p))) out[key] = empty(out[key]);
+  applyAreas(out, can);
   // Пустые значения вместо закрытого: браузер не подставит чужое из демо.
   Object.assign(out, {
     chats: {},
@@ -146,14 +128,19 @@ function forViewer(data, can = () => true) {
   out.account = { type: "company", name: "", ...pick(a, ["org", "orgLogo"]) };
   if (isObject(data?.warehouse)) {
     const w = data.warehouse;
+    // Персонал — только с «Персонал: чтение» (`staff.view`), и то без ставок
+    // и контактов. План (этажи) — только с «План склада: чтение». Имена
+    // продавцов — всем смотрящим: по ним подписаны заявки и поставки.
+    const staffOpen = can("staff.view");
     out.warehouse = {
       ...pick(w, WAREHOUSE_KEYS),
-      staff: list(w.staff).map(person),
+      ...(can("plan.view") ? {} : { floors: [] }),
+      staff: staffOpen ? list(w.staff).map(person) : [],
       partners: list(w.partners).map((p) => (isObject(p) ? pick(p, ["id", "name"]) : p)),
-      ...(isObject(w.manager) ? { manager: person(w.manager) } : {}),
+      ...(staffOpen && isObject(w.manager) ? { manager: person(w.manager) } : {}),
     };
   }
   return out;
 }
 
-module.exports = { forViewer, VIEWER_KEYS, VIEWER_HIDDEN, AREA_KEYS, VIEW_PERMS };
+module.exports = { forViewer, VIEWER_KEYS, VIEWER_HIDDEN, VIEW_PERMS };
