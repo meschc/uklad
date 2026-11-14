@@ -39,6 +39,10 @@ chmod 600 .env
 for v in SUPERUSER OWNER APP NOTIFIER; do
   grep -q "^PG_${v}_PASSWORD=." .env || echo "PG_${v}_PASSWORD=$(openssl rand -hex 32)" >> .env
 done
+# Ключ шифрования ключей площадок (WB, Ozon, Маркет) — так же, на сервере.
+# Потеряется вместе с сервером — селлеры введут ключи заново, данные склада
+# не пострадают. Заданный не трогается: иначе сохранённые ключи не откроются.
+grep -q "^CONNECTOR_SECRET_KEY=." .env || echo "CONNECTOR_SECRET_KEY=$(openssl rand -base64 32)" >> .env
 
 # Копия базы перед выкладкой: новая версия может поменять её схему.
 # Код 3 — копия есть, но не ушла в S3: выкладку это не останавливает.
