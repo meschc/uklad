@@ -98,6 +98,17 @@ function send(res, status, payload, headers = {}) {
   res.end(body);
 }
 
+/**
+ * Origin запроса без хвостовых «/». Циклом, а не `/\/+$/`: на строке из
+ * тысяч «/» такое выражение работает за квадратичное время (CodeQL).
+ */
+function originOf(req) {
+  const raw = String(req.headers.origin ?? "");
+  let end = raw.length;
+  while (end > 0 && raw[end - 1] === "/") end--;
+  return raw.slice(0, end);
+}
+
 function corsHeaders(origin) {
   return {
     "Access-Control-Allow-Origin": origin,
@@ -184,7 +195,7 @@ function createApp({
   const errorLimiter = createRateLimit({ capacity: 10, refillPerMinute: 5 });
 
   async function handleLead(req, res) {
-    const origin = (req.headers.origin ?? "").replace(/\/+$/, "");
+    const origin = originOf(req);
     const allowed = cfg.allowedOrigins.includes(origin) ? origin : "";
     const cors = allowed ? corsHeaders(allowed) : {};
 
@@ -294,7 +305,7 @@ function createApp({
   }
 
   async function handleReport(req, res) {
-    const origin = (req.headers.origin ?? "").replace(/\/+$/, "");
+    const origin = originOf(req);
     const allowed = cfg.allowedOrigins.includes(origin) ? origin : "";
     const cors = allowed ? corsHeaders(allowed) : {};
 
@@ -354,7 +365,7 @@ function createApp({
    * нужен, а боту ни к чему знать, что принято.
    */
   async function handleClientError(req, res) {
-    const origin = (req.headers.origin ?? "").replace(/\/+$/, "");
+    const origin = originOf(req);
     const allowed = cfg.allowedOrigins.includes(origin) ? origin : "";
     const cors = allowed ? corsHeaders(allowed) : {};
     if (req.method === "OPTIONS") return send(res, allowed ? 204 : 403, undefined, cors);
