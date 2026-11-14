@@ -392,7 +392,7 @@ export const createRequestsSlice: SliceCreator<RequestsSlice> = (set, get) => ({
           : r,
       ),
     }));
-    get().showToast("toast.shipped", { n: ready.length });
+    get().notify("success", "toast.shipped", { vars: { n: ready.length } });
     return shipmentId;
   },
 });

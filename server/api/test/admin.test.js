@@ -479,6 +479,40 @@ test("заявку можно убрать в архив и вернуть, уд
   assert.ok(log.some((r) => r.action === "lead_delete"));
 });
 
+test("после действия — уведомление один раз, текст только из списка", async (t) => {
+  const app = await start();
+  t.after(app.stop);
+  app.db.addLead(
+    {
+      kind: "contact",
+      lang: "ru",
+      subject: "Первая",
+      message: "Почта: a@b.ru",
+      consent: { ads: false },
+    },
+    new Date("2026-10-21T09:00:00Z"),
+  );
+  const { cookie } = await app.login();
+  const csrf = await app.csrf(cookie);
+
+  const res = await app.post("/leads/1/archive", { csrf }, cookie);
+  assert.equal(res.status, 303);
+  const flash = (res.headers.get("set-cookie") ?? "").split(";")[0];
+  assert.match(flash, /flash=lead_archived$/);
+
+  const page = await app.get("/leads", `${cookie}; ${flash}`);
+  const html = await page.text();
+  assert.match(html, /class="toast success" role="status"/);
+  assert.match(html, /Заявка в архиве/);
+  assert.match(page.headers.get("set-cookie") ?? "", /flash=; .*Max-Age=0/, "показали — стёрли");
+
+  const forged = await app.get(
+    "/leads",
+    `${cookie}; ${flash.replace("lead_archived", "<script>")}`,
+  );
+  assert.doesNotMatch(await forged.text(), /class="toast/, "чужой код не показываем");
+});
+
 test("ошибки пользователей: «разобрано», повтор снимает отметку, всё в журнале", async (t) => {
   const app = await start();
   t.after(app.stop);

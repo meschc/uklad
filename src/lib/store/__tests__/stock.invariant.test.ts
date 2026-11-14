@@ -40,7 +40,7 @@ function warehouse() {
         ...Object.assign({}, ...slices.map((f) => f(...a))),
         products: [A, B],
         placements: {},
-        showToast: () => {},
+        notify: () => {},
         warehouse: {
           staff: [
             { id: "s1", name: "Упаковщик", role: "Упаковщик" },

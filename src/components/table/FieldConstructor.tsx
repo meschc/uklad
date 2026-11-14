@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { CategoryTools } from "./CategoryTools";
 import { Select } from "@/components/ui/select";
+import { FieldError, FormError } from "@/components/ui/field";
 
 /** Слово «товаре/товарах» (предложный) / «product/products». */
 function productsWord(t: TFunc, n: number): string {
@@ -114,12 +115,9 @@ export function FieldConstructor({
       </div>
 
       {del.error && (
-        <p
-          role="alert"
-          className="shrink-0 border-t border-border bg-destructive/10 px-5 py-2 text-xs text-destructive"
-        >
+        <FormError className="shrink-0 border-t border-border px-5 py-2.5">
           {t(del.error)}
-        </p>
+        </FormError>
       )}
 
       {/* Добавление поля */}
@@ -179,10 +177,10 @@ function FieldRow({
 
       {/* Удаление используемого поля → предупреждение о потере данных (ТЗ, разд. 4) */}
       {confirming && (
-        <div className="mt-2 flex gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-2 text-xs text-destructive">
-          <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+        <div role="alert" className="mt-2 flex gap-2 text-xs">
+          <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-destructive" />
           <div className="min-w-0">
-            <p>
+            <p className="font-medium text-destructive">
               {t("fields.deleteConfirm", {
                 name,
                 n: usage,
@@ -298,12 +296,7 @@ function AddFieldForm({ category, t }: { category: ProductCategory; t: TFunc }) 
         />
       )}
 
-      {error && (
-        <p className="mt-1.5 flex items-center gap-1 text-xs text-destructive">
-          <AlertTriangle className="size-3" />
-          {error}
-        </p>
-      )}
+      {error && <FieldError className="mt-1.5">{error}</FieldError>}
 
       <Button
         type="submit"

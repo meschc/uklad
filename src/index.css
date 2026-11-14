@@ -466,10 +466,12 @@
 
 /* Поле с ошибкой: одна обводка, а не синяя поверх красной. Пока человек
    правит (`data-typing` ставит ui/input), красное снято до ухода из поля. */
-input.border-destructive:focus-visible {
+input.border-destructive:focus-visible,
+input[aria-invalid="true"]:focus-visible {
   --tw-ring-color: hsl(var(--destructive) / 0.35);
 }
-input.border-destructive[data-typing] {
+input.border-destructive[data-typing],
+input[aria-invalid="true"][data-typing] {
   border-color: hsl(var(--input));
   --tw-ring-color: hsl(var(--ring));
 }

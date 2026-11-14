@@ -29,7 +29,7 @@ export function StaffRow({
   onEdit: () => void;
   t: TFunc;
 }) {
-  const showToast = useEditor((s) => s.showToast);
+  const notify = useEditor((s) => s.notify);
   const restore = useEditor((s) => s.restoreStaffMember);
   // Ушедший сотрудник не должен входить за стол старым бейджем: на сервере
   // бейдж гаснет до удаления, и если погасить не вышло, человек остаётся.
@@ -95,7 +95,7 @@ export function StaffRow({
             onClick={async () => {
               const res = await issue.run();
               if (res.ok) setBadge(res.data);
-              else showToast(res.error, undefined, undefined, "error");
+              else notify("error", res.error);
             }}
             disabled={issue.pending}
             title={t("staff.badge.issue")}
@@ -122,9 +122,12 @@ export function StaffRow({
                 (x) => x.id === m.id,
               );
               const res = await remove.run();
-              if (!res.ok) showToast(res.error, undefined, undefined, "error");
+              if (!res.ok) notify("error", res.error);
               else
-                showToast("staff.removed", { name: m.name }, () => restore(m, Math.max(0, index)));
+                notify("success", "staff.removed", {
+                  vars: { name: m.name },
+                  undo: () => restore(m, Math.max(0, index)),
+                });
             }}
             disabled={remove.pending}
             title={t("staff.remove")}

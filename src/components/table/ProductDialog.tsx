@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { QrSvg } from "./QrSvg";
 import { Select } from "@/components/ui/select";
+import { Field, FormError } from "@/components/ui/field";
 
 /**
  * Ручное добавление и редактирование товара (ТЗ, разд. 2.5): артикул, штрихкод,
@@ -392,12 +393,7 @@ export function ProductDialog({
           удаления — ещё и «Удалить товар? Да / Нет». Втискивать сообщение
           четвёртым в тот же ряд значило бы обрезать его до многоточия. */}
       {error && (
-        <p
-          role="alert"
-          className="shrink-0 border-t border-border bg-destructive/10 px-5 py-2 text-xs text-destructive"
-        >
-          {t(error)}
-        </p>
+        <FormError className="shrink-0 border-t border-border px-5 py-2.5">{t(error)}</FormError>
       )}
 
       <DialogFooter spread>
@@ -451,24 +447,6 @@ export function ProductDialog({
         </div>
       </DialogFooter>
     </DialogShell>
-  );
-}
-
-function Field({
-  label,
-  error,
-  children,
-}: {
-  label: string;
-  error?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="flex flex-col gap-1">
-      <span className={eyebrow()}>{label}</span>
-      {children}
-      {error && <span className="text-xs text-destructive">{error}</span>}
-    </label>
   );
 }
 

@@ -149,7 +149,7 @@ function managerEdit({ session, manager: m }) {
   );
 }
 
-function settingsPage({ session, admin, sessions, now, error, done }) {
+function settingsPage({ session, admin, sessions, now, error }) {
   return page(
     session,
     "/settings",
@@ -158,7 +158,7 @@ function settingsPage({ session, admin, sessions, now, error, done }) {
     <div class="split">
       <form class="form" method="post" action="/settings/password">${hidden(session)}
         <h2>Сменить пароль</h2>
-        ${errorBox(error)}${done ? `<p class="ok">Пароль сменён, остальные входы закрыты.</p>` : ""}
+        ${errorBox(error)}
         <p class="hint">Почта: ${esc(admin.email)}. Нужны текущий пароль и код из приложения.</p>
         <label>Текущий пароль<input name="current" type="password" autocomplete="current-password" required></label>
         <div class="row">

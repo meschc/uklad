@@ -25,7 +25,7 @@ import { useChatDemoReply } from "./useChatDemoReply";
  * приходит системное: кто написал и, если не выключено, что (`lib/chatNotify`).
  */
 export function ChatWatcher() {
-  const showToast = useEditor((s) => s.showToast);
+  const notify = useEditor((s) => s.notify);
   const seedChatsOnce = useEditor((s) => s.seedChatsOnce);
   const partnerCount = useEditor((s) => s.warehouse.partners?.length ?? 0);
   const unread = useEditor((s) =>
@@ -54,11 +54,11 @@ export function ChatWatcher() {
       );
       const name = partners.find((p) => p.id === newest)?.name;
       if (newest && name && !notifySystem(newest, name, t("chat.notifyHidden"))) {
-        showToast("chat.toast", { name });
+        notify("info", "chat.toast", { vars: { name } });
       }
     }
     prevUnread.current = unread;
-  }, [unread, showToast, t]);
+  }, [unread, notify, t]);
 
   return null;
 }

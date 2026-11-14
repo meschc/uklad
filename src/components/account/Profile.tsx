@@ -31,6 +31,7 @@ import { TariffSection } from "./TariffSection";
 import { NotifySection, ProfileHero, Section, ThemeTile } from "./ProfileParts";
 import { BackupSection } from "./BackupSection";
 import { AccountDataSection } from "./AccountDataSection";
+import { FieldError } from "@/components/ui/field";
 
 /** Вкладки профиля: длинная страница из всех разделов сразу не читалась. */
 type ProfileTab = "account" | "company" | "tariff" | "settings";
@@ -573,7 +574,7 @@ export function Profile() {
                   <Row icon={<DatabaseBackup className="size-4" />} label={t("profile.demoData")}>
                     {confirmReset ? (
                       <div className="flex flex-wrap items-center justify-end gap-2">
-                        <span className="text-xs text-destructive">{t("profile.demoWarn")}</span>
+                        <FieldError>{t("profile.demoWarn")}</FieldError>
                         <Button size="sm" variant="outline" onClick={() => setConfirmReset(false)}>
                           {t("common.cancel")}
                         </Button>

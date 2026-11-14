@@ -15,6 +15,7 @@ import { journal } from "@/lib/support/journal";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Backdrop } from "@/components/ui/backdrop";
+import { FormError } from "@/components/ui/field";
 
 /**
  * «Сообщить о проблеме» (план поддержки, п.2). Панель выезжает справа, а не
@@ -221,11 +222,7 @@ export function ReportProblemDialog({
               </div>
             )}
 
-            {send.error && (
-              <p role="alert" className="text-sm text-destructive">
-                {t(send.error)}
-              </p>
-            )}
+            {send.error && <FormError>{t(send.error)}</FormError>}
           </div>
         )}
 

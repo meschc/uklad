@@ -6,6 +6,7 @@ import { contactKind } from "../../lib/contact";
 import { LeadSubmit } from "../LeadSubmit";
 import { ru, useT } from "../../lib/copy";
 import { useLeadSend } from "../../lib/useLeadSend";
+import { FieldError } from "@/components/ui/field";
 
 const T = {
   name: ru("Имя"),
@@ -134,11 +135,7 @@ export function ConnectForm({ idPrefix, className }: { idPrefix: string; classNa
       <ConsentChecks value={consent} onChange={setConsent} />
 
       <LeadSubmit lead={lead} idle={t(T.send)} type="submit" />
-      {tried && !consent.data && (
-        <p role="alert" className="-mt-1 text-xs leading-relaxed text-destructive">
-          {t(T.consentNote)}
-        </p>
-      )}
+      {tried && !consent.data && <FieldError className="-mt-1">{t(T.consentNote)}</FieldError>}
     </form>
   );
 }

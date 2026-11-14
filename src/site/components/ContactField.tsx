@@ -2,6 +2,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { CONTACT_ERROR, contactKind, domainHints, maskContact } from "../lib/contact";
 import { useT } from "../lib/copy";
+import { FieldError } from "@/components/ui/field";
 
 /**
  * Поле «Телефон или почта» — одно на формы витрины. Телефон маскируется по
@@ -73,13 +74,9 @@ export function ContactField({
         </div>
       )}
       {bad && (
-        <p
-          id={`${id}-error`}
-          role="alert"
-          className="mt-1.5 text-xs leading-relaxed text-destructive"
-        >
+        <FieldError id={`${id}-error`} className="mt-1.5">
           {t(CONTACT_ERROR)}
-        </p>
+        </FieldError>
       )}
     </div>
   );

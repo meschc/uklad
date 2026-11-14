@@ -29,7 +29,9 @@ export function ShiftGate({ staffId, children }: { staffId: string; children: Re
   const Icon = gate.icon;
   const mark = async () => {
     const res = await workstationRepository.mark(gate.mark);
-    useEditor.getState().showToast(res?.ok ? `ws.ev.${gate.mark}` : "ws.markRejected");
+    useEditor
+      .getState()
+      .notify(res?.ok ? "success" : "error", res?.ok ? `ws.ev.${gate.mark}` : "ws.markRejected");
   };
   return (
     <div className="flex flex-col items-center gap-4 py-10 text-center">

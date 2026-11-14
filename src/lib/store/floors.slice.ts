@@ -151,11 +151,11 @@ export const createFloorsSlice: SliceCreator<FloorsSlice> = (set, get) => ({
           modules: copy.modules,
           rows: src.rows ? [...src.rows] : undefined,
         };
-        get().showToast("toast.floorUnlinked", { n: idx + 1 });
+        get().notify("success", "toast.floorUnlinked", { vars: { n: idx + 1 } });
       } else {
         // Связываем с первым этажом: этаж становится его зеркалом.
         next = { ...floor, aliasOf: main.id };
-        get().showToast("toast.floorLinked", { n: idx + 1 });
+        get().notify("success", "toast.floorLinked", { vars: { n: idx + 1 } });
       }
       const nextFloors = floors.map((f, i) => (i === idx ? next : f));
       return { warehouse: { ...s.warehouse, floors: nextFloors }, selection: [] };

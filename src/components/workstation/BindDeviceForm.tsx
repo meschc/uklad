@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { Select } from "@/components/ui/select";
+import { FormError } from "@/components/ui/field";
 
 /** Места, у которых уже есть свой экран. Остальные видны в списке как «скоро». */
 const READY: WorkstationKind[] = [
@@ -98,7 +99,7 @@ export function BindDeviceForm({
           {t("devices.bind")}
         </Button>
       </form>
-      {add.error && <p className="text-sm text-destructive">{t(add.error)}</p>}
+      {add.error && <FormError>{t(add.error)}</FormError>}
     </>
   );
 }

@@ -30,7 +30,7 @@ if (isEmbed(window.location.search)) {
   const quiet = () => {
     const s = useEditor.getState();
     if (s.activeHint) s.dismissHint();
-    if (s.toast) useEditor.setState({ toast: null });
+    if (s.toasts.length) useEditor.setState({ toasts: [] });
   };
   quiet();
   useEditor.subscribe(quiet);

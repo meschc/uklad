@@ -156,7 +156,7 @@ export const createRowsSlice: SliceCreator<RowsSlice> = (set, get) => ({
       }),
     );
     set({ selection: clones.map((m) => m.id), activeShelf: null });
-    get().showToast("toast.rowCloned", { row, newRow: clones[0].row! });
+    get().notify("success", "toast.rowCloned", { vars: { row, newRow: clones[0].row! } });
   },
 
   renumberFloorRows: () => {
@@ -213,9 +213,11 @@ export const createRowsSlice: SliceCreator<RowsSlice> = (set, get) => ({
         }
       }),
     );
-    get().showToast("toast.rowsRenumbered", {
-      n: groups.length,
-      row: anchorNum,
+    get().notify("success", "toast.rowsRenumbered", {
+      vars: {
+        n: groups.length,
+        row: anchorNum,
+      },
     });
     return groups.length;
   },
@@ -253,7 +255,7 @@ export const createRowsSlice: SliceCreator<RowsSlice> = (set, get) => ({
         }
       }),
     );
-    get().showToast("toast.rowNumbersReset", { row, n: changed });
+    get().notify("success", "toast.rowNumbersReset", { vars: { row, n: changed } });
   },
 
   setRowForSelection: (row) => {
@@ -283,7 +285,7 @@ export const createRowsSlice: SliceCreator<RowsSlice> = (set, get) => ({
         }),
       );
       if (touchesRowmate) {
-        get().showToast("toast.rowNeedsAisle");
+        get().notify("warning", "toast.rowNeedsAisle");
         return;
       }
     }
@@ -294,10 +296,9 @@ export const createRowsSlice: SliceCreator<RowsSlice> = (set, get) => ({
         }
       }),
     );
-    get().showToast(
-      row == null ? "toast.rowUnpinned" : "toast.rowAssigned",
-      row == null ? { n } : { row, n },
-    );
+    get().notify("success", row == null ? "toast.rowUnpinned" : "toast.rowAssigned", {
+      vars: row == null ? { n } : { row, n },
+    });
 
     // Продолжение по образцу: ищем такие же нераспределённые ряды и предлагаем
     // пронумеровать их подряд. При откреплении — снимаем висящее предложение.
@@ -355,7 +356,7 @@ export const createRowsSlice: SliceCreator<RowsSlice> = (set, get) => ({
       }),
     );
     set({ rowProposal: null });
-    get().showToast("toast.rowsContinued", { n: picked.length });
+    get().notify("success", "toast.rowsContinued", { vars: { n: picked.length } });
   },
 
   dismissRowProposal: () => set({ rowProposal: null }),

@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { EmailInput } from "./EmailInput";
+import { FieldError } from "@/components/ui/field";
 
 /** Сколько товаров партнёра показать в карточке: дальше — таблица товаров. */
 const GOODS_SHOWN = 8;
@@ -27,7 +28,7 @@ export function PartnerCard({ partner, onClose }: { partner: Partner; onClose: (
   const updatePartner = useEditor((s) => s.updatePartner);
   const removePartner = useEditor((s) => s.removePartner);
   const restorePartner = useEditor((s) => s.restorePartner);
-  const showToast = useEditor((s) => s.showToast);
+  const notify = useEditor((s) => s.notify);
   const goods = useWarehouseProducts().filter((x) => x.partnerId === partner.id);
   const [draft, setDraft] = useState({
     name: partner.name,
@@ -69,7 +70,7 @@ export function PartnerCard({ partner, onClose }: { partner: Partner; onClose: (
             onChange={(e) => setDraft({ ...draft, name: e.target.value })}
             className={nameErr ? "border-destructive" : undefined}
           />
-          {nameErr && <p className="text-xs text-destructive">{t("partners.badName")}</p>}
+          {nameErr && <FieldError>{t("partners.badName")}</FieldError>}
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="partner-mail">{t("partners.contactPlaceholder")}</Label>
@@ -151,9 +152,10 @@ export function PartnerCard({ partner, onClose }: { partner: Partner; onClose: (
               (p) => p.id === partner.id,
             );
             removePartner(partner.id);
-            showToast("partners.removed", { name: partner.name }, () =>
-              restorePartner(partner, Math.max(0, index)),
-            );
+            notify("success", "partners.removed", {
+              vars: { name: partner.name },
+              undo: () => restorePartner(partner, Math.max(0, index)),
+            });
             onClose();
           }}
         >

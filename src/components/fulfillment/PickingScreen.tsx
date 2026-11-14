@@ -24,6 +24,7 @@ import { ScreenShell, EmptyState } from "./ScreenShell";
 import { ScanField, type ScanStatus } from "./ScanField";
 import { pickToteProblem, type PickToteProblem } from "@/lib/packing";
 import { useDemoHints } from "@/components/workstation/useDemoHints";
+import { FieldError, FormError } from "@/components/ui/field";
 
 /**
  * Экран «Сборка» (п.8) — зеркало приёмки по духу, но с обратной строгостью:
@@ -483,10 +484,10 @@ function NextTask({
               {where.join(" · ")}
             </p>
           ) : (
-            <p className="mt-1 text-sm text-destructive">{t("pick.noStock")}</p>
+            <FormError className="mt-1">{t("pick.noStock")}</FormError>
           )}
           {have < request.qty && where.length > 0 && (
-            <p className="text-xs text-destructive">{t("tasks.inStock", { n: have })}</p>
+            <FieldError>{t("tasks.inStock", { n: have })}</FieldError>
           )}
         </div>
       </div>
@@ -569,12 +570,7 @@ function SuggestedPlaces({
 }) {
   const warehouse = useEditor((s) => s.warehouse);
   if (!locations.length) {
-    return (
-      <p className="flex items-center gap-1.5 text-xs text-destructive">
-        <Package className="size-3.5" />
-        {t("pick.noStock")}
-      </p>
-    );
+    return <FieldError>{t("pick.noStock")}</FieldError>;
   }
   return (
     <div className="flex flex-col gap-1.5">

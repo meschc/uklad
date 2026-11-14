@@ -31,6 +31,7 @@ import { ScanBanner, type BannerTone } from "./ScanBanner";
 import { useDemoHints } from "./useDemoHints";
 import { DestinationChip } from "./DestinationChip";
 import { shipmentOfPlace } from "@/lib/sorting";
+import { FieldError, FormError } from "@/components/ui/field";
 
 /**
  * Отгрузка за столом: собранные заявки одного назначения уезжают одной
@@ -340,7 +341,7 @@ function ShipGroup({
           );
         })}
       </ul>
-      {short > 0 && <p className="text-xs text-destructive">{t("ws.ship.short", { n: short })}</p>}
+      {short > 0 && <FieldError>{t("ws.ship.short", { n: short })}</FieldError>}
 
       {missing.length > 0 && (
         <div className="flex flex-col gap-1">
@@ -359,7 +360,7 @@ function ShipGroup({
           </ul>
         </div>
       )}
-      {plan.split && <p className="text-sm text-destructive">{t("ws.ship.split")}</p>}
+      {plan.split && <FormError>{t("ws.ship.split")}</FormError>}
       {expected.length > 0 && missing.length === 0 && (
         <p className="text-sm text-muted-foreground">{t("ws.ship.allLoaded")}</p>
       )}

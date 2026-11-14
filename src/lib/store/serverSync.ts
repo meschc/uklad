@@ -312,7 +312,7 @@ export function startServerSync(orgId: string): () => void {
     const same = JSON.stringify(s.session.writable ?? null) === JSON.stringify(keys ?? null);
     if (Boolean(s.session.readOnly) === on && same) return;
     useEditor.setState({ session: { ...s.session, readOnly: on || undefined, writable: keys } });
-    if (on && !keys && !s.session.readOnly) s.showToast("sync.readOnly");
+    if (on && !keys && !s.session.readOnly) s.notify("info", "sync.readOnly");
   };
   // Роль пишет часть кабинета: правка уходит «только изменённым», а копию
   // целиком сервер у неё не примет.
@@ -322,7 +322,7 @@ export function startServerSync(orgId: string): () => void {
     if (stopped) return;
     stopped = true;
     clearTimeout(timer);
-    useEditor.getState().showToast("sync.err.forbidden");
+    useEditor.getState().notify("error", "sync.err.forbidden");
   };
 
   const schedule = (ms = SAVE_DELAY_MS) => {
@@ -365,7 +365,7 @@ export function startServerSync(orgId: string): () => void {
         else schedule(RETRY_MS);
         // Сервер не принял данные — повтор не поможет, человеку нужно знать.
         if (res.error === "sync.err.badData" || res.error === "sync.err.tooBig") {
-          useEditor.getState().showToast(res.error, undefined, undefined, "error");
+          useEditor.getState().notify("error", res.error);
         }
         return false;
       }
@@ -556,7 +556,7 @@ export function startServerSync(orgId: string): () => void {
         products: "sync.productsRejected",
         records: "sync.recordsRejected",
       } as const;
-      useEditor.getState().showToast(toast[note]);
+      useEditor.getState().notify(note === "conflict" ? "warning" : "error", toast[note]);
     }
   } catch {
     // нет sessionStorage — нет и пометки

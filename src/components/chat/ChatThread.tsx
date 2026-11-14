@@ -57,7 +57,7 @@ export function ChatThread({
   role: UserRole;
 }) {
   const t = useT();
-  const showToast = useEditor((s) => s.showToast);
+  const notify = useEditor((s) => s.notify);
   const [draft, setDraftState] = useState(() => drafts.get(partner.id) ?? "");
   const [mode, setMode] = useState<Mode>({ kind: "send" });
   // Тема обращения: по какому вопросу пишем. Выбирается через «+» и сбрасывается
@@ -163,7 +163,7 @@ export function ChatThread({
       focusInput();
     },
     onCopy: (m) => {
-      void navigator.clipboard?.writeText(m.text).then(() => showToast("chat.copied"));
+      void navigator.clipboard?.writeText(m.text).then(() => notify("success", "chat.copied"));
     },
     onDelete: (m) => {
       void chatRepository.remove(partner.id, m.id);

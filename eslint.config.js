@@ -116,6 +116,14 @@ export default tseslint.config(
             "Цвет палитры Tailwind мимо токенов. Берите токен по роли: primary, success, warning, destructive, muted-foreground (src/index.css).",
         },
         {
+          // Ошибки форм (Кирилл 13 ноя: «рядом с полем должно быть отображение
+          // ошибки, это общее правило»): один вид на весь Уклад.
+          selector:
+            "JSXAttribute[name.name='className'] Literal[value=/(^|\\s)text-(xs|sm)(\\s+leading-\\S+)?\\s+text-destructive(\\s|$)/]",
+          message:
+            "Свой текст ошибки. Ошибка поля — FieldError (или Field error=…), отказ формы — FormError из ui/field.",
+        },
+        {
           selector: "Literal[value=/\\bbg-muted p-0\\.5\\b/]",
           message: "Свой набор кнопок-табов. Переключатель — только ui/segmented.",
         },

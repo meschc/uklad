@@ -18,6 +18,7 @@ import {
 import { catLabel, useT, type TFunc } from "@/lib/i18n";
 import { DialogFooter, DialogHeader, DialogShell } from "@/components/ui/dialog-shell";
 import { Button } from "@/components/ui/button";
+import { FormError } from "@/components/ui/field";
 
 /**
  * Импорт товаров (ТЗ, разд. 2.5). Основной путь — загрузка .xlsx (SheetJS),
@@ -26,7 +27,7 @@ import { Button } from "@/components/ui/button";
  */
 export function ImportDialog({ onClose }: { onClose: () => void }) {
   const products = useEditor((s) => s.products);
-  const showToast = useEditor((s) => s.showToast);
+  const notify = useEditor((s) => s.notify);
   const t = useT();
 
   const [text, setText] = useState("");
@@ -72,7 +73,7 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
         "uklad-import-template.xlsx",
       );
     } catch {
-      showToast("import.msg.templateFailed");
+      notify("error", "import.msg.templateFailed");
     }
   };
 
@@ -169,12 +170,9 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
       {/* Отказ отдельной строкой над подвалом: слева в подвале стоит счётчик
           разобранных строк, и он при повторе нужен не меньше сообщения. */}
       {load.error && (
-        <p
-          role="alert"
-          className="shrink-0 border-t border-border bg-destructive/10 px-5 py-2 text-xs text-destructive"
-        >
+        <FormError className="shrink-0 border-t border-border px-5 py-2.5">
           {t(load.error)}
-        </p>
+        </FormError>
       )}
 
       {/* Действия */}
@@ -236,8 +234,10 @@ function ResultView({
     const found = result.headers.filter(Boolean).join(", ") || "—";
     return (
       <Alert title={t("import.err.columns.title")}>
-        <p>{t("import.err.columns.missing", { missing })}</p>
-        <p className="mt-1 opacity-80">{t("import.err.columns.found", { headers: found })}</p>
+        <span className="block">{t("import.err.columns.missing", { missing })}</span>
+        <span className="mt-1 block text-muted-foreground">
+          {t("import.err.columns.found", { headers: found })}
+        </span>
       </Alert>
     );
   }
@@ -296,12 +296,9 @@ function ResultView({
 
 function Alert({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="mt-3 flex gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">
-      <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-      <div className="min-w-0">
-        <p className="font-semibold">{title}</p>
-        <div className="mt-0.5 leading-relaxed">{children}</div>
-      </div>
-    </div>
+    <FormError className="mt-3">
+      <span className="font-semibold">{title}</span>
+      <span className="mt-0.5 block text-xs leading-relaxed">{children}</span>
+    </FormError>
   );
 }

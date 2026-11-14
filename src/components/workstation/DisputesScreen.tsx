@@ -23,6 +23,7 @@ import { eyebrow } from "@/components/ui/eyebrow";
 import { EmptyState, ScreenShell } from "@/components/fulfillment/ScreenShell";
 import { formatAddress } from "@/lib/address";
 import { useNow } from "./useNow";
+import { FormError } from "@/components/ui/field";
 
 /** Поле причины открывается под рукой: сразу в него и печатают. */
 const focusOnMount = (el: HTMLInputElement | null) => el?.focus();
@@ -311,11 +312,7 @@ export function DisputesScreen() {
           ))}
         </ul>
       )}
-      {resolve.error && (
-        <p role="alert" className="text-sm text-destructive">
-          {t(resolve.error)}
-        </p>
-      )}
+      {resolve.error && <FormError>{t(resolve.error)}</FormError>}
 
       {done.length > 0 && (
         <section className="mt-10 flex flex-col gap-2">

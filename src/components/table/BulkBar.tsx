@@ -48,7 +48,7 @@ export function BulkBar({
 }) {
   const t = useT();
   const placements = useEditor((s) => s.placements);
-  const showToast = useEditor((s) => s.showToast);
+  const notify = useEditor((s) => s.notify);
   const categories = useEditor((s) => s.categories);
   const partners = useEditor((s) => s.warehouse.partners ?? EMPTY_ARRAY);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -75,7 +75,7 @@ export function BulkBar({
   const act = (run: () => Promise<Result<unknown>>) => async () => {
     const res = await command.run(run);
     if (res.ok) onDone();
-    else showToast(res.error, undefined, undefined, "error");
+    else notify("error", res.error);
   };
 
   const autoPlace = async () => {
@@ -85,11 +85,11 @@ export function BulkBar({
     // со списком товаров (п.7). Это не сбой связи, и тост тут не годится.
     const res = await place.run(ids);
     if (!res.ok) {
-      showToast(res.error, undefined, undefined, "error");
+      notify("error", res.error);
       return;
     }
     if (res.data.length) onPlaceFailed(res.data);
-    else showToast("table.bulk.placedAll", { n: ids.length });
+    else notify("success", "table.bulk.placedAll", { vars: { n: ids.length } });
     onDone();
   };
 

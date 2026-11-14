@@ -88,7 +88,42 @@ const lockup = () =>
   `<a class="logo" href="/"><img src="${BRAND.logo}" width="36" height="36" alt=""><span>${BRAND.name}<small>${BRAND.sub}</small></span></a>`;
 
 const hidden = (session) => `<input type="hidden" name="csrf" value="${esc(session.csrf)}">`;
-const errorBox = (error) => (error ? `<p class="error" role="alert">${esc(error)}</p>` : "");
+/**
+ * Ошибка формы — тот же вид, что `FormError` кабинета: значок и текст у
+ * кнопки, без плашки.
+ */
+const errorBox = (error) =>
+  error ? `<p class="error" role="alert">${icon("alert", 16)}<span>${esc(error)}</span></p>` : "";
+
+/**
+ * Уведомление после действия — как тост кабинета (`components/Toaster`):
+ * справа внизу, в цвет темы, тон — значком. Скриптов нет (CSP), поэтому
+ * уходит само на CSS, наведение ставит паузу, крестик — ссылка на ту же
+ * страницу. Текст — только из этого списка: в куку кладётся код, не строка.
+ */
+const FLASH = {
+  account_created: ["success", "Пользователь создан, письмо со ссылкой на вход отправлено."],
+  saved: ["success", "Сохранено."],
+  invoice_saved: ["success", "Счёт сохранён."],
+  support_saved: ["success", "Статус обращения сохранён."],
+  lead_saved: ["success", "Заявка сохранена."],
+  lead_archived: ["success", "Заявка в архиве. Вернуть — во вкладке «Архив»."],
+  lead_restored: ["success", "Заявка возвращена из архива."],
+  lead_deleted: ["success", "Заявка удалена."],
+  demo_issued: ["success", "Демо-ссылка выдана."],
+  demo_revoked: ["success", "Демо-ссылка отозвана."],
+  manager_added: ["success", "Менеджер добавлен."],
+  manager_saved: ["success", "Менеджер сохранён."],
+  password_changed: ["success", "Пароль сменён, остальные входы закрыты."],
+  sessions_closed: ["success", "Остальные входы закрыты."],
+};
+const FLASH_ICON = { success: "check", error: "alert" };
+function toast(code, path) {
+  const f = FLASH[code];
+  if (!f) return "";
+  const [tone, text] = f;
+  return `<div class="toast ${tone}" role="${tone === "error" ? "alert" : "status"}">${icon(FLASH_ICON[tone], 16)}<span>${esc(text)}</span><a class="toast-x" href="${esc(path)}" aria-label="Закрыть уведомление">×</a></div>`;
+}
 const opt = (value, label, current) =>
   `<option value="${esc(value)}"${String(current ?? "") === String(value) ? " selected" : ""}>${esc(label)}</option>`;
 
@@ -165,6 +200,8 @@ module.exports = {
   layout,
   hidden,
   errorBox,
+  FLASH,
+  toast,
   opt,
   head,
   stat,

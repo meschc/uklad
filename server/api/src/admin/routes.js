@@ -292,7 +292,6 @@ function createRoutes({ store, cfg, invoices }) {
           admin: store.adminById(s.admin_id),
           sessions: store.sessionsOf(s.admin_id),
           now: nowIso,
-          done: url.searchParams.get("done") === "password",
         }),
       );
     }
@@ -339,7 +338,7 @@ function createRoutes({ store, cfg, invoices }) {
         пробный: trial ? `${plans.TRIAL_MONTHS} мес.` : "нет",
         ...(lead ? { "из заявки": `#${lead.id}` } : {}),
       });
-      return redirect(`/accounts/${id}`);
+      return redirect(`/accounts/${id}`, "account_created");
     }
 
     const m = /^\/accounts\/(\d{1,10})\/([a-z]+)$/.exec(path);
@@ -347,7 +346,7 @@ function createRoutes({ store, cfg, invoices }) {
       const a = store.account(Number(m[1]));
       if (!a) return notFound();
       const target = `account:${a.id}`;
-      const back = () => redirect(`/accounts/${a.id}`);
+      const back = () => redirect(`/accounts/${a.id}`, "saved");
       const fail = (error) => badRequest(accountPage(s, a, nowIso, { error }));
 
       switch (m[2]) {
@@ -529,7 +528,10 @@ function createRoutes({ store, cfg, invoices }) {
         },
       );
       const back = text(form, "back");
-      return redirect(back === "account" ? `/accounts/${i.account_id}` : "/invoices");
+      return redirect(
+        back === "account" ? `/accounts/${i.account_id}` : "/invoices",
+        "invoice_saved",
+      );
     }
 
     const rep = /^\/support\/(\d{1,10})$/.exec(path);
@@ -540,7 +542,7 @@ function createRoutes({ store, cfg, invoices }) {
       if (!views.SUPPORT_STATUSES.includes(status)) return notFound();
       store.setReport(r.id, status, text(form, "note", 2000));
       store.log(t, by, "support_update", `support:${r.id}`, { было: r.status, стало: status });
-      return redirect(`/support/${r.id}`);
+      return redirect(`/support/${r.id}`, "support_saved");
     }
 
     // Отметка «разобрано» отменяется той же кнопкой — без подтверждения.
@@ -566,7 +568,10 @@ function createRoutes({ store, cfg, invoices }) {
         const back = l.archived_at ? null : nowIso;
         store.archiveLead(l.id, back);
         store.log(t, by, back ? "lead_archive" : "lead_restore", `lead:${l.id}`, {});
-        return redirect(back ? "/leads" : `/leads/${l.id}`);
+        return redirect(
+          back ? "/leads" : `/leads/${l.id}`,
+          back ? "lead_archived" : "lead_restored",
+        );
       }
       if (lead[2] === "/delete") {
         if (!confirmed(form)) {
@@ -594,14 +599,14 @@ function createRoutes({ store, cfg, invoices }) {
         store.deleteLead(l.id);
         // В журнал — только номер: удаляем как раз ради того, чтобы данных не осталось.
         store.log(t, by, "lead_delete", `lead:${l.id}`, {});
-        return redirect("/leads");
+        return redirect("/leads", "lead_deleted");
       }
       if (!lead[2]) {
         const status = form.get("status");
         if (!LEAD_STATUSES.includes(status)) return notFound();
         store.setLead(l.id, status, text(form, "note", 2000) || null);
         store.log(t, by, "lead_update", `lead:${l.id}`, { статус: status });
-        return redirect(`/leads/${l.id}`);
+        return redirect(`/leads/${l.id}`, "lead_saved");
       }
       // Заявка → аккаунт: форма с подставленными данными, создаёт человек.
       // Если почта уже есть у аккаунта — просто связываем.
@@ -664,7 +669,7 @@ function createRoutes({ store, cfg, invoices }) {
         by,
       });
       store.log(t, by, "demo_issue", `demo:${id}`, { для: label, дней: days });
-      return redirect(`/demos/${id}`);
+      return redirect(`/demos/${id}`, "demo_issued");
     }
     const rv = /^\/demos\/(\d{1,10})\/revoke$/.exec(path);
     if (rv) {
@@ -690,7 +695,7 @@ function createRoutes({ store, cfg, invoices }) {
       }
       store.revokeDemo(d.id, t);
       store.log(t, by, "demo_revoke", `demo:${d.id}`);
-      return redirect(`/demos/${d.id}`);
+      return redirect(`/demos/${d.id}`, "demo_revoked");
     }
 
     if (path === "/managers") {
@@ -715,7 +720,7 @@ function createRoutes({ store, cfg, invoices }) {
       }
       const id = store.addManager({ name, contact: text(form, "contact") || null }, t);
       store.log(t, by, "manager_create", `manager:${id}`, { имя: name });
-      return redirect("/managers");
+      return redirect("/managers", "manager_added");
     }
     const mg = /^\/managers\/(\d{1,10})$/.exec(path);
     if (mg) {
@@ -753,7 +758,7 @@ function createRoutes({ store, cfg, invoices }) {
         имя: next.name,
         активен: next.active ? "да" : "нет",
       });
-      return redirect("/managers");
+      return redirect("/managers", "manager_saved");
     }
 
     if (path === "/settings/password") {
@@ -787,12 +792,12 @@ function createRoutes({ store, cfg, invoices }) {
       // Новый пароль — повод выкинуть все прочие входы.
       const closed = store.dropOtherSessions(by, s.tokenHash);
       store.log(t, by, "password_change", null, { "закрыто сессий": closed });
-      return redirect("/settings?done=password");
+      return redirect("/settings", "password_changed");
     }
     if (path === "/settings/sessions") {
       const closed = store.dropOtherSessions(by, s.tokenHash);
       store.log(t, by, "sessions_close", null, { закрыто: closed });
-      return redirect("/settings");
+      return redirect("/settings", "sessions_closed");
     }
     return notFound();
   }

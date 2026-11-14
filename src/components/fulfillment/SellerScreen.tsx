@@ -24,7 +24,8 @@ import { Segmented } from "@/components/ui/segmented";
 import { TableScreen } from "@/components/table/TableScreen";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { EmptyState } from "./ScreenShell";
-import { Modal, Field } from "./Modal";
+import { Modal } from "./Modal";
+import { Field } from "@/components/ui/field";
 import { SupplyDialog } from "./SupplyDialog";
 import { RequestDialog } from "./RequestDialog";
 import { StatusBadge } from "./TasksScreen";
@@ -276,7 +277,7 @@ function RequestsTab({ t }: { t: TFunc }) {
  */
 function BulkRequestDialog({ onClose, t }: { onClose: () => void; t: TFunc }) {
   const products = useWarehouseProducts();
-  const showToast = useEditor((s) => s.showToast);
+  const notify = useEditor((s) => s.notify);
   const [text, setText] = useState("");
   const [truck, setTruck] = useState("");
 
@@ -321,7 +322,7 @@ function BulkRequestDialog({ onClose, t }: { onClose: () => void; t: TFunc }) {
         "uklad-requests-template.xlsx",
       );
     } catch {
-      showToast("import.msg.templateFailed");
+      notify("error", "import.msg.templateFailed");
     }
   };
 

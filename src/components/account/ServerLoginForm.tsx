@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Segmented } from "@/components/ui/segmented";
 import { EmailInput } from "./EmailInput";
+import { FieldError, FormError } from "@/components/ui/field";
 
 /**
  * Вход через сервер: пароль, регистрация с кодом из письма, сброс пароля.
@@ -307,13 +308,9 @@ export function ServerLoginForm() {
               </a>
             </ConsentRow>
           )}
-          {shown(consentErr) && <span className="text-xs text-destructive">{consentErr}</span>}
+          {shown(consentErr) && <FieldError>{consentErr}</FieldError>}
 
-          {error && (
-            <p role="alert" className="text-sm text-destructive">
-              {t(error)}
-            </p>
-          )}
+          {error && <FormError>{t(error)}</FormError>}
 
           <Button type="submit" className="mt-1 w-full" disabled={pending}>
             {pending ? t("data.busy") : t(submitKey[step])}
@@ -376,7 +373,7 @@ function Field({
       {/* Как на формах витрины: обычная подпись, без капса и значков. */}
       <label className="text-sm font-medium">{label}</label>
       {children}
-      {error && <span className="text-xs text-destructive">{error}</span>}
+      {error && <FieldError>{error}</FieldError>}
     </div>
   );
 }

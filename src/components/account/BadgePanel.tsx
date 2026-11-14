@@ -7,6 +7,7 @@ import type { TFunc } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { DialogHeader, DialogShell } from "@/components/ui/dialog-shell";
 import { QrSvg } from "@/components/table/QrSvg";
+import { FieldError } from "@/components/ui/field";
 
 /**
  * Бейдж сотрудника — боковой панелью справа, а не окном поверх (правило
@@ -77,11 +78,7 @@ export function BadgePanel({
                 </Button>
               )}
             </div>
-            {revoke.error && (
-              <p role="alert" className="text-xs text-destructive">
-                {t(revoke.error)}
-              </p>
-            )}
+            {revoke.error && <FieldError>{t(revoke.error)}</FieldError>}
           </>
         )}
       </div>

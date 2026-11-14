@@ -46,13 +46,16 @@ export function ServicesPanel() {
   const setTwoStage = useEditor((s) => s.setTwoStageReceiving);
   const removeCustom = useEditor((s) => s.removeCustomService);
   const restoreCustom = useEditor((s) => s.restoreCustomService);
-  const showToast = useEditor((s) => s.showToast);
+  const notify = useEditor((s) => s.notify);
   const [adding, setAdding] = useState(false);
   const removeService = (kind: CustomServiceKind) => {
     const service = settings.custom?.find((c) => c.kind === kind);
     removeCustom(kind);
     if (service)
-      showToast("ops.custom.removed", { name: service.name }, () => restoreCustom(service));
+      notify("success", "ops.custom.removed", {
+        vars: { name: service.name },
+        undo: () => restoreCustom(service),
+      });
   };
 
   return (

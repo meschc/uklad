@@ -30,6 +30,7 @@ import { eyebrow } from "@/components/ui/eyebrow";
 import { card } from "@/components/ui/card";
 import { EmptyState } from "./ScreenShell";
 import { EmbeddedShell } from "./embeddedShell";
+import { FieldError, FormError } from "@/components/ui/field";
 
 /**
  * Шаг 5.1 — выбор ожидаемой поставки.
@@ -204,7 +205,7 @@ function ShipmentForm({
   onCancel: () => void;
 }) {
   const products = useEditor((s) => s.products);
-  const showToast = useEditor((s) => s.showToast);
+  const notify = useEditor((s) => s.notify);
   const t = useT();
 
   const [source, setSource] = useState<ShipmentSource>("manual");
@@ -249,7 +250,7 @@ function ShipmentForm({
         "uklad-shipment-template.xlsx",
       );
     } catch {
-      showToast("import.msg.templateFailed");
+      notify("error", "import.msg.templateFailed");
     }
   };
 
@@ -384,11 +385,7 @@ function ShipmentForm({
       <div className="flex items-center justify-end gap-2">
         {/* Отказ встаёт слева от кнопок, а не тостом: разобранная таблица
             остаётся на экране, и сообщение должно быть рядом с ней. */}
-        {create.error && (
-          <p role="alert" className="mr-auto min-w-0 text-xs text-destructive">
-            {t(create.error)}
-          </p>
-        )}
+        {create.error && <FieldError className="mr-auto min-w-0">{t(create.error)}</FieldError>}
         <Button size="sm" variant="ghost" onClick={onCancel}>
           {t("common.cancel")}
         </Button>
@@ -411,12 +408,7 @@ function ShipmentForm({
 
 function ShipmentPreview({ result, t }: { result: ShipmentParseResult; t: TFunc }) {
   if (!result.ok) {
-    return (
-      <div className="flex gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">
-        <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-        <p>{t(result.errorKey)}</p>
-      </div>
-    );
+    return <FormError>{t(result.errorKey)}</FormError>;
   }
   return (
     <div className="overflow-hidden rounded-md border border-border">

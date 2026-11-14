@@ -127,6 +127,9 @@ function createAdminApp({ cfg, db, now = () => new Date(), log = console, invoic
   }
   const COOKIE = local ? "uklad_admin_local" : "__Host-uklad_admin";
   const cookieAttrs = `Path=/; HttpOnly;${local ? "" : " Secure;"} SameSite=Strict`;
+  // Уведомление после действия: код в короткой куке, показывается на
+  // следующей странице один раз (redirect после POST — шаблон PRG).
+  const FLASH_COOKIE = local ? "uklad_admin_flash" : "__Host-uklad_admin_flash";
 
   const store = adminStore(db);
   const limiter = createRateLimit({ capacity: 10, refillPerMinute: 5 });
@@ -302,9 +305,21 @@ function createAdminApp({ cfg, db, now = () => new Date(), log = console, invoic
       url,
       s,
       t,
-      page: (body) => html(res, 200, body),
+      page: (body) => {
+        const code = cookieValue(req, FLASH_COOKIE);
+        if (!code) return html(res, 200, body);
+        const note = views.toast(code, path);
+        return html(res, 200, note ? body.replace("</body>", `${note}</body>`) : body, {
+          "Set-Cookie": `${FLASH_COOKIE}=; ${cookieAttrs}; Max-Age=0`,
+        });
+      },
       badRequest: (body) => html(res, 400, body),
-      redirect: (to) => redirect(res, to),
+      redirect: (to, flash) =>
+        redirect(
+          res,
+          to,
+          flash ? { "Set-Cookie": `${FLASH_COOKIE}=${flash}; ${cookieAttrs}; Max-Age=60` } : {},
+        ),
       notFound: () => html(res, 404, "Не найдено"),
       // Файл на скачивание: только JSON и только с именем, которое задал код.
       download: (name, body) => {

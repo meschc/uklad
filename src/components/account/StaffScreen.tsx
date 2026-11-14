@@ -37,7 +37,7 @@ type StaffTab = "people" | "output" | "partners" | "schedule" | "access";
 
 export function StaffScreen() {
   const warehouse = useEditor((s) => s.warehouse);
-  const showToast = useEditor((s) => s.showToast);
+  const notify = useEditor((s) => s.notify);
   const updateManager = useEditor((s) => s.updateManager);
   // Продавцу список персонала виден, но не редактируется (п.27).
   const readOnly = useEditor((s) => selectRole(s) === "seller");
@@ -88,12 +88,12 @@ export function StaffScreen() {
     // отправлять «загрузите ноль человек» бессмысленно даже локально.
     const parsed = csvToStaff(await file.text());
     if (!parsed.length) {
-      showToast("staff.importEmpty");
+      notify("warning", "staff.importEmpty");
       return;
     }
     const res = await load.run(parsed);
-    if (res.ok) showToast("staff.imported", { n: parsed.length });
-    else showToast(res.error, undefined, undefined, "error");
+    if (res.ok) notify("success", "staff.imported", { vars: { n: parsed.length } });
+    else notify("error", res.error);
   };
 
   if (readOnly) {

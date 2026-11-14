@@ -4,6 +4,7 @@ import { useT, type MsgKey } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { FieldError, FormError } from "@/components/ui/field";
 
 /**
  * Принять приглашение по ссылке из письма (`/app/#invite=…`).
@@ -40,9 +41,7 @@ export function InviteAccept({ token, onDone }: { token: string; onDone: () => v
   if (info === null) {
     return (
       <div className="flex flex-col gap-3 text-center">
-        <p role="alert" className="text-sm text-destructive">
-          {t(error ?? "team.invite.gone")}
-        </p>
+        <FormError>{t(error ?? "team.invite.gone")}</FormError>
         <Button variant="outline" onClick={onDone}>
           {t("common.ok")}
         </Button>
@@ -100,11 +99,7 @@ export function InviteAccept({ token, onDone }: { token: string; onDone: () => v
           </span>
         </label>
       )}
-      {error && (
-        <p role="alert" className="text-xs text-destructive">
-          {t(error)}
-        </p>
-      )}
+      {error && <FieldError>{t(error)}</FieldError>}
       <Button type="submit" disabled={!valid || pending}>
         {pending ? t("data.busy") : t("team.invite.accept")}
       </Button>

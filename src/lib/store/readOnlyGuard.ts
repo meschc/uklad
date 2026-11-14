@@ -64,6 +64,6 @@ export function guardReadOnly(
       } else kept[k] = v;
     }
     set(kept as Partial<EditorState>);
-    if (dropped) s.showToast("sync.readOnly");
+    if (dropped) s.notify("info", "sync.readOnly");
   }) as SetState;
 }
