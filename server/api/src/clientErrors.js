@@ -81,7 +81,8 @@ function errorStore(db) {
       first_seen  TEXT NOT NULL,
       last_seen   TEXT NOT NULL,
       count       INTEGER NOT NULL DEFAULT 1,
-      day_count   INTEGER NOT NULL DEFAULT 1
+      day_count   INTEGER NOT NULL DEFAULT 1,
+      resolved_at TEXT
     );
     CREATE INDEX IF NOT EXISTS client_errors_first ON client_errors (first_seen);
     -- Когда ушла последняя сводка: переживает перезапуск и выкладку.
@@ -90,15 +91,34 @@ function errorStore(db) {
       value TEXT NOT NULL
     );
   `);
+  // Таблица из первой версии (#138) без отметки «разобрано».
+  if (
+    !db
+      .prepare(`PRAGMA table_info(client_errors)`)
+      .all()
+      .some((c) => c.name === "resolved_at")
+  ) {
+    db.exec(`ALTER TABLE client_errors ADD COLUMN resolved_at TEXT`);
+  }
   const q = {
     find: db.prepare(`SELECT fingerprint FROM client_errors WHERE fingerprint = ?`),
+    // Для админки: разобранные — с отметкой, повтор после неё снимает отметку.
+    list: db.prepare(
+      `SELECT * FROM client_errors
+        WHERE (?1 = '' OR (?1 = 'open' AND resolved_at IS NULL) OR (?1 = 'done' AND resolved_at IS NOT NULL))
+        ORDER BY last_seen DESC LIMIT 500`,
+    ),
+    one: db.prepare(`SELECT * FROM client_errors WHERE fingerprint = ?`),
+    resolve: db.prepare(`UPDATE client_errors SET resolved_at = ? WHERE fingerprint = ?`),
+    countOpen: db.prepare(`SELECT COUNT(*) AS n FROM client_errors WHERE resolved_at IS NULL`),
     insert: db.prepare(
       `INSERT INTO client_errors (fingerprint, source, view, message, stack, first_seen, last_seen)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
     ),
     bump: db.prepare(
       `UPDATE client_errors
-          SET count = count + 1, day_count = day_count + 1, last_seen = ?, view = ?, stack = ?
+          SET count = count + 1, day_count = day_count + 1, last_seen = ?, view = ?, stack = ?,
+            resolved_at = NULL
         WHERE fingerprint = ?`,
     ),
     newSince: db.prepare(`SELECT COUNT(*) AS n FROM client_errors WHERE first_seen >= ?`),
@@ -125,6 +145,11 @@ function errorStore(db) {
       q.insert.run(fp, e.source, e.view, e.message, e.stack, at, at);
       return { fingerprint: fp, fresh: true };
     },
+    list: (state = "") => q.list.all(state),
+    one: (fingerprint) => q.one.get(fingerprint),
+    /** `at` — отметка «разобрано», `null` — вернуть в открытые. */
+    setResolved: (fingerprint, at) => Number(q.resolve.run(at, fingerprint).changes) > 0,
+    countOpen: () => Number(q.countOpen.get().n),
     newLastDay: (now) => Number(q.newSince.get(new Date(now.getTime() - DAY_MS).toISOString()).n),
     pending: () => q.pending.all(),
     reset: () => q.reset.run(),

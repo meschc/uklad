@@ -32,6 +32,8 @@ const ACTION = {
   lead_delete: "Заявка удалена",
   support_update: "Обращение обновлено",
   support_download: "Обращение скачано",
+  error_resolve: "Ошибка разобрана",
+  error_reopen: "Ошибка снова открыта",
   manager_create: "Добавлен менеджер",
   manager_edit: "Изменён менеджер",
   account_register: "Регистрация в кабинете",
