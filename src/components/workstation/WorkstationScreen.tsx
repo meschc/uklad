@@ -46,6 +46,8 @@ import { ShiftBar } from "./ShiftBar";
 import { LogoutPanel } from "./LogoutPanel";
 import { PackStation } from "./PackStation";
 import { PrinterPanel } from "./PrinterPanel";
+import { PrintSetup } from "./PrintSetup";
+import { usePrintMode } from "@/lib/silentPrint";
 import { ShipStation } from "./ShipStation";
 import { InventoryStation } from "./InventoryStation";
 import { StaffLog } from "./StaffLog";
@@ -64,6 +66,8 @@ import { formatTime, useNow } from "./useNow";
  * документы и аналитика — контроль, а не работа.
  */
 
+/** Столы, которые печатают этикетки и ярлыки сами. */
+const PRINT_STATIONS = new Set<string>(["pack", "sorting"]);
 type Panel = "shift" | "log" | "printer" | "disputes" | "logout" | null;
 
 /** Текст шапки и нижней панели поверх залитого сигналом поля. */
@@ -79,6 +83,7 @@ export function WorkstationScreen() {
   const onServer = useEditor((s) => s.session.source === "server");
   const staff = useEditor((s) => s.warehouse.staff);
   const device = useEditor(boundDevice);
+  const printMode = usePrintMode();
   const openDisputes = useEditor((s) => s.disputes.filter((d) => !d.resolution).length);
   const [opened, setOpened] = useState<{ panel: Panel; owner?: string }>({ panel: null });
   const [unbinding, setUnbinding] = useState(false);
@@ -247,7 +252,16 @@ export function WorkstationScreen() {
             </div>
           </div>
         ) : !member ? (
-          <BadgeLogin />
+          <>
+            {/* Стол печатает этикетки, а печать без окна ещё не включена:
+                настроить до начала смены, а не посреди упаковки. */}
+            {PRINT_STATIONS.has(device?.station ?? "pack") && printMode !== "silent" && (
+              <div className="mx-auto mt-8 w-full max-w-xl rounded-xl bg-muted/50 p-4">
+                <PrintSetup compact />
+              </div>
+            )}
+            <BadgeLogin />
+          </>
         ) : (
           <div className="mx-auto flex max-w-5xl flex-col gap-5 px-4 py-6">
             <ShiftGate staffId={member.id}>

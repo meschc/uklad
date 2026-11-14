@@ -290,7 +290,7 @@ export function PackRun({
                 <LabelBlock code={unit.labelCode} title={t("ws.run.labelPrinted")} />
                 {/* Брак — средняя по опасности: жёлтая, красная оставлена для необратимого. */}
                 <Button
-                  className="bg-warning text-black shadow-sm hover:bg-warning"
+                  className="bg-warning-fill text-warning-foreground shadow-sm hover:bg-warning-fill/90"
                   onClick={() => setRejecting(true)}
                 >
                   <Ban />
