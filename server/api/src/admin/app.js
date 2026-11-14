@@ -295,6 +295,7 @@ function createAdminApp({ cfg, db, now = () => new Date(), log = console, invoic
       badges: {
         "/leads": store.countNewLeads() || 0,
         "/support": store.countNewReports() || 0,
+        "/errors": store.countOpenClientErrors() || 0,
         "/invoices": bills.open().length || 0,
       },
     };

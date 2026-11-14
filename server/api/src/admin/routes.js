@@ -242,6 +242,12 @@ function createRoutes({ store, cfg, invoices }) {
       return page(views.supportPage({ session: s, report: r, payload }));
     }
 
+    if (path === "/errors") {
+      const st = url.searchParams.get("state");
+      const state = views.ERROR_STATES.includes(st) ? st : "";
+      return page(views.errorsList({ session: s, errors: store.clientErrors(state), state }));
+    }
+
     if (path === "/demos") {
       return page(
         views.demosList({ session: s, demos: store.demos(), now: nowIso, days: cfg.demoDays }),
@@ -537,6 +543,20 @@ function createRoutes({ store, cfg, invoices }) {
       store.setReport(r.id, status, text(form, "note", 2000));
       store.log(t, by, "support_update", `support:${r.id}`, { было: r.status, стало: status });
       return redirect(`/support/${r.id}`, "support_saved");
+    }
+
+    // Отметка «разобрано» отменяется той же кнопкой — без подтверждения.
+    const err = /^\/errors\/([0-9a-f]{16})$/.exec(path);
+    if (err) {
+      const e = store.clientError(err[1]);
+      if (!e) return notFound();
+      const resolved = form.get("resolved") === "1";
+      store.resolveClientError(e.fingerprint, resolved ? t.toISOString() : null);
+      store.log(t, by, resolved ? "error_resolve" : "error_reopen", `error:${e.fingerprint}`, {
+        ошибка: e.message.slice(0, 80),
+      });
+      const st = form.get("state");
+      return redirect(views.ERROR_STATES.includes(st) ? `/errors?state=${st}` : "/errors");
     }
 
     const lead = /^\/leads\/(\d{1,10})(\/convert|\/archive|\/delete)?$/.exec(path);

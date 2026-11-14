@@ -66,6 +66,7 @@ const NAV = [
       ["/accounts", "Пользователи", "users"],
       ["/demos", "Демо-ссылки", "link"],
       ["/support", "Поддержка", "support"],
+      ["/errors", "Ошибки", "bug"],
     ],
   ],
   [

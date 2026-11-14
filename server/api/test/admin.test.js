@@ -10,6 +10,7 @@ const assert = require("node:assert/strict");
 const http = require("node:http");
 const { openDb } = require("../src/db");
 const { adminStore } = require("../src/admin/store");
+const { errorStore } = require("../src/clientErrors");
 const { hashPassword } = require("../src/admin/password");
 const totp = require("../src/admin/totp");
 const { createAdminApp, COOKIE } = require("../src/admin/app");
@@ -420,6 +421,9 @@ test("все страницы открываются и экранируют в�
     "/accounts/new",
     "/leads",
     "/demos",
+    "/errors",
+    "/errors?state=open",
+    "/errors?state=done",
     "/money",
     "/logo.svg",
     "/chevron.svg",
@@ -507,4 +511,52 @@ test("после действия — уведомление один раз, т
     `${cookie}; ${flash.replace("lead_archived", "<script>")}`,
   );
   assert.doesNotMatch(await forged.text(), /class="toast/, "чужой код не показываем");
+});
+
+test("ошибки пользователей: «разобрано», повтор снимает отметку, всё в журнале", async (t) => {
+  const app = await start();
+  t.after(app.stop);
+  // Без сессии раздел закрыт, а отметка не ставится.
+  assert.equal((await app.get("/errors")).status, 303);
+  const { cookie } = await app.login();
+  const errs = errorStore(app.db.raw);
+  const e = { source: "window", view: "plan", message: "<b>упало</b>", stack: "at x (a.js:1)" };
+  const { fingerprint } = errs.add(e, new Date("2026-10-21T09:00:00Z"));
+  const csrf = await app.csrf(cookie);
+
+  const open = await (await app.get("/errors?state=open", cookie)).text();
+  assert.ok(open.includes("&lt;b&gt;упало&lt;/b&gt;"), "текст экранируется");
+  assert.ok(!open.includes("<b>упало"), "разметка из ошибки не проходит");
+  assert.ok(open.includes("at x (a.js:1)"), "стек на странице");
+
+  // Без CSRF отметка не ставится.
+  const bad = await app.post(`/errors/${fingerprint}`, { resolved: "1" }, cookie);
+  assert.equal(bad.status, 403);
+  assert.equal(errs.countOpen(), 1);
+
+  const ok = await app.post(
+    `/errors/${fingerprint}`,
+    { csrf, resolved: "1", state: "open" },
+    cookie,
+  );
+  assert.equal(ok.status, 303);
+  assert.equal(ok.headers.get("location"), "/errors?state=open");
+  assert.equal(errs.countOpen(), 0);
+  assert.ok(!(await (await app.get("/errors?state=open", cookie)).text()).includes("упало"));
+  assert.ok((await (await app.get("/errors?state=done", cookie)).text()).includes("Разобрано"));
+
+  // Ошибка вернулась — снова открыта.
+  errs.add(e, new Date("2026-10-22T09:00:00Z"));
+  assert.equal(errs.countOpen(), 1);
+  assert.equal(errs.one(fingerprint).count, 2);
+
+  // Чужой отпечаток — 404, мусор вместо отпечатка — тоже.
+  assert.equal(
+    (await app.post("/errors/0123456789abcdef", { csrf, resolved: "1" }, cookie)).status,
+    404,
+  );
+  assert.equal((await app.post("/errors/xx", { csrf, resolved: "1" }, cookie)).status, 404);
+
+  const audit = await (await app.get("/audit", cookie)).text();
+  assert.ok(audit.includes("Ошибка разобрана"));
 });

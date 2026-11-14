@@ -23,6 +23,7 @@
 /* global require, module */
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { createHash } = require("node:crypto");
+const { errorStore } = require("../clientErrors");
 
 const sha256 = (s) => createHash("sha256").update(s).digest("hex");
 
@@ -274,7 +275,15 @@ function adminStore(db) {
       }
     : null;
 
+  // Ошибки у пользователей: таблицу и запросы ведёт `clientErrors.js`, админка
+  // только читает и ставит отметку «разобрано».
+  const errs = errorStore(db);
+
   return {
+    clientErrors: errs.list,
+    clientError: errs.one,
+    resolveClientError: errs.setResolved,
+    countOpenClientErrors: errs.countOpen,
     hasReports: Boolean(repQ),
     reports: (status = "") => (repQ ? repQ.reports.all(status) : []),
     report: (id) => repQ?.report.get(id),
