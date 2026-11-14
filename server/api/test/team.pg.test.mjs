@@ -205,6 +205,11 @@ test("начальник не может выше себя и не может с
     body: { name: "Мастер смены", permissions: ["stock.view", "picking.do"] },
   });
   assert.equal(okRole.status, 200);
+  // «Делать» без «смотреть» не бывает: чтение раздела база добавляет сама (033).
+  const saved = (await call("GET", "/api/team", chief)).json.roles.find(
+    (x) => x.name === "Мастер смены",
+  );
+  assert.deepEqual([...saved.permissions].sort(), ["picking.do", "picking.view", "stock.view"]);
   // Опечатка в праве — отказ, а не роль без права.
   const typo = await post("/api/team/roles/save", {
     ...chief,

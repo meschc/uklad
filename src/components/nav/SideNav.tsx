@@ -14,6 +14,7 @@ import {
   WORKSTATION_NAV,
   applyOrder,
   entriesFor,
+  viewAllowed,
   entryKey,
   isGroup,
   moveItem,
@@ -77,6 +78,8 @@ export function SideNav() {
   const warehouseName = useEditor((s) => s.warehouse?.name);
   const orgLogo = useEditor((s) => s.account.orgLogo);
   const role = useEditor(selectRole);
+  // Экраны, закрытые правами роли, в меню не показываются (разделы прав, 033).
+  const perms = useEditor((s) => s.session.permissions);
   const theme = useEditor((s) => s.profile.theme);
   const updateProfile = useEditor((s) => s.updateProfile);
   const requests = useEditor((s) => s.requests);
@@ -93,7 +96,7 @@ export function SideNav() {
   const [over, setOver] = useState<Drag | null>(null);
   const flipRef = useFlip<HTMLElement>();
   const topKey = `${role}:top`;
-  const entries = applyOrder(entriesFor(role), order[topKey], entryKey);
+  const entries = applyOrder(entriesFor(role, perms), order[topKey], entryKey);
   const itemsOf = (groupId: string, items: NavLeaf[]) =>
     applyOrder(items, order[`${role}:${groupId}`], (i) => i.view);
 
@@ -299,7 +302,7 @@ export function SideNav() {
       })}
 
       <div className="mt-auto flex flex-col gap-0.5 pt-2">
-        {role === "warehouse" && (
+        {role === "warehouse" && viewAllowed("workstation", perms) && (
           <NavRow
             icon={WORKSTATION_NAV.icon}
             label={t(WORKSTATION_NAV.key)}

@@ -44,3 +44,45 @@ describe("меню склада", () => {
     expect(views).toContain("tasks");
   });
 });
+
+describe("меню по правам роли (разделы, 033)", () => {
+  const views = (perms?: string[]) => navFor("warehouse", perms).map((n) => n.view);
+
+  it("без прав (демо) и у руководителя — всё", () => {
+    expect(views()).toEqual(views(["staff.manage"]));
+    expect(views()).toContain("integrations");
+  });
+
+  it("старшему смены — без настройки склада, с персоналом на чтение", () => {
+    const lead = views([
+      "staff.view",
+      "plan.view",
+      "products.view",
+      "stock.view",
+      "stock.move",
+      "picking.view",
+      "picking.do",
+      "goods.view",
+      "goods.decide",
+      "chat.use",
+    ]);
+    for (const v of ["spec", "operations", "integrations", "devices"])
+      expect(lead).not.toContain(v);
+    for (const v of ["tasks", "disputes", "chat", "staff", "analytics", "workstation"])
+      expect(lead).toContain(v);
+  });
+
+  it("сборщику — его работа, без спорного, чата и персонала", () => {
+    const picker = views([
+      "products.view",
+      "stock.view",
+      "plan.view",
+      "picking.view",
+      "picking.do",
+    ]);
+    expect(picker).toContain("tasks");
+    expect(picker).toContain("workstation");
+    for (const v of ["disputes", "chat", "staff", "analytics", "spec"])
+      expect(picker).not.toContain(v);
+  });
+});

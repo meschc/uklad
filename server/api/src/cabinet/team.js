@@ -201,11 +201,12 @@ function createTeam({ auth, cfg, send, log }) {
         }
         const roleId = b.roleId == null ? null : uuid(b.roleId);
         if (b.roleId != null && !roleId) throw new Error("team:not_found");
-        const { rows } = await c.query(`SELECT auth.save_role($1, $2, $3::text[]) AS id`, [
-          roleId,
-          String(b.name ?? ""),
-          [...new Set(perms)],
-        ]);
+        // «Делать» без «смотреть» не бывает (033): чтение к каждому «делать»
+        // добавляет база, а не экран — старый браузер не сохранит роль криво.
+        const { rows } = await c.query(
+          `SELECT auth.save_role($1, $2, uklad.with_view_perms($3::text[])) AS id`,
+          [roleId, String(b.name ?? ""), [...new Set(perms)]],
+        );
         return rows[0].id;
       },
       (id) => ({ roleId: id }),

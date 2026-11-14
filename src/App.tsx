@@ -215,7 +215,10 @@ export default function App() {
   // Экраны уровня аккаунта доступны всегда: их нет в рельсе (в кабинет ведёт
   // логотип, в профиль — шапка кабинета), но выкидывать с них по «не нашёл в
   // списке разрешённых» нельзя — иначе кабинет стал бы недостижим.
-  const allowed = navFor(role).map((n) => n.view);
+  const perms = useEditor((s) => s.session.permissions);
+  // Смотрящему профиль не нужен: выход — на главной (Кирилл 14.11).
+  const viewer = useEditor((s) => s.session.readOnly === true);
+  const allowed = navFor(role, perms).map((n) => n.view);
   // Компьютер, привязанный к месту, — это стол, а не кабинет: он открывает
   // только рабочее место, куда бы ни вела ссылка. Отвязать его можно бейджем
   // руководителя на самом столе или с экрана «Устройства» с другого компьютера.
@@ -230,9 +233,10 @@ export default function App() {
       ? "dashboard"
       : kiosk || legacyStation
         ? "workstation"
-        : ACCOUNT_VIEWS.has(appView) || allowed.includes(appView)
+        : (ACCOUNT_VIEWS.has(appView) && !(viewer && appView === "profile")) ||
+            allowed.includes(appView)
           ? appView
-          : allowed[0];
+          : (allowed[0] ?? "dashboard");
 
   useEffect(() => {
     // Пока сервер не ответил про пропуск, экран не трогаем: иначе демо

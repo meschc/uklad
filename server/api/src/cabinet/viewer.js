@@ -79,6 +79,37 @@ const WAREHOUSE_KEYS = [
   "placeholder",
 ];
 
+/**
+ * Работа склада по разделам (миграция 033): ключ снимка уходит смотрящему,
+ * только если ему открыт хотя бы один из разделов. Товары, остатки и план —
+ * справочник для любой работы (сборщику нужны название товара и адрес
+ * ячейки), поэтому их ключей здесь нет: они уходят всем, кто вообще смотрит.
+ * Закрыт раздел — его экран кабинет прячет (`navItems.ts`).
+ */
+const AREA_KEYS = {
+  expectedShipments: ["receiving.view"],
+  receivingEvents: ["receiving.view"],
+  requests: ["picking.view", "packing.view", "shipping.view"],
+  outboundBoxes: ["packing.view", "shipping.view"],
+  shipments: ["shipping.view"],
+  disputes: ["goods.view"],
+  breakPolicy: ["goods.view"],
+};
+
+/** Права «смотреть», любое из которых открывает кабинет на просмотр. */
+const VIEW_PERMS = [
+  "products.view",
+  "stock.view",
+  "plan.view",
+  "receiving.view",
+  "picking.view",
+  "packing.view",
+  "shipping.view",
+  "inventory.view",
+  "goods.view",
+  "staff.view",
+];
+
 const pick = (obj, keys) => {
   const out = {};
   for (const k of keys) if (k in obj) out[k] = obj[k];
@@ -87,8 +118,17 @@ const pick = (obj, keys) => {
 
 const person = (m) => (isObject(m) ? pick(m, ["id", "name", "role", "photoUrl"]) : m);
 
-function forViewer(data) {
+/** Закрытый раздел — пустое значение того же вида, а не пропуск ключа. */
+const empty = (v) => (Array.isArray(v) ? [] : isObject(v) ? {} : null);
+
+/**
+ * Снимок смотрящему. `can` — право роли; без него (старые вызовы и тесты) —
+ * все разделы открыты.
+ */
+function forViewer(data, can = () => true) {
   const out = pick(isObject(data) ? data : {}, VIEWER_KEYS);
+  for (const [key, perms] of Object.entries(AREA_KEYS))
+    if (key in out && !perms.some((p) => can(p))) out[key] = empty(out[key]);
   // Пустые значения вместо закрытого: браузер не подставит чужое из демо.
   Object.assign(out, {
     chats: {},
@@ -116,4 +156,4 @@ function forViewer(data) {
   return out;
 }
 
-module.exports = { forViewer, VIEWER_KEYS, VIEWER_HIDDEN };
+module.exports = { forViewer, VIEWER_KEYS, VIEWER_HIDDEN, AREA_KEYS, VIEW_PERMS };

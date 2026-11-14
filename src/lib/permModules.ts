@@ -1,147 +1,121 @@
 import type { MsgKey } from "./i18n";
 
 /**
- * Права ролей для экрана «Персонал → Доступ»: одни функции для всех, роль —
- * набор прав. Коды прав — серверные (`uklad.permissions`, миграции 002, 024,
- * 030); здесь только разделы, подписи и объяснения. Проверяет право сервер:
- * у стола (`deskPerms.js`) и при записи кабинета (`writeScope.js`).
+ * Права ролей для экрана «Персонал → Доступ». Коды прав — серверные
+ * (`uklad.permissions`, миграции 002, 024, 030, 033); здесь только разделы,
+ * подписи и объяснения. Проверяет право сервер: у стола (`deskPerms.js`), при
+ * выдаче снимка (`viewer.js`) и при записи кабинета (`writeScope.js`).
+ *
+ * Кирилл 14.11: «чтение, чтение и запись — в этом суть прав». У раздела ровно
+ * три уровня, и уровень однороден: раздел — одна работа, у неё одно право
+ * «смотреть» и одно «делать». Поштучного подбора внутри раздела нет — если
+ * разным людям в разделе нужно разное, раздел надо делить, а не прятать это
+ * за «выборочно».
  */
 
-export interface PermSection {
+export interface PermArea {
   id: string;
   title: MsgKey;
-  /** Права раздела в порядке «от простого к сильному». */
-  perms: string[];
   /**
-   * Что значит «чтение» в разделе. Пусто — чтения нет: раздел либо выключен,
-   * либо человек в нём работает (решения по товару, работа стола).
+   * Право «смотреть». `null` — отдельного чтения нет (списание: смотреть его —
+   * это чтение «Спорного товара»; чат: читать и не отвечать незачем), у
+   * раздела только «нет» и «чтение и запись».
    */
-  read: string[];
+  read: string | null;
+  /** Права «делать»: уровень «чтение и запись» — это чтение плюс они. */
+  write: string[];
+  /** Что даёт чтение и что добавляет запись — строками под разделом. */
+  readDesc: MsgKey | null;
+  writeDesc: MsgKey;
 }
 
-/**
- * Разделы прав (Кирилл 14.11): в своей роли у раздела уровень — нет, чтение
- * или запись, а раскрыв раздел, видно и можно поправить каждое право с
- * объяснением, что оно даёт. Стандартные роли не правятся — только смотрят.
- */
-export const PERM_SECTIONS: PermSection[] = [
-  {
-    id: "stock",
-    title: "perm.sec.stock",
-    perms: ["stock.view", "products.edit", "plan.edit", "stock.move"],
-    read: ["stock.view"],
-  },
-  {
-    id: "desk",
-    title: "perm.sec.desk",
-    perms: ["receiving.do", "picking.do", "packing.do", "shipping.do", "inventory.count"],
-    read: [],
-  },
-  // Списание подтверждает начальник (миграция 030): старший только просит.
-  { id: "goods", title: "perm.sec.goods", perms: ["goods.decide", "goods.writeoff"], read: [] },
-  {
-    id: "people",
-    title: "perm.sec.people",
-    perms: ["billing.view", "staff.manage", "contracts.manage", "org.manage"],
-    read: ["billing.view"],
-  },
-  {
-    id: "sellers",
-    title: "perm.sec.sellers",
-    perms: ["chat.use", "seller.requests"],
-    read: ["chat.use"],
-  },
+function area(id: string, read: string | null, write: string[]): PermArea {
+  return {
+    id,
+    title: `perm.area.${id}` as MsgKey,
+    read,
+    write,
+    readDesc: read ? (`perm.area.${id}.read` as MsgKey) : null,
+    writeDesc: `perm.area.${id}.write` as MsgKey,
+  };
+}
+
+export const PERM_AREAS: PermArea[] = [
+  area("products", "products.view", ["products.edit"]),
+  area("stock", "stock.view", ["stock.move"]),
+  area("plan", "plan.view", ["plan.edit"]),
+  area("receiving", "receiving.view", ["receiving.do"]),
+  area("picking", "picking.view", ["picking.do"]),
+  area("packing", "packing.view", ["packing.do"]),
+  area("shipping", "shipping.view", ["shipping.do"]),
+  area("inventory", "inventory.view", ["inventory.count"]),
+  // Старший решает по спорному, а списание подтверждает начальник (030):
+  // поэтому это два раздела, а не «выборочно» в одном.
+  area("goods", "goods.view", ["goods.decide"]),
+  area("writeoff", null, ["goods.writeoff"]),
+  area("staff", "staff.view", ["staff.manage"]),
+  area("contracts", "billing.view", ["contracts.manage"]),
+  // Переписка — одно право: читать чат и не отвечать продавцу складу не нужно.
+  area("chat", null, ["chat.use"]),
+  // Кабинет продавца — свой, товар только своего партнёра; одно право.
+  area("seller", null, ["seller.requests"]),
 ];
 
-export type PermLevel = "none" | "read" | "write" | "custom";
+/**
+ * Право владельца: в свою роль не выдаётся, разделом не показывается —
+ * владелец всегда один и видит всё.
+ */
+export const OWNER_PERM = "org.manage";
+
+export type PermLevel = "none" | "read" | "write";
+
+/** Все коды раздела. */
+export const areaCodes = (a: PermArea): string[] => (a.read ? [a.read, ...a.write] : a.write);
 
 /**
- * Уровень раздела у набора прав. `custom` — права подобраны поштучно и ни
- * под один уровень не подходят. Владельца (`org.manage`) в своей роли не
- * бывает, поэтому «запись» его не требует.
+ * Уровень раздела у набора прав. Права «делать» без «смотреть» (роль из
+ * старой версии, до миграции 033) — всё равно «чтение и запись»: делать, не
+ * видя, нельзя, и сохранение добавит чтение само.
  */
-export function sectionLevel(perms: Set<string>, sec: PermSection): PermLevel {
-  const own = sec.perms.filter((c) => c !== "org.manage");
-  const has = own.filter((c) => perms.has(c));
-  if (has.length === 0) return "none";
-  if (has.length === own.length) return "write";
-  if (sec.read.length > 0 && has.length === sec.read.length && sec.read.every((c) => perms.has(c)))
-    return "read";
-  return "custom";
+export function areaLevel(perms: Set<string>, a: PermArea): PermLevel {
+  if (a.write.every((c) => perms.has(c))) return "write";
+  if (a.read && perms.has(a.read)) return "read";
+  return "none";
 }
 
 /** Поставить разделу уровень: права раздела заменяются, остальные не трогаются. */
-export function withLevel(
-  perms: Set<string>,
-  sec: PermSection,
-  level: Exclude<PermLevel, "custom">,
-): Set<string> {
-  const next = new Set([...perms].filter((c) => !sec.perms.includes(c)));
-  const add =
-    level === "write"
-      ? sec.perms.filter((c) => c !== "org.manage")
-      : level === "read"
-        ? sec.read
-        : [];
-  for (const c of add) next.add(c);
+export function withLevel(perms: Set<string>, a: PermArea, level: PermLevel): Set<string> {
+  const own = areaCodes(a);
+  const next = new Set([...perms].filter((c) => !own.includes(c)));
+  if (level !== "none" && a.read) next.add(a.read);
+  if (level === "write") for (const c of a.write) next.add(c);
   return next;
 }
 
-/** Подпись права в списке галочек. */
-export const PERM_KEYS: Record<string, MsgKey> = {
-  "org.manage": "perm.org.manage",
-  "billing.view": "perm.billing.view",
-  "staff.manage": "perm.staff.manage",
-  "contracts.manage": "perm.contracts.manage",
-  "plan.edit": "perm.plan.edit",
-  "products.edit": "perm.products.edit",
-  "stock.view": "perm.stock.view",
-  "stock.move": "perm.stock.move",
-  "receiving.do": "perm.receiving.do",
-  "picking.do": "perm.picking.do",
-  "packing.do": "perm.packing.do",
-  "shipping.do": "perm.shipping.do",
-  "goods.decide": "perm.goods.decide",
-  "goods.writeoff": "perm.goods.writeoff",
-  "inventory.count": "perm.inventory.count",
-  "seller.requests": "perm.seller.requests",
-  "chat.use": "perm.chat.use",
-};
+/** Набор прав, приведённый к уровням: у каждого «делать» есть «смотреть». */
+export function normalizePerms(perms: Set<string>): Set<string> {
+  let next = new Set(perms);
+  for (const a of PERM_AREAS) next = withLevel(next, a, areaLevel(next, a));
+  return next;
+}
 
-/** Что право даёт — строкой под названием. */
-export const PERM_DESC: Record<string, MsgKey> = {
-  "org.manage": "perm.desc.org.manage",
-  "billing.view": "perm.desc.billing.view",
-  "staff.manage": "perm.desc.staff.manage",
-  "contracts.manage": "perm.desc.contracts.manage",
-  "plan.edit": "perm.desc.plan.edit",
-  "products.edit": "perm.desc.products.edit",
-  "stock.view": "perm.desc.stock.view",
-  "stock.move": "perm.desc.stock.move",
-  "receiving.do": "perm.desc.receiving.do",
-  "picking.do": "perm.desc.picking.do",
-  "packing.do": "perm.desc.packing.do",
-  "shipping.do": "perm.desc.shipping.do",
-  "goods.decide": "perm.desc.goods.decide",
-  "goods.writeoff": "perm.desc.goods.writeoff",
-  "inventory.count": "perm.desc.inventory.count",
-  "seller.requests": "perm.desc.seller.requests",
-  "chat.use": "perm.desc.chat.use",
-};
+/** Какие уровни раздела этот человек вправе выдать: больше своих не дать. */
+export function grantableLevels(a: PermArea, mine: Set<string>): PermLevel[] {
+  const out: PermLevel[] = ["none"];
+  if (a.read && mine.has(a.read)) out.push("read");
+  if (areaCodes(a).every((c) => mine.has(c))) out.push("write");
+  return out;
+}
 
 /**
- * Права по разделам. Право, которого нет ни в одном разделе (сервер добавил
+ * Разделы, которые знает сервер, и права вне разделов. Раздел без единого
+ * своего права на сервере не показывается (у склада без продавцов нет
+ * «Заявок продавца»). Право, которого нет ни в одном разделе (сервер добавил
  * новое раньше экрана), не теряется — уходит в «Прочее».
  */
-export function groupPermissions(
-  codes: string[],
-): { section: PermSection | null; codes: string[] }[] {
+export function groupPermissions(codes: string[]): { areas: PermArea[]; rest: string[] } {
   const known = new Set(codes);
-  const groups = PERM_SECTIONS.map((sec) => ({
-    section: sec as PermSection | null,
-    codes: sec.perms.filter((c) => known.has(c)),
-  })).filter((g) => g.codes.length > 0);
-  const placed = new Set(PERM_SECTIONS.flatMap((sec) => sec.perms));
-  const rest = codes.filter((c) => !placed.has(c));
-  return rest.length > 0 ? [...groups, { section: null, codes: rest }] : groups;
+  const areas = PERM_AREAS.filter((a) => areaCodes(a).some((c) => known.has(c)));
+  const placed = new Set([...PERM_AREAS.flatMap(areaCodes), OWNER_PERM]);
+  return { areas, rest: codes.filter((c) => !placed.has(c)) };
 }

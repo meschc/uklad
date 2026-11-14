@@ -97,3 +97,31 @@ test("запись без «Персонала» — только по поля�
     warehouse: { floors: [2], staff: [{ id: "s", hourlyRate: 300 }] },
   });
 });
+
+test("смотрящий получает работу только открытых ему разделов (033)", () => {
+  const { forViewer: fv, AREA_KEYS, VIEWER_KEYS: keys } = require("../src/cabinet/viewer");
+  for (const key of Object.keys(AREA_KEYS)) assert.ok(keys.includes(key), key);
+  const data = {
+    products: [{ id: "p" }],
+    placements: [{ id: "pl" }],
+    expectedShipments: [{ id: "e" }],
+    requests: [{ id: "r" }],
+    outboundBoxes: [{ id: "o" }],
+    shipments: [{ id: "s" }],
+    disputes: [{ id: "d" }],
+    breakPolicy: { mode: "x" },
+  };
+  // Сборщик: сборка, остатки и товары.
+  const picker = new Set(["picking.view", "stock.view", "products.view"]);
+  const out = fv(data, (p) => picker.has(p));
+  assert.deepEqual(out.products, [{ id: "p" }]);
+  assert.deepEqual(out.placements, [{ id: "pl" }]);
+  assert.deepEqual(out.requests, [{ id: "r" }]);
+  assert.deepEqual(out.expectedShipments, []);
+  assert.deepEqual(out.outboundBoxes, []);
+  assert.deepEqual(out.shipments, []);
+  assert.deepEqual(out.disputes, []);
+  assert.deepEqual(out.breakPolicy, {});
+  // Без права — всё открыто, как раньше (старые вызовы).
+  assert.deepEqual(fv(data).disputes, [{ id: "d" }]);
+});

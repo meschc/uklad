@@ -123,18 +123,62 @@ export const WORKSTATION_NAV: NavLeaf = {
   icon: MonitorSmartphone,
 };
 
-/** Рельс роли — как он есть, с группами. */
-export function entriesFor(role: UserRole): NavEntry[] {
-  return role === "seller" ? SELLER_NAV : WAREHOUSE_NAV;
+const DESK_VIEWS = ["receiving.view", "picking.view", "packing.view", "shipping.view"];
+
+/**
+ * Экран склада → права, любое из которых его открывает (разделы прав, миграция
+ * 033; Кирилл 14.11: «мне эти данные не нужны — не должно даже показываться»).
+ * `staff.manage` открывает всё. Экрана нет в списке — он для всех.
+ *
+ * Настройка склада (паспорт, услуги и цены, интеграции, устройства) — работа
+ * руководителя: смотрящему её данные сервер и не отдаёт (`viewer.js`).
+ */
+const VIEW_PERMS: Partial<Record<AppView, string[]>> = {
+  tasks: [...DESK_VIEWS, "inventory.view"],
+  disputes: ["goods.view"],
+  editor: ["plan.view"],
+  chat: ["chat.use"],
+  spec: [],
+  devices: [],
+  operations: [],
+  integrations: [],
+  staff: ["staff.view"],
+  analytics: ["staff.view"],
+  labels: ["products.view"],
+  documents: [...DESK_VIEWS, "goods.view"],
+  lookup: ["stock.view"],
+  workstation: ["receiving.do", "picking.do", "packing.do", "shipping.do", "inventory.count"],
+};
+
+/**
+ * Открыт ли экран склада правами вошедшего. Прав нет (демо, старая сессия) —
+ * открыто всё, решает сервер.
+ */
+export function viewAllowed(view: AppView, perms: readonly string[] | undefined): boolean {
+  if (!perms || perms.includes("staff.manage")) return true;
+  const need = VIEW_PERMS[view];
+  return !need || need.some((p) => perms.includes(p));
+}
+
+/** Рельс роли с группами, без закрытых правами экранов и пустых групп. */
+export function entriesFor(role: UserRole, perms?: readonly string[]): NavEntry[] {
+  if (role === "seller") return SELLER_NAV;
+  return WAREHOUSE_NAV.flatMap((e): NavEntry[] => {
+    if (!isGroup(e)) return viewAllowed(e.view, perms) ? [e] : [];
+    const items = e.items.filter((i) => viewAllowed(i.view, perms));
+    return items.length > 0 ? [{ ...e, items }] : [];
+  });
 }
 
 /**
  * Плоский список экранов, доступных роли. Им же `App.tsx` отсекает экраны,
  * недоступные текущей роли, — поэтому он должен разворачивать и группы.
  */
-export function navFor(role: UserRole): NavLeaf[] {
-  const leaves = entriesFor(role).flatMap((e) => (isGroup(e) ? e.items : [e]));
-  return role === "warehouse" ? [...leaves, WORKSTATION_NAV] : leaves;
+export function navFor(role: UserRole, perms?: readonly string[]): NavLeaf[] {
+  const leaves = entriesFor(role, perms).flatMap((e) => (isGroup(e) ? e.items : [e]));
+  return role === "warehouse" && viewAllowed("workstation", perms)
+    ? [...leaves, WORKSTATION_NAV]
+    : leaves;
 }
 
 /** Ключ записи меню для сохранённого порядка: у группы — id, у экрана — вид. */

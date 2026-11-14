@@ -1,7 +1,9 @@
 import { UkladAppTile } from "@/components/brand/UkladLockup";
 import { useState } from "react";
-import { ArrowRight, Info, MapPin, Moon, Pencil, Plus, Settings, Sun } from "lucide-react";
+import { ArrowRight, Info, LogOut, MapPin, Moon, Pencil, Plus, Settings, Sun } from "lucide-react";
 import { selectRole, useEditor } from "@/lib/store";
+import { authRepository } from "@/lib/data/authRepository";
+import { leaveServerSession } from "@/lib/store/leave";
 import { BackupReminder } from "./BackupReminder";
 import { IntroCard } from "./IntroCard";
 import { DeletionBanner } from "./DeletionBanner";
@@ -59,8 +61,17 @@ export function Dashboard() {
   const boxes = useEditor((s) => s.boxes);
   // Склады заводит и правит владелец склада, не продавец: ему сюда — за
   // списком складов и переключателем роли (п.1, п.5).
-  const readOnly = useEditor((s) => selectRole(s) === "seller");
+  const seller = useEditor((s) => selectRole(s) === "seller");
+  // Член команды без «Персонала» (старший смены, кладовщик): кабинет ему на
+  // работу, а не на настройку (Кирилл 14.11: «настройки профиля ему не нужны,
+  // а кнопка „Выйти“ должна быть»). Писать он всё равно ничего не может.
+  const viewer = useEditor((s) => s.session.readOnly === true);
+  const readOnly = seller || viewer;
   const t = useT();
+  const logout = async () => {
+    const res = await authRepository.logout();
+    leaveServerSession(res.ok ? undefined : "offline");
+  };
   const dark = theme === "dark";
   const [dialog, setDialog] = useState<DialogState>(null);
 
@@ -94,7 +105,7 @@ export function Dashboard() {
                     переключателем «Кладовщик / Продавец». */}
                 {[
                   account.type === "company" ? account.org : t("dash.account.personal"),
-                  readOnly ? t("role.seller") : account.title || t("role.warehouse"),
+                  seller ? t("role.seller") : account.title || t("role.warehouse"),
                 ]
                   .filter(Boolean)
                   .join(" · ")}
@@ -114,10 +125,17 @@ export function Dashboard() {
             >
               {dark ? <Sun className="size-4" /> : <Moon className="size-4" />}
             </Button>
-            <Button variant="outline" size="sm" onClick={goToProfile}>
-              <Settings className="size-3.5" />
-              {t("dash.openProfile")}
-            </Button>
+            {viewer ? (
+              <Button variant="outline" size="sm" onClick={() => void logout()}>
+                <LogOut className="size-3.5" />
+                {t("profile.logout")}
+              </Button>
+            ) : (
+              <Button variant="outline" size="sm" onClick={goToProfile}>
+                <Settings className="size-3.5" />
+                {t("dash.openProfile")}
+              </Button>
+            )}
           </div>
         </header>
 

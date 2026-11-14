@@ -21,6 +21,7 @@ import { TeamAccess } from "./TeamAccess";
 import { StaffOutput } from "./StaffOutput";
 import { PersonForm } from "./PersonForm";
 import { StaffRow } from "./StaffRow";
+import { StaffViewList } from "./StaffViewList";
 import { StaffPanel } from "./StaffPanel";
 import { ArchiveNote } from "@/components/fulfillment/ArchiveNote";
 
@@ -41,6 +42,9 @@ export function StaffScreen() {
   const updateManager = useEditor((s) => s.updateManager);
   // Продавцу список персонала виден, но не редактируется (п.27).
   const readOnly = useEditor((s) => selectRole(s) === "seller");
+  // Роль без «Персонала» смотрит список на чтение (`staff.view`): без вкладок
+  // настройки, ставок и полей ввода.
+  const viewer = useEditor((s) => s.session.readOnly === true);
   // Вход второго человека есть только у серверного кабинета: демо живёт в браузере.
   const onServer = useEditor((s) => s.session.source === "server");
   const t = useT();
@@ -104,6 +108,18 @@ export function StaffScreen() {
         wide
       >
         <ReadOnlyContacts warehouse={warehouse} t={t} />
+      </ScreenShell>
+    );
+  }
+
+  if (viewer) {
+    return (
+      <ScreenShell
+        title={t("staff.title")}
+        subtitle={t("staff.subtitle", { name: warehouse.name })}
+        wide
+      >
+        <StaffViewList staff={staff} t={t} />
       </ScreenShell>
     );
   }

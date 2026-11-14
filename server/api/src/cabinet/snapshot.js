@@ -34,6 +34,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { createRateLimit } = require("../rateLimit");
 const { writableKeys, foreignRows, mergeScoped } = require("./writeScope");
+const { forViewer, VIEW_PERMS } = require("./viewer");
 const { recordMoves, invalidWork } = require("./moves");
 const {
   WAREHOUSE_LISTS,
@@ -125,8 +126,10 @@ const mayUse = (ctx) => Boolean(ctx.accountId) && ctx.can("staff.manage");
 // цен, ставок, контактов, журнала смен), запись — только `staff.manage`.
 // Роль продавца (`seller.requests`) склад так не видит: там товар всех
 // партнёров, а продавцу — только свой.
+// Смотреть кабинет — любое право чтения раздела (миграция 033); что именно
+// уйдёт, решает `forViewer` по разделам.
 const mayView = (ctx) =>
-  Boolean(ctx.accountId) && ctx.can("stock.view") && !ctx.can("seller.requests");
+  Boolean(ctx.accountId) && VIEW_PERMS.some((p) => ctx.can(p)) && !ctx.can("seller.requests");
 
 /**
  * Документ компании из базы → кабинет целиком, как его видит браузер:
@@ -236,12 +239,11 @@ function createSnapshot({ auth, send, log }) {
       // браузер держит живую работу и последние недели, а не всю историю.
       if (viewer) {
         // Смотрящий архив не двигает: это работа руководителя.
-        const { forViewer } = require("./viewer");
         return {
           ...rows[0],
           viewer,
           writable: writableKeys(ctx.can),
-          data: forViewer(await loadCabinet(c, rows[0].data)),
+          data: forViewer(await loadCabinet(c, rows[0].data), ctx.can),
         };
       }
       await archiveDaily(c);
