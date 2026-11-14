@@ -41,12 +41,15 @@ const { openDb } = require("./db");
 const { createRateLimit, clientIp } = require("./rateLimit");
 const { newToken, isToken, demoLetter, deviceOf } = require("./demo");
 const { parseReport, scrubDeep } = require("./support");
+const { parseClientError, errorStore, createClientErrors } = require("./clientErrors");
 
 const MAX_BODY_BYTES = 32 * 1024;
 // Обращение несёт журнал и обезличенную копию склада — оно крупнее заявки.
 // Предел тот же, что держит кабинет (`MAX_REPORT_BYTES`).
 const MAX_REPORT_BYTES = 512 * 1024;
 const DAY_MS = 86_400_000;
+/** Запись об ошибке — строка и верх стека, не больше нескольких килобайт. */
+const MAX_ERROR_BYTES = 8 * 1024;
 
 function readEnv(env) {
   const num = (name, fallback) => {
@@ -93,6 +96,17 @@ function send(res, status, payload, headers = {}) {
     ...headers,
   });
   res.end(body);
+}
+
+/**
+ * Origin запроса без хвостовых «/». Циклом, а не `/\/+$/`: на строке из
+ * тысяч «/» такое выражение работает за квадратичное время (CodeQL).
+ */
+function originOf(req) {
+  const raw = String(req.headers.origin ?? "");
+  let end = raw.length;
+  while (end > 0 && raw[end - 1] === "/") end--;
+  return raw.slice(0, end);
 }
 
 function corsHeaders(origin) {
@@ -158,14 +172,28 @@ const tooFast = (ms) => typeof ms === "number" && ms < MIN_REPORT_MS;
  * Приложение без сети и почты внутри: их подают снаружи, чтобы тест мог
  * подменить письмо и базу в памяти, не трогая настоящий ящик.
  */
-function createApp({ cfg, db, mail, cabinet = null, now = () => new Date(), log = console }) {
+function createApp({
+  cfg,
+  db,
+  mail,
+  cabinet = null,
+  now = () => new Date(),
+  log = console,
+  // Без файла SQLite (тесты кабинета подают пустую базу) приём ошибок выключен.
+  clientErrors = db.raw
+    ? createClientErrors({ store: errorStore(db.raw), mail, adminOrigin: cfg.adminOrigin, log })
+    : null,
+}) {
   const limiter = createRateLimit({
     capacity: cfg.rateCapacity,
     refillPerMinute: cfg.ratePerMinute,
   });
+  // Ошибки — свой лимит: падение экрана не должно съесть человеку попытку
+  // отправить заявку или обращение. Кабинет сам шлёт не больше 10 за загрузку.
+  const errorLimiter = createRateLimit({ capacity: 10, refillPerMinute: 5 });
 
   async function handleLead(req, res) {
-    const origin = (req.headers.origin ?? "").replace(/\/+$/, "");
+    const origin = originOf(req);
     const allowed = cfg.allowedOrigins.includes(origin) ? origin : "";
     const cors = allowed ? corsHeaders(allowed) : {};
 
@@ -275,7 +303,7 @@ function createApp({ cfg, db, mail, cabinet = null, now = () => new Date(), log 
   }
 
   async function handleReport(req, res) {
-    const origin = (req.headers.origin ?? "").replace(/\/+$/, "");
+    const origin = originOf(req);
     const allowed = cfg.allowedOrigins.includes(origin) ? origin : "";
     const cors = allowed ? corsHeaders(allowed) : {};
 
@@ -327,6 +355,34 @@ function createApp({ cfg, db, mail, cabinet = null, now = () => new Date(), log 
       .sendLetter(reportLetter(id, parsed.report, cfg.adminOrigin))
       .catch((error) => log.error(`[uklad] письмо по обращению #${id} не ушло:`, error));
     return send(res, 200, { ok: true, id }, cors);
+  }
+
+  /**
+   * Ошибка у пользователя — сама, без кнопки (`clientErrors.js`). Источник и
+   * лимит те же, что у обращений; ответ без подробностей — кабинету он не
+   * нужен, а боту ни к чему знать, что принято.
+   */
+  async function handleClientError(req, res) {
+    const origin = originOf(req);
+    const allowed = cfg.allowedOrigins.includes(origin) ? origin : "";
+    const cors = allowed ? corsHeaders(allowed) : {};
+    if (req.method === "OPTIONS") return send(res, allowed ? 204 : 403, undefined, cors);
+    if (req.method !== "POST") return send(res, 405, { ok: false }, cors);
+    if (!allowed) return send(res, 403, { ok: false });
+    if (!clientErrors) return send(res, 503, { ok: false }, cors);
+    if (!errorLimiter.take(clientIp(req, cfg.trustProxy)))
+      return send(res, 429, { ok: false }, cors);
+    const body = await readBody(req, MAX_ERROR_BYTES);
+    if (!body.ok) return send(res, 413, { ok: false }, { ...cors, Connection: "close" });
+    let parsed;
+    try {
+      parsed = parseClientError(JSON.parse(body.text));
+    } catch {
+      return send(res, 400, { ok: false }, cors);
+    }
+    if (!parsed.ok) return send(res, 400, { ok: false }, cors);
+    clientErrors.accept(parsed.error, now());
+    return send(res, 200, { ok: true }, cors);
   }
 
   // Пропуск в демо — кука с тем же токеном, что в письме. Кабинет в сборке
@@ -433,6 +489,7 @@ function createApp({ cfg, db, mail, cabinet = null, now = () => new Date(), log 
       }
       if (url.pathname === "/api/leads") return await handleLead(req, res);
       if (url.pathname === "/api/support/reports") return await handleReport(req, res);
+      if (url.pathname === "/api/support/errors") return await handleClientError(req, res);
       const demo = /^\/d\/([^/]+)\/?$/.exec(url.pathname);
       if (demo && req.method === "GET") return handleDemo(req, res, demo[1]);
       if (url.pathname === "/api/demo/events" && req.method === "POST") {
@@ -573,16 +630,30 @@ function main() {
   } else {
     console.log("[uklad] кабинет выключен: не задан DATABASE_URL");
   }
-  const server = http.createServer(createApp({ cfg, db, mail, cabinet }));
+  const errorRows = errorStore(db.raw);
+  const clientErrors = createClientErrors({
+    store: errorRows,
+    mail,
+    adminOrigin: cfg.adminOrigin,
+  });
+  const server = http.createServer(createApp({ cfg, db, mail, cabinet, clientErrors }));
   server.requestTimeout = 15_000;
   server.headersTimeout = 10_000;
 
   const purge = () => {
     const gone = db.purge(new Date(), cfg.retentionDays, cfg.reportRetentionDays);
-    if (gone.leads || gone.demos || gone.reports) console.log("[uklad] чистка:", gone);
+    gone.errors = errorRows.purge(new Date(), cfg.reportRetentionDays);
+    if (gone.leads || gone.demos || gone.reports || gone.errors)
+      console.log("[uklad] чистка:", gone);
   };
   purge();
   setInterval(purge, DAY_MS).unref();
+  // Сводка ошибок пользователей: проверяем раз в час, письмо — раз в сутки
+  // и только если ошибки были.
+  const digest = () =>
+    clientErrors.digestDue(new Date()).catch((e) => console.error("[uklad] сводка:", e.message));
+  digest();
+  setInterval(digest, 3_600_000).unref();
 
   server.listen(cfg.port, () => console.log(`[uklad] сервер слушает порт ${cfg.port}`));
 

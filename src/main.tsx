@@ -4,6 +4,7 @@ import App from "./App";
 import { embedView, isEmbed, parseDeepLink } from "./lib/appViews";
 import { useEditor } from "./lib/store";
 import { describeError, journal } from "./lib/support/journal";
+import { autoReport } from "./lib/support/autoReport";
 import { installNumberLimits } from "./lib/numberLimits";
 import "./index.css";
 // Печать плана и наклеек — только в бандле приложения: правило прячет всё,
@@ -69,12 +70,15 @@ journal.record("view", useEditor.getState().appView);
 useEditor.subscribe((s, prev) => {
   if (s.appView !== prev.appView) journal.record("view", s.appView);
 });
-window.addEventListener("error", (e) =>
-  journal.record("error", "window", describeError(e.error ?? e.message)),
-);
-window.addEventListener("unhandledrejection", (e) =>
-  journal.record("error", "promise", describeError(e.reason)),
-);
+// Те же ошибки уходят на сервер сами, обезличенно (`autoReport.ts`).
+window.addEventListener("error", (e) => {
+  journal.record("error", "window", describeError(e.error ?? e.message));
+  autoReport("window", useEditor.getState().appView, e.error ?? e.message);
+});
+window.addEventListener("unhandledrejection", (e) => {
+  journal.record("error", "promise", describeError(e.reason));
+  autoReport("promise", useEditor.getState().appView, e.reason);
+});
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
