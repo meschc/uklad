@@ -41,7 +41,9 @@ src/
     useCommand.ts       состояние команды к слою данных: pending + error
     support/            «Сообщить о проблеме»: журнал событий в браузере
                         (без имён и контактов), обезличенный снимок данных,
-                        отправка на `/api/support/reports`
+                        отправка на `/api/support/reports`; `autoReport` —
+                        упавший экран и необработанные ошибки сами на
+                        `/api/support/errors` (сервер: `clientErrors.js`)
   components/
     account/            кабинет, профиль, вход, склады, персонал
     editor/             2D-редактор: Canvas, Inspector, панели, тосты

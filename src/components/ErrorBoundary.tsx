@@ -4,6 +4,7 @@ import { useEditor } from "@/lib/store";
 import { useT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { describeError, journal } from "@/lib/support/journal";
+import { autoReport } from "@/lib/support/autoReport";
 
 /**
  * Изоляция сбоя по экранам — та самая «модульность», которая проекту нужна
@@ -39,6 +40,8 @@ export class ErrorBoundary extends Component<Props, State> {
       `screen:${this.props.label ?? "?"}`,
       `${describeError(error)}\n${info.componentStack ?? ""}`,
     );
+    const label = this.props.label ?? "";
+    autoReport(`screen:${label || "unknown"}`, label, error);
   }
 
   render() {
