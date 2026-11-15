@@ -8,10 +8,8 @@ import { holdSignal, signal } from "@/lib/scanSignal";
 import { destinationMark } from "@/lib/destinationMark";
 import { useLabelPrinter } from "@/lib/labelPrinter";
 import { printNow } from "@/lib/silentPrint";
-import { parseBadge } from "@/lib/workstation";
-import { isDecider } from "@/lib/docFlow";
 import { useCommand } from "@/lib/useCommand";
-import { useDeskDeciders } from "@/lib/useDeskDeciders";
+import { useSeniorBadge } from "@/lib/useSeniorBadge";
 import { useT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { eyebrow } from "@/components/ui/eyebrow";
@@ -42,9 +40,7 @@ export function SortStation() {
   const printer = useLabelPrinter();
   const outbound = useEditor((s) => s.outboundBoxes) ?? [];
   const requests = useEditor((s) => s.requests);
-  const staff = useEditor((s) => s.warehouse.staff);
-  const deciders = useDeskDeciders();
-  const onServer = useEditor((s) => s.session.source === "server");
+  const seniorOf = useSeniorBadge();
   const [pending, setPending] = useState<{
     code: string;
     destination: string;
@@ -91,10 +87,8 @@ export function SortStation() {
 
   const onScan = async (raw: string) => {
     if (locked) {
-      const id = parseBadge(raw);
-      const senior = id ? staff?.find((m) => m.id === id) : undefined;
-      if (!senior || !isDecider(senior, deciders, onServer))
-        return show("error", t("ws.sort.locked", { code: locked }));
+      const senior = await seniorOf(raw);
+      if (!senior) return show("error", t("ws.sort.locked", { code: locked }));
       setLocked(null);
       return show("ok", t("ws.sort.unlocked", { name: senior.name }));
     }

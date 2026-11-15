@@ -33,6 +33,8 @@
  *   POST /api/desk/ops             — пачка операций с ключами повтора
  *   POST /api/cabinet/badges/check — чей бейдж
  *   POST /api/desk/unbind          — { code } бейдж руководителя → стол отвязан
+ *   POST /api/desk/senior          — { code } → { staffRef, decide }: бейдж старшего
+ *                                    снимает остановку, за стол он не встаёт
  */
 /* global require, module */
 /* eslint-disable @typescript-eslint/no-require-imports */
@@ -669,6 +671,31 @@ function createDesks({ auth, cfg, send, log }) {
     return send(res, 200, { ok: true });
   }
 
+  /**
+   * Бейдж старшего, который снимает остановку на сортировке и погрузке
+   * (повтор посылки). Только ответ «решает ли он по товару»: за стол он не
+   * встаёт — смена и запись остаются за тем, кто работает, — в отличие от
+   * `badges/check`. Список команды стол не читает: у куки стола на него нет
+   * права, и 401 выкидывал стол на экран входа (обход столов 15.11).
+   */
+  async function senior(req, res) {
+    const b = await readJson(req, res);
+    if (!b) return;
+    const out = await withDesk(req, async (c, d) => {
+      if (!checks.take(d.orgId)) return { limited: true };
+      const staffRef = await whoseBadge(c, b.code);
+      if (!staffRef) return { staffRef: null };
+      const place = deskPlace(await companyDoc(c), d.deviceRef);
+      if (!place || !place.staffHere(staffRef)) return { staffRef: null };
+      const perms = await loadDeskPerms(c, [staffRef]);
+      return { staffRef, decide: may({ perms }, staffRef, GOODS_DECIDE) };
+    });
+    if (!out) return gone(res);
+    if (out.limited) return limited(res);
+    if (!out.staffRef) return send(res, 404, { ok: false, error: "bad_badge" });
+    return send(res, 200, { ok: true, staffRef: out.staffRef, decide: out.decide });
+  }
+
   async function unbind(req, res) {
     const b = await readJson(req, res);
     if (!b) return;
@@ -698,6 +725,7 @@ function createDesks({ auth, cfg, send, log }) {
     "GET /api/cabinet/snapshot": loadSnapshot,
     "POST /api/cabinet/badges/check": checkBadge,
     "POST /api/desk/unbind": unbind,
+    "POST /api/desk/senior": senior,
     "POST /api/desk/leave": leave,
     "GET /api/desk/version": snapshotVersion,
     "POST /api/desk/ops": saveOps,
