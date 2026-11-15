@@ -32,5 +32,8 @@ WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'uklad') \gexec
 \connect uklad
 REVOKE ALL ON DATABASE uklad FROM PUBLIC;
 GRANT CONNECT ON DATABASE uklad TO uklad_app;
+-- Временные таблицы нужны приложению (`uklad.save_products`, 013): без права
+-- кабинет с товарами не сохраняется. Уже поднятым базам его выдаёт миграция 036.
+GRANT TEMPORARY ON DATABASE uklad TO uklad_app;
 GRANT CONNECT ON DATABASE uklad TO uklad_notifier;
 REVOKE CREATE ON SCHEMA public FROM PUBLIC;
