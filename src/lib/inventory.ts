@@ -1,4 +1,4 @@
-import type { Box, CellAddress, Dispute } from "./types";
+import type { Box, CellAddress, Dispute, Pallet } from "./types";
 import { isInventoryDispute } from "./disputes";
 
 /**
@@ -125,9 +125,10 @@ export function planCount(
 
 /**
  * Пересчёт ячейки, где по учёту тары нет (сервер — `applyInvCell`). Почему
- * нельзя: `busy` — в ячейке стоит тара на учёте, считают её; `no_tote` —
- * найденное без свободной тары не принять; `tote_busy` — тара не свободна
- * (с товаром, невскрытая или стоит на другом месте); остальное — как у тары.
+ * нельзя: `busy` — по учёту в ячейке уже есть тара, паллета или товар
+ * (`cellTaken`); `no_tote` — найденное без свободной тары не принять;
+ * `tote_busy` — тара не свободна (с товаром, невскрытая, на паллете или на
+ * другом месте); остальное — как у тары.
  */
 export type CellCountProblem = "busy" | "no_tote" | "tote_busy" | "bad" | "unknown_product";
 
@@ -148,26 +149,47 @@ const sameCell = (a: CellAddress | undefined, b: CellAddress) =>
   a.shelfIndex === b.shelfIndex &&
   a.cellIndex === b.cellIndex;
 
+/** Что лежит на складе по учёту: тара, паллеты и товар прямо в ячейках. */
+export interface CellPlace {
+  boxes: readonly Box[];
+  pallets: readonly Pallet[];
+  placements: Readonly<Record<string, CellAddress>>;
+}
+
+/**
+ * По учёту в ячейке уже что-то есть: тара (любая, и невскрытая), паллета или
+ * товар, положенный прямо в ячейку. Такую ячейку пересчитывать как пустую
+ * нельзя: найденное в ней — не излишек, а вопрос к старшему.
+ */
+export function cellTaken(place: CellPlace, cell: CellAddress, exceptBoxId?: string): boolean {
+  return (
+    place.boxes.some((b) => b.id !== exceptBoxId && sameCell(b.address, cell)) ||
+    place.pallets.some((p) => sameCell(p.address, cell)) ||
+    Object.values(place.placements).some((a) => sameCell(a, cell))
+  );
+}
+
 /**
  * Что даст пересчёт пустой ячейки: «пусто» — ничего (`box: null`), найденное
  * — свободная тара в этой ячейке и излишек по каждому товару на неё.
  */
 export function planCellCount(
-  boxes: readonly Box[],
+  place: CellPlace,
   known: ReadonlySet<string>,
   input: CellCountInput,
 ): { problem: CellCountProblem } | { box: Box | null; disputes: Dispute[] } {
   const lines = normalizeCount(input.lines);
   if (!lines) return { problem: "bad" };
-  if (boxes.some((b) => b.id !== input.boxId && sameCell(b.address, input.cell))) {
-    return { problem: "busy" };
-  }
+  if (cellTaken(place, input.cell, input.boxId)) return { problem: "busy" };
+  const { boxes, pallets } = place;
   const found = lines.filter((l) => l.qty > 0);
   if (found.length === 0) return { box: null, disputes: [] };
   if (found.some((l) => !known.has(l.productId))) return { problem: "unknown_product" };
   const tote = boxes.find((b) => b.id === input.boxId);
   if (!tote) return { problem: "no_tote" };
-  if (tote.sealed || tote.address || tote.lines.some((l) => l.qty > 0)) {
+  // Короб на паллете стоит там, где паллета: в ячейку его не поставить.
+  const onPallet = !!tote.palletId || pallets.some((p) => p.boxIds.includes(tote.id));
+  if (tote.sealed || tote.address || onPallet || tote.lines.some((l) => l.qty > 0)) {
     return { problem: "tote_busy" };
   }
   return {

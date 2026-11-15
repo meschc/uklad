@@ -135,7 +135,8 @@ export const createDisputesSlice: SliceCreator<DisputesSlice> = (set, get) => ({
 
   countCell: (input) => {
     const s = get();
-    const plan = planCellCount(s.boxes, new Set(s.products.map((p) => p.id)), input);
+    const place = { boxes: s.boxes, pallets: s.pallets, placements: s.placements };
+    const plan = planCellCount(place, new Set(s.products.map((p) => p.id)), input);
     if ("problem" in plan) return plan;
     const { box } = plan;
     if (!box) return { found: 0 };

@@ -135,4 +135,19 @@ describe("Инвентаризация у стола", () => {
       { kind: "inventory_over", boxId: "t1", productId: product.id, qty: 1 },
     ]);
   });
+
+  test("ячейка с товаром без тары по учёту — не пустая: пересчёт не открывается", async () => {
+    const product = setup();
+    const w = useEditor.getState().warehouse;
+    const floor = w.floors[0];
+    const m = floor.modules.find((x) => x.type === "section" && x.shelves?.length);
+    if (!m) throw new Error("в демо нет секции с полками");
+    const cell: CellAddress = { floorId: floor.id, moduleId: m.id, shelfIndex: 0, cellIndex: 0 };
+    useEditor.setState({ placements: { [product.id]: cell }, pallets: [] });
+    render(<WorkstationScreen />);
+
+    await userEvent.type(screen.getByRole("textbox"), `${formatAddress(w, cell)}{enter}`);
+    await screen.findByText(/По учёту в ячейке уже есть паллета, тара или товар/);
+    expect(screen.queryByRole("button", { name: /Ячейка пуста/ })).toBeNull();
+  });
 });

@@ -306,3 +306,25 @@ test("найденное — только в свободную тару: без
     "bad",
   );
 });
+
+test("ячейка с паллетой или товаром без тары — не пустая; тара с паллеты — не свободная", () => {
+  const found = [{ productId: "p1", qty: 1 }];
+  const pallet = (over) => ({ id: "pl1", barcode: "UK-PLT-1", boxIds: [], ...over });
+  // Паллета стоит в этой ячейке.
+  const withPallet = { ...withPlan(), pallets: [pallet({ address: FREE })] };
+  assert.equal(applyInvCell(withPallet, cellCount([]), "stf-ivan").flag, "busy");
+  // Товар положен прямо в ячейку: по учёту он здесь, излишком не станет.
+  const withPlaced = { ...withPlan(), placements: { p1: FREE } };
+  assert.equal(
+    applyInvCell(withPlaced, cellCount(found, { boxId: "b4" }), "stf-ivan").flag,
+    "busy",
+  );
+  // Короб на паллете в другой ячейке: адреса у него нет, но он не свободен.
+  const onPallet = withPlan();
+  onPallet.boxes = onPallet.boxes.map((b) => (b.id === "b4" ? { ...b, palletId: "pl1" } : b));
+  onPallet.pallets = [pallet({ address: ADDR, boxIds: ["b4"] })];
+  assert.equal(applyInvCell(onPallet, cellCount(found, { boxId: "b4" }), "stf-ivan").flag, "stock");
+  // Короб в списке паллеты без своей отметки — тоже.
+  const listed = { ...withPlan(), pallets: [pallet({ boxIds: ["b4"] })] };
+  assert.equal(applyInvCell(listed, cellCount(found, { boxId: "b4" }), "stf-ivan").flag, "stock");
+});

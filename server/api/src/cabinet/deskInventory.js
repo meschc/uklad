@@ -121,9 +121,16 @@ function applyInvCell(data, body, staffRef) {
   const disputes = list(data.disputes);
   const prefix = `inv-${body.eventId}-`;
   if (disputes.some((d) => String(d.id).startsWith(prefix))) return { data };
-  // В ячейке стоит тара на учёте — считают её (`inv_count`), а не ячейку.
-  const here = boxes.filter((b) => b.id !== body.boxId && sameCell(b.address, body.cell));
-  if (here.length > 0) return { flag: "busy" };
+  // По учёту в ячейке уже что-то есть: тара (её считают `inv_count`),
+  // паллета или товар, положенный прямо в ячейку (`placements`). Тогда
+  // найденное — не излишек пустой ячейки, а вопрос к старшему.
+  const pallets = list(data.pallets);
+  const placed = isObject(data.placements) ? Object.values(data.placements) : [];
+  const taken =
+    boxes.some((b) => b.id !== body.boxId && sameCell(b.address, body.cell)) ||
+    pallets.some((p) => sameCell(p.address, body.cell)) ||
+    placed.some((a) => sameCell(a, body.cell));
+  if (taken) return { flag: "busy" };
   const found = [...counted].filter(([, n]) => n > 0);
   // Пусто: снимок не трогаем, факт остаётся строкой журнала операций.
   if (found.length === 0) return { data };
@@ -136,10 +143,15 @@ function applyInvCell(data, body, staffRef) {
   if (sameCell(box.address, body.cell) && box.countedAt === body.at && box.countedBy === staffRef) {
     return { data };
   }
-  // Свободная тара: невскрытое место, тара с товаром или стоящая на другом
-  // месте — не та, в которую кладут найденное.
+  // Свободная тара: невскрытое место, тара с товаром, стоящая на другом
+  // месте или лежащая на паллете — не та, в которую кладут найденное (иначе
+  // короб окажется в двух местах сразу).
   const busy =
-    box.sealed || isObject(box.address) || list(box.lines).some((l) => Number(l.qty) > 0);
+    box.sealed ||
+    isObject(box.address) ||
+    Boolean(box.palletId) ||
+    pallets.some((p) => Array.isArray(p.boxIds) && p.boxIds.includes(box.id)) ||
+    list(box.lines).some((l) => Number(l.qty) > 0);
   if (busy) return { flag: "stock" };
   const raised = found
     .sort(([a], [b]) => a.localeCompare(b))

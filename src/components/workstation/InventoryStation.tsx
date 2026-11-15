@@ -4,7 +4,7 @@ import { useEditor } from "@/lib/store";
 import { workstationRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
 import { addressKey, formatAddress, parseAddress } from "@/lib/address";
-import { countCoverage, staleBoxes, type CountLine } from "@/lib/inventory";
+import { cellTaken, countCoverage, staleBoxes, type CountLine } from "@/lib/inventory";
 import type { Box, CellAddress } from "@/lib/types";
 import { useT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,8 @@ export function InventoryStation() {
   const t = useT();
   const now = useNow(60_000);
   const boxes = useEditor((s) => s.boxes);
+  const pallets = useEditor((s) => s.pallets);
+  const placements = useEditor((s) => s.placements);
   const products = useEditor((s) => s.products);
   const warehouse = useEditor((s) => s.warehouse);
   const count = useCommand(workstationRepository.countBox);
@@ -38,6 +40,9 @@ export function InventoryStation() {
   const [boxId, setBoxId] = useState<string | null>(null);
   const [lines, setLines] = useState<CountLine[]>([]);
   const [status, setStatus] = useState<ScanStatus>("idle");
+  // Скан ячейки, где по учёту уже есть паллета, невскрытое место или товар
+  // без тары: пересчитывать её как пустую нельзя.
+  const [taken, setTaken] = useState(false);
   const [done, setDone] = useState<"matched" | "diff" | "cellEmpty" | null>(null);
   // Скан ячейки, где стоит несколько тар: какую из них считать.
   const [choice, setChoice] = useState<Box[] | null>(null);
@@ -57,6 +62,7 @@ export function InventoryStation() {
     setBoxId(null);
     setLines([]);
     setStatus("idle");
+    setTaken(false);
     setChoice(null);
     setCell(null);
     setToteId(null);
@@ -74,6 +80,7 @@ export function InventoryStation() {
 
   const scanBox = (raw: string) => {
     const code = raw.trim().toUpperCase();
+    setTaken(false);
     // Ярлык ячейки: считаем тару, которая в ней стоит; если её несколько —
     // сотрудник выбирает, какую открыл.
     const addr = code.startsWith("UK-") ? null : parseAddress(warehouse, raw);
@@ -82,6 +89,11 @@ export function InventoryStation() {
       const here = boxes.filter((b) => b.address && !b.sealed && addressKey(b.address) === key);
       if (here.length === 1) return open(here[0]);
       if (here.length === 0) {
+        if (cellTaken({ boxes, pallets, placements }, addr)) {
+          setStatus("error");
+          setTaken(true);
+          return;
+        }
         // Тары на учёте нет — считаем ячейку: пусто или нашли товар.
         setStatus("ok");
         setDone(null);
@@ -174,7 +186,9 @@ export function InventoryStation() {
             status={status}
             onSubmit={scanBox}
           />
-          {status === "error" && <FormError>{t("ws.count.boxUnknown")}</FormError>}
+          {status === "error" && (
+            <FormError>{t(taken ? "ws.count.busy" : "ws.count.boxUnknown")}</FormError>
+          )}
           {choice && choice.length > 1 && (
             <section className="flex flex-col gap-2">
               <h2 className={eyebrow({ tone: "muted" })}>
