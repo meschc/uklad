@@ -204,6 +204,15 @@ test(
     });
     const badge = new RegExp(`${cookieName}=([^;]*)`).exec(shift.headers.get("set-cookie"))[1];
     assert.equal((await call("/api/cabinet/snapshot", { cookie: badge })).status, 403);
+    // Сутки хранения — основа денег продавцу: столу их не отдаём.
+    assert.equal(
+      (
+        await call("/api/cabinet/storage?from=2026-11-01&to=2026-11-15&warehouse=wh_1", {
+          cookie: badge,
+        })
+      ).status,
+      403,
+    );
     const write = await call("/api/cabinet/snapshot", {
       cookie: badge,
       body: { version: 1, format: 8, data: data("упаковщик") },
@@ -221,6 +230,11 @@ test(
     const viewed = await call("/api/cabinet/snapshot", a);
     assert.equal(viewed.status, 200);
     assert.equal(viewed.json.snapshot.viewer, true);
+    // Смотрящий (роль без «Персонала») ставок не видит — и суток хранения тоже.
+    assert.equal(
+      (await call("/api/cabinet/storage?from=2026-11-01&to=2026-11-15&warehouse=wh_1", a)).status,
+      403,
+    );
     const noWrite = await call("/api/cabinet/snapshot", {
       ...a,
       body: { version: viewed.json.snapshot.version, format: 8, data: data("чужое") },
