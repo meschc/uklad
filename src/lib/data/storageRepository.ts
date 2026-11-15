@@ -3,7 +3,7 @@ import { apiRequest } from "./api";
 import { attempt, fail, ok, type Result } from "./result";
 
 /**
- * Сутки хранения с сервера (миграция 036, `GET /api/cabinet/storage`):
+ * Сутки хранения с сервера (миграция 037, `GET /api/cabinet/storage`):
  * занятость склада по продавцам за период и последняя строка до него — по ней
  * отчёт знает, что лежало в первые дни периода без записей.
  */

@@ -34,6 +34,8 @@ export const ru = {
   "tasks.filter.cancelled": "Отменённые",
   "tasks.emptyTitle": "Заявок пока нет",
   "tasks.emptyBody": "Заявки создаёт продавец — переключите роль в нижней части бокового меню.",
+  "tasks.emptyBodyServer":
+    "Создайте задание кнопкой «Создать задание» — заявки на сборку появятся здесь.",
   "tasks.shipDate": "Отгрузка {d}",
   "tasks.noTarget": "Без назначения",
   "tasks.printLabel": "Этикетка отправления",
@@ -152,6 +154,8 @@ export const en: Record<keyof typeof ru, string> = {
   "tasks.emptyTitle": "No requests yet",
   "tasks.emptyBody":
     "Requests are created by the seller — switch the role at the bottom of the side menu.",
+  "tasks.emptyBodyServer":
+    "Create a task with the “Create task” button — picking requests will appear here.",
   "tasks.shipDate": "Shipment {d}",
   "tasks.noTarget": "No destination",
   "tasks.printLabel": "Shipment label",

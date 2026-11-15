@@ -62,6 +62,9 @@ export const serverDesks: DeskServer = {
     if (!(await flushServerSync())) return fail("data.failed");
     const res = await attempt(() => apiRequest("POST", "/cabinet/desks", { deviceRef, name }));
     if (!res.ok) return res;
+    if (res.data.status === 409 && res.data.body.error === "desk_warehouse") {
+      return fail("ws.deskNoWarehouse");
+    }
     return res.data.status === 200 ? ok(undefined) : fail("data.failed");
   },
   revoke: async (deviceRef) => {

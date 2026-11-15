@@ -29,7 +29,14 @@ function normalizeCode(raw) {
     .replace(/^(UK-(?:BOX|PLT)-)0+(?=\d)/, "$1");
 }
 
-const PACK_EVENTS = new Set(["pack_scan", "pack_label", "pack_error", "pack_reject"]);
+const PACK_EVENTS = new Set([
+  "pack_scan",
+  "pack_label",
+  "pack_error",
+  "pack_reject",
+  // Перепечатка этикетки: только запись в журнал, товар не двигается.
+  "pack_reprint",
+]);
 /** Спорное, которое приносит скан: «нет в таре», «лишнее» и брак. */
 const SCAN_DISPUTES = new Set(["not_in_tote", "extra", "not_packable"]);
 const MAX_QTY = 100_000;

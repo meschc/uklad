@@ -44,6 +44,10 @@ export async function setupDb() {
       await admin.query(`ALTER ROLE ${role} LOGIN NOBYPASSRLS PASSWORD '${TEST_PW}'`);
     }
     await admin.query(`CREATE DATABASE ${name} OWNER uklad_owner`);
+    // Права на базу — как в бою (`init.sql`): PUBLIC без прав, роли —
+    // только выданное. Иначе тесты шли бы с правами PUBLIC по умолчанию и не
+    // видели того, что на сервере падает (временные таблицы, миграция 036).
+    await admin.query(`REVOKE ALL ON DATABASE ${name} FROM PUBLIC`);
     await admin.query(`GRANT CONNECT ON DATABASE ${name} TO uklad_app`);
     await admin.query(`GRANT CONNECT ON DATABASE ${name} TO uklad_notifier`);
     await admin.query(`SELECT pg_advisory_unlock(${SETUP_LOCK})`);

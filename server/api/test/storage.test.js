@@ -1,4 +1,4 @@
-// Хранение как услуга (миграция 036): занятость склада по продавцам.
+// Хранение как услуга (миграция 037): занятость склада по продавцам.
 /* global require, URL */
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { test } = require("node:test");

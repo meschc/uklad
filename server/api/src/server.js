@@ -608,6 +608,8 @@ function main() {
     const desks = createDesks({ auth, cfg, send, log: console });
     // Реквизиты по ИНН: без DADATA_API_KEY маршрут отвечает 503, профиль
     // сохраняет ИНН и пишет, что справочник не подключён.
+    const { createOrgName } = require("./cabinet/orgName");
+    const orgName = createOrgName({ auth, send });
     const { createCompanyLookup } = require("./cabinet/company");
     const company = createCompanyLookup({
       auth,
@@ -633,6 +635,7 @@ function main() {
         (await snapshot.handle(req, res, url)) ||
         (await deskBadges.handle(req, res, url)) ||
         (await company.handle(req, res, url)) ||
+        (await orgName.handle(req, res, url)) ||
         (await connectors.handle(req, res, url)) ||
         (await chat.handle(req, res, url)) ||
         (await telegram.handle(req, res, url)),

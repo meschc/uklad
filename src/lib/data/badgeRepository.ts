@@ -31,6 +31,10 @@ export const serverBadges: BadgeServer = {
     if (!res.ok) return res;
     const { status, body } = res.data;
     if (status === 404) return ok(null);
+    // Стол работает на складе своего устройства: бейдж другого склада
+    // компании здесь не открывает работу (`deskPlace.js`).
+    if (status === 409 && body.error === "other_warehouse") return fail("ws.badgeOtherWarehouse");
+    if (status === 409 && body.error === "desk_warehouse") return fail("ws.deskNoWarehouse");
     if (status !== 200 || typeof body.staffRef !== "string") return fail("data.failed");
     const perms = Array.isArray(body.permissions)
       ? body.permissions.filter((p): p is string => typeof p === "string")

@@ -73,7 +73,9 @@ export const snapshotRepository = {
     if (!res.ok) return res;
     const { status, body } = res.data;
     if (status === 403) {
-      return fail(body.error === "no_warehouse" ? "sync.err.noWarehouse" : "sync.err.forbidden");
+      if (body.error === "no_warehouse") return fail("sync.err.noWarehouse");
+      // Стол, чьего устройства нет ни на одном складе (`deskPlace.js`).
+      return fail(body.error === "desk_warehouse" ? "ws.deskNoWarehouse" : "sync.err.forbidden");
     }
     if (status !== 200) return fail("sync.err.network");
     const s = body.snapshot as Snapshot | null | undefined;

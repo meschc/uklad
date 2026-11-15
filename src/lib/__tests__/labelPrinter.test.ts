@@ -15,7 +15,18 @@ describe("настройка принтера этикеток", () => {
 
   it("читает сохранённое имя и размер", () => {
     const raw = JSON.stringify({ name: " Zebra ZD220 ", widthMm: 100, heightMm: 150 });
-    expect(parseLabelPrinter(raw)).toEqual({ name: "Zebra ZD220", widthMm: 100, heightMm: 150 });
+    expect(parseLabelPrinter(raw)).toEqual({
+      name: "Zebra ZD220",
+      widthMm: 100,
+      heightMm: 150,
+      autoPrint: true,
+    });
+  });
+
+  it("печать после скана включена по умолчанию, выключенная запоминается", () => {
+    expect(DEFAULT_LABEL_PRINTER.autoPrint).toBe(true);
+    expect(normalizeLabelPrinter({ autoPrint: false }).autoPrint).toBe(false);
+    expect(normalizeLabelPrinter({ autoPrint: "нет" as never }).autoPrint).toBe(true);
   });
 
   it("держит размер в разумных миллиметрах", () => {

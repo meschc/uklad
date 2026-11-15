@@ -19,6 +19,7 @@ import { PERSIST_KEY, selectRole, useEditor } from "@/lib/store";
 import { removeSaved } from "@/lib/store/persistStorage";
 import { checkEmail, checkInn, checkKpp, checkOgrn, checkPersonName } from "@/lib/validate";
 import { companyRepository } from "@/lib/data/companyRepository";
+import { useCommand } from "@/lib/useCommand";
 import type { Lang } from "@/lib/types";
 import { useT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
@@ -194,6 +195,9 @@ export function Profile() {
       if (!res.ok) return setInnNote(t(res.error));
       const info = res.data;
       if (!info) return setInnNote(t("profile.innNotFound"));
+      void companyRepository.rename(info.name).then((r) => {
+        if (!r.ok) setInnNote(t(r.error));
+      });
       updateAccount({
         org: info.name,
         kpp: info.kpp,
@@ -210,8 +214,13 @@ export function Profile() {
     });
   };
 
-  const saveOrg = () => {
-    updateAccount({ org: draft.org.trim() || undefined });
+  // Название — и на сервер: его видят письма-приглашения и список компаний.
+  const rename = useCommand(companyRepository.rename);
+  const saveOrg = async () => {
+    const org = draft.org.trim();
+    // Пустое на сервер не уходит: у компании там всегда есть название.
+    if (org && !(await rename.run(org)).ok) return;
+    updateAccount({ org: org || undefined });
     close();
   };
 
@@ -451,6 +460,7 @@ export function Profile() {
                           placeholder={t("profile.companyPlaceholder")}
                           className="h-9 w-full"
                         />
+                        {rename.error && <FieldError>{t(rename.error)}</FieldError>}
                       </RowEditor>
                     ) : (
                       <ReadValue value={account.org ?? ""} onEdit={() => open("org")} />

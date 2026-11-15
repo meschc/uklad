@@ -129,6 +129,11 @@ const cabinetData = () => ({
   ],
   chats: { c1: { text: "секрет" } },
   subscription: PLAN,
+  // Стол — устройство склада (`deskPlace.js`): без него стол не открыть.
+  devices: [
+    { id: "dev-1", name: "Стол 1", station: "pack", createdAt: 1 },
+    { id: "dev-2", name: "Стол 2", station: "pack", createdAt: 1 },
+  ],
 });
 
 const tokenOf = (cookies, name) =>
@@ -309,9 +314,16 @@ test(
       200,
     );
 
+    // Без снимка нет и устройства склада: стол не открыть (`deskPlace.js`).
     const empty = await owner("ops-d@sklad.ru", "10.0.5.4");
-    const deskD = await makeDesk(empty);
-    assert.equal((await ops(deskD, [mark("key-000001", "e", "shift_start")])).status, 409);
+    const none = await call("/api/cabinet/desks", {
+      ...empty,
+      body: { deviceRef: "dev-1", name: "Стол 1" },
+    });
+    assert.deepEqual([none.status, none.json.error], [409, "desk_warehouse"]);
+    // Снимок пропал у живого стола — класть операции некуда.
+    await db.root.query(`DELETE FROM uklad.cabinet_snapshots WHERE org_id = $1`, [a.org]);
+    assert.equal((await ops(desk, [mark("key-000001", "e", "shift_start")])).status, 409);
   },
 );
 
