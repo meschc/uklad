@@ -1,14 +1,18 @@
-import { Printer } from "lucide-react";
 import { LABEL_SIZES, saveLabelPrinter, sizeLabel, useLabelPrinter } from "@/lib/labelPrinter";
 import { useT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Segmented } from "@/components/ui/segmented";
+import { PrintSetup } from "./PrintSetup";
 import { PrintableLabel } from "./PrintableLabel";
+import { printNow } from "@/lib/silentPrint";
+import { Printer } from "lucide-react";
 
 /**
- * Принтер этикеток этого стола — правая панель, как смена и журнал. Браузер не
- * даёт выбрать принтер сам: имя здесь напоминает, что выбрать в окне печати,
- * а размер ленты задаёт бумагу этого окна. Настройка живёт в браузере стола.
+ * Принтер этикеток этого стола — правая панель, как смена и журнал. Здесь же
+ * включают печать без окна: ярлык Chrome с тихой печатью (`silentPrint.ts`).
+ * Работает ли она, панель видит по последней печати и говорит прямо.
+ * Настройка живёт в браузере стола: на другом столе другой принтер.
  */
 export function PrinterPanel() {
   const t = useT();
@@ -18,6 +22,20 @@ export function PrinterPanel() {
   return (
     <div className="flex flex-col gap-5">
       <p className="text-sm text-muted-foreground">{t("ws.printer.lead")}</p>
+
+      <div className="flex flex-col gap-2 text-sm">
+        <span className="text-muted-foreground">{t("ws.printer.when")}</span>
+        <Segmented
+          value={printer.autoPrint ? "auto" : "button"}
+          ariaLabel={t("ws.printer.when")}
+          className="self-start"
+          options={[
+            { value: "auto", label: t("ws.printer.whenAuto") },
+            { value: "button", label: t("ws.printer.whenButton") },
+          ]}
+          onChange={(v) => saveLabelPrinter({ autoPrint: v === "auto" })}
+        />
+      </div>
 
       <label className="flex flex-col gap-1 text-sm">
         <span className="text-muted-foreground">{t("ws.printer.name")}</span>
@@ -46,15 +64,12 @@ export function PrinterPanel() {
         <span className="text-xs text-muted-foreground">{t("ws.printer.sizeHint")}</span>
       </div>
 
-      <Button className="self-start" onClick={() => window.print()}>
+      <Button className="self-start" onClick={() => printNow()}>
         <Printer />
         {t("ws.printer.test")}
       </Button>
 
-      <div className="flex flex-col gap-1 rounded-lg bg-muted p-3 text-xs text-muted-foreground">
-        <p className="font-medium text-foreground">{t("ws.printer.silentTitle")}</p>
-        <p>{t("ws.printer.silent")}</p>
-      </div>
+      <PrintSetup />
 
       <PrintableLabel
         code="UK-TEST-0001"

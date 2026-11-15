@@ -7,6 +7,7 @@ import { beepNotes } from "@/lib/beep";
 import { holdSignal, signal } from "@/lib/scanSignal";
 import { destinationMark } from "@/lib/destinationMark";
 import { useLabelPrinter } from "@/lib/labelPrinter";
+import { printNow } from "@/lib/silentPrint";
 import { parseBadge } from "@/lib/workstation";
 import { isDecider } from "@/lib/docFlow";
 import { useCommand } from "@/lib/useCommand";
@@ -66,7 +67,7 @@ export function SortStation() {
   );
   // Печать — после того, как этикетки отрисовались в скрытом блоке.
   useEffect(() => {
-    if (print) window.print();
+    if (print) printNow();
   }, [print]);
 
   const show = (tone: "ok" | "warn" | "error", text: string, quiet = false) => {

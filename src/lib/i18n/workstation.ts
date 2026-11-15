@@ -365,16 +365,35 @@ export const ru = {
   "ws.equip.printerSet": "настроен",
   "ws.printer.title": "Принтер этикеток",
   "ws.printer.lead":
-    "Браузер сам не выбирает принтер: его называют в окне печати. Здесь запомним, как он называется, и размер ленты, чтобы окно сразу предлагало нужную бумагу. Настройка хранится в браузере этого стола.",
+    "Принтер этикеток этого стола: когда печатать, как он называется и какая лента стоит. Настройка хранится в браузере этого стола.",
   "ws.printer.name": "Название принтера в системе",
   "ws.printer.namePlaceholder": "Например, Zebra ZD220",
   "ws.printer.size": "Размер ленты, мм",
   "ws.printer.sizeHint": "Ширина × высота. Этикетка станет ровно такой.",
   "ws.printer.test": "Тестовая печать",
   "ws.printer.testLine": "Проверка печати",
-  "ws.printer.silentTitle": "Печать без окна",
-  "ws.printer.silent":
-    "Чтобы этикетка уходила сразу, запустите Chrome этого стола с флагом --kiosk-printing и сделайте принтер этикеток принтером по умолчанию в системе. Окно выбора тогда не появится.",
+  "ws.printer.silentOn": "Работает: этикетки уходят на принтер сами, без окна.",
+  "ws.printer.silentOff":
+    "Сейчас открывается окно печати. Чтобы этикетка выходила сразу после скана, откройте стол через ярлык с тихой печатью.",
+  "ws.printer.silentUnknown": "Печать без окна на этом компьютере ещё не проверяли.",
+  "ws.printer.step1":
+    "Скачайте файл и запустите его. Он создаст на рабочем столе ярлык «Уклад — упаковка» и откроет кабинет. Если Windows предупредит о файле, нажмите «Подробнее» → «Выполнить».",
+  "ws.printer.step2":
+    "В открывшемся окне войдите и нажмите «Тестовая печать». Выберите принтер этикеток и напечатайте — браузер его запомнит. Закройте окно. Если этикетка вышла на листе А4 или с датой и адресом по краям, в настройках принтера в Windows поставьте размер бумаги, как у ленты.",
+  "ws.printer.step3":
+    "Дальше открывайте стол только ярлыком «Уклад — упаковка»: этикетка будет печататься сама после каждого скана.",
+  "ws.printer.download": "Скачать ярлык для Windows",
+  "ws.printer.mac": "Компьютер Mac",
+  "ws.printer.macHint":
+    "Вставьте первую команду в Терминал и нажмите Enter: откроется кабинет. Сделайте тестовую печать, выберите принтер этикеток и закройте окно. Дальше открывайте стол второй командой — она печатает без окна.",
+  "ws.printer.copy": "Скопировать",
+  "ws.printer.otherDesk": "Как настроить на другом столе",
+  "ws.printer.howTo": "Как включить",
+  "ws.printer.when": "Печать этикетки",
+  "ws.printer.whenAuto": "Сразу после скана",
+  "ws.printer.whenButton": "По кнопке",
+  "ws.run.reprint": "Перепечатать",
+  "ws.run.printedSilent": "Отправлена на принтер, лента {size} мм.",
   "ws.run.defect": "Брак",
   "ws.run.orderLabel": "Заказ {id} собран полностью",
   "ws.run.orderLabelHint": "Закройте упаковку заказа, наклейте этикетку заказа и отсканируйте её.",
@@ -475,6 +494,7 @@ export const ru = {
   "ws.ev.pack_scan": "Скан товара",
   "ws.ev.pack_error": "Ошибка скана",
   "ws.ev.pack_reject": "Брак",
+  "ws.ev.pack_reprint": "Перепечатал этикетку",
   "ws.ev.pack_label": "Упаковал, этикетка",
   "ws.ev.pack_done": "Закрыл тару",
   "ws.ev.pick_scan": "Снял с полки в тару",
@@ -843,16 +863,36 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.equip.printerSet": "set up",
   "ws.printer.title": "Label printer",
   "ws.printer.lead":
-    "The browser can't choose a printer by itself: you pick it in the print window. Here we remember its name and the label size so the window offers the right paper. Stored in this desk's browser.",
+    "This desk's label printer: when to print, its name and the label size. Stored in this desk's browser.",
   "ws.printer.name": "Printer name in the system",
   "ws.printer.namePlaceholder": "For example, Zebra ZD220",
   "ws.printer.size": "Label size, mm",
   "ws.printer.sizeHint": "Width × height. The label is printed exactly this size.",
   "ws.printer.test": "Test print",
   "ws.printer.testLine": "Print check",
-  "ws.printer.silentTitle": "Printing without the window",
-  "ws.printer.silent":
-    "To print straight away, start this desk's Chrome with the --kiosk-printing flag and make the label printer the system default. The print window won't appear.",
+  "ws.printer.silentOn": "Working: labels go straight to the printer, no window.",
+  "ws.printer.silentOff":
+    "The print window opens now. To print the label right after the scan, open the desk with the silent printing shortcut.",
+  "ws.printer.silentUnknown":
+    "Printing without the window hasn't been checked on this computer yet.",
+  "ws.printer.step1":
+    "Download the file and run it. It puts the packing desk shortcut on the desktop and opens the account. If Windows warns about the file, press “More info” → “Run anyway”.",
+  "ws.printer.step2":
+    "In the window that opens, sign in and press “Test print”. Pick the label printer and print — the browser remembers it. Close the window. If the label comes out on an A4 sheet or with a date and address on the edges, set the paper size to the label size in the Windows printer settings.",
+  "ws.printer.step3":
+    "From now on open the desk only with that desktop shortcut: the label prints by itself after every scan.",
+  "ws.printer.download": "Download the Windows shortcut",
+  "ws.printer.mac": "Mac computer",
+  "ws.printer.macHint":
+    "Paste the first command into Terminal and press Enter: the account opens. Make a test print, pick the label printer and close the window. From then on open the desk with the second command — it prints without the window.",
+  "ws.printer.copy": "Copy",
+  "ws.printer.otherDesk": "How to set up another desk",
+  "ws.printer.howTo": "How to turn it on",
+  "ws.printer.when": "Label printing",
+  "ws.printer.whenAuto": "Right after the scan",
+  "ws.printer.whenButton": "With the button",
+  "ws.run.reprint": "Reprint",
+  "ws.run.printedSilent": "Sent to the printer, {size} mm label.",
   "ws.run.defect": "Defect",
   "ws.run.orderLabel": "Order {id} is complete",
   "ws.run.orderLabelHint": "Close the order's package, stick the order label on and scan it.",
@@ -951,6 +991,7 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.ev.pack_scan": "Item scan",
   "ws.ev.pack_error": "Scan error",
   "ws.ev.pack_reject": "Defect",
+  "ws.ev.pack_reprint": "Reprinted label",
   "ws.ev.pack_label": "Packed, label",
   "ws.ev.pack_done": "Closed tote",
   "ws.ev.pick_scan": "Picked into tote",

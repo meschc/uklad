@@ -196,6 +196,7 @@ export const ru = {
   "staff.out.split": "упак. {pack} · сб. {pick}",
   "staff.out.errors": "Ошибки",
   "staff.out.rejects": "Брак",
+  "staff.out.reprints": "Перепечатки",
   "staff.out.earned": "По ставке",
   "team.title": "Кто входит в кабинет",
   "team.lead":
@@ -626,6 +627,7 @@ export const en: Record<keyof typeof ru, string> = {
   "staff.out.split": "pack {pack} · pick {pick}",
   "staff.out.errors": "Errors",
   "staff.out.rejects": "Defects",
+  "staff.out.reprints": "Reprints",
   "staff.out.earned": "By rate",
   "team.title": "Who can sign in",
   "team.lead":

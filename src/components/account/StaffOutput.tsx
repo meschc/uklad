@@ -73,6 +73,7 @@ export function StaffOutput() {
     { id: "peaks", value: (r) => r.packed + r.picked },
     { id: "errors", value: (r) => r.errors },
     { id: "rejects", value: (r) => r.rejects },
+    { id: "reprints", value: (r) => r.reprints },
     { id: "receipts", value: (r) => workload.get(r.staffId)?.units ?? 0 },
     { id: "trips", value: (r) => workload.get(r.staffId)?.trips ?? 0 },
     { id: "earned", value: (r) => r.earned ?? -1 },
@@ -135,6 +136,9 @@ export function StaffOutput() {
               <SortTh table={table.table} id="rejects" align="right">
                 {t("staff.out.rejects")}
               </SortTh>
+              <SortTh table={table.table} id="reprints" align="right">
+                {t("staff.out.reprints")}
+              </SortTh>
               <SortTh table={table.table} id="receipts" align="right">
                 {t("staff.wlUnits")}
               </SortTh>
@@ -183,6 +187,7 @@ export function StaffOutput() {
                 </td>
                 <td className="px-3 py-2 text-right tabular-nums">{r.errors}</td>
                 <td className="px-3 py-2 text-right tabular-nums">{r.rejects}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{r.reprints}</td>
                 <td className="px-3 py-2 text-right tabular-nums">
                   {workload.get(r.staffId)?.units ?? 0}
                   <span className="block text-xs text-muted-foreground">

@@ -343,3 +343,24 @@ test("тара посылок: каждая посылка своей опера
     "bad",
   );
 });
+
+test("перепечатка этикетки — запись в журнал, товар и спорное не трогает", () => {
+  const d = data();
+  const r = applyPackEvent(
+    d,
+    { eventId: "e9", type: "pack_reprint", at: AT, toteId: "t1", code: "UK-L-7" },
+    "stf-ivan",
+  );
+  assert.deepEqual(r.data.staffEvents, [
+    {
+      id: "e9",
+      staffId: "stf-ivan",
+      type: "pack_reprint",
+      at: AT,
+      station: "pack",
+      code: "UK-L-7",
+    },
+  ]);
+  assert.equal(r.data.boxes, d.boxes);
+  assert.equal(r.data.disputes, d.disputes);
+});

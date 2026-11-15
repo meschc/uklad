@@ -320,6 +320,8 @@ type StaffEventType =
   | "pack_error"
   | "pack_reject"
   | "pack_label"
+  /** Этикетку штуки напечатали ещё раз: старший видит перепечатки за смену. */
+  | "pack_reprint"
   | "pack_done"
   | "pick_scan";
 
