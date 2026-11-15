@@ -1,4 +1,5 @@
 import { frozenBoxes } from "../inventory";
+import { planPickUndo, stepBack } from "../pickUndo";
 import { nowMs, uid } from "../utils";
 import { addressKey } from "../address";
 import { planLoad, shipOutbound } from "../outbound";
@@ -163,6 +164,11 @@ export const createRequestsSlice: SliceCreator<RequestsSlice> = (set, get) => ({
                 station: "picking" as const,
                 productId,
                 ...(tote ? { code: tote.barcode } : {}),
+                // Откуда и под какую заявку: по этому отмена скана вернёт
+                // штуку в тот же короб (`pickUndo.ts`).
+                requestId: id,
+                cell: addr,
+                ...(box ? { boxId: box.id } : {}),
               },
             ],
           }
@@ -179,6 +185,46 @@ export const createRequestsSlice: SliceCreator<RequestsSlice> = (set, get) => ({
         : st.boxes,
     }));
     return picked;
+  },
+
+  undoPick: (pickId, by) => {
+    const s = get();
+    const res = planPickUndo(s, pickId, by);
+    if (!res.ok) return { problem: res.problem };
+    const { pick, request, tote, from } = res.plan;
+    const productId = pick.productId ?? "";
+    const at = nowMs();
+    const undoId = uid("sev");
+    set((st) => ({
+      boxes: st.boxes.map((b) =>
+        b.id === from.id
+          ? addLine(b, productId, 1)
+          : b.id === tote.id
+            ? {
+                ...b,
+                lines: b.lines
+                  .map((l) => (l.productId === productId ? { ...l, qty: l.qty - 1 } : l))
+                  .filter((l) => l.qty > 0),
+              }
+            : b,
+      ),
+      requests: st.requests.map((r) => (r.id === request.id ? stepBack(r, at) : r)),
+      staffEvents: [
+        ...st.staffEvents,
+        {
+          id: undoId,
+          staffId: by,
+          type: "pick_undo" as const,
+          at,
+          station: "picking" as const,
+          productId,
+          code: tote.barcode,
+          requestId: request.id,
+          undoes: pick.id,
+        },
+      ],
+    }));
+    return { id: undoId };
   },
 
   completeRequest: (id, partial = false) => {

@@ -284,6 +284,7 @@ export const ru = {
   "devices.op.pack_done": "Закрыл тару",
   "devices.op.pick_unit": "Сборка",
   "devices.op.pick_done": "Заявка собрана",
+  "devices.op.pick_undo": "Отмена скана сборки",
   "devices.op.recv_open": "Начал приёмку",
   "devices.op.recv_unit": "Принял товар",
   "devices.op.recv_place": "Разместил",
@@ -512,6 +513,7 @@ export const ru = {
   "ws.ev.pack_label": "Упаковал, этикетка",
   "ws.ev.pack_done": "Закрыл тару",
   "ws.ev.pick_scan": "Снял с полки в тару",
+  "ws.ev.pick_undo": "Отменил скан: вернул в короб",
 };
 
 export const en: Record<keyof typeof ru, string> = {
@@ -795,6 +797,7 @@ export const en: Record<keyof typeof ru, string> = {
   "devices.op.pack_done": "Closed tote",
   "devices.op.pick_unit": "Picking",
   "devices.op.pick_done": "Request picked",
+  "devices.op.pick_undo": "Picking scan undone",
   "devices.op.recv_open": "Started receiving",
   "devices.op.recv_unit": "Received item",
   "devices.op.recv_place": "Put away",
@@ -1023,4 +1026,5 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.ev.pack_label": "Packed, label",
   "ws.ev.pack_done": "Closed tote",
   "ws.ev.pick_scan": "Picked into tote",
+  "ws.ev.pick_undo": "Undid a scan: returned to box",
 };

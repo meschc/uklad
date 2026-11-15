@@ -158,6 +158,20 @@ describe("коды смены и пики", () => {
     expect(m.get("a")).toEqual({ pack: 1, pick: 1 });
     expect(m.has("b")).toBe(false);
   });
+
+  it("отменённый скан сборки — не пик", async () => {
+    const { peaksByStaff } = await import("../workstation");
+    const m = peaksByStaff(
+      [
+        { id: "s1", staffId: "a", type: "pick_scan", at: 1 },
+        { id: "s2", staffId: "a", type: "pick_scan", at: 2 },
+        { id: "u1", staffId: "a", type: "pick_undo", at: 3, undoes: "s2" },
+      ],
+      0,
+      10,
+    );
+    expect(m.get("a")).toEqual({ pack: 0, pick: 1 });
+  });
 });
 
 describe("stationKey", () => {

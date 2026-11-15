@@ -61,6 +61,11 @@ export interface WorkstationRepository {
     addr: CellAddress,
     toteId?: string,
   ) => Promise<Result<number>>;
+  /**
+   * Отменить свой скан сборки: штука из тары — обратно в короб, откуда её
+   * сняли. Нельзя — отказ `pick.undo.<причина>` (`pickUndo.ts`).
+   */
+  pickUndo: (pickId: string) => Promise<Result<void>>;
   /** Заявка собрана: целиком или частично (меньше запрошенного, явно). */
   pickDone: (requestId: string, partial: boolean) => Promise<Result<void>>;
   /**
@@ -302,6 +307,21 @@ export function createWorkstationRepository(
         }
         return now;
       }),
+    // Отмена на сервере — своя операция (`applyPickUndo`): сервер сам
+    // проверит, что скан свой, штука в таре и короб на месте.
+    pickUndo: async (pickId) => {
+      const by = port.get().stationSession?.staffId;
+      if (!by) return fail("pick.undo.not_yours");
+      const res = await attempt(() => port.get().undoPick(pickId, by));
+      if (!res.ok) return res;
+      const out = res.data;
+      if ("problem" in out) return fail(`pick.undo.${out.problem}` as const);
+      const ev = port.get().staffEvents.find((e) => e.id === out.id);
+      if (ev && onServer(port)) {
+        ops.enqueue("pick_undo", { eventId: ev.id, staffId: by, at: ev.at, pickId });
+      }
+      return ok(undefined);
+    },
     // Рейс на сервере уходит операцией (`cabinet/deskShip.js`): стор уже
     // отметил уехавшее, очередь донесёт «эти заявки, эти места, эта машина».
     ship: (requestIds, info) =>

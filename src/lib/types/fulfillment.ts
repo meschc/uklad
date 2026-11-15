@@ -323,7 +323,9 @@ type StaffEventType =
   /** Этикетку штуки напечатали ещё раз: старший видит перепечатки за смену. */
   | "pack_reprint"
   | "pack_done"
-  | "pick_scan";
+  | "pick_scan"
+  /** Сборщик отменил свой скан: штука вернулась из тары в короб (`undoes`). */
+  | "pick_undo";
 
 /** Отметки, которые ставит сам сотрудник: смена, перерыв, простой. */
 export type ShiftMark = Extract<
@@ -349,6 +351,12 @@ export interface StaffEvent {
   ms?: number;
   /** Причина простоя — у отметки `idle_start`. */
   reason?: IdleReason;
+  /** Сборка: под какую заявку, из какого короба и ячейки снята штука. */
+  requestId?: string;
+  boxId?: string;
+  cell?: CellAddress;
+  /** Отмена (`pick_undo`): id скана, который она отменяет. */
+  undoes?: string;
 }
 
 /** «Нет работы» — простой по вине склада, он оплачивается (ТК РФ ст. 157). */

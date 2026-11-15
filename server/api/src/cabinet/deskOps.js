@@ -13,7 +13,7 @@
  * хранится в журнале операций, но в снимок не идёт. Отказ всем запросом
  * (400) — только для того, что не похоже на операцию вовсе.
  *
- * Здесь отметки смены, упаковка (`deskPack.js`), сборка (`deskPick.js`),
+ * Здесь отметки смены, упаковка (`deskPack.js`), сборка и её отмена (`deskPick.js`),
  * приёмка (`deskReceive.js`) и инвентаризация (`deskInventory.js`).
  */
 
@@ -21,7 +21,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 
 const { applyPackEvent, applyPackDone } = require("./deskPack");
-const { applyPickUnit, applyPickDone } = require("./deskPick");
+const { applyPickUnit, applyPickDone, applyPickUndo } = require("./deskPick");
 const {
   applyRecvUnit,
   applyRecvOpen,
@@ -47,7 +47,7 @@ const SHIFT_TYPES = new Set([
   "idle_end",
 ]);
 const PACK_KINDS = new Set(["pack_event", "pack_done"]);
-const PICK_KINDS = new Set(["pick_unit", "pick_done"]);
+const PICK_KINDS = new Set(["pick_unit", "pick_done", "pick_undo"]);
 const RECV_KINDS = new Set([
   "recv_open",
   "recv_unit",
@@ -78,6 +78,7 @@ const WORK = new Map([
   ["pack_done", applyPackDone],
   ["pick_unit", applyPickUnit],
   ["pick_done", applyPickDone],
+  ["pick_undo", applyPickUndo],
   ["recv_open", applyRecvOpen],
   ["recv_unit", applyRecvUnit],
   ["recv_place", applyRecvPlace],
@@ -222,6 +223,9 @@ function applyDeskOps(data, ops, who, now, received = new Map(), verify = null) 
           continue;
         }
       }
+      // Шаг назад, который общая сверка запрещает столу (отмена скана):
+      // сервер делает его сам, по проверке операции, а не по слову стола.
+      if (r.post && next !== before) next = r.post(next);
       if (next !== before) {
         state = next;
         events = Array.isArray(next.staffEvents) ? next.staffEvents : [];
@@ -297,6 +301,7 @@ function cleanBody(body) {
   const out = { at: body.at };
   for (const k of [
     "eventId",
+    "pickId",
     "staffId",
     "type",
     "station",

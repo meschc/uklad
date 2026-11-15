@@ -26,6 +26,7 @@ export function Modal({
   disabled,
   pending,
   error,
+  tone,
 }: {
   title: string;
   /** Значок в шапке, `size-4 text-muted-foreground`, как у «Сообщить о проблеме». */
@@ -39,6 +40,8 @@ export function Modal({
   pending?: boolean;
   /** Ключ сообщения об отказе; `null` — отказа не было. */
   error?: MsgKey | null;
+  /** `destructive` — действие класса `confirm` (`actionRisk.ts`): меняет учёт. */
+  tone?: "destructive";
 }) {
   const t = useT();
   return (
@@ -62,7 +65,7 @@ export function Modal({
           <Button size="sm" variant="ghost" onClick={onClose}>
             {t("common.cancel")}
           </Button>
-          <Button size="sm" disabled={disabled || pending} onClick={onSubmit}>
+          <Button size="sm" variant={tone} disabled={disabled || pending} onClick={onSubmit}>
             {pending && <Loader2 className="animate-spin" />}
             {pending
               ? t("data.busy")

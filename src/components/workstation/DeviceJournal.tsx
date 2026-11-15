@@ -22,6 +22,7 @@ const SERVER_KINDS = new Set([
   "pack_done",
   "pick_unit",
   "pick_done",
+  "pick_undo",
   "recv_open",
   "recv_unit",
   "recv_place",

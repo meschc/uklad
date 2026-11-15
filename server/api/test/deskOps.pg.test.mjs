@@ -511,13 +511,35 @@ test(
         ["key-pick-done", "applied", null],
       ],
     );
+    // Вторая штука легла не в ту тару: сборщик отменяет свой скан. Штука —
+    // обратно в короб, заявка снова собирается; сверка остатков проходит.
+    const back = await ops(desk, [
+      {
+        key: "key-pick-undo",
+        kind: "pick_undo",
+        body: {
+          eventId: "ev-undo-1",
+          staffId: "stf-ivan",
+          at: Date.now() - 300,
+          pickId: "ev-pick-2",
+        },
+      },
+    ]);
+    assert.deepEqual(
+      back.json.results.map((x) => [x.status, x.reason ?? null]),
+      [["applied", null]],
+    );
 
     const { snap } = await serverEvents("ops-g@sklad.ru", a.org);
     const box = Object.fromEntries(snap.data.boxes.map((b) => [b.id, b.lines]));
-    assert.deepEqual(box.b1, [{ productId: "pr1", qty: 1 }]);
-    assert.deepEqual(box.t1, [{ productId: "pr1", qty: 2 }]);
+    assert.deepEqual(box.b1, [{ productId: "pr1", qty: 2 }]);
+    assert.deepEqual(box.t1, [{ productId: "pr1", qty: 1 }]);
     const req = snap.data.requests.find((x) => x.id === "r1");
-    assert.deepEqual([req.status, req.pickedQty, req.toteId], ["done", 2, "t1"]);
+    assert.deepEqual([req.status, req.pickedQty, req.toteId], ["in_progress", 1, "t1"]);
+    assert.deepEqual(
+      snap.data.staffEvents.filter((e) => e.type === "pick_undo").map((e) => e.undoes),
+      ["ev-pick-2"],
+    );
     assert.deepEqual(
       snap.data.staffEvents.filter((e) => e.type === "pick_scan").map((e) => [e.id, e.staffId]),
       [
@@ -534,9 +556,9 @@ test(
     assert.deepEqual(
       moves.rows.map((m) => [m.place_kind, m.place_ref, m.d, m.who]),
       [
-        ["box", "b1", -2, "stf-ivan"],
-        ["box", "t1", 2, "stf-ivan"],
-        ["box_at", "f1/m1/0/0#b1", -2, "stf-ivan"],
+        ["box", "b1", -1, "stf-ivan"],
+        ["box", "t1", 1, "stf-ivan"],
+        ["box_at", "f1/m1/0/0#b1", -1, "stf-ivan"],
       ],
     );
   },

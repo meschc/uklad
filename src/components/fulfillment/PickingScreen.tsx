@@ -7,6 +7,7 @@ import {
   MapPin,
   Package,
   ScanLine,
+  Undo2,
 } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { levelFor, signal } from "@/lib/scanSignal";
@@ -25,6 +26,8 @@ import { ScanField, type ScanStatus } from "./ScanField";
 import { pickToteProblem, type PickToteProblem } from "@/lib/packing";
 import { useDemoHints } from "@/components/workstation/useDemoHints";
 import { FieldError, FormError } from "@/components/ui/field";
+import { lastPick } from "@/lib/pickUndo";
+import { PickUndoPanel } from "./PickUndoPanel";
 
 /**
  * Экран «Сборка» (п.8) — зеркало приёмки по духу, но с обратной строгостью:
@@ -63,6 +66,12 @@ export function PickingScreen({ autoStart = false }: { autoStart?: boolean } = {
   const goToView = useEditor((s) => s.goToView);
   const createBox = useEditor((s) => s.createBox);
   const demoHints = useDemoHints();
+  const staffId = useEditor((s) => s.stationSession?.staffId);
+  const staffEvents = useEditor((s) => s.staffEvents);
+  // Отмена скана (`pickUndo.ts`): какой скан отменяем сейчас и какая заявка
+  // только что закрылась сама — её последний скан тоже можно отменить.
+  const [undoId, setUndoId] = useState<string | null>(null);
+  const [recentId, setRecentId] = useState<string | null>(null);
   // Тара сборки живёт между заявками: сборщик идёт с одной тарой, пока она
   // подходит (тот же продавец и назначение).
   const [toteId, setToteId] = useState<string | null>(null);
@@ -91,6 +100,9 @@ export function PickingScreen({ autoStart = false }: { autoStart?: boolean } = {
   const active = requests.find((r) => r.id === activeId) ?? null;
   const product = active ? products.find((p) => p.id === active.productId) : undefined;
   const picked = active?.pickedQty ?? 0;
+  const undoFor =
+    active ?? (step === "queue" ? requests.find((r) => r.id === recentId) : undefined);
+  const undoable = staffId && undoFor ? lastPick(staffEvents, undoFor.id, staffId) : undefined;
 
   const fail = (key: MsgKey, vars?: Record<string, string | number>) => {
     const level = levelFor(key);
@@ -210,6 +222,7 @@ export function PickingScreen({ autoStart = false }: { autoStart?: boolean } = {
     if (now >= active.qty) {
       // 8.4 — собрано ровно запрошенное: заявка закрывается сама.
       void workstationRepository.pickDone(active.id, false);
+      setRecentId(active.id);
       ok("pick.item.completed", { n: now });
       setStep("queue");
       setActiveId(null);
@@ -218,6 +231,28 @@ export function PickingScreen({ autoStart = false }: { autoStart?: boolean } = {
     }
     ok("pick.item.counted", { n: now, total: active.qty });
   };
+
+  const afterUndo = (left: number, total: number) => {
+    setUndoId(null);
+    ok("pick.undo.done", { n: left, total });
+    // Отменили скан уже закрытой заявки — она снова собирается: продолжаем её.
+    if (!active && recentId) {
+      const r = useEditor.getState().requests.find((x) => x.id === recentId);
+      setRecentId(null);
+      if (r) {
+        open(r);
+        signal("ok");
+        setScan({ status: "ok", msg: t("pick.undo.done", { n: left, total }) });
+      }
+    }
+  };
+
+  const undoButton = undoable && (
+    <Button size="sm" variant="ghost" className="self-start" onClick={() => setUndoId(undoable.id)}>
+      <Undo2 className="size-3.5" />
+      {t("pick.undo.start")}
+    </Button>
+  );
 
   // --- рендер ----------------------------------------------------------------
 
@@ -252,6 +287,17 @@ export function PickingScreen({ autoStart = false }: { autoStart?: boolean } = {
           {scan.msg}
         </div>
       )}
+
+      {undoId && staffId && (
+        <PickUndoPanel
+          pickId={undoId}
+          staffId={staffId}
+          onClose={() => setUndoId(null)}
+          onDone={afterUndo}
+        />
+      )}
+
+      {step === "queue" && undoButton}
 
       {step === "queue" && autoStart && next && (
         <NextTask
@@ -434,6 +480,7 @@ export function PickingScreen({ autoStart = false }: { autoStart?: boolean } = {
               )}
             </>
           )}
+          {step !== "tote" && undoButton}
         </div>
       )}
     </ScreenShell>
