@@ -5,6 +5,7 @@ import {
   countDiffs,
   frozenBoxes,
   normalizeCount,
+  planCellCount,
   planCount,
   staleBoxes,
 } from "../inventory";
@@ -155,5 +156,45 @@ describe("frozenBoxes", () => {
       { ...base, id: "3", kind: "shortage", boxId: "b3" },
     ];
     expect([...frozenBoxes(ds)]).toEqual(["b1"]);
+  });
+});
+
+describe("planCellCount — ячейка без тары на учёте", () => {
+  const FREE: CellAddress = { ...ADDR, cellIndex: 1 };
+  const tote = box({ id: "t1", barcode: "UK-BOX-9", address: undefined, lines: [] });
+  const cellInput = (lines: { productId: string; qty: number }[], boxId?: string) => ({
+    cell: FREE,
+    boxId,
+    lines,
+    staffId: "s1",
+    at: NOW,
+    eventId: "c1",
+  });
+
+  it("пусто — ничего не меняет; в ячейке тара на учёте — считают её", () => {
+    expect(planCellCount([box(), tote], known, cellInput([]))).toEqual({ box: null, disputes: [] });
+    expect(planCellCount([box()], known, { ...cellInput([]), cell: ADDR })).toEqual({
+      problem: "busy",
+    });
+  });
+
+  it("найденное — в свободную тару: она встаёт в ячейку, излишек на неё", () => {
+    const r = planCellCount([box(), tote], known, cellInput([{ productId: "p2", qty: 2 }], "t1"));
+    if ("problem" in r) throw new Error(r.problem);
+    expect(r.box?.address).toEqual(FREE);
+    expect(r.box?.lines).toEqual([]);
+    expect(r.disputes.map((d) => [d.kind, d.boxId, d.productId, d.qty])).toEqual([
+      ["inventory_over", "t1", "p2", 2],
+    ]);
+  });
+
+  it("без тары, в занятую тару и неизвестный товар — отказ", () => {
+    const found = [{ productId: "p1", qty: 1 }];
+    expect(planCellCount([tote], known, cellInput(found))).toEqual({ problem: "no_tote" });
+    const full = box({ id: "t2", address: undefined });
+    expect(planCellCount([full], known, cellInput(found, "t2"))).toEqual({ problem: "tote_busy" });
+    expect(planCellCount([tote], known, cellInput([{ productId: "x", qty: 1 }], "t1"))).toEqual({
+      problem: "unknown_product",
+    });
   });
 });

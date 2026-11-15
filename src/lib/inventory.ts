@@ -1,4 +1,4 @@
-import type { Box, Dispute } from "./types";
+import type { Box, CellAddress, Dispute } from "./types";
 import { isInventoryDispute } from "./disputes";
 
 /**
@@ -120,6 +120,70 @@ export function planCount(
       raisedBy: input.staffId,
       raisedAt: input.at,
     })),
+  };
+}
+
+/**
+ * Пересчёт ячейки, где по учёту тары нет (сервер — `applyInvCell`). Почему
+ * нельзя: `busy` — в ячейке стоит тара на учёте, считают её; `no_tote` —
+ * найденное без свободной тары не принять; `tote_busy` — тара не свободна
+ * (с товаром, невскрытая или стоит на другом месте); остальное — как у тары.
+ */
+export type CellCountProblem = "busy" | "no_tote" | "tote_busy" | "bad" | "unknown_product";
+
+export interface CellCountInput {
+  cell: CellAddress;
+  /** Свободная тара, куда положили найденное. Пусто — ячейка пуста. */
+  boxId?: string;
+  lines: readonly CountLine[];
+  staffId: string;
+  at: number;
+  eventId: string;
+}
+
+const sameCell = (a: CellAddress | undefined, b: CellAddress) =>
+  !!a &&
+  a.floorId === b.floorId &&
+  a.moduleId === b.moduleId &&
+  a.shelfIndex === b.shelfIndex &&
+  a.cellIndex === b.cellIndex;
+
+/**
+ * Что даст пересчёт пустой ячейки: «пусто» — ничего (`box: null`), найденное
+ * — свободная тара в этой ячейке и излишек по каждому товару на неё.
+ */
+export function planCellCount(
+  boxes: readonly Box[],
+  known: ReadonlySet<string>,
+  input: CellCountInput,
+): { problem: CellCountProblem } | { box: Box | null; disputes: Dispute[] } {
+  const lines = normalizeCount(input.lines);
+  if (!lines) return { problem: "bad" };
+  if (boxes.some((b) => b.id !== input.boxId && sameCell(b.address, input.cell))) {
+    return { problem: "busy" };
+  }
+  const found = lines.filter((l) => l.qty > 0);
+  if (found.length === 0) return { box: null, disputes: [] };
+  if (found.some((l) => !known.has(l.productId))) return { problem: "unknown_product" };
+  const tote = boxes.find((b) => b.id === input.boxId);
+  if (!tote) return { problem: "no_tote" };
+  if (tote.sealed || tote.address || tote.lines.some((l) => l.qty > 0)) {
+    return { problem: "tote_busy" };
+  }
+  return {
+    box: { ...tote, address: input.cell, countedAt: input.at, countedBy: input.staffId },
+    disputes: [...found]
+      .sort((a, b) => a.productId.localeCompare(b.productId))
+      .map((l) => ({
+        id: inventoryDisputeId(input.eventId, l.productId),
+        kind: "inventory_over" as const,
+        boxId: tote.id,
+        toteCode: tote.barcode,
+        productId: l.productId,
+        qty: l.qty,
+        raisedBy: input.staffId,
+        raisedAt: input.at,
+      })),
   };
 }
 

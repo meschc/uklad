@@ -77,6 +77,12 @@ export interface WorkstationRepository {
    * отказ `ws.count.<причина>`.
    */
   countBox: (boxId: string, lines: CountLine[]) => Promise<Result<{ matched: boolean }>>;
+  /** Пересчёт ячейки без тары: «пусто» или найденное в свободной таре `boxId`. */
+  countCell: (
+    cell: CellAddress,
+    lines: CountLine[],
+    boxId?: string,
+  ) => Promise<Result<{ found: number }>>;
   /** Сортировка: короб отгрузки — на паллету назначения. Правила проверяет стол. */
   sort: (parcelCode: string, sortCode: string) => Promise<Result<boolean>>;
   /** Закрыть отгрузку места сортировки: грузовые места (`UK-OUT-`) для ярлыков. */
@@ -332,6 +338,23 @@ export function createWorkstationRepository(
         ops.enqueue("inv_count", { eventId, staffId: by, at, boxId, lines });
       }
       return ok({ matched: res.data.diffs.length === 0 });
+    },
+    // Пустая ячейка — операцией `inv_cell`: «пусто» остаётся строкой журнала
+    // операций стола, найденное — излишком на свободную тару.
+    countCell: async (cell, lines, boxId) => {
+      const by = port.get().stationSession?.staffId;
+      if (!by) return fail("ws.count.nobody");
+      const eventId = uid("icc");
+      const at = nowMs();
+      const res = await attempt(() =>
+        port.get().countCell({ cell, lines, boxId, staffId: by, at, eventId }),
+      );
+      if (!res.ok) return res;
+      if ("problem" in res.data) return fail(`ws.count.${res.data.problem}`);
+      if (onServer(port)) {
+        ops.enqueue("inv_cell", { eventId, staffId: by, at, cell, lines, boxId });
+      }
+      return ok({ found: res.data.found });
     },
     // Сортировка уходит операциями `sort_place` и `sort_close`: сервер сам
     // сверит направление места и что отгрузка ещё не закрыта.

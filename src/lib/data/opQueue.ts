@@ -39,6 +39,7 @@ export type DeskOpKind =
   | "dispute_resolve"
   | "recv_cargo"
   | "inv_count"
+  | "inv_cell"
   | "sort_place"
   | "sort_close";
 const KINDS: readonly DeskOpKind[] = [
@@ -57,6 +58,7 @@ const KINDS: readonly DeskOpKind[] = [
   "dispute_resolve",
   "recv_cargo",
   "inv_count",
+  "inv_cell",
   "sort_place",
   "sort_close",
 ];
@@ -338,7 +340,7 @@ async function sayFlagged(kinds: DeskOpKind[]) {
   const shipping =
     kinds.includes("ship_run") || kinds.includes("sort_place") || kinds.includes("sort_close");
   const deciding = kinds.includes("dispute_resolve");
-  const counting = kinds.includes("inv_count");
+  const counting = kinds.includes("inv_count") || kinds.includes("inv_cell");
   useEditor
     .getState()
     .notify(

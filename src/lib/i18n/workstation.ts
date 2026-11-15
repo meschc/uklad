@@ -74,7 +74,20 @@ export const ru = {
   "ws.count.scanBox": "Отсканируйте ячейку или тару на полке",
   "ws.count.scanBoxHint": "Код UK-BOX с ярлыка. Сколько должно быть по учёту, экран не покажет",
   "ws.count.boxUnknown": "Не нашли такую тару на полке. Проверьте ярлык",
-  "ws.count.cellEmpty": "В этой ячейке нет тары на учёте",
+  "ws.count.busy": "В ячейке стоит тара на учёте — пересчитайте её",
+  "ws.count.no_tote": "Положите найденное в свободную тару и отсканируйте её ярлык",
+  "ws.count.tote_busy": "Эта тара не свободна: в ней товар или она стоит на другом месте",
+  "ws.count.cellNoBox":
+    "Тары на учёте здесь нет. Пусто — так и завершите, нашли товар — отсканируйте его",
+  "ws.count.scanCellProduct": "Сканируйте каждый товар, найденный в ячейке",
+  "ws.count.cellNothing": "Пока ничего не нашли",
+  "ws.count.scanTote": "Положите найденное в свободную тару и отсканируйте её",
+  "ws.count.scanToteHint":
+    "Пустая тара без места: она встанет в эту ячейку, излишек уйдёт старшему",
+  "ws.count.toteChosen": "Найденное — в таре",
+  "ws.count.finishCellEmpty": "Ячейка пуста",
+  "ws.count.finishCell": "Передать излишек старшему",
+  "ws.count.cellDone": "Записали: ячейка пуста",
   "ws.count.frozen":
     "По этой таре не решено расхождение инвентаризации. Пока старший не решит, в неё не кладут и её не переносят",
   "ws.count.cellMany": "В ячейке тар: {n}. Выберите или отсканируйте ту, что считаете",
@@ -569,7 +582,20 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.count.scanBox": "Scan a cell or a box on the shelf",
   "ws.count.scanBoxHint": "The UK-BOX code from the label. The screen won't show the book quantity",
   "ws.count.boxUnknown": "No such box on a shelf. Check the label",
-  "ws.count.cellEmpty": "No boxes on record in this cell",
+  "ws.count.busy": "A box on record stands in this cell — count that box",
+  "ws.count.no_tote": "Put what you found into a free box and scan its label",
+  "ws.count.tote_busy": "This box is not free: it holds goods or stands somewhere else",
+  "ws.count.cellNoBox":
+    "No box on record here. If it is empty, finish; if you found goods, scan them",
+  "ws.count.scanCellProduct": "Scan every item you found in the cell",
+  "ws.count.cellNothing": "Nothing found yet",
+  "ws.count.scanTote": "Put what you found into a free box and scan it",
+  "ws.count.scanToteHint":
+    "An empty box with no place: it goes into this cell, the surplus goes to a senior",
+  "ws.count.toteChosen": "Found goods are in box",
+  "ws.count.finishCellEmpty": "The cell is empty",
+  "ws.count.finishCell": "Send the surplus to a senior",
+  "ws.count.cellDone": "Recorded: the cell is empty",
   "ws.count.frozen":
     "This box has an unresolved stocktake discrepancy. Until a supervisor decides, nothing goes in and it stays put",
   "ws.count.cellMany": "Boxes in this cell: {n}. Pick or scan the one you are counting",

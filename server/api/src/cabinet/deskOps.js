@@ -32,7 +32,7 @@ const {
   cargoMade,
 } = require("./deskReceive");
 const { applyShipRun, applyDisputeResolve } = require("./deskShip");
-const { applyInvCount } = require("./deskInventory");
+const { applyInvCount, applyInvCell } = require("./deskInventory");
 const { applySortClose, applySortPlace } = require("./deskSort");
 const { GOODS_DECIDE, may } = require("./deskPerms");
 
@@ -57,7 +57,7 @@ const RECV_KINDS = new Set([
   "recv_cargo",
 ]);
 const SHIP_KINDS = new Set(["ship_run", "dispute_resolve", "sort_place", "sort_close"]);
-const INV_KINDS = new Set(["inv_count"]);
+const INV_KINDS = new Set(["inv_count", "inv_cell"]);
 const NOW_ONLY = new Set(["dispute_resolve"]);
 /** Какое право роли нужно операции (миграция 024). */
 const OP_PERM = new Map([
@@ -70,6 +70,7 @@ const OP_PERM = new Map([
   ["sort_close", "shipping.do"],
   ["dispute_resolve", GOODS_DECIDE],
   ["inv_count", "inventory.count"],
+  ["inv_cell", "inventory.count"],
 ]);
 /** Работа с товаром: правка снимка проходит сверку остатков. */
 const WORK = new Map([
@@ -88,6 +89,7 @@ const WORK = new Map([
   ["sort_close", applySortClose],
   ["dispute_resolve", applyDisputeResolve],
   ["inv_count", applyInvCount],
+  ["inv_cell", applyInvCell],
 ]);
 const KINDS = new Set([
   "shift_mark",
