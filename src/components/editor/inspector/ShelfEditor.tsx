@@ -138,6 +138,16 @@ export function ShelfEditor({ module: m, t }: { module: PlacedModule; t: TFunc }
                   />
                   {t("insp.notPickable")}
                 </label>
+                {/* Паллетное место: хранение здесь считается паллето-местами. */}
+                <label className="flex cursor-pointer items-center gap-1 text-2xs text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    checked={sh.palletPlace === true}
+                    onChange={(e) => setShelfPicking(m.id, i, { palletPlace: e.target.checked })}
+                    className="size-3 accent-[hsl(var(--primary))]"
+                  />
+                  {t("insp.palletPlace")}
+                </label>
               </div>
               <button
                 type="button"

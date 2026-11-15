@@ -465,6 +465,8 @@ async function runDeskOps(c, deskId, ops, who, now, deps = {}) {
     );
     version = upd.rows[0].version;
     if (split.items && deps.storeRecords) await deps.storeRecords(c, split.items, split.slots);
+    // Тару разместили, сняли или пересчитали — занятость на сегодня (037).
+    if (deps.recordStorage) await deps.recordStorage(c, applied.data);
     if (packing && deps.recordMoves) {
       await deps.recordMoves(c, base, applied.data, version, {
         deskId,

@@ -204,6 +204,15 @@ test(
     });
     const badge = new RegExp(`${cookieName}=([^;]*)`).exec(shift.headers.get("set-cookie"))[1];
     assert.equal((await call("/api/cabinet/snapshot", { cookie: badge })).status, 403);
+    // Сутки хранения — основа денег продавцу: столу их не отдаём.
+    assert.equal(
+      (
+        await call("/api/cabinet/storage?from=2026-11-01&to=2026-11-15&warehouse=wh_1", {
+          cookie: badge,
+        })
+      ).status,
+      403,
+    );
     const write = await call("/api/cabinet/snapshot", {
       cookie: badge,
       body: { version: 1, format: 8, data: data("упаковщик") },
@@ -221,6 +230,11 @@ test(
     const viewed = await call("/api/cabinet/snapshot", a);
     assert.equal(viewed.status, 200);
     assert.equal(viewed.json.snapshot.viewer, true);
+    // Смотрящий (роль без «Персонала») ставок не видит — и суток хранения тоже.
+    assert.equal(
+      (await call("/api/cabinet/storage?from=2026-11-01&to=2026-11-15&warehouse=wh_1", a)).status,
+      403,
+    );
     const noWrite = await call("/api/cabinet/snapshot", {
       ...a,
       body: { version: viewed.json.snapshot.version, format: 8, data: data("чужое") },
@@ -967,5 +981,119 @@ test(
       body: { version: first.json.version, format: 8, data: withDispute(back) },
     });
     assert.equal(kept.status, 200);
+  },
+);
+
+test(
+  "хранение: запись снимка — сутки занятости продавца, ушёл с полок — ноль, чужая компания не видит",
+  { skip: SKIP },
+  async () => {
+    const a = await owner("snap-store@sklad.ru", "10.0.1.20");
+    const b = await owner("snap-store-b@sklad.ru", "10.0.1.21");
+    const cell = (shelfIndex, cellIndex) => ({
+      floorId: "f1",
+      moduleId: "m1",
+      shelfIndex,
+      cellIndex,
+    });
+    const stocked = (boxes) => ({
+      warehouse: {
+        id: "wh_1",
+        name: "Склад",
+        floors: [
+          {
+            id: "f1",
+            modules: [
+              {
+                id: "m1",
+                shelves: [
+                  { id: "s0", cells: 2, palletPlace: true },
+                  { id: "s1", cells: 2 },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      products: [{ id: "pr1", sku: "A-1", name: "Кружка", partnerId: "p1" }],
+      boxes,
+    });
+    const first = await call("/api/cabinet/snapshot", {
+      ...a,
+      body: {
+        version: 0,
+        format: 8,
+        data: stocked([
+          {
+            id: "bx1",
+            barcode: "UK-BOX-1",
+            createdAt: 1,
+            address: cell(0, 0),
+            lines: [{ productId: "pr1", qty: 3 }],
+          },
+          {
+            id: "bx2",
+            barcode: "UK-BOX-2",
+            createdAt: 1,
+            address: cell(1, 0),
+            lines: [{ productId: "pr1", qty: 1 }],
+          },
+          { id: "bx3", barcode: "UK-BOX-3", createdAt: 1, lines: [{ productId: "pr1", qty: 1 }] },
+        ]),
+      },
+    });
+    assert.equal(first.status, 200);
+    const today = new Date(Date.now() + 3 * 3_600_000).toISOString().slice(0, 10);
+    const q = `/api/cabinet/storage?from=${today}&to=${today}&warehouse=wh_1`;
+    const read = await call(q, a);
+    assert.equal(read.status, 200);
+    assert.deepEqual(read.json.rows, [{ day: today, partner: "p1", pallets: 1, boxes: 1 }]);
+
+    // Тару сняли с полок — на сегодня ноль, а не вчерашнее число.
+    const gone = await call("/api/cabinet/snapshot", {
+      ...a,
+      body: { version: first.json.version, format: 8, data: stocked([]) },
+    });
+    assert.equal(gone.status, 200);
+    assert.deepEqual((await call(q, a)).json.rows, [
+      { day: today, partner: "p1", pallets: 0, boxes: 0 },
+    ]);
+
+    // Чужая компания: своих строк нет, к чужим заголовком не пускает.
+    assert.deepEqual((await call(q, b)).json.rows, []);
+    assert.equal((await call(q, { cookie: b.cookie, org: a.org })).status, 401);
+    assert.equal(
+      (await call(`/api/cabinet/storage?from=${today}&to=x&warehouse=wh_1`, a)).status,
+      400,
+    );
+  },
+);
+
+test(
+  "хранение: продавец ушёл с полок до первой записи дня — на сегодня ноль",
+  { skip: SKIP },
+  async () => {
+    const a = await owner("snap-store-c@sklad.ru", "10.0.1.22");
+    await db.root.query(
+      `INSERT INTO uklad.storage_days (org_id, warehouse_ref, day, partner_ref, pallets, boxes)
+     VALUES ($1, 'wh_1', (now() AT TIME ZONE 'Europe/Moscow')::date - 3, 'p9', 4, 2)`,
+      [a.org],
+    );
+    const saved = await call("/api/cabinet/snapshot", {
+      ...a,
+      body: { version: 0, format: 8, data: data("пусто") },
+    });
+    assert.equal(saved.status, 200);
+    const today = new Date(Date.now() + 3 * 3_600_000).toISOString().slice(0, 10);
+    const rows = (await call(`/api/cabinet/storage?from=${today}&to=${today}&warehouse=wh_1`, a))
+      .json.rows;
+    // Строка трёхдневной давности — опора для начала периода, и сегодняшний ноль.
+    assert.deepEqual(
+      rows.map((r) => [r.day === today, r.partner, r.pallets, r.boxes]),
+      [
+        [false, "p9", 4, 2],
+        [true, "p9", 0, 0],
+      ],
+    );
   },
 );

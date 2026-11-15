@@ -49,6 +49,7 @@ const { whoseBadge, badgeAnswer, answerCheck, CHECKS_PER_MINUTE } = require("./d
 const { GOODS_DECIDE, GOODS_WRITEOFF, STAFF_MANAGE, may, loadDeskPerms } = require("./deskPerms");
 const { mergeDeskStock, STOCK_KEYS } = require("./deskStock");
 const { recordMoves, diffMoves } = require("./moves");
+const { recordStorage } = require("./storage");
 const { isOp, runDeskOps, MAX_OPS } = require("./deskOps");
 const { deskPlace } = require("./deskPlace");
 
@@ -607,6 +608,7 @@ function createDesks({ auth, cfg, send, log }) {
         split: splitCabinet,
         storeRecords,
         recordMoves,
+        recordStorage,
         maxBytes: MAX_SNAPSHOT_BYTES,
       }).then((r) => ({ ...r, orgId: d.orgId }));
     });

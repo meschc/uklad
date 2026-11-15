@@ -23,6 +23,7 @@ import { useWithArchive } from "@/lib/store/archive";
 import { ArchiveNote } from "./ArchiveNote";
 import { ReportExport } from "./ReportExport";
 import { useServiceName } from "./useServiceName";
+import { useStorageEntries } from "./useStorageEntries";
 import { LIMITS } from "@/lib/numberLimits";
 import { Select } from "@/components/ui/select";
 import { DateRangePicker } from "@/components/ui/date-picker";
@@ -248,30 +249,48 @@ export function ReportPanel() {
   const [custom, setCustom] = useState<DateRange>();
   const [partnerId, setPartnerId] = useState("");
 
-  const log = useMemo(
-    () =>
-      operationLog({
-        tasks,
-        pallets,
-        boxes,
-        receivingEvents,
-        requests,
-        shipments,
-        products,
-        outboundBoxes,
-      }),
-    [tasks, pallets, boxes, receivingEvents, requests, shipments, products, outboundBoxes],
-  );
-  const { report, range, entries } = useMemo(() => {
+  const range = useMemo(() => {
     const now = nowMs();
     const [from, to] =
       period === "custom" && custom
         ? [new Date(`${custom.from}T00:00`).getTime(), new Date(`${custom.to}T23:59:59`).getTime()]
         : [period === "all" ? 0 : now - Number(period) * DAY, now];
+    return { from, to };
+  }, [period, custom]);
+  // Сутки хранения пишет сервер — их в журнал добавляем отдельно (`storage.ts`).
+  const storage = useStorageEntries(range.from, range.to);
+  const log = useMemo(
+    () =>
+      [
+        ...operationLog({
+          tasks,
+          pallets,
+          boxes,
+          receivingEvents,
+          requests,
+          shipments,
+          products,
+          outboundBoxes,
+        }),
+        ...storage.entries,
+      ].sort((a, b) => b.at - a.at),
+    [
+      tasks,
+      pallets,
+      boxes,
+      receivingEvents,
+      requests,
+      shipments,
+      products,
+      outboundBoxes,
+      storage.entries,
+    ],
+  );
+  const { report, entries } = useMemo(() => {
+    const { from, to } = range;
     const pid = partnerId || undefined;
     return {
       report: serviceReport(log, settings, { from, to, partnerId: pid }),
-      range: { from, to },
       // Те же операции, что попали в отчёт: окно, продавец и только включённые услуги.
       entries: log.filter(
         (e) =>
@@ -281,7 +300,7 @@ export function ReportPanel() {
           isServiceOn(settings, e.kind),
       ),
     };
-  }, [log, settings, period, custom, partnerId]);
+  }, [log, settings, range, partnerId]);
   const repTable = useDataTable(report.rows, [
     { id: "service", value: (r) => svcName(r.kind) },
     { id: "qty", value: (r) => r.qty },
@@ -398,6 +417,17 @@ export function ReportPanel() {
       {report.unpriced && (
         <p className="text-xs text-muted-foreground">{t("ops.report.unpriced")}</p>
       )}
+      {isServiceOn(settings, "storage_pallet") || isServiceOn(settings, "storage_box") ? (
+        <p className="text-xs text-muted-foreground">
+          {t(
+            storage.status === "failed"
+              ? "ops.report.storageFailed"
+              : storage.status === "loading"
+                ? "ops.report.storageLoading"
+                : "ops.report.storageHint",
+          )}
+        </p>
+      ) : null}
     </div>
   );
 }

@@ -36,6 +36,8 @@ type BuiltinServiceKind =
   | "cargo_pallet"
   | "cargo_box"
   | "item_receiving"
+  | "storage_pallet"
+  | "storage_box"
   | "picking"
   | "ship_parcel"
   | "ship_box"
@@ -56,7 +58,17 @@ type BuiltinServiceKind =
   | "photo";
 
 /** Единица, в которой услуга считается и продаётся. */
-export type ServiceUnit = "pallet" | "box" | "unit" | "order" | "trip" | "vehicle" | "cell";
+export type ServiceUnit =
+  | "pallet"
+  | "box"
+  | "unit"
+  | "order"
+  | "trip"
+  | "vehicle"
+  | "cell"
+  // Хранение: сутки занятого места.
+  | "pallet_day"
+  | "box_day";
 
 export type TaskStatus = "open" | "in_progress" | "done" | "cancelled";
 

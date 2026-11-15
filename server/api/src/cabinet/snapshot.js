@@ -37,6 +37,7 @@ const { writableKeys, foreignRows, mergeScoped } = require("./writeScope");
 const { forViewer, VIEW_PERMS } = require("./viewer");
 const { placeRef, focusWarehouse } = require("./viewerPlace");
 const { recordMoves, invalidWork } = require("./moves");
+const { recordStorage, loadStorage, parsePeriod } = require("./storage");
 const {
   WAREHOUSE_LISTS,
   COMPANY_LISTS,
@@ -350,6 +351,7 @@ function createSnapshot({ auth, send, log }) {
         await storeProducts(c, b.data);
         await storeRecords(c, split.items, split.slots);
         await recordMoves(c, {}, b.data, rows[0].version, { memberId: ctx.memberId });
+        await recordStorage(c, b.data);
         return { version: rows[0].version, orgId: ctx.orgId };
       }
       const { rows } = await c.query(
@@ -371,6 +373,8 @@ function createSnapshot({ auth, send, log }) {
       await recordMoves(c, before, b.data, rows[0].version, {
         memberId: ctx.memberId,
       });
+      // Сколько паллето-мест и коробов занято сегодня — для счёта за хранение.
+      await recordStorage(c, b.data);
       return { version: rows[0].version, orgId: ctx.orgId };
     });
     if (out === null) return send(res, 401, { ok: false });
@@ -469,6 +473,9 @@ function createSnapshot({ auth, send, log }) {
       if ("products" in b) await storeProducts(c, b);
       const after = await loadRecords(c, b.doc, MOVE_LISTS);
       await recordMoves(c, before, after, version, { memberId: ctx.memberId });
+      // Правка могла сдвинуть тару, отметить паллетное место или сменить
+      // продавца товара — занятость считаем по кабинету целиком.
+      await recordStorage(c, await loadCabinet(c, b.doc));
       return { version, orgId: ctx.orgId };
     });
     if (out === null) return send(res, 401, { ok: false });
@@ -521,8 +528,25 @@ function createSnapshot({ auth, send, log }) {
     return send(res, 200, { ok: true, rows: out.rows, next });
   }
 
+  /**
+   * Занятость склада по суткам за период (миграция 037) — для счёта за
+   * хранение. Только руководителю: это основа денег продавцу, как и цены.
+   */
+  async function storage(req, res, url) {
+    const period = parsePeriod(url);
+    if (!period) return send(res, 400, { ok: false, error: "bad_request" });
+    const out = await withSession(req, async (c, ctx) => {
+      if (!mayUse(ctx)) return FORBIDDEN;
+      return loadStorage(c, period);
+    });
+    if (out === null) return send(res, 401, { ok: false });
+    if (out === FORBIDDEN) return send(res, 403, { ok: false });
+    return send(res, 200, { ok: true, rows: out });
+  }
+
   const routes = {
     "GET /api/cabinet/history": history,
+    "GET /api/cabinet/storage": storage,
     "GET /api/cabinet/snapshot": load,
     "POST /api/cabinet/snapshot": save,
     "POST /api/cabinet/snapshot/changes": saveChanges,

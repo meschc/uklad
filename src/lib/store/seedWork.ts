@@ -35,6 +35,8 @@ const PRICES: Record<ServiceKind, number> = {
   cargo_pallet: 350,
   cargo_box: 45,
   item_receiving: 4,
+  storage_pallet: 40,
+  storage_box: 4,
   quality_check: 6,
   marking: 5,
   honest_sign: 8,
