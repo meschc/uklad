@@ -105,6 +105,13 @@ describe("authRepository", () => {
       }),
     ).toEqual({ orgId: "o2", role: "warehouse" });
     expect(roleOf({ kind: "password", orgs: [], current: null })).toBeNull();
+    // Продавца позвал склад: компания складская, а кабинет — продавца.
+    const seller = [{ ...orgs[1], role: "Продавец", partnerRef: "ptr-r" }];
+    expect(roleOf({ kind: "password", orgs: seller, current: null })).toEqual({
+      orgId: "o2",
+      role: "seller",
+      partnerId: "ptr-r",
+    });
   });
 
   it("401 на запрос с сессией — сессии нет; на вход паролем — нет", async () => {

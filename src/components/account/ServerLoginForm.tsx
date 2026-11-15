@@ -89,7 +89,7 @@ export function ServerLoginForm() {
       if (!hasUnsyncedChanges() && !hasDeferredCopy()) return leaveServerSession();
       return setSwitchTo(who);
     }
-    startServerSession(mail, who.role, who.orgId, me.current?.permissions);
+    startServerSession(mail, who.role, who.orgId, me.current?.permissions, who.partnerId);
   };
 
   /** Вошли: узнать у сервера компанию и роль, дальше — как у демо. */

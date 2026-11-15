@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { EmailInput } from "./EmailInput";
 import { Field } from "@/components/ui/field";
 import { checkPartner } from "@/lib/validate";
+import { PartnerInvite } from "./PartnerInvite";
 
 /** Сколько товаров партнёра показать в карточке: дальше — таблица товаров. */
 const GOODS_SHOWN = 8;
@@ -134,6 +135,7 @@ export function PartnerCard({ partner, onClose }: { partner: Partner; onClose: (
             </ul>
           )}
         </div>
+        <PartnerInvite partner={partner} />
       </div>
       <DialogFooter spread>
         <Button

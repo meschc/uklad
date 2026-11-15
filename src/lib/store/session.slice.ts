@@ -66,7 +66,7 @@ export const createSessionSlice: SliceCreator<SessionSlice> = (set, get) => ({
       activeShelf: null,
     })),
 
-  startServerSession: (email, role, orgId, permissions) => {
+  startServerSession: (email, role, orgId, permissions, partnerId) => {
     set((s) => ({
       session: {
         user: { ...s.session.user, id: orgId, email },
@@ -78,5 +78,10 @@ export const createSessionSlice: SliceCreator<SessionSlice> = (set, get) => ({
       },
     }));
     get().setRole(role);
+    // Продавец склада: партнёр — из учётной записи на сервере (миграция 038),
+    // а не первый в списке, как в демо.
+    if (role === "seller" && partnerId) {
+      set((s) => ({ session: { ...s.session, user: { ...s.session.user, partnerId } } }));
+    }
   },
 });

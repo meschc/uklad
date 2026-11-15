@@ -25,6 +25,8 @@ export interface TeamMember {
   warehouseRef?: string | null;
   /** Карточка сотрудника на этом складе; `null` — входа у карточки нет. */
   staffRef?: string | null;
+  /** Продавец склада (миграция 038): за каким партнёром закреплён. */
+  partnerRef?: string | null;
 }
 
 /** Где человек работает: склад и (если есть) его карточка на складе. */
@@ -48,12 +50,19 @@ interface TeamPermission {
 
 export interface TeamState {
   me: string;
+  /** Люди склада. Продавцы — отдельно (`sellers`): им не дают ролей склада. */
   members: TeamMember[];
+  /** Позванные продавцы: их видно на карточке продавца, а не в «Доступе». */
+  sellers: TeamMember[];
   roles: TeamRole[];
   permissions: TeamPermission[];
   /** Роли сотрудников стола (вход по бейджу): `staffRef → roleId`. */
   deskRoles: Record<string, string>;
 }
+
+/** Роль «Продавец» (миграция 038): по умолчанию и без прав. */
+const isSellerRole = (r: TeamRole) =>
+  r.builtIn && r.name === "Продавец" && r.permissions.length === 0;
 
 /** Кто из персонала стола решает по товару: роль с `goods.decide`. */
 export function decidersOf(state: Pick<TeamState, "roles" | "deskRoles">): string[] {
@@ -108,8 +117,23 @@ export const teamRepository = {
     const { status, body } = res.data;
     if (status !== 200 || !Array.isArray(body.members)) return fail(teamError(res.data));
     const state = body as unknown as TeamState;
-    return ok({ ...state, deskRoles: state.deskRoles ?? {} });
+    const all = state.members;
+    return ok({
+      ...state,
+      // Роль «Продавец» склад сотруднику не назначает: её ставит приглашение
+      // продавца, а в списках ролей её нет.
+      roles: state.roles.filter((r) => !isSellerRole(r)),
+      members: all.filter((m) => !m.partnerRef),
+      sellers: all.filter((m) => Boolean(m.partnerRef)),
+      deskRoles: state.deskRoles ?? {},
+    });
   },
+  /** Позвать продавца в кабинет: он увидит только товар своего партнёра. */
+  inviteSeller: (
+    email: string,
+    name: string,
+    place: { warehouseRef: string; partnerRef: string },
+  ) => act("/team/invite", { email, name, ...place }),
   /** Склад обязателен роли без «Персонала»: кабинет ей показывается только по нему. */
   invite: (email: string, roleId: string, name: string, place: TeamPlace) =>
     act("/team/invite", { email, roleId, name, ...place }),

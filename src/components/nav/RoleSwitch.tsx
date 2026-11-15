@@ -10,11 +10,16 @@ import { Segmented } from "@/components/ui/segmented";
  * меняется только набор экранов и права (продавец не правит структуру склада).
  * Дверь в будущее оставлена в модели: `FulfillmentRequest` ляжет в таблицу
  * Supabase почти без изменений, когда роли станут настоящими.
+ *
+ * На сервере роль настоящая — из учётной записи (продавец склада, миграция
+ * 038), — и переключателя нет: продавец не переключится «в кладовщика».
  */
 export function RoleSwitch() {
   const role = useEditor(selectRole);
   const setRole = useEditor((s) => s.setRole);
+  const onServer = useEditor((s) => s.session.source === "server");
   const t = useT();
+  if (onServer) return null;
 
   return (
     <Segmented

@@ -35,6 +35,7 @@
 const { createRateLimit } = require("../rateLimit");
 const { writableKeys, foreignRows, mergeScoped } = require("./writeScope");
 const { forViewer, VIEW_PERMS } = require("./viewer");
+const { forSeller } = require("./seller");
 const { placeRef, focusWarehouse } = require("./viewerPlace");
 const { recordMoves, invalidWork } = require("./moves");
 const { recordStorage, loadStorage, parsePeriod } = require("./storage");
@@ -92,6 +93,13 @@ const NO_WAREHOUSE = Symbol("no_warehouse");
 async function actorPlace(c) {
   return (await c.query(`SELECT * FROM auth.actor_place()`)).rows[0] ?? null;
 }
+
+/**
+ * Продавец (миграция 038) — человек, закреплённый за партнёром, какая бы
+ * роль у него ни стояла: он видит только свой товар и кабинет не пишет
+ * (заявки продавца через сервер — следующим шагом).
+ */
+const sellerOf = (place) => (typeof place?.partner_ref === "string" ? place.partner_ref : null);
 
 /**
  * Кто смотрит: имя — из его карточки на складе (или из приглашения), подпись
@@ -253,8 +261,10 @@ function createSnapshot({ auth, send, log }) {
 
   async function load(req, res) {
     const out = await withSession(req, async (c, ctx) => {
-      const viewer = !mayUse(ctx);
-      if (viewer && !mayView(ctx)) return FORBIDDEN;
+      const place = ctx.accountId ? await actorPlace(c) : null;
+      const seller = sellerOf(place);
+      const viewer = Boolean(seller) || !mayUse(ctx);
+      if (viewer && !seller && !mayView(ctx)) return FORBIDDEN;
       const { rows } = await c.query(
         `SELECT version, format, data, updated_at FROM uklad.cabinet_snapshots
          WHERE org_id = uklad.current_org()`,
@@ -265,10 +275,18 @@ function createSnapshot({ auth, send, log }) {
       if (viewer) {
         // Смотрящий архив не двигает: это работа руководителя. Кабинет — на
         // его складе (миграция 034), а не на том, что открыт у руководителя.
-        const place = await actorPlace(c);
         const ref = placeRef(rows[0].data, place?.warehouse_ref);
         const focused = focusWarehouse(await loadCabinet(c, rows[0].data), ref);
         if (!focused) return NO_WAREHOUSE;
+        if (seller) {
+          return {
+            ...rows[0],
+            viewer,
+            seller,
+            writable: [],
+            data: withPerson(forSeller(focused, seller), place, null),
+          };
+        }
         return {
           ...rows[0],
           viewer,
@@ -291,6 +309,7 @@ function createSnapshot({ auth, send, log }) {
         data: out.data,
         updatedAt: out.updated_at,
         ...(out.viewer ? { viewer: true, writable: out.writable } : {}),
+        ...(out.seller ? { seller: out.seller } : {}),
       },
     });
   }
@@ -317,7 +336,7 @@ function createSnapshot({ auth, send, log }) {
     const split = splitCabinet(b.data);
     const data = JSON.stringify(split.doc);
     const out = await withSession(req, async (c, ctx) => {
-      if (!mayUse(ctx)) return FORBIDDEN;
+      if (!mayUse(ctx) || sellerOf(await actorPlace(c))) return FORBIDDEN;
       if (!writes.take(ctx.orgId)) return LIMITED;
       if (await massDelete(c, b.data)) return { conflict: true, error: "products_mass_delete" };
       if (await massGone(c, split.items, split.slots)) {
@@ -410,6 +429,7 @@ function createSnapshot({ auth, send, log }) {
     let doc = JSON.stringify(b.doc);
     const out = await withSession(req, async (c, ctx) => {
       // Без «Персонала» — только то, на что есть право роли (`writeScope.js`).
+      if (sellerOf(await actorPlace(c))) return FORBIDDEN;
       const scoped = !mayUse(ctx);
       if (scoped && !(mayView(ctx) && writableKeys(ctx.can).length > 0)) return FORBIDDEN;
       if (scoped && (foreignRows(b.upsert, ctx.can) || foreignRows(b.remove, ctx.can))) {

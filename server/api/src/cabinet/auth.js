@@ -439,6 +439,8 @@ function createAuth({ pool, cfg, send, readBody, log, mail, onRegister = null })
         warehouse: o.has_warehouse,
         seller: o.has_seller,
         role: o.role_name,
+        // Продавец склада (миграция 038): кабинет откроется ролью продавца.
+        ...(o.partner_ref ? { partnerRef: o.partner_ref } : {}),
       })),
       current: s.member_id
         ? {
