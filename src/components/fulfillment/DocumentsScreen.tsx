@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ClipboardList, PackageCheck, Pencil, Printer, Truck } from "lucide-react";
+import { ClipboardCheck, ClipboardList, PackageCheck, Pencil, Printer, Truck } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { useWithArchive } from "@/lib/store/archive";
 import { buildPickDoc, buildReceivingDoc, type DocModel } from "@/lib/documents";
@@ -14,6 +14,7 @@ import { DocumentSheet } from "./DocumentSheet";
 import { DocPanel } from "./DocPanel";
 import { ScreenShell, EmptyState } from "./ScreenShell";
 import { ArchiveNote } from "./ArchiveNote";
+import { InventoryActView } from "./InventoryActView";
 
 /**
  * Документы склада (п.12): лист сборки, накладная на отгрузку, лист приёмки и
@@ -30,7 +31,7 @@ import { ArchiveNote } from "./ArchiveNote";
 /** Масштаб предпросмотра: A4 в 210 мм не влезает в колонку экрана целиком. */
 const PREVIEW_SCALE = 0.62;
 
-type Tab = "pick" | "shipment" | "receiving";
+type Tab = "pick" | "shipment" | "receiving" | "inventory";
 type Status = DocRecord["status"] | "working";
 
 interface Source {
@@ -51,6 +52,7 @@ const EMPTY_KEY: Record<Tab, MsgKey> = {
   pick: "doc.empty.pick",
   shipment: "doc.empty.shipment",
   receiving: "doc.empty.receiving",
+  inventory: "doc.inv.empty",
 };
 
 export function DocumentsScreen() {
@@ -68,6 +70,7 @@ export function DocumentsScreen() {
   const focus = useEditor((s) => s.docFocus);
 
   const [tab, setTab] = useState<Tab>(focus?.kind ?? "pick");
+  const inventory = tab === "inventory";
   const [sourceId, setSourceId] = useState<string | null>(focus?.sourceId ?? null);
   const [act, setAct] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -100,6 +103,8 @@ export function DocumentsScreen() {
   const entries = useMemo(() => docEntries(src, records), [src, records]);
 
   const sources: Source[] = useMemo(() => {
+    // Акт инвентаризации собирается из журнала пересчётов (`InventoryActView`).
+    if (tab === "inventory") return [];
     if (tab === "pick") {
       return groupRequestsByTarget(
         requests.filter((r) => r.status === "new" || r.status === "in_progress"),
@@ -136,7 +141,7 @@ export function DocumentsScreen() {
   const active = sources.find((s) => s.id === sourceId) ?? sources[0] ?? null;
 
   const base: DocModel | null = useMemo(() => {
-    if (!active) return null;
+    if (!active || tab === "inventory") return null;
     if (tab === "pick") {
       const group = groupRequestsByTarget(
         requests.filter((r) => r.status === "new" || r.status === "in_progress"),
@@ -170,7 +175,7 @@ export function DocumentsScreen() {
   return (
     <ScreenShell title={t("doc.title")} subtitle={t("doc.subtitle")} wide>
       <ArchiveNote />
-      <style>{`@page { size: A4 portrait; margin: 0; }`}</style>
+      {!inventory && <style>{`@page { size: A4 portrait; margin: 0; }`}</style>}
 
       {/* Без общей рамки: переключатели и действия стоят прямо на экране. */}
       <div className="flex flex-wrap items-center gap-3">
@@ -190,6 +195,11 @@ export function DocumentsScreen() {
               label: t("doc.kind.receivingShort"),
               icon: <PackageCheck />,
             },
+            {
+              value: "inventory" as Tab,
+              label: t("doc.kind.inventoryShort"),
+              icon: <ClipboardCheck />,
+            },
           ]}
         />
         {/* Акт расхождений — только когда план с фактом не сошёлся. */}
@@ -204,7 +214,7 @@ export function DocumentsScreen() {
             ]}
           />
         )}
-        <div className="ml-auto flex gap-2">
+        <div className={cn("ml-auto flex gap-2", inventory && "hidden")}>
           {isDoc && base && (
             <Button className="h-9" variant="outline" onClick={() => setEditing(true)}>
               <Pencil className="size-3.5" />
@@ -218,7 +228,9 @@ export function DocumentsScreen() {
         </div>
       </div>
 
-      {sources.length === 0 ? (
+      {inventory ? (
+        <InventoryActView />
+      ) : sources.length === 0 ? (
         <EmptyState
           icon={<ClipboardList className="size-5" />}
           title={t("doc.emptyTitle")}
@@ -276,7 +288,7 @@ export function DocumentsScreen() {
       )}
 
       {/* Печатная версия: только лист, без интерфейса. */}
-      {doc && (
+      {doc && !inventory && (
         <div className="print-root hidden print:block">
           <DocumentSheet doc={doc} warehouse={warehouse} {...sheetProps} />
         </div>

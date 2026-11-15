@@ -964,5 +964,25 @@ test(
       [a.org],
     );
     assert.ok(logged.rows.some((x) => x.status === "applied"));
+
+    // Акт: руководитель получает принятые пересчёты за сутки, стол — нет.
+    const day = new Date(Date.now() + 3 * 3600_000).toISOString().slice(0, 10);
+    const q = `/api/cabinet/inventory?from=${day}&to=${day}`;
+    const act = await call(q, { cookie, org: a.org });
+    assert.equal(act.status, 200);
+    assert.deepEqual(
+      act.json.entries
+        .map((e) => [e.kind, e.staff, e.boxId ?? null, e.lines.length])
+        .sort((x, y) => x[3] - y[3]),
+      [
+        ["inv_cell", "stf-boss", null, 0],
+        ["inv_cell", "stf-boss", "t1", 1],
+      ],
+    );
+    assert.equal((await call(q, { desk })).status, 403);
+    assert.equal(
+      (await call(`/api/cabinet/inventory?from=${day}`, { cookie, org: a.org })).status,
+      400,
+    );
   },
 );
