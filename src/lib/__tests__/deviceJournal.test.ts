@@ -40,4 +40,21 @@ describe("journalRows", () => {
       "bound",
     ]);
   });
+
+  it("события с сервера — вместо отметок устройства, с тем, кто это сделал", () => {
+    const rows = journalRows(
+      [{ at: 5 * H, staffRef: "a", kind: "pack_event" }],
+      { createdAt: 1 * H },
+      [
+        { at: 2 * H, kind: "bound", byName: "Игорь" },
+        { at: 7 * H, kind: "revoked", byStaff: "stf-boss" },
+        { at: 1 * H, kind: "revoked" },
+      ],
+    );
+    expect(
+      rows.map((r) =>
+        r.type === "device" ? `${r.kind}:${r.byName ?? r.byStaff ?? ""}` : r.staffRef,
+      ),
+    ).toEqual(["revoked:stf-boss", "a", "bound:Игорь", "revoked:"]);
+  });
 });

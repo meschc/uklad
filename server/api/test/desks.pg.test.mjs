@@ -377,6 +377,60 @@ test("отвязка бейджем руководителя и отзыв с д
   assert.equal((await call("/api/cabinet/snapshot", { desk: second })).status, 401);
 });
 
+test(
+  "отвязка паролем руководителя на столе, журнал — кто привязал и отвязал",
+  {
+    skip: SKIP,
+  },
+  async () => {
+    const { a, boss } = await company("desk-pw@sklad.ru", "10.0.3.10");
+    const desk = await makeDesk(a);
+    const pw = (password, email = "desk-pw@sklad.ru") =>
+      call("/api/desk/unbind", { desk, body: { email, password }, ip: "10.0.3.11" });
+    // Не тот пароль — 422, не 401: стол не принимает это за потерю пропуска.
+    const wrong = await pw("не-тот-пароль");
+    assert.deepEqual([wrong.status, wrong.json.error], [422, "bad_credentials"]);
+    assert.equal((await call("/api/auth/me", { desk })).status, 200);
+    // Чужая учётная запись с верным паролем — не руководитель этой компании.
+    await company("desk-pw-other@sklad.ru", "10.0.3.12");
+    const stranger = await pw(PW, "desk-pw-other@sklad.ru");
+    assert.deepEqual([stranger.status, stranger.json.error], [404, "not_manager"]);
+    const right = await pw(PW);
+    assert.equal(right.status, 200);
+    assert.ok(right.cookies.some((c) => c.startsWith(`${deskCookieName}=;`)));
+    // Новой сессии входа отвязка не даёт: компьютер не становится кабинетом.
+    assert.ok(
+      !right.cookies.some((c) => c.startsWith(`${cookieName}=`) && !c.includes("Max-Age=0")),
+    );
+    assert.equal((await call("/api/auth/me", { desk })).status, 401);
+
+    // Второй стол отвязывают бейджем: журнал знает, чей это бейдж.
+    const second = await makeDesk({ cookie: await login("desk-pw@sklad.ru"), org: a.org }, "dev-2");
+    assert.equal(
+      (await call("/api/desk/unbind", { desk: second, body: { code: boss } })).status,
+      200,
+    );
+
+    const office = { cookie: await login("desk-pw@sklad.ru"), org: a.org };
+    const j1 = await call("/api/cabinet/desks/journal?device=dev-1", office);
+    assert.deepEqual(
+      j1.json.events.map((e) => [e.kind, Boolean(e.byName), e.byStaff ?? null]),
+      [
+        ["revoked", true, null],
+        ["bound", true, null],
+      ],
+    );
+    const j2 = await call("/api/cabinet/desks/journal?device=dev-2", office);
+    assert.deepEqual(
+      j2.json.events.map((e) => [e.kind, e.byStaff ?? null]),
+      [
+        ["revoked", "stf-boss"],
+        ["bound", null],
+      ],
+    );
+  },
+);
+
 test("стол чужой компании бейдж не узнаёт", { skip: SKIP }, async () => {
   const { ivan } = await company("desk-e@sklad.ru", "10.0.3.5");
   const { a: b } = await company("desk-f@sklad.ru", "10.0.3.6");

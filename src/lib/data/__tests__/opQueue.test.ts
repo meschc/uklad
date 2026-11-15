@@ -163,8 +163,9 @@ describe("workstationRepository: отметки смены операциями"
   const desks = {
     open: vi.fn(async () => ok(undefined)),
     revoke: vi.fn(async () => ok(undefined)),
-    journal: vi.fn(async () => ok([])),
+    journal: vi.fn(async () => ok({ entries: [] })),
     unbind: vi.fn(async () => ok(null)),
+    unbindByPassword: vi.fn(async () => ok(true)),
     leave: vi.fn(async () => ok(undefined)),
   };
 
