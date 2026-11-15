@@ -113,7 +113,16 @@ export interface DeskOp {
   body: DeskOpBody;
 }
 /** Почему сервер не положил операцию в снимок. */
-type OpFlag = "nobody" | "not_present" | "time" | "bad" | "not_yours" | "late" | "backdated";
+type OpFlag =
+  | "nobody"
+  | "not_present"
+  | "time"
+  | "bad"
+  | "not_yours"
+  | "late"
+  | "backdated"
+  // Устройства стола нет ни на одном складе: работу вести негде.
+  | "warehouse";
 
 /** Места, которые завёл сервер, с номерами ярлыков (`recv_cargo`). */
 interface CargoMade {
@@ -359,6 +368,11 @@ async function resync() {
   await resyncDesk();
 }
 
+async function sayNoWarehouse() {
+  const { useEditor } = await import("../store");
+  useEditor.getState().notify("error", "ws.deskNoWarehouse");
+}
+
 async function sayLost(n: number) {
   const { useEditor } = await import("../store");
   useEditor.getState().notify("error", "ws.opLost", { vars: { n } });
@@ -368,8 +382,9 @@ export const deskOps: OpQueue = createOpQueue({
   send: sendToServer,
   read: () => readLocal(OPS_KEY),
   write: (text) => writeLocal(OPS_KEY, text),
-  onFlagged: (_reasons, kinds) => {
-    void sayFlagged(kinds);
+  onFlagged: (reasons, kinds) => {
+    if (reasons.includes("warehouse")) void sayNoWarehouse();
+    else void sayFlagged(kinds);
     void resync();
   },
   onLost: (n) => {

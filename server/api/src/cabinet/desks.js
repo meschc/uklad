@@ -15,6 +15,9 @@
  * Остальные маршруты кабинета со столом отвечают 403 — не 401, чтобы стол не
  * принял это за потерю входа.
  *
+ * Работает стол на складе своего устройства (`deskPlace.js`), а не на том,
+ * что открыт у руководителя: снимок, бейдж и операции — только этого склада.
+ *
  * Снимок кабинета стол не пишет вовсе (шаг 4 «потолка данных»): записью
  * целого документа со стола он упирался бы в лимит и мог затереть правку
  * руководителя. Результат каждой операции проходит сверку (`mergeDeskWrite`):
@@ -47,6 +50,7 @@ const { GOODS_DECIDE, GOODS_WRITEOFF, STAFF_MANAGE, may, loadDeskPerms } = requi
 const { mergeDeskStock, STOCK_KEYS } = require("./deskStock");
 const { recordMoves, diffMoves } = require("./moves");
 const { isOp, runDeskOps, MAX_OPS } = require("./deskOps");
+const { deskPlace } = require("./deskPlace");
 
 // Стол живёт, пока его не отвяжут; срок — страховка от забытого компьютера.
 const DESK_TTL_MS = 180 * 86_400_000;
@@ -368,6 +372,17 @@ function mergeDeskWrite(current, incoming, who = {}) {
   return { data: out, mismatch: stock.mismatch };
 }
 
+/**
+ * Документ снимка компании без строк работы: склады, сотрудники и устройства
+ * лежат в нём самом (`records.js` строками держит только списки работы).
+ */
+async function companyDoc(c) {
+  const { rows } = await c.query(
+    `SELECT data FROM uklad.cabinet_snapshots WHERE org_id = uklad.current_org()`,
+  );
+  return rows[0]?.data ?? null;
+}
+
 function createDesks({ auth, cfg, send, log }) {
   const { withSession, readJson, tokenHash, clearCookie, cookieName } = auth;
   const local = !cfg.publicUrl.startsWith("https://");
@@ -429,6 +444,9 @@ function createDesks({ auth, cfg, send, log }) {
     const hash = tokenHash(req);
     const out = await withSession(req, async (c, ctx) => {
       if (!ctx.accountId || !ctx.can("staff.manage")) return 403;
+      // Стол — устройство склада: без него стол не знал бы, чью работу вести.
+      // Кабинет дописывает устройство на сервер до этого запроса (`deskServer.ts`).
+      if (!deskPlace(await companyDoc(c), deviceRef)) return 409;
       await c.query(`SELECT auth.open_desk($1, $2, $3, $4::interval)`, [
         deviceRef,
         name,
@@ -441,6 +459,7 @@ function createDesks({ auth, cfg, send, log }) {
       return 200;
     });
     if (out === null) return send(res, 401, { ok: false });
+    if (out === 409) return send(res, 409, { ok: false, error: "desk_warehouse" });
     if (out !== 200) return send(res, out, { ok: false });
     return send(res, 200, { ok: true }, { "Set-Cookie": [deskCookie(token), clearCookie] });
   }
@@ -510,15 +529,20 @@ function createDesks({ auth, cfg, send, log }) {
   }
 
   async function loadSnapshot(req, res) {
-    const out = await withDesk(req, async (c) => {
+    const out = await withDesk(req, async (c, d) => {
       const { rows } = await c.query(
         `SELECT version, format, data, updated_at FROM uklad.cabinet_snapshots
          WHERE org_id = uklad.current_org()`,
       );
       if (!rows[0]) return { row: null };
-      return { row: { ...rows[0], data: await loadCabinet(c, rows[0].data) } };
+      // Кабинет на складе стола: другой склад, открытый у руководителя, стол
+      // не видит и в его работу не попадает.
+      const place = deskPlace(await loadCabinet(c, rows[0].data), d.deviceRef);
+      if (!place) return { noWarehouse: true };
+      return { row: { ...rows[0], data: place.data } };
     });
     if (!out) return gone(res);
+    if (out.noWarehouse) return send(res, 403, { ok: false, error: "desk_warehouse" });
     if (!out.row) return send(res, 200, { ok: true, snapshot: null });
     const { version, format, data, updated_at: updatedAt } = out.row;
     return send(res, 200, {
@@ -571,12 +595,14 @@ function createDesks({ auth, cfg, send, log }) {
       };
       who.perms = await loadDeskPerms(c, [who.staff, who.prev]);
       // Упаковка проходит те же правила, что запись снимка со стола.
-      const verify = (before, after) => {
-        const w = mergeDeskWrite(before, after, who);
+      // `atDesk` — кто за столом из тех, кто работает на складе стола.
+      const verify = (before, after, atDesk) => {
+        const w = mergeDeskWrite(before, after, atDesk);
         return w.mismatch.length > 0 ? { ok: false } : { ok: true, data: w.data };
       };
       return runDeskOps(c, d.deskId, ops, who, Date.now(), {
         verify,
+        place: (full) => deskPlace(full, d.deviceRef),
         load: loadCabinet,
         split: splitCabinet,
         storeRecords,
@@ -607,6 +633,13 @@ function createDesks({ auth, cfg, send, log }) {
     const out = await withDesk(req, async (c, d) => {
       if (!checks.take(d.orgId)) return { limited: true };
       const staffRef = await whoseBadge(c, b.code);
+      if (staffRef) {
+        // Бейдж — сотрудника склада этого стола: бейдж «Логопарка» за столом
+        // «Складской 5» не открывает работу, даже если компания одна.
+        const place = deskPlace(await companyDoc(c), d.deviceRef);
+        if (!place) return { noWarehouse: true };
+        if (!place.staffHere(staffRef)) return { otherWarehouse: true };
+      }
       // Узнанный бейдж — это «встал за стол»: дальше запись стола сверяется
       // с ним 12 часов, как и вход по бейджу в браузере.
       if (staffRef) {
@@ -620,6 +653,8 @@ function createDesks({ auth, cfg, send, log }) {
     });
     if (!out) return gone(res);
     if (out.limited) return limited(res);
+    if (out.noWarehouse) return send(res, 409, { ok: false, error: "desk_warehouse" });
+    if (out.otherWarehouse) return send(res, 409, { ok: false, error: "other_warehouse" });
     return answerCheck(res, send, out);
   }
 

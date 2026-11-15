@@ -207,6 +207,11 @@ const cabinetData = () => ({
   ],
   chats: { c1: { text: "секрет" } },
   subscription: PLAN,
+  // Стол — устройство склада (`deskPlace.js`): без него стол не открыть.
+  devices: [
+    { id: "dev-1", name: "Стол 1", station: "pack", createdAt: 1 },
+    { id: "dev-2", name: "Стол 2", station: "pack", createdAt: 1 },
+  ],
 });
 
 const tokenOf = (cookies, name) =>
