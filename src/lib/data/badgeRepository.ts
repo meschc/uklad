@@ -23,9 +23,22 @@ export interface BadgeServer {
   check: (code: string) => Promise<Result<BadgeOwner | null>>;
   issue: (staffId: string) => Promise<Result<string>>;
   revoke: (staffId: string) => Promise<Result<void>>;
+  /**
+   * Бейдж старшего на столе: id сотрудника, если он вправе решать по товару,
+   * иначе `null`. За стол он при этом не встаёт (`POST /desk/senior`).
+   */
+  senior: (code: string) => Promise<Result<string | null>>;
 }
 
 export const serverBadges: BadgeServer = {
+  senior: async (code) => {
+    const res = await attempt(() => apiRequest("POST", "/desk/senior", { code }));
+    if (!res.ok) return res;
+    const { status, body } = res.data;
+    if (status === 404) return ok(null);
+    if (status !== 200 || typeof body.staffRef !== "string") return fail("data.failed");
+    return ok(body.decide === true ? body.staffRef : null);
+  },
   check: async (code) => {
     const res = await attempt(() => apiRequest("POST", "/cabinet/badges/check", { code }));
     if (!res.ok) return res;

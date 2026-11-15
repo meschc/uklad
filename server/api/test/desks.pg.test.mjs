@@ -291,6 +291,28 @@ test("стол: вход руководителя гаснет, стол вид�
   assert.ok(boss.json.permissions.includes("goods.decide"));
 });
 
+test("бейдж старшего снимает остановку и за стол не встаёт", { skip: SKIP }, async () => {
+  const { a, ivan, boss } = await company("desk-senior@sklad.ru", "10.0.3.9");
+  const desk = await makeDesk(a);
+  await call("/api/cabinet/badges/check", { desk, body: { code: ivan } });
+  const senior = await call("/api/desk/senior", { desk, body: { code: boss } });
+  assert.equal(senior.status, 200);
+  assert.equal(senior.json.decide, true);
+  const self = await call("/api/desk/senior", { desk, body: { code: ivan } });
+  assert.equal(self.status, 200);
+  assert.equal(self.json.decide, false);
+  assert.equal((await call("/api/desk/senior", { desk, body: { code: "UK-STF-x" } })).status, 404);
+  // За столом по-прежнему Иван: проверка старшего смену не перехватила.
+  const { rows } = await db.root.query(
+    `SELECT staff_ref FROM auth.desk_sessions WHERE org_id = $1 AND revoked_at IS NULL`,
+    [a.org],
+  );
+  assert.deepEqual(
+    rows.map((r) => r.staff_ref),
+    ["stf-ivan"],
+  );
+});
+
 test("стол снимок не пишет: любая запись — 403, версия не растёт", { skip: SKIP }, async () => {
   const { a, ivan } = await company("desk-b@sklad.ru", "10.0.3.2");
   const desk = await makeDesk(a);

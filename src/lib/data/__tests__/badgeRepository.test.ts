@@ -43,6 +43,7 @@ function fakeServer(): BadgeServer {
     ),
     issue: vi.fn(async () => ok("UK-STF-CCCCCCCCCCCCCCCCCCCCCC")),
     revoke: vi.fn(async () => ok(undefined)),
+    senior: vi.fn(async () => ok(null)),
   };
 }
 

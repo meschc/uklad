@@ -15,9 +15,7 @@ import {
 import { beepNotes } from "@/lib/beep";
 import { levelFor, signal } from "@/lib/scanSignal";
 import { destinationMark } from "@/lib/destinationMark";
-import { parseBadge } from "@/lib/workstation";
-import { isDecider } from "@/lib/docFlow";
-import { useDeskDeciders } from "@/lib/useDeskDeciders";
+import { useSeniorBadge } from "@/lib/useSeniorBadge";
 import type { FulfillmentRequest } from "@/lib/types";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -123,10 +121,8 @@ function ShipGroup({
   const t = useT();
   const products = useEditor((s) => s.products);
   const allRequests = useEditor((s) => s.requests);
-  const staff = useEditor((s) => s.warehouse.staff);
   // Снять остановку вправе тот, кто решает по товару: на сервере — по роли.
-  const deciders = useDeskDeciders();
-  const onServer = useEditor((s) => s.session.source === "server");
+  const seniorOf = useSeniorBadge();
   const outbound = useEditor((s) => s.outboundBoxes);
   const boxes = useEditor((s) => s.boxes);
   const pallets = useEditor((s) => s.pallets);
@@ -170,12 +166,10 @@ function ShipGroup({
   const plan = planLoad(outbound ?? [], ids, units);
   const staying = items.length - plan.going.length;
 
-  const onScan = (raw: string) => {
+  const onScan = async (raw: string) => {
     if (locked) {
-      const id = parseBadge(raw);
-      const senior = id ? staff?.find((m) => m.id === id) : undefined;
-      if (!senior || !isDecider(senior, deciders, onServer))
-        return flash("error", t("ws.ship.locked", { code: locked }));
+      const senior = await seniorOf(raw);
+      if (!senior) return flash("error", t("ws.ship.locked", { code: locked }));
       setLocked(null);
       return flash("ok", t("ws.ship.unlocked", { name: senior.name }));
     }

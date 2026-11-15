@@ -158,6 +158,7 @@ describe("workstationRepository: отметки смены операциями"
     check: vi.fn(async () => ok(null)),
     issue: vi.fn(async () => ok("")),
     revoke: vi.fn(async () => ok(undefined)),
+    senior: vi.fn(async () => ok(null)),
   };
   const desks = {
     open: vi.fn(async () => ok(undefined)),
