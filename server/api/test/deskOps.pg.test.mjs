@@ -984,5 +984,20 @@ test(
       (await call(`/api/cabinet/inventory?from=${day}`, { cookie, org: a.org })).status,
       400,
     );
+
+    // Чужая компания своих пересчётов не видит, а заголовком к чужим не пройдёт.
+    const b = await owner("ops-inv-b@sklad.ru", "10.0.1.92");
+    const own = await call(q, b);
+    assert.equal(own.status, 200);
+    assert.deepEqual(own.json.entries, []);
+    assert.ok([401, 403].includes((await call(q, { cookie: b.cookie, org: a.org })).status));
+
+    // Вход паролем, но роль без «Персонала» (смотрящий) — акта не получает.
+    await db.root.query(
+      `UPDATE uklad.roles SET permissions = array_remove(permissions, 'staff.manage')
+        WHERE org_id = $1 AND name = 'Владелец'`,
+      [a.org],
+    );
+    assert.equal((await call(q, { cookie, org: a.org })).status, 403);
   },
 );
