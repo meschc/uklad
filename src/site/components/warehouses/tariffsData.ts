@@ -38,7 +38,6 @@ export const COMPARE: Group[] = [
       { label: ru("Ярлыки и складские документы"), cells: [YES, YES, YES] },
       { label: ru("Импорт остатков из Excel"), cells: [YES, YES, YES] },
       { label: ru("Импорт поставок из Excel"), cells: [YES, YES, YES] },
-      { label: ru("Кроссдокинг и наборы"), cells: [YES, YES, YES] },
       { label: ru("Тепловая карта склада"), cells: [YES, YES, YES] },
       {
         label: ru("Аналитика"),
@@ -55,7 +54,6 @@ export const COMPARE: Group[] = [
       },
       { label: ru("Заявки и поставки от селлера"), cells: [YES, YES, YES] },
       { label: ru("Чат с селлером"), cells: [YES, YES, YES] },
-      { label: ru("Карточка склада на витрине Уклада"), cells: [YES, YES, YES] },
       { label: ru("Счёт селлерам: услуги, хранение, отгрузка местами"), cells: [YES, YES, YES] },
     ],
   },
@@ -98,7 +96,7 @@ export const SHORT_COMPARE: Row[] = [
   COMPARE[2].rows[0],
   COMPARE[1].rows[0],
   COMPARE[0].rows[7],
-  COMPARE[1].rows[4],
+  COMPARE[1].rows[3],
   COMPARE[3].rows[2],
 ];
 

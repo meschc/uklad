@@ -1,5 +1,5 @@
 import { BRAND } from "../data/brand";
-import { freeMonthsTitle, num } from "../data/offer";
+import { OFFER, freeMonthsTitle, num } from "../data/offer";
 import { PLANS } from "../data/plans";
 import { LEGAL_BY_SLUG } from "../data/legal";
 import { warehousesRepository } from "../data/warehousesRepository";
@@ -58,11 +58,11 @@ const TITLES: Record<Page, Copy> = {
 const DESCRIPTIONS: Record<Page, Copy> = {
   landing: c(
     `Хранение и учёт товара, сотрудники и задачи, связь с селлерами в одной системе. Внедрим и адаптируем под ваши процессы. ${freeMonthsTitle()}.`,
-    "Stock and storage, staff and tasks, and seller communication in one system. We roll it out and adapt it to your processes. Three months free.",
+    `Stock and storage, staff and tasks, and seller communication in one system. We roll it out and adapt it to your processes. ${OFFER.freeMonths} months free.`,
   ),
   warehouses: c(
     `Хранение и учёт товара, сотрудники и задачи, связь с селлерами в одной системе. Внедрим и адаптируем под ваши процессы. ${freeMonthsTitle()}.`,
-    "Stock and storage, staff and tasks, and seller communication in one system. We roll it out and adapt it to your processes. Three months free.",
+    `Stock and storage, staff and tasks, and seller communication in one system. We roll it out and adapt it to your processes. ${OFFER.freeMonths} months free.`,
   ),
   sellers: c(
     "Выбрать склад, согласовать условия и отправить товар — без переписки и звонков. Остатки, статусы приёмки и отгрузки видны в кабинете.",
