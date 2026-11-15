@@ -1,17 +1,17 @@
 import { useMemo, useState } from "react";
-import { ClipboardCheck, Trash2 } from "lucide-react";
+import { ClipboardCheck } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { workstationRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
 import { addressKey, formatAddress, parseAddress } from "@/lib/address";
-import { countCoverage, MAX_COUNT_QTY, staleBoxes, type CountLine } from "@/lib/inventory";
-import type { Box } from "@/lib/types";
+import { cellTaken, countCoverage, staleBoxes, type CountLine } from "@/lib/inventory";
+import type { Box, CellAddress } from "@/lib/types";
 import { useT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { eyebrow } from "@/components/ui/eyebrow";
-import { QtyStepper } from "@/components/fulfillment/QtyStepper";
 import { ScanField, type ScanStatus } from "@/components/fulfillment/ScanField";
 import { useNow } from "./useNow";
+import { CellCount, CountLines } from "./CountLines";
 import { FormError } from "@/components/ui/field";
 
 /** Сколько давно не считанной тары показываем: куда идти дальше. */
@@ -30,18 +30,29 @@ export function InventoryStation() {
   const t = useT();
   const now = useNow(60_000);
   const boxes = useEditor((s) => s.boxes);
+  const pallets = useEditor((s) => s.pallets);
+  const placements = useEditor((s) => s.placements);
   const products = useEditor((s) => s.products);
   const warehouse = useEditor((s) => s.warehouse);
   const count = useCommand(workstationRepository.countBox);
+  const countCell = useCommand(workstationRepository.countCell);
 
   const [boxId, setBoxId] = useState<string | null>(null);
   const [lines, setLines] = useState<CountLine[]>([]);
   const [status, setStatus] = useState<ScanStatus>("idle");
-  const [done, setDone] = useState<"matched" | "diff" | null>(null);
+  // Скан ячейки, где по учёту уже есть паллета, невскрытое место или товар
+  // без тары: пересчитывать её как пустую нельзя.
+  const [taken, setTaken] = useState(false);
+  const [done, setDone] = useState<"matched" | "diff" | "cellEmpty" | null>(null);
   // Скан ячейки, где стоит несколько тар: какую из них считать.
   const [choice, setChoice] = useState<Box[] | null>(null);
+  // Ячейка без тары на учёте: пересчитываем её саму (`inv_cell`).
+  const [cell, setCell] = useState<CellAddress | null>(null);
+  // Свободная тара, в которую положили найденное в пустой ячейке.
+  const [toteId, setToteId] = useState<string | null>(null);
 
   const box = boxes.find((b) => b.id === boxId);
+  const tote = boxes.find((b) => b.id === toteId);
   const nameOf = (id: string) => products.find((p) => p.id === id)?.name ?? id;
   const coverage = useMemo(() => countCoverage(boxes, now), [boxes, now]);
   const next = useMemo(() => staleBoxes(boxes, now).slice(0, NEXT_LIMIT), [boxes, now]);
@@ -51,8 +62,12 @@ export function InventoryStation() {
     setBoxId(null);
     setLines([]);
     setStatus("idle");
+    setTaken(false);
     setChoice(null);
+    setCell(null);
+    setToteId(null);
     count.reset();
+    countCell.reset();
   };
 
   const open = (b: Box) => {
@@ -65,6 +80,7 @@ export function InventoryStation() {
 
   const scanBox = (raw: string) => {
     const code = raw.trim().toUpperCase();
+    setTaken(false);
     // Ярлык ячейки: считаем тару, которая в ней стоит; если её несколько —
     // сотрудник выбирает, какую открыл.
     const addr = code.startsWith("UK-") ? null : parseAddress(warehouse, raw);
@@ -72,7 +88,21 @@ export function InventoryStation() {
       const key = addressKey(addr);
       const here = boxes.filter((b) => b.address && !b.sealed && addressKey(b.address) === key);
       if (here.length === 1) return open(here[0]);
-      setStatus(here.length ? "ok" : "error");
+      if (here.length === 0) {
+        if (cellTaken({ boxes, pallets, placements }, addr)) {
+          setStatus("error");
+          setTaken(true);
+          return;
+        }
+        // Тары на учёте нет — считаем ячейку: пусто или нашли товар.
+        setStatus("ok");
+        setDone(null);
+        setChoice(null);
+        setCell(addr);
+        setLines([]);
+        return;
+      }
+      setStatus("ok");
       setChoice(here);
       return;
     }
@@ -84,6 +114,25 @@ export function InventoryStation() {
       return;
     }
     open(found);
+  };
+
+  const scanTote = (raw: string) => {
+    const code = raw.trim().toUpperCase();
+    const found = boxes.find((b) => b.barcode.toUpperCase() === code);
+    if (!found) {
+      setStatus("error");
+      return;
+    }
+    setStatus("ok");
+    setToteId(found.id);
+  };
+
+  const finishCell = async () => {
+    if (!cell) return;
+    const res = await countCell.run(cell, lines, toteId ?? undefined);
+    if (!res.ok) return;
+    reset();
+    setDone(res.data.found > 0 ? "diff" : "cellEmpty");
   };
 
   const scanProduct = (raw: string) => {
@@ -114,7 +163,22 @@ export function InventoryStation() {
 
   return (
     <div className="flex flex-col gap-8">
-      {!box ? (
+      {cell ? (
+        <CellCount
+          where={formatAddress(warehouse, cell) || "—"}
+          lines={lines}
+          setLines={setLines}
+          nameOf={nameOf}
+          status={status}
+          onProduct={scanProduct}
+          tote={tote?.barcode ?? null}
+          onTote={scanTote}
+          error={countCell.error}
+          pending={countCell.pending}
+          onCancel={reset}
+          onFinish={() => void finishCell()}
+        />
+      ) : !box ? (
         <>
           <ScanField
             label={t("ws.count.scanBox")}
@@ -123,7 +187,7 @@ export function InventoryStation() {
             onSubmit={scanBox}
           />
           {status === "error" && (
-            <FormError>{t(choice ? "ws.count.cellEmpty" : "ws.count.boxUnknown")}</FormError>
+            <FormError>{t(taken ? "ws.count.busy" : "ws.count.boxUnknown")}</FormError>
           )}
           {choice && choice.length > 1 && (
             <section className="flex flex-col gap-2">
@@ -141,7 +205,13 @@ export function InventoryStation() {
           )}
           {done && (
             <p role="status" className="text-sm font-medium text-success">
-              {t(done === "matched" ? "ws.count.matched" : "ws.count.diff")}
+              {t(
+                done === "matched"
+                  ? "ws.count.matched"
+                  : done === "cellEmpty"
+                    ? "ws.count.cellDone"
+                    : "ws.count.diff",
+              )}
             </p>
           )}
           <section className="flex flex-col gap-3">
@@ -186,40 +256,7 @@ export function InventoryStation() {
             status={status}
             onSubmit={scanProduct}
           />
-          {lines.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t("ws.count.empty")}</p>
-          ) : (
-            <ul className="flex flex-col gap-3">
-              {lines.map((l) => (
-                <li key={l.productId} className="flex items-center justify-between gap-4">
-                  <span className="min-w-0 truncate text-base font-medium">
-                    {nameOf(l.productId)}
-                  </span>
-                  <span className="flex items-center gap-2">
-                    <QtyStepper
-                      value={l.qty}
-                      max={MAX_COUNT_QTY}
-                      onChange={(qty) =>
-                        setLines((cur) =>
-                          cur.map((x) => (x.productId === l.productId ? { ...x, qty } : x)),
-                        )
-                      }
-                    />
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      aria-label={t("ws.count.remove")}
-                      onClick={() =>
-                        setLines((cur) => cur.filter((x) => x.productId !== l.productId))
-                      }
-                    >
-                      <Trash2 />
-                    </Button>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
+          <CountLines lines={lines} setLines={setLines} nameOf={nameOf} emptyKey="ws.count.empty" />
           {count.error && <FormError>{t(count.error)}</FormError>}
           <div>
             <Button disabled={count.pending} onClick={() => void finish()} size="lg">

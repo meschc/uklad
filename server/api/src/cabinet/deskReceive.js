@@ -418,4 +418,5 @@ module.exports = {
   applyRecvClose,
   applyRecvCargo,
   cargoMade,
+  cellExists,
 };

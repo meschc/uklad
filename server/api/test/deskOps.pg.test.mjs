@@ -860,3 +860,109 @@ test(
     assert.ok(snap.data.boxes.find((b) => b.id === "cargo-1-b0").sealed);
   },
 );
+
+test(
+  "пересчёт пустой ячейки операцией: право счёта, только своя свободная тара, учёт не двигается",
+  { skip: SKIP },
+  async () => {
+    const { a, boss, ivan } = await company("ops-inv@sklad.ru", "10.0.5.12");
+    const A = { floorId: "f1", moduleId: "m1", shelfIndex: 0, cellIndex: 0 };
+    const FREE = { ...A, cellIndex: 1 };
+    const base = cabinetData();
+    const data = {
+      ...base,
+      warehouse: {
+        ...base.warehouse,
+        floors: [{ id: "f1", modules: [{ id: "m1", shelves: [{ id: "s0", cells: 3 }] }] }],
+      },
+      boxes: [
+        { id: "b1", barcode: "UK-BOX-1", address: A, lines: [{ productId: "pr1", qty: 3 }] },
+        { id: "t1", barcode: "UK-BOX-7", lines: [] },
+        { id: "t2", barcode: "UK-BOX-8", lines: [{ productId: "pr1", qty: 1 }] },
+      ],
+      disputes: [],
+      // Тара второго склада: столу первого её не видно.
+      warehouseData: { wh_2: { boxes: [{ id: "tx", barcode: "UK-BOX-90", lines: [] }] } },
+    };
+    const saved = await call("/api/cabinet/snapshot", {
+      ...a,
+      body: { version: 1, format: 8, data },
+    });
+    assert.equal(saved.status, 200);
+    const desk = await makeDesk(a);
+    const found = [{ productId: "pr1", qty: 2 }];
+    const op = (key, staffId, over = {}) => ({
+      key,
+      kind: "inv_cell",
+      body: {
+        eventId: `ev-${key}`,
+        staffId,
+        at: Date.now() - 500,
+        cell: FREE,
+        lines: found,
+        ...over,
+      },
+    });
+
+    // Приёмщику пересчитывать нельзя: права `inventory.count` у роли нет.
+    // Вход руководителя в этом браузере погас со столом — входит заново.
+    const office = { cookie: await login("ops-inv@sklad.ru"), org: a.org };
+    const team = (await call("/api/team", office)).json;
+    const receiver = team.roles.find((x) => x.name === "Приёмщик").id;
+    const set = await call("/api/team/desk-role", {
+      ...office,
+      body: { staffRef: "stf-ivan", roleId: receiver },
+    });
+    assert.equal(set.status, 200);
+    await call("/api/cabinet/badges/check", { desk, body: { code: ivan } });
+    const denied = await ops(desk, [op("key-inv-ivan", "stf-ivan", { boxId: "t1" })]);
+    assert.deepEqual(
+      denied.json.results.map((x) => [x.status, x.reason]),
+      [["flagged", "not_yours"]],
+    );
+
+    await call("/api/cabinet/badges/check", { desk, body: { code: boss } });
+    const r = await ops(desk, [
+      op("key-inv-full", "stf-boss", { boxId: "t2" }),
+      op("key-inv-other", "stf-boss", { boxId: "tx" }),
+      op("key-inv-busy", "stf-boss", { boxId: "t1", cell: A }),
+      op("key-inv-empty", "stf-boss", { lines: [], cell: { ...A, cellIndex: 2 } }),
+      op("key-inv-ok", "stf-boss", { boxId: "t1" }),
+    ]);
+    assert.deepEqual(
+      r.json.results.map((x) => [x.key, x.status, x.reason ?? null]),
+      [
+        ["key-inv-full", "flagged", "stock"],
+        ["key-inv-other", "flagged", "bad"],
+        ["key-inv-busy", "flagged", "busy"],
+        ["key-inv-empty", "applied", null],
+        ["key-inv-ok", "applied", null],
+      ],
+    );
+
+    // Учёт до решения старшего не двинулся: строки тары те же, движений нет.
+    const cookie = await login("ops-inv@sklad.ru");
+    const snap = (await call("/api/cabinet/snapshot", { cookie, org: a.org })).json.snapshot;
+    const box = Object.fromEntries(snap.data.boxes.map((b) => [b.id, b]));
+    assert.deepEqual(box.b1.lines, [{ productId: "pr1", qty: 3 }]);
+    assert.deepEqual(box.t1.lines, []);
+    assert.deepEqual(box.t1.address, FREE);
+    assert.deepEqual(box.t2.address, undefined);
+    assert.deepEqual(
+      snap.data.disputes.map((d) => [d.kind, d.boxId, d.productId, d.qty, d.raisedBy]),
+      [["inventory_over", "t1", "pr1", 2, "stf-boss"]],
+    );
+    assert.equal(snap.data.warehouseData.wh_2.boxes[0].address, undefined);
+    const moves = await db.root.query(
+      "SELECT count(*)::int AS n FROM uklad.stock_moves WHERE org_id = $1 AND desk_id IS NOT NULL",
+      [a.org],
+    );
+    assert.equal(moves.rows[0].n, 0);
+    // «Пусто» осталось строкой журнала операций стола.
+    const logged = await db.root.query(
+      "SELECT kind, status FROM uklad.desk_ops WHERE org_id = $1 AND kind = 'inv_cell'",
+      [a.org],
+    );
+    assert.ok(logged.rows.some((x) => x.status === "applied"));
+  },
+);
