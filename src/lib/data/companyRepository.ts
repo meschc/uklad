@@ -37,4 +37,24 @@ export const companyRepository = {
       mock: false,
     });
   },
+
+  /**
+   * Название компании на сервере (`POST /company/name`, право `org.manage`).
+   * Его видят письма-приглашения и список компаний при входе; снимок кабинета
+   * хранит своё поле, но для людей вне кабинета правда — здесь. Демо без
+   * сервера ничего не отправляет.
+   */
+  rename: async (name: string): Promise<Result<string>> => {
+    if (!hasCabinetServer) return ok(name);
+    const res = await attempt(
+      () => apiRequest("POST", "/company/name", { name }),
+      "company.name.err.network",
+    );
+    if (!res.ok) return res;
+    const { status, body } = res.data;
+    if (status === 403) return fail("company.name.err.forbidden");
+    if (status === 400) return fail("company.name.err.bad");
+    if (status !== 200) return fail("company.name.err.network");
+    return ok(typeof body.name === "string" ? body.name : name);
+  },
 };

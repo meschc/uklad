@@ -1,3 +1,4 @@
+import { hasCabinetServer } from "@/lib/data/api";
 import { useEffect, useMemo, useState } from "react";
 import {
   FileText,
@@ -254,7 +255,8 @@ function RequestsTasks({ sections }: { sections: React.ReactNode }) {
         <EmptyState
           icon={<ClipboardList className="size-5" />}
           title={t("tasks.emptyTitle")}
-          body={t("tasks.emptyBody")}
+          // Переключатель ролей есть только в демо: на сервере роль из сессии.
+          body={t(hasCabinetServer ? "tasks.emptyBodyServer" : "tasks.emptyBody")}
         />
       ) : (
         <div className="flex flex-col gap-5">
