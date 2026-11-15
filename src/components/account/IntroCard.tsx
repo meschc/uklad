@@ -6,6 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { card } from "@/components/ui/card";
+import { FormError } from "@/components/ui/field";
+import { companyRepository } from "@/lib/data/companyRepository";
+import { useCommand } from "@/lib/useCommand";
 
 /**
  * «Как вас зовут?» — один раз после первого входа, на главной, а не в форме
@@ -26,6 +29,8 @@ export function IntroCard() {
   const [draftName, setDraftName] = useState("");
   const [draftOrg, setDraftOrg] = useState(account.type === "company" ? (account.org ?? "") : "");
   const [later, setLater] = useState(false);
+  // Название — и на сервер: его видят письма-приглашения сотрудникам.
+  const rename = useCommand(companyRepository.rename);
 
   // Смотрящему (сотрудник по приглашению) имя и компанию задаёт склад: его
   // имя — из карточки, компания — не его, чтобы её переименовывать.
@@ -33,11 +38,14 @@ export function IntroCard() {
   if (name.trim() || later || viewer) return null;
   const company = account.type === "company";
 
-  const save = (e: React.FormEvent) => {
+  const save = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!draftName.trim()) return;
+    const org = draftOrg.trim();
+    // Сервер не принял название — карточка остаётся открытой с ошибкой.
+    if (company && org && !(await rename.run(org)).ok) return;
     updateProfile({ name: draftName.trim() });
-    if (company && draftOrg.trim()) updateAccount({ org: draftOrg.trim() });
+    if (company && org) updateAccount({ org });
   };
 
   return (
@@ -81,11 +89,12 @@ export function IntroCard() {
           </div>
         )}
       </div>
+      {rename.error && <FormError>{t(rename.error)}</FormError>}
       <div className="flex items-center justify-end gap-2">
         <Button type="button" size="sm" variant="ghost" onClick={() => setLater(true)}>
           {t("intro.later")}
         </Button>
-        <Button type="submit" size="sm" disabled={!draftName.trim()}>
+        <Button type="submit" size="sm" disabled={!draftName.trim() || rename.pending}>
           {t("intro.save")}
         </Button>
       </div>

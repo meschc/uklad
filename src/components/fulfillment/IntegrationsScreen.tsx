@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ExternalLink, MessageCircleQuestion, ShieldAlert } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import {
@@ -17,7 +17,7 @@ import { card } from "@/components/ui/card";
 import { ScreenShell } from "./ScreenShell";
 import { ServerConnections } from "./ServerConnections";
 import { hasCabinetServer } from "@/lib/data/api";
-import { SERVER_CONNECTOR_SYSTEMS } from "@/lib/data/connectorsRepository";
+import { SERVER_CONNECTOR_SYSTEMS, connectorsRepository } from "@/lib/data/connectorsRepository";
 import { ReportProblemDialog } from "@/components/support/ReportProblemDialog";
 
 /**
@@ -34,8 +34,11 @@ export function IntegrationsScreen() {
   const updateIntegration = useEditor((s) => s.updateIntegration);
 
   const [asking, setAsking] = useState(false);
-  const connected = INTEGRATIONS.filter((s) => integrations[s.id]?.enabled).length;
-  const soon = INTEGRATIONS.filter((s) => s.soon).length;
+  const live = useConnectedSystems();
+  const isOn = (spec: IntegrationSpec) =>
+    hasCabinetServer ? live.has(spec.id) : !!integrations[spec.id]?.enabled;
+  const connected = INTEGRATIONS.filter(isOn).length;
+  const soon = INTEGRATIONS.filter(isSoon).length;
 
   return (
     <ScreenShell
@@ -62,7 +65,7 @@ export function IntegrationsScreen() {
       {INTEGRATION_CATEGORIES.map((cat) => {
         // Готовые к подключению — выше: «позже» не должно заслонять рабочее.
         const items = INTEGRATIONS.filter((s) => s.category === cat.id).sort(
-          (a, b) => Number(!!a.soon) - Number(!!b.soon),
+          (a, b) => Number(isSoon(a)) - Number(isSoon(b)),
         );
         if (!items.length) return null;
         return (
@@ -76,6 +79,7 @@ export function IntegrationsScreen() {
                   key={spec.id}
                   spec={spec}
                   config={integrations[spec.id] ?? {}}
+                  on={isOn(spec)}
                   onChange={(patch) => updateIntegration(spec.id, patch)}
                   t={t}
                 />
@@ -151,14 +155,42 @@ function BrandMark({ brand }: { brand: BrandMarkSpec }) {
 const onServer = (spec: IntegrationSpec) =>
   hasCabinetServer && (SERVER_CONNECTOR_SYSTEMS as readonly string[]).includes(spec.id);
 
+/**
+ * Система ещё не подключается. В сборке с сервером это и те, у кого адаптер
+ * есть, а серверного прокси нет: галочка «Включить обмен» в браузере ничего
+ * не включала, а бейдж «вкл» обещал обмен, которого нет (ревизия 14.11).
+ */
+const isSoon = (spec: IntegrationSpec) => !!spec.soon || (hasCabinetServer && !onServer(spec));
+
+/**
+ * Какие системы подключены на сервере. Галочка `enabled` в снимке для них не
+ * правда: правда — есть ли подключение с ключом на сервере.
+ */
+function useConnectedSystems(): ReadonlySet<string> {
+  const [systems, setSystems] = useState<ReadonlySet<string>>(() => new Set());
+  useEffect(() => {
+    if (!hasCabinetServer) return;
+    let alive = true;
+    void connectorsRepository.list().then((res) => {
+      if (alive && res.ok) setSystems(new Set(res.data.map((c) => c.system)));
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+  return systems;
+}
+
 function IntegrationCard({
   spec,
   config,
+  on,
   onChange,
   t,
 }: {
   spec: IntegrationSpec;
   config: IntegrationConfig;
+  on: boolean;
   onChange: (patch: IntegrationConfig) => void;
   t: TFunc;
 }) {
@@ -173,7 +205,7 @@ function IntegrationCard({
         <div className="min-w-0 flex-1">
           <p className="flex items-center gap-1.5 text-sm font-semibold">
             {spec.title}
-            {config.enabled && (
+            {on && (
               <span className="rounded bg-success/15 px-1.5 py-0.5 text-2xs font-semibold uppercase tracking-wide text-success">
                 {t("integr.on")}
               </span>
@@ -183,7 +215,7 @@ function IntegrationCard({
             {t(spec.descriptionKey)}
           </p>
         </div>
-        {spec.soon ? (
+        {isSoon(spec) ? (
           <span className="shrink-0 text-xs text-muted-foreground">{t("integr.soon")}</span>
         ) : (
           <>
@@ -196,14 +228,18 @@ function IntegrationCard({
             >
               {t(`integr.auth.${spec.auth}`)}
             </span>
-            <span
-              className={cn(
-                "shrink-0 text-xs tabular-nums",
-                ready ? "text-success" : "text-muted-foreground",
-              )}
-            >
-              {t("integr.filled", { n: filled, total: spec.fields.length })}
-            </span>
+            {/* У площадок на сервере поля в браузере не заполняются: счётчик
+                старых полей снимка тут только путал. */}
+            {!onServer(spec) && (
+              <span
+                className={cn(
+                  "shrink-0 text-xs tabular-nums",
+                  ready ? "text-success" : "text-muted-foreground",
+                )}
+              >
+                {t("integr.filled", { n: filled, total: spec.fields.length })}
+              </span>
+            )}
             <Button size="sm" variant="outline" onClick={() => setOpen((v) => !v)}>
               {t(open ? "integr.hide" : "integr.setup")}
             </Button>
@@ -211,7 +247,7 @@ function IntegrationCard({
         )}
       </div>
 
-      {open && !spec.soon && onServer(spec) && (
+      {open && !isSoon(spec) && onServer(spec) && (
         <div className="flex flex-col gap-3 border-t border-border bg-muted/20 px-4 py-3">
           <ServerConnections spec={spec} t={t} />
           <a
@@ -226,7 +262,7 @@ function IntegrationCard({
         </div>
       )}
 
-      {open && !spec.soon && !onServer(spec) && (
+      {open && !isSoon(spec) && !onServer(spec) && (
         <div className="flex flex-col gap-3 border-t border-border bg-muted/20 px-4 py-3">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {spec.fields.map((f) => (
