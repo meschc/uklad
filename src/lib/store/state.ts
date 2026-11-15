@@ -329,7 +329,7 @@ export interface ShelvesSlice {
   setShelfPicking: (
     moduleId: string,
     index: number,
-    patch: { pickPriority?: number | undefined; pickable?: boolean },
+    patch: { pickPriority?: number | undefined; pickable?: boolean; palletPlace?: boolean },
   ) => void;
 
   addTemplate: (cells: number[], name?: string) => string;

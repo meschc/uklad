@@ -164,6 +164,9 @@ export const createShelvesSlice: SliceCreator<ShelvesSlice> = (set, get) => ({
             // `true` — это значение по умолчанию, хранить его незачем.
             next.pickable = patch.pickable ? undefined : false;
           }
+          if (patch.palletPlace != null) {
+            next.palletPlace = patch.palletPlace ? true : undefined;
+          }
           return next;
         });
       }),

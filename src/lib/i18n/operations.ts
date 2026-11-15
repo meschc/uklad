@@ -22,6 +22,8 @@ export const ru = {
   "ops.svc.cargo_pallet": "Приёмка паллеты",
   "ops.svc.cargo_box": "Приёмка короба",
   "ops.svc.item_receiving": "Потоварная приёмка",
+  "ops.svc.storage_pallet": "Хранение паллеты",
+  "ops.svc.storage_box": "Хранение короба",
   "ops.svc.quality_check": "Проверка качества",
   "ops.svc.marking": "Маркировка штрихкодом",
   "ops.svc.honest_sign": "Маркировка «Честный знак»",
@@ -46,6 +48,8 @@ export const ru = {
   "ops.unit.trip": "рейс",
   "ops.unit.vehicle": "машина",
   "ops.unit.cell": "ячейка",
+  "ops.unit.pallet_day": "паллето-место в сутки",
+  "ops.unit.box_day": "короб в сутки",
 
   "ops.services.hint":
     "Включите то, что делает ваш склад. Выключенное не появится в заданиях и в отчёте.",
@@ -100,6 +104,10 @@ export const ru = {
   "ops.report.unpriced":
     "У части услуг не задана цена — итог без них. Цены задаются на вкладке «Услуги».",
   "ops.report.empty": "За этот период услуг не было",
+  "ops.report.storageHint":
+    "Хранение — сутки с размещения на место до ухода с полки. Паллето-место — ячейка полки с отметкой «паллетное место» на плане, остальная тара — короба.",
+  "ops.report.storageLoading": "Считаем сутки хранения…",
+  "ops.report.storageFailed": "Сутки хранения не загрузились — итог пока без хранения.",
   "ops.services.twoStage": "Приёмка в два этапа",
   "ops.services.twoStageHint":
     "Сначала места при водителе: сколько паллет и коробов по накладной и сколько приехало. Потом, когда удобно, — вскрыть и пересчитать штуки.",
@@ -144,6 +152,8 @@ export const en: Record<keyof typeof ru, string> = {
   "ops.svc.cargo_pallet": "Pallet intake",
   "ops.svc.cargo_box": "Box intake",
   "ops.svc.item_receiving": "Item-level receiving",
+  "ops.svc.storage_pallet": "Pallet storage",
+  "ops.svc.storage_box": "Box storage",
   "ops.svc.quality_check": "Quality check",
   "ops.svc.marking": "Barcode labelling",
   "ops.svc.honest_sign": "Honest Sign marking",
@@ -168,6 +178,8 @@ export const en: Record<keyof typeof ru, string> = {
   "ops.unit.trip": "trip",
   "ops.unit.vehicle": "truck",
   "ops.unit.cell": "cell",
+  "ops.unit.pallet_day": "pallet place per day",
+  "ops.unit.box_day": "box per day",
 
   "ops.services.hint":
     "Turn on what your warehouse does. Anything off won't appear in tasks or the report.",
@@ -221,6 +233,10 @@ export const en: Record<keyof typeof ru, string> = {
   "ops.report.unpriced":
     "Some services have no price — the total leaves them out. Set prices in Services.",
   "ops.report.empty": "No services in this period",
+  "ops.report.storageHint":
+    "Storage counts days from placement until the goods leave the shelf. A pallet place is a cell on a shelf marked “pallet place” on the plan; other containers count as boxes.",
+  "ops.report.storageLoading": "Counting storage days…",
+  "ops.report.storageFailed": "Storage days did not load — the total leaves storage out for now.",
   "ops.services.twoStage": "Two-stage receiving",
   "ops.services.twoStageHint":
     "First the places, with the driver present: pallets and boxes per waybill versus arrived. Then, when convenient, open them and count the items.",

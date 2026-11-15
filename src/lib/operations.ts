@@ -41,6 +41,9 @@ export const SERVICES: ServiceSpec[] = [
   { kind: "cargo_pallet", unit: "pallet", auto: true, defaultOn: true },
   { kind: "cargo_box", unit: "box", auto: true, defaultOn: true },
   { kind: "item_receiving", unit: "unit", auto: true, defaultOn: true },
+  // Хранение — сутки занятого места с размещения до ухода с полки (`storage.ts`).
+  { kind: "storage_pallet", unit: "pallet_day", auto: true, defaultOn: true },
+  { kind: "storage_box", unit: "box_day", auto: true, defaultOn: true },
   { kind: "quality_check", unit: "unit", auto: false, defaultOn: false },
   { kind: "marking", unit: "unit", auto: false, defaultOn: true },
   { kind: "honest_sign", unit: "unit", auto: false, defaultOn: false },
