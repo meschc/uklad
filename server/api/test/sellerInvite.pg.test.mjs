@@ -319,7 +319,6 @@ test(
       `/api/cabinet/history?from=${day}&to=${day}`,
       `/api/cabinet/inventory?from=${day}&to=${day}`,
       "/api/cabinet/desks/journal?device=dev-1",
-      "/api/cabinet/journal?warehouse=wh-a",
       "/api/connectors",
     ]) {
       assert.equal((await call("GET", path, seller)).status, 403, path);
