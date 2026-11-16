@@ -198,6 +198,7 @@ export const ru = {
   "ws.device.notManager": "Это не бейдж руководителя",
   "ws.kiosk.unbind": "Отвязать устройство",
   "ws.kiosk.unbindHint": "Отсканируйте бейдж руководителя",
+  "ws.kiosk.unbindHintServer": "Отсканируйте бейдж старшего или войдите паролем руководителя",
   "ws.device.queueNotEmpty": "Работа ещё отправляется на сервер. Подождите и повторите",
   "ws.kiosk.cancel": "Отмена",
   "disputes.title": "Спорные",
@@ -251,7 +252,7 @@ export const ru = {
     "Компьютеры и ТСД у рабочих мест. На привязанном устройстве открыт только вход по бейджу — без кабинета и левого меню.",
   "devices.bindTitle": "Привязать этот компьютер",
   "devices.bindHint":
-    "Заведите устройство, сидя за ним: этот браузер сразу станет рабочим местом. Ваш вход в кабинет на нём закончится — дальше здесь входят только по бейджам, а отвязать стол можно бейджем руководителя.",
+    "Заведите устройство, сидя за ним: этот браузер сразу станет рабочим местом. Ваш вход в кабинет на нём закончится — дальше здесь входят только по бейджам, а отвязать стол можно на нём бейджем старшего или паролем руководителя.",
   "devices.name": "Название",
   "devices.namePlaceholder": "Упаковка, стол 3",
   "devices.station": "Рабочее место",
@@ -498,7 +499,10 @@ export const ru = {
   "ws.breakFirst": "Идёт перерыв. Закончите его, чтобы взять тару.",
   "ws.kiosk.noManager":
     "В персонале нет руководителя, поэтому стол можно отвязать отсюда. Добавьте руководителя, чтобы отвязывать только его бейджем.",
-  "ws.kiosk.unbindInCabinet": "Отвяжите стол в кабинете: «Устройства» → «Отключить».",
+  "ws.kiosk.byPassword": "Нет бейджа — войти паролем руководителя",
+  "ws.device.notManagerAccount": "Эта учётная запись не управляет персоналом компании",
+  "devices.bindNeedsManager":
+    "Сделать компьютер столом может руководитель с правом менять персонал. Войдите его паролем.",
   "ws.equip.title": "Устройства",
   "ws.equip.docPrinter": "Принтер",
   "ws.ev.shift_start": "Начал смену",
@@ -708,6 +712,7 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.device.notManager": "This is not a manager's badge",
   "ws.kiosk.unbind": "Unbind device",
   "ws.kiosk.unbindHint": "Scan a manager's badge",
+  "ws.kiosk.unbindHintServer": "Scan a senior's badge or use a manager's password",
   "ws.device.queueNotEmpty": "Work is still being sent to the server. Wait and try again",
   "ws.kiosk.cancel": "Cancel",
   "disputes.title": "Disputes",
@@ -762,7 +767,7 @@ export const en: Record<keyof typeof ru, string> = {
     "Computers and handhelds at workstations. A bound device only shows badge sign-in — no cabinet, no side menu.",
   "devices.bindTitle": "Bind this computer",
   "devices.bindHint":
-    "Add the device while sitting at it: this browser becomes a workstation right away. Your account signs out on it — from then on people sign in with badges only, and a manager's badge unbinds it.",
+    "Add the device while sitting at it: this browser becomes a workstation right away. Your account signs out on it — from then on people sign in with badges only, and a senior's badge or a manager's password unbinds it at the desk.",
   "devices.name": "Name",
   "devices.namePlaceholder": "Packing, desk 3",
   "devices.station": "Workstation",
@@ -1009,7 +1014,10 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.breakFirst": "You are on a break. End it to take a tote.",
   "ws.kiosk.noManager":
     "There is no manager among staff, so the desk can be unbound here. Add a manager to require their badge.",
-  "ws.kiosk.unbindInCabinet": "Unbind the desk in the cabinet: Devices → Disconnect.",
+  "ws.kiosk.byPassword": "No badge? Use a manager's password",
+  "ws.device.notManagerAccount": "This account does not manage the company's staff",
+  "devices.bindNeedsManager":
+    "Only a manager who can edit staff can make this computer a desk. Sign in with their password.",
   "ws.equip.title": "Devices",
   "ws.equip.docPrinter": "Printer",
   "ws.ev.shift_start": "Started shift",

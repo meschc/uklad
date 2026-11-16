@@ -32,7 +32,8 @@
  *   GET  /api/desk/version         — версия снимка: пора ли подтянуть свежий
  *   POST /api/desk/ops             — пачка операций с ключами повтора
  *   POST /api/cabinet/badges/check — чей бейдж
- *   POST /api/desk/unbind          — { code } бейдж руководителя → стол отвязан
+ *   POST /api/desk/unbind          — { code } бейдж старшего или { email, password }
+ *                                    руководителя → стол отвязан
  *   POST /api/desk/senior          — { code } → { staffRef, decide }: бейдж старшего
  *                                    снимает остановку, за стол он не встаёт
  */
@@ -496,7 +497,11 @@ function createDesks({ auth, cfg, send, log }) {
         `SELECT at, staff_ref, kind, status, refs FROM auth.desk_journal($1, 200)`,
         [deviceRef],
       );
-      return { status: 200, rows };
+      const { rows: events } = await c.query(
+        `SELECT at, kind, by_member, by_staff FROM auth.desk_events($1)`,
+        [deviceRef],
+      );
+      return { status: 200, rows, events };
     });
     if (out === null) return send(res, 401, { ok: false });
     if (out.status !== 200) return send(res, out.status, { ok: false });
@@ -509,6 +514,14 @@ function createDesks({ auth, cfg, send, log }) {
         flagged: r.status === "flagged",
         // Товар, тара, заказ — чтобы строка говорила, с чем было действие.
         ...(r.refs && Object.keys(r.refs).length ? { refs: r.refs } : {}),
+      })),
+      // Привязали и отвязали — по пропускам стола, с тем, кто это сделал
+      // (миграция 040): руководитель по имени или сотрудник по бейджу.
+      events: out.events.map((e) => ({
+        at: new Date(e.at).getTime(),
+        kind: e.kind,
+        ...(e.by_member ? { byName: e.by_member } : {}),
+        ...(e.by_staff ? { byStaff: e.by_staff } : {}),
       })),
     });
   }
@@ -698,9 +711,17 @@ function createDesks({ auth, cfg, send, log }) {
     return send(res, 200, { ok: true, staffRef: out.staffRef, decide: out.decide });
   }
 
+  /**
+   * Отвязать стол на нём самом: бейджем старшего (`code`) или паролем
+   * руководителя (`email` + `password`) — тем же правом staff.manage, каким
+   * стол привязывают. Без второго пути стол без такого бейджа не отвязать:
+   * вход паролем здесь погашен привязкой. Кто отвязал — в пропуске стола
+   * (миграция 040), журнал устройства это показывает.
+   */
   async function unbind(req, res) {
     const b = await readJson(req, res);
     if (!b) return;
+    if (typeof b.email === "string") return unbindByPassword(req, res, b);
     const out = await withDesk(req, async (c, d) => {
       if (!checks.take(d.orgId)) return { limited: true };
       const staffRef = await whoseBadge(c, b.code);
@@ -708,11 +729,30 @@ function createDesks({ auth, cfg, send, log }) {
       // Отвязать стол — право роли на персонал, а не должность в снимке.
       const perms = await loadDeskPerms(c, [staffRef]);
       if (!may({ perms }, staffRef, STAFF_MANAGE)) return { manager: false };
-      await c.query(`SELECT auth.close_desk($1)`, [deskHash(req)]);
+      await c.query(`SELECT auth.close_desk($1, $2)`, [deskHash(req), staffRef]);
       return { manager: true };
     });
     if (!out) return gone(res);
     if (out.limited) return limited(res);
+    if (!out.manager) return send(res, 404, { ok: false, error: "not_manager" });
+    return send(res, 200, { ok: true }, { "Set-Cookie": clearDesk });
+  }
+
+  async function unbindByPassword(req, res, b) {
+    // Сначала — что это стол: пароль чужого браузера здесь не проверяем.
+    if (!(await withDesk(req, async () => true))) return gone(res);
+    const who = await auth.checkCredentials(req, b);
+    // 422, а не 401: стол принял бы 401 за потерю своего пропуска.
+    if (who.status === 429) return send(res, 429, { ok: false, error: who.error }, who.headers);
+    if (!who.accountId) return send(res, 422, { ok: false, error: "bad_credentials" });
+    const out = await withDesk(req, async (c) => {
+      const { rows } = await c.query(`SELECT auth.close_desk_by_account($1, $2) AS ok`, [
+        deskHash(req),
+        who.accountId,
+      ]);
+      return { manager: rows[0].ok === true };
+    });
+    if (!out) return gone(res);
     if (!out.manager) return send(res, 404, { ok: false, error: "not_manager" });
     return send(res, 200, { ok: true }, { "Set-Cookie": clearDesk });
   }
