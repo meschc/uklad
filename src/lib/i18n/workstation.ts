@@ -320,7 +320,7 @@ export const ru = {
     "Принятые сканы остаются. Незавершённое на экране, например пересчёт тары или погрузку машины, придётся начать заново.",
   "ws.switch.denied": "Этот процесс ваша роль не открывает. Обратитесь к руководителю.",
   "ws.switch.offline": "Нет связи с сервером: заявка не ушла. Попробуйте ещё раз.",
-  "ws.switch.waitTitle": "Ждём разрешения на «{name}»",
+  "ws.switch.waitTitle": "Ждём разрешения старшего на процесс «{name}»",
   "ws.switch.waitBody":
     "Старший увидит заявку в кабинете на странице «Подтверждения». Как только разрешит, процесс сменится сам.",
   "ws.switch.cancel": "Отменить заявку",
@@ -868,7 +868,7 @@ export const en: Record<keyof typeof ru, string> = {
     "Accepted scans stay. Unfinished work on screen, such as a tote recount or truck loading, has to be started again.",
   "ws.switch.denied": "Your role does not open this process. Ask a manager.",
   "ws.switch.offline": "No connection to the server: the request was not sent. Try again.",
-  "ws.switch.waitTitle": "Waiting for approval to “{name}”",
+  "ws.switch.waitTitle": "Waiting for a supervisor to approve “{name}”",
   "ws.switch.waitBody":
     "A senior will see the request in the cabinet on the Approvals page. Once approved, the process switches by itself.",
   "ws.switch.cancel": "Cancel request",

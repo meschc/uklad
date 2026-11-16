@@ -16,6 +16,13 @@ import { cn } from "@/lib/utils";
  * на складе в 50 человек каждый переход кто-то разрешает. В списке только
  * процессы роли сотрудника (`stationsFor`); пока ждём, он работает в прежнем.
  */
+/**
+ * На телефоне короткое содержимое панели — по центру экрана (Кирилл 16.11):
+ * ожидание и короткий список не прилипают к шапке. На широком экране панель
+ * справа, там как обычно сверху.
+ */
+const CENTER = "flex flex-1 flex-col justify-center gap-4 md:flex-none md:justify-start";
+
 export function StationSwitch({ onDone }: { onDone: () => void }) {
   const t = useT();
   const session = useEditor((s) => s.stationSession);
@@ -29,7 +36,7 @@ export function StationSwitch({ onDone }: { onDone: () => void }) {
 
   if (pending) {
     return (
-      <div className="flex flex-col gap-4">
+      <div className={CENTER}>
         <div className="flex items-start gap-3 rounded-lg border border-border bg-muted/40 p-4">
           <Hourglass className="mt-0.5 size-5 shrink-0 text-warning" />
           <div className="flex flex-col gap-1">
@@ -41,7 +48,7 @@ export function StationSwitch({ onDone }: { onDone: () => void }) {
         </div>
         <Button
           variant="outline"
-          className="self-start"
+          className="w-full md:w-auto md:self-start"
           disabled={drop.pending}
           onClick={() => void drop.run(pending.id)}
         >
@@ -52,7 +59,7 @@ export function StationSwitch({ onDone }: { onDone: () => void }) {
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className={CENTER}>
       <p className="text-sm text-muted-foreground">{t("ws.switch.body")}</p>
       <ul className="flex flex-col gap-2">
         {options.map((st) => {
