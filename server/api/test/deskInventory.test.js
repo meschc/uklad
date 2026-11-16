@@ -4,7 +4,7 @@
  * подсказал сотруднику, сколько должно быть. Всё это всплывает через
  * месяц разницей в акте для продавца.
  */
-/* global require */
+/* global require, URL */
 /* eslint-disable @typescript-eslint/no-require-imports */
 const test = require("node:test");
 const assert = require("node:assert/strict");
@@ -327,4 +327,54 @@ test("ячейка с паллетой или товаром без тары —
   // Короб в списке паллеты без своей отметки — тоже.
   const listed = { ...withPlan(), pallets: [pallet({ boxIds: ["b4"] })] };
   assert.equal(applyInvCell(listed, cellCount(found, { boxId: "b4" }), "stf-ivan").flag, "stock");
+});
+
+test("журнал пересчётов для акта: период и строки — только похожие на пересчёт", () => {
+  const { parseLogPeriod, toEntry } = require("../src/cabinet/inventoryLog");
+  const u = (q) => new URL(`https://x/api/cabinet/inventory?${q}`);
+  assert.deepEqual(parseLogPeriod(u("from=2026-11-01&to=2026-11-15")), {
+    from: "2026-11-01",
+    to: "2026-11-15",
+  });
+  assert.equal(parseLogPeriod(u("from=2026-11-15&to=2026-11-01")), null);
+  assert.equal(parseLogPeriod(u("from=2024-01-01&to=2026-11-01")), null);
+  assert.equal(parseLogPeriod(u("from=1.11&to=2026-11-15")), null);
+
+  const at = new Date("2026-11-15T10:00:00Z");
+  const row = (kind, body) => ({ kind, staff_ref: "stf-ivan", body, at });
+  assert.deepEqual(
+    toEntry(
+      row("inv_count", {
+        eventId: "ic-1",
+        at: 5,
+        boxId: "b1",
+        lines: [
+          { productId: "p1", qty: 9 },
+          { productId: "p2", qty: -1 },
+          { productId: "bad id", qty: 1 },
+        ],
+      }),
+    ),
+    {
+      kind: "inv_count",
+      at: 5,
+      staff: "stf-ivan",
+      eventId: "ic-1",
+      boxId: "b1",
+      lines: [{ productId: "p1", qty: 9 }],
+    },
+  );
+  const cell = { floorId: "f1", moduleId: "m1", shelfIndex: 0, cellIndex: 2, extra: 1 };
+  assert.deepEqual(toEntry(row("inv_cell", { eventId: "icc-1", cell, lines: [] })), {
+    kind: "inv_cell",
+    at: at.getTime(),
+    staff: "stf-ivan",
+    eventId: "icc-1",
+    cell: { floorId: "f1", moduleId: "m1", shelfIndex: 0, cellIndex: 2 },
+    lines: [],
+  });
+  // Без тары у пересчёта тары и без ячейки у пересчёта ячейки — не запись акта.
+  assert.equal(toEntry(row("inv_count", { eventId: "ic-2", lines: [] })), null);
+  assert.equal(toEntry(row("inv_cell", { eventId: "icc-2", lines: [] })), null);
+  assert.equal(toEntry(row("inv_count", { boxId: "b1", lines: [] })), null);
 });

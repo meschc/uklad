@@ -964,5 +964,40 @@ test(
       [a.org],
     );
     assert.ok(logged.rows.some((x) => x.status === "applied"));
+
+    // Акт: руководитель получает принятые пересчёты за сутки, стол — нет.
+    const day = new Date(Date.now() + 3 * 3600_000).toISOString().slice(0, 10);
+    const q = `/api/cabinet/inventory?from=${day}&to=${day}`;
+    const act = await call(q, { cookie, org: a.org });
+    assert.equal(act.status, 200);
+    assert.deepEqual(
+      act.json.entries
+        .map((e) => [e.kind, e.staff, e.boxId ?? null, e.lines.length])
+        .sort((x, y) => x[3] - y[3]),
+      [
+        ["inv_cell", "stf-boss", null, 0],
+        ["inv_cell", "stf-boss", "t1", 1],
+      ],
+    );
+    assert.equal((await call(q, { desk })).status, 403);
+    assert.equal(
+      (await call(`/api/cabinet/inventory?from=${day}`, { cookie, org: a.org })).status,
+      400,
+    );
+
+    // Чужая компания своих пересчётов не видит, а заголовком к чужим не пройдёт.
+    const b = await owner("ops-inv-b@sklad.ru", "10.0.1.92");
+    const own = await call(q, b);
+    assert.equal(own.status, 200);
+    assert.deepEqual(own.json.entries, []);
+    assert.ok([401, 403].includes((await call(q, { cookie: b.cookie, org: a.org })).status));
+
+    // Вход паролем, но роль без «Персонала» (смотрящий) — акта не получает.
+    await db.root.query(
+      `UPDATE uklad.roles SET permissions = array_remove(permissions, 'staff.manage')
+        WHERE org_id = $1 AND name = 'Владелец'`,
+      [a.org],
+    );
+    assert.equal((await call(q, { cookie, org: a.org })).status, 403);
   },
 );

@@ -104,6 +104,7 @@ export default tseslint.config(
       // Бумага: лист A4 и ярлык печатаются чёрным по белому в любой теме,
       // им нужны постоянные серые, а не токены, которые темнеют вместе с темой.
       "src/components/fulfillment/DocumentSheet.tsx",
+      "src/components/fulfillment/InventorySheet.tsx",
       "src/components/fulfillment/LabelCard.tsx",
       "src/components/table/Code128Svg.tsx",
     ],
