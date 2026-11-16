@@ -194,7 +194,9 @@ export function WarehouseSpecScreen() {
               trigger={<ClassBadge value={spec.warehouseClass} />}
             />
           )}
-          <div className="min-w-0 flex-1">
+          {/* На телефоне название уходит отдельной строкой под класс и
+              полноту: рядом с ними ему оставалось три буквы. */}
+          <div className="order-last min-w-0 basis-full sm:order-none sm:basis-0 sm:flex-1">
             {/* Название и адрес правятся здесь же, как любое поле паспорта:
                 искать их в другом месте кабинета склад не должен. */}
             {!ro ? (

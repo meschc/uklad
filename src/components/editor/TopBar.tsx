@@ -55,7 +55,9 @@ export function TopBar() {
           // именованный target переиспользует уже открытую карту.
           onClick={() => window.open(`${window.location.pathname}?heatmap=1`, "uklad-heatmap")}
           title={t("heat.title")}
-          className="gap-1.5 rounded-lg bg-muted px-2.5 text-muted-foreground hover:text-foreground [&_svg]:size-3.5"
+          // Тепловая карта и печать — работа за компьютером: на телефоне
+          // кнопкам не хватает места, и шапка уезжала за край.
+          className="hidden gap-1.5 rounded-lg bg-muted px-2.5 text-muted-foreground hover:text-foreground md:inline-flex [&_svg]:size-3.5"
         >
           <Gauge />
           {t("heat.open")}
@@ -70,6 +72,7 @@ export function TopBar() {
           <Button
             variant="ghost"
             size="icon-sm"
+            className="hidden md:inline-flex"
             onClick={() => setPrintPreview(true)}
             aria-label={t("print.plan")}
             title={t("print.plan")}

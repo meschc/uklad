@@ -48,14 +48,16 @@ export function TableToolbar({
     (filter.place !== "all" ? 1 : 0);
   return (
     <div className="flex shrink-0 flex-col border-b border-border bg-card">
-      <div className="flex items-center gap-2 px-3 py-2">
-        <div className="relative">
+      {/* На телефоне строка переносится: поиск с фильтрами сверху, счётчик и
+          действия под ними — ничего не уезжает за край экрана. */}
+      <div className="flex flex-wrap items-center gap-2 px-3 py-2">
+        <div className="relative min-w-40 flex-1 sm:flex-none">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={filter.query}
             onChange={(e) => onFilter({ query: e.target.value })}
             placeholder={t("table.search")}
-            className="h-8 w-56 pl-8 pr-7"
+            className="h-8 w-full pl-8 pr-7 sm:w-56"
           />
           {filter.query && (
             <button
@@ -85,7 +87,7 @@ export function TableToolbar({
           )}
         </Button>
         {/* Одна строка действий: главное с подписью, остальное значками. */}
-        <div className="ml-auto flex shrink-0 items-center gap-1.5">
+        <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-1.5">
           <div className="mr-1 whitespace-nowrap text-xs text-muted-foreground">
             {t("table.shownOf", { n: counts.shown, total: counts.total, placed: counts.placed })}
           </div>
