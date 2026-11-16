@@ -16,6 +16,7 @@ import {
   Tags,
   Users,
   type LucideIcon,
+  ShieldCheck,
 } from "lucide-react";
 import type { AppView, UserRole } from "@/lib/types";
 import type { MsgKey } from "@/lib/i18n";
@@ -66,6 +67,9 @@ const WAREHOUSE_NAV: NavEntry[] = [
   // Недостачи, брак и ошибки скана ждут решения старшего — это ежедневная
   // работа, а не настройка склада, поэтому не в «О складе».
   { view: "disputes", key: "nav.side.disputes", icon: Scale },
+  // Что сотрудники у столов просят разрешить (смена процесса и дальше —
+  // отмены, решения старшего), Кирилл 16.11.
+  { view: "approvals", key: "nav.side.approvals", icon: ShieldCheck },
   { view: "editor", key: "nav.side.plan", icon: Boxes },
   // Переписка с продавцами — отдельным пунктом (п.3): в неё заходят по десять
   // раз на день, в группе она стоила бы лишнего клика.
@@ -136,6 +140,7 @@ const DESK_VIEWS = ["receiving.view", "picking.view", "packing.view", "shipping.
 const VIEW_PERMS: Partial<Record<AppView, string[]>> = {
   tasks: [...DESK_VIEWS, "inventory.view"],
   disputes: ["goods.view"],
+  approvals: ["goods.decide"],
   editor: ["plan.view"],
   chat: ["chat.use"],
   spec: [],

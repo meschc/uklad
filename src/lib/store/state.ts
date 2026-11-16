@@ -3,6 +3,7 @@ import type { StateCreator } from "zustand";
 // «словарь → хранилище → словарь» не возникает.
 import type { MsgKey } from "../i18n";
 import type { Notice, NoticeInput, NoticeTone } from "../notice";
+import type { SwitchRequest } from "../data/switchRepository";
 import type { ItemScan, PackDoneFacts } from "../packing";
 import type {
   CellCountInput,
@@ -786,6 +787,13 @@ export interface WorkstationSlice {
     permissions?: string[] | null,
   ) => string | null;
   stationLogout: () => void;
+  /**
+   * Заявки на смену процесса (`switchRepository`): в демо — все заявки
+   * склада, их видит кабинет в той же вкладке. В снимок не идут.
+   */
+  switchRequests: SwitchRequest[];
+  /** Своя заявка этого стола, ждущая решения старшего. */
+  pendingSwitch: { id: string; station: WorkstationKind } | null;
   /**
    * Отметка смены вошедшего сотрудника. Недопустимый переход (перерыв без
    * смены) игнорируется и возвращает false — кнопки меню и так его не дают.

@@ -92,6 +92,11 @@ const DevicesScreen = lazy(() =>
     default: m.DevicesScreen,
   })),
 );
+const ApprovalsScreen = lazy(() =>
+  import("@/components/approvals/ApprovalsScreen").then((m) => ({
+    default: m.ApprovalsScreen,
+  })),
+);
 const DisputesScreen = lazy(() =>
   import("@/components/workstation/DisputesScreen").then((m) => ({
     default: m.DisputesScreen,
@@ -391,6 +396,8 @@ function renderView(view: string) {
       return <DevicesScreen />;
     case "disputes":
       return <DisputesScreen />;
+    case "approvals":
+      return <ApprovalsScreen />;
     case "login":
       return <LoginScreen />;
     default:

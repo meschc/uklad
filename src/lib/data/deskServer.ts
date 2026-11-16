@@ -29,6 +29,27 @@ export interface JournalRefs {
   outboundCode?: string;
   code?: string;
   qty?: number;
+  /** Смена процесса (`station_switch`): на какой процесс перешёл. */
+  station?: string;
+  /** Кто из старших подтвердил смену процесса. */
+  approvedBy?: string;
+}
+
+/**
+ * Привязали или отвязали стол — по пропускам на сервере (миграция 040), с
+ * тем, кто это сделал: руководитель по имени или сотрудник по бейджу.
+ */
+export interface DeviceEvent {
+  at: number;
+  kind: "bound" | "revoked";
+  byName?: string;
+  byStaff?: string;
+}
+
+export interface DeviceJournalData {
+  entries: DeviceJournalEntry[];
+  /** Нет — сервер старше миграции 040 или демо: события берём из устройства. */
+  events?: DeviceEvent[];
 }
 
 export interface DeskServer {
@@ -39,13 +60,19 @@ export interface DeskServer {
   open: (deviceRef: string, name: string) => Promise<Result<void>>;
   revoke: (deviceRef: string) => Promise<Result<void>>;
   /** Журнал устройства (миграция 026), новые сверху. */
-  journal: (deviceRef: string) => Promise<Result<DeviceJournalEntry[]>>;
+  journal: (deviceRef: string) => Promise<Result<DeviceJournalData>>;
   /**
    * Отвязать стол бейджем руководителя: `false` — бейдж не руководителя,
    * `null` — этот браузер не стол с пропуском (привязан ещё под входом
    * руководителя), отвязывать надо по-старому.
    */
   unbind: (code: string) => Promise<Result<boolean | null>>;
+  /**
+   * Отвязать стол паролем руководителя — когда бейджа старшего нет под рукой.
+   * `false` — учётная запись не управляет персоналом этой компании. Новой
+   * сессии входа не открывает: после отвязки сюда входят как обычно.
+   */
+  unbindByPassword: (email: string, password: string) => Promise<Result<boolean>>;
   /**
    * Сотрудник вышел со стола: сервер перестаёт принимать отметки за него.
    * Не стол (рабочее место под входом руководителя) — у сервера такого
@@ -78,8 +105,11 @@ export const serverDesks: DeskServer = {
     );
     if (!res.ok) return res;
     if (res.data.status !== 200) return fail("data.failed");
-    const entries = (res.data.body as { entries?: DeviceJournalEntry[] }).entries;
-    return ok(Array.isArray(entries) ? entries : []);
+    const body = res.data.body as { entries?: DeviceJournalEntry[]; events?: DeviceEvent[] };
+    return ok({
+      entries: Array.isArray(body.entries) ? body.entries : [],
+      ...(Array.isArray(body.events) ? { events: body.events } : {}),
+    });
   },
   unbind: async (code) => {
     const res = await attempt(() => apiRequest("POST", "/desk/unbind", { code }));
@@ -89,6 +119,17 @@ export const serverDesks: DeskServer = {
     if (status === 404 && body.error === "not_manager") return ok(false);
     if (status === 429 || status >= 500) return fail("data.failed");
     return ok(null);
+  },
+  unbindByPassword: async (email, password) => {
+    const res = await attempt(() => apiRequest("POST", "/desk/unbind", { email, password }));
+    if (!res.ok) return res;
+    const { status, body } = res.data;
+    if (status === 200) return ok(true);
+    if (status === 404 && body.error === "not_manager") return ok(false);
+    if (status === 422) return fail("login.err.badCredentials");
+    if (status === 429)
+      return fail(body.error === "locked" ? "login.err.locked" : "login.err.tooOften");
+    return fail("data.failed");
   },
   leave: async () => {
     const res = await attempt(() => apiRequest("POST", "/desk/leave", {}));

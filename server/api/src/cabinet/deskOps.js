@@ -72,6 +72,22 @@ const OP_PERM = new Map([
   ["inv_count", "inventory.count"],
   ["inv_cell", "inventory.count"],
 ]);
+/**
+ * Процесс, в котором операция законна (смена процесса — `deskSwitch.js`):
+ * работу другого процесса, даже разрешённого ролью, стол шлёт только после
+ * перехода, подтверждённого старшим. Решение старшего и отметки смены — в
+ * любом процессе.
+ */
+const OP_STATION = new Map([
+  ...[...PACK_KINDS].map((k) => [k, "pack"]),
+  ...[...PICK_KINDS].map((k) => [k, "picking"]),
+  ...[...RECV_KINDS].map((k) => [k, "receiving"]),
+  ["ship_run", "shipping"],
+  ["sort_place", "sorting"],
+  ["sort_close", "sorting"],
+  ["inv_count", "inventory"],
+  ["inv_cell", "inventory"],
+]);
 /** Работа с товаром: правка снимка проходит сверку остатков. */
 const WORK = new Map([
   ["pack_event", applyPackEvent],
@@ -112,6 +128,18 @@ const MAX_AGE_MS = 24 * 60 * 60 * 1000;
 const MAX_AHEAD_MS = 5 * 60 * 1000;
 const KEY_RE = /^[A-Za-z0-9_-]{8,100}$/;
 const ID_RE = /^[A-Za-z0-9_-]{1,100}$/;
+
+/**
+ * Процесс человека за столом в момент `at` (часы стола): последний переход,
+ * подтверждённый старшим за эту его смену у стола (`who.switches[ref]`,
+ * `{ at, station }` по возрастанию), иначе процесс устройства.
+ */
+function stationAt(who, shift, at) {
+  const own = (who.switches?.[shift.ref] ?? []).filter(
+    (s) => s.at >= shift.from - SKEW_MS && s.at <= at,
+  );
+  return own.length > 0 ? own[own.length - 1].station : (who.station ?? null);
+}
 
 /** Похоже ли это на операцию. Нет — весь запрос 400. */
 function isOp(op) {
@@ -199,6 +227,14 @@ function applyDeskOps(data, ops, who, now, received = new Map(), verify = null) 
       // 028, новому бейджу без роли её даёт выпуск (`deskBadges.js`).
       if (!may(who, staffRef, OP_PERM.get(op.kind))) {
         flag(op, "not_yours");
+        continue;
+      }
+      // И только в процессе, где человек сейчас: устройства по умолчанию или
+      // последнем, на который перевёл старший. Процесс не известен (старое
+      // устройство без вида) — проверку не делаем, решает право роли.
+      const at = stationAt(who, shift, body.at);
+      if (at && OP_STATION.has(op.kind) && OP_STATION.get(op.kind) !== at) {
+        flag(op, "station");
         continue;
       }
       const before = { ...state, staffEvents: events };
@@ -345,6 +381,7 @@ function applyAtPlace(place, base, fresh, who, now, received, verify) {
   const here = (ref) => (place.staffHere ? place.staffHere(ref) : true);
   const atDesk = {
     ...who,
+    station: place.station ?? null,
     staff: here(who.staff) ? who.staff : null,
     prev: here(who.prev) ? who.prev : null,
   };

@@ -345,12 +345,15 @@ function createAuth({ pool, cfg, send, readBody, log, mail, onRegister = null })
     return send(res, 202, { ok: true });
   }
 
-  async function login(req, res) {
-    const b = await readJson(req, res);
-    if (!b) return;
+  /**
+   * Проверить почту и пароль — без новой сессии. Те же счётчики неудач, что
+   * у входа: подбор пароля через отвязку стола (`desks.js`) упрётся в тот же
+   * замок. Ответ — `{ accountId }` или `{ status, error, headers }` отказа.
+   */
+  async function checkCredentials(req, body) {
     const ip = clientIp(req, cfg.trustProxy);
-    if (!loginLimiter.take(ip)) return send(res, 429, { ok: false }, { "Retry-After": "60" });
-    const email = String(b.email ?? "")
+    if (!loginLimiter.take(ip)) return { status: 429, headers: { "Retry-After": "60" } };
+    const email = String(body.email ?? "")
       .trim()
       .toLowerCase()
       .slice(0, 320);
@@ -361,19 +364,30 @@ function createAuth({ pool, cfg, send, readBody, log, mail, onRegister = null })
       since,
     ]);
     if (f[0].pair >= FAIL_PAIR || f[0].ip >= FAIL_IP || f[0].email >= FAIL_EMAIL) {
-      return send(res, 429, { ok: false, error: "locked" }, { "Retry-After": "900" });
+      return { status: 429, error: "locked", headers: { "Retry-After": "900" } };
     }
     const { rows } = await pool.query(`SELECT * FROM auth.password_hash($1)`, [email]);
-    const ok = await checkPassword(b.password, rows[0]?.password_hash ?? null);
+    const ok = await checkPassword(body.password, rows[0]?.password_hash ?? null);
     if (!ok) {
       await pool.query(`SELECT auth.note_failure($1, $2)`, [email, ip]);
       // Один ответ на «нет почты» и «не тот пароль».
-      return send(res, 401, { ok: false, error: "bad_credentials" });
+      return { status: 401, error: "bad_credentials" };
     }
     // Пароль верный, но почта не подтверждена: это знает уже только тот,
     // кто знает пароль, — значит, можно сказать прямо.
-    if (!rows[0].verified) return send(res, 403, { ok: false, error: "email_unverified" });
-    const cookie = await tx((c) => startPasswordSession(c, rows[0].account_id));
+    if (!rows[0].verified) return { status: 403, error: "email_unverified" };
+    return { accountId: rows[0].account_id };
+  }
+
+  async function login(req, res) {
+    const b = await readJson(req, res);
+    if (!b) return;
+    const who = await checkCredentials(req, b);
+    if (!who.accountId) {
+      const body = who.error ? { ok: false, error: who.error } : { ok: false };
+      return send(res, who.status, body, who.headers);
+    }
+    const cookie = await tx((c) => startPasswordSession(c, who.accountId));
     return send(res, 200, { ok: true }, { "Set-Cookie": cookie });
   }
 
@@ -541,6 +555,8 @@ function createAuth({ pool, cfg, send, readBody, log, mail, onRegister = null })
     tx,
     // Сессия по паролю для нового человека (принятое приглашение, `team.js`).
     startSession: startPasswordSession,
+    // Пароль руководителя без входа — отвязка стола на нём самом (`desks.js`).
+    checkCredentials,
     purge,
     cookieName: COOKIE,
     tokenHash,

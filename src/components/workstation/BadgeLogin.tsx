@@ -5,6 +5,7 @@ import { workstationRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
 import { MANAGER_ROLE, badgeCode } from "@/lib/workstation";
 import type { WorkstationKind } from "@/lib/types";
+import { OPEN_STATIONS } from "@/lib/stationSwitch";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { card } from "@/components/ui/card";
 import { Segmented } from "@/components/ui/segmented";
@@ -21,15 +22,6 @@ import { useDemoHints } from "./useDemoHints";
  * Демо-бейджи — вход за любого сотрудника одним кликом. В рабочем кабинете с
  * сервером их быть не должно: показывать только в демо-режиме.
  */
-/** Столы, у которых уже есть свой экран. */
-const OPEN_STATIONS: WorkstationKind[] = [
-  "receiving",
-  "picking",
-  "pack",
-  "sorting",
-  "shipping",
-  "inventory",
-];
 
 export function BadgeLogin() {
   const demoHints = useDemoHints();

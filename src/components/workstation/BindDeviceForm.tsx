@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { Select } from "@/components/ui/select";
 import { FormError } from "@/components/ui/field";
+import { useEditor } from "@/lib/store";
 
 /** Места, у которых уже есть свой экран. Остальные видны в списке как «скоро». */
 const READY: WorkstationKind[] = [
@@ -47,11 +48,23 @@ export function BindDeviceForm({
   const [name, setName] = useState("");
   const [station, setStation] = useState<WorkstationKind>("pack");
   const add = useCommand(workstationRepository.addDevice);
+  // Привязать стол сервер даёт только с правом менять персонал: без него
+  // форма лишь упёрлась бы в «не получилось». Прав нет (демо) — решает сервер.
+  const canBind = useEditor(
+    (s) =>
+      s.session.source !== "server" ||
+      !s.session.permissions ||
+      s.session.permissions.includes("staff.manage"),
+  );
 
   const bind = async () => {
     const res = await add.run(name, station);
     if (res.ok) onBound?.();
   };
+
+  if (!canBind) {
+    return <p className="text-sm text-muted-foreground">{t("devices.bindNeedsManager")}</p>;
+  }
 
   return (
     <>
