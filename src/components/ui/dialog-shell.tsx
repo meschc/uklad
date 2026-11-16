@@ -55,14 +55,24 @@ const panel = cva(
         true: "",
         false: "overflow-y-auto",
       },
+      /**
+       * Короткое подтверждение на ТСД (Кирилл 16 ноя: «весь экран не нужен»):
+       * на телефоне — шторка снизу по высоте содержимого, под большой палец;
+       * с `sm` и шире — та же панель справа.
+       */
+      sheet: {
+        true: "max-sm:h-auto max-sm:max-h-[85dvh] max-sm:animate-slide-up max-sm:rounded-t-xl max-sm:border-l-0 max-sm:border-t",
+        false: "",
+      },
     },
-    defaultVariants: { size: "md", scroll: false },
+    defaultVariants: { size: "md", scroll: false, sheet: false },
   },
 );
 
 export function DialogShell({
   size,
   scroll,
+  sheet,
   onClose,
   className,
   children,
@@ -74,9 +84,15 @@ export function DialogShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className={cn("fixed inset-0 z-50 flex items-stretch justify-end", className)}>
+    <div
+      className={cn(
+        "fixed inset-0 z-50 flex justify-end",
+        sheet ? "items-end sm:items-stretch" : "items-stretch",
+        className,
+      )}
+    >
       <Backdrop onClose={onClose} />
-      <div role="dialog" aria-modal="true" className={panel({ size, scroll })}>
+      <div role="dialog" aria-modal="true" className={panel({ size, scroll, sheet })}>
         {children}
       </div>
     </div>

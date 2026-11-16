@@ -150,6 +150,16 @@ function applyPickUnit(data, body, staffRef) {
         station: "picking",
         productId: body.productId,
         code: String(tote.barcode ?? "").slice(0, 100),
+        // Откуда и под какую заявку: по этому отмена (`applyPickUndo`)
+        // возвращает штуку туда, откуда её сняли, а не «куда-нибудь».
+        requestId: body.requestId,
+        cell: {
+          ...(isId(body.cell.floorId) ? { floorId: body.cell.floorId } : {}),
+          moduleId: body.cell.moduleId,
+          shelfIndex: body.cell.shelfIndex,
+          cellIndex: body.cell.cellIndex,
+        },
+        ...(from ? { boxId: from.id } : {}),
       },
     ],
   };
@@ -196,4 +206,105 @@ function applyPickDone(data, body) {
   };
 }
 
-module.exports = { applyPickUnit, applyPickDone, cellKey };
+/**
+ * Отмена снятой штуки (`pick_undo`): сборщик ошибся — положил не в ту тару,
+ * снял лишнюю, тара переполнена. Штука возвращается из тары сборки в тот же
+ * короб, из которого её сняли, собранное по заявке −1. Отменить можно только
+ * свой скан, пока заявка не упакована и штука ещё в таре. Сам скан из
+ * журнала не исчезает: рядом ложится `pick_undo` со ссылкой на него — разбор
+ * «кто что снимал» видит и ошибку, и исправление.
+ *
+ * Правило «собранное со стола только растёт» (`mergeRequests`) общая сверка
+ * не отменяет: она проверяет только товар (короб +1, тара −1). Ход заявки
+ * назад сервер правит сам после сверки (`post`), по своей проверке выше.
+ */
+function applyPickUndo(data, body, staffRef) {
+  const events = list(data.staffEvents);
+  if (!isId(body.pickId)) return { flag: "bad" };
+  if (events.some((e) => e.id === body.eventId)) return { data };
+  // Уже отменён (повтор, другим ключом) — снимать второй раз нечего.
+  if (events.some((e) => e.type === "pick_undo" && e.undoes === body.pickId)) return { data };
+  const pick = events.find((e) => e.id === body.pickId && e.type === "pick_scan");
+  if (!pick) return { flag: "bad" };
+  if (pick.staffId !== staffRef) return { flag: "not_yours" };
+  // Скан до этой правки не помнит, откуда сняли; с прямого размещения
+  // вернуть нельзя — его ставит только руководитель (`mergePlacements`).
+  const key = cellKey(pick.cell);
+  if (!isId(pick.requestId) || !key) return { flag: "old" };
+  if (!isId(pick.boxId)) return { flag: "place" };
+  const requests = list(data.requests);
+  const req = requests.find((r) => r.id === pick.requestId);
+  const picked = Number(req?.pickedQty) || 0;
+  if (!req || req.packedAt || !UNDO_OPEN.has(req.status) || picked < 1) return { flag: "late" };
+  const boxes = list(data.boxes);
+  const tote = boxes.find((b) => b.id === req.toteId);
+  const inTote = list(tote?.lines).find((l) => l.productId === pick.productId);
+  if (!tote || !(Number(inTote?.qty) > 0)) return { flag: "late" };
+  // Короб уехал с места, ушёл в работу или заморожен пересчётом — вернуть
+  // «на место» уже нельзя: штуку разбирает старший.
+  const frozen = list(data.disputes).some(
+    (d) => !d.resolution && INVENTORY_KINDS.has(d.kind) && d.boxId === pick.boxId,
+  );
+  const from = boxes.find((b) => b.id === pick.boxId);
+  if (!from || from === tote || frozen || cellKey(from.address) !== key) return { flag: "moved" };
+
+  const at = body.at;
+  const nextBoxes = boxes.map((b) => {
+    if (b === from) return { ...b, lines: addLine(b.lines, pick.productId, 1) };
+    if (b === tote) {
+      return {
+        ...b,
+        lines: list(b.lines)
+          .map((l) => (l.productId === pick.productId ? { ...l, qty: Number(l.qty) - 1 } : l))
+          .filter((l) => Number(l.qty) > 0),
+      };
+    }
+    return b;
+  });
+  const out = {
+    ...data,
+    boxes: nextBoxes,
+    staffEvents: [
+      ...events,
+      {
+        id: body.eventId,
+        staffId: staffRef,
+        type: "pick_undo",
+        at,
+        station: "picking",
+        productId: pick.productId,
+        code: String(tote.barcode ?? "").slice(0, 100),
+        requestId: req.id,
+        undoes: pick.id,
+      },
+    ],
+  };
+  const post = (merged) => ({
+    ...merged,
+    requests: list(merged.requests).map((r) => (r.id === req.id ? stepBack(r, picked, at) : r)),
+  });
+  return { data: out, post };
+}
+
+/** Где можно отменить скан: собирается или собрана, но ещё не упакована. */
+const UNDO_OPEN = new Set(["new", "in_progress", "done"]);
+
+/**
+ * Заявка на шаг назад: собранное −1. Собранная снова собирается; вернули
+ * последнюю штуку — заявка снова новая и свободна от тары.
+ */
+function stepBack(r, picked, at) {
+  const left = picked - 1;
+  const out = { ...r, pickedQty: left, updatedAt: at };
+  if (r.status === "done") {
+    delete out.partial;
+    delete out.pickedAt;
+  }
+  if (left === 0) {
+    out.status = "new";
+    delete out.toteId;
+  } else out.status = "in_progress";
+  return out;
+}
+
+module.exports = { applyPickUnit, applyPickDone, applyPickUndo, cellKey };

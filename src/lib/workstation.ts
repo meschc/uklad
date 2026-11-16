@@ -295,8 +295,12 @@ export function peaksByStaff(
   to: number,
 ): Map<string, Peaks> {
   const out = new Map<string, Peaks>();
+  // Отменённый скан сборки — не пик: штука вернулась на полку.
+  const undone = new Set(
+    events.flatMap((e) => (e.type === "pick_undo" && e.undoes ? [e.undoes] : [])),
+  );
   for (const e of events) {
-    if (e.at < from || e.at >= to) continue;
+    if (e.at < from || e.at >= to || undone.has(e.id)) continue;
     const kind =
       e.type === "pack_label" && e.productId ? "pack" : e.type === "pick_scan" ? "pick" : null;
     if (!kind) continue;

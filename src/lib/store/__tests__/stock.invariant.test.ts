@@ -188,6 +188,36 @@ describe("товар не теряется и не двоится на пути 
     expect(s().outboundBoxes[0].lines).toEqual([{ productId: "p-a", qty: 1 }]);
   });
 
+  it("отмена скана сборки: штука из тары обратно в свой короб, учёт сходится", () => {
+    const w = warehouse();
+    const { s, check } = w;
+    stock(w, "p-a", 3, C1);
+    const r = s().createRequest({ productId: "p-a", qty: 2, note: "Тула" });
+    const tote = s().createBox();
+    s().recordPick(r, "p-a", C1, tote.id, "s1");
+    s().recordPick(r, "p-a", C1, tote.id, "s1");
+    s().completeRequest(r);
+    const last = s()
+      .staffEvents.filter((e) => e.type === "pick_scan")
+      .at(-1)!;
+    // Чужой скан не отменить.
+    expect(s().undoPick(last.id, "s2")).toEqual({ problem: "not_yours" });
+    expect("id" in s().undoPick(last.id, "s1")).toBe(true);
+    check("отменён скан закрытой заявки");
+    const req = s().requests.find((x) => x.id === r)!;
+    expect([req.status, req.pickedQty]).toEqual(["in_progress", 1]);
+    expect(s().boxes.find((b) => b.id === tote.id)!.lines).toEqual([{ productId: "p-a", qty: 1 }]);
+    expect(onHand(s()).get("p-a")).toBe(3);
+    // Второй раз тот же скан не отменяется; скан остаётся в журнале.
+    expect(s().undoPick(last.id, "s1")).toEqual({ problem: "missing" });
+    expect(s().staffEvents.some((e) => e.id === last.id)).toBe(true);
+    const first = s().staffEvents.find((e) => e.type === "pick_scan")!;
+    s().undoPick(first.id, "s1");
+    check("отменены оба");
+    const empty = s().requests.find((x) => x.id === r)!;
+    expect([empty.status, empty.pickedQty, empty.toteId]).toEqual(["new", 0, undefined]);
+  });
+
   it("начатая заявка не докладывается в другую тару", () => {
     const w = warehouse();
     const { s, check } = w;
