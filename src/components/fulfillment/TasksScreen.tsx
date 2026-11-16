@@ -6,6 +6,7 @@ import {
   CalendarDays,
   ClipboardList,
   List,
+  ListTodo,
   MapPin,
   Play,
   Plus,
@@ -35,6 +36,7 @@ import { RequestCalendar } from "./RequestCalendar";
 import { printLabels } from "@/lib/printLabels";
 import { LabelPrint } from "./LabelPrint";
 import { WorkTasksPanel } from "./WorkTasksPanel";
+import { TaskQueue } from "./TaskQueue";
 import { ShipConfirm } from "./ShipConfirm";
 import { RequestDialog } from "./RequestDialog";
 
@@ -49,7 +51,7 @@ import { RequestDialog } from "./RequestDialog";
  * подсвечиваются.
  */
 
-type Section = "requests" | "work";
+type Section = "queue" | "requests" | "work";
 
 /**
  * «Задания» — всё, что склад должен сделать: заявки на сборку и работы склада
@@ -58,7 +60,9 @@ type Section = "requests" | "work";
  */
 export function TasksScreen() {
   const t = useT();
-  const [section, setSection] = useState<Section>("requests");
+  // Сначала вся очередь склада: где копится работа — видно до того, как
+  // открыли конкретный процесс (Кирилл 13.11).
+  const [section, setSection] = useState<Section>("queue");
   const sections = (
     <Segmented
       size="md"
@@ -67,12 +71,23 @@ export function TasksScreen() {
       onChange={setSection}
       ariaLabel={t("tasks.title")}
       options={[
+        { value: "queue" as const, label: t("tasks.section.queue"), icon: <ListTodo /> },
         { value: "requests" as const, label: t("tasks.section.requests"), icon: <ClipboardList /> },
         { value: "work" as const, label: t("tasks.section.work"), icon: <Wrench /> },
       ]}
     />
   );
   if (section === "requests") return <RequestsTasks sections={sections} />;
+  if (section === "queue") {
+    return (
+      <ScreenShell title={t("tasks.title")} subtitle={t("tasks.queueSubtitle")} wide>
+        {sections}
+        <div className="animate-tab-in">
+          <TaskQueue onSection={setSection} />
+        </div>
+      </ScreenShell>
+    );
+  }
   return (
     <ScreenShell title={t("tasks.title")} subtitle={t("tasks.workSubtitle")} wide>
       {sections}
