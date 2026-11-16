@@ -37,12 +37,29 @@ CREATE POLICY desk_switch_requests_own ON uklad.desk_switch_requests
 -- Заявки не удаляются: по ним видно, кто кого куда переводил.
 GRANT SELECT, INSERT, UPDATE ON uklad.desk_switch_requests TO uklad_app;
 
-ALTER TABLE uklad.desk_ops DROP CONSTRAINT desk_ops_kind_check;
-ALTER TABLE uklad.desk_ops ADD CONSTRAINT desk_ops_kind_check
-  CHECK (kind IN ('shift_mark', 'shift_undo', 'pack_event', 'pack_done', 'pick_unit', 'pick_done',
-                  'recv_open', 'recv_unit', 'recv_place', 'recv_attach', 'recv_close',
-                  'ship_run', 'dispute_resolve', 'recv_cargo', 'inv_count', 'sort_place',
-                  'sort_close', 'inv_cell', 'station_switch'));
+-- Вид операции дописываем к текущему ограничению, а не переписываем его
+-- полным списком: параллельные PR (#164 — pick_undo) дописывают свои виды,
+-- и порядок вливания не должен терять чужие.
+DO $$
+DECLARE
+  kinds text[];
+BEGIN
+  SELECT array_agg(m[1] ORDER BY m[1]) INTO kinds
+    FROM pg_constraint c,
+         regexp_matches(pg_get_constraintdef(c.oid), '''([a-z_]+)''', 'g') AS m
+   WHERE c.conname = 'desk_ops_kind_check'
+     AND c.conrelid = 'uklad.desk_ops'::regclass;
+  IF kinds IS NULL THEN
+    RAISE EXCEPTION 'desk_ops_kind_check не найдено';
+  END IF;
+  IF NOT 'station_switch' = ANY (kinds) THEN
+    kinds := kinds || 'station_switch'::text;
+  END IF;
+  ALTER TABLE uklad.desk_ops DROP CONSTRAINT desk_ops_kind_check;
+  EXECUTE format(
+    'ALTER TABLE uklad.desk_ops ADD CONSTRAINT desk_ops_kind_check CHECK (kind = ANY (%L::text[]))',
+    kinds);
+END $$;
 
 DROP FUNCTION auth.desk_journal(text, integer);
 
