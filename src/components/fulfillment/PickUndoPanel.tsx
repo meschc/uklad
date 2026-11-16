@@ -62,14 +62,15 @@ export function PickUndoPanel({
       pending={pending}
       error={error ?? problem}
       tone="destructive"
+      sheet
     >
       {res.ok && (
         <>
           <p className="text-sm">
             {t("pick.undo.body", {
               sku: products.find((p) => p.id === res.plan.pick.productId)?.sku ?? "—",
-              tote: res.plan.tote.barcode,
-              box: res.plan.from.barcode,
+              tote: unbroken(res.plan.tote.barcode),
+              box: unbroken(res.plan.from.barcode),
               addr: res.plan.from.address
                 ? (formatAddress(warehouse, res.plan.from.address) ?? "")
                 : "",
@@ -78,7 +79,7 @@ export function PickUndoPanel({
             })}
           </p>
           <p className="text-sm font-semibold">
-            {t("pick.undo.put", { box: res.plan.from.barcode })}
+            {t("pick.undo.put", { box: unbroken(res.plan.from.barcode) })}
           </p>
           <p className="text-xs text-muted-foreground">{t("pick.undo.journal")}</p>
         </>
@@ -86,3 +87,6 @@ export function PickUndoPanel({
     </Modal>
   );
 }
+
+/** Код тары не рвётся по дефису на узком экране: «UK-BOX-» / «28» читается как два кода. */
+const unbroken = (code: string) => code.replace(/-/g, "\u2011");

@@ -27,6 +27,7 @@ export function Modal({
   pending,
   error,
   tone,
+  sheet,
 }: {
   title: string;
   /** Значок в шапке, `size-4 text-muted-foreground`, как у «Сообщить о проблеме». */
@@ -42,10 +43,15 @@ export function Modal({
   error?: MsgKey | null;
   /** `destructive` — действие класса `confirm` (`actionRisk.ts`): меняет учёт. */
   tone?: "destructive";
+  /**
+   * Короткое подтверждение на ТСД: на телефоне шторка снизу, кнопки 40 px на
+   * всю ширину (`DialogShell` `sheet`).
+   */
+  sheet?: boolean;
 }) {
   const t = useT();
   return (
-    <DialogShell size="lg" scroll onClose={onClose}>
+    <DialogShell size="lg" scroll sheet={sheet} onClose={onClose}>
       {/* Шапка по образцу «Сообщить о проблеме»: значок, заголовок и крестик. */}
       <DialogHeader>
         <div className="flex min-w-0 items-center gap-2">
@@ -57,15 +63,32 @@ export function Modal({
         </Button>
       </DialogHeader>
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-5 py-4">{children}</div>
-      <DialogFooter spread={!!error}>
-        {error && <FormError className="flex-1 text-xs">{t(error)}</FormError>}
+      <DialogFooter spread={!!error && !sheet}>
+        {error && !sheet && <FormError className="flex-1 text-xs">{t(error)}</FormError>}
         {/* Отмену не блокируем даже во время команды: если запрос повис,
             единственный выход из окна не должен быть заперт вместе с ним. */}
-        <div className="flex shrink-0 items-center gap-2">
-          <Button size="sm" variant="ghost" onClick={onClose}>
+        <div
+          className={
+            sheet
+              ? "flex w-full flex-col-reverse gap-2 sm:w-auto sm:flex-row sm:items-center"
+              : "flex shrink-0 items-center gap-2"
+          }
+        >
+          <Button
+            size={sheet ? "lg" : "sm"}
+            variant="ghost"
+            className={sheet ? "w-full sm:w-auto" : undefined}
+            onClick={onClose}
+          >
             {t("common.cancel")}
           </Button>
-          <Button size="sm" variant={tone} disabled={disabled || pending} onClick={onSubmit}>
+          <Button
+            size={sheet ? "lg" : "sm"}
+            variant={tone}
+            className={sheet ? "w-full sm:w-auto" : undefined}
+            disabled={disabled || pending}
+            onClick={onSubmit}
+          >
             {pending && <Loader2 className="animate-spin" />}
             {pending
               ? t("data.busy")
@@ -73,6 +96,7 @@ export function Modal({
                 ? t("data.retry")
                 : (submitLabel ?? t("common.create"))}
           </Button>
+          {error && sheet && <FormError className="text-xs">{t(error)}</FormError>}
         </div>
       </DialogFooter>
     </DialogShell>

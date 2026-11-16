@@ -248,7 +248,12 @@ export function PickingScreen({ autoStart = false }: { autoStart?: boolean } = {
   };
 
   const undoButton = undoable && (
-    <Button size="sm" variant="ghost" className="self-start" onClick={() => setUndoId(undoable.id)}>
+    // На ТСД — под палец (40 px), на столе — как остальные кнопки (32 px).
+    <Button
+      variant="outline"
+      className="h-10 self-start sm:h-8"
+      onClick={() => setUndoId(undoable.id)}
+    >
       <Undo2 className="size-3.5" />
       {t("pick.undo.start")}
     </Button>
