@@ -68,7 +68,7 @@ describe("меню по правам роли (разделы, 033)", () => {
     ]);
     for (const v of ["spec", "operations", "integrations", "devices"])
       expect(lead).not.toContain(v);
-    for (const v of ["tasks", "disputes", "chat", "staff", "analytics", "workstation"])
+    for (const v of ["tasks", "approvals", "chat", "staff", "analytics", "workstation"])
       expect(lead).toContain(v);
   });
 
@@ -82,7 +82,7 @@ describe("меню по правам роли (разделы, 033)", () => {
     ]);
     expect(picker).toContain("tasks");
     expect(picker).toContain("workstation");
-    for (const v of ["disputes", "chat", "staff", "analytics", "spec"])
+    for (const v of ["approvals", "chat", "staff", "analytics", "spec"])
       expect(picker).not.toContain(v);
   });
 });

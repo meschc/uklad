@@ -312,7 +312,6 @@ export const ru = {
   "nav.side.lookup": "Что это?",
   "nav.side.integrations": "Интеграции",
   "nav.side.devices": "Устройства",
-  "nav.side.disputes": "Спорные",
   "nav.side.approvals": "Подтверждения",
 
   // --- Справка о новых возможностях ------------------------------------------
@@ -640,7 +639,6 @@ export const en: Record<keyof typeof ru, string> = {
   "nav.side.lookup": "What is it?",
   "nav.side.integrations": "Integrations",
   "nav.side.devices": "Devices",
-  "nav.side.disputes": "Disputes",
   "nav.side.approvals": "Approvals",
 
   // --- Help on the new features -------------------------------------------------
