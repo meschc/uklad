@@ -431,6 +431,34 @@ test(
   },
 );
 
+test(
+  "подбор пароля через отвязку стола упирается в тот же замок, что вход",
+  {
+    skip: SKIP,
+  },
+  async () => {
+    const { a } = await company("desk-lock@sklad.ru", "10.0.3.20");
+    const desk = await makeDesk(a);
+    const ip = "10.0.3.21";
+    const body = { email: "desk-lock@sklad.ru", password: "не-тот-пароль" };
+    for (let i = 0; i < 5; i++) {
+      const r = await call("/api/desk/unbind", { desk, body, ip });
+      assert.equal(r.status, 422);
+    }
+    const locked = await call("/api/desk/unbind", { desk, body, ip });
+    assert.deepEqual([locked.status, locked.json.error], [429, "locked"]);
+    // Замок общий: вход паролем с той же почтой и того же адреса тоже закрыт,
+    // даже с верным паролем.
+    const login = await call("/api/auth/login", {
+      body: { email: "desk-lock@sklad.ru", password: PW },
+      ip,
+    });
+    assert.deepEqual([login.status, login.json.error], [429, "locked"]);
+    // Стол на месте: замок не гасит его пропуск.
+    assert.equal((await call("/api/auth/me", { desk })).status, 200);
+  },
+);
+
 test("стол чужой компании бейдж не узнаёт", { skip: SKIP }, async () => {
   const { ivan } = await company("desk-e@sklad.ru", "10.0.3.5");
   const { a: b } = await company("desk-f@sklad.ru", "10.0.3.6");
