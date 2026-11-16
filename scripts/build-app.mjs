@@ -45,5 +45,8 @@ for (const entry of CABINET_PUBLIC) {
   cpSync(join("public", entry), join(OUT, entry), { recursive: true });
 }
 writeFileSync(join(OUT, "robots.txt"), ROBOTS);
+// Воркер стола без сети: лежит рядом со страницей и управляет ею (на основном
+// домене — `/app/sw.js`, здесь страница в корне).
+cpSync(join("public", "app", "sw.js"), join(OUT, "sw.js"));
 
 console.log(`Кабинет: ${OUT}/index.html, из public/ — ${CABINET_PUBLIC.join(", ")}, robots.txt`);

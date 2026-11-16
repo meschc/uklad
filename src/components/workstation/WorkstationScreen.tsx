@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import type { ShiftMark, WorkstationKind } from "@/lib/types";
 import {
   ArrowLeft,
@@ -18,7 +18,7 @@ import {
   WifiOff,
 } from "lucide-react";
 import { boundDevice, useEditor } from "@/lib/store";
-import { STUCK_MS, usePendingOps, workstationRepository } from "@/lib/data";
+import { STUCK_MS, offlineLimitReached, usePendingOps, workstationRepository } from "@/lib/data";
 import { isSessionLive, STATION_KEY_LABEL } from "@/lib/workstation";
 import { mayDecideGoods } from "@/lib/docFlow";
 import { sizeLabel, useLabelPrinter } from "@/lib/labelPrinter";
@@ -36,6 +36,7 @@ import { PickingScreen } from "@/components/fulfillment/PickingScreen";
 import { EmptyState } from "@/components/fulfillment/ScreenShell";
 import { BadgeLogin } from "./BadgeLogin";
 import { BindDeviceForm } from "./BindDeviceForm";
+import { disableOfflineShell, enableOfflineShell } from "@/lib/offlineShell";
 import { UnbindDevice } from "./UnbindDevice";
 import { SortStation } from "./SortStation";
 import { KeyHint } from "./KeyHint";
@@ -87,6 +88,8 @@ export function WorkstationScreen() {
   const openDisputes = useEditor((s) => s.disputes.filter((d) => !d.resolution).length);
   const [opened, setOpened] = useState<{ panel: Panel; owner?: string }>({ panel: null });
   const [unbinding, setUnbinding] = useState(false);
+  // Привязанный стол открывается и без сети; отвязанный — обычный компьютер.
+  useEffect(() => (device ? enableOfflineShell() : disableOfflineShell()), [device]);
 
   const live = isSessionLive(session, now);
   const member = live ? (staff ?? []).find((m) => m.id === session!.staffId) : undefined;
@@ -265,7 +268,9 @@ export function WorkstationScreen() {
         ) : (
           <div className="mx-auto flex max-w-5xl flex-col gap-5 px-4 py-6">
             <ShiftGate staffId={member.id}>
-              <StationTask station={station} staffId={member.id} />
+              <OfflineGate>
+                <StationTask station={station} staffId={member.id} />
+              </OfflineGate>
             </ShiftGate>
             <ShiftCodes staffId={member.id} />
           </div>
@@ -531,8 +536,11 @@ function NetworkBanner() {
     <p
       role="status"
       className={cn(
-        "flex shrink-0 items-center gap-2 px-4 py-1.5 text-sm font-medium md:mx-2 md:mb-2 md:rounded-lg",
-        net === "offline" ? "bg-destructive text-destructive-foreground" : "bg-warning text-black",
+        // Поля — как у рабочей области под ней: полоса не шире окна.
+        "mx-3 mb-2 flex shrink-0 items-center gap-2 rounded-lg px-4 py-1.5 text-sm font-medium",
+        // Без связи работа идёт дальше — это предупреждение, а не авария:
+        // красная полоса пугала и звала обновлять страницу.
+        "bg-warning text-black",
       )}
     >
       {net === "offline" ? <WifiOff className="size-4" /> : <Wifi className="size-4" />}
@@ -559,6 +567,25 @@ function PendingOps() {
       <CloudOff className="size-4" />
       {t("ws.opPending", { n: count })}
     </p>
+  );
+}
+
+/**
+ * Предел работы без сервера (`offlineLimitReached`): дальше стол не копит —
+ * задание закрыто, пока очередь не уйдёт. Смена, перерыв и журнал остаются.
+ * Ничего не теряется: очередь лежит на этом компьютере и уйдёт сама.
+ */
+function OfflineGate({ children }: { children: ReactNode }) {
+  const t = useT();
+  const now = useNow(10_000);
+  const pending = usePendingOps();
+  if (!offlineLimitReached(pending, now)) return <>{children}</>;
+  return (
+    <div className="mx-auto flex max-w-md flex-col items-center gap-3 py-10 text-center">
+      <CloudOff className="size-10 text-warning" strokeWidth={1.5} aria-hidden />
+      <h2 className="text-lg font-semibold">{t("ws.offline.limitTitle")}</h2>
+      <p className="text-sm text-muted-foreground">{t("ws.offline.limitBody")}</p>
+    </div>
   );
 }
 
