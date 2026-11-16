@@ -25,7 +25,7 @@
  *   POST /api/staff/badge   — выпустить бейдж сотруднику на склад (staff.manage)
  *   POST /api/staff/badge/revoke — погасить потерянный бейдж (staff.manage)
  */
-/* global require, module */
+/* global require, module, URL */
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { isEmail, looksLikeEmail } = require("../validate");
 const { randomBytes, randomInt, createHash } = require("node:crypto");
@@ -66,6 +66,27 @@ function maskAddress(text, address) {
 const sha256 = (s) => createHash("sha256").update(s).digest();
 const newSecret = (bytes) => randomBytes(bytes).toString("base64url");
 const ms = (n) => `${n / 1000} seconds`;
+
+/**
+ * Куда продавцу (миграция 039, `members.partner_ref`) можно ходить: вход и
+ * свой снимок, который сервер режет по строкам (`seller.js`). Это разрешённый
+ * список, а не запретный: новый маршрут кабинета продавцу закрыт сам, даже
+ * если роль ему кто-то расширил в обход базы (миграция 043).
+ */
+const sellerMay = (req) => {
+  const path = new URL(req.url ?? "/", "http://local").pathname;
+  return (
+    path.startsWith("/api/auth/") || (path === "/api/cabinet/snapshot" && req.method === "GET")
+  );
+};
+
+/** Отказ продавцу: обработчик сервера отвечает на него 403, а не 500. */
+class SellerForbidden extends Error {
+  constructor() {
+    super("seller");
+    this.httpStatus = 403;
+  }
+}
 
 function cookieValue(req, name) {
   for (const part of (req.headers.cookie ?? "").split(";")) {
@@ -132,6 +153,8 @@ function createAuth({ pool, cfg, send, readBody, log, mail, onRegister = null })
         req.headers["x-uklad-warehouse"],
       );
       if (!s?.member_id) return null;
+      const place = (await c.query(`SELECT partner_ref FROM auth.actor_place()`)).rows[0];
+      if (place?.partner_ref && !sellerMay(req)) throw new SellerForbidden();
       return fn(c, {
         accountId: s.account_id,
         orgId: s.org_id,
@@ -521,7 +544,7 @@ function createAuth({ pool, cfg, send, readBody, log, mail, onRegister = null })
       await route(req, res, url);
     } catch (err) {
       log.error("[uklad] сбой входа:", err.message);
-      if (!res.headersSent) send(res, 500, { ok: false });
+      if (!res.headersSent) send(res, err?.httpStatus === 403 ? 403 : 500, { ok: false });
     }
     return true;
   }
