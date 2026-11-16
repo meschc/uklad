@@ -36,7 +36,8 @@ export type AppView =
   | "workstation"
   | "devices"
   | "disputes"
-  | "approvals";
+  | "approvals"
+  | "journal";
 
 /**
  * Аккаунт (ТЗ, разд. 3.2): личный или компании. От типа зависит, что
