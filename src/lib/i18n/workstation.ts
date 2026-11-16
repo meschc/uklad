@@ -172,6 +172,8 @@ export const ru = {
   "ws.ship.notUnit": "Это не паллета и не короб: {code}",
   "ws.net.offline": "Нет связи с сервером. Работайте дальше",
   "ws.net.weak": "Слабая связь: экран может отвечать медленно",
+  "ws.fullscreen.enter": "Во весь экран",
+  "ws.fullscreen.exit": "Выйти из полного экрана",
   "ws.offline.limitTitle": "Нет связи с сервером",
   "ws.offline.limitBody": "Задания откроются, когда связь вернётся.",
   "ws.ship.locked":
@@ -719,6 +721,8 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.ship.notUnit": "Not a pallet or box: {code}",
   "ws.net.offline": "No connection to the server. Keep working",
   "ws.net.weak": "Weak connection: the screen may respond slowly",
+  "ws.fullscreen.enter": "Full screen",
+  "ws.fullscreen.exit": "Exit full screen",
   "ws.offline.limitTitle": "No connection to the server",
   "ws.offline.limitBody": "Tasks will open once the connection is back.",
   "ws.ship.locked":
