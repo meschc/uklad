@@ -11,7 +11,8 @@ import { Modal } from "./Modal";
  * Подтверждение отмены скана в сборке. Класс `confirm` (`actionRisk.ts`):
  * штука переезжает из тары обратно в короб, поэтому панель называет, что
  * именно вернётся, откуда и куда, и сколько станет собрано. Физически штуку
- * кладёт сам сборщик — панель просит сделать это до подтверждения.
+ * кладёт сам сборщик: кнопка «Вернул в короб» — это и есть подтверждение.
+ * Лишних подписей нет (Кирилл 16.11: «много текста ненужного»).
  */
 export function PickUndoPanel({
   pickId,
@@ -65,24 +66,17 @@ export function PickUndoPanel({
       sheet
     >
       {res.ok && (
-        <>
-          <p className="text-sm">
-            {t("pick.undo.body", {
-              sku: products.find((p) => p.id === res.plan.pick.productId)?.sku ?? "—",
-              tote: unbroken(res.plan.tote.barcode),
-              box: unbroken(res.plan.from.barcode),
-              addr: res.plan.from.address
-                ? (formatAddress(warehouse, res.plan.from.address) ?? "")
-                : "",
-              left: (res.plan.request.pickedQty ?? 1) - 1,
-              total: res.plan.request.qty,
-            })}
-          </p>
-          <p className="text-sm font-semibold">
-            {t("pick.undo.put", { box: unbroken(res.plan.from.barcode) })}
-          </p>
-          <p className="text-xs text-muted-foreground">{t("pick.undo.journal")}</p>
-        </>
+        <p className="text-sm">
+          {t("pick.undo.body", {
+            sku: products.find((p) => p.id === res.plan.pick.productId)?.sku ?? "—",
+            box: unbroken(res.plan.from.barcode),
+            addr: res.plan.from.address
+              ? (formatAddress(warehouse, res.plan.from.address) ?? "")
+              : "",
+            left: (res.plan.request.pickedQty ?? 1) - 1,
+            total: res.plan.request.qty,
+          })}
+        </p>
       )}
     </Modal>
   );
