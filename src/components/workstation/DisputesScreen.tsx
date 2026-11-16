@@ -24,6 +24,7 @@ import { EmptyState, ScreenShell } from "@/components/fulfillment/ScreenShell";
 import { formatAddress } from "@/lib/address";
 import { useNow } from "./useNow";
 import { FormError } from "@/components/ui/field";
+import { CodeTail } from "@/components/fulfillment/CodeTail";
 
 /** Поле причины открывается под рукой: сразу в него и печатают. */
 const focusOnMount = (el: HTMLInputElement | null) => el?.focus();
@@ -396,7 +397,11 @@ function Line({
         <span className="tabular-nums text-muted-foreground">× {d.qty}</span>
       </p>
       <p className="text-sm text-muted-foreground">
-        {d.toteCode && <span className="font-mono">{d.toteCode} · </span>}
+        {d.toteCode && (
+          <span>
+            <CodeTail code={d.toteCode} /> ·{" "}
+          </span>
+        )}
         {t("disputes.raised", { who, at: fmt(d.raisedAt) })}
       </p>
       {d.writeOffRequest && (

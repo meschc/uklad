@@ -247,6 +247,7 @@ export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get)
     if (problem === "tote_mixed_seller") return "ws.tote.mixedSeller";
     if (problem === "target_other_seller") return "ws.tote.otherSeller";
     if (problem === "target_other_target") return "ws.tote.otherTarget";
+    if (problem === "target_sorted") return "ws.tote.targetSorted";
     set({
       packSession: {
         id: uid("pack"),

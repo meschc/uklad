@@ -1,6 +1,7 @@
 import { Check, Package } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ScanStatus } from "../ScanField";
+import { CodeText } from "../CodeTail";
 
 /**
  * Единственная строка состояния экрана: сюда попадает и «не тот штрихкод», и
@@ -26,7 +27,7 @@ export function ScanStatusLine({ status, msg }: { status: ScanStatus; msg?: stri
       role="status"
     >
       {good ? <Check className="size-3.5 shrink-0" /> : <Package className="size-3.5 shrink-0" />}
-      {msg}
+      <CodeText text={msg} />
     </div>
   );
 }

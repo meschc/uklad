@@ -13,6 +13,7 @@ import { card } from "@/components/ui/card";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { ScanField, type ScanStatus } from "@/components/fulfillment/ScanField";
 import { useDemoHints } from "./useDemoHints";
+import { CodeTail } from "@/components/fulfillment/CodeTail";
 
 /**
  * Сканы перед началом: тара с товаром и, для поставки (FBO), короб поставки.
@@ -90,9 +91,9 @@ export function ToteStart() {
       ) : (
         <>
           <div className="flex items-center justify-between gap-3">
-            <p className="flex items-center gap-2 font-mono text-sm">
+            <p className="flex items-center gap-2 text-sm">
               <PackageOpen className="size-4 text-muted-foreground" />
-              {source}
+              <CodeTail code={source} />
             </p>
             <Button variant="ghost" size="sm" onClick={() => setSource(null)}>
               {t("ws.tote.change")}
@@ -130,7 +131,7 @@ export function ToteStart() {
                   })}
                   onClick={() => pickSource(b.barcode)}
                 >
-                  <span className="font-mono text-sm">{b.barcode}</span>
+                  <CodeTail code={b.barcode} className="text-sm" />
                   <span className="whitespace-nowrap text-xs tabular-nums text-muted-foreground">
                     {t("ws.tote.units", { n: b.lines.reduce((n, l) => n + l.qty, 0) })}
                   </span>

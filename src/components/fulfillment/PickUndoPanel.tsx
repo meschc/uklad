@@ -6,6 +6,7 @@ import { planPickUndo } from "@/lib/pickUndo";
 import { workstationRepository } from "@/lib/data/workstationRepository";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { Modal } from "./Modal";
+import { CodeText } from "./CodeTail";
 
 /**
  * Подтверждение отмены скана в сборке. Класс `confirm` (`actionRisk.ts`):
@@ -68,24 +69,23 @@ export function PickUndoPanel({
       {res.ok && (
         <>
           <p className="text-sm">
-            {t("pick.undo.body", {
-              sku: products.find((p) => p.id === res.plan.pick.productId)?.sku ?? "—",
-              box: unbroken(res.plan.from.barcode),
-              addr: res.plan.from.address
-                ? (formatAddress(warehouse, res.plan.from.address) ?? "")
-                : "",
-              left: (res.plan.request.pickedQty ?? 1) - 1,
-              total: res.plan.request.qty,
-            })}
+            <CodeText
+              text={t("pick.undo.body", {
+                sku: products.find((p) => p.id === res.plan.pick.productId)?.sku ?? "—",
+                box: res.plan.from.barcode,
+                addr: res.plan.from.address
+                  ? (formatAddress(warehouse, res.plan.from.address) ?? "")
+                  : "",
+                left: (res.plan.request.pickedQty ?? 1) - 1,
+                total: res.plan.request.qty,
+              })}
+            />
           </p>
           <p className="text-sm font-semibold">
-            {t("pick.undo.put", { box: unbroken(res.plan.from.barcode) })}
+            <CodeText text={t("pick.undo.put", { box: res.plan.from.barcode })} />
           </p>
         </>
       )}
     </Modal>
   );
 }
-
-/** Код тары не рвётся по дефису на узком экране: «UK-BOX-» / «28» читается как два кода. */
-const unbroken = (code: string) => code.replace(/-/g, "\u2011");

@@ -28,6 +28,7 @@ import { useDemoHints } from "@/components/workstation/useDemoHints";
 import { FieldError, FormError } from "@/components/ui/field";
 import { lastPick } from "@/lib/pickUndo";
 import { PickUndoPanel } from "./PickUndoPanel";
+import { CodeTail, CodeText } from "./CodeTail";
 
 /**
  * Экран «Сборка» (п.8) — зеркало приёмки по духу, но с обратной строгостью:
@@ -191,18 +192,21 @@ export function PickingScreen({ autoStart = false }: { autoStart?: boolean } = {
   const onScanItem = async (raw: string) => {
     if (!active || !addr || !product) return;
     const mark = parseHonestSignMock(raw);
+    // Код в ответе — целиком, хвост выделен (`CodeText`): сборщик сверяет
+    // экран с этикеткой в руке.
+    const code = mark.raw;
     const matches =
       matchesProductCode(product, raw) ||
       (mark ? mark.gtin.endsWith(product.barcode.slice(1)) : false);
     if (!matches) {
-      fail("pick.item.wrong", { sku: product.sku });
+      fail("pick.item.wrong", { sku: product.sku, code });
       return;
     }
     // Маркированная единица уникальна — второй скан того же серийника это не
     // «ещё одна штука», а промах мимо коробки.
     if (mark?.serial) {
       if (seenSerials.has(mark.serial)) {
-        fail("pick.item.duplicate", { serial: mark.serial });
+        fail("pick.item.duplicate", { code });
         return;
       }
       setSeenSerials((prev) => new Set(prev).add(mark.serial));
@@ -223,13 +227,13 @@ export function PickingScreen({ autoStart = false }: { autoStart?: boolean } = {
       // 8.4 — собрано ровно запрошенное: заявка закрывается сама.
       void workstationRepository.pickDone(active.id, false);
       setRecentId(active.id);
-      ok("pick.item.completed", { n: now });
+      ok("pick.item.completed", { n: now, code });
       setStep("queue");
       setActiveId(null);
       setAddr(null);
       return;
     }
-    ok("pick.item.counted", { n: now, total: active.qty });
+    ok("pick.item.counted", { n: now, total: active.qty, code });
   };
 
   const afterUndo = (left: number, total: number) => {
@@ -289,7 +293,7 @@ export function PickingScreen({ autoStart = false }: { autoStart?: boolean } = {
           ) : (
             <AlertTriangle className="size-3.5 shrink-0" />
           )}
-          {scan.msg}
+          <CodeText text={scan.msg} />
         </div>
       )}
 
@@ -417,7 +421,9 @@ export function PickingScreen({ autoStart = false }: { autoStart?: boolean } = {
 
           {step !== "tote" && tote && (
             <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
-              <span className="font-mono">{t("pick.tote.current", { code: tote.barcode })}</span>
+              <span>
+                <CodeText text={t("pick.tote.current", { code: tote.barcode })} />
+              </span>
               <Button size="sm" variant="ghost" onClick={() => setStep("tote")}>
                 {t("pick.tote.change")}
               </Button>
@@ -638,7 +644,7 @@ function SuggestedPlaces({
             <span className="font-mono">{formatAddress(warehouse, l.addr)}</span>
             <span className="tabular-nums text-muted-foreground">× {l.qty}</span>
             {l.boxBarcode && (
-              <span className="font-mono text-2xs text-muted-foreground">{l.boxBarcode}</span>
+              <CodeTail code={l.boxBarcode} className="text-2xs text-muted-foreground" />
             )}
           </button>
         ))}
