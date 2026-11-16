@@ -4,6 +4,8 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useEditor } from "@/lib/store";
 import { WorkstationScreen } from "../WorkstationScreen";
+import { formatAddress } from "@/lib/address";
+import type { CellAddress } from "@/lib/types";
 
 /**
  * Слепой пересчёт: сколько должно быть по учёту, экран не показывает ни до
@@ -97,5 +99,55 @@ describe("Инвентаризация у стола", () => {
     render(<WorkstationScreen />);
     await userEvent.type(screen.getByRole("textbox"), "UK-BOX-999999{enter}");
     await screen.findByText(/Не нашли такую тару/);
+  });
+
+  test("пустая ячейка: «пусто» записывается, найденное уходит излишком на свободную тару", async () => {
+    const product = setup();
+    const w = useEditor.getState().warehouse;
+    const floor = w.floors[0];
+    const m = floor.modules.find((x) => x.type === "section" && x.shelves?.length);
+    if (!m) throw new Error("в демо нет секции с полками");
+    const cell: CellAddress = { floorId: floor.id, moduleId: m.id, shelfIndex: 0, cellIndex: 0 };
+    const label = formatAddress(w, cell);
+    useEditor.setState((s) => ({
+      boxes: [...s.boxes, { id: "t1", barcode: "UK-BOX-000500", createdAt: 1, lines: [] }],
+      placements: {},
+    }));
+    render(<WorkstationScreen />);
+
+    await userEvent.type(screen.getByRole("textbox"), `${label}{enter}`);
+    await userEvent.click(await screen.findByRole("button", { name: /Ячейка пуста/ }));
+    await screen.findByText(/Записали: ячейка пуста/);
+    expect(useEditor.getState().disputes).toEqual([]);
+
+    await userEvent.type(screen.getByRole("textbox"), `${label}{enter}`);
+    await screen.findByText(/Сканируйте каждый товар, найденный/);
+    await userEvent.type(screen.getAllByRole("textbox")[0], `${product.barcode}{enter}`);
+    const finish = await screen.findByRole("button", { name: /Передать излишек старшему/ });
+    expect((finish as HTMLButtonElement).disabled).toBe(true);
+    await userEvent.type(screen.getAllByRole("textbox").at(-1)!, "UK-BOX-000500{enter}");
+    await screen.findByText(/Найденное — в таре/);
+    await userEvent.click(finish);
+    await screen.findByText(/Расхождение передано старшему/);
+    const st = useEditor.getState();
+    expect(st.boxes.find((b) => b.id === "t1")?.address).toEqual(cell);
+    expect(st.disputes).toMatchObject([
+      { kind: "inventory_over", boxId: "t1", productId: product.id, qty: 1 },
+    ]);
+  });
+
+  test("ячейка с товаром без тары по учёту — не пустая: пересчёт не открывается", async () => {
+    const product = setup();
+    const w = useEditor.getState().warehouse;
+    const floor = w.floors[0];
+    const m = floor.modules.find((x) => x.type === "section" && x.shelves?.length);
+    if (!m) throw new Error("в демо нет секции с полками");
+    const cell: CellAddress = { floorId: floor.id, moduleId: m.id, shelfIndex: 0, cellIndex: 0 };
+    useEditor.setState({ placements: { [product.id]: cell }, pallets: [] });
+    render(<WorkstationScreen />);
+
+    await userEvent.type(screen.getByRole("textbox"), `${formatAddress(w, cell)}{enter}`);
+    await screen.findByText(/По учёту в ячейке уже есть паллета, тара или товар/);
+    expect(screen.queryByRole("button", { name: /Ячейка пуста/ })).toBeNull();
   });
 });

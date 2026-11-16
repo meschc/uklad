@@ -22,7 +22,7 @@ export interface ServerOrg {
   warehouse: boolean;
   seller: boolean;
   role: string;
-  /** Продавец склада (миграция 038): кабинет открывается ролью продавца. */
+  /** Продавец склада (миграция 039): кабинет открывается ролью продавца. */
   partnerRef?: string;
 }
 

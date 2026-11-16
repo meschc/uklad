@@ -1,4 +1,4 @@
-// Миграция 038 в складе, заведённом до неё: появляется роль «Продавец» без
+// Миграция 039 в складе, заведённом до неё: появляется роль «Продавец» без
 // прав (её ставит приглашение продавца). Компании под FORCE RLS владельцу
 // миграций не видны: склад узнаётся по роли начальника склада, иначе роль
 // молча не появилась бы ни у кого (так и было в первой версии миграции).
@@ -16,8 +16,8 @@ const ADMIN_URL =
 const PW = "uklad-test-only";
 const DIR = fileURLToPath(new URL("../migrations/", import.meta.url));
 
-test("склад заведён до 038 — появляется роль «Продавец» без прав", async () => {
-  const name = `uklad_m038_${randomBytes(4).toString("hex")}`;
+test("склад заведён до 039 — появляется роль «Продавец» без прав", async () => {
+  const name = `uklad_m039_${randomBytes(4).toString("hex")}`;
   const admin = new pg.Client({ connectionString: ADMIN_URL });
   await admin.connect();
   // Миграции идут под владельцем таблиц, как в бою: суперпользователь обошёл
@@ -43,10 +43,10 @@ test("склад заведён до 038 — появляется роль «П�
       .filter((f) => /^\d{3}_.+\.sql$/.test(f))
       .sort();
     const apply = async (f) => c.query(readFileSync(DIR + f, "utf8"));
-    for (const f of files.filter((f) => f < "038_")) await apply(f);
-    await root.query(`INSERT INTO uklad.orgs (name, has_warehouse) VALUES ('До 038', true)`);
+    for (const f of files.filter((f) => f < "039_")) await apply(f);
+    await root.query(`INSERT INTO uklad.orgs (name, has_warehouse) VALUES ('До 039', true)`);
     await root.query(`INSERT INTO uklad.orgs (name, has_seller) VALUES ('Селлер', true)`);
-    await apply(files.find((f) => f.startsWith("038_")));
+    await apply(files.find((f) => f.startsWith("039_")));
     const seller = async (org) =>
       (
         await root.query(
@@ -55,10 +55,10 @@ test("склад заведён до 038 — появляется роль «П�
           [org],
         )
       ).rows;
-    assert.deepEqual(await seller("До 038"), [{ permissions: [] }]);
+    assert.deepEqual(await seller("До 039"), [{ permissions: [] }]);
     assert.equal((await seller("Селлер")).length, 0);
-    await root.query(`INSERT INTO uklad.orgs (name, has_warehouse) VALUES ('После 038', true)`);
-    assert.deepEqual(await seller("После 038"), [{ permissions: [] }]);
+    await root.query(`INSERT INTO uklad.orgs (name, has_warehouse) VALUES ('После 039', true)`);
+    assert.deepEqual(await seller("После 039"), [{ permissions: [] }]);
   } finally {
     await c.end();
     await root.end();

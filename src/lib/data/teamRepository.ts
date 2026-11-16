@@ -25,7 +25,7 @@ export interface TeamMember {
   warehouseRef?: string | null;
   /** Карточка сотрудника на этом складе; `null` — входа у карточки нет. */
   staffRef?: string | null;
-  /** Продавец склада (миграция 038): за каким партнёром закреплён. */
+  /** Продавец склада (миграция 039): за каким партнёром закреплён. */
   partnerRef?: string | null;
 }
 
@@ -60,7 +60,7 @@ export interface TeamState {
   deskRoles: Record<string, string>;
 }
 
-/** Роль «Продавец» (миграция 038): по умолчанию и без прав. */
+/** Роль «Продавец» (миграция 039): по умолчанию и без прав. */
 const isSellerRole = (r: TeamRole) =>
   r.builtIn && r.name === "Продавец" && r.permissions.length === 0;
 

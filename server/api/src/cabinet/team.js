@@ -11,7 +11,7 @@
  *   GET  /api/team              — { members, roles, permissions, me }
  *   POST /api/team/invite       — { email, roleId, name?, warehouseRef, staffRef? } → письмо
  *                                 или { email, name?, warehouseRef, partnerRef } — продавец
- *                                 (миграция 038): роль «Продавец», видит только свой товар
+ *                                 (миграция 039): роль «Продавец», видит только свой товар
  *   POST /api/team/place        — { memberId, warehouseRef, staffRef? } — склад и карточка
  *   POST /api/team/invite/revoke — { memberId }
  *   POST /api/team/role         — { memberId, roleId }
@@ -223,7 +223,7 @@ function createTeam({ auth, cfg, send, log }) {
     }
   }
 
-  /** Роль «Продавец» компании (миграция 038): по умолчанию и без прав. */
+  /** Роль «Продавец» компании (миграция 039): по умолчанию и без прав. */
   async function sellerRole(c) {
     const { rows } = await c.query(
       `SELECT id FROM uklad.roles

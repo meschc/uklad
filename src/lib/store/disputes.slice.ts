@@ -8,7 +8,7 @@ import {
   writeOffProblem,
   writesOffGoods,
 } from "../disputes";
-import { planCount } from "../inventory";
+import { planCellCount, planCount } from "../inventory";
 import type { DisputesSlice, SliceCreator } from "./state";
 
 /**
@@ -131,5 +131,19 @@ export const createDisputesSlice: SliceCreator<DisputesSlice> = (set, get) => ({
       disputes: [...plan.disputes, ...x.disputes],
     }));
     return { diffs: plan.diffs };
+  },
+
+  countCell: (input) => {
+    const s = get();
+    const place = { boxes: s.boxes, pallets: s.pallets, placements: s.placements };
+    const plan = planCellCount(place, new Set(s.products.map((p) => p.id)), input);
+    if ("problem" in plan) return plan;
+    const { box } = plan;
+    if (!box) return { found: 0 };
+    set((x) => ({
+      boxes: x.boxes.map((b) => (b.id === box.id ? box : b)),
+      disputes: [...plan.disputes, ...x.disputes],
+    }));
+    return { found: plan.disputes.length };
   },
 });

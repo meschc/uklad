@@ -4,7 +4,13 @@ import type { StateCreator } from "zustand";
 import type { MsgKey } from "../i18n";
 import type { Notice, NoticeInput, NoticeTone } from "../notice";
 import type { ItemScan, PackDoneFacts } from "../packing";
-import type { CountDiff, CountInput, CountProblem } from "../inventory";
+import type {
+  CellCountInput,
+  CellCountProblem,
+  CountDiff,
+  CountInput,
+  CountProblem,
+} from "../inventory";
 import type {
   BackupSettings,
   Subscription,
@@ -876,6 +882,11 @@ export interface DisputesSlice {
    * или причину отказа (`CountProblem`).
    */
   countBox: (input: CountInput) => { diffs: CountDiff[] } | { problem: CountProblem };
+  /**
+   * Пересчёт ячейки без тары: «пусто» (`found: 0`) или излишек на свободную
+   * тару, поставленную в ячейку (`planCellCount`).
+   */
+  countCell: (input: CellCountInput) => { found: number } | { problem: CellCountProblem };
 }
 
 export interface OperationsSlice {

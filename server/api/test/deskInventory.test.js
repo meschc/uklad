@@ -8,7 +8,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { applyInvCount } = require("../src/cabinet/deskInventory");
+const { applyInvCount, applyInvCell } = require("../src/cabinet/deskInventory");
 const { applyDisputeResolve } = require("../src/cabinet/deskShip");
 const { mergeDeskWrite } = require("../src/cabinet/desks");
 
@@ -234,4 +234,97 @@ test("тара с нерешённым расхождением: в неё не 
   assert.equal(applyRecvAttach(d, { boxId: "b2", palletId: "pl1" }).flag, "stock");
   d.disputes = [];
   assert.equal(applyRecvAttach(d, { boxId: "b2", palletId: "pl1" }).flag, undefined);
+});
+
+// Пересчёт ячейки без тары: план склада с двумя ячейками на полке m1.
+const withPlan = () => ({
+  ...data(),
+  warehouse: {
+    ...data().warehouse,
+    floors: [{ id: "f1", modules: [{ id: "m1", shelves: [{ id: "s0", cells: 2 }] }] }],
+  },
+  boxes: [...data().boxes, { id: "b4", barcode: "UK-BOX-4", lines: [] }],
+});
+const FREE = { ...ADDR, cellIndex: 1 };
+const cellCount = (lines, over = {}) => ({ eventId: "icc-1", at: AT, cell: FREE, lines, ...over });
+
+test("пустая ячейка: «пусто» не трогает снимок, ячейка с тарой — считают тару", () => {
+  const d = withPlan();
+  const empty = applyInvCell(d, cellCount([]), "stf-ivan");
+  assert.equal(empty.flag, undefined);
+  assert.equal(empty.data, d);
+  assert.equal(applyInvCell(d, cellCount([], { cell: ADDR }), "stf-ivan").flag, "busy");
+  assert.equal(
+    applyInvCell(d, cellCount([], { cell: { ...ADDR, moduleId: "x" } }), "stf-ivan").flag,
+    "bad",
+  );
+});
+
+test("нашли товар в пустой ячейке: свободная тара встаёт туда, излишек — старшему", () => {
+  const r = applyInvCell(
+    withPlan(),
+    cellCount([{ productId: "p2", qty: 3 }], { boxId: "b4" }),
+    "stf-ivan",
+  );
+  assert.equal(r.flag, undefined);
+  const box = r.data.boxes.find((b) => b.id === "b4");
+  assert.deepEqual(box.address, FREE);
+  assert.deepEqual(box.lines, []);
+  assert.deepEqual(
+    r.data.disputes.map((x) => [x.kind, x.boxId, x.productId, x.qty, x.raisedBy]),
+    [["inventory_over", "b4", "p2", 3, "stf-ivan"]],
+  );
+  // Повтор той же операции спорное не задваивает.
+  assert.equal(
+    applyInvCell(r.data, cellCount([{ productId: "p2", qty: 3 }], { boxId: "b4" }), "stf-ivan")
+      .data,
+    r.data,
+  );
+  // Старший оприходует излишек в эту тару — как после пересчёта тары.
+  const ok = applyDisputeResolve(
+    r.data,
+    { at: AT + 1, disputeId: "inv-icc-1-p2", resolution: "accepted", note: "нашли за стеллажом" },
+    "stf-olga",
+    WHO,
+  );
+  assert.equal(ok.flag, undefined);
+  assert.deepEqual(ok.data.boxes.find((b) => b.id === "b4").lines, [{ productId: "p2", qty: 3 }]);
+});
+
+test("найденное — только в свободную тару: без тары, с товаром, на другом месте — отказ", () => {
+  const d = withPlan();
+  const found = [{ productId: "p1", qty: 1 }];
+  assert.equal(applyInvCell(d, cellCount(found), "stf-ivan").flag, "bad");
+  assert.equal(applyInvCell(d, cellCount(found, { boxId: "b2" }), "stf-ivan").flag, "stock");
+  assert.equal(applyInvCell(d, cellCount(found, { boxId: "b3" }), "stf-ivan").flag, "stock");
+  assert.equal(
+    applyInvCell(d, cellCount([{ productId: "nope", qty: 1 }], { boxId: "b4" }), "stf-ivan").flag,
+    "bad",
+  );
+  assert.equal(
+    applyInvCell(d, cellCount([{ productId: "p1", qty: -1 }], { boxId: "b4" }), "stf-ivan").flag,
+    "bad",
+  );
+});
+
+test("ячейка с паллетой или товаром без тары — не пустая; тара с паллеты — не свободная", () => {
+  const found = [{ productId: "p1", qty: 1 }];
+  const pallet = (over) => ({ id: "pl1", barcode: "UK-PLT-1", boxIds: [], ...over });
+  // Паллета стоит в этой ячейке.
+  const withPallet = { ...withPlan(), pallets: [pallet({ address: FREE })] };
+  assert.equal(applyInvCell(withPallet, cellCount([]), "stf-ivan").flag, "busy");
+  // Товар положен прямо в ячейку: по учёту он здесь, излишком не станет.
+  const withPlaced = { ...withPlan(), placements: { p1: FREE } };
+  assert.equal(
+    applyInvCell(withPlaced, cellCount(found, { boxId: "b4" }), "stf-ivan").flag,
+    "busy",
+  );
+  // Короб на паллете в другой ячейке: адреса у него нет, но он не свободен.
+  const onPallet = withPlan();
+  onPallet.boxes = onPallet.boxes.map((b) => (b.id === "b4" ? { ...b, palletId: "pl1" } : b));
+  onPallet.pallets = [pallet({ address: ADDR, boxIds: ["b4"] })];
+  assert.equal(applyInvCell(onPallet, cellCount(found, { boxId: "b4" }), "stf-ivan").flag, "stock");
+  // Короб в списке паллеты без своей отметки — тоже.
+  const listed = { ...withPlan(), pallets: [pallet({ boxIds: ["b4"] })] };
+  assert.equal(applyInvCell(listed, cellCount(found, { boxId: "b4" }), "stf-ivan").flag, "stock");
 });
