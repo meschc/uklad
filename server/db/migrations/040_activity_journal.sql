@@ -114,7 +114,9 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = auth, uklad, pg_temp AS $
            'orderId', o.body->>'orderId',
            'outboundCode', o.body->>'outboundCode',
            'sortCode', o.body->>'sortCode',
-           'code', o.body->>'code',
+           -- Код маркировки — без криптохвоста: до разделителя GS и не
+           -- длиннее 64 символов. Хвост журналу не нужен, а наружу не уходит.
+           'code', left(split_part(o.body->>'code', chr(29), 1), 64),
            'cell', o.body->'cell',
            'qty', o.body->'qty',
            'dispute', o.body->'dispute'->>'kind',

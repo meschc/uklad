@@ -1,4 +1,4 @@
-// Журнал действий склада (миграция 039) на настоящем Postgres.
+// Журнал действий склада (миграция 040) на настоящем Postgres.
 //
 // Кирилл 15.11: посекундная история действий, доступная руководителю, с
 // разделением по процессу и товару. Проверяем три круга, как у прав: свой
@@ -205,11 +205,13 @@ const packDone = (key) => ({
   },
 });
 // Этикетка и ошибка скана: товар не двигают, но в журнале остаются.
-const packEvent = (key, type, ms) => ({
+const packEvent = (key, type, ms, extra = {}) => ({
   key,
   kind: "pack_event",
-  body: { eventId: `ev-${key}`, staffId: "stf-a", at: at + ms, type, toteId: "t-zz" },
+  body: { eventId: `ev-${key}`, staffId: "stf-a", at: at + ms, type, toteId: "t-zz", ...extra },
 });
+// Код Честного знака с криптохвостом после разделителя GS.
+const MARK = "0104601234567890215abcdef";
 const ops = (desk, list) => call("/api/desk/ops", { desk, body: { ops: list } });
 const journal = (who, q = "") => call(`/api/cabinet/journal${q}`, who);
 const deskOnly = (r) => r.json.entries.filter((e) => e.source === "desk");
@@ -222,7 +224,7 @@ test(
     const r = await ops(c.desk, [
       packDone("key-jrnl-1"),
       packEvent("key-jrnl-2", "pack_label", 1),
-      packEvent("key-jrnl-6", "pack_error", 2),
+      packEvent("key-jrnl-6", "pack_error", 2, { code: `${MARK}\u001d93SECRETTAIL` }),
     ]);
     assert.equal(r.status, 200, JSON.stringify(r.json));
 
@@ -264,9 +266,14 @@ test(
       errors.json.entries.map((e) => e.refs.type),
       ["pack_error"],
     );
+    // Код маркировки отдаётся без криптохвоста.
+    assert.equal(errors.json.entries[0].refs.code, MARK);
     assert.deepEqual(deskOnly(await journal(c.boss, `?warehouse=wh_a&before=${at - 1}`)), []);
     assert.equal((await journal(c.boss, "?warehouse=wh_a&steps=nope")).status, 400);
     assert.equal((await journal(c.boss, "?warehouse=wh_a&before=вчера")).status, 400);
+    // Стол журнал склада не открывает: у него нет входа в кабинет.
+    const fromDesk = await call("/api/cabinet/journal?warehouse=wh_a", { desk: c.desk });
+    assert.ok([401, 403].includes(fromDesk.status), String(fromDesk.status));
   },
 );
 
@@ -353,7 +360,7 @@ test("тип скана и «пик за товар» — правило баз�
   // кусок миграции, что прошёл на сервере.
   await db.root.query(`UPDATE uklad.desk_ops SET warehouse_ref = NULL WHERE org_id = $1`, [c.org]);
   const sql = readFileSync(
-    new URL("../../db/migrations/039_activity_journal.sql", import.meta.url),
+    new URL("../../db/migrations/040_activity_journal.sql", import.meta.url),
     "utf8",
   );
   const from = sql.indexOf("ALTER TABLE uklad.desk_ops NO FORCE");
