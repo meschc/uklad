@@ -39,6 +39,7 @@ const { forSeller } = require("./seller");
 const { placeRef, focusWarehouse } = require("./viewerPlace");
 const { recordMoves, invalidWork } = require("./moves");
 const { recordStorage, loadStorage, parsePeriod } = require("./storage");
+const { loadInventoryLog, parseLogPeriod } = require("./inventoryLog");
 const {
   WAREHOUSE_LISTS,
   COMPANY_LISTS,
@@ -564,9 +565,26 @@ function createSnapshot({ auth, send, log }) {
     return send(res, 200, { ok: true, rows: out });
   }
 
+  /**
+   * Пересчёты инвентаризации за период (`inventoryLog.js`) — для акта.
+   * Только руководителю: в акте числа учёта, которых стол не показывает.
+   */
+  async function inventory(req, res, url) {
+    const period = parseLogPeriod(url);
+    if (!period) return send(res, 400, { ok: false, error: "bad_request" });
+    const out = await withSession(req, async (c, ctx) => {
+      if (!mayUse(ctx)) return FORBIDDEN;
+      return loadInventoryLog(c, period);
+    });
+    if (out === null) return send(res, 401, { ok: false });
+    if (out === FORBIDDEN) return send(res, 403, { ok: false });
+    return send(res, 200, { ok: true, entries: out });
+  }
+
   const routes = {
     "GET /api/cabinet/history": history,
     "GET /api/cabinet/storage": storage,
+    "GET /api/cabinet/inventory": inventory,
     "GET /api/cabinet/snapshot": load,
     "POST /api/cabinet/snapshot": save,
     "POST /api/cabinet/snapshot/changes": saveChanges,
