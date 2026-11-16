@@ -9,6 +9,7 @@ import {
   parseBadge,
   shiftState,
 } from "../workstation";
+import { unpaidMinOf } from "../paidHours";
 import { findByCode, normalizeCode } from "../barcode";
 import {
   cancelledInTote,
@@ -185,6 +186,7 @@ export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get)
           lunchFrom: clamp(patch.lunchFrom, 0, 24 * 60 - 1, p.lunchFrom),
           lunchMin: clamp(patch.lunchMin, 10, 120, p.lunchMin),
           autoIdleMin: clamp(patch.autoIdleMin, 0, 240, p.autoIdleMin ?? 15),
+          unpaidMin: clamp(patch.unpaidMin, 0, 240, unpaidMinOf(p)),
         },
       };
     }),

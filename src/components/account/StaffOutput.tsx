@@ -53,7 +53,11 @@ export function StaffOutput() {
   // каждом рендере, а свежие события подтянет смена вкладки или периода.
   const [now, setNow] = useState(() => Date.now());
   const [from, to] = periodRange(period, now);
-  const rows = useMemo(() => staffReport(events, staff, from, to), [events, staff, from, to]);
+  const policy = useEditor((s) => s.breakPolicy);
+  const rows = useMemo(
+    () => staffReport(events, staff, from, to, policy),
+    [events, staff, from, to, policy],
+  );
   // Приёмка и рейсы за тот же период — по фактам приёмки и отгрузки (их
   // перенесли сюда из списка сотрудников, Кирилл 13.11).
   const receipts = useWithArchive("receivingEvents");
@@ -199,6 +203,11 @@ export function StaffOutput() {
                 </td>
                 <td className="px-3 py-2 text-right tabular-nums">
                   {r.earned == null ? "—" : `${r.earned.toLocaleString("ru-RU")} ₽`}
+                  {r.earned != null && (
+                    <span className="block text-xs text-muted-foreground">
+                      {t("staff.out.paidHours", { h: hoursText(r.paidMs) })}
+                    </span>
+                  )}
                 </td>
               </tr>
             ))}

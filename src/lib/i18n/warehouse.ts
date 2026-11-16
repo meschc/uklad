@@ -196,7 +196,7 @@ export const ru = {
   "staff.out.prevMonth": "Прошлый месяц",
   "staff.out.export": "Выгрузить для зарплаты",
   "staff.out.lead":
-    "Часы на смене без перерывов, простой отдельно. Пик — упакованная штука с этикеткой или снятая в тару. Сумма — по почасовой ставке; премии и сдельную часть склад считает сам по выгрузке.",
+    "Часы на смене без перерывов, простой отдельно. Пик — упакованная штука с этикеткой или снятая в тару. Сумма — по ставке за оплачиваемые часы, без неоплачиваемого перерыва из «Режима работы»; премии и сдельную часть склад считает сам по выгрузке.",
   "staff.out.hours": "Часы",
   "staff.out.idle": "Простой, ч",
   "staff.out.peaks": "Пики",
@@ -205,6 +205,7 @@ export const ru = {
   "staff.out.rejects": "Брак",
   "staff.out.reprints": "Перепечатки",
   "staff.out.earned": "По ставке",
+  "staff.out.paidHours": "за {h} ч",
   "team.title": "Кто входит в кабинет",
   "team.lead":
     "Второй человек входит под своей почтой и работает с теми правами, что даёт его роль. Права проверяет сервер.",
@@ -634,7 +635,7 @@ export const en: Record<keyof typeof ru, string> = {
   "staff.out.prevMonth": "Last month",
   "staff.out.export": "Export for payroll",
   "staff.out.lead":
-    "Shift hours without breaks, idle time separately. A peak is a packed item with a label or an item picked into a tote. The sum uses the hourly rate; bonuses and piece rates the warehouse calculates from the export.",
+    "Shift hours without breaks, idle time separately. A peak is a packed item with a label or an item picked into a tote. The sum is the hourly rate times paid hours, without the unpaid break set in Working hours; bonuses and piece rates the warehouse calculates from the export.",
   "staff.out.hours": "Hours",
   "staff.out.idle": "Idle, h",
   "staff.out.peaks": "Peaks",
@@ -643,6 +644,7 @@ export const en: Record<keyof typeof ru, string> = {
   "staff.out.rejects": "Defects",
   "staff.out.reprints": "Reprints",
   "staff.out.earned": "By rate",
+  "staff.out.paidHours": "for {h} h",
   "team.title": "Who can sign in",
   "team.lead":
     "A second person signs in with their own email and works with the rights of their role. The server checks the rights.",

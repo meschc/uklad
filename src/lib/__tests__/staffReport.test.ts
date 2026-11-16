@@ -53,7 +53,15 @@ describe("staffReport", () => {
   it("CSV: без ставки пустая ячейка, а не ноль; ; в имени экранируется", () => {
     const csv = staffReportCsv(staffReport(events, [anna, boris], 0, 24 * H)).split("\n");
     expect(csv[0].split(";")[0]).toBe("Сотрудник");
-    expect(csv[1]).toBe('Анна;Упаковщик;"4,00";"1,00";2;0;2;1;1;1;300;1200;');
-    expect(csv[2]).toBe('"Борис; ст.";Сборщик;"2,00";"0,00";0;1;1;0;0;0;;;"Сборка 2,00"');
+    expect(csv[1]).toBe('Анна;Упаковщик;"4,00";"4,00";"1,00";2;0;2;1;1;1;300;1200;');
+    expect(csv[2]).toBe('"Борис; ст.";Сборщик;"2,00";"2,00";"0,00";0;1;1;0;0;0;;;"Сборка 2,00"');
+  });
+
+  it("12 часов смены — по ставке за 11, час обеда не оплачивается", () => {
+    const day = [ev("a", "shift_start", 0), ev("a", "shift_end", 12 * H)];
+    const [a] = staffReport(day, [anna], 0, 24 * H, { unpaidMin: 60 });
+    expect(a.workedMs).toBe(12 * H);
+    expect(a.paidMs).toBe(11 * H);
+    expect(a.earned).toBe(3300);
   });
 });
