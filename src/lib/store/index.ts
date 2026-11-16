@@ -38,6 +38,7 @@ import { createSubscriptionSlice } from "./subscription.slice";
 import { createWorkstationSlice } from "./workstation.slice";
 import { sanitizeDomains } from "../data/sanitize";
 import { PERSIST_KEY, persistStorage } from "./persistStorage";
+import { refreshStaleDemo } from "./seedVersion";
 import { guardReadOnly } from "./readOnlyGuard";
 
 /**
@@ -146,6 +147,9 @@ const memoryStorage: StateStorage = {
   removeItem: (k) => void memory.delete(k),
 };
 
+// Демо старой версии посева стирается до чтения сохранения (`seedVersion.ts`):
+// стор тогда собирается как при первом запуске и посев применяется целиком.
+if (!EMBED) refreshStaleDemo(hasLocal(PERSIST_KEY));
 const HAD_PERSISTED = !EMBED && hasLocal(PERSIST_KEY);
 
 export const useEditor = create<EditorState>()(
