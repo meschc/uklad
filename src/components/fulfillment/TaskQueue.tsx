@@ -183,8 +183,8 @@ function QueueRow({ process, item, now }: { process: QueueProcess; item: QueueIt
         ? t(`disputes.kind.${item.label as DisputeKind}`)
         : (item.label ?? t(NO_LABEL[process]));
   return (
-    <li className="grid grid-cols-2 items-baseline gap-x-4 gap-y-0.5 border-t border-border/60 py-2 text-sm sm:grid-cols-[minmax(0,1fr)_7rem_8rem_10rem]">
-      <span className="col-span-2 font-medium sm:col-span-1 sm:truncate">{label}</span>
+    <li className="grid grid-cols-[auto_auto_minmax(0,1fr)] items-baseline gap-x-3 sm:gap-x-4 gap-y-0.5 border-t border-border/60 py-2 text-sm sm:grid-cols-[minmax(0,1fr)_7rem_8rem_10rem]">
+      <span className="col-span-3 font-medium sm:col-span-1 sm:truncate">{label}</span>
       <span className="tabular-nums text-muted-foreground">
         {item.units > 0 ? t(UNITS[process], { n: item.units }) : "—"}
       </span>
