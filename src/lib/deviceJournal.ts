@@ -1,4 +1,4 @@
-import type { DeviceJournalEntry } from "./data/deskServer";
+import type { DeviceEvent, DeviceJournalEntry } from "./data/deskServer";
 import type { Device } from "./types";
 
 /**
@@ -21,6 +21,9 @@ interface JournalDeviceEvent {
   type: "device";
   kind: "bound" | "revoked";
   at: number;
+  /** Кто привязал или отвязал: имя руководителя или сотрудник по бейджу. */
+  byName?: string;
+  byStaff?: string;
 }
 
 export type JournalRow = JournalStint | JournalDeviceEvent;
@@ -31,14 +34,22 @@ const GAP_MS = 2 * 60 * 60 * 1000;
 /**
  * `entries` — новые сверху, как отдаёт сервер; строки — тоже новые сверху.
  * Событие устройства посреди работы человека делит её на две строки.
+ * `events` — с сервера, с тем, кто это сделал (новые сверху); нет их —
+ * отметки самого устройства.
  */
 export function journalRows(
   entries: readonly DeviceJournalEntry[],
   device?: Pick<Device, "createdAt" | "revokedAt">,
+  events?: readonly DeviceEvent[],
 ): JournalRow[] {
   const marks: JournalDeviceEvent[] = [];
-  if (device?.revokedAt) marks.push({ type: "device", kind: "revoked", at: device.revokedAt });
-  if (device?.createdAt) marks.push({ type: "device", kind: "bound", at: device.createdAt });
+  if (events) {
+    for (const e of events) marks.push({ type: "device", ...e });
+    marks.sort((a, b) => b.at - a.at);
+  } else {
+    if (device?.revokedAt) marks.push({ type: "device", kind: "revoked", at: device.revokedAt });
+    if (device?.createdAt) marks.push({ type: "device", kind: "bound", at: device.createdAt });
+  }
   const out: JournalRow[] = [];
   let m = 0;
   for (const e of entries) {

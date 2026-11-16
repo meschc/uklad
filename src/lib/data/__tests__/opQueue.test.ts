@@ -2,7 +2,15 @@ import { describe, expect, it, vi } from "vitest";
 import type { EditorState } from "../../store/state";
 import type { StaffEvent } from "../../types";
 import type { StorePort } from "../repository";
-import { createOpQueue, type DeskOp, type OpQueue, type SendOutcome } from "../opQueue";
+import {
+  OFFLINE_MAX_MS,
+  OFFLINE_MAX_OPS,
+  createOpQueue,
+  offlineLimitReached,
+  type DeskOp,
+  type OpQueue,
+  type SendOutcome,
+} from "../opQueue";
 import { createWorkstationRepository } from "../workstationRepository";
 import { createDisputesRepository } from "../disputesRepository";
 import { ok } from "../result";
@@ -117,6 +125,23 @@ describe("opQueue", () => {
     expect(q.pending().count).toBe(0);
   });
 
+  it("без связи очередь не выбрасывает старые операции, сколько бы их ни было", () => {
+    const h = harness(Array.from({ length: 3 }, () => ({ kind: "retry" }) as SendOutcome));
+    const q = h.make();
+    for (let i = 0; i < 2100; i++) q.enqueue("shift_mark", body(`ev-${i}`));
+    const ops = (JSON.parse(h.deps.read() ?? "{}") as { ops: DeskOp[] }).ops;
+    expect(ops).toHaveLength(2100);
+    expect(ops[0].body.eventId).toBe("ev-0");
+  });
+
+  it("предел работы без связи: по числу действий и по времени", () => {
+    expect(offlineLimitReached({ count: 0, since: null }, 10 ** 9)).toBe(false);
+    expect(offlineLimitReached({ count: OFFLINE_MAX_OPS - 1, since: 0 }, 1000)).toBe(false);
+    expect(offlineLimitReached({ count: OFFLINE_MAX_OPS, since: 0 }, 1000)).toBe(true);
+    expect(offlineLimitReached({ count: 1, since: 0 }, OFFLINE_MAX_MS - 1)).toBe(false);
+    expect(offlineLimitReached({ count: 1, since: 0 }, OFFLINE_MAX_MS)).toBe(true);
+  });
+
   it("битое хранилище — пустая очередь, а не падение", () => {
     const h = harness([]);
     h.deps.write("{не json");
@@ -163,8 +188,9 @@ describe("workstationRepository: отметки смены операциями"
   const desks = {
     open: vi.fn(async () => ok(undefined)),
     revoke: vi.fn(async () => ok(undefined)),
-    journal: vi.fn(async () => ok([])),
+    journal: vi.fn(async () => ok({ entries: [] })),
     unbind: vi.fn(async () => ok(null)),
+    unbindByPassword: vi.fn(async () => ok(true)),
     leave: vi.fn(async () => ok(undefined)),
   };
 

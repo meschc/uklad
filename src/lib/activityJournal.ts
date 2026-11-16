@@ -45,6 +45,7 @@ export const DESK_KINDS: ReadonlySet<string> = new Set([
   "sort_close",
   "inv_count",
   "inv_cell",
+  "station_switch",
 ]);
 
 /** Порядок процессов в фильтре — как товар идёт по складу. */
@@ -103,6 +104,9 @@ export interface ActivityEntry {
     qty?: number;
     cell?: CellAddress;
     dispute?: string;
+    /** Куда перешёл сотрудник (`station_switch`) и кто из старших разрешил. */
+    station?: string;
+    approvedBy?: string;
   };
   moves?: JournalMove[];
   movesTotal?: number;

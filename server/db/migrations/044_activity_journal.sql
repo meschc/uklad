@@ -30,7 +30,7 @@ ALTER TABLE uklad.desk_ops
   ADD COLUMN warehouse_ref text CHECK (length(warehouse_ref) BETWEEN 1 AND 100),
   ADD COLUMN step text GENERATED ALWAYS AS (
     CASE
-      WHEN kind IN ('shift_mark', 'shift_undo') THEN 'shift'
+      WHEN kind IN ('shift_mark', 'shift_undo', 'station_switch') THEN 'shift'
       WHEN kind = 'recv_place' THEN 'place'
       WHEN kind LIKE 'recv\_%' THEN 'receive'
       WHEN kind LIKE 'pick\_%' THEN 'pick'
@@ -120,7 +120,10 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = auth, uklad, pg_temp AS $
            'cell', o.body->'cell',
            'qty', o.body->'qty',
            'dispute', o.body->'dispute'->>'kind',
-           'resolution', o.body->>'resolution'
+           'resolution', o.body->>'resolution',
+           -- Переход между процессами (миграция 042): куда и кто разрешил.
+           'station', o.body->>'station',
+           'approvedBy', o.body->>'approvedBy'
          ))
   FROM uklad.desk_ops o
   JOIN auth.desk_sessions d ON d.id = o.desk_id AND d.org_id = o.org_id

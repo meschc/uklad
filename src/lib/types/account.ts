@@ -36,6 +36,7 @@ export type AppView =
   | "workstation"
   | "devices"
   | "disputes"
+  | "approvals"
   | "journal";
 
 /**

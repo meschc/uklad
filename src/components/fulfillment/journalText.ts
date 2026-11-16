@@ -19,6 +19,18 @@ const REASONS = new Set([
   "late",
   "backdated",
 ]);
+/** Процессы стола (`ws.station.*`): переход между ними — `station_switch`. */
+const STATIONS = new Set([
+  "pack",
+  "receiving",
+  "picking",
+  "sorting",
+  "marking",
+  "returns",
+  "shipping",
+  "inventory",
+]);
+
 const DISPUTES = new Set([
   "shortage",
   "not_in_tote",
@@ -99,6 +111,7 @@ export function useEntryText() {
         r.sortCode && t("journal.sortTo", { code: r.sortCode }),
         r.orderId && t("journal.order", { id: r.orderId }),
         !name && r.code,
+        r.station && STATIONS.has(r.station) && t(`ws.station.${r.station}` as MsgKey),
         r.dispute && DISPUTES.has(r.dispute) && t(`disputes.kind.${r.dispute}` as MsgKey),
       ].filter(Boolean);
       return parts.join(" · ");

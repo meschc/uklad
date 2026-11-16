@@ -10,7 +10,7 @@ import type {
   WorkstationKind,
 } from "../types";
 import { onServer, serverBadges, type BadgeServer } from "./badgeRepository";
-import { serverDesks, type DeskServer, type DeviceJournalEntry } from "./deskServer";
+import { serverDesks, type DeskServer, type DeviceJournalData } from "./deskServer";
 import { isStaffEvent } from "./guards";
 import { deskOps, type OpQueue } from "./opQueue";
 import { readList, storePort, type StorePort } from "./repository";
@@ -38,9 +38,14 @@ export interface WorkstationRepository {
   addDevice: (name: string, station: WorkstationKind) => Promise<Result<Device>>;
   revokeDevice: (id: string) => Promise<Result<void>>;
   /** Журнал устройства: кто и что делал за ним, новые сверху. */
-  deviceJournal: (id: string) => Promise<Result<DeviceJournalEntry[]>>;
+  deviceJournal: (id: string) => Promise<Result<DeviceJournalData>>;
   /** Отвязать этот браузер бейджем руководителя. Чужой бейдж — `ws.device.notManager`. */
   unbindDevice: (managerBadge: string) => Promise<Result<void>>;
+  /**
+   * Отвязать этот стол паролем руководителя (только с сервером): бейджа
+   * старшего нет — стол всё равно отвязывается на месте.
+   */
+  unbindDeviceByPassword: (email: string, password: string) => Promise<Result<void>>;
   /** Начать тару: скан тары с товаром и короба отгрузки. */
   packStart: (sourceCode: string, targetCode?: string) => Promise<Result<void>>;
   packItem: (code: string) => Promise<Result<ItemScan>>;
@@ -222,8 +227,8 @@ export function createWorkstationRepository(
     deviceJournal: async (id) => {
       if (onServer(port)) return desks.journal(id);
       // Демо: отметки и сканы, пришедшие с этого устройства.
-      return attempt(() =>
-        port
+      return attempt(() => ({
+        entries: port
           .get()
           .staffEvents.filter((e) => e.deviceId === id)
           .map((e) => ({
@@ -237,7 +242,7 @@ export function createWorkstationRepository(
           }))
           .sort((a, b) => b.at - a.at)
           .slice(0, 200),
-      );
+      }));
     },
     unbindDevice: async (code) => {
       if (onServer(port)) {
@@ -264,6 +269,19 @@ export function createWorkstationRepository(
       const res = await attempt(() => port.get().unbindThisDevice(code));
       if (!res.ok) return res;
       return res.data ? ok(undefined) : fail("ws.device.notManager");
+    },
+    unbindDeviceByPassword: async (email, password) => {
+      if (!onServer(port)) return fail("data.failed");
+      if (!email.trim() || !password) return fail("login.err.badCredentials");
+      // Как и бейджем: неотправленная работа живёт только в очереди стола.
+      if (ops.pending().count > 0) return fail("ws.device.queueNotEmpty");
+      const res = await desks.unbindByPassword(email.trim(), password);
+      if (!res.ok) return res;
+      if (!res.data) return fail("ws.device.notManagerAccount");
+      const s = port.get();
+      if (s.thisDeviceId) s.revokeDevice(s.thisDeviceId);
+      s.sessionLost();
+      return ok(undefined);
     },
     packStart: async (source, target) => {
       const res = await attempt(() => port.get().packStart(source, target));
