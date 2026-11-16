@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import type { ShiftMark, WorkstationKind } from "@/lib/types";
 import {
   ArrowLeft,
+  ArrowLeftRight,
   ChevronDown,
   FileText,
   Plug,
@@ -18,7 +19,7 @@ import {
   WifiOff,
 } from "lucide-react";
 import { boundDevice, useEditor } from "@/lib/store";
-import { STUCK_MS, usePendingOps, workstationRepository } from "@/lib/data";
+import { STUCK_MS, offlineLimitReached, usePendingOps, workstationRepository } from "@/lib/data";
 import { isSessionLive, STATION_KEY_LABEL } from "@/lib/workstation";
 import { mayDecideGoods } from "@/lib/docFlow";
 import { sizeLabel, useLabelPrinter } from "@/lib/labelPrinter";
@@ -36,7 +37,9 @@ import { PickingScreen } from "@/components/fulfillment/PickingScreen";
 import { EmptyState } from "@/components/fulfillment/ScreenShell";
 import { BadgeLogin } from "./BadgeLogin";
 import { BindDeviceForm } from "./BindDeviceForm";
+import { disableOfflineShell, enableOfflineShell } from "@/lib/offlineShell";
 import { UnbindDevice } from "./UnbindDevice";
+import { FullscreenButton } from "./FullscreenButton";
 import { SortStation } from "./SortStation";
 import { KeyHint } from "./KeyHint";
 import { ShiftGate } from "./ShiftGate";
@@ -52,6 +55,8 @@ import { ShipStation } from "./ShipStation";
 import { InventoryStation } from "./InventoryStation";
 import { StaffLog } from "./StaffLog";
 import { DisputesScreen } from "./DisputesScreen";
+import { StationSwitch } from "./StationSwitch";
+import { useSwitchWatch } from "./useSwitchWatch";
 import { formatTime, useNow } from "./useNow";
 
 /**
@@ -68,7 +73,7 @@ import { formatTime, useNow } from "./useNow";
 
 /** Столы, которые печатают этикетки и ярлыки сами. */
 const PRINT_STATIONS = new Set<string>(["pack", "sorting"]);
-type Panel = "shift" | "log" | "printer" | "disputes" | "logout" | null;
+type Panel = "shift" | "log" | "printer" | "disputes" | "logout" | "process" | null;
 
 /** Текст шапки и нижней панели поверх залитого сигналом поля. */
 const ON_COLOR_LIGHT =
@@ -87,6 +92,8 @@ export function WorkstationScreen() {
   const openDisputes = useEditor((s) => s.disputes.filter((d) => !d.resolution).length);
   const [opened, setOpened] = useState<{ panel: Panel; owner?: string }>({ panel: null });
   const [unbinding, setUnbinding] = useState(false);
+  // Привязанный стол открывается и без сети; отвязанный — обычный компьютер.
+  useEffect(() => (device ? enableOfflineShell() : disableOfflineShell()), [device]);
 
   const live = isSessionLive(session, now);
   const member = live ? (staff ?? []).find((m) => m.id === session!.staffId) : undefined;
@@ -100,6 +107,8 @@ export function WorkstationScreen() {
 
   // Кнопки ТСД: F1 — смена, F2 — перерыв, F3 — журнал, F4 — конец смены.
   useStationKeys(member?.id, (p) => setPanel(panel === p ? null : p));
+  // Своя заявка на смену процесса: разрешил старший — процесс меняется сам.
+  useSwitchWatch();
   const station = session?.station ?? "pack";
   const signalLevel = useStationSignal();
   // Сменился человек или участок — прошлый сигнал к нему не относится.
@@ -157,11 +166,22 @@ export function WorkstationScreen() {
               {t("ws.exit")}
             </Button>
           )}
-          {member && !sameName(device?.name, t(`ws.station.${station}` as MsgKey)) && (
-            // Процесс стола — заголовком: по нему видно, чьё это задание. Стол,
-            // названный по процессу («Упаковка»), второй раз его не повторяет.
-            <h1 className="hidden h-8 items-center px-3 text-sm font-semibold sm:flex">
-              {t(`ws.station.${station}` as MsgKey)}
+          {member && (
+            // Процесс стола — заголовком: по нему видно, чьё это задание. Он же
+            // кнопка смены процесса без выхода (Кирилл 15.11). Стол, названный
+            // по процессу («Упаковка»), имя второй раз не повторяет.
+            <h1 className="hidden sm:flex">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="font-semibold"
+                onClick={() => setPanel("process")}
+              >
+                <ArrowLeftRight />
+                {sameName(device?.name, t(`ws.station.${station}` as MsgKey))
+                  ? t("ws.switch.change")
+                  : t(`ws.station.${station}` as MsgKey)}
+              </Button>
             </h1>
           )}
           <Equipment onPrinter={() => setPanel("printer")} canOpen={!!member} />
@@ -197,6 +217,7 @@ export function WorkstationScreen() {
               {t("ws.tab.log")}
               <KeyHint k={STATION_KEY_LABEL.log} />
             </Button>
+            <FullscreenButton />
             <div className="min-w-0 text-right">
               <p className="truncate text-sm font-medium leading-tight">{member.name}</p>
               <p className="hidden text-xs text-muted-foreground md:block">
@@ -220,7 +241,9 @@ export function WorkstationScreen() {
             </Button>
           </div>
         ) : (
-          <div />
+          <div className="flex justify-end">
+            <FullscreenButton />
+          </div>
         )}
       </header>
 
@@ -265,7 +288,9 @@ export function WorkstationScreen() {
         ) : (
           <div className="mx-auto flex max-w-5xl flex-col gap-5 px-4 py-6">
             <ShiftGate staffId={member.id}>
-              <StationTask station={station} staffId={member.id} />
+              <OfflineGate>
+                <StationTask station={station} staffId={member.id} />
+              </OfflineGate>
             </ShiftGate>
             <ShiftCodes staffId={member.id} />
           </div>
@@ -277,6 +302,17 @@ export function WorkstationScreen() {
         // под большой палец, чтобы работать одной рукой.
         <nav className="flex shrink-0 items-center justify-center gap-2 px-2 pb-[max(0.375rem,env(safe-area-inset-bottom))] md:hidden">
           <ShiftBar staffId={member.id} onOpen={() => setPanel("shift")} />
+          {/* На ТСД шапка узкая: процесс — здесь же, под пальцем. */}
+          <button
+            type="button"
+            onClick={() => setPanel("process")}
+            className="flex min-h-12 flex-col items-center justify-center rounded-md px-3 text-xs font-medium text-muted-foreground hover:bg-muted"
+          >
+            <ArrowLeftRight className="size-5" />
+            {/* Подпись — «Процесс», а не имя процесса: «Инвентаризация» не
+                влезает в нижнюю панель на 390 px. Текущий отмечен в панели. */}
+            {t("ws.switch.title")}
+          </button>
           <button
             type="button"
             onClick={() => setPanel("log")}
@@ -316,7 +352,9 @@ export function WorkstationScreen() {
                         ? "disputes.title"
                         : panel === "logout"
                           ? "ws.out.title"
-                          : "ws.history",
+                          : panel === "process"
+                            ? "ws.switch.title"
+                            : "ws.history",
                 )}
               </h2>
               <Button
@@ -334,6 +372,8 @@ export function WorkstationScreen() {
               <PrinterPanel />
             ) : panel === "logout" ? (
               <LogoutPanel member={member} />
+            ) : panel === "process" ? (
+              <StationSwitch onDone={() => setPanel(null)} />
             ) : panel === "disputes" ? (
               <EmbeddedShell.Provider value={true}>
                 <DisputesScreen />
@@ -531,8 +571,11 @@ function NetworkBanner() {
     <p
       role="status"
       className={cn(
-        "flex shrink-0 items-center gap-2 px-4 py-1.5 text-sm font-medium md:mx-2 md:mb-2 md:rounded-lg",
-        net === "offline" ? "bg-destructive text-destructive-foreground" : "bg-warning text-black",
+        // Поля — как у рабочей области под ней: полоса не шире окна.
+        "mx-3 mb-2 flex shrink-0 items-center gap-2 rounded-lg px-4 py-1.5 text-sm font-medium",
+        // Без связи работа идёт дальше — это предупреждение, а не авария:
+        // красная полоса пугала и звала обновлять страницу.
+        "bg-warning text-black",
       )}
     >
       {net === "offline" ? <WifiOff className="size-4" /> : <Wifi className="size-4" />}
@@ -559,6 +602,25 @@ function PendingOps() {
       <CloudOff className="size-4" />
       {t("ws.opPending", { n: count })}
     </p>
+  );
+}
+
+/**
+ * Предел работы без сервера (`offlineLimitReached`): дальше стол не копит —
+ * задание закрыто, пока очередь не уйдёт. Смена, перерыв и журнал остаются.
+ * Ничего не теряется: очередь лежит на этом компьютере и уйдёт сама.
+ */
+function OfflineGate({ children }: { children: ReactNode }) {
+  const t = useT();
+  const now = useNow(10_000);
+  const pending = usePendingOps();
+  if (!offlineLimitReached(pending, now)) return <>{children}</>;
+  return (
+    <div className="mx-auto flex max-w-md flex-col items-center gap-3 py-10 text-center">
+      <CloudOff className="size-10 text-warning" strokeWidth={1.5} aria-hidden />
+      <h2 className="text-lg font-semibold">{t("ws.offline.limitTitle")}</h2>
+      <p className="text-sm text-muted-foreground">{t("ws.offline.limitBody")}</p>
+    </div>
   );
 }
 

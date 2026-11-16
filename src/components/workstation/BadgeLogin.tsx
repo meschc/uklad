@@ -5,12 +5,14 @@ import { workstationRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
 import { MANAGER_ROLE, badgeCode } from "@/lib/workstation";
 import type { WorkstationKind } from "@/lib/types";
+import { OPEN_STATIONS } from "@/lib/stationSwitch";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { card } from "@/components/ui/card";
 import { Segmented } from "@/components/ui/segmented";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { QrSvg } from "@/components/table/QrSvg";
 import { ScanField, type ScanStatus } from "@/components/fulfillment/ScanField";
+import { enterFullscreen } from "@/lib/fullscreen";
 import { useDemoHints } from "./useDemoHints";
 
 /**
@@ -21,15 +23,6 @@ import { useDemoHints } from "./useDemoHints";
  * Демо-бейджи — вход за любого сотрудника одним кликом. В рабочем кабинете с
  * сервером их быть не должно: показывать только в демо-режиме.
  */
-/** Столы, у которых уже есть свой экран. */
-const OPEN_STATIONS: WorkstationKind[] = [
-  "receiving",
-  "picking",
-  "pack",
-  "sorting",
-  "shipping",
-  "inventory",
-];
 
 export function BadgeLogin() {
   const demoHints = useDemoHints();
@@ -46,6 +39,11 @@ export function BadgeLogin() {
   const [station, setStation] = useState<WorkstationKind>("pack");
 
   const submit = async (code: string) => {
+    // Привязанный стол — рабочее место: при входе он сам разворачивается во
+    // весь экран. Звать до ответа сервера: браузер разрешает это только сразу
+    // после нажатия, а скан бейджа — нажатия клавиш. В демо экран посетителя
+    // не трогаем.
+    if (device && !demoHints) enterFullscreen();
     const res = await login.run(code, device?.station ?? station);
     setStatus(res.ok ? "ok" : "error");
   };

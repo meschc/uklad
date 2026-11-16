@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { ChevronRight, History, Link2, Unlink, X } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { workstationRepository } from "@/lib/data";
-import type { DeviceJournalEntry } from "@/lib/data/deskServer";
+import type { DeviceJournalData } from "@/lib/data/deskServer";
 import { journalRows, type JournalStint } from "@/lib/deviceJournal";
 import { useT, type MsgKey } from "@/lib/i18n";
 import type { Device } from "@/lib/types";
@@ -32,7 +32,10 @@ const SERVER_KINDS = new Set([
   "ship_run",
   "dispute_resolve",
   "sort_place",
+  "sort_close",
   "inv_count",
+  "inv_cell",
+  "station_switch",
 ]);
 
 /**
@@ -51,14 +54,14 @@ export function DeviceJournal({
 }) {
   const t = useT();
   const staff = useEditor((s) => s.warehouse.staff) ?? [];
-  const [entries, setEntries] = useState<DeviceJournalEntry[] | null>(null);
+  const [journal, setJournal] = useState<DeviceJournalData | null>(null);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     let live = true;
     void workstationRepository.deviceJournal(device.id).then((res) => {
       if (!live) return;
-      if (res.ok) setEntries(res.data);
+      if (res.ok) setJournal(res.data);
       else setFailed(true);
     });
     return () => {
@@ -76,7 +79,7 @@ export function DeviceJournal({
       ...(sec ? { second: "2-digit" } : {}),
     });
   const day = (ms: number) => new Date(ms).toLocaleDateString(t.lang);
-  const rows = entries ? journalRows(entries, device) : [];
+  const rows = journal ? journalRows(journal.entries, device, journal.events) : [];
 
   return (
     <DialogShell size="lg" scroll onClose={onClose}>
@@ -100,7 +103,7 @@ export function DeviceJournal({
           <h3 className={eyebrow()}>{t("devices.journal.before")}</h3>
           {failed ? (
             <FormError>{t("data.failed")}</FormError>
-          ) : !entries ? (
+          ) : !journal ? (
             <p className="text-sm text-muted-foreground">{t("data.busy")}</p>
           ) : rows.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t("devices.journal.empty")}</p>
@@ -119,6 +122,11 @@ export function DeviceJournal({
                         <Unlink className="size-4 shrink-0 text-muted-foreground" />
                       )}
                       {t(`devices.journal.${r.kind}`)}
+                      {(r.byName || r.byStaff) && (
+                        <span className="truncate font-normal text-muted-foreground">
+                          {r.byName ?? name(r.byStaff ?? null)}
+                        </span>
+                      )}
                     </span>
                     <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
                       {day(r.at)} · {time(r.at)}
@@ -152,6 +160,7 @@ function useRefsText() {
   const t = useT();
   const products = useEditor((s) => s.products);
   const boxes = useEditor((s) => s.boxes);
+  const staff = useEditor((s) => s.warehouse.staff);
   return (r: JournalRefs | undefined): string | undefined => {
     if (!r) return undefined;
     const product = r.productId && products.find((p) => p.id === r.productId)?.name;
@@ -162,6 +171,11 @@ function useRefsText() {
       r.outboundCode,
       r.orderId && t("devices.journal.order", { id: r.orderId }),
       !product && r.code,
+      r.station && t(`ws.station.${r.station}` as MsgKey),
+      r.approvedBy &&
+        t("devices.journal.approvedBy", {
+          name: staff?.find((m) => m.id === r.approvedBy)?.name ?? r.approvedBy,
+        }),
     ].filter(Boolean);
     return parts.length ? parts.join(" · ") : undefined;
   };

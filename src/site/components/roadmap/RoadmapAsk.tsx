@@ -39,7 +39,7 @@ export function RoadmapAsk() {
               type="button"
               onClick={() => openDialog({ kind: "idea" })}
               size="lg"
-              shape="pill"
+
               variant="inverse"
               className="shrink-0"
             >

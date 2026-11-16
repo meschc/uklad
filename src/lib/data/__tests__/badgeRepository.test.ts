@@ -52,8 +52,9 @@ function legacyDesks(over: Partial<DeskServer> = {}): DeskServer {
   return {
     open: vi.fn(async () => ok(undefined)),
     revoke: vi.fn(async () => ok(undefined)),
-    journal: vi.fn(async () => ok([])),
+    journal: vi.fn(async () => ok({ entries: [] })),
     unbind: vi.fn(async () => ok(null)),
+    unbindByPassword: vi.fn(async () => ok(true)),
     leave: vi.fn(async () => ok(undefined)),
     ...over,
   };
@@ -184,6 +185,35 @@ describe("workstationRepository: стол с пропуском на серве�
     });
     expect(desks.unbind).not.toHaveBeenCalled();
     expect(port.get().sessionLost).not.toHaveBeenCalled();
+  });
+
+  it("отвязка паролем руководителя: гасит пропуск, чужая учётная запись — отказ", async () => {
+    const port = fakePort(true);
+    const desks = legacyDesks({ unbindByPassword: vi.fn(async () => ok(false)) });
+    const repo = createWorkstationRepository(port, fakeServer(), desks);
+    expect(await repo.unbindDeviceByPassword(" boss@sklad.ru ", "пароль")).toEqual({
+      ok: false,
+      error: "ws.device.notManagerAccount",
+    });
+    expect(desks.unbindByPassword).toHaveBeenCalledWith("boss@sklad.ru", "пароль");
+    expect(port.get().sessionLost).not.toHaveBeenCalled();
+
+    vi.mocked(desks.unbindByPassword).mockResolvedValue(ok(true));
+    expect((await repo.unbindDeviceByPassword("boss@sklad.ru", "пароль")).ok).toBe(true);
+    expect(port.get().revokeDevice).toHaveBeenCalledWith("dev-1");
+    expect(port.get().sessionLost).toHaveBeenCalled();
+  });
+
+  it("отвязка паролем при неотправленной работе — сервер не спрашиваем", async () => {
+    const port = fakePort(true);
+    const desks = legacyDesks();
+    const ops = { pending: () => ({ count: 1, since: 1 }) } as unknown as OpQueue;
+    const repo = createWorkstationRepository(port, fakeServer(), desks, ops);
+    expect(await repo.unbindDeviceByPassword("boss@sklad.ru", "пароль")).toEqual({
+      ok: false,
+      error: "ws.device.queueNotEmpty",
+    });
+    expect(desks.unbindByPassword).not.toHaveBeenCalled();
   });
 
   it("не руководитель — отказ, стол на месте", async () => {

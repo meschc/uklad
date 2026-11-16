@@ -186,7 +186,7 @@ export function MarketScreen() {
               <Button
                 variant="outline"
                 size="sm"
-                shape="pill"
+
                 onClick={() => setSheet(true)}
                 className="lg:hidden"
               >
@@ -233,7 +233,7 @@ export function MarketScreen() {
                     <Button
                       type="button"
                       size="lg"
-                      shape="pill"
+
                       variant="secondary"
                       onClick={showMore}
                     >
@@ -273,7 +273,7 @@ export function MarketScreen() {
                 <div className="grid auto-rows-max content-start gap-3 lg:max-h-[calc(100vh-9rem)] lg:overflow-y-auto lg:pr-1">
                   {cards}
                   {limit < found.length && (
-                    <Button variant="outline" size="lg" shape="pill" onClick={showMore}>
+                    <Button variant="outline" size="lg" onClick={showMore}>
                       {t(T.more, { n: Math.min(PAGE, found.length - limit) })}
                     </Button>
                   )}
@@ -307,7 +307,7 @@ export function MarketScreen() {
               <div className="flex-1 overflow-y-auto p-4">
                 <Filters value={filters} onChange={setFilters} />
               </div>
-              <Button size="lg" shape="pill" onClick={() => setSheet(false)} className="m-4">
+              <Button size="lg" onClick={() => setSheet(false)} className="m-4">
                 {t(T.show, { n: found.length })}
               </Button>
             </div>
@@ -373,7 +373,7 @@ function Empty({ onReset }: { onReset: () => void }) {
     <div className="rounded-[22px] bg-[var(--wh-soft)] py-20 text-center">
       <p className="font-display text-lg font-medium">{t(T.emptyTitle)}</p>
       <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">{t(T.emptyBody)}</p>
-      <Button type="button" onClick={onReset} size="lg" shape="pill" className="mt-5">
+      <Button type="button" onClick={onReset} size="lg" className="mt-5">
         {t(T.emptyReset)}
       </Button>
     </div>

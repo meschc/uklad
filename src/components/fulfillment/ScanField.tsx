@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { ScanLine } from "lucide-react";
 import { useScannerInput } from "@/lib/useScannerInput";
 import { fixKeyboardLayout } from "@/lib/emailTyping";
@@ -91,6 +91,8 @@ export function ScanField({
     if (autoFocus && !disabled) inputRef.current?.focus();
   }, [autoFocus, disabled, label]);
 
+  useKeepFocus(inputRef, autoFocus && !disabled);
+
   return (
     <div className="flex flex-col gap-1.5">
       <label htmlFor="scan-input" className={eyebrow()}>
@@ -163,4 +165,45 @@ export function ScanField({
       {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
     </div>
   );
+}
+
+/** Сюда человек сам вводит текст — фокус оттуда не забираем. */
+function isTextEntry(el: Element | null): boolean {
+  if (!el) return false;
+  if (el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement) return true;
+  if (el instanceof HTMLInputElement)
+    return !["button", "submit", "reset", "checkbox", "radio", "range", "file"].includes(el.type);
+  return (el as HTMLElement).isContentEditable;
+}
+
+/**
+ * Поле скана активно всегда (Кирилл 16.11): клик мышью мимо поля — по пустому
+ * месту, кнопке, строке — возвращает фокус в поле. Не забираем его у другого
+ * поля ввода (пароль руководителя, количество) и у открытого окна с
+ * ловушкой фокуса. Только при мыши: на сенсорном ТСД возврат фокуса каждый
+ * раз открывал бы экранную клавиатуру, а сканер и без фокуса ловит
+ * `useScannerInput`.
+ */
+function useKeepFocus(ref: RefObject<HTMLInputElement>, on: boolean) {
+  useEffect(() => {
+    const input = ref.current;
+    if (!on || !input || !window.matchMedia?.("(pointer: fine)").matches) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const onBlur = () => {
+      clearTimeout(timer);
+      // Ждём, пока браузер решит, куда ушёл фокус.
+      timer = setTimeout(() => {
+        const active = document.activeElement;
+        if (!input.isConnected || active === input || isTextEntry(active)) return;
+        if (active?.closest('[aria-modal="true"]')) return;
+        if (document.querySelector('[aria-modal="true"]')) return;
+        input.focus({ preventScroll: true });
+      }, 0);
+    };
+    input.addEventListener("blur", onBlur);
+    return () => {
+      clearTimeout(timer);
+      input.removeEventListener("blur", onBlur);
+    };
+  }, [ref, on]);
 }

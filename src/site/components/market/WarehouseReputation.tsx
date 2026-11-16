@@ -257,7 +257,7 @@ function ComplaintForm({ warehouse: w }: { warehouse: Warehouse }) {
         type="button"
         onClick={() => setShown(true)}
         size="lg"
-        shape="pill"
+
         variant="secondary"
         className="mt-5"
       >

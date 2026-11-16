@@ -122,7 +122,7 @@ test(
   { skip: SKIP },
   async () => {
     const { a, ivan } = await company("desk-h@sklad.ru", "10.0.3.8");
-    const desk = await makeDesk(a);
+    const desk = await makeDesk(a, "dev-pick");
     await call("/api/cabinet/badges/check", { desk, body: { code: ivan } });
     const boss = await login("desk-h@sklad.ru");
     const read = () => stored(a.org);
@@ -211,6 +211,8 @@ const cabinetData = () => ({
   devices: [
     { id: "dev-1", name: "Стол 1", station: "pack", createdAt: 1 },
     { id: "dev-2", name: "Стол 2", station: "pack", createdAt: 1 },
+    // Сборку сервер принимает только с ТСД сборки (`stationAt`).
+    { id: "dev-pick", name: "ТСД сборки", station: "picking", createdAt: 1 },
   ],
 });
 
@@ -376,6 +378,88 @@ test("отвязка бейджем руководителя и отзыв с д
   assert.equal(off.json.revoked, 1);
   assert.equal((await call("/api/cabinet/snapshot", { desk: second })).status, 401);
 });
+
+test(
+  "отвязка паролем руководителя на столе, журнал — кто привязал и отвязал",
+  {
+    skip: SKIP,
+  },
+  async () => {
+    const { a, boss } = await company("desk-pw@sklad.ru", "10.0.3.10");
+    const desk = await makeDesk(a);
+    const pw = (password, email = "desk-pw@sklad.ru") =>
+      call("/api/desk/unbind", { desk, body: { email, password }, ip: "10.0.3.11" });
+    // Не тот пароль — 422, не 401: стол не принимает это за потерю пропуска.
+    const wrong = await pw("не-тот-пароль");
+    assert.deepEqual([wrong.status, wrong.json.error], [422, "bad_credentials"]);
+    assert.equal((await call("/api/auth/me", { desk })).status, 200);
+    // Чужая учётная запись с верным паролем — не руководитель этой компании.
+    await company("desk-pw-other@sklad.ru", "10.0.3.12");
+    const stranger = await pw(PW, "desk-pw-other@sklad.ru");
+    assert.deepEqual([stranger.status, stranger.json.error], [404, "not_manager"]);
+    const right = await pw(PW);
+    assert.equal(right.status, 200);
+    assert.ok(right.cookies.some((c) => c.startsWith(`${deskCookieName}=;`)));
+    // Новой сессии входа отвязка не даёт: компьютер не становится кабинетом.
+    assert.ok(
+      !right.cookies.some((c) => c.startsWith(`${cookieName}=`) && !c.includes("Max-Age=0")),
+    );
+    assert.equal((await call("/api/auth/me", { desk })).status, 401);
+
+    // Второй стол отвязывают бейджем: журнал знает, чей это бейдж.
+    const second = await makeDesk({ cookie: await login("desk-pw@sklad.ru"), org: a.org }, "dev-2");
+    assert.equal(
+      (await call("/api/desk/unbind", { desk: second, body: { code: boss } })).status,
+      200,
+    );
+
+    const office = { cookie: await login("desk-pw@sklad.ru"), org: a.org };
+    const j1 = await call("/api/cabinet/desks/journal?device=dev-1", office);
+    assert.deepEqual(
+      j1.json.events.map((e) => [e.kind, Boolean(e.byName), e.byStaff ?? null]),
+      [
+        ["revoked", true, null],
+        ["bound", true, null],
+      ],
+    );
+    const j2 = await call("/api/cabinet/desks/journal?device=dev-2", office);
+    assert.deepEqual(
+      j2.json.events.map((e) => [e.kind, e.byStaff ?? null]),
+      [
+        ["revoked", "stf-boss"],
+        ["bound", null],
+      ],
+    );
+  },
+);
+
+test(
+  "подбор пароля через отвязку стола упирается в тот же замок, что вход",
+  {
+    skip: SKIP,
+  },
+  async () => {
+    const { a } = await company("desk-lock@sklad.ru", "10.0.3.20");
+    const desk = await makeDesk(a);
+    const ip = "10.0.3.21";
+    const body = { email: "desk-lock@sklad.ru", password: "не-тот-пароль" };
+    for (let i = 0; i < 5; i++) {
+      const r = await call("/api/desk/unbind", { desk, body, ip });
+      assert.equal(r.status, 422);
+    }
+    const locked = await call("/api/desk/unbind", { desk, body, ip });
+    assert.deepEqual([locked.status, locked.json.error], [429, "locked"]);
+    // Замок общий: вход паролем с той же почтой и того же адреса тоже закрыт,
+    // даже с верным паролем.
+    const login = await call("/api/auth/login", {
+      body: { email: "desk-lock@sklad.ru", password: PW },
+      ip,
+    });
+    assert.deepEqual([login.status, login.json.error], [429, "locked"]);
+    // Стол на месте: замок не гасит его пропуск.
+    assert.equal((await call("/api/auth/me", { desk })).status, 200);
+  },
+);
 
 test("стол чужой компании бейдж не узнаёт", { skip: SKIP }, async () => {
   const { ivan } = await company("desk-e@sklad.ru", "10.0.3.5");

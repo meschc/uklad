@@ -137,7 +137,7 @@ export function StaffScreen() {
       <ArchiveNote />
       {/* Три вкладки вместо одной длинной простыни: люди склада, партнёры-
           продавцы и режим работы. Контакты склада живут в паспорте. */}
-      <div className="w-fit">
+      <div className="w-fit max-w-full">
         <Segmented<StaffTab>
           size="md"
           ariaLabel={t("staff.title")}
@@ -157,8 +157,8 @@ export function StaffScreen() {
           {/* Люди первыми: кто работает, по какой ставке и сколько сделал —
           одна таблица, а не список и отдельная «нагрузка» под ним. */}
           <section className="flex flex-col gap-3">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="text-sm font-semibold">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="whitespace-nowrap text-sm font-semibold">
                 {t("staff.people")} · {staff.length}
               </h2>
               <div className="flex items-center gap-1.5">
@@ -167,9 +167,12 @@ export function StaffScreen() {
                   variant="outline"
                   disabled={staff.length === 0}
                   onClick={exportStaff}
+                  // На телефоне подписи нет — остаётся значок с названием.
+                  title={t("staff.export")}
+                  aria-label={t("staff.export")}
                 >
                   <Download className="size-3.5" />
-                  {t("staff.export")}
+                  <span className="hidden sm:inline">{t("staff.export")}</span>
                 </Button>
                 {/* Формы у загрузки нет, терять нечего — отказ тостом, а кнопка на
                 время команды занята: второй тот же файл завёл бы список дважды. */}
@@ -178,9 +181,13 @@ export function StaffScreen() {
                   variant="outline"
                   disabled={load.pending}
                   onClick={() => fileRef.current?.click()}
+                  title={t("staff.import")}
+                  aria-label={t("staff.import")}
                 >
                   <Upload className="size-3.5" />
-                  {load.pending ? t("data.busy") : t("staff.import")}
+                  <span className="hidden sm:inline">
+                    {load.pending ? t("data.busy") : t("staff.import")}
+                  </span>
                 </Button>
                 <input
                   ref={fileRef}

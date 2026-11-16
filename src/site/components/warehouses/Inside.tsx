@@ -106,7 +106,7 @@ export function Inside() {
       </div>
 
       <Reveal className="mt-12 flex justify-center sm:mt-14">
-        <Button asChild size="lg" shape="pill" variant="secondary" className="group">
+        <Button asChild size="lg" variant="secondary" className="group">
           <a href={DEMO_HREF}>
             {t(T.demo)}
             <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />

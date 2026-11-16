@@ -182,7 +182,7 @@ export function SellersPage() {
             <CtaLink href={href("/market")} className="w-full sm:w-auto">
               {t(T.ctaMarket)}
             </CtaLink>
-            <Button asChild variant="outline" size="lg" shape="pill" className="w-full sm:w-auto">
+            <Button asChild variant="outline" size="lg" className="w-full sm:w-auto">
               <a href={href("/pricing")}>{t(T.ctaPricing)}</a>
             </Button>
           </div>

@@ -8,7 +8,6 @@ import {
   ListChecks,
   MessagesSquare,
   MonitorSmartphone,
-  Scale,
   Plug,
   Printer,
   ScanSearch,
@@ -16,6 +15,7 @@ import {
   Tags,
   Users,
   type LucideIcon,
+  ShieldCheck,
 } from "lucide-react";
 import type { AppView, UserRole } from "@/lib/types";
 import type { MsgKey } from "@/lib/i18n";
@@ -63,9 +63,10 @@ const WAREHOUSE_NAV: NavEntry[] = [
   // стоит внизу меню (`WORKSTATION_NAV`), рядом с поддержкой и темой. В кабинете
   // руководителю остаются «Задания» (контроль), документы и аналитика.
   { view: "tasks", key: "nav.side.tasks", icon: ClipboardList },
-  // Недостачи, брак и ошибки скана ждут решения старшего — это ежедневная
-  // работа, а не настройка склада, поэтому не в «О складе».
-  { view: "disputes", key: "nav.side.disputes", icon: Scale },
+  // Всё, что ждёт решения старшего: смена процесса, недостача, пересорт,
+  // брак, расхождения пересчёта (Кирилл 16.11). Ежедневная работа, а не
+  // настройка склада, поэтому не в «О складе». «Спорные» — внутри.
+  { view: "approvals", key: "nav.side.approvals", icon: ShieldCheck },
   { view: "editor", key: "nav.side.plan", icon: Boxes },
   // Переписка с продавцами — отдельным пунктом (п.3): в неё заходят по десять
   // раз на день, в группе она стоила бы лишнего клика.
@@ -135,7 +136,7 @@ const DESK_VIEWS = ["receiving.view", "picking.view", "packing.view", "shipping.
  */
 const VIEW_PERMS: Partial<Record<AppView, string[]>> = {
   tasks: [...DESK_VIEWS, "inventory.view"],
-  disputes: ["goods.view"],
+  approvals: ["goods.view", "goods.decide"],
   editor: ["plan.view"],
   chat: ["chat.use"],
   spec: [],

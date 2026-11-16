@@ -133,6 +133,12 @@ const cabinetData = () => ({
   devices: [
     { id: "dev-1", name: "Стол 1", station: "pack", createdAt: 1 },
     { id: "dev-2", name: "Стол 2", station: "pack", createdAt: 1 },
+    // Процесс держит сервер (`stationAt`): работу каждого процесса — с
+    // устройства этого процесса.
+    { id: "dev-pick", name: "ТСД сборки", station: "picking", createdAt: 1 },
+    { id: "dev-recv", name: "Приёмка", station: "receiving", createdAt: 1 },
+    { id: "dev-ship", name: "Отгрузка", station: "shipping", createdAt: 1 },
+    { id: "dev-inv", name: "ТСД инвентаризации", station: "inventory", createdAt: 1 },
   ],
 });
 
@@ -462,7 +468,7 @@ test(
       body: { version: 1, format: 8, data },
     });
     assert.equal(saved.status, 200);
-    const desk = await makeDesk(a);
+    const desk = await makeDesk(a, "dev-pick");
     await call("/api/cabinet/badges/check", { desk, body: { code: ivan } });
 
     const unit = (i) => ({
@@ -592,7 +598,7 @@ test(
       body: { version: 1, format: 8, data },
     });
     assert.equal(saved.status, 200);
-    const desk = await makeDesk(a);
+    const desk = await makeDesk(a, "dev-recv");
     await call("/api/cabinet/badges/check", { desk, body: { code: ivan } });
 
     const at = Date.now() - 500;
@@ -757,7 +763,7 @@ test(
       body: { version: 1, format: 8, data },
     });
     assert.equal(saved.status, 200);
-    const desk = await makeDesk(a);
+    const desk = await makeDesk(a, "dev-ship");
     await call("/api/cabinet/badges/check", { desk, body: { code: ivan } });
     const at = Date.now() - 500;
     const ship = {
@@ -834,7 +840,7 @@ test(
       body: { version: 1, format: 8, data },
     });
     assert.equal(saved.status, 200);
-    const desk = await makeDesk(a);
+    const desk = await makeDesk(a, "dev-recv");
     await call("/api/cabinet/badges/check", { desk, body: { code: ivan } });
     const cargo = {
       key: "key-cargo-1xx",
@@ -911,7 +917,7 @@ test(
       body: { version: 1, format: 8, data },
     });
     assert.equal(saved.status, 200);
-    const desk = await makeDesk(a);
+    const desk = await makeDesk(a, "dev-inv");
     const found = [{ productId: "pr1", qty: 2 }];
     const op = (key, staffId, over = {}) => ({
       key,
@@ -1021,5 +1027,99 @@ test(
       [a.org],
     );
     assert.equal((await call(q, { cookie, org: a.org })).status, 403);
+  },
+);
+
+test(
+  "смена процесса: сотрудник просит, старший разрешает в кабинете, сервер держит процесс",
+  { skip: SKIP },
+  async () => {
+    const { a, ivan } = await company("ops-switch@sklad.ru", "10.0.5.9");
+    const desk = await makeDesk(a);
+    await call("/api/cabinet/badges/check", { desk, body: { code: ivan } });
+    const place = (key) => ({
+      key,
+      kind: "sort_place",
+      body: { eventId: `ev-${key}`, at: Date.now() - 100, code: "UK-OUT-1", sortCode: "S1" },
+    });
+
+    // Стол упаковки: сортировку без перехода сервер не примет.
+    const before = await ops(desk, [place("key-place-01")]);
+    assert.equal(before.json.results[0].reason, "station");
+
+    // Заявка — и пока старший не решил, применить её нельзя.
+    const asked = await call("/api/desk/switch", {
+      desk,
+      body: { station: "sorting", from: "pack" },
+    });
+    assert.equal(asked.status, 200);
+    const id = asked.json.id;
+    const early = await call("/api/desk/switch/apply", { desk, body: { id, at: Date.now() } });
+    assert.equal(early.status, 409);
+
+    // Подделать переход пачкой операций стол не может.
+    const forged = await ops(desk, [
+      {
+        key: "key-forged-01",
+        kind: "station_switch",
+        body: { eventId: "f1", at: Date.now(), station: "sorting" },
+      },
+    ]);
+    assert.equal(forged.status, 400);
+    // И разрешить свою заявку стол не может: решения — только из кабинета.
+    const self = await call("/api/cabinet/switch-requests/decide", {
+      desk,
+      body: { id, approve: true },
+    });
+    assert.notEqual(self.status, 200);
+
+    // Старший в кабинете видит заявку и разрешает.
+    const cookie = await login("ops-switch@sklad.ru");
+    const list = await call("/api/cabinet/switch-requests", { cookie, org: a.org });
+    assert.equal(list.status, 200);
+    assert.deepEqual(
+      list.json.requests.map((r) => [r.id, r.staffRef, r.station, r.from]),
+      [[id, "stf-ivan", "sorting", "pack"]],
+    );
+    const yes = await call("/api/cabinet/switch-requests/decide", {
+      cookie,
+      org: a.org,
+      body: { id, approve: true },
+    });
+    assert.equal(yes.status, 200);
+    // Второе решение по той же заявке — уже нечего решать.
+    const again = await call("/api/cabinet/switch-requests/decide", {
+      cookie,
+      org: a.org,
+      body: { id, approve: false },
+    });
+    assert.equal(again.status, 404);
+
+    const st = await call(`/api/desk/switch?id=${id}`, { desk });
+    assert.equal(st.json.status, "approved");
+    const applied = await call("/api/desk/switch/apply", {
+      desk,
+      body: { id, at: Date.now() - 200 },
+    });
+    assert.deepEqual([applied.status, applied.json.station], [200, "sorting"]);
+
+    // Теперь сортировка — его процесс, упаковка — нет.
+    const after = await ops(desk, [place("key-place-02")]);
+    assert.notEqual(after.json.results[0].reason, "station");
+    const pack = await ops(desk, [
+      {
+        key: "key-pack-01",
+        kind: "pack_event",
+        body: { eventId: "p1", at: Date.now() - 50, toteId: "b1", code: "x" },
+      },
+    ]);
+    assert.equal(pack.json.results[0].reason, "station");
+
+    const j = await call("/api/cabinet/desks/journal?device=dev-1", { cookie, org: a.org });
+    const rows = j.json.entries.filter((e) => e.kind === "station_switch");
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].staffRef, "stf-ivan");
+    assert.equal(rows[0].refs.station, "sorting");
+    assert.ok(rows[0].refs.approvedBy);
   },
 );

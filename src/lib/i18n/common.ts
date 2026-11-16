@@ -298,6 +298,8 @@ export const ru = {
 
   // --- Боковая навигация и роли (фулфилмент-контур) --------------------------
   "nav.side.title": "Разделы",
+  "nav.side.more": "Ещё",
+  "nav.side.close": "Закрыть меню",
   "nav.side.dashboard": "Главная",
   "nav.side.toDashboard": "На главную",
   "nav.side.plan": "Товары",
@@ -310,7 +312,7 @@ export const ru = {
   "nav.side.lookup": "Что это?",
   "nav.side.integrations": "Интеграции",
   "nav.side.devices": "Устройства",
-  "nav.side.disputes": "Спорные",
+  "nav.side.approvals": "Подтверждения",
 
   // --- Справка о новых возможностях ------------------------------------------
   "faq.crossDock.q": "Чем кроссдокинг отличается от обычной приёмки?",
@@ -624,6 +626,8 @@ export const en: Record<keyof typeof ru, string> = {
 
   // --- Side navigation and roles --------------------------------------------
   "nav.side.title": "Sections",
+  "nav.side.more": "More",
+  "nav.side.close": "Close menu",
   "nav.side.dashboard": "Home",
   "nav.side.toDashboard": "To home",
   "nav.side.plan": "Products",
@@ -635,7 +639,7 @@ export const en: Record<keyof typeof ru, string> = {
   "nav.side.lookup": "What is it?",
   "nav.side.integrations": "Integrations",
   "nav.side.devices": "Devices",
-  "nav.side.disputes": "Disputes",
+  "nav.side.approvals": "Approvals",
 
   // --- Help on the new features -------------------------------------------------
   "faq.crossDock.q": "How is cross-docking different from normal receiving?",

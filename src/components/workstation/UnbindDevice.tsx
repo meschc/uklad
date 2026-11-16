@@ -9,9 +9,11 @@ import { Button } from "@/components/ui/button";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { ScanField, type ScanStatus } from "@/components/fulfillment/ScanField";
 import { useDemoHints } from "./useDemoHints";
+import { UnbindByPassword } from "./UnbindByPassword";
 
 /**
- * Отвязка стола на самом столе — бейджем руководителя. Упаковщик сам стол
+ * Отвязка стола на самом столе — бейджем старшего или, с сервером, паролем
+ * руководителя (тем же правом, каким стол привязали). Упаковщик сам стол
  * отвязать не может: иначе любой одним сканом уводил бы общий экран в кабинет.
  * Вне стола то же делает кнопка «Отключить» на экране «Устройства».
  *
@@ -25,8 +27,10 @@ export function UnbindDevice({ onDone }: { onDone: () => void }) {
   );
   // С сервером стол — свой пропуск: погасить его может только сервер, а
   // локальная отвязка оставила бы живую куку стола и обошла бы проверку
-  // очереди. Там стол отвязывают в кабинете: «Устройства → Отключить».
+  // очереди. Право там решает роль, а не должность в снимке, поэтому скан
+  // бейджа есть всегда, а рядом — пароль руководителя.
   const server = useEditor((s) => s.session.source === "server");
+  const [byPassword, setByPassword] = useState(false);
   const unbind = useCommand(workstationRepository.unbindDevice);
   const [status, setStatus] = useState<ScanStatus>("idle");
 
@@ -43,11 +47,27 @@ export function UnbindDevice({ onDone }: { onDone: () => void }) {
           <MonitorX className="size-6" />
         </span>
         <h1 className="text-xl font-semibold tracking-tight">{t("ws.kiosk.unbind")}</h1>
-        <p className="max-w-md text-sm text-muted-foreground">{t("ws.kiosk.unbindHint")}</p>
+        <p className="max-w-md text-sm text-muted-foreground">
+          {t(server ? "ws.kiosk.unbindHintServer" : "ws.kiosk.unbindHint")}
+        </p>
       </div>
 
-      {managers.length === 0 && server ? (
-        <p className="text-center text-sm text-muted-foreground">{t("ws.kiosk.unbindInCabinet")}</p>
+      {server && byPassword ? (
+        <UnbindByPassword onDone={onDone} />
+      ) : server ? (
+        <>
+          <ScanField
+            label={t("ws.login.scan")}
+            status={status}
+            placeholder="UK-STF-…"
+            hint={unbind.error ? t(unbind.error) : undefined}
+            actionLabel={t("ws.kiosk.unbind")}
+            onSubmit={(code) => void submit(code)}
+          />
+          <Button variant="outline" className="self-center" onClick={() => setByPassword(true)}>
+            {t("ws.kiosk.byPassword")}
+          </Button>
+        </>
       ) : managers.length === 0 ? (
         // Руководителя в персонале нет — бейджа, которым отвязать, тоже нет.
         // Иначе стол остался бы привязанным навсегда.
@@ -75,7 +95,7 @@ export function UnbindDevice({ onDone }: { onDone: () => void }) {
         />
       )}
 
-      {demoHints && managers.length > 0 && (
+      {demoHints && !byPassword && managers.length > 0 && (
         <section className="flex flex-col gap-2">
           <h2 className={eyebrow({ tone: "muted" })}>{t("ws.login.demo")}</h2>
           <div className="flex flex-wrap gap-2">

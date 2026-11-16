@@ -143,7 +143,7 @@ export function SiteHeader({ route }: { route: Route }) {
           <Button
             asChild
             variant="ghost"
-            shape="pill"
+
             className="hidden px-2.5 uppercase tracking-[0.08em] text-muted-foreground sm:inline-flex"
           >
             <a href={langHref} hrefLang={other} onClick={onSwitchLang} aria-label={t(T.switchTo)}>
@@ -156,14 +156,14 @@ export function SiteHeader({ route }: { route: Route }) {
               героя (`CtaLink`), а не тёмное: два разных «главных» на одном
               экране спорили бы друг с другом. Отступы на телефоне ужаты, чтобы
               строка в одну линию встала рядом с логотипом и меню. */}
-          <Button asChild shape="pill" className="px-3 sm:px-4">
+          <Button asChild className="px-3 sm:px-4">
             <a href={href("/market")}>{t(T.cta)}</a>
           </Button>
 
           <Button
             variant="outline"
             size="icon"
-            shape="pill"
+
             onClick={() => setOpen((v) => !v)}
             aria-label={t(T.menu)}
             aria-expanded={open}
