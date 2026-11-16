@@ -339,6 +339,7 @@ test("тип скана и «пик за товар» — правило баз�
   await put("key-gen-6", "sort_place", "applied", {});
   await put("key-gen-7", "shift_mark", "applied", {});
   await put("key-gen-8", "station_switch", "applied", { station: "sorting" });
+  await put("key-gen-9", "pick_undo", "applied", { pickId: "p1" });
   const { rows } = await db.root.query(
     `SELECT op_key, step, counted FROM uklad.desk_ops
      WHERE org_id = $1 AND op_key LIKE 'key-gen-%' ORDER BY op_key`,
@@ -355,6 +356,7 @@ test("тип скана и «пик за товар» — правило баз�
       ["sort", true],
       ["shift", false],
       ["shift", false],
+      ["pick", false],
     ],
   );
 

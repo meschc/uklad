@@ -33,6 +33,7 @@ export const DESK_KINDS: ReadonlySet<string> = new Set([
   "pack_done",
   "pick_unit",
   "pick_done",
+  "pick_undo",
   "recv_open",
   "recv_unit",
   "recv_place",
@@ -128,7 +129,11 @@ const ERROR_TYPES = new Set(["pack_error", "pack_reject"]);
 
 /** Ошибка или отказ: такие строки журнал подсвечивает и фильтрует отдельно. */
 export const isJournalError = (e: ActivityEntry): boolean =>
-  e.flagged || !!e.refs?.dispute || ERROR_TYPES.has(e.refs?.type ?? "");
+  e.flagged ||
+  !!e.refs?.dispute ||
+  ERROR_TYPES.has(e.refs?.type ?? "") ||
+  // Отмена скана сборки (миграция 043): сборщик ошибся — разбор ищет и это.
+  e.kind === "pick_undo";
 
 /**
  * Свежая страница поверх уже показанного: тот же id — одна строка, новые
@@ -158,6 +163,7 @@ const LOCAL_STEP: Record<StaffEvent["type"], JournalStep> = {
   pack_reprint: "label",
   pack_done: "pack",
   pick_scan: "pick",
+  pick_undo: "pick",
 };
 
 /** Демо без сервера: журнал смен этого браузера теми же строками и фильтрами. */

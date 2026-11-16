@@ -30,6 +30,7 @@ export type DeskOpKind =
   | "pack_done"
   | "pick_unit"
   | "pick_done"
+  | "pick_undo"
   | "recv_open"
   | "recv_unit"
   | "recv_place"
@@ -49,6 +50,7 @@ const KINDS: readonly DeskOpKind[] = [
   "pack_done",
   "pick_unit",
   "pick_done",
+  "pick_undo",
   "recv_open",
   "recv_unit",
   "recv_place",
@@ -81,8 +83,9 @@ export interface DeskOpBody {
   lines?: { productId: string; qty: number }[];
   requestIds?: string[];
   shortages?: { id: string; productId: string; qty: number }[];
-  // Сборка (`pick_unit`, `pick_done`).
+  // Сборка (`pick_unit`, `pick_done`, `pick_undo` — `pickId` отменяемого скана).
   requestId?: string;
+  pickId?: string;
   cell?: { floorId: string; moduleId: string; shelfIndex: number; cellIndex: number };
   partial?: boolean;
   // Приёмка (`recv_*`).
@@ -352,7 +355,7 @@ const randomKey = () => {
 async function sayFlagged(kinds: DeskOpKind[]) {
   const { useEditor } = await import("../store");
   const packing = kinds.some((k) => k === "pack_event" || k === "pack_done");
-  const picking = kinds.some((k) => k === "pick_unit" || k === "pick_done");
+  const picking = kinds.some((k) => k.startsWith("pick_"));
   const receiving = kinds.some((k) => k.startsWith("recv_"));
   const shipping =
     kinds.includes("ship_run") || kinds.includes("sort_place") || kinds.includes("sort_close");

@@ -5,6 +5,7 @@ import type { MsgKey } from "../i18n";
 import type { Notice, NoticeInput, NoticeTone } from "../notice";
 import type { SwitchRequest } from "../data/switchRepository";
 import type { ItemScan, PackDoneFacts } from "../packing";
+import type { PickUndoProblem } from "../pickUndo";
 import type {
   CellCountInput,
   CellCountProblem,
@@ -602,6 +603,12 @@ export interface RequestsSlice {
     toteId?: string,
     by?: string,
   ) => number;
+  /**
+   * Отменить свой скан сборки (`pickUndo.ts`): штука из тары — обратно в
+   * короб, откуда её сняли, собранное −1, в журнал — `pick_undo`. Ответ —
+   * id записи отмены или почему нельзя.
+   */
+  undoPick: (pickId: string, by: string) => { id: string } | { problem: PickUndoProblem };
   /** Закрыть заявку: полностью или частично (собрали меньше запрошенного). */
   completeRequest: (id: string, partial?: boolean) => void;
   /**

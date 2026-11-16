@@ -121,6 +121,7 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = auth, uklad, pg_temp AS $
            'qty', o.body->'qty',
            'dispute', o.body->'dispute'->>'kind',
            'resolution', o.body->>'resolution',
+           'pickId', o.body->>'pickId',
            -- Переход между процессами (миграция 042): куда и кто разрешил.
            'station', o.body->>'station',
            'approvedBy', o.body->>'approvedBy'
@@ -137,7 +138,9 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = auth, uklad, pg_temp AS $
     AND (p_staff IS NULL OR o.staff_ref = p_staff)
     AND (p_steps IS NULL OR o.step = ANY (p_steps))
     AND (NOT coalesce(p_errors, false) OR o.status = 'flagged'
-         OR o.body ? 'dispute' OR o.body->>'type' IN ('pack_error', 'pack_reject'))
+         OR o.body ? 'dispute' OR o.body->>'type' IN ('pack_error', 'pack_reject')
+         -- Отмена скана сборки (миграция 043) — тоже ошибка сборщика.
+         OR o.kind = 'pick_undo')
     AND (p_product IS NULL OR o.body->>'productId' = p_product
          OR o.body->'lines' @> jsonb_build_array(jsonb_build_object('productId', p_product)))
     AND (p_place IS NULL OR p_place IN (o.body->>'toteId', o.body->>'boxId',
