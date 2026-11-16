@@ -11,6 +11,7 @@ import { Segmented } from "@/components/ui/segmented";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { QrSvg } from "@/components/table/QrSvg";
 import { ScanField, type ScanStatus } from "@/components/fulfillment/ScanField";
+import { enterFullscreen } from "@/lib/fullscreen";
 import { useDemoHints } from "./useDemoHints";
 
 /**
@@ -46,6 +47,11 @@ export function BadgeLogin() {
   const [station, setStation] = useState<WorkstationKind>("pack");
 
   const submit = async (code: string) => {
+    // Привязанный стол — рабочее место: при входе он сам разворачивается во
+    // весь экран. Звать до ответа сервера: браузер разрешает это только сразу
+    // после нажатия, а скан бейджа — нажатия клавиш. В демо экран посетителя
+    // не трогаем.
+    if (device && !demoHints) enterFullscreen();
     const res = await login.run(code, device?.station ?? station);
     setStatus(res.ok ? "ok" : "error");
   };

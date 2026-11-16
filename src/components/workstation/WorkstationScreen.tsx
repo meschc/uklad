@@ -38,6 +38,7 @@ import { BadgeLogin } from "./BadgeLogin";
 import { BindDeviceForm } from "./BindDeviceForm";
 import { disableOfflineShell, enableOfflineShell } from "@/lib/offlineShell";
 import { UnbindDevice } from "./UnbindDevice";
+import { FullscreenButton } from "./FullscreenButton";
 import { SortStation } from "./SortStation";
 import { KeyHint } from "./KeyHint";
 import { ShiftGate } from "./ShiftGate";
@@ -200,6 +201,7 @@ export function WorkstationScreen() {
               {t("ws.tab.log")}
               <KeyHint k={STATION_KEY_LABEL.log} />
             </Button>
+            <FullscreenButton />
             <div className="min-w-0 text-right">
               <p className="truncate text-sm font-medium leading-tight">{member.name}</p>
               <p className="hidden text-xs text-muted-foreground md:block">
@@ -223,7 +225,9 @@ export function WorkstationScreen() {
             </Button>
           </div>
         ) : (
-          <div />
+          <div className="flex justify-end">
+            <FullscreenButton />
+          </div>
         )}
       </header>
 
