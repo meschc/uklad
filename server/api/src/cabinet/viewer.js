@@ -51,6 +51,7 @@ const VIEWER_HIDDEN = [
   "subscription",
   "serviceSettings",
   "staffEvents",
+  "payAdjustments",
   "chats",
   "integrations",
   "otherWarehouses",

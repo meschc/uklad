@@ -45,7 +45,7 @@ const WAREHOUSE_LISTS = [
  */
 const NEWEST_FIRST = new Set(["expectedShipments", "requests", "shipments", "tasks", "disputes"]);
 /** Списки всей компании, без склада. */
-const COMPANY_LISTS = ["staffEvents"];
+const COMPANY_LISTS = ["staffEvents", "payAdjustments"];
 /** Склад для списков компании. */
 const COMPANY = "";
 const MARK = "$rows";

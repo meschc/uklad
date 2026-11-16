@@ -13,6 +13,7 @@ export { placementRepository } from "./placementRepository";
 export { requestsRepository } from "./requestsRepository";
 export { backupRepository } from "./backupRepository";
 export { staffRepository } from "./staffRepository";
+export { payRepository } from "./payRepository";
 export { workstationRepository } from "./workstationRepository";
 export { switchRepository, type SwitchRequest } from "./switchRepository";
 export { usePendingOps, STUCK_MS, offlineLimitReached } from "./opQueue";

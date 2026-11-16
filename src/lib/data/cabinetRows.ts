@@ -23,7 +23,7 @@ const WAREHOUSE_LISTS = [
   "docRecords",
   "outboundBoxes",
 ] as const;
-const COMPANY_LISTS = ["staffEvents"] as const;
+const COMPANY_LISTS = ["staffEvents", "payAdjustments"] as const;
 const NEWEST_FIRST = new Set(["expectedShipments", "requests", "shipments", "tasks", "disputes"]);
 const COMPANY = "";
 const MARK = "$rows";

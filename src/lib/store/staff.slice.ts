@@ -1,5 +1,5 @@
 import { nowMs, uid } from "../utils";
-import type { Partner, StaffMember, Warehouse } from "../types";
+import type { Partner, PayAdjustment, StaffMember, Warehouse } from "../types";
 import type { SliceCreator, StaffSlice } from "./state";
 
 /**
@@ -39,6 +39,34 @@ function makeMember(member: Omit<StaffMember, "id">): StaffMember {
 }
 
 export const createStaffSlice: SliceCreator<StaffSlice> = (set) => ({
+  payAdjustments: [],
+
+  addPayAdjustment: (input) => {
+    // Проверку с понятной ошибкой делает репозиторий; здесь — последний рубеж.
+    const amount = Math.round(input.amount);
+    const reason = input.reason.trim();
+    if (!Number.isFinite(amount) || amount <= 0 || !reason) throw new Error("pay: bad input");
+    const id = uid("pay");
+    set((s) => {
+      const created: PayAdjustment = {
+        id,
+        staffId: input.staffId,
+        kind: input.kind,
+        amount,
+        reason: reason.slice(0, 200),
+        at: input.at,
+        ...(input.eventId ? { eventId: input.eventId } : {}),
+        ...(s.profile.name ? { by: s.profile.name } : {}),
+        createdAt: nowMs(),
+      };
+      return { payAdjustments: [...s.payAdjustments, created] };
+    });
+    return id;
+  },
+
+  removePayAdjustment: (id) =>
+    set((s) => ({ payAdjustments: s.payAdjustments.filter((a) => a.id !== id) })),
+
   addStaffMember: (member) => {
     const created = makeMember(member);
     set((s) => ({

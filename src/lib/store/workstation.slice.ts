@@ -10,6 +10,7 @@ import {
   shiftState,
 } from "../workstation";
 import { unpaidMinOf } from "../paidHours";
+import { holidayPctOf, nightPctOf } from "../payExtras";
 import { findByCode, normalizeCode } from "../barcode";
 import {
   cancelledInTote,
@@ -187,6 +188,8 @@ export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get)
           lunchMin: clamp(patch.lunchMin, 10, 120, p.lunchMin),
           autoIdleMin: clamp(patch.autoIdleMin, 0, 240, p.autoIdleMin ?? 15),
           unpaidMin: clamp(patch.unpaidMin, 0, 240, unpaidMinOf(p)),
+          nightPct: clamp(patch.nightPct, 0, 200, nightPctOf(p)),
+          holidayPct: clamp(patch.holidayPct, 0, 300, holidayPctOf(p)),
         },
       };
     }),
