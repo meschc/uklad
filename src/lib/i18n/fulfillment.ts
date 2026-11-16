@@ -370,6 +370,7 @@ export const ru = {
   "pick.undo.title": "Отменить скан?",
   "pick.undo.body":
     "{sku} — обратно в короб {box}, место {addr}. Собрано станет {left} из {total}.",
+  "pick.undo.put": "Положите штуку обратно в короб {box}, затем подтвердите.",
   "pick.undo.confirm": "Вернул в короб",
   "pick.undo.done": "Скан отменён: собрано {n} из {total}",
   "pick.undo.missing": "Этот скан уже отменён",
@@ -783,6 +784,7 @@ export const en: Record<keyof typeof ru, string> = {
   "pick.undo.start": "Undo last scan",
   "pick.undo.title": "Undo the scan?",
   "pick.undo.body": "{sku} goes back to box {box} at {addr}. Picked becomes {left} of {total}.",
+  "pick.undo.put": "Put the unit back into box {box}, then confirm.",
   "pick.undo.confirm": "Returned to box",
   "pick.undo.done": "Scan undone: picked {n} of {total}",
   "pick.undo.missing": "This scan is already undone",
