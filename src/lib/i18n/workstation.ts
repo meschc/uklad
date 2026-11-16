@@ -204,12 +204,7 @@ export const ru = {
   "ws.kiosk.cancel": "Отмена",
   "disputes.title": "Спорные",
   "approvals.title": "Подтверждения",
-  "approvals.lead":
-    "Что сотрудники у столов просят разрешить. Решение записывается с вашим именем.",
-  "approvals.switch.title": "Смена процесса",
   "approvals.emptyTitle": "Ждущих решения нет",
-  "approvals.empty":
-    "Когда сотрудник на ТСД попросит перейти на другой процесс, заявка появится здесь.",
   "approvals.approve": "Разрешить",
   "approvals.decline": "Отклонить",
   "approvals.gone": "Заявку уже решили или сотрудник её отменил.",
@@ -311,8 +306,7 @@ export const ru = {
   "devices.op.station_switch": "Перешёл на процесс",
   "ws.switch.title": "Процесс",
   "ws.switch.change": "Сменить процесс",
-  "ws.switch.body":
-    "Выберите процесс — старший разрешит переход в кабинете, на странице «Подтверждения». Пока ждёте, работайте в прежнем: вход и смена остаются.",
+  "ws.switch.body": "Выберите процесс. Пока старший не разрешит, работайте в прежнем.",
   "ws.switch.current": "сейчас",
   "ws.switch.only":
     "Ваша роль открывает только этот процесс. Другие процессы даёт руководитель в разделе «Персонал → Доступ».",
@@ -751,12 +745,7 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.kiosk.cancel": "Cancel",
   "disputes.title": "Disputes",
   "approvals.title": "Approvals",
-  "approvals.lead":
-    "What staff at the desks ask to approve. The decision is recorded with your name.",
-  "approvals.switch.title": "Process switch",
   "approvals.emptyTitle": "Nothing waiting",
-  "approvals.empty":
-    "When someone on a handheld asks to move to another process, the request appears here.",
   "approvals.approve": "Approve",
   "approvals.decline": "Decline",
   "approvals.gone": "The request was already decided or the employee cancelled it.",
@@ -859,8 +848,7 @@ export const en: Record<keyof typeof ru, string> = {
   "devices.op.station_switch": "Switched process",
   "ws.switch.title": "Process",
   "ws.switch.change": "Change process",
-  "ws.switch.body":
-    "Pick a process and a senior approves the switch in the cabinet, on the Approvals page. Keep working in the current one meanwhile: your sign-in and shift stay.",
+  "ws.switch.body": "Pick a process. Keep working in the current one until a senior approves.",
   "ws.switch.current": "current",
   "ws.switch.only":
     "Your role opens only this process. A manager grants other processes under Staff → Access.",

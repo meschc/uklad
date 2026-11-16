@@ -5,7 +5,6 @@ import { switchRepository, type SwitchRequest } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
-import { eyebrow } from "@/components/ui/eyebrow";
 import { FormError } from "@/components/ui/field";
 import { EmptyState, ScreenShell } from "@/components/fulfillment/ScreenShell";
 
@@ -45,17 +44,10 @@ export function ApprovalsScreen() {
   };
 
   return (
-    <ScreenShell title={t("approvals.title")} subtitle={t("approvals.lead")} wide>
-      <h2 className={eyebrow({ tone: "muted", className: "mb-2" })}>
-        {t("approvals.switch.title")}
-      </h2>
+    <ScreenShell title={t("approvals.title")} wide>
       {decide.error && <FormError>{t(decide.error)}</FormError>}
       {items === null ? null : items.length === 0 ? (
-        <EmptyState
-          icon={<ShieldCheck className="size-5" />}
-          title={t("approvals.emptyTitle")}
-          body={t("approvals.empty")}
-        />
+        <EmptyState icon={<ShieldCheck className="size-5" />} title={t("approvals.emptyTitle")} />
       ) : (
         <ul className="flex flex-col">
           {items.map((r) => (
