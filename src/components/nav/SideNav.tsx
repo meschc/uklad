@@ -9,7 +9,8 @@ import {
   Sun,
   type LucideIcon,
 } from "lucide-react";
-import { countUnread, selectRole, useEditor, visibleChatPartners } from "@/lib/store";
+import { selectRole, useEditor } from "@/lib/store";
+import { useNavBadge } from "./useNavBadge";
 import {
   WORKSTATION_NAV,
   applyOrder,
@@ -21,7 +22,6 @@ import {
   type NavLeaf,
 } from "./navItems";
 import { useFlip } from "./useFlip";
-import type { AppView } from "@/lib/types";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { ReportProblemDialog } from "@/components/support/ReportProblemDialog";
@@ -71,7 +71,13 @@ interface Drag {
  * теряет соседей, с которыми его ищут. Порядок хранится у человека в браузере
  * отдельно для каждой роли.
  */
-export function SideNav() {
+/**
+ * Меню кабинета. На компьютере — рельс слева (`rail`), на телефоне его нет:
+ * там внизу панель `MobileNav`, а это же меню целиком открывается из её
+ * пункта «Ещё» (`sheet`) — во всю ширину, без кнопки «свернуть».
+ */
+export function SideNav({ variant = "rail" }: { variant?: "rail" | "sheet" }) {
+  const sheet = variant === "sheet";
   const appView = useEditor((s) => s.appView);
   const goToView = useEditor((s) => s.goToView);
   const goToDashboard = useEditor((s) => s.goToDashboard);
@@ -82,12 +88,7 @@ export function SideNav() {
   const perms = useEditor((s) => s.session.permissions);
   const theme = useEditor((s) => s.profile.theme);
   const updateProfile = useEditor((s) => s.updateProfile);
-  const requests = useEditor((s) => s.requests);
-  // Счётчик чата считаем по тем же перепискам, что человек в чате и увидит:
-  // продавцу видна одна, складу — все (см. visibleChatPartners).
-  const unreadChats = useEditor((s) =>
-    countUnread(s.chats, s.session.user.role, visibleChatPartners(s)),
-  );
+  const badgeFor = useNavBadge();
   const t = useT();
   const dark = theme === "dark";
   const [order, setOrder] = useState<NavOrder>(readOrder);
@@ -160,7 +161,8 @@ export function SideNav() {
   const shown = preview(topKey, entries, entryKey);
   const topKeys = shown.map(entryKey);
 
-  const [collapsed, setCollapsed] = useState(readCollapsed);
+  const [collapsedPref, setCollapsed] = useState(readCollapsed);
+  const collapsed = !sheet && collapsedPref;
   // Раскрытые группы — набор, а не одна: человек держит открытыми те, куда
   // ходит, как папки в проводнике.
   const [openGroups, setOpenGroups] = useState<Set<string>>(
@@ -181,19 +183,9 @@ export function SideNav() {
     });
 
   const toggleCollapsed = () => {
-    const next = !collapsed;
+    const next = !collapsedPref;
     setCollapsed(next);
     writeLocal(COLLAPSED_KEY, next ? "1" : "0");
-  };
-
-  // Счётчик на «Заданиях»: сколько заявок ждут склад прямо сейчас.
-  const openRequests = requests.filter(
-    (r) => r.status === "new" || r.status === "in_progress",
-  ).length;
-  const badgeFor = (view: AppView) => {
-    if (view === "tasks") return openRequests;
-    if (view === "chat") return unreadChats;
-    return 0;
   };
 
   return (
@@ -201,8 +193,14 @@ export function SideNav() {
       ref={flipRef}
       aria-label={t("nav.side.title")}
       className={cn(
-        "flex shrink-0 flex-col gap-0.5 overflow-y-auto bg-shell px-2 py-3 transition-[width] duration-200",
-        collapsed ? "w-[3.75rem]" : "w-56",
+        "flex-col gap-0.5 overflow-y-auto bg-shell px-2 py-3",
+        sheet
+          ? // Палец, а не мышь: строки меню на телефоне — 44 px.
+            "flex h-full w-full [&_[data-nav-row]]:h-11"
+          : cn(
+              "hidden shrink-0 transition-[width] duration-200 md:flex",
+              collapsed ? "w-[3.75rem]" : "w-56",
+            ),
       )}
     >
       {/* «Мой склад» — выход в кабинет со списком складов: привычка всего веба,
@@ -329,14 +327,16 @@ export function SideNav() {
           badge={0}
           onClick={() => updateProfile({ theme: dark ? "light" : "dark" })}
         />
-        <NavRow
-          icon={collapsed ? PanelLeftOpen : PanelLeftClose}
-          label={collapsed ? t("nav.expand") : t("nav.collapse")}
-          collapsed={collapsed}
-          active={false}
-          badge={0}
-          onClick={toggleCollapsed}
-        />
+        {!sheet && (
+          <NavRow
+            icon={collapsed ? PanelLeftOpen : PanelLeftClose}
+            label={collapsed ? t("nav.expand") : t("nav.collapse")}
+            collapsed={collapsed}
+            active={false}
+            badge={0}
+            onClick={toggleCollapsed}
+          />
+        )}
       </div>
       {reporting && <ReportProblemDialog onClose={() => setReporting(false)} />}
     </nav>
@@ -370,6 +370,7 @@ function NavRow({
   return (
     <button
       type="button"
+      data-nav-row=""
       onClick={onClick}
       title={collapsed ? label : undefined}
       aria-label={collapsed ? label : undefined}

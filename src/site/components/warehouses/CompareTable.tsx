@@ -175,7 +175,7 @@ export function CompareTable({ plans }: { plans: Plan[] }) {
           aria-expanded={full}
           onClick={toggle}
           size="lg"
-          shape="pill"
+
           variant="secondary"
         >
           {t(full ? T.hideAll : T.showAll)}

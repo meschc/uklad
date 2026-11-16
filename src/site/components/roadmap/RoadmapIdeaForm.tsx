@@ -125,7 +125,7 @@ export function RoadmapIdeaForm() {
               type="button"
               onClick={closeDialog}
               size="lg"
-              shape="pill"
+
               className="mt-6 w-full"
             >
               {t(T.ok)}
