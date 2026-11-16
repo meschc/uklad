@@ -1,11 +1,13 @@
-import type { StaffEvent, StaffMember, WorkstationKind } from "./types";
+import type { BreakPolicy, StaffEvent, StaffMember, WorkstationKind } from "./types";
+import { paidMs } from "./paidHours";
 import { processMs } from "./staffProcess";
 import { earnings, idleMs, peaksByStaff, workedMs } from "./workstation";
 import { cell } from "./staffIO";
 
 /**
  * Выработка сотрудников за период: часы на смене, простой, пики по участкам,
- * ошибки и брак при упаковке, сумма по почасовой ставке.
+ * ошибки и брак при упаковке, сумма по почасовой ставке за оплачиваемые
+ * часы (`paidHours.ts`: час обеда за смену не оплачивается).
  *
  * Всё считается из журнала смен (`staffEvents`), новых данных не нужно.
  * Оплату по пикам здесь не считаем: схемы у складов разные (повременка с
@@ -18,6 +20,8 @@ export interface StaffOutput {
   name: string;
   role: string;
   workedMs: number;
+  /** Оплачиваемые часы: смена без неоплачиваемой нормы перерыва. По ним — сумма. */
+  paidMs: number;
   /** Часы на смене по участкам: сам перешёл — часы ушли новому участку. */
   byStation: Partial<Record<WorkstationKind, number>>;
   idleMs: number;
@@ -36,6 +40,7 @@ export function staffReport(
   staff: readonly StaffMember[],
   from: number,
   to: number,
+  policy?: Pick<BreakPolicy, "unpaidMin">,
 ): StaffOutput[] {
   const peaks = peaksByStaff(events, from, to);
   const faults = new Map<string, { errors: number; rejects: number; reprints: number }>();
@@ -50,6 +55,7 @@ export function staffReport(
   }
   return staff.map((m) => {
     const worked = workedMs(events, m.id, from, to);
+    const paid = paidMs(events, m.id, from, to, policy);
     const p = peaks.get(m.id);
     const f = faults.get(m.id);
     return {
@@ -57,6 +63,7 @@ export function staffReport(
       name: m.name,
       role: m.role,
       workedMs: worked,
+      paidMs: paid,
       byStation: processMs(events, m.id, from, to),
       idleMs: idleMs(events, m.id, from, to),
       packed: p?.pack ?? 0,
@@ -65,7 +72,7 @@ export function staffReport(
       rejects: f?.rejects ?? 0,
       reprints: f?.reprints ?? 0,
       rate: m.hourlyRate && m.hourlyRate > 0 ? m.hourlyRate : null,
-      earned: earnings(worked, m.hourlyRate),
+      earned: earnings(paid, m.hourlyRate),
     };
   });
 }
@@ -77,6 +84,7 @@ const STAFF_REPORT_HEADERS = [
   "Сотрудник",
   "Должность",
   "Часы на смене",
+  "Оплачиваемые часы",
   "Простой, ч",
   "Упаковано, шт",
   "Собрано, шт",
@@ -117,6 +125,7 @@ export function staffReportCsv(rows: readonly StaffOutput[]): string {
       r.name,
       r.role,
       hours(r.workedMs),
+      hours(r.paidMs),
       hours(r.idleMs),
       String(r.packed),
       String(r.picked),

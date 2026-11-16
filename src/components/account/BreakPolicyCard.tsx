@@ -4,6 +4,7 @@ import { useT } from "@/lib/i18n";
 import { Input } from "@/components/ui/input";
 import { TimeSelect } from "./TimeSelect";
 import { LIMITS } from "@/lib/numberLimits";
+import { unpaidMinOf } from "@/lib/paidHours";
 
 const DAY = 24 * 60;
 
@@ -17,8 +18,9 @@ export function BreakPolicyCard() {
   const t = useT();
   const policy = useEditor((s) => s.breakPolicy);
   const set = useEditor((s) => s.setBreakPolicy);
+  const unpaid = unpaidMinOf(policy);
 
-  const num = (key: keyof BreakPolicy) => (
+  const num = (key: Exclude<keyof BreakPolicy, "unpaidMin">) => (
     <Input
       max={LIMITS.minutes.max}
       key={`${key}-${policy[key]}`}
@@ -53,6 +55,20 @@ export function BreakPolicyCard() {
         {time(policy.lunchFrom + policy.lunchMin, (to) =>
           set({ lunchMin: (to - policy.lunchFrom + DAY) % DAY }),
         )}
+      </p>
+      <p className={row}>
+        <span className="w-20 text-muted-foreground">{t("ws.policy.unpaidRow")}</span>
+        <Input
+          max={240}
+          key={`unpaid-${unpaid}`}
+          type="number"
+          inputMode="numeric"
+          min={0}
+          defaultValue={unpaid}
+          onBlur={(e) => set({ unpaidMin: Math.max(0, Number(e.target.value) || 0) })}
+          className="h-8 w-16 text-center"
+        />
+        <span className="text-muted-foreground">{t("ws.policy.unpaidTail")}</span>
       </p>
       <p className={row}>
         <span className="w-20 text-muted-foreground">{t("ws.policy.idleRow")}</span>

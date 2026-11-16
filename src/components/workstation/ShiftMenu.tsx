@@ -13,6 +13,7 @@ import {
   startOfMonth,
   workedMs,
 } from "@/lib/workstation";
+import { paidMs } from "@/lib/paidHours";
 import type { IdleReason, ShiftMark, StaffMember } from "@/lib/types";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -55,8 +56,16 @@ export function ShiftMenu({ member, now }: { member: StaffMember; now: number })
   const today = workedMs(events, member.id, startOfDay(now), now);
   const month = workedMs(events, member.id, startOfMonth(now), now);
   const idleToday = idleMs(events, member.id, startOfDay(now), now);
-  const earnedToday = earnings(today, member.hourlyRate);
-  const earnedMonth = earnings(month, member.hourlyRate);
+  // Деньги — за оплачиваемые часы: час обеда за смену не оплачивается, даже
+  // если перерыв не отметили (`paidHours.ts`). Часы на экране — фактические.
+  const earnedToday = earnings(
+    paidMs(events, member.id, startOfDay(now), now, policy),
+    member.hourlyRate,
+  );
+  const earnedMonth = earnings(
+    paidMs(events, member.id, startOfMonth(now), now, policy),
+    member.hourlyRate,
+  );
   const peaks = peaksByStaff(events, startOfDay(now), now + 1).get(member.id);
   const peaksToday = (peaks?.pack ?? 0) + (peaks?.pick ?? 0);
 
