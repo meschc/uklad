@@ -3,8 +3,13 @@ import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
+/**
+ * Кнопка одна на весь продукт. Действия круглые (Кирилл 16.11: «квадратные
+ * выглядят странно»): круглое читается как «нажимается», а поля и карточки
+ * остаются с мягкими углами — так кнопку не спутать с полем. ADR 0007.
+ */
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-[color,background-color,border-color,box-shadow,transform] duration-150 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-medium transition-[color,background-color,border-color,box-shadow,transform] duration-150 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
@@ -23,24 +28,15 @@ const buttonVariants = cva(
       },
       size: {
         default: "h-9 px-4 py-2",
-        sm: "h-8 rounded-md px-3 text-xs",
-        lg: "h-10 rounded-md px-6",
+        sm: "h-8 px-3 text-xs",
+        lg: "h-10 px-6",
         icon: "h-9 w-9",
         "icon-sm": "h-8 w-8",
-      },
-      // Форма — характер витрины (ADR 0007): поверхности у неё почти прямые,
-      // а действия круглые, и круглое читается как «нажимается». Высоты и
-      // цвета при этом общие — пилюля меняет только угол. Идёт после `size`,
-      // и `cn` (tailwind-merge) отдаёт победу её `rounded-full`.
-      shape: {
-        default: "",
-        pill: "rounded-full",
       },
     },
     defaultVariants: {
       variant: "default",
       size: "default",
-      shape: "default",
     },
   },
 );
@@ -51,14 +47,10 @@ interface ButtonProps
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, shape, asChild = false, ...props }, ref) => {
+  ({ className, variant, size, asChild = false, ...props }, ref) => {
     const Comp = asChild ? Slot : "button";
     return (
-      <Comp
-        className={cn(buttonVariants({ variant, size, shape, className }))}
-        ref={ref}
-        {...props}
-      />
+      <Comp className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props} />
     );
   },
 );

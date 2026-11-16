@@ -226,7 +226,7 @@ export function SubmitButton({
   disabled?: boolean;
 }) {
   return (
-    <Button type="submit" disabled={busy || disabled} size="lg" shape="pill" className="w-full">
+    <Button type="submit" disabled={busy || disabled} size="lg" className="w-full">
       {busy ? pending : idle}
     </Button>
   );

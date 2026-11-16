@@ -41,7 +41,7 @@ export function RoadmapAccount() {
         type="button"
         onClick={() => openDialog({ kind: "login" })}
         size="lg"
-        shape="pill"
+
         variant="secondary"
       >
         <UserRound className="size-4" />

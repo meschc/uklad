@@ -91,13 +91,13 @@ export function CookieBar() {
           <Button
             variant="ghost"
             size="sm"
-            shape="pill"
+
             onClick={() => decide("necessary")}
             className="flex-1 bg-[#FAFAFA] text-[var(--wh-ink)] hover:bg-[#F0F0F0] dark:bg-white/10 dark:hover:bg-white/15"
           >
             {t(T.necessary)}
           </Button>
-          <Button size="sm" shape="pill" onClick={() => decide("all")} className="flex-1">
+          <Button size="sm" onClick={() => decide("all")} className="flex-1">
             {t(T.all)}
           </Button>
         </div>

@@ -27,7 +27,7 @@ export function CtaLink({
   className?: string;
 }) {
   return (
-    <Button asChild size="lg" shape="pill" className={cn("group", className)}>
+    <Button asChild size="lg" className={cn("group", className)}>
       <a href={href}>
         {children}
         <ArrowRight className="transition-transform group-hover:translate-x-0.5" />
