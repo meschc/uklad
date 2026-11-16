@@ -1,4 +1,4 @@
-// Журнал действий склада (миграция 040) на настоящем Postgres.
+// Журнал действий склада (миграция 041) на настоящем Postgres.
 //
 // Кирилл 15.11: посекундная история действий, доступная руководителю, с
 // разделением по процессу и товару. Проверяем три круга, как у прав: свой
@@ -360,7 +360,7 @@ test("тип скана и «пик за товар» — правило баз�
   // кусок миграции, что прошёл на сервере.
   await db.root.query(`UPDATE uklad.desk_ops SET warehouse_ref = NULL WHERE org_id = $1`, [c.org]);
   const sql = readFileSync(
-    new URL("../../db/migrations/040_activity_journal.sql", import.meta.url),
+    new URL("../../db/migrations/041_activity_journal.sql", import.meta.url),
     "utf8",
   );
   const from = sql.indexOf("ALTER TABLE uklad.desk_ops NO FORCE");
