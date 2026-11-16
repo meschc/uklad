@@ -170,12 +170,10 @@ export const ru = {
   "ws.ship.unitOk": "Загружено: {code}",
   "ws.ship.notVehicle": "Это не машина: {code}",
   "ws.ship.notUnit": "Это не паллета и не короб: {code}",
-  "ws.net.offline":
-    "Нет связи с сервером. Сканы сохраняются на этом столе и уйдут, когда связь вернётся",
-  "ws.net.weak": "Слабая связь: экран может отвечать медленно, сканы не пропадут",
-  "ws.offline.limitTitle": "Работа без связи остановлена",
-  "ws.offline.limitBody":
-    "Не отправлено действий: {n}. Без сервера стол работает до {h} часов или до {max} действий, иначе остатки разойдутся с другими столами. Ничего не потеряно: всё уйдёт само, когда связь вернётся. Не закрывайте браузер и позовите старшего.",
+  "ws.net.offline": "Нет связи с сервером. Работайте дальше",
+  "ws.net.weak": "Слабая связь: экран может отвечать медленно",
+  "ws.offline.limitTitle": "Нет связи с сервером",
+  "ws.offline.limitBody": "Задания откроются, когда связь вернётся.",
   "ws.ship.locked":
     "{code} уже загружено. Повторный скан: погрузка остановлена, позовите старшего — он сканирует свой бейдж",
   "ws.ship.unlocked": "{name} разрешил продолжить погрузку",
@@ -686,12 +684,10 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.ship.unitOk": "Loaded: {code}",
   "ws.ship.notVehicle": "Not a vehicle: {code}",
   "ws.ship.notUnit": "Not a pallet or box: {code}",
-  "ws.net.offline":
-    "No connection to the server. Scans are kept on this desk and sent when it is back",
-  "ws.net.weak": "Weak connection: the screen may respond slowly, scans won't be lost",
-  "ws.offline.limitTitle": "Offline work paused",
-  "ws.offline.limitBody":
-    "Actions not sent: {n}. Without the server a desk works for up to {h} hours or {max} actions, otherwise stock drifts from other desks. Nothing is lost: it will all go out once the connection is back. Keep the browser open and call a senior.",
+  "ws.net.offline": "No connection to the server. Keep working",
+  "ws.net.weak": "Weak connection: the screen may respond slowly",
+  "ws.offline.limitTitle": "No connection to the server",
+  "ws.offline.limitBody": "Tasks will open once the connection is back.",
   "ws.ship.locked":
     "{code} is already loaded. Repeat scan: loading is stopped, call a senior to scan their badge",
   "ws.ship.unlocked": "{name} allowed loading to continue",

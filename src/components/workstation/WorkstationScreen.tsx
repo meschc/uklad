@@ -18,14 +18,7 @@ import {
   WifiOff,
 } from "lucide-react";
 import { boundDevice, useEditor } from "@/lib/store";
-import {
-  OFFLINE_MAX_MS,
-  OFFLINE_MAX_OPS,
-  STUCK_MS,
-  offlineLimitReached,
-  usePendingOps,
-  workstationRepository,
-} from "@/lib/data";
+import { STUCK_MS, offlineLimitReached, usePendingOps, workstationRepository } from "@/lib/data";
 import { isSessionLive, STATION_KEY_LABEL } from "@/lib/workstation";
 import { mayDecideGoods } from "@/lib/docFlow";
 import { sizeLabel, useLabelPrinter } from "@/lib/labelPrinter";
@@ -543,7 +536,8 @@ function NetworkBanner() {
     <p
       role="status"
       className={cn(
-        "flex shrink-0 items-center gap-2 px-4 py-1.5 text-sm font-medium md:mx-2 md:mb-2 md:rounded-lg",
+        // Поля — как у рабочей области под ней: полоса не шире окна.
+        "mx-3 mb-2 flex shrink-0 items-center gap-2 rounded-lg px-4 py-1.5 text-sm font-medium",
         // Без связи работа идёт дальше — это предупреждение, а не авария:
         // красная полоса пугала и звала обновлять страницу.
         "bg-warning text-black",
@@ -590,13 +584,7 @@ function OfflineGate({ children }: { children: ReactNode }) {
     <div className="mx-auto flex max-w-md flex-col items-center gap-3 py-10 text-center">
       <CloudOff className="size-10 text-warning" strokeWidth={1.5} aria-hidden />
       <h2 className="text-lg font-semibold">{t("ws.offline.limitTitle")}</h2>
-      <p className="text-sm text-muted-foreground">
-        {t("ws.offline.limitBody", {
-          n: pending.count,
-          h: OFFLINE_MAX_MS / 3_600_000,
-          max: OFFLINE_MAX_OPS,
-        })}
-      </p>
+      <p className="text-sm text-muted-foreground">{t("ws.offline.limitBody")}</p>
     </div>
   );
 }
