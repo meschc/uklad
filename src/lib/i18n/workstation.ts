@@ -203,6 +203,16 @@ export const ru = {
   "ws.device.queueNotEmpty": "Работа ещё отправляется на сервер. Подождите и повторите",
   "ws.kiosk.cancel": "Отмена",
   "disputes.title": "Спорные",
+  "approvals.title": "Подтверждения",
+  "approvals.lead":
+    "Что сотрудники у столов просят разрешить. Решение записывается с вашим именем.",
+  "approvals.switch.title": "Смена процесса",
+  "approvals.emptyTitle": "Ждущих решения нет",
+  "approvals.empty":
+    "Когда сотрудник на ТСД попросит перейти на другой процесс, заявка появится здесь.",
+  "approvals.approve": "Разрешить",
+  "approvals.decline": "Отклонить",
+  "approvals.gone": "Заявку уже решили или сотрудник её отменил.",
   "disputes.lead":
     "Недостачи и ошибки скана. Сотрудник откладывает товар и несёт тару старшему, здесь старший решает.",
   "disputes.emptyTitle": "Спорного нет",
@@ -296,6 +306,28 @@ export const ru = {
   "devices.op.dispute_resolve": "Решил спорное",
   "devices.op.sort_place": "Разложил на паллету",
   "devices.op.inv_count": "Пересчитал тару",
+  "devices.op.inv_cell": "Пересчитал ячейку",
+  "devices.op.sort_close": "Закрыл отгрузку места",
+  "devices.op.station_switch": "Перешёл на процесс",
+  "ws.switch.title": "Процесс",
+  "ws.switch.change": "Сменить процесс",
+  "ws.switch.body":
+    "Выберите процесс — старший разрешит переход в кабинете, на странице «Подтверждения». Пока ждёте, работайте в прежнем: вход и смена остаются.",
+  "ws.switch.current": "сейчас",
+  "ws.switch.only":
+    "Ваша роль открывает только этот процесс. Другие процессы даёт руководитель в разделе «Персонал → Доступ».",
+  "ws.switch.unsaved":
+    "Принятые сканы остаются. Незавершённое на экране, например пересчёт тары или погрузку машины, придётся начать заново.",
+  "ws.switch.denied": "Этот процесс ваша роль не открывает. Обратитесь к руководителю.",
+  "ws.switch.offline": "Нет связи с сервером: заявка не ушла. Попробуйте ещё раз.",
+  "ws.switch.waitTitle": "Ждём разрешения на «{name}»",
+  "ws.switch.waitBody":
+    "Старший увидит заявку в кабинете на странице «Подтверждения». Как только разрешит, процесс сменится сам.",
+  "ws.switch.cancel": "Отменить заявку",
+  "ws.switch.done": "Теперь вы на процессе «{name}»",
+  "ws.switch.doneBy": "Теперь вы на процессе «{name}», разрешил {who}",
+  "ws.switch.declined": "Старший не разрешил переход на «{name}»",
+  "devices.journal.approvedBy": "разрешил {name}",
   "devices.revoke": "Отключить",
   "devices.nobody": "никого",
   "devices.open": "Открыть рабочее место",
@@ -718,6 +750,16 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.device.queueNotEmpty": "Work is still being sent to the server. Wait and try again",
   "ws.kiosk.cancel": "Cancel",
   "disputes.title": "Disputes",
+  "approvals.title": "Approvals",
+  "approvals.lead":
+    "What staff at the desks ask to approve. The decision is recorded with your name.",
+  "approvals.switch.title": "Process switch",
+  "approvals.emptyTitle": "Nothing waiting",
+  "approvals.empty":
+    "When someone on a handheld asks to move to another process, the request appears here.",
+  "approvals.approve": "Approve",
+  "approvals.decline": "Decline",
+  "approvals.gone": "The request was already decided or the employee cancelled it.",
   "disputes.lead":
     "Shortages and scan errors. The worker sets the item aside and takes the tote to the supervisor, who decides here.",
   "disputes.emptyTitle": "No disputes",
@@ -812,6 +854,28 @@ export const en: Record<keyof typeof ru, string> = {
   "devices.op.dispute_resolve": "Resolved dispute",
   "devices.op.sort_place": "Sorted onto pallet",
   "devices.op.inv_count": "Counted a tote",
+  "devices.op.inv_cell": "Counted a cell",
+  "devices.op.sort_close": "Closed a sort place shipment",
+  "devices.op.station_switch": "Switched process",
+  "ws.switch.title": "Process",
+  "ws.switch.change": "Change process",
+  "ws.switch.body":
+    "Pick a process and a senior approves the switch in the cabinet, on the Approvals page. Keep working in the current one meanwhile: your sign-in and shift stay.",
+  "ws.switch.current": "current",
+  "ws.switch.only":
+    "Your role opens only this process. A manager grants other processes under Staff → Access.",
+  "ws.switch.unsaved":
+    "Accepted scans stay. Unfinished work on screen, such as a tote recount or truck loading, has to be started again.",
+  "ws.switch.denied": "Your role does not open this process. Ask a manager.",
+  "ws.switch.offline": "No connection to the server: the request was not sent. Try again.",
+  "ws.switch.waitTitle": "Waiting for approval to “{name}”",
+  "ws.switch.waitBody":
+    "A senior will see the request in the cabinet on the Approvals page. Once approved, the process switches by itself.",
+  "ws.switch.cancel": "Cancel request",
+  "ws.switch.done": "You are now on “{name}”",
+  "ws.switch.doneBy": "You are now on “{name}”, approved by {who}",
+  "ws.switch.declined": "The senior did not approve the switch to “{name}”",
+  "devices.journal.approvedBy": "approved by {name}",
   "devices.revoke": "Disable",
   "devices.nobody": "nobody",
   "devices.open": "Open workstation",

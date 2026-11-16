@@ -29,6 +29,10 @@ export interface JournalRefs {
   outboundCode?: string;
   code?: string;
   qty?: number;
+  /** Смена процесса (`station_switch`): на какой процесс перешёл. */
+  station?: string;
+  /** Кто из старших подтвердил смену процесса. */
+  approvedBy?: string;
 }
 
 /**

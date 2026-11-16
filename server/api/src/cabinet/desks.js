@@ -34,6 +34,8 @@
  *   POST /api/cabinet/badges/check — чей бейдж
  *   POST /api/desk/unbind          — { code } бейдж старшего или { email, password }
  *                                    руководителя → стол отвязан
+ *   /api/desk/switch…, /api/cabinet/switch-requests… — смена процесса с
+ *                                    подтверждением старшего (`deskSwitch.js`, 042)
  *   POST /api/desk/senior          — { code } → { staffRef, decide }: бейдж старшего
  *                                    снимает остановку, за стол он не встаёт
  */
@@ -54,6 +56,7 @@ const { mergeDeskStock, STOCK_KEYS } = require("./deskStock");
 const { recordMoves, diffMoves } = require("./moves");
 const { recordStorage } = require("./storage");
 const { isOp, runDeskOps, MAX_OPS } = require("./deskOps");
+const { createSwitchRoutes } = require("./deskSwitch");
 const { deskPlace } = require("./deskPlace");
 
 // Стол живёт, пока его не отвяжут; срок — страховка от забытого компьютера.
@@ -610,6 +613,7 @@ function createDesks({ auth, cfg, send, log }) {
         prevLeft: ms(rows[0]?.prev_left),
       };
       who.perms = await loadDeskPerms(c, [who.staff, who.prev]);
+      who.switches = await loadSwitches(c, d.deskId, [who.staff, who.prev]);
       // Упаковка проходит те же правила, что запись снимка со стола.
       // `atDesk` — кто за столом из тех, кто работает на складе стола.
       const verify = (before, after, atDesk) => {
@@ -642,6 +646,28 @@ function createDesks({ auth, cfg, send, log }) {
     delete answer.bytes;
     delete answer.orgId;
     return send(res, 200, { ok: true, ...answer });
+  }
+
+  /**
+   * Переходы, подтверждённые старшим, по людям этого стола (`deskSwitch.js`):
+   * `{ ref: [{ at, station }] }` по возрастанию времени стола. Процесс у
+   * пропуска стола — последний переход человека за его смену здесь.
+   */
+  async function loadSwitches(c, deskId, refs) {
+    const want = refs.filter((r) => typeof r === "string" && r);
+    if (want.length === 0) return {};
+    const { rows } = await c.query(
+      `SELECT staff_ref, body->>'station' AS station, (body->>'at')::double precision AS at
+       FROM uklad.desk_ops
+       WHERE org_id = uklad.current_org() AND desk_id = $1 AND kind = 'station_switch'
+         AND status = 'applied' AND staff_ref = ANY($2::text[])
+         AND received_at > now() - interval '24 hours'
+       ORDER BY 3`,
+      [deskId, want],
+    );
+    const out = {};
+    for (const r of rows) (out[r.staff_ref] ??= []).push({ at: r.at, station: r.station });
+    return out;
   }
 
   async function checkBadge(req, res) {
@@ -757,7 +783,19 @@ function createDesks({ auth, cfg, send, log }) {
     return send(res, 200, { ok: true }, { "Set-Cookie": clearDesk });
   }
 
+  const switches = createSwitchRoutes({
+    withDesk,
+    withSession,
+    readJson,
+    send,
+    gone,
+    limited,
+    deskHash,
+    checks,
+    companyDoc,
+  });
   const managerRoutes = {
+    ...switches.manager,
     "POST /api/cabinet/desks": open,
     "POST /api/cabinet/desks/revoke": revoke,
     "GET /api/cabinet/desks/journal": journal,
@@ -768,6 +806,7 @@ function createDesks({ auth, cfg, send, log }) {
     "POST /api/cabinet/badges/check": checkBadge,
     "POST /api/desk/unbind": unbind,
     "POST /api/desk/senior": senior,
+    ...switches.desk,
     "POST /api/desk/leave": leave,
     "GET /api/desk/version": snapshotVersion,
     "POST /api/desk/ops": saveOps,
