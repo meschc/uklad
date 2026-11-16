@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Download, Plus, Search, Settings2, SlidersHorizontal, X } from "lucide-react";
+import { Download, Plus, Search, Columns3, SlidersHorizontal, X } from "lucide-react";
 import { catLabel, useT, type MsgKey } from "@/lib/i18n";
 import type { Partner } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -48,14 +48,16 @@ export function TableToolbar({
     (filter.place !== "all" ? 1 : 0);
   return (
     <div className="flex shrink-0 flex-col border-b border-border bg-card">
-      <div className="flex items-center gap-2 px-3 py-2">
-        <div className="relative">
+      {/* На телефоне строка переносится: поиск с фильтрами сверху, счётчик и
+          действия под ними — ничего не уезжает за край экрана. */}
+      <div className="flex flex-wrap items-center gap-2 px-3 py-2">
+        <div className="relative min-w-40 flex-1 sm:flex-none">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={filter.query}
             onChange={(e) => onFilter({ query: e.target.value })}
             placeholder={t("table.search")}
-            className="h-8 w-56 pl-8 pr-7"
+            className="h-8 w-full pl-8 pr-7 sm:w-56"
           />
           {filter.query && (
             <button
@@ -85,9 +87,17 @@ export function TableToolbar({
           )}
         </Button>
         {/* Одна строка действий: главное с подписью, остальное значками. */}
-        <div className="ml-auto flex shrink-0 items-center gap-1.5">
+        <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-1.5">
           <div className="mr-1 whitespace-nowrap text-xs text-muted-foreground">
-            {t("table.shownOf", { n: counts.shown, total: counts.total, placed: counts.placed })}
+            {/* На телефоне — только «237 из 237»: полная строка занимала
+                полэкрана. Значок полей — столбцы, а не ползунки: рядом с
+                «Фильтрами» ползунки читались как вторая кнопка фильтров. */}
+            <span className="sm:hidden">
+              {t("table.shownShort", { n: counts.shown, total: counts.total })}
+            </span>
+            <span className="hidden sm:inline">
+              {t("table.shownOf", { n: counts.shown, total: counts.total, placed: counts.placed })}
+            </span>
           </div>
           {!readOnly && (
             <>
@@ -107,7 +117,7 @@ export function TableToolbar({
                 title={t("table.fields")}
                 aria-label={t("table.fields")}
               >
-                <Settings2 className="size-4" />
+                <Columns3 className="size-4" />
               </Button>
               <Button size="sm" onClick={onAdd}>
                 <Plus className="size-3.5" />

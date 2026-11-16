@@ -71,7 +71,9 @@ export function Segmented<T extends string>({
       role="group"
       aria-label={ariaLabel}
       className={cn(
-        "relative inline-flex shrink-0 items-center gap-0.5 rounded-lg bg-muted",
+        // Не влезли в ширину (телефон) — листаются пальцем вбок, а не
+        // вылезают за край экрана.
+        "no-scrollbar relative inline-flex max-w-full shrink-0 items-center gap-0.5 overflow-x-auto rounded-lg bg-muted",
         s.wrap,
         grow && "w-full",
         className,

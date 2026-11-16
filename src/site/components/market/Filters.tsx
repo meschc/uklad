@@ -175,7 +175,7 @@ export function Filters({
       <Button
         variant="outline"
         size="lg"
-        shape="pill"
+
         onClick={() => onChange({ ...DEFAULT_FILTERS, sort: value.sort })}
         disabled={active === 0}
       >

@@ -298,6 +298,8 @@ export const ru = {
 
   // --- Боковая навигация и роли (фулфилмент-контур) --------------------------
   "nav.side.title": "Разделы",
+  "nav.side.more": "Ещё",
+  "nav.side.close": "Закрыть меню",
   "nav.side.dashboard": "Главная",
   "nav.side.toDashboard": "На главную",
   "nav.side.plan": "Товары",
@@ -624,6 +626,8 @@ export const en: Record<keyof typeof ru, string> = {
 
   // --- Side navigation and roles --------------------------------------------
   "nav.side.title": "Sections",
+  "nav.side.more": "More",
+  "nav.side.close": "Close menu",
   "nav.side.dashboard": "Home",
   "nav.side.toDashboard": "To home",
   "nav.side.plan": "Products",

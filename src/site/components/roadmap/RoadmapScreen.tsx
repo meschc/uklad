@@ -104,7 +104,7 @@ export function RoadmapScreen() {
                 type="button"
                 onClick={() => openDialog({ kind: "idea" })}
                 size="lg"
-                shape="pill"
+
                 className="mt-3 w-full"
               >
                 <Lightbulb className="size-4" />

@@ -107,7 +107,7 @@ function SiteNav({
           <Button
             asChild
             size="lg"
-            shape="pill"
+
             variant={onBlue ? "inverse" : "default"}
             className="max-sm:!hidden"
           >

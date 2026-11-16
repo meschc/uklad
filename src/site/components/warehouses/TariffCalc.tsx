@@ -103,7 +103,7 @@ export function TariffCalc({ period }: { period: PayPeriod }) {
           <Button
             asChild
             size="lg"
-            shape="pill"
+
             variant="secondary"
             className="size-10 shrink-0 px-0 sm:w-auto sm:px-5"
           >
@@ -185,7 +185,7 @@ export function TariffCalc({ period }: { period: PayPeriod }) {
               {v.warehouses >= maxWh && (
                 <p className="text-[13px] text-[var(--wh-blue)]">{t(T.bigger, { n: maxWh })}</p>
               )}
-              <Button asChild size="lg" shape="pill" className="mt-auto w-full">
+              <Button asChild size="lg" className="mt-auto w-full">
                 <a href="#connect">{t(T.choose)}</a>
               </Button>
             </div>

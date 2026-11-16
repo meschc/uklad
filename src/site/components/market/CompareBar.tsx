@@ -99,10 +99,10 @@ export function CompareBar({
               {t(T.alone)}
             </span>
           )}
-          <Button type="button" variant="outline" size="lg" shape="pill" onClick={onClear}>
+          <Button type="button" variant="outline" size="lg" onClick={onClear}>
             {t(T.clear)}
           </Button>
-          <Button type="button" size="lg" shape="pill" onClick={onOpen} disabled={alone}>
+          <Button type="button" size="lg" onClick={onOpen} disabled={alone}>
             {t(T.open)}
           </Button>
         </div>

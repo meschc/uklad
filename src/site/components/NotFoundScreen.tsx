@@ -50,14 +50,14 @@ export function NotFoundScreen({ caption, title, children, action }: Props) {
           <AddressBar />
         </div>
         <div className="mt-10 flex flex-wrap justify-center gap-3">
-          <Button asChild size="lg" shape="pill" className="group">
+          <Button asChild size="lg" className="group">
             <a href={href(primary.to)}>
               <Search className="size-4" />
               {primary.label}
               <ArrowRight className="size-4" />
             </a>
           </Button>
-          <Button asChild size="lg" shape="pill" variant="secondary">
+          <Button asChild size="lg" variant="secondary">
             <a href={href("/contacts")}>{t(T.home)}</a>
           </Button>
         </div>

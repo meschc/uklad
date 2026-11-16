@@ -226,7 +226,7 @@ export function Tariffs({ page = false }: { page?: boolean }) {
               <Button
                 asChild
                 size="lg"
-                shape="pill"
+
                 variant={blue ? "inverse" : "secondary"}
                 className="w-full"
               >
@@ -246,7 +246,7 @@ export function Tariffs({ page = false }: { page?: boolean }) {
           <p className="text-lg font-medium">{t(T.customTitle)}</p>
           <p className="wh-muted mt-1 text-[15px]">{t(T.customBody)}</p>
         </div>
-        <Button asChild size="lg" shape="pill" className="shrink-0">
+        <Button asChild size="lg" className="shrink-0">
           <a href="#connect">{t(T.customCta)}</a>
         </Button>
       </Reveal>
