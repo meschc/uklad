@@ -199,7 +199,7 @@ function createTelegram({ notifierPool, auth, api, botName, webhookSecret, send,
       await route(req, res, url);
     } catch (err) {
       log.error("[uklad] сбой телеграма:", err.message);
-      if (!res.headersSent) send(res, 500, { ok: false });
+      if (!res.headersSent) send(res, err?.httpStatus === 403 ? 403 : 500, { ok: false });
     }
     return true;
   }
