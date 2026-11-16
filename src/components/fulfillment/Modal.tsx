@@ -29,7 +29,7 @@ export function Modal({
   tone,
   sheet,
 }: {
-  title: string;
+  title: React.ReactNode;
   /** Значок в шапке, `size-4 text-muted-foreground`, как у «Сообщить о проблеме». */
   icon?: React.ReactNode;
   children: React.ReactNode;

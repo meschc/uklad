@@ -395,6 +395,7 @@ export function PickingScreen({ autoStart = false }: { autoStart?: boolean } = {
           <RequestHeader
             name={product.name}
             sku={product.sku}
+            image={product.imageUrl}
             picked={picked}
             total={active.qty}
             addr={addr ? (formatAddress(warehouse, addr) ?? undefined) : undefined}
@@ -571,6 +572,7 @@ function NextTask({
 function RequestHeader({
   name,
   sku,
+  image,
   picked,
   total,
   addr,
@@ -578,6 +580,7 @@ function RequestHeader({
 }: {
   name: string;
   sku: string;
+  image?: string;
   picked: number;
   total: number;
   addr?: string;
@@ -586,8 +589,11 @@ function RequestHeader({
   const pct = total ? Math.round((picked / total) * 100) : 0;
   return (
     <div className={card()}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
+      <div className="flex items-start gap-3">
+        {/* Фото — тут, где штуку сверяют с товаром в руке: похожие артикулы
+            путают по номеру, а по картинке — нет. */}
+        {image && <img src={image} alt="" className="size-16 shrink-0 rounded-lg object-cover" />}
+        <div className="min-w-0 flex-1">
           {/* Собирают по артикулу, а не по названию — он и главный (п.23). */}
           <p className="font-mono text-lg font-bold tracking-tight">{sku}</p>
           <p className="mt-0.5 truncate text-xs text-muted-foreground">{name}</p>
