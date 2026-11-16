@@ -35,7 +35,8 @@ export type AppView =
   | "chat"
   | "workstation"
   | "devices"
-  | "disputes";
+  | "disputes"
+  | "journal";
 
 /**
  * Аккаунт (ТЗ, разд. 3.2): личный или компании. От типа зависит, что

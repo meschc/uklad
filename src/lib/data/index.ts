@@ -18,4 +18,5 @@ export { usePendingOps, STUCK_MS } from "./opQueue";
 export { badgeRepository } from "./badgeRepository";
 export { disputesRepository } from "./disputesRepository";
 export { documentsRepository } from "./documentsRepository";
+export { journalRepository } from "./journalRepository";
 export type { Result } from "./result";

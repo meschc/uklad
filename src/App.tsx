@@ -76,6 +76,9 @@ const DocumentsScreen = lazy(() =>
 const LookupScreen = lazy(() =>
   import("@/components/fulfillment/LookupScreen").then((m) => ({ default: m.LookupScreen })),
 );
+const JournalScreen = lazy(() =>
+  import("@/components/fulfillment/JournalScreen").then((m) => ({ default: m.JournalScreen })),
+);
 const IntegrationsScreen = lazy(() =>
   import("@/components/fulfillment/IntegrationsScreen").then((m) => ({
     default: m.IntegrationsScreen,
@@ -374,6 +377,8 @@ function renderView(view: string) {
       return <DocumentsScreen />;
     case "lookup":
       return <LookupScreen />;
+    case "journal":
+      return <JournalScreen />;
     case "integrations":
       return <IntegrationsScreen />;
     case "spec":

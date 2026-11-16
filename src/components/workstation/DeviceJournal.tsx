@@ -4,6 +4,7 @@ import { useEditor } from "@/lib/store";
 import { workstationRepository } from "@/lib/data";
 import type { DeviceJournalEntry } from "@/lib/data/deskServer";
 import { journalRows, type JournalStint } from "@/lib/deviceJournal";
+import { DESK_KINDS } from "@/lib/activityJournal";
 import { useT, type MsgKey } from "@/lib/i18n";
 import type { Device } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -13,26 +14,6 @@ import { cn } from "@/lib/utils";
 import { JournalActions } from "./JournalActions";
 import type { JournalRefs } from "@/lib/data/deskServer";
 import { FormError } from "@/components/ui/field";
-
-/** Виды операций стола на сервере (`desk_ops.kind`) — подписи в словаре. */
-const SERVER_KINDS = new Set([
-  "shift_mark",
-  "shift_undo",
-  "pack_event",
-  "pack_done",
-  "pick_unit",
-  "pick_done",
-  "recv_open",
-  "recv_unit",
-  "recv_place",
-  "recv_attach",
-  "recv_close",
-  "recv_cargo",
-  "ship_run",
-  "dispute_resolve",
-  "sort_place",
-  "inv_count",
-]);
 
 /**
  * Журнал устройства: кто за ним сейчас и кто работал раньше. Тот же журнал
@@ -67,7 +48,7 @@ export function DeviceJournal({
 
   const name = (ref: string | null) =>
     (ref && staff.find((m) => m.id === ref)?.name) || t("devices.journal.nobody");
-  const kind = (k: string) => t((SERVER_KINDS.has(k) ? `devices.op.${k}` : `ws.ev.${k}`) as MsgKey);
+  const kind = (k: string) => t((DESK_KINDS.has(k) ? `devices.op.${k}` : `ws.ev.${k}`) as MsgKey);
   const time = (ms: number, sec = false) =>
     new Date(ms).toLocaleTimeString(t.lang, {
       hour: "2-digit",

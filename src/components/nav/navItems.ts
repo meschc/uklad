@@ -5,6 +5,7 @@ import {
   Boxes,
   ClipboardList,
   FileText,
+  History,
   ListChecks,
   MessagesSquare,
   MonitorSmartphone,
@@ -66,6 +67,9 @@ const WAREHOUSE_NAV: NavEntry[] = [
   // Недостачи, брак и ошибки скана ждут решения старшего — это ежедневная
   // работа, а не настройка склада, поэтому не в «О складе».
   { view: "disputes", key: "nav.side.disputes", icon: Scale },
+  // Посекундная история склада (Кирилл 15.11): спорное разбирают по ней,
+  // поэтому рядом со «Спорными».
+  { view: "journal", key: "nav.side.journal", icon: History },
   { view: "editor", key: "nav.side.plan", icon: Boxes },
   // Переписка с продавцами — отдельным пунктом (п.3): в неё заходят по десять
   // раз на день, в группе она стоила бы лишнего клика.
@@ -144,6 +148,8 @@ const VIEW_PERMS: Partial<Record<AppView, string[]>> = {
   integrations: [],
   staff: ["staff.view"],
   analytics: ["staff.view"],
+  // По журналу видно, кто когда и как работал, — то же право, что «Персонал».
+  journal: ["staff.view"],
   labels: ["products.view"],
   documents: [...DESK_VIEWS, "goods.view"],
   lookup: ["stock.view"],
