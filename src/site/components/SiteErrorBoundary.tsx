@@ -84,7 +84,7 @@ export class SiteErrorBoundary extends Component<Props, State> {
             <Button
               variant="outline"
               size="lg"
-              shape="pill"
+
               onClick={() => window.location.reload()}
             >
               {pick(lang, T.reload)}
@@ -96,7 +96,7 @@ export class SiteErrorBoundary extends Component<Props, State> {
              * Перехватчик кликов тут не помешает: он живёт в `SiteApp`, а
              * `SiteApp` в этот момент уже снят с экрана.
              */}
-            <Button asChild variant="ghost" size="lg" shape="pill">
+            <Button asChild variant="ghost" size="lg">
               <a href={href("/contacts")}>{pick(lang, T.write)}</a>
             </Button>
           </div>

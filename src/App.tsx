@@ -12,6 +12,7 @@ import { holdsCompanyCopy, startServerSync } from "@/lib/store/serverSync";
 import { demoRepository } from "@/lib/data/demoRepository";
 import { startDemoTrack } from "@/lib/demoTrack";
 import { SideNav } from "@/components/nav/SideNav";
+import { MobileNav } from "@/components/nav/MobileNav";
 import { navFor } from "@/components/nav/navItems";
 import type { AppView } from "@/lib/types";
 import { ChatWatcher } from "@/components/chat/ChatWatcher";
@@ -97,11 +98,6 @@ const DevicesScreen = lazy(() =>
 const ApprovalsScreen = lazy(() =>
   import("@/components/approvals/ApprovalsScreen").then((m) => ({
     default: m.ApprovalsScreen,
-  })),
-);
-const DisputesScreen = lazy(() =>
-  import("@/components/workstation/DisputesScreen").then((m) => ({
-    default: m.DisputesScreen,
   })),
 );
 const ChatScreen = lazy(() =>
@@ -235,15 +231,18 @@ export default function App() {
   // Склада у компании ещё нет: рабочим экранам показывать нечего, кабинет
   // стоит на главной с карточкой «Новый склад».
   const noWarehouse = useEditor((s) => s.warehouse.placeholder === true);
+  // «Спорные» переехали в «Подтверждения» (Кирилл 16.11): старая ссылка и
+  // сохранённый экран ведут туда.
+  const wanted = appView === "disputes" ? "approvals" : appView;
   const view = locked
     ? "login"
     : noWarehouse && !ACCOUNT_VIEWS.has(appView)
       ? "dashboard"
       : kiosk || legacyStation
         ? "workstation"
-        : (ACCOUNT_VIEWS.has(appView) && !(viewer && appView === "profile")) ||
-            allowed.includes(appView)
-          ? appView
+        : (ACCOUNT_VIEWS.has(wanted) && !(viewer && wanted === "profile")) ||
+            allowed.includes(wanted)
+          ? wanted
           : (allowed[0] ?? "dashboard");
 
   useEffect(() => {
@@ -320,14 +319,16 @@ export default function App() {
     <TooltipProvider>
       {/* Оболочка: меню стоит на фоне цвета меню, а экран живёт окном со
           скруглёнными углами поверх него. */}
-      <div className="flex h-full bg-shell">
+      {/* На телефоне рельса нет: экран во всю ширину, меню — панелью снизу. */}
+      <div className="flex h-full flex-col bg-shell md:flex-row">
         <SideNav />
         <div
           key={view}
-          className="my-2 mr-2 min-w-0 flex-1 animate-fade-in overflow-hidden rounded-2xl border border-border bg-background"
+          className="min-h-0 min-w-0 flex-1 animate-fade-in overflow-hidden bg-background md:my-2 md:mr-2 md:rounded-2xl md:border md:border-border"
         >
           {screen}
         </div>
+        <MobileNav />
       </div>
       {chrome}
     </TooltipProvider>
@@ -396,8 +397,6 @@ function renderView(view: string) {
       return <WorkstationScreen />;
     case "devices":
       return <DevicesScreen />;
-    case "disputes":
-      return <DisputesScreen />;
     case "approvals":
       return <ApprovalsScreen />;
     case "login":

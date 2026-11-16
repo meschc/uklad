@@ -145,7 +145,7 @@ export function ChatPanel({ to, subject, responseHours, presets = [], className 
           <Button
             type="button"
             size="icon"
-            shape="pill"
+
             onClick={send}
             disabled={!text.trim()}
             aria-label={t(T.send)}

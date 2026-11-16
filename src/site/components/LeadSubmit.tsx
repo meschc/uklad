@@ -110,7 +110,7 @@ export function LeadSubmit({
       <Button
         type={type}
         size="lg"
-        shape="pill"
+
         onClick={onClick}
         disabled={disabled}
         // Отправленная заявка — не кнопка другого тона, а кнопка, переставшая

@@ -120,13 +120,13 @@ export function HeroScreens() {
             <div ref={leadRef} className="flex min-w-0 flex-col gap-5 lg:w-[470px] lg:shrink-0">
               <p className="text-[17px] leading-[1.55] text-white/85">{t(T.lead)}</p>
               <div className="flex flex-col gap-2.5 sm:flex-row">
-                <Button asChild size="lg" shape="pill" variant="inverse">
+                <Button asChild size="lg" variant="inverse">
                   <a href="#connect">
                     <RollText text={t(T.connect)} />
                     <ArrowRight className="size-4" />
                   </a>
                 </Button>
-                <Button asChild size="lg" shape="pill" variant="inverse-outline">
+                <Button asChild size="lg" variant="inverse-outline">
                   <a href={DEMO_HREF}>{t(T.look)}</a>
                 </Button>
               </div>

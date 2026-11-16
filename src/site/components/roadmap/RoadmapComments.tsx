@@ -116,7 +116,7 @@ export function RoadmapComments({ itemId }: { itemId: string }) {
             type="submit"
             disabled={busy || !text.trim()}
             size="lg"
-            shape="pill"
+
             className="self-start"
           >
             {t(T.send)}
@@ -127,7 +127,7 @@ export function RoadmapComments({ itemId }: { itemId: string }) {
           type="button"
           onClick={() => openDialog({ kind: "login" })}
           size="lg"
-          shape="pill"
+
           variant="secondary"
           className="mt-4"
         >

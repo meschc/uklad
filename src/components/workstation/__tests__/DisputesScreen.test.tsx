@@ -97,8 +97,14 @@ describe("DisputesScreen", () => {
 });
 
 describe("доступ к экрану по роли", () => {
-  test("в меню продавца «Спорных» нет — по прямой ссылке App его не откроет", () => {
-    expect(navFor("seller").some((n) => n.view === "disputes")).toBe(false);
-    expect(navFor("warehouse").some((n) => n.view === "disputes")).toBe(true);
+  test("«Спорные» — внутри «Подтверждений»: своего пункта в меню нет, продавцу нет и страницы", () => {
+    expect(navFor("warehouse").some((n) => n.view === "disputes")).toBe(false);
+    expect(navFor("warehouse").some((n) => n.view === "approvals")).toBe(true);
+    expect(navFor("seller").some((n) => n.view === "approvals")).toBe(false);
+  });
+
+  test("«Подтверждения» видно с правом смотреть спорное, без права решать", () => {
+    const views = navFor("warehouse", ["goods.view"]).map((n) => n.view);
+    expect(views).toContain("approvals");
   });
 });

@@ -149,7 +149,7 @@ function LegalDocView({ doc }: { doc: LegalDoc }) {
           <Button
             variant="outline"
             size="lg"
-            shape="pill"
+
             onClick={() => window.print()}
             title={t(T.printHint)}
             // Подсветка своя: под курсором кнопка окрашивается фирменным,
