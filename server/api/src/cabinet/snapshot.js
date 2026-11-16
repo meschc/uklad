@@ -598,7 +598,7 @@ function createSnapshot({ auth, send, log }) {
       await route(req, res, url);
     } catch (err) {
       log.error("[uklad] сбой снимка кабинета:", err.message);
-      if (!res.headersSent) send(res, 500, { ok: false });
+      if (!res.headersSent) send(res, err?.httpStatus === 403 ? 403 : 500, { ok: false });
     }
     return true;
   }

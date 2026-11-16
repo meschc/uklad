@@ -112,7 +112,7 @@ function createAccount({ pool, auth, send, cfg, log }) {
       await route(req, res, url);
     } catch (err) {
       log.error("[uklad] сбой управления аккаунтом:", err.message);
-      if (!res.headersSent) send(res, 500, { ok: false });
+      if (!res.headersSent) send(res, err?.httpStatus === 403 ? 403 : 500, { ok: false });
     }
     return true;
   }

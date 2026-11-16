@@ -508,6 +508,11 @@ function createApp({
       }
       return send(res, 404, { ok: false });
     } catch (error) {
+      // Отказ, решённый в сессии (продавцу закрыт маршрут, `auth.js`), — не сбой.
+      if (error?.httpStatus === 403) {
+        if (!res.headersSent) send(res, 403, { ok: false });
+        return;
+      }
       log.error("[uklad] сбой обработчика:", error);
       if (!res.headersSent) send(res, 500, { ok: false });
     }
