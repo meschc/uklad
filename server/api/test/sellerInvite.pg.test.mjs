@@ -283,7 +283,7 @@ test(
     const roles = Object.fromEntries(team.roles.map((x) => [x.name, x.id]));
     const m = team.members.find((x) => x.email === "romashka4@example.com");
 
-    // В «Доступе» продавцу роль с правами не дают (миграция 044).
+    // В «Доступе» продавцу роль с правами не дают (миграция 045).
     const up = await post("/api/team/role", {
       ...boss,
       body: { memberId: m.id, roleId: roles["Начальник склада"] },
@@ -319,6 +319,7 @@ test(
       `/api/cabinet/history?from=${day}&to=${day}`,
       `/api/cabinet/inventory?from=${day}&to=${day}`,
       "/api/cabinet/desks/journal?device=dev-1",
+      "/api/cabinet/journal?warehouse=wh-a",
       "/api/connectors",
     ]) {
       assert.equal((await call("GET", path, seller)).status, 403, path);

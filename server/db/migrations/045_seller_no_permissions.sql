@@ -19,7 +19,7 @@ BEGIN
   WHERE r.id = p_role AND r.org_id = uklad.current_org() AND r.deleted_at IS NULL;
   IF NOT FOUND THEN RAISE EXCEPTION 'team:not_found'; END IF;
   IF NOT (v_perms <@ auth.actor_permissions()) THEN RAISE EXCEPTION 'team:role_not_allowed'; END IF;
-  -- Продавцу — только роль без прав (044).
+  -- Продавцу — только роль без прав (045).
   IF cardinality(v_perms) > 0 AND EXISTS (
     SELECT 1 FROM uklad.members m
     WHERE m.id = p_member AND m.org_id = uklad.current_org() AND m.partner_ref IS NOT NULL
@@ -34,7 +34,7 @@ END $$;
 
 -- Своя роль склада. Права — не больше своих; `org.manage` (владелец) в
 -- свою роль не входит. Роли по умолчанию не правятся. Роль, которая стоит у
--- продавца, прав не получает (044).
+-- продавца, прав не получает (045).
 CREATE OR REPLACE FUNCTION auth.save_role(p_role uuid, p_name text, p_perms text[]) RETURNS uuid
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = auth, uklad, pg_temp AS $$
 DECLARE
@@ -74,7 +74,7 @@ END $$;
 
 -- Закрепить человека за продавцом или снять закрепление. Закрепить может
 -- только тот, кто ведёт договоры (`contracts.manage`), и только человека с
--- ролью без прав: иначе продавец ушёл бы в маршруты склада (044; в 039
+-- ролью без прав: иначе продавец ушёл бы в маршруты склада (045; в 039
 -- проверялось только «Персонал»).
 CREATE OR REPLACE FUNCTION auth.set_member_partner(p_member uuid, p_partner text) RETURNS void
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = auth, uklad, pg_temp AS $$
