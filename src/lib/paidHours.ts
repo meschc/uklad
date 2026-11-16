@@ -29,7 +29,7 @@ export function unpaidMinOf(policy: Pick<BreakPolicy, "unpaidMin"> | undefined):
 }
 
 type State = "off" | "on" | "break" | "idle";
-interface Seg {
+export interface Seg {
   from: number;
   to: number;
   state: State;
@@ -45,7 +45,7 @@ const MARK: Partial<Record<StaffEvent["type"], State>> = {
 };
 
 /** Смены сотрудника отрезками состояний; открытая смена тянется до `until`. */
-function shifts(events: readonly StaffEvent[], staffId: string, until: number): Seg[][] {
+export function shifts(events: readonly StaffEvent[], staffId: string, until: number): Seg[][] {
   const marks = events
     .filter((e) => e.staffId === staffId && MARK[e.type])
     .sort((a, b) => a.at - b.at);

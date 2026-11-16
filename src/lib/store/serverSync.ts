@@ -249,6 +249,7 @@ function blankCabinet(current: Persisted, email: string): Persisted {
     integrations: {},
     chats: {},
     staffEvents: [],
+    payAdjustments: [],
     stationSession: null,
     packSession: null,
   };

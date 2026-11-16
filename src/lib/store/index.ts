@@ -103,6 +103,8 @@ export function persistedState(s: EditorState) {
     // Журнал сотрудников и вход по бейджу: вход живёт 12 часов и обязан
     // пережить перезагрузку экрана посреди смены.
     staffEvents: s.staffEvents,
+    // Удержания и премии — деньги сотрудника, терять их нельзя.
+    payAdjustments: s.payAdjustments,
     stationSession: s.stationSession,
     packSession: s.packSession,
     breakPolicy: s.breakPolicy,

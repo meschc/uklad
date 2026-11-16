@@ -18,6 +18,7 @@ import type {
   Subscription,
   TariffId,
   BreakPolicy,
+  PayAdjustment,
   PackSession,
   Device,
   DocEdits,
@@ -718,6 +719,14 @@ export interface IntegrationsSlice {
 }
 
 export interface StaffSlice {
+  /**
+   * Корректировки оплаты: удержания, премии, разовые надбавки. Вписывает
+   * старший руками (`payExtras.ts`). Список всей компании, как журнал смен.
+   */
+  payAdjustments: PayAdjustment[];
+  /** Добавить корректировку. Возвращает id. Сумма — целые рубли больше нуля. */
+  addPayAdjustment: (input: Omit<PayAdjustment, "id" | "createdAt" | "by">) => string;
+  removePayAdjustment: (id: string) => void;
   /** Добавить сотрудника активного склада. Возвращает id. */
   addStaffMember: (member: Omit<StaffMember, "id">) => string;
   /** Загрузка списка из файла — одной операцией, а не по одному человеку. */
