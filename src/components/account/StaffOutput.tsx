@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
 import { Download } from "lucide-react";
-import { useEditor } from "@/lib/store";
+import { selectRole, useEditor } from "@/lib/store";
 import { useWithArchive } from "@/lib/store/archive";
-import { staffReport, staffReportCsv } from "@/lib/staffReport";
+import { staffReport, staffReportCsv, type StaffOutput as OutputRow } from "@/lib/staffReport";
+import { PayPanel } from "./PayPanel";
 import { staffWorkload } from "@/lib/fulfillment";
 import { startOfDay, startOfMonth } from "@/lib/workstation";
 import { currentProcess } from "@/lib/staffProcess";
@@ -32,6 +33,9 @@ function periodRange(p: Period, now: number): [number, number] {
 }
 
 const hoursText = (ms: number) => (ms / 3_600_000).toFixed(1);
+const money = (v: number) => `${v.toLocaleString("ru-RU")} ₽`;
+/** Всё, что прибавляется к ставке: ночные, праздничные, премии, надбавки. */
+const plusOf = (r: OutputRow) => (r.nightPay ?? 0) + (r.holidayPay ?? 0) + r.bonus + r.allowance;
 
 const STATIONS: WorkstationKind[] = [
   "receiving",
@@ -54,9 +58,10 @@ export function StaffOutput() {
   const [now, setNow] = useState(() => Date.now());
   const [from, to] = periodRange(period, now);
   const policy = useEditor((s) => s.breakPolicy);
+  const adjustments = useEditor((s) => s.payAdjustments);
   const rows = useMemo(
-    () => staffReport(events, staff, from, to, policy),
-    [events, staff, from, to, policy],
+    () => staffReport(events, staff, from, to, policy, adjustments),
+    [events, staff, from, to, policy, adjustments],
   );
   // Приёмка и рейсы за тот же период — по фактам приёмки и отгрузки (их
   // перенесли сюда из списка сотрудников, Кирилл 13.11).
@@ -81,7 +86,15 @@ export function StaffOutput() {
     { id: "receipts", value: (r) => workload.get(r.staffId)?.units ?? 0 },
     { id: "trips", value: (r) => workload.get(r.staffId)?.trips ?? 0 },
     { id: "earned", value: (r) => r.earned ?? -1 },
+    { id: "plus", value: (r) => plusOf(r) },
+    { id: "minus", value: (r) => r.deduction },
+    { id: "toPay", value: (r) => r.toPay ?? -1 },
   ]);
+  // Панель оплаты сотрудника справа: из чего «к выплате» и корректировки.
+  const [panel, setPanel] = useState<string | null>(null);
+  const panelRow = rows.find((r) => r.staffId === panel);
+  // Корректировки пишет только «Персонал»; смотрящий видит суммы на чтение.
+  const canEdit = useEditor((s) => s.session.readOnly !== true && selectRole(s) !== "seller");
 
   const exportCsv = () => {
     const blob = new Blob([`${BOM}${staffReportCsv(rows)}`], { type: "text/csv;charset=utf-8" });
@@ -152,13 +165,28 @@ export function StaffOutput() {
               <SortTh table={table.table} id="earned" align="right">
                 {t("staff.out.earned")}
               </SortTh>
+              <SortTh table={table.table} id="plus" align="right">
+                {t("staff.out.plus")}
+              </SortTh>
+              <SortTh table={table.table} id="minus" align="right">
+                {t("staff.out.minus")}
+              </SortTh>
+              <SortTh table={table.table} id="toPay" align="right">
+                {t("pay.toPay")}
+              </SortTh>
             </tr>
           </thead>
           <tbody>
             {table.rows.map((r) => (
               <tr key={r.staffId} className="border-b border-border last:border-0">
                 <td className="px-3 py-2">
-                  <p className="font-medium">{r.name}</p>
+                  <button
+                    type="button"
+                    className="text-left font-medium hover:text-primary hover:underline"
+                    onClick={() => setPanel(r.staffId)}
+                  >
+                    {r.name}
+                  </button>
                   <p className="text-xs text-muted-foreground">{r.role}</p>
                   {(() => {
                     // Участок сам следует за человеком: где последний скан или
@@ -209,11 +237,44 @@ export function StaffOutput() {
                     </span>
                   )}
                 </td>
+                <td className="px-3 py-2 text-right tabular-nums">
+                  {plusOf(r) > 0 ? `+${money(plusOf(r))}` : "—"}
+                  {(r.nightPay ?? 0) > 0 && (
+                    <span className="block text-xs text-muted-foreground">
+                      {t("staff.out.nightShort", { h: hoursText(r.nightMs) })}
+                    </span>
+                  )}
+                </td>
+                <td className="px-3 py-2 text-right tabular-nums">
+                  {r.deduction > 0 ? (
+                    <span className="text-destructive">−{money(r.deduction)}</span>
+                  ) : (
+                    "—"
+                  )}
+                </td>
+                <td className="px-3 py-2 text-right">
+                  <button
+                    type="button"
+                    className="font-semibold tabular-nums hover:text-primary hover:underline"
+                    onClick={() => setPanel(r.staffId)}
+                  >
+                    {r.toPay == null ? "—" : money(r.toPay)}
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      {panelRow && (
+        <PayPanel
+          row={panelRow}
+          from={from}
+          to={to}
+          canEdit={canEdit}
+          onClose={() => setPanel(null)}
+        />
+      )}
     </section>
   );
 }
