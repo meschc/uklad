@@ -170,8 +170,16 @@ export interface OpQueue {
 const OPS_KEY = "uklad-desk-ops-v1";
 /** Как `MAX_OPS` на сервере. */
 const BATCH = 50;
-/** Больше очередь не растёт: столько отметок за смену у стола не бывает. */
-const MAX_QUEUE = 2000;
+/**
+ * Предел работы без связи: столько действий или столько времени стол копит
+ * без сервера, дальше работа на нём встаёт (`offlineLimitReached`). Чем дольше
+ * стол живёт сам, тем больше его остатки расходятся с тем, что за это время
+ * сделали другие столы, — сервер разберёт и это, но спорного станет много.
+ * Сами операции очередь не выбрасывает никогда: прежде она молча теряла
+ * самые старые после 2000.
+ */
+export const OFFLINE_MAX_OPS = 1000;
+export const OFFLINE_MAX_MS = 4 * 3_600_000;
 const RETRY_MS = [2_000, 5_000, 15_000, 30_000];
 /** Через сколько неотправленное становится заметным. */
 export const STUCK_MS = 10_000;
@@ -275,7 +283,7 @@ export function createOpQueue(deps: QueueDeps): OpQueue {
   return {
     enqueue: (kind, body) => {
       const s = load();
-      const ops = [...s.ops, { key: deps.newKey(), kind, body }].slice(-MAX_QUEUE);
+      const ops = [...s.ops, { key: deps.newKey(), kind, body }];
       save({ ops, since: s.since ?? deps.now() });
       void flush();
     },
@@ -294,6 +302,12 @@ export function createOpQueue(deps: QueueDeps): OpQueue {
       };
     },
   };
+}
+
+/** Стол копит работу без сервера слишком долго или слишком много. */
+export function offlineLimitReached(p: Pending, now: number): boolean {
+  if (p.count === 0) return false;
+  return p.count >= OFFLINE_MAX_OPS || (p.since != null && now - p.since >= OFFLINE_MAX_MS);
 }
 
 /** Отправка пачки. Синхронизация импортируется лениво: стор зависит от слоя данных. */
