@@ -644,6 +644,8 @@ export interface SessionSlice {
     role: UserRole,
     orgId: string,
     permissions?: string[],
+    /** Продавец склада: за каким партнёром он закреплён. */
+    partnerId?: string,
   ) => void;
   /**
    * Сервер сказал «сессии нет» (истекла, отозвана). Данные не стираются: они

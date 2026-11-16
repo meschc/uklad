@@ -10,6 +10,8 @@
  * Маршруты руководителя (`staff.manage`, вход по паролю):
  *   GET  /api/team              — { members, roles, permissions, me }
  *   POST /api/team/invite       — { email, roleId, name?, warehouseRef, staffRef? } → письмо
+ *                                 или { email, name?, warehouseRef, partnerRef } — продавец
+ *                                 (миграция 039): роль «Продавец», видит только свой товар
  *   POST /api/team/place        — { memberId, warehouseRef, staffRef? } — склад и карточка
  *   POST /api/team/invite/revoke — { memberId }
  *   POST /api/team/role         — { memberId, roleId }
@@ -128,6 +130,7 @@ function createTeam({ auth, cfg, send, log }) {
           inviteExpiresAt: m.invite_expires_at,
           warehouseRef: m.warehouse_ref,
           staffRef: m.staff_ref,
+          partnerRef: m.partner_ref,
         })),
         // Роли сотрудников стола (вход по бейджу): `staffRef → roleId`.
         deskRoles: Object.fromEntries(v.deskRoles.map((d) => [d.staff_ref, d.role_id])),
@@ -141,24 +144,38 @@ function createTeam({ auth, cfg, send, log }) {
     const email = String(b.email ?? "")
       .trim()
       .toLowerCase();
-    const roleId = uuid(b.roleId);
     const place = placeOf(b);
-    if (!isEmail(email) || !roleId || !place) return bad(res);
+    const partnerRef = refOrNull(b.partnerRef);
+    // Продавец: склад и партнёр обязательны, карточки сотрудника у него нет,
+    // роль выбирает сервер.
+    const seller = Boolean(partnerRef);
+    const badSeller = seller && (!place?.warehouseRef || place.staffRef);
+    let roleId = seller ? null : uuid(b.roleId);
+    if (!isEmail(email) || (!seller && !roleId) || !place || partnerRef === false || badSeller) {
+      return bad(res);
+    }
     const token = randomBytes(32).toString("base64url");
     const out = await withSession(req, async (c, ctx) => {
       if (!mayUse(ctx)) return { status: 403, error: "forbidden" };
       if (!inviteLimiter.take(ctx.orgId)) return { status: 429, error: "too_often" };
       try {
-        await assertPlace(c, place);
-        await c.query(`SELECT auth.invite_member($1, $2, $3, $4, $5::interval, $6, $7)`, [
-          email,
-          roleId,
-          String(b.name ?? "").slice(0, 200),
-          sha256(token),
-          `${INVITE_TTL_MS / 1000} seconds`,
-          place.warehouseRef,
-          place.staffRef,
-        ]);
+        await assertPlace(c, place, partnerRef || null);
+        if (seller) roleId = await sellerRole(c);
+        const { rows: made } = await c.query(
+          `SELECT auth.invite_member($1, $2, $3, $4, $5::interval, $6, $7) AS id`,
+          [
+            email,
+            roleId,
+            String(b.name ?? "").slice(0, 200),
+            sha256(token),
+            `${INVITE_TTL_MS / 1000} seconds`,
+            place.warehouseRef,
+            place.staffRef,
+          ],
+        );
+        // Ждущее приглашение на ту же почту переиспользуется: продавец,
+        // позванный сотрудником, перестаёт быть продавцом, и наоборот.
+        await c.query(`SELECT auth.set_member_partner($1, $2)`, [made[0].id, partnerRef || null]);
       } catch (err) {
         const known = teamError(err);
         if (known) return known;
@@ -192,14 +209,30 @@ function createTeam({ auth, cfg, send, log }) {
     if (staffRef && !warehouseRef) return null;
     return { warehouseRef, staffRef };
   }
-  async function assertPlace(c, place) {
+  async function assertPlace(c, place, partnerRef = null) {
     if (!place.warehouseRef) return;
     const { rows } = await c.query(
       `SELECT data FROM uklad.cabinet_snapshots WHERE org_id = uklad.current_org()`,
     );
-    if (!findPlace(rows[0]?.data, place.warehouseRef, place.staffRef)) {
+    const found = findPlace(rows[0]?.data, place.warehouseRef, place.staffRef);
+    if (!found) throw new Error("team:not_found");
+    // Продавец — из списка продавцов этого склада, а не любой строкой.
+    const partners = Array.isArray(found.warehouse.partners) ? found.warehouse.partners : [];
+    if (partnerRef && !partners.some((p) => p && p.id === partnerRef)) {
       throw new Error("team:not_found");
     }
+  }
+
+  /** Роль «Продавец» компании (миграция 039): по умолчанию и без прав. */
+  async function sellerRole(c) {
+    const { rows } = await c.query(
+      `SELECT id FROM uklad.roles
+       WHERE org_id = uklad.current_org() AND deleted_at IS NULL AND is_default
+         AND name = 'Продавец' AND cardinality(permissions) = 0
+       ORDER BY created_at LIMIT 1`,
+    );
+    if (!rows[0]) throw new Error("team:not_found");
+    return rows[0].id;
   }
 
   const setPlace = (req, res) =>

@@ -4,12 +4,12 @@ import { Plus, X } from "lucide-react";
 import { teamRepository, type TeamMember, type TeamRole } from "@/lib/data/teamRepository";
 import { useCommand } from "@/lib/useCommand";
 import { useEditor } from "@/lib/store";
-import { useT, type MsgKey } from "@/lib/i18n";
+import { useT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DialogFooter, DialogHeader, DialogShell } from "@/components/ui/dialog-shell";
-import { selectClass } from "./teamSelect";
+import { selectClass, STATUS_KEYS } from "./teamSelect";
 import { RoleList } from "./RoleList";
 import { useTeam } from "./useTeam";
 import { Select } from "@/components/ui/select";
@@ -23,14 +23,6 @@ import { FieldError } from "@/components/ui/field";
  * переводит его отказ. Окна — панелью справа, без рамок в рамках: строки
  * людей и ролей разделены отступами и заголовками.
  */
-
-const STATUS_KEYS: Record<TeamMember["status"], MsgKey> = {
-  invited: "team.status.invited",
-  active: "team.status.active",
-  sleeping: "team.status.sleeping",
-  expired: "team.status.expired",
-  disabled: "team.status.disabled",
-};
 
 /**
  * Роль сотрудника у стола теперь в таблице сотрудников (колонка «Роль»),

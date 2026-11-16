@@ -22,6 +22,8 @@ export interface ServerOrg {
   warehouse: boolean;
   seller: boolean;
   role: string;
+  /** Продавец склада (миграция 039): кабинет открывается ролью продавца. */
+  partnerRef?: string;
 }
 
 /** Кто вошёл: компании и та, в которой он сейчас работает. */
@@ -135,8 +137,15 @@ export const authRepository = {
  * Компания с обеими ветками (свой склад у продавца) входит складом: оттуда
  * видно всё, а кабинет продавца — режим просмотра тех же данных.
  */
-export function roleOf(me: ServerMe): { orgId: string; role: "warehouse" | "seller" } | null {
+export function roleOf(
+  me: ServerMe,
+): { orgId: string; role: "warehouse" | "seller"; partnerId?: string } | null {
   const org = me.orgs.find((o) => o.id === me.current?.orgId) ?? me.orgs[0];
   if (!org) return null;
+  // Продавца позвал склад: он в компании склада, но видит только своё.
+  const partnerId = org.partnerRef;
+  if (typeof partnerId === "string" && partnerId) {
+    return { orgId: org.id, role: "seller", partnerId };
+  }
   return { orgId: org.id, role: org.warehouse ? "warehouse" : "seller" };
 }
