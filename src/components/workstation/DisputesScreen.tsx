@@ -85,7 +85,18 @@ const fmt = (at: number) =>
  * руководитель из кабинета или сотрудник на должности старшего, вошедший по
  * бейджу; рядовому сотруднику экран только показывает.
  */
-export function DisputesScreen() {
+export function DisputesScreen({
+  kinds,
+  query = "",
+  inApprovals = false,
+}: {
+  /** Только эти виды — фильтр страницы «Подтверждения». */
+  kinds?: readonly DisputeKind[];
+  /** Поиск по товару и сотруднику — со страницы «Подтверждения». */
+  query?: string;
+  /** Внутри «Подтверждений»: без своей подписи и пустого состояния. */
+  inApprovals?: boolean;
+} = {}) {
   const t = useT();
   const disputes = useEditor((s) => s.disputes);
   const products = useEditor((s) => s.products);
@@ -130,7 +141,19 @@ export function DisputesScreen() {
     ? mayWriteOffGoods(session, badgeStaff, onServer)
     : !perms || perms.includes("goods.writeoff");
 
-  const open = disputes.filter((d) => !d.resolution);
+  const nameOf = (id?: string) => products.find((p) => p.id === id)?.name ?? "—";
+  const who = (id: string) =>
+    id === "manager" ? t("disputes.manager") : (staff.find((m) => m.id === id)?.name ?? "—");
+  const q = query.trim().toLowerCase();
+  const shown = disputes.filter(
+    (d) =>
+      (!kinds || kinds.includes(d.kind)) &&
+      (!q ||
+        nameOf(d.productId).toLowerCase().includes(q) ||
+        who(d.raisedBy).toLowerCase().includes(q) ||
+        (d.toteCode ?? "").toLowerCase().includes(q)),
+  );
+  const open = shown.filter((d) => !d.resolution);
   // Лишнее с приёмки списывают «вернули поставщику»: руководитель должен
   // видеть, сколько так ушло, — иначе списание прячет пересорт и кражу.
   const monthAgo = now - 30 * 24 * 3600 * 1000;
@@ -142,25 +165,27 @@ export function DisputesScreen() {
         (d.resolvedAt ?? 0) >= monthAgo,
     )
     .reduce((n, d) => n + d.qty, 0);
-  const done = disputes.filter((d) => d.resolution).slice(0, 20);
-
-  const nameOf = (id?: string) => products.find((p) => p.id === id)?.name ?? "—";
-  const who = (id: string) =>
-    id === "manager" ? t("disputes.manager") : (staff.find((m) => m.id === id)?.name ?? "—");
+  const done = shown.filter((d) => d.resolution).slice(0, 20);
 
   return (
-    <ScreenShell title={t("disputes.title")} subtitle={t("disputes.lead")} wide>
-      {canResolve && overageOff > 0 && (
+    <ScreenShell
+      title={t("disputes.title")}
+      subtitle={inApprovals ? undefined : t("disputes.lead")}
+      wide
+    >
+      {canResolve && overageOff > 0 && (!kinds || kinds.includes("receive_overage")) && (
         <p className="mb-4 text-sm text-muted-foreground">
           {t("disputes.overageOff", { n: overageOff })}
         </p>
       )}
       {open.length === 0 ? (
-        <EmptyState
-          icon={<Scale className="size-5" />}
-          title={t("disputes.emptyTitle")}
-          body={t("disputes.empty")}
-        />
+        inApprovals ? null : (
+          <EmptyState
+            icon={<Scale className="size-5" />}
+            title={t("disputes.emptyTitle")}
+            body={t("disputes.empty")}
+          />
+        )
       ) : (
         <ul className="flex flex-col">
           {open.map((d) => (

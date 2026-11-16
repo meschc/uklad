@@ -96,11 +96,6 @@ const ApprovalsScreen = lazy(() =>
     default: m.ApprovalsScreen,
   })),
 );
-const DisputesScreen = lazy(() =>
-  import("@/components/workstation/DisputesScreen").then((m) => ({
-    default: m.DisputesScreen,
-  })),
-);
 const ChatScreen = lazy(() =>
   import("@/components/chat/ChatScreen").then((m) => ({ default: m.ChatScreen })),
 );
@@ -232,15 +227,18 @@ export default function App() {
   // Склада у компании ещё нет: рабочим экранам показывать нечего, кабинет
   // стоит на главной с карточкой «Новый склад».
   const noWarehouse = useEditor((s) => s.warehouse.placeholder === true);
+  // «Спорные» переехали в «Подтверждения» (Кирилл 16.11): старая ссылка и
+  // сохранённый экран ведут туда.
+  const wanted = appView === "disputes" ? "approvals" : appView;
   const view = locked
     ? "login"
     : noWarehouse && !ACCOUNT_VIEWS.has(appView)
       ? "dashboard"
       : kiosk || legacyStation
         ? "workstation"
-        : (ACCOUNT_VIEWS.has(appView) && !(viewer && appView === "profile")) ||
-            allowed.includes(appView)
-          ? appView
+        : (ACCOUNT_VIEWS.has(wanted) && !(viewer && wanted === "profile")) ||
+            allowed.includes(wanted)
+          ? wanted
           : (allowed[0] ?? "dashboard");
 
   useEffect(() => {
@@ -391,8 +389,6 @@ function renderView(view: string) {
       return <WorkstationScreen />;
     case "devices":
       return <DevicesScreen />;
-    case "disputes":
-      return <DisputesScreen />;
     case "approvals":
       return <ApprovalsScreen />;
     case "login":
