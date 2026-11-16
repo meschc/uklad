@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import type { ShiftMark, WorkstationKind } from "@/lib/types";
 import {
   ArrowLeft,
+  ArrowLeftRight,
   ChevronDown,
   FileText,
   Plug,
@@ -53,6 +54,8 @@ import { ShipStation } from "./ShipStation";
 import { InventoryStation } from "./InventoryStation";
 import { StaffLog } from "./StaffLog";
 import { DisputesScreen } from "./DisputesScreen";
+import { StationSwitch } from "./StationSwitch";
+import { useSwitchWatch } from "./useSwitchWatch";
 import { formatTime, useNow } from "./useNow";
 
 /**
@@ -69,7 +72,7 @@ import { formatTime, useNow } from "./useNow";
 
 /** Столы, которые печатают этикетки и ярлыки сами. */
 const PRINT_STATIONS = new Set<string>(["pack", "sorting"]);
-type Panel = "shift" | "log" | "printer" | "disputes" | "logout" | null;
+type Panel = "shift" | "log" | "printer" | "disputes" | "logout" | "process" | null;
 
 /** Текст шапки и нижней панели поверх залитого сигналом поля. */
 const ON_COLOR_LIGHT =
@@ -103,6 +106,8 @@ export function WorkstationScreen() {
 
   // Кнопки ТСД: F1 — смена, F2 — перерыв, F3 — журнал, F4 — конец смены.
   useStationKeys(member?.id, (p) => setPanel(panel === p ? null : p));
+  // Своя заявка на смену процесса: разрешил старший — процесс меняется сам.
+  useSwitchWatch();
   const station = session?.station ?? "pack";
   const signalLevel = useStationSignal();
   // Сменился человек или участок — прошлый сигнал к нему не относится.
@@ -160,11 +165,22 @@ export function WorkstationScreen() {
               {t("ws.exit")}
             </Button>
           )}
-          {member && !sameName(device?.name, t(`ws.station.${station}` as MsgKey)) && (
-            // Процесс стола — заголовком: по нему видно, чьё это задание. Стол,
-            // названный по процессу («Упаковка»), второй раз его не повторяет.
-            <h1 className="hidden h-8 items-center px-3 text-sm font-semibold sm:flex">
-              {t(`ws.station.${station}` as MsgKey)}
+          {member && (
+            // Процесс стола — заголовком: по нему видно, чьё это задание. Он же
+            // кнопка смены процесса без выхода (Кирилл 15.11). Стол, названный
+            // по процессу («Упаковка»), имя второй раз не повторяет.
+            <h1 className="hidden sm:flex">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="font-semibold"
+                onClick={() => setPanel("process")}
+              >
+                <ArrowLeftRight />
+                {sameName(device?.name, t(`ws.station.${station}` as MsgKey))
+                  ? t("ws.switch.change")
+                  : t(`ws.station.${station}` as MsgKey)}
+              </Button>
             </h1>
           )}
           <Equipment onPrinter={() => setPanel("printer")} canOpen={!!member} />
@@ -282,6 +298,17 @@ export function WorkstationScreen() {
         // под большой палец, чтобы работать одной рукой.
         <nav className="flex shrink-0 items-center justify-center gap-2 px-2 pb-[max(0.375rem,env(safe-area-inset-bottom))] md:hidden">
           <ShiftBar staffId={member.id} onOpen={() => setPanel("shift")} />
+          {/* На ТСД шапка узкая: процесс — здесь же, под пальцем. */}
+          <button
+            type="button"
+            onClick={() => setPanel("process")}
+            className="flex min-h-12 flex-col items-center justify-center rounded-md px-3 text-xs font-medium text-muted-foreground hover:bg-muted"
+          >
+            <ArrowLeftRight className="size-5" />
+            {/* Подпись — «Процесс», а не имя процесса: «Инвентаризация» не
+                влезает в нижнюю панель на 390 px. Текущий отмечен в панели. */}
+            {t("ws.switch.title")}
+          </button>
           <button
             type="button"
             onClick={() => setPanel("log")}
@@ -321,7 +348,9 @@ export function WorkstationScreen() {
                         ? "disputes.title"
                         : panel === "logout"
                           ? "ws.out.title"
-                          : "ws.history",
+                          : panel === "process"
+                            ? "ws.switch.title"
+                            : "ws.history",
                 )}
               </h2>
               <Button
@@ -339,6 +368,8 @@ export function WorkstationScreen() {
               <PrinterPanel />
             ) : panel === "logout" ? (
               <LogoutPanel member={member} />
+            ) : panel === "process" ? (
+              <StationSwitch onDone={() => setPanel(null)} />
             ) : panel === "disputes" ? (
               <EmbeddedShell.Provider value={true}>
                 <DisputesScreen />

@@ -122,7 +122,7 @@ test(
   { skip: SKIP },
   async () => {
     const { a, ivan } = await company("desk-h@sklad.ru", "10.0.3.8");
-    const desk = await makeDesk(a);
+    const desk = await makeDesk(a, "dev-pick");
     await call("/api/cabinet/badges/check", { desk, body: { code: ivan } });
     const boss = await login("desk-h@sklad.ru");
     const read = () => stored(a.org);
@@ -211,6 +211,8 @@ const cabinetData = () => ({
   devices: [
     { id: "dev-1", name: "Стол 1", station: "pack", createdAt: 1 },
     { id: "dev-2", name: "Стол 2", station: "pack", createdAt: 1 },
+    // Сборку сервер принимает только с ТСД сборки (`stationAt`).
+    { id: "dev-pick", name: "ТСД сборки", station: "picking", createdAt: 1 },
   ],
 });
 

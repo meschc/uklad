@@ -31,7 +31,10 @@ const SERVER_KINDS = new Set([
   "ship_run",
   "dispute_resolve",
   "sort_place",
+  "sort_close",
   "inv_count",
+  "inv_cell",
+  "station_switch",
 ]);
 
 /**
@@ -156,6 +159,7 @@ function useRefsText() {
   const t = useT();
   const products = useEditor((s) => s.products);
   const boxes = useEditor((s) => s.boxes);
+  const staff = useEditor((s) => s.warehouse.staff);
   return (r: JournalRefs | undefined): string | undefined => {
     if (!r) return undefined;
     const product = r.productId && products.find((p) => p.id === r.productId)?.name;
@@ -166,6 +170,11 @@ function useRefsText() {
       r.outboundCode,
       r.orderId && t("devices.journal.order", { id: r.orderId }),
       !product && r.code,
+      r.station && t(`ws.station.${r.station}` as MsgKey),
+      r.approvedBy &&
+        t("devices.journal.approvedBy", {
+          name: staff?.find((m) => m.id === r.approvedBy)?.name ?? r.approvedBy,
+        }),
     ].filter(Boolean);
     return parts.length ? parts.join(" · ") : undefined;
   };

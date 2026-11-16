@@ -36,7 +36,9 @@ export function ScreenShell({
   }
   return (
     <div className="h-full overflow-y-auto bg-background [scrollbar-gutter:stable]">
-      <div className={`mx-auto flex ${wide ? "max-w-5xl" : "max-w-2xl"} flex-col gap-5 px-6 py-7`}>
+      <div
+        className={`mx-auto flex min-h-full ${wide ? "max-w-5xl" : "max-w-2xl"} flex-col gap-5 px-6 py-7`}
+      >
         <header className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <h1 className="text-lg font-semibold tracking-tight">{title}</h1>
@@ -62,8 +64,11 @@ export function EmptyState({
   body?: string;
   action?: ReactNode;
 }) {
+  // Пустое состояние — по центру свободного места (Кирилл 16.11): в колонке
+  // экрана (`ScreenShell` тянется на всю высоту) и в панели оно занимает
+  // остаток и встаёт посередине, а не прилипает к шапке рамкой.
   return (
-    <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-border px-6 py-12 text-center">
+    <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 py-12 text-center">
       <span className="flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
         {icon}
       </span>

@@ -58,6 +58,8 @@ export function boundDevice(s: Pick<EditorState, "devices" | "thisDeviceId">): D
 export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get) => ({
   staffEvents: [],
   stationSession: null,
+  switchRequests: [],
+  pendingSwitch: null,
   devices: [],
   thisDeviceId: null,
 
@@ -128,7 +130,8 @@ export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get)
     return member.id;
   },
 
-  stationLogout: () => set({ stationSession: null }),
+  // Ушёл со стола — его заявка на переход больше не его забота.
+  stationLogout: () => set({ stationSession: null, pendingSwitch: null }),
 
   markShift: (type, reason) => {
     const s = get();

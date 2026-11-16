@@ -329,3 +329,62 @@ test("переложить: найденное уходит в выбранну�
   assert.deepEqual(ok.data.boxes[1].lines, [{ productId: "p1", qty: 2 }]);
   assert.equal(ok.data.disputes[0].movedTo, "t2");
 });
+
+test("смены процесса в пачке операций нет: подтверждение старшего — только своим запросом", () => {
+  assert.equal(
+    isOp({
+      key: "k-000001",
+      kind: "station_switch",
+      body: { eventId: "sw1", at: NOW, station: "pack" },
+    }),
+    false,
+  );
+});
+
+test("процесс держит сервер: работа не того процесса — пометка, после перехода — можно", () => {
+  const perms = { "stf-ivan": ["packing.do", "inventory.count"] };
+  const op = (key, kind, at) => ({ key, kind, body: { eventId: `e-${key}`, at, toteId: "t1" } });
+  const who = {
+    staff: "stf-ivan",
+    staffSince: NOW - 60_000,
+    prev: null,
+    perms,
+    station: "pack",
+    // Старший перевёл Ивана на инвентаризацию в NOW − 10 с (часы стола).
+    switches: { "stf-ivan": [{ at: NOW - 10_000, station: "inventory" }] },
+  };
+  const r = applyDeskOps(
+    {},
+    [
+      op("k-000001", "inv_count", NOW - 20_000), // до перехода — ещё упаковка
+      op("k-000002", "pack_event", NOW - 5_000), // после — уже не упаковка
+      op("k-000003", "inv_count", NOW - 5_000),
+    ],
+    who,
+    NOW,
+  );
+  const reasons = r.results.map((x) => [x.op.key, x.reason ?? null]);
+  assert.deepEqual(reasons.slice(0, 2), [
+    ["k-000001", "station"],
+    ["k-000002", "station"],
+  ]);
+  assert.notEqual(reasons[2][1], "station");
+});
+
+test("переход прошлой смены у стола не считается: снова процесс устройства", () => {
+  const who = {
+    staff: "stf-ivan",
+    staffSince: NOW - 60_000,
+    prev: null,
+    perms: { "stf-ivan": ["packing.do", "inventory.count"] },
+    station: "pack",
+    switches: { "stf-ivan": [{ at: NOW - 3_600_000, station: "inventory" }] },
+  };
+  const r = applyDeskOps(
+    {},
+    [{ key: "k-000001", kind: "inv_count", body: { eventId: "e1", at: NOW - 1000 } }],
+    who,
+    NOW,
+  );
+  assert.equal(r.results[0].reason, "station");
+});

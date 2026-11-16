@@ -84,10 +84,16 @@ function restore(full, after, ref) {
 }
 
 /**
- * Склад стола в снимке компании: `{ ref, data, back, staffHere }` — id
- * склада, снимок на нём, обратная укладка результата и «сотрудник ли этого
- * склада». `null` — склада у стола нет.
+ * Склад стола в снимке компании: `{ ref, data, back, staffHere, station }` —
+ * id склада, снимок на нём, обратная укладка результата, «сотрудник ли этого
+ * склада» и процесс устройства по умолчанию (`devices[].station`; до смены
+ * процесса по бейджу старшего стол работает в нём). `null` — склада у стола нет.
  */
+function deviceStation(data, deviceRef) {
+  const dev = list(data.devices).find((d) => isObject(d) && d.id === deviceRef);
+  return dev && typeof dev.station === "string" ? dev.station : null;
+}
+
 function deskPlace(full, deviceRef) {
   const ref = deskWarehouse(full, deviceRef);
   const data = ref ? focusWarehouse(full, ref) : null;
@@ -97,6 +103,7 @@ function deskPlace(full, deviceRef) {
     data,
     back: (after) => restore(full, after, ref),
     staffHere: (staffRef) => staffHere(data, staffRef),
+    station: deviceStation(data, deviceRef),
   };
 }
 
