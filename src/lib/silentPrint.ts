@@ -152,7 +152,8 @@ export function windowsShortcutScript(url: string): string {
     "$s=(New-Object -ComObject WScript.Shell).CreateShortcut(",
     `[Environment]::GetFolderPath('Desktop')+'\\${SHORTCUT_NAME}.lnk');`,
     "$s.TargetPath=$env:UK_BROWSER;",
-    `$s.Arguments='--user-data-dir=\\"'+$env:UK_PROFILE+'\\" --kiosk-printing --app='+$env:UK_URL;`,
+    // Ярлык для работы: тихая печать и сразу полный экран (выход — F11).
+    `$s.Arguments='--user-data-dir=\\"'+$env:UK_PROFILE+'\\" --kiosk-printing --start-fullscreen --app='+$env:UK_URL;`,
     "$s.Save()",
   ].join(" ");
   return [
@@ -182,7 +183,8 @@ export function windowsShortcutScript(url: string): string {
  * чтобы один раз выбрать принтер, с ней — для работы.
  */
 export function macCommand(url: string, silent: boolean): string {
-  const flag = silent ? " --kiosk-printing" : "";
+  // Рабочий запуск — сразу во весь экран; выйти можно по F11 или Esc.
+  const flag = silent ? " --kiosk-printing --start-fullscreen" : "";
   return `open -na "Google Chrome" --args --user-data-dir="$HOME/Library/Application Support/Uklad Desk"${flag} --app=${url}`;
 }
 

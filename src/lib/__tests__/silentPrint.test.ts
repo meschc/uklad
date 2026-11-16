@@ -34,6 +34,7 @@ describe("тихая печать", () => {
     expect(bat).toContain("chrome.exe");
     expect(bat).toContain("msedge.exe");
     expect(bat).toMatch(/Arguments=.*--kiosk-printing/);
+    expect(bat).toMatch(/Arguments=.*--start-fullscreen/);
     const start = lines.find((l) => l.startsWith("start "));
     expect(start).toContain("--user-data-dir=");
     expect(start).not.toContain("--kiosk-printing");
@@ -43,6 +44,7 @@ describe("тихая печать", () => {
   it("команды Mac: выбрать принтер без флага, работать с ним", () => {
     expect(macCommand("https://u-klad.ru/app/", false)).not.toContain("--kiosk-printing");
     expect(macCommand("https://u-klad.ru/app/", true)).toContain("--kiosk-printing");
+    expect(macCommand("https://u-klad.ru/app/", true)).toContain("--start-fullscreen");
     expect(macCommand("https://u-klad.ru/app/", true)).toContain("--app=https://u-klad.ru/app/");
   });
 
