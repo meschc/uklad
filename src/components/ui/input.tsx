@@ -24,6 +24,9 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         }}
         className={cn(
           "flex h-8 w-full rounded-md border border-input bg-background px-2.5 py-1 text-sm shadow-sm transition-colors",
+          // Телефон: 44 px под палец и 16 px текста — иначе iPhone при фокусе
+          // увеличивает страницу (шрифт поля меньше 16 px).
+          "max-md:min-h-11 max-md:text-base",
           "placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           "disabled:cursor-not-allowed disabled:opacity-50",
           // Ошибка поля — от `aria-invalid` (его ставит ui/field): красная рамка.
