@@ -6,6 +6,7 @@ import { useEditor } from "./lib/store";
 import { describeError, journal } from "./lib/support/journal";
 import { autoReport } from "./lib/support/autoReport";
 import { installNumberLimits } from "./lib/numberLimits";
+import { reloadForNewBuild } from "./lib/staleChunk";
 import "./index.css";
 // Печать плана и наклеек — только в бандле приложения: правило прячет всё,
 // кроме `.print-root`, и на витрине оставляло бы пустые листы. Порядок важен:
@@ -69,6 +70,11 @@ if (isEmbed(window.location.search)) {
 journal.record("view", useEditor.getState().appView);
 useEditor.subscribe((s, prev) => {
   if (s.appView !== prev.appView) journal.record("view", s.appView);
+});
+// Новая выкладка, а вкладка старая: кусок экрана не нашёлся — перезагрузить
+// страницу за новой сборкой, а не показывать «экран сломался» (`staleChunk.ts`).
+window.addEventListener("vite:preloadError", (e) => {
+  if (reloadForNewBuild()) e.preventDefault();
 });
 // Те же ошибки уходят на сервер сами, обезличенно (`autoReport.ts`).
 window.addEventListener("error", (e) => {

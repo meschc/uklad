@@ -37,7 +37,9 @@ export function TopBar() {
 
       {/* По центру: режимы просмотра + тепловая карта отдельным окном (п.9) */}
       <div className="flex items-center gap-1.5">
+        {/* План — только на компьютере: на телефоне один режим, таблица. */}
         <Segmented
+          className="max-md:hidden"
           value={mode}
           onChange={setMode}
           options={MODES.map((m) => ({
@@ -55,9 +57,9 @@ export function TopBar() {
           // именованный target переиспользует уже открытую карту.
           onClick={() => window.open(`${window.location.pathname}?heatmap=1`, "uklad-heatmap")}
           title={t("heat.title")}
-          // Тепловая карта и печать — работа за компьютером: на телефоне
-          // кнопкам не хватает места, и шапка уезжала за край.
-          className="hidden gap-1.5 rounded-lg bg-muted px-2.5 text-muted-foreground hover:text-foreground md:inline-flex [&_svg]:size-3.5"
+          // Загруженность остаётся и на телефоне (Кирилл 18.11) — единственное
+          // из плана, что там нужно; печать плана — только за компьютером.
+          className="gap-1.5 rounded-lg bg-muted px-2.5 text-muted-foreground hover:text-foreground [&_svg]:size-3.5"
         >
           <Gauge />
           {t("heat.open")}
