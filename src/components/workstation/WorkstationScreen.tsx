@@ -53,6 +53,7 @@ import { PrintSetup } from "./PrintSetup";
 import { usePrintMode } from "@/lib/silentPrint";
 import { ShipStation } from "./ShipStation";
 import { InventoryStation } from "./InventoryStation";
+import { DeskTasks } from "./DeskTasks";
 import { StaffLog } from "./StaffLog";
 import { DisputesScreen } from "./DisputesScreen";
 import { StationSwitch } from "./StationSwitch";
@@ -289,6 +290,7 @@ export function WorkstationScreen() {
           <div className="mx-auto flex max-w-5xl flex-col gap-5 px-4 py-6">
             <ShiftGate staffId={member.id}>
               <OfflineGate>
+                <DeskTasks staffId={member.id} />
                 <StationTask station={station} staffId={member.id} />
               </OfflineGate>
             </ShiftGate>

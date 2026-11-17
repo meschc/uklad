@@ -42,7 +42,9 @@ export type DeskOpKind =
   | "inv_count"
   | "inv_cell"
   | "sort_place"
-  | "sort_close";
+  | "sort_close"
+  | "task_take"
+  | "task_done";
 const KINDS: readonly DeskOpKind[] = [
   "shift_mark",
   "shift_undo",
@@ -63,6 +65,8 @@ const KINDS: readonly DeskOpKind[] = [
   "inv_cell",
   "sort_place",
   "sort_close",
+  "task_take",
+  "task_done",
 ];
 export interface DeskOpBody {
   eventId: string;
@@ -111,6 +115,8 @@ export interface DeskOpBody {
   sortCode?: string;
   placeIds?: string[];
   note?: string;
+  // Работа склада (`task_take`, `task_done`; сколько сделали — `qty`).
+  taskId?: string;
 }
 export interface DeskOp {
   key: string;
@@ -361,6 +367,7 @@ async function sayFlagged(kinds: DeskOpKind[]) {
     kinds.includes("ship_run") || kinds.includes("sort_place") || kinds.includes("sort_close");
   const deciding = kinds.includes("dispute_resolve");
   const counting = kinds.includes("inv_count") || kinds.includes("inv_cell");
+  const tasking = kinds.includes("task_take") || kinds.includes("task_done");
   useEditor
     .getState()
     .notify(
@@ -377,7 +384,9 @@ async function sayFlagged(kinds: DeskOpKind[]) {
                 ? "ws.opDisputeRejected"
                 : counting
                   ? "ws.opCountRejected"
-                  : "ws.opRejected",
+                  : tasking
+                    ? "ws.opTaskRejected"
+                    : "ws.opRejected",
     );
 }
 

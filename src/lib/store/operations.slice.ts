@@ -43,6 +43,8 @@ export const createOperationsSlice: SliceCreator<OperationsSlice> = (set) => ({
       }),
     })),
 
+  putTask: (task) => set((s) => ({ tasks: s.tasks.map((t) => (t.id === task.id ? task : t)) })),
+
   updateTask: (id, patch) =>
     set((s) => ({
       tasks: s.tasks.map((t) => {

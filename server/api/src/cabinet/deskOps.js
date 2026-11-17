@@ -34,6 +34,7 @@ const {
 const { applyShipRun, applyDisputeResolve } = require("./deskShip");
 const { applyInvCount, applyInvCell } = require("./deskInventory");
 const { applySortClose, applySortPlace } = require("./deskSort");
+const { applyTaskTake, applyTaskDone } = require("./deskTasks");
 const { GOODS_DECIDE, may } = require("./deskPerms");
 
 const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
@@ -58,6 +59,12 @@ const RECV_KINDS = new Set([
 ]);
 const SHIP_KINDS = new Set(["ship_run", "dispute_resolve", "sort_place", "sort_close"]);
 const INV_KINDS = new Set(["inv_count", "inv_cell"]);
+/**
+ * Работы склада (`deskTasks.js`): право зависит от вида работы, поэтому его
+ * проверяет сама операция, а не общий список `OP_PERM`. Процесса у работы нет:
+ * маркировку берут с любого стола.
+ */
+const TASK_KINDS = new Set(["task_take", "task_done"]);
 const NOW_ONLY = new Set(["dispute_resolve"]);
 /** Какое право роли нужно операции (миграция 024). */
 const OP_PERM = new Map([
@@ -107,6 +114,8 @@ const WORK = new Map([
   ["dispute_resolve", applyDisputeResolve],
   ["inv_count", applyInvCount],
   ["inv_cell", applyInvCell],
+  ["task_take", applyTaskTake],
+  ["task_done", applyTaskDone],
 ]);
 const KINDS = new Set([
   "shift_mark",
@@ -116,6 +125,7 @@ const KINDS = new Set([
   ...RECV_KINDS,
   ...SHIP_KINDS,
   ...INV_KINDS,
+  ...TASK_KINDS,
 ]);
 /**
  * Окно отмены по часам сервера: как в кабинете (`MARK_UNDO_MS`) плюс запас
@@ -226,7 +236,7 @@ function applyDeskOps(data, ops, who, now, received = new Map(), verify = null) 
       // Сотрудник делает только то, что разрешает его роль. Без роли — ничего
       // (Кирилл 13.11): уже выданным бейджам роль «Кладовщик» дала миграция
       // 028, новому бейджу без роли её даёт выпуск (`deskBadges.js`).
-      if (!may(who, staffRef, OP_PERM.get(op.kind))) {
+      if (!TASK_KINDS.has(op.kind) && !may(who, staffRef, OP_PERM.get(op.kind))) {
         flag(op, "not_yours");
         continue;
       }

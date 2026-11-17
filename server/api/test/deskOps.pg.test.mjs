@@ -1123,3 +1123,59 @@ test(
     assert.ok(rows[0].refs.approvedBy);
   },
 );
+
+test(
+  "работы склада у стола: взял и сделал операциями, чужую не взять, в счёт — не больше заданного",
+  { skip: SKIP },
+  async () => {
+    const { a, ivan } = await company("ops-tasks@sklad.ru", "10.0.5.14");
+    const base = cabinetData();
+    const tasks = [
+      { id: "t-mark", kind: "marking", status: "open", qty: 10, partnerId: "p1", createdAt: 1 },
+      { id: "t-olga", kind: "marking", status: "open", qty: 3, staffId: "stf-olga", createdAt: 2 },
+    ];
+    const saved = await call("/api/cabinet/snapshot", {
+      ...a,
+      body: { version: 1, format: 8, data: { ...base, tasks } },
+    });
+    assert.equal(saved.status, 200);
+    const desk = await makeDesk(a, "dev-1");
+    await call("/api/cabinet/badges/check", { desk, body: { code: ivan } });
+    const at = Date.now() - 500;
+    const op = (key, kind, taskId, over = {}) => ({
+      key,
+      kind,
+      body: { eventId: `ev-${key}`, staffId: "stf-ivan", at, taskId, ...over },
+    });
+    const r = await ops(desk, [
+      op("key-task-take", "task_take", "t-mark"),
+      op("key-task-more", "task_done", "t-mark", { qty: 11 }),
+      op("key-task-done", "task_done", "t-mark", { qty: 4 }),
+      op("key-task-olga", "task_take", "t-olga"),
+    ]);
+    assert.deepEqual(
+      r.json.results.map((x) => [x.key, x.status, x.reason ?? null]),
+      [
+        ["key-task-take", "applied", null],
+        ["key-task-more", "flagged", "bad"],
+        ["key-task-done", "applied", null],
+        ["key-task-olga", "flagged", "taken"],
+      ],
+    );
+
+    const cookie = await login("ops-tasks@sklad.ru");
+    const snap = (await call("/api/cabinet/snapshot", { cookie, org: a.org })).json.snapshot;
+    const byId = Object.fromEntries(snap.data.tasks.map((t) => [t.id, t]));
+    assert.deepEqual(
+      [byId["t-mark"].status, byId["t-mark"].staffId, byId["t-mark"].qty, byId["t-mark"].doneAt],
+      ["done", "stf-ivan", 4, at],
+    );
+    assert.equal(byId["t-olga"].status, "open");
+    const logged = await db.root.query(
+      `SELECT kind, status FROM uklad.desk_ops WHERE org_id = $1 AND kind LIKE 'task\\_%'
+        ORDER BY received_at, kind`,
+      [a.org],
+    );
+    assert.equal(logged.rows.filter((x) => x.status === "applied").length, 2);
+  },
+);

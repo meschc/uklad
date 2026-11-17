@@ -47,6 +47,8 @@ export const DESK_KINDS: ReadonlySet<string> = new Set([
   "inv_count",
   "inv_cell",
   "station_switch",
+  "task_take",
+  "task_done",
 ]);
 
 /** Порядок процессов в фильтре — как товар идёт по складу. */
