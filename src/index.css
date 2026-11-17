@@ -496,6 +496,17 @@
   }
 }
 
+/* Галочки на телефоне — 20 px вместо 16. Область нажатия даёт подпись
+   (`<label>` вокруг галочки) или обёртка строки (`RowCheck`), а не сама
+   галочка: у поля ввода нет псевдоэлементов, чтобы её раздуть. */
+@media (max-width: 767.98px) {
+  input[type="checkbox"],
+  input[type="radio"] {
+    width: 1.25rem !important;
+    height: 1.25rem !important;
+  }
+}
+
 /* Доступность: уважаем системную настройку «меньше движения». */
 @media (prefers-reduced-motion: reduce) {
   *,

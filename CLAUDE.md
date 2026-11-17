@@ -77,7 +77,7 @@ React 18 + TypeScript + Vite 6 · Zustand 4 (`persist`) · Tailwind + shadcn/ui 
 - **Одна дизайн-система** (ADR 0007): токены только в `src/index.css`,
   примитивы — `src/components/ui/`. Цвет по роли — `primary`, `success`,
   `warning`, `destructive`; переключатели — `ui/segmented`; окна — панелью
-  справа (`DialogShell`); высоты контролов 32 / 36 / 40. Линтер ловит цвета
+  справа (`DialogShell`); высоты контролов 32 / 36 / 40, на телефоне 44. Линтер ловит цвета
   палитры, свои табы и прямой `localStorage`. Тронули токен или примитив —
   в той же задаче `npm run tokens`, `docs/design/` и артефакт
   https://claude.ai/artifact/Tadqydujk1gJrKcysRePzm.
