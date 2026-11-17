@@ -606,6 +606,9 @@ function main() {
     // Журнал действий склада (миграция 039): операции столов и правки кабинета.
     const { createJournal } = require("./cabinet/journal");
     const journal = createJournal({ auth, send, log: console });
+    // Путь товара: посылки по коду и лента посылки от приёмки до рейса.
+    const { createGoodsPath } = require("./cabinet/goodsPath");
+    const goodsPath = createGoodsPath({ auth, send, log: console });
     const { createTeam } = require("./cabinet/team");
     const team = createTeam({ auth, cfg, send, log: console });
     const { createDeskBadges } = require("./cabinet/deskBadges");
@@ -642,6 +645,7 @@ function main() {
         (await account.handle(req, res, url)) ||
         (await snapshot.handle(req, res, url)) ||
         (await journal.handle(req, res, url)) ||
+        (await goodsPath.handle(req, res, url)) ||
         (await deskBadges.handle(req, res, url)) ||
         (await company.handle(req, res, url)) ||
         (await orgName.handle(req, res, url)) ||

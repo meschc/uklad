@@ -163,13 +163,14 @@ async function cabinetRows(c, wh, f, limit) {
   }));
 }
 
+// Владелец держит все права, в том числе продавца, — поэтому «Персонал»
+// открывает журнал сам, а продавцу без него журнал склада не положен.
+const mayRead = (ctx) =>
+  Boolean(ctx.accountId) &&
+  (ctx.can("staff.manage") || (ctx.can("staff.view") && !ctx.can("seller.requests")));
+
 function createJournal({ auth, send, log }) {
   const { withSession } = auth;
-  // Владелец держит все права, в том числе продавца, — поэтому «Персонал»
-  // открывает журнал сам, а продавцу без него журнал склада не положен.
-  const mayRead = (ctx) =>
-    Boolean(ctx.accountId) &&
-    (ctx.can("staff.manage") || (ctx.can("staff.view") && !ctx.can("seller.requests")));
 
   async function read(req, res, url) {
     const f = readFilters(url);
@@ -218,4 +219,4 @@ function createJournal({ auth, send, log }) {
   return { handle };
 }
 
-module.exports = { createJournal, readFilters };
+module.exports = { createJournal, readFilters, journalPlace, mayRead };
