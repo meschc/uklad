@@ -38,6 +38,9 @@ services:
       # Сертификаты переживают пересборку: иначе Let's Encrypt быстро упрётся
       # в лимит выдачи.
       - caddy_data:/data
+      # Куски прошлых сборок: вкладка, открытая до выкладки, ещё 14 дней
+      # находит свои файлы (`web-entrypoint.sh`).
+      - web_assets:/keep
       - caddy_config:/config
     networks: [front]
     depends_on:
@@ -203,5 +206,6 @@ networks:
 
 volumes:
   caddy_data:
+  web_assets:
   caddy_config:
   pgdata:
