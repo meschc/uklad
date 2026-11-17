@@ -10,7 +10,9 @@
  * таре, а короб — смешать двух продавцов или два назначения.
  */
 
-/* global module */
+/* global module, require */
+/* eslint-disable @typescript-eslint/no-require-imports */
+const { orderSplit } = require("./deskMerge");
 
 const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 const list = (v) => (Array.isArray(v) ? v.filter(isObject) : []);
@@ -232,6 +234,15 @@ function applyPackDone(data, body, staffRef) {
     if (n > 0) need.set(r.productId, (need.get(r.productId) ?? 0) + n);
   }
   for (const [p, n] of need) if ((packed.get(p) ?? 0) < n) return { flag: "stock" };
+  // Заказ площадки, часть которого ещё в другой таре, — не упакован: одна
+  // этикетка, одна посылка (`deskMerge.js`).
+  if (
+    orderSplit(
+      requests,
+      closing.map((r) => r.id),
+    )
+  )
+    return { flag: "mixed" };
   const outs = list(data.outboundBoxes);
   const open = outs.find((b) => !b.shipmentId && normalizeCode(String(b.code ?? "")) === code);
   if (targetProblem(data, have, closing, open)) return { flag: "mixed" };

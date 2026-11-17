@@ -218,6 +218,35 @@ describe("товар не теряется и не двоится на пути 
     expect([empty.status, empty.pickedQty, empty.toteId]).toEqual(["new", 0, undefined]);
   });
 
+  it("заказ в двух тарах: вторая пересыпается в первую, уходит одной посылкой", () => {
+    const w = warehouse();
+    const { s, check } = w;
+    stock(w, "p-a", 2, C1);
+    stock(w, "p-b", 2, C2);
+    const order = { note: "Коледино", externalId: "OZ-7", source: "ozon" as const };
+    const ra = s().createRequest({ productId: "p-a", qty: 1, ...order });
+    const rb = s().createRequest({ productId: "p-b", qty: 1, ...order });
+    const [t1, t2] = [s().createBox(), s().createBox()];
+    s().recordPick(ra, "p-a", C1, t1.id);
+    s().recordPick(rb, "p-b", C2, t2.id);
+    s().completeRequest(ra);
+    s().completeRequest(rb);
+    check("заказ разложен по двум тарам");
+    s().badgeLogin(badgeCode("s1"), "pack");
+    expect(s().packStart(t1.barcode)).toBeNull();
+    expect("id" in s().packMergeTote(t2.barcode)).toBe(true);
+    check("вторая тара пересыпана");
+    for (const code of ["4600000000017", "4600000000024"]) {
+      expect(s().packScanItem(code).kind).toBe("ok");
+      expect(s().packScanLabel(s().packSession!.units.at(-1)!.labelCode)).toBe(true);
+    }
+    expect(s().packScanLabel(pendingLabel(s().packSession!)!)).toBe(true);
+    s().packFinish();
+    check("заказ упакован");
+    expect(s().outboundBoxes!.map((o) => o.requestIds.length)).toEqual([2]);
+    expect(onHand(s()).get("p-a")).toBe(2);
+  });
+
   it("начатая заявка не докладывается в другую тару", () => {
     const w = warehouse();
     const { s, check } = w;

@@ -14,6 +14,7 @@ import { holidayPctOf, nightPctOf } from "../payExtras";
 import { findByCode, normalizeCode } from "../barcode";
 import {
   cancelledInTote,
+  heldInTote,
   classifyItemScan,
   isOrderComplete,
   isParcelTote,
@@ -29,6 +30,7 @@ import {
 import { addToOutbound, openOutbound, packTargetProblem, type PackedLine } from "../outbound";
 import type { Device, PackSession, StaffEvent } from "../types";
 import type { EditorState, SliceCreator, WorkstationSlice } from "./state";
+import { applyMerge, mergeProblem } from "../toteMerge";
 
 /**
  * Рабочее место по бейджу и журнал сотрудника.
@@ -235,9 +237,9 @@ export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get)
     if (toteContents(box).size === 0) return "ws.tote.empty";
     const orders = toteOrders(s.requests, box);
     // Тара посылок (FBS): короб не выбирают, каждый заказ — своя посылка.
-    const target = isParcelTote(orders) ? "" : normalizeCode(targetCode ?? "");
-    if (!isParcelTote(orders) && (!target || target === normalizeCode(box.barcode)))
-      return "ws.tote.targetBad";
+    const parcels = isParcelTote(orders, heldInTote(s.requests, s.boxes, box));
+    const target = parcels ? "" : normalizeCode(targetCode ?? "");
+    if (!parcels && (!target || target === normalizeCode(box.barcode))) return "ws.tote.targetBad";
     // Один короб — один продавец и одно назначение: смешанный короб нельзя ни
     // честно выставить в счёт, ни отправить одной машиной.
     const problem = !target
@@ -275,14 +277,10 @@ export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get)
     const box = ps && s.boxes.find((b) => b.id === ps.sourceBoxId);
     if (!ps || !box) return { kind: "unknown" };
     const now = nowMs();
-    const res = classifyItemScan(
-      ps,
-      box,
-      toteOrders(s.requests, box),
-      s.products,
-      code,
-      cancelledInTote(s.requests, box),
-    );
+    const res = classifyItemScan(ps, box, toteOrders(s.requests, box), s.products, code, [
+      ...cancelledInTote(s.requests, box),
+      ...heldInTote(s.requests, s.boxes, box),
+    ]);
     const log = (type: StaffEvent["type"], productId?: string) =>
       event({
         staffId: ps.staffId,
@@ -311,6 +309,15 @@ export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get)
         },
         staffEvents: [...s.staffEvents, log("pack_scan", res.productId)],
       });
+    } else if (res.kind === "held") {
+      // Заказ ждёт вторую тару: штуку откладывают обратно в тару, это не
+      // ошибка и не спорное — после пересыпания её отсканируют снова.
+      set({
+        packSession: {
+          ...ps,
+          rejects: [...ps.rejects, { productId: res.productId, reason: "held", at: now, code }],
+        },
+      });
     } else if (res.kind === "not_in_tote" || res.kind === "extra" || res.kind === "cancelled") {
       // Ошибка скана не мешает работе: товар откладывают, а решает старший.
       // Штука отменённого заказа для старшего — лишнее в таре: вернуть на полку.
@@ -332,6 +339,33 @@ export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get)
       set({ staffEvents: [...s.staffEvents, log("pack_error")] });
     }
     return res;
+  },
+
+  packMergeTote: (fromCode) => {
+    const s = get();
+    const ps = s.packSession;
+    const into = ps ? s.boxes.find((b) => b.id === ps.sourceBoxId) : undefined;
+    const from = findByCode(s.boxes, fromCode);
+    const problem = mergeProblem(s.requests, into, from);
+    if (problem || !ps || !into || !from) return { problem: problem ?? "bad" };
+    const now = nowMs();
+    const ev = event({
+      staffId: ps.staffId,
+      type: "pack_merge",
+      at: now,
+      station: "pack",
+      code: from.barcode,
+      boxId: into.id,
+      ...(s.stationSession?.deviceId ? { deviceId: s.stationSession.deviceId } : {}),
+    });
+    const merged = applyMerge(s, into, from, now);
+    set({
+      ...merged,
+      staffEvents: [...s.staffEvents, ev],
+      // Отложенные штуки заказа теперь пакуются: их сканируют снова.
+      packSession: { ...ps, rejects: ps.rejects.filter((r) => r.reason !== "held") },
+    });
+    return { id: ev.id, fromId: from.id };
   },
 
   packScanLabel: (code) => {
@@ -457,7 +491,11 @@ export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get)
     // Неподтверждённая штука в упаковку не легла — она остаётся в таре.
     const done: PackSession = { ...ps, units: ps.units.filter((u) => u.confirmedAt) };
     const cancelled = cancelledInTote(s.requests, box);
-    const remaining = toteShortage(done, box, cancelled);
+    // Заказ, ждущий вторую тару, остаётся в таре — не недостача.
+    const remaining = toteShortage(done, box, [
+      ...cancelled,
+      ...heldInTote(s.requests, s.boxes, box),
+    ]);
     // Заказ отменили, пока тара была на столе: его штуки вынимают из короба,
     // они остаются в таре вместе с остальным отменённым.
     const pulled = new Set(packedForCancelled(done, cancelled));

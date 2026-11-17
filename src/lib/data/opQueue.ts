@@ -28,6 +28,7 @@ export type DeskOpKind =
   | "shift_undo"
   | "pack_event"
   | "pack_done"
+  | "pack_merge"
   | "pick_unit"
   | "pick_done"
   | "pick_undo"
@@ -50,6 +51,7 @@ const KINDS: readonly DeskOpKind[] = [
   "shift_undo",
   "pack_event",
   "pack_done",
+  "pack_merge",
   "pick_unit",
   "pick_done",
   "pick_undo",
@@ -87,6 +89,8 @@ export interface DeskOpBody {
   lines?: { productId: string; qty: number }[];
   requestIds?: string[];
   shortages?: { id: string; productId: string; qty: number }[];
+  /** Заказ в двух тарах (`pack_merge`): тара, которую пересыпали в `toteId`. */
+  fromToteId?: string;
   // Сборка (`pick_unit`, `pick_done`, `pick_undo` — `pickId` отменяемого скана).
   requestId?: string;
   pickId?: string;
@@ -360,7 +364,7 @@ const randomKey = () => {
  */
 async function sayFlagged(kinds: DeskOpKind[]) {
   const { useEditor } = await import("../store");
-  const packing = kinds.some((k) => k === "pack_event" || k === "pack_done");
+  const packing = kinds.some((k) => k.startsWith("pack_"));
   const picking = kinds.some((k) => k.startsWith("pick_"));
   const receiving = kinds.some((k) => k.startsWith("recv_"));
   const shipping =
