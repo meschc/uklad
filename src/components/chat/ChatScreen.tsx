@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { MessagesSquare, Users } from "lucide-react";
 import { selectRole, useEditor, visibleChatPartners } from "@/lib/store";
 import { useT } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 import { EmptyState } from "@/components/fulfillment/ScreenShell";
 import { ChatThreadList } from "./ChatThreadList";
 import { ChatThread } from "./ChatThread";
@@ -25,6 +26,12 @@ export function ChatScreen() {
   const activeChatId = useEditor((s) => s.activeChatId);
   const openChat = useEditor((s) => s.openChat);
   const [query, setQuery] = useState("");
+  // Телефон: список ИЛИ переписка, как list-detail в Material и любой
+  // мессенджер — в две колонки на 390 px сообщения сжимались до слова в
+  // строке (Кирилл 17.11). Входим всегда в список, даже если переписка
+  // открыта с прошлого раза; «назад» в шапке переписки возвращает к нему.
+  // На компьютере обе колонки, как раньше.
+  const [threadShown, setThreadShown] = useState(false);
 
   const found = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -40,6 +47,8 @@ export function ChatScreen() {
   }, [solo, activeChatId, openChat]);
 
   const active = partners.find((p) => p.id === activeChatId) ?? null;
+  const listed = role !== "seller";
+  const onPhoneThread = !listed || (threadShown && !!active);
 
   if (!partners.length) {
     return (
@@ -55,7 +64,7 @@ export function ChatScreen() {
 
   return (
     <div className="flex h-full min-h-0 bg-background">
-      {role !== "seller" && (
+      {listed && (
         <ChatThreadList
           partners={found}
           chats={chats}
@@ -63,7 +72,11 @@ export function ChatScreen() {
           activeId={activeChatId}
           query={query}
           onQuery={setQuery}
-          onPick={openChat}
+          onPick={(id) => {
+            openChat(id);
+            setThreadShown(true);
+          }}
+          className={onPhoneThread ? "max-md:hidden" : "max-md:w-full max-md:border-r-0"}
         />
       )}
 
@@ -73,9 +86,16 @@ export function ChatScreen() {
           partner={active}
           messages={chats[active.id] ?? []}
           role={role}
+          onBack={listed ? () => setThreadShown(false) : undefined}
+          className={onPhoneThread ? undefined : "max-md:hidden"}
         />
       ) : (
-        <div className="flex min-w-0 flex-1 items-center justify-center p-6">
+        <div
+          className={cn(
+            "flex min-w-0 flex-1 items-center justify-center p-6",
+            !onPhoneThread && "max-md:hidden",
+          )}
+        >
           <EmptyState icon={<MessagesSquare className="size-5" />} title={t("chat.empty")} />
         </div>
       )}

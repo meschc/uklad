@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ClipboardCheck, ClipboardList, PackageCheck, Pencil, Printer, Truck } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { useWithArchive } from "@/lib/store/archive";
@@ -30,6 +30,31 @@ import { InventoryActView } from "./InventoryActView";
 
 /** Масштаб предпросмотра: A4 в 210 мм не влезает в колонку экрана целиком. */
 const PREVIEW_SCALE = 0.62;
+/** 210 мм в CSS-пикселях (96 dpi). */
+const A4_WIDTH_PX = (210 / 25.4) * 96;
+
+/**
+ * Масштаб листа под ширину колонки: на компьютере 0,62, на телефоне меньше —
+ * лист целиком помещается по ширине, а не уезжает за край (Кирилл 17.11).
+ */
+function useFitScale(): [React.RefCallback<HTMLElement>, number] {
+  const [scale, setScale] = useState(PREVIEW_SCALE);
+  const observer = useRef<ResizeObserver | null>(null);
+  const ref = useCallback((el: HTMLElement | null) => {
+    observer.current?.disconnect();
+    observer.current = null;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const measure = () => {
+      const pad = parseFloat(getComputedStyle(el).paddingLeft) * 2;
+      const room = el.clientWidth - pad;
+      if (room > 0) setScale(Math.min(PREVIEW_SCALE, room / A4_WIDTH_PX));
+    };
+    measure();
+    observer.current = new ResizeObserver(measure);
+    observer.current.observe(el);
+  }, []);
+  return [ref, scale];
+}
 
 type Tab = "pick" | "shipment" | "receiving" | "inventory";
 type Status = DocRecord["status"] | "working";
@@ -56,6 +81,7 @@ const EMPTY_KEY: Record<Tab, MsgKey> = {
 };
 
 export function DocumentsScreen() {
+  const [fitRef, scale] = useFitScale();
   const t = useT();
   const warehouse = useEditor((s) => s.warehouse);
   const products = useEditor((s) => s.products);
@@ -214,14 +240,25 @@ export function DocumentsScreen() {
             ]}
           />
         )}
-        <div className={cn("ml-auto flex gap-2", inventory && "hidden")}>
+        {/* На телефоне кнопки — строкой во всю ширину, а не одна у правого
+            края с пустотой слева. */}
+        <div className={cn("flex gap-2 max-md:w-full md:ml-auto", inventory && "hidden")}>
           {isDoc && base && (
-            <Button className="h-9" variant="outline" onClick={() => setEditing(true)}>
+            <Button
+              className="h-9 max-md:flex-1"
+              variant="outline"
+              onClick={() => setEditing(true)}
+            >
               <Pencil className="size-3.5" />
               {t(confirmed ? "doc.details" : "doc.edit")}
             </Button>
           )}
-          <Button className="h-9" variant="outline" disabled={!doc} onClick={() => window.print()}>
+          <Button
+            className="h-9 max-md:flex-1"
+            variant="outline"
+            disabled={!doc}
+            onClick={() => window.print()}
+          >
             <Printer className="size-3.5" />
             {t("doc.print")}
           </Button>
@@ -263,15 +300,18 @@ export function DocumentsScreen() {
             ))}
           </ul>
 
-          <div className="overflow-auto rounded-xl border border-border bg-muted/40 p-4 scrollbar-thin">
+          <div
+            ref={fitRef}
+            className="overflow-auto rounded-xl border border-border bg-muted/40 p-3 scrollbar-thin md:p-4"
+          >
             {doc ? (
               <div
                 style={{
-                  width: `calc(210mm * ${PREVIEW_SCALE})`,
-                  height: `calc(297mm * ${PREVIEW_SCALE})`,
+                  width: `calc(210mm * ${scale})`,
+                  height: `calc(297mm * ${scale})`,
                 }}
               >
-                <div style={{ transform: `scale(${PREVIEW_SCALE})`, transformOrigin: "top left" }}>
+                <div style={{ transform: `scale(${scale})`, transformOrigin: "top left" }}>
                   <DocumentSheet
                     doc={doc}
                     warehouse={warehouse}
