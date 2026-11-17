@@ -26,12 +26,15 @@ const buttonVariants = cva(
         "inverse-outline":
           "text-primary-foreground ring-1 ring-inset ring-primary-foreground hover:bg-primary-foreground/10",
       },
+      // На телефоне (уже `md`) любая кнопка — 44 px, под палец: минимум у
+      // Apple 44 pt, у Material 48 dp (Кирилл 17.11: «размеры кнопок на
+      // мобилке удобные?»). На компьютере сетка 32 / 36 / 40 как была.
       size: {
-        default: "h-9 px-4 py-2",
-        sm: "h-8 px-3 text-xs",
-        lg: "h-10 px-6",
-        icon: "h-9 w-9",
-        "icon-sm": "h-8 w-8",
+        default: "h-9 px-4 py-2 max-md:min-h-11",
+        sm: "h-8 px-3 text-xs max-md:min-h-11 max-md:px-4 max-md:text-sm",
+        lg: "h-10 px-6 max-md:min-h-11",
+        icon: "h-9 w-9 max-md:min-h-11 max-md:min-w-11",
+        "icon-sm": "h-8 w-8 max-md:min-h-11 max-md:min-w-11",
       },
     },
     defaultVariants: {

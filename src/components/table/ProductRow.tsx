@@ -233,7 +233,7 @@ export function ProductRow({
             <button
               onClick={onRequest}
               title={t("seller.request")}
-              className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-primary group-hover/row:text-muted-foreground"
+              className="flex size-7 items-center justify-center rounded-md max-md:min-h-11 max-md:min-w-11 text-muted-foreground transition-colors hover:bg-accent hover:text-primary group-hover/row:text-muted-foreground"
             >
               <Truck className="size-3.5" />
             </button>
@@ -241,7 +241,7 @@ export function ProductRow({
           <button
             onClick={onEdit}
             title={t("table.editProduct")}
-            className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground group-hover/row:text-muted-foreground"
+            className="flex size-7 items-center justify-center rounded-md max-md:min-h-11 max-md:min-w-11 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground group-hover/row:text-muted-foreground"
           >
             <Pencil className="size-3.5" />
           </button>

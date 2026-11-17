@@ -190,6 +190,8 @@ export function Select({
           open && "border-primary ring-2 ring-ring/30",
           size ? HEIGHT[size] : !hasHeight && HEIGHT.md,
           className,
+          // На телефоне — 44 px под палец, как кнопки и поля.
+          "max-md:min-h-11",
         )}
       >
         <span className="min-w-0 truncate">{current?.label ?? "—"}</span>

@@ -23,9 +23,18 @@ export interface SegmentedOption<T extends string> {
   title?: string;
 }
 
+// На телефоне оба размера — 44 px, как кнопки: вкладку нажимают пальцем.
 const SIZES = {
-  sm: { wrap: "h-8 p-0.5", item: "px-2.5 text-xs", icon: "[&_svg]:size-3.5" },
-  md: { wrap: "h-9 p-0.5", item: "px-3 text-sm", icon: "[&_svg]:size-4" },
+  sm: {
+    wrap: "h-8 p-0.5 max-md:h-11 max-md:p-1",
+    item: "px-2.5 text-xs max-md:px-3.5 max-md:text-sm",
+    icon: "[&_svg]:size-3.5",
+  },
+  md: {
+    wrap: "h-9 p-0.5 max-md:h-11 max-md:p-1",
+    item: "px-3 text-sm max-md:px-3.5",
+    icon: "[&_svg]:size-4",
+  },
 } as const;
 
 export function Segmented<T extends string>({
@@ -85,7 +94,7 @@ export function Segmented<T extends string>({
       <span
         aria-hidden
         className={cn(
-          "pointer-events-none absolute bottom-0.5 left-0 top-0.5 rounded-md bg-background shadow-sm transition-[transform,width] duration-base ease-out-soft",
+          "pointer-events-none absolute bottom-0.5 left-0 top-0.5 rounded-md max-md:bottom-1 max-md:top-1 bg-background shadow-sm transition-[transform,width] duration-base ease-out-soft",
           !thumb && "opacity-0",
         )}
         style={thumb && { width: thumb.w, transform: `translateX(${thumb.x}px)` }}

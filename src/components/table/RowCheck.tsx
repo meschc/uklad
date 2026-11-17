@@ -29,6 +29,8 @@ export function RowCheck({
       onClick={onChange}
       className={cn(
         "flex size-4 items-center justify-center rounded border transition-colors",
+        // Телефон: 20 px и невидимая область 44 px вокруг — под палец.
+        "relative before:absolute before:-inset-3 before:content-[''] max-md:size-5",
         checked || partial
           ? "border-primary bg-primary text-primary-foreground"
           : "border-input hover:border-primary/60",

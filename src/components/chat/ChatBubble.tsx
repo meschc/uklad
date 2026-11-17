@@ -154,7 +154,7 @@ function IconAction({
       title={label}
       aria-label={label}
       onClick={onClick}
-      className="flex size-7 cursor-pointer items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+      className="flex size-7 cursor-pointer items-center max-md:size-10 justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
     >
       {children}
     </button>
