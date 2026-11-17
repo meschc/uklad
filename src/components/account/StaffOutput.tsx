@@ -132,7 +132,7 @@ export function StaffOutput() {
       </div>
       <p className="max-w-2xl text-xs text-muted-foreground">{t("staff.out.lead")}</p>
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-sm">
+        <table className="table-stack w-full border-collapse text-sm">
           <thead className="text-xs text-muted-foreground">
             <tr className="border-b border-border text-left">
               <SortTh table={table.table} id="name">
@@ -202,7 +202,7 @@ export function StaffOutput() {
                     ) : null;
                   })()}
                 </td>
-                <td className="px-3 py-2 text-right tabular-nums">
+                <td className="px-3 py-2 text-right tabular-nums" data-label={t("staff.out.hours")}>
                   {hoursText(r.workedMs)}
                   {STATIONS.filter((k) => (r.byStation[k] ?? 0) > 0).map((k) => (
                     <span key={k} className="block text-xs text-muted-foreground">
@@ -210,26 +210,46 @@ export function StaffOutput() {
                     </span>
                   ))}
                 </td>
-                <td className="px-3 py-2 text-right tabular-nums">{hoursText(r.idleMs)}</td>
-                <td className="px-3 py-2 text-right tabular-nums">
+                <td className="px-3 py-2 text-right tabular-nums" data-label={t("staff.out.idle")}>
+                  {hoursText(r.idleMs)}
+                </td>
+                <td className="px-3 py-2 text-right tabular-nums" data-label={t("staff.out.peaks")}>
                   {r.packed + r.picked}
                   <span className="block text-xs text-muted-foreground">
                     {t("staff.out.split", { pack: r.packed, pick: r.picked })}
                   </span>
                 </td>
-                <td className="px-3 py-2 text-right tabular-nums">{r.errors}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{r.rejects}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{r.reprints}</td>
-                <td className="px-3 py-2 text-right tabular-nums">
+                <td
+                  className="px-3 py-2 text-right tabular-nums"
+                  data-label={t("staff.out.errors")}
+                >
+                  {r.errors}
+                </td>
+                <td
+                  className="px-3 py-2 text-right tabular-nums"
+                  data-label={t("staff.out.rejects")}
+                >
+                  {r.rejects}
+                </td>
+                <td
+                  className="px-3 py-2 text-right tabular-nums"
+                  data-label={t("staff.out.reprints")}
+                >
+                  {r.reprints}
+                </td>
+                <td className="px-3 py-2 text-right tabular-nums" data-label={t("staff.wlUnits")}>
                   {workload.get(r.staffId)?.units ?? 0}
                   <span className="block text-xs text-muted-foreground">
                     {t("staff.wlReceiptsN", { n: workload.get(r.staffId)?.receipts ?? 0 })}
                   </span>
                 </td>
-                <td className="px-3 py-2 text-right tabular-nums">
+                <td className="px-3 py-2 text-right tabular-nums" data-label={t("staff.wlTrips")}>
                   {workload.get(r.staffId)?.trips ?? 0}
                 </td>
-                <td className="px-3 py-2 text-right tabular-nums">
+                <td
+                  className="px-3 py-2 text-right tabular-nums"
+                  data-label={t("staff.out.earned")}
+                >
                   {r.earned == null ? "—" : `${r.earned.toLocaleString("ru-RU")} ₽`}
                   {r.earned != null && (
                     <span className="block text-xs text-muted-foreground">
@@ -237,7 +257,7 @@ export function StaffOutput() {
                     </span>
                   )}
                 </td>
-                <td className="px-3 py-2 text-right tabular-nums">
+                <td className="px-3 py-2 text-right tabular-nums" data-label={t("staff.out.plus")}>
                   {plusOf(r) > 0 ? `+${money(plusOf(r))}` : "—"}
                   {(r.nightPay ?? 0) > 0 && (
                     <span className="block text-xs text-muted-foreground">
@@ -245,14 +265,14 @@ export function StaffOutput() {
                     </span>
                   )}
                 </td>
-                <td className="px-3 py-2 text-right tabular-nums">
+                <td className="px-3 py-2 text-right tabular-nums" data-label={t("staff.out.minus")}>
                   {r.deduction > 0 ? (
                     <span className="text-destructive">−{money(r.deduction)}</span>
                   ) : (
                     "—"
                   )}
                 </td>
-                <td className="px-3 py-2 text-right">
+                <td className="px-3 py-2 text-right" data-label={t("pay.toPay")}>
                   <button
                     type="button"
                     className="font-semibold tabular-nums hover:text-primary hover:underline"

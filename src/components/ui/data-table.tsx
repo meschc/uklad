@@ -222,7 +222,9 @@ export function TableSearch({
   className?: string;
 }) {
   return (
-    <div className={cn("relative w-full max-w-xs", className)}>
+    // На телефоне — во всю строку: узкое поле, прижатое вправо, висело
+    // с пустотой слева (Кирилл 17.11).
+    <div className={cn("relative w-full md:max-w-xs", className)}>
       <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
       <Input
         value={value}

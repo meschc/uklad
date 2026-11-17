@@ -32,6 +32,9 @@ export function MobileNav() {
   const [openedOn, setOpenedOn] = useState<AppView | null>(null);
   const open = openedOn === appView;
   const setOpen = (next: boolean) => setOpenedOn(next ? appView : null);
+  // Закрытие крестиком — сначала уезжает вниз, потом снимается. Переход по
+  // пункту закрывает сразу: экран всё равно сменился.
+  const [closing, setClosing] = useState(false);
 
   const allowed = navFor(role, perms);
   const items = PRIMARY[role]
@@ -60,20 +63,33 @@ export function MobileNav() {
           label={t("nav.side.more")}
           active={open || !onPrimary}
           badge={0}
-          onClick={() => setOpen(true)}
+          onClick={() => {
+            setClosing(false);
+            setOpen(true);
+          }}
         />
       </nav>
       {open && (
-        <div className="fixed inset-0 z-40 flex animate-fade-in flex-col bg-shell md:hidden">
+        <div
+          className={cn(
+            "fixed inset-0 z-40 flex flex-col bg-shell md:hidden",
+            closing ? "animate-sheet-down" : "animate-sheet-up",
+          )}
+          onAnimationEnd={(e) => {
+            if (e.target !== e.currentTarget || !closing) return;
+            setClosing(false);
+            setOpen(false);
+          }}
+        >
           <button
             type="button"
-            onClick={() => setOpen(false)}
+            onClick={() => setClosing(true)}
             aria-label={t("nav.side.close")}
             className="absolute right-3 top-3 z-10 flex size-11 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
           >
             <X className="size-5" />
           </button>
-          <SideNav variant="sheet" />
+          <SideNav variant="sheet" onNavigate={() => setOpen(false)} />
         </div>
       )}
     </>

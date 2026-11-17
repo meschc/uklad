@@ -7,7 +7,7 @@ import { eyebrow } from "@/components/ui/eyebrow";
 import { RowCheck } from "./RowCheck";
 import type { SortKey } from "./tableRows";
 
-const COLS: Record<ColId, { label: MsgKey; sort?: SortKey; className?: string }> = {
+export const COLS: Record<ColId, { label: MsgKey; sort?: SortKey; className?: string }> = {
   photo: { label: "table.col.photo", className: "w-12" },
   sku: { label: "table.col.sku", sort: "sku" },
   name: { label: "table.col.name", sort: "name" },
