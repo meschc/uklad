@@ -6,13 +6,15 @@ import { planPickUndo } from "@/lib/pickUndo";
 import { workstationRepository } from "@/lib/data/workstationRepository";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { Modal } from "./Modal";
+import { CodeText } from "./CodeTail";
 
 /**
  * Подтверждение отмены скана в сборке. Класс `confirm` (`actionRisk.ts`):
  * штука переезжает из тары обратно в короб, поэтому панель называет, что
  * именно вернётся, откуда и куда, и сколько станет собрано. Физически штуку
  * кладёт сам сборщик — панель говорит, куда, кнопка «Вернул в короб»
- * подтверждает. Подписи «для справки» не нужны (Кирилл 16.11).
+ * подтверждает. Что сделать — в заголовке, ниже простым текстом откуда и
+ * сколько станет (Кирилл 16.11). Подписи «для справки» не нужны.
  */
 export function PickUndoPanel({
   pickId,
@@ -54,7 +56,13 @@ export function PickUndoPanel({
 
   return (
     <Modal
-      title={t("pick.undo.title")}
+      title={
+        res.ok ? (
+          <CodeText text={t("pick.undo.put", { box: res.plan.from.barcode })} />
+        ) : (
+          t("pick.undo.title")
+        )
+      }
       icon={<Undo2 className="size-4 text-muted-foreground" />}
       onClose={onClose}
       onSubmit={() => void submit()}
@@ -66,26 +74,19 @@ export function PickUndoPanel({
       sheet
     >
       {res.ok && (
-        <>
-          <p className="text-sm">
-            {t("pick.undo.body", {
+        <p className="text-sm">
+          <CodeText
+            text={t("pick.undo.body", {
               sku: products.find((p) => p.id === res.plan.pick.productId)?.sku ?? "—",
-              box: unbroken(res.plan.from.barcode),
               addr: res.plan.from.address
                 ? (formatAddress(warehouse, res.plan.from.address) ?? "")
                 : "",
               left: (res.plan.request.pickedQty ?? 1) - 1,
               total: res.plan.request.qty,
             })}
-          </p>
-          <p className="text-sm font-semibold">
-            {t("pick.undo.put", { box: unbroken(res.plan.from.barcode) })}
-          </p>
-        </>
+          />
+        </p>
       )}
     </Modal>
   );
 }
-
-/** Код тары не рвётся по дефису на узком экране: «UK-BOX-» / «28» читается как два кода. */
-const unbroken = (code: string) => code.replace(/-/g, "\u2011");

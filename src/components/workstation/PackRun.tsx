@@ -32,6 +32,7 @@ import { PrintableLabel } from "./PrintableLabel";
 import { shortId } from "./useNow";
 import { useDemoHints } from "./useDemoHints";
 import { DestinationChip } from "./DestinationChip";
+import { CodeTail, CodeText } from "@/components/fulfillment/CodeTail";
 
 export type PackResult = ReturnType<typeof packSummary> & { source: string; target: string };
 
@@ -232,7 +233,9 @@ export function PackRun({
           ) : okText ? (
             <Check className="size-6 shrink-0" />
           ) : null}
-          <span className="min-w-0 leading-snug">{bannerText}</span>
+          <span className="min-w-0 leading-snug">
+            <CodeText text={bannerText} />
+          </span>
         </div>
 
         {showLast && <LastItemPanel session={session} />}
@@ -317,7 +320,7 @@ export function PackRun({
       <div className="grid gap-5 md:grid-cols-2">
         <div className="flex flex-col gap-1.5">
           <h3 className={eyebrow({ tone: "muted", size: "xs" })}>
-            {t("ws.run.tote")} · <span className="font-mono normal-case">{box.barcode}</span>
+            {t("ws.run.tote")} · <CodeTail code={box.barcode} className="normal-case" />
           </h3>
           <ul className="flex flex-col divide-y divide-border">
             {[...contents].map(([id, total]) => {
@@ -445,7 +448,7 @@ export function PackRun({
           <p className="text-xs text-muted-foreground">
             {session.targetCode ? (
               <>
-                {t("ws.run.outTote")} <span className="font-mono">{session.targetCode}</span>
+                {t("ws.run.outTote")} <CodeTail code={session.targetCode} />
                 {dest && <DestinationChip destination={dest} className="ml-2 text-xs" />}
               </>
             ) : (
@@ -526,7 +529,7 @@ function LabelBlock({ code, title }: { code: string; title: string }) {
       <PrintableLabel code={code} lines={[]} printer={printer} />
       <Tag className="size-4 shrink-0 text-primary" />
       <span className="font-medium text-primary">{title}</span>
-      <span className="font-mono text-xs text-muted-foreground">{code}</span>
+      <CodeTail code={code} className="text-xs text-muted-foreground" />
       <Button
         variant="ghost"
         size="sm"
@@ -585,7 +588,9 @@ function LastItemPanel({ session }: { session: PackSession }) {
       <div className="min-w-0 flex-1">
         <p className="text-lg font-semibold leading-tight">{product.name}</p>
         <p className="font-mono text-sm text-muted-foreground">{product.sku}</p>
-        <p className="font-mono text-xs text-muted-foreground">{last.labelCode}</p>
+        <p className="text-xs text-muted-foreground">
+          <CodeTail code={last.labelCode} />
+        </p>
       </div>
       <div className="rounded bg-white p-1.5">
         <QrSvg code={last.labelCode} size={56} showCode={false} />
@@ -618,7 +623,7 @@ function DemoCodes({
         {codes.slice(0, 8).map(({ code, hint }) => (
           <li key={code}>
             <Button variant="outline" size="sm" onClick={() => onScan(code)} title={hint}>
-              <span className="font-mono">{code}</span>
+              <CodeTail code={code} />
               <span className="max-w-40 truncate text-muted-foreground">{hint}</span>
             </Button>
           </li>

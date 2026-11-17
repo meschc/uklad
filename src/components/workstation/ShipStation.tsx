@@ -30,6 +30,7 @@ import { useDemoHints } from "./useDemoHints";
 import { DestinationChip } from "./DestinationChip";
 import { shipmentOfPlace } from "@/lib/sorting";
 import { FieldError, FormError } from "@/components/ui/field";
+import { CodeTail, CodeText } from "@/components/fulfillment/CodeTail";
 
 /**
  * Отгрузка за столом: собранные заявки одного назначения уезжают одной
@@ -279,7 +280,9 @@ function ShipGroup({
         actionLabel={t("ws.act.accept")}
         onSubmit={onScan}
       />
-      <ScanBanner tone={banner.tone}>{banner.tone === "idle" ? idle : banner.text}</ScanBanner>
+      <ScanBanner tone={banner.tone}>
+        {banner.tone === "idle" ? idle : <CodeText text={banner.text} />}
+      </ScanBanner>
 
       {demoHints && demo.length > 0 && (
         <div className="flex flex-col gap-2">
@@ -291,7 +294,7 @@ function ShipGroup({
             {demo.map(({ code, hint }) => (
               <li key={code}>
                 <Button variant="outline" size="sm" onClick={() => onScan(code)} title={hint}>
-                  <span className="font-mono">{code}</span>
+                  <CodeTail code={code} />
                   <span className="text-muted-foreground">{hint}</span>
                 </Button>
               </li>
@@ -345,7 +348,7 @@ function ShipGroup({
           <ul className="flex flex-col gap-1 text-sm">
             {missing.map((b) => (
               <li key={b.id} className="flex justify-between gap-3">
-                <span className="font-mono">{b.code}</span>
+                <CodeTail code={b.code} />
                 <span className="tabular-nums text-muted-foreground">
                   {t("ws.ship.boxUnits", { n: outboundUnits(b) })}
                 </span>
@@ -429,7 +432,7 @@ function VehicleLabel() {
             <div className="rounded bg-white p-1.5 text-black">
               <QrSvg code={code} size={72} showCode={false} />
             </div>
-            <span className="font-mono text-sm">{code}</span>
+            <CodeTail code={code} className="text-sm" />
           </div>
         )}
       </div>

@@ -13,6 +13,7 @@ import { ScanField, type ScanStatus } from "@/components/fulfillment/ScanField";
 import { useNow } from "./useNow";
 import { CellCount, CountLines } from "./CountLines";
 import { FormError } from "@/components/ui/field";
+import { CodeTail } from "@/components/fulfillment/CodeTail";
 
 /** Сколько давно не считанной тары показываем: куда идти дальше. */
 const NEXT_LIMIT = 8;
@@ -197,7 +198,7 @@ export function InventoryStation() {
               <div className="flex flex-wrap gap-2">
                 {choice.map((b) => (
                   <Button key={b.id} variant="outline" onClick={() => open(b)}>
-                    <span className="font-mono">{b.barcode}</span>
+                    <CodeTail code={b.barcode} />
                   </Button>
                 ))}
               </div>
@@ -224,7 +225,7 @@ export function InventoryStation() {
               <ul className="flex flex-col text-sm">
                 {next.map((b) => (
                   <li key={b.id} className="flex justify-between gap-4 py-1.5">
-                    <span className="font-mono">{b.barcode}</span>
+                    <CodeTail code={b.barcode} />
                     <span className="text-muted-foreground">
                       {where(b)} ·{" "}
                       {b.countedAt
@@ -243,7 +244,7 @@ export function InventoryStation() {
         <>
           <div className="flex flex-wrap items-baseline justify-between gap-3">
             <p className="flex items-baseline gap-3">
-              <span className="font-mono text-2xl font-semibold">{box.barcode}</span>
+              <CodeTail code={box.barcode} className="text-2xl font-semibold" />
               <span className="text-muted-foreground">{where(box)}</span>
             </p>
             <Button variant="ghost" size="sm" onClick={reset}>

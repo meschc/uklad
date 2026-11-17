@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { FormError } from "@/components/ui/field";
 import { QtyStepper } from "@/components/fulfillment/QtyStepper";
 import { ScanField, type ScanStatus } from "@/components/fulfillment/ScanField";
+import { CodeTail } from "@/components/fulfillment/CodeTail";
 
 /**
  * Что насчитали при инвентаризации: строка на товар с числом, которое можно
@@ -99,7 +100,7 @@ export function CellCount(props: {
       {found &&
         (props.tote ? (
           <p className="text-sm">
-            {t("ws.count.toteChosen")} <span className="font-mono font-semibold">{props.tote}</span>
+            {t("ws.count.toteChosen")} <CodeTail code={props.tote} className="font-semibold" />
           </p>
         ) : (
           <ScanField
