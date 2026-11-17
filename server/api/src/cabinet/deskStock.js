@@ -145,6 +145,9 @@ function overageDisputes(shipments, events, known, boxes, existing) {
   const over = receivedOver(shipments, events, known);
   const have = new Set(list(existing).map((d) => d.id));
   const code = new Map(list(boxes).map((b) => [b.id, b.barcode]));
+  const lineOf = new Map(
+    list(shipments).flatMap((s) => list(s.lines).map((l) => [l.id, l.productId])),
+  );
   const out = [];
   for (const e of events) {
     const qty = over.get(e.id);
@@ -157,6 +160,10 @@ function overageDisputes(shipments, events, known, boxes, existing) {
       ...(typeof code.get(e.boxId) === "string" ? { toteCode: code.get(e.boxId) } : {}),
       productId: e.productId,
       qty,
+      // Сверх заявленной строки — в карантин до решения (`overageHold.js`).
+      ...(lineOf.get(e.expectedShipmentLineId) === e.productId
+        ? { lineId: e.expectedShipmentLineId }
+        : {}),
       raisedBy: e.staffId,
       raisedAt: e.timestamp,
     });

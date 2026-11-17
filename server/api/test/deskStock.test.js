@@ -441,6 +441,8 @@ test("лишнее с приёмки: сервер сам заводит спо�
       toteCode: "UK-BOX-2",
       productId: "p2",
       qty: 2,
+      // Сверх заявленной строки — в карантин до решения старшего.
+      lineId: "l1",
       raisedBy: "stf-ivan",
       raisedAt: 5,
     },

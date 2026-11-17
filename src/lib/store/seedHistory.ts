@@ -2,9 +2,11 @@ import { nowMs, uid } from "../utils";
 import { generateBoxBarcode, generatePalletBarcode } from "../barcode";
 import { addressKey } from "../address";
 import { allCells } from "../placement";
+import { overageDisputeId } from "../disputes";
 import type {
   Box,
   CellAddress,
+  Dispute,
   ExpectedShipment,
   ExpectedShipmentLine,
   FulfillmentRequest,
@@ -72,6 +74,8 @@ const VEHICLES = [
 
 export interface SeededHistory {
   expectedShipments: ExpectedShipment[];
+  /** Лишнее с приёмки, которое ждёт решения старшего, — оно же в акте продавца. */
+  disputes: Dispute[];
   receivingEvents: ReceivingEvent[];
   boxes: Box[];
   pallets: Pallet[];
@@ -223,6 +227,8 @@ export function seedHistory(
     });
   }
 
+  const disputes = seedOverage(warehouse, products, expectedShipments, receivingEvents, boxes);
+
   // --- Паллеты --------------------------------------------------------------
   // Часть коробов стоит на паллетах: так возят крупные партии, и экран «Что
   // это?» должен уметь показать паллету с содержимым, а не только короб.
@@ -355,6 +361,7 @@ export function seedHistory(
 
   return {
     expectedShipments,
+    disputes,
     receivingEvents,
     boxes,
     pallets,
@@ -365,9 +372,60 @@ export function seedHistory(
   };
 }
 
+/**
+ * Излишек в последней закрытой поставке (Кирилл 17.11): две штуки сверх
+ * строки товара продавца, которого показывает демо (первый партнёр склада).
+ * Лежат в той же таре, в карантине до решения старшего: в «Подтверждениях»
+ * склада это «Лишнее с приёмки», у продавца — отметка «Расхождение» и акт.
+ * Без генератора случайных чисел: остальная история не сдвигается.
+ */
+function seedOverage(
+  warehouse: Warehouse,
+  products: Product[],
+  shipments: ExpectedShipment[],
+  events: ReceivingEvent[],
+  boxes: Box[],
+): Dispute[] {
+  const seller = warehouse.partners?.[0]?.id;
+  const owner = new Map(products.map((p) => [p.id, p.partnerId]));
+  const closed = shipments.filter((s) => s.status === "closed").at(-1);
+  const lines = closed?.lines.filter((l) => l.receivedQty >= l.expectedQty) ?? [];
+  const line = lines.find((l) => seller && owner.get(l.productId) === seller) ?? lines[0];
+  const first = line && events.find((e) => e.expectedShipmentLineId === line.id);
+  const box = first && boxes.find((b) => b.id === first.boxId);
+  if (!line || !first || !box) return [];
+  const qty = 2;
+  line.receivedQty += qty;
+  box.lines = box.lines.map((l) =>
+    l.productId === line.productId ? { ...l, qty: l.qty + qty } : l,
+  );
+  const event: ReceivingEvent = {
+    ...first,
+    id: `${first.id}-over`,
+    qty,
+    timestamp: first.timestamp + 60_000,
+    discrepancy: "overage",
+  };
+  events.push(event);
+  return [
+    {
+      id: overageDisputeId(event.id),
+      kind: "receive_overage",
+      boxId: box.id,
+      toteCode: box.barcode,
+      productId: line.productId,
+      qty,
+      lineId: line.id,
+      raisedBy: event.staffId ?? "manager",
+      raisedAt: event.timestamp,
+    },
+  ];
+}
+
 function empty(): SeededHistory {
   return {
     expectedShipments: [],
+    disputes: [],
     receivingEvents: [],
     boxes: [],
     pallets: [],

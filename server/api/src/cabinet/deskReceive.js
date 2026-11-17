@@ -17,6 +17,7 @@
 /* global module, require */
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { INVENTORY_KINDS } = require("./deskInventory");
+const { overReceived } = require("./overageHold");
 
 const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 const list = (v) => (Array.isArray(v) ? v.filter(isObject) : []);
@@ -172,8 +173,16 @@ function applyRecvUnit(data, body, staffRef) {
       },
     ],
   };
-  // Кроссдок решает поставка на сервере, а не стол.
-  if (shipment?.crossDock) out = crossDock(out, body.productId, qty, shipment.id, box.id, at);
+  // Кроссдок решает поставка на сервере, а не стол. Лишнее сверх заявленной
+  // строки в заявки не уходит: оно в карантине до решения старшего
+  // (`overageHold.js`).
+  const line = list(shipment?.lines).find(
+    (l) => l.id === body.lineId && l.productId === body.productId,
+  );
+  const free = line ? qty - overReceived(line, qty) : qty;
+  if (shipment?.crossDock && free > 0) {
+    out = crossDock(out, body.productId, free, shipment.id, box.id, at);
+  }
   return { data: out };
 }
 

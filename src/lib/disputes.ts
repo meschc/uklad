@@ -108,3 +108,49 @@ export function adoptInto(boxes: readonly Box[], d: Dispute): Box[] {
     };
   });
 }
+
+/**
+ * Карантин излишка с приёмки (Кирилл 17.11): лишнее сверх заявленной строки
+ * поставки, по которому старший ещё не решил, лежит в своей таре, но из неё
+ * его не собирают и в кроссдок не отдают. Сколько штук товара в таре держит открытое «Лишнее с приёмки».
+ * Решение «оставить» снимает карантин, «убрать» уводит штуки из тары.
+ */
+export function heldQty(
+  disputes: readonly Dispute[],
+  boxId: string | undefined,
+  productId: string,
+): number {
+  if (!boxId) return 0;
+  return disputes
+    .filter(
+      (d) =>
+        d.kind === "receive_overage" &&
+        !!d.lineId &&
+        !d.resolution &&
+        d.boxId === boxId &&
+        d.productId === productId,
+    )
+    .reduce((n, d) => n + d.qty, 0);
+}
+
+/** Сколько товара в таре можно взять в работу: всё, кроме излишка в карантине. */
+export function freeInBox(disputes: readonly Dispute[], box: Box, productId: string): number {
+  const have = box.lines.filter((l) => l.productId === productId).reduce((n, l) => n + l.qty, 0);
+  return Math.max(0, have - heldQty(disputes, box.id, productId));
+}
+
+/**
+ * Сколько из принятого вышло за строку поставки — то же правило, что у
+ * сервера (`receivedOver` в `deskStock.js`): без строки лишнее всё принятое,
+ * со строкой — только то, что сверх ожидаемого с учётом уже принятого.
+ */
+export function overReceived(
+  line: { expectedQty: number; receivedQty: number } | undefined,
+  qty: number,
+): number {
+  if (!line) return qty;
+  return Math.max(0, Math.min(qty, line.receivedQty + qty - line.expectedQty));
+}
+
+/** Id спорного по лишнему с приёмки — из id события, как на сервере: повтор не задвоит. */
+export const overageDisputeId = (eventId: string): string => `ovr-${eventId}`.slice(0, 100);
