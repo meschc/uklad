@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowDown,
   ChevronDown,
+  ChevronLeft,
   ChevronUp,
   Loader2,
   Pencil,
@@ -51,10 +52,15 @@ export function ChatThread({
   partner,
   messages,
   role,
+  onBack,
+  className,
 }: {
   partner: Partner;
   messages: ChatMessage[];
   role: UserRole;
+  /** Назад к списку переписок — только на телефоне, где колонка одна. */
+  onBack?: () => void;
+  className?: string;
 }) {
   const t = useT();
   const notify = useEditor((s) => s.notify);
@@ -201,8 +207,18 @@ export function ChatThread({
   const days = groupMessagesByDay(messages);
 
   return (
-    <section className="relative flex min-w-0 flex-1 flex-col">
-      <header className="flex shrink-0 items-center gap-3 border-b border-border px-5 py-3">
+    <section className={cn("relative flex min-w-0 flex-1 flex-col", className)}>
+      <header className="flex shrink-0 items-center gap-3 border-b border-border px-3 py-3 md:px-5">
+        {onBack && (
+          <button
+            type="button"
+            onClick={onBack}
+            aria-label={t("chat.back")}
+            className="-ml-1 flex size-10 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground md:hidden"
+          >
+            <ChevronLeft className="size-5" />
+          </button>
+        )}
         <span className="flex size-9 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">
           {chatInitials(partner.name)}
         </span>
@@ -284,7 +300,7 @@ export function ChatThread({
           const el = e.currentTarget;
           setAtBottom(el.scrollHeight - el.scrollTop - el.clientHeight < 80);
         }}
-        className="min-h-0 flex-1 overflow-y-auto px-5 py-4"
+        className="min-h-0 flex-1 overflow-y-auto px-3 py-4 md:px-5"
       >
         {days.length === 0 ? (
           <p className="py-10 text-center text-xs text-muted-foreground">{t("chat.emptyThread")}</p>
@@ -321,13 +337,13 @@ export function ChatThread({
           onClick={toBottom}
           aria-label={t("chat.toBottom")}
           title={t("chat.toBottom")}
-          className="absolute bottom-28 right-6 flex size-10 cursor-pointer items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-md hover:text-foreground"
+          className="absolute bottom-28 right-4 flex size-10 cursor-pointer items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-md hover:text-foreground"
         >
           <ArrowDown className="size-4" />
         </button>
       )}
 
-      <footer className="shrink-0 border-t border-border px-5 py-3">
+      <footer className="shrink-0 border-t border-border px-3 py-3 md:px-5">
         {mode.kind !== "send" && (
           <div className="mx-auto mb-2 flex max-w-2xl items-center gap-2 border-l-2 border-primary pl-2.5">
             {mode.kind === "reply" ? (
@@ -417,12 +433,16 @@ export function ChatThread({
           />
           <Button
             size="sm"
-            className="h-10"
+            className="h-10 max-md:w-10 max-md:px-0"
             onClick={() => void submit()}
             disabled={!draft.trim() || busy}
           >
             {busy ? <Loader2 className="animate-spin" /> : <SendHorizontal className="size-3.5" />}
-            {error ? t("data.retry") : mode.kind === "edit" ? t("chat.save") : t("chat.send")}
+            {/* На телефоне — круглая кнопка-стрелка: подпись отнимала у поля
+                ввода треть ширины. */}
+            <span className="max-md:sr-only">
+              {error ? t("data.retry") : mode.kind === "edit" ? t("chat.save") : t("chat.send")}
+            </span>
           </Button>
         </div>
         {/* Подсказка и отказ занимают одну строку: иначе поле ввода прыгало бы
@@ -430,7 +450,9 @@ export function ChatThread({
         <p
           className={cn(
             "mx-auto mt-1.5 max-w-2xl text-2xs",
-            error ? "text-destructive" : "text-muted-foreground",
+            // Про Enter и Shift+Enter на телефоне говорить незачем: там
+            // отправляют кнопкой.
+            error ? "text-destructive" : "text-muted-foreground max-md:hidden",
           )}
         >
           {error ? t(error) : t("chat.sendHint")}
