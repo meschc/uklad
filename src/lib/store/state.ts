@@ -54,6 +54,7 @@ import type {
   TaskStatus,
   WarehouseTask,
   Dispute,
+  ReceivingAnswer,
   OutboundBox,
   OrderSource,
   DisputeKind,
@@ -882,6 +883,12 @@ export interface DocsSlice {
 export interface DisputesSlice {
   /** Спорное по складу: недостачи и ошибки скана, ждущие решения старшего. */
   disputes: Dispute[];
+  /**
+   * Ответы продавцов на акты приёмки. Не сохраняются: на сервере это таблица
+   * (`receivingAnswersRepository`), в демо — до перезагрузки, как заявки на
+   * смену процесса.
+   */
+  receivingAnswers: ReceivingAnswer[];
   /**
    * Завести спорное. Такое же открытое (тот же вид, тара и товар) не
    * дублируется — растёт количество: десять раз пикнули лишнее, а находка одна.

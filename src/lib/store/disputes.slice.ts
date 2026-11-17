@@ -19,6 +19,7 @@ import type { DisputesSlice, SliceCreator } from "./state";
  */
 export const createDisputesSlice: SliceCreator<DisputesSlice> = (set, get) => ({
   disputes: [],
+  receivingAnswers: [],
 
   raiseDispute: (input) => {
     const qty = Math.max(1, Math.round(input.qty ?? 1) || 1);

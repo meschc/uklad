@@ -1,21 +1,19 @@
-import { useMemo, useState } from "react";
-import { FileWarning, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { FileWarning } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { nowMs } from "@/lib/utils";
 import { useWarehouseProducts } from "@/lib/warehouseProducts";
-import { useT, type TFunc } from "@/lib/i18n";
+import { useT } from "@/lib/i18n";
+import { receivingAnswersRepository } from "@/lib/data";
 import { hasDiscrepancy, supplyAct, type SupplyActLine } from "@/lib/supplyAct";
-import type { ExpectedShipment, Product } from "@/lib/types";
 import { Button } from "@/components/ui/button";
-import { DialogHeader, DialogShell } from "@/components/ui/dialog-shell";
 import { eyebrow } from "@/components/ui/eyebrow";
+import { SupplyActPanel, type ActRow } from "./SupplyActPanel";
 
 /** Закрытые поставки с расхождением держим в списке месяц: дальше это история. */
 const KEEP_CLOSED_MS = 30 * 24 * 3_600_000;
 
-interface Row {
-  shipment: ExpectedShipment;
-  lines: SupplyActLine[];
+interface Row extends ActRow {
   flagged: boolean;
 }
 
@@ -32,6 +30,11 @@ export function SellerSupplies({ mine }: { mine: ReadonlySet<string> }) {
   const [openId, setOpenId] = useState<string | null>(null);
   // Граница «месяц назад» — на момент открытия экрана, не на каждой отрисовке.
   const [since] = useState(() => nowMs() - KEEP_CLOSED_MS);
+
+  // Ответы на акты — с сервера; в демо они уже в сторе.
+  useEffect(() => {
+    void receivingAnswersRepository.load();
+  }, []);
 
   const rows = useMemo(() => {
     return expected
@@ -71,83 +74,10 @@ export function SellerSupplies({ mine }: { mine: ReadonlySet<string> }) {
           </span>
         </div>
       ))}
-      {open && (
-        <SupplyActPanel row={open} products={products} t={t} onClose={() => setOpenId(null)} />
-      )}
+      {open && <SupplyActPanel row={open} products={products} onClose={() => setOpenId(null)} />}
     </div>
   );
 }
 
 const sum = (lines: readonly SupplyActLine[], k: "expected" | "received") =>
   lines.reduce((n, l) => n + l[k], 0);
-
-function SupplyActPanel({
-  row,
-  products,
-  t,
-  onClose,
-}: {
-  row: Row;
-  products: Product[];
-  t: TFunc;
-  onClose: () => void;
-}) {
-  const { shipment: s, lines } = row;
-  const closed = s.status === "closed";
-  const shown = lines.filter((l) => l.diff > 0 || (closed && l.diff < 0));
-  return (
-    <DialogShell size="lg" scroll onClose={onClose}>
-      <DialogHeader align="start">
-        <div className="min-w-0">
-          <p className="text-sm font-semibold">{t("supply.act.title")}</p>
-          <p className="mt-0.5 truncate text-xs text-muted-foreground">
-            {s.title ?? t("supply.noName")}
-          </p>
-        </div>
-        <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label={t("support.close")}>
-          <X className="size-4" />
-        </Button>
-      </DialogHeader>
-      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-5 py-4">
-        <p className="text-xs text-muted-foreground">
-          {t(closed ? "supply.act.bodyClosed" : "supply.act.bodyOpen")}
-        </p>
-        <div className="overflow-hidden rounded-xl border border-border">
-          <table className="w-full border-collapse text-sm">
-            <thead className="bg-muted/50 text-xs">
-              <tr className="text-left">
-                <th className="px-3 py-2 font-medium">{t("table.col.name")}</th>
-                <th className="px-3 py-2 text-right font-medium">{t("supply.act.expected")}</th>
-                <th className="px-3 py-2 text-right font-medium">{t("supply.act.received")}</th>
-                <th className="px-3 py-2 text-right font-medium">{t("supply.act.diff")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {shown.map((l) => {
-                const p = products.find((x) => x.id === l.productId);
-                return (
-                  <tr key={l.lineId} className="border-t border-border/60 align-top">
-                    <td className="px-3 py-2">
-                      <div className="font-medium">{p?.name ?? "—"}</div>
-                      <div className="font-mono text-2xs text-muted-foreground">{p?.sku}</div>
-                      {l.diff > 0 && (
-                        <div className="mt-0.5 text-2xs text-muted-foreground">
-                          {t(`supply.act.overage.${l.overage ?? "pending"}`)}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums">{l.expected}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{l.received}</td>
-                    <td className="px-3 py-2 text-right font-medium tabular-nums">
-                      {l.diff > 0 ? `+${l.diff}` : l.diff}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </DialogShell>
-  );
-}

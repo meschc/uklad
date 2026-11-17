@@ -76,7 +76,10 @@ const ms = (n) => `${n / 1000} seconds`;
 const sellerMay = (req) => {
   const path = new URL(req.url ?? "/", "http://local").pathname;
   return (
-    path.startsWith("/api/auth/") || (path === "/api/cabinet/snapshot" && req.method === "GET")
+    path.startsWith("/api/auth/") ||
+    (path === "/api/cabinet/snapshot" && req.method === "GET") ||
+    // Ответ на акт приёмки (миграция 048): своё сервер проверяет сам.
+    path === "/api/receiving/answers"
   );
 };
 

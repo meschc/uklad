@@ -1,4 +1,4 @@
-import type { Dispute, ExpectedShipment } from "./types";
+import type { Dispute, ExpectedShipment, ReceivingAnswer } from "./types";
 
 /**
  * Акт расхождений поставки глазами продавца (Кирилл 17.11): что он заявил,
@@ -59,3 +59,35 @@ export function hasDiscrepancy(
 ): boolean {
   return lines.some((l) => l.diff > 0 || (shipment.status === "closed" && l.diff < 0));
 }
+
+/** Сколько суток после закрытия поставки продавец может ответить на акт (как на сервере). */
+export const ANSWER_DAYS = 3;
+const DAY_MS = 24 * 3_600_000;
+
+/** До какого момента продавец может ответить; у незакрытой поставки срока ещё нет. */
+export function answerDeadline(shipment: ExpectedShipment): number | undefined {
+  if (shipment.status !== "closed") return undefined;
+  return (shipment.closedAt ?? shipment.createdAt) + ANSWER_DAYS * DAY_MS;
+}
+
+/**
+ * Где акт по ответу продавца: ждёт ответа, согласен, молчал трое суток
+ * (молчание — согласие, так в оферте), возразил и ждёт склада, склад ответил.
+ */
+export type AnswerState = "waiting" | "open" | "agreed" | "silent" | "disputed" | "resolved";
+
+export function answerState(
+  shipment: ExpectedShipment,
+  answer: ReceivingAnswer | undefined,
+  now: number,
+): AnswerState {
+  if (answer?.answer === "agree") return "agreed";
+  if (answer?.answer === "dispute") return answer.resolution ? "resolved" : "disputed";
+  const until = answerDeadline(shipment);
+  if (until === undefined) return "waiting";
+  return now > until ? "silent" : "open";
+}
+
+/** Открытые возражения продавцов на акт приёмки: ждут ответа старшего. */
+export const openObjections = (answers: readonly ReceivingAnswer[]) =>
+  answers.filter((a) => a.answer === "dispute" && !a.resolution);

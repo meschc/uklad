@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, ShieldCheck } from "lucide-react";
 import { useEditor } from "@/lib/store";
-import { switchRepository, type SwitchRequest } from "@/lib/data";
+import { receivingAnswersRepository, switchRepository, type SwitchRequest } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,8 @@ import { card } from "@/components/ui/card";
 import { EmbeddedShell } from "@/components/fulfillment/embeddedShell";
 import { DisputesScreen } from "@/components/workstation/DisputesScreen";
 import type { DisputeKind } from "@/lib/types";
+import { openObjections } from "@/lib/supplyAct";
+import { SellerObjections } from "./SellerObjections";
 
 /**
  * «Подтверждения» (Кирилл 16.11): всё, что ждёт решения старшего, — одной
@@ -28,8 +30,8 @@ import type { DisputeKind } from "@/lib/types";
  */
 
 /** Виды заявок. Новый вид решения старшего — сюда, с подписью в словаре. */
-type ApprovalKind = "switch" | "shortage" | "mismatch" | "defect" | "inventory";
-type GoodsKind = Exclude<ApprovalKind, "switch">;
+type ApprovalKind = "switch" | "seller" | "shortage" | "mismatch" | "defect" | "inventory";
+type GoodsKind = Exclude<ApprovalKind, "switch" | "seller">;
 
 /** Какие виды спорного под какой меткой фильтра. */
 const GOODS: Record<GoodsKind, readonly DisputeKind[]> = {
@@ -38,7 +40,14 @@ const GOODS: Record<GoodsKind, readonly DisputeKind[]> = {
   defect: ["not_packable"],
   inventory: ["inventory_short", "inventory_over"],
 };
-const KINDS: readonly ApprovalKind[] = ["switch", "shortage", "mismatch", "defect", "inventory"];
+const KINDS: readonly ApprovalKind[] = [
+  "switch",
+  "seller",
+  "shortage",
+  "mismatch",
+  "defect",
+  "inventory",
+];
 
 /** Как часто страница забирает новые заявки. */
 const POLL_MS = 5000;
@@ -47,6 +56,7 @@ export function ApprovalsScreen() {
   const t = useT();
   const perms = useEditor((s) => s.session.permissions);
   const maySwitch = !perms || perms.includes("staff.manage") || perms.includes("goods.decide");
+  const mayDecide = !perms || perms.includes("goods.decide");
   const [items, setItems] = useState<SwitchRequest[] | null>(maySwitch ? null : []);
   const [tick, setTick] = useState(0);
   const decide = useCommand(switchRepository.decide);
@@ -54,6 +64,12 @@ export function ApprovalsScreen() {
   const [query, setQuery] = useState("");
   const disputes = useEditor((s) => s.disputes);
   const staff = useEditor((s) => s.warehouse.staff);
+  const answers = useEditor((s) => s.receivingAnswers);
+
+  // Возражения продавцов — с сервера тем же опросом; в демо они уже в сторе.
+  useEffect(() => {
+    void receivingAnswersRepository.load();
+  }, [tick]);
 
   useEffect(() => {
     if (!maySwitch) return;
@@ -76,11 +92,14 @@ export function ApprovalsScreen() {
 
   const counts = useMemo(() => {
     const open = disputes.filter((d) => !d.resolution);
-    const out = { switch: items?.length ?? 0 } as Record<ApprovalKind, number>;
+    const out = {
+      switch: items?.length ?? 0,
+      seller: openObjections(answers).length,
+    } as Record<ApprovalKind, number>;
     for (const k of Object.keys(GOODS) as GoodsKind[])
       out[k] = open.filter((d) => GOODS[k].includes(d.kind)).length;
     return out;
-  }, [disputes, items]);
+  }, [disputes, items, answers]);
   const total = KINDS.reduce((n, k) => n + counts[k], 0);
   const hasHistory = disputes.some((d) => d.resolution);
 
@@ -88,7 +107,9 @@ export function ApprovalsScreen() {
   const q = query.trim().toLowerCase();
   const switches = (items ?? []).filter((r) => !q || nameOf(r.staffId).toLowerCase().includes(q));
   const showSwitch = maySwitch && (kind === "all" || kind === "switch");
-  const goodsKinds = kind === "all" ? undefined : kind === "switch" ? null : GOODS[kind];
+  const showSeller = kind === "all" || kind === "seller";
+  const goodsKinds =
+    kind === "all" ? undefined : kind === "switch" || kind === "seller" ? null : GOODS[kind];
 
   // Метка фильтра — только у вида, где что-то ждёт, и у выбранного: шесть
   // пустых сегментов на телефоне не помещаются и ничего не говорят.
@@ -145,6 +166,7 @@ export function ApprovalsScreen() {
               ))}
             </ul>
           )}
+          {showSeller && <SellerObjections query={query} canDecide={mayDecide} />}
           {goodsKinds !== null && (
             <EmbeddedShell.Provider value={true}>
               <DisputesScreen kinds={goodsKinds} query={query} inApprovals />

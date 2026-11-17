@@ -67,3 +67,21 @@ export interface Dispute {
   /** «Переложить»: в какую тару ушло найденное. */
   movedTo?: string;
 }
+
+/**
+ * Ответ продавца на акт расхождений приёмки (миграция 047, Кирилл 17.11):
+ * один на поставку, в течение трёх суток после закрытия. Возражение решает
+ * старший: «учёт верный» (`kept`) или «пересчитаем» (`recount`), всегда с
+ * ответом продавцу. На сервере — таблица, в браузере не сохраняется: кабинет
+ * забирает ответы с сервера, демо держит их до перезагрузки.
+ */
+export interface ReceivingAnswer {
+  shipmentId: string;
+  partnerId: string;
+  answer: "agree" | "dispute";
+  comment?: string;
+  answeredAt: number;
+  resolution?: "kept" | "recount";
+  reply?: string;
+  resolvedAt?: number;
+}
