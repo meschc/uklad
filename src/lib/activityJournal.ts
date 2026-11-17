@@ -99,6 +99,8 @@ export interface ActivityEntry {
     boxId?: string;
     palletId?: string;
     orderId?: string;
+    /** Заказ скана сборки (`pick_unit`). */
+    requestId?: string;
     outboundCode?: string;
     sortCode?: string;
     code?: string;
@@ -108,6 +110,8 @@ export interface ActivityEntry {
     /** Куда перешёл сотрудник (`station_switch`) и кто из старших разрешил. */
     station?: string;
     approvedBy?: string;
+    /** Машина рейса (`ship_run`). */
+    vehicle?: string;
   };
   moves?: JournalMove[];
   movesTotal?: number;

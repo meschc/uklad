@@ -1,6 +1,7 @@
 import { useEditor } from "@/lib/store";
 import { formatAddress } from "@/lib/address";
-import type { ActivityEntry, JournalMove } from "@/lib/activityJournal";
+import { orderLabelCode } from "@/lib/packing";
+import { DESK_KINDS, type ActivityEntry, type JournalMove } from "@/lib/activityJournal";
 import { useT, type MsgKey } from "@/lib/i18n";
 import type { CellAddress } from "@/lib/types";
 
@@ -70,6 +71,10 @@ export function useEntryText() {
   const unit = (id?: string) =>
     id &&
     (boxes.find((b) => b.id === id)?.barcode ?? pallets.find((p) => p.id === id)?.barcode ?? id);
+  const requests = useEditor((s) => s.requests);
+  // Номер заказа — площадки, если он есть, иначе код его этикетки: по нему ищут.
+  const order = (id?: string) =>
+    id && (requests.find((r) => r.id === id)?.externalId || orderLabelCode(id));
   const cell = (a?: CellAddress | null) => (a ? formatAddress(warehouse, a) : undefined);
 
   const move = (m: JournalMove) => {
@@ -81,7 +86,11 @@ export function useEntryText() {
     return `${head}: ${product(m.productId)} ${delta}`;
   };
 
+  const staffName = (ref: string) => staff.find((m) => m.id === ref)?.name ?? t("journal.nobody");
   return {
+    order,
+    product,
+    staffName,
     who: (e: ActivityEntry) =>
       e.member?.name ||
       (e.staffRef && staff.find((m) => m.id === e.staffRef)?.name) ||
@@ -102,6 +111,7 @@ export function useEntryText() {
       const r = e.refs;
       if (!r) return "";
       const name = product(r.productId);
+      const orderRef = r.orderId ?? r.requestId;
       const parts = [
         name && (r.qty && r.qty > 1 ? `${name} × ${r.qty}` : name),
         unit(r.toteId ?? r.boxId),
@@ -109,7 +119,8 @@ export function useEntryText() {
         cell(r.cell),
         r.outboundCode,
         r.sortCode && t("journal.sortTo", { code: r.sortCode }),
-        r.orderId && t("journal.order", { id: r.orderId }),
+        orderRef && t("journal.order", { id: order(orderRef) ?? orderRef }),
+        r.vehicle && t("journal.vehicle", { v: r.vehicle }),
         !name && r.code,
         r.station && STATIONS.has(r.station) && t(`ws.station.${r.station}` as MsgKey),
         r.dispute && DISPUTES.has(r.dispute) && t(`disputes.kind.${r.dispute}` as MsgKey),
@@ -117,4 +128,15 @@ export function useEntryText() {
       return parts.join(" · ");
     },
   };
+}
+
+/** Подпись действия: у упаковки и отметок смены — по виду события внутри. */
+export function actionKey(e: ActivityEntry): MsgKey {
+  if (e.source === "cabinet") return "journal.cabinetEdit";
+  const type = e.refs?.type;
+  if ((e.kind === "pack_event" || e.kind === "shift_mark") && type) {
+    return `ws.ev.${type}` as MsgKey;
+  }
+  if (DESK_KINDS.has(e.kind)) return `devices.op.${e.kind}` as MsgKey;
+  return `ws.ev.${e.kind}` as MsgKey;
 }

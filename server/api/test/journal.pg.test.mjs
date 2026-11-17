@@ -6,7 +6,8 @@
 // второй склад той же компании (его журнал не показывает чужих операций,
 // смотрящий второго склада первый не откроет) и чужая компания с тем же id
 // склада (ничего не видит). Плюс тип скана и «пик за товар» по правилу базы
-// и склад старых строк по привязке устройства.
+// и склад старых строк по привязке устройства. В конце — «Путь товара»
+// (`cabinet/goodsPath.js`): поиск посылки по коду и её лента по шагам.
 // Без PG_ADMIN_URL тест пропускается.
 /* global process, fetch, setTimeout, URL */
 import { test, before, after } from "node:test";
@@ -33,6 +34,7 @@ before(async () => {
   const { createDesks } = require("../src/cabinet/desks.js");
   const { createTeam } = require("../src/cabinet/team.js");
   const { createJournal } = require("../src/cabinet/journal.js");
+  const { createGoodsPath } = require("../src/cabinet/goodsPath.js");
   db = await helpers.setupDb();
   const cfg = { publicUrl: ORIGIN, allowedOrigins: [ORIGIN], trustProxy: true };
   const quiet = { error() {}, warn() {} };
@@ -45,6 +47,7 @@ before(async () => {
     createDeskBadges({ auth, send, log: quiet }),
     createSnapshot({ auth, send, log: quiet }),
     createJournal({ auth, send, log: quiet }),
+    createGoodsPath({ auth, send, log: quiet }),
   ];
   cookieName = auth.cookieName;
   deskCookieName = parts[0].cookieName;
@@ -376,4 +379,124 @@ test("тип скана и «пик за товар» — правило баз�
     [c.org],
   );
   assert.equal(left.rows[0].n, 0);
+});
+
+/** Путь одной штуки по складу А, строками операций, как их пишут столы. */
+async function seedPath(c, prefix) {
+  const desk = (
+    await db.root.query(`SELECT id FROM auth.desk_sessions WHERE org_id = $1 LIMIT 1`, [c.org])
+  ).rows[0].id;
+  const t0 = Date.now() - 3_600_000;
+  const cell = { floorId: "fl-a", moduleId: "m1", shelfIndex: 0, cellIndex: 1 };
+  const steps = [
+    ["recv_unit", { boxId: "b-in", productId: "pr1", qty: 5 }],
+    ["recv_place", { boxId: "b-in", cell }],
+    ["pick_unit", { requestId: "r-a", productId: "pr1", toteId: "t-a", cell }],
+    [
+      "pack_event",
+      {
+        type: "pack_scan",
+        toteId: "t-a",
+        orderId: "r-a",
+        productId: "pr1",
+        code: `${MARK}\u001d93TAIL`,
+      },
+    ],
+    [
+      "pack_done",
+      {
+        toteId: "t-a",
+        outboundCode: "UK-OUT-7KQ2",
+        requestIds: ["r-a"],
+        lines: [{ productId: "pr1", qty: 1 }],
+      },
+    ],
+    ["sort_place", { outboundCode: "UK-OUT-7KQ2", sortCode: "UK-SORT-1" }],
+    ["sort_close", { sortCode: "UK-SORT-1" }],
+    ["ship_run", { requestIds: ["r-a"], vehicle: "А123ВС" }],
+    // Чужая посылка: другой заказ, другой код — в поиск не попадает.
+    [
+      "pack_done",
+      {
+        toteId: "t-z",
+        outboundCode: "UK-OUT-0000",
+        requestIds: ["r-z"],
+        lines: [{ productId: "pr9", qty: 1 }],
+      },
+    ],
+  ];
+  for (const [i, [kind, body]] of steps.entries()) {
+    await db.root.query(
+      `INSERT INTO uklad.desk_ops (org_id, op_key, desk_id, kind, body, status, staff_ref,
+                                   warehouse_ref, happened_at)
+       VALUES ($1, $2, $3, $4, $5::jsonb, 'applied', 'stf-a', 'wh_a', $6)`,
+      [c.org, `${prefix}-${i}`, desk, kind, JSON.stringify(body), new Date(t0 + i * 60_000)],
+    );
+  }
+}
+
+test("путь товара: поиск по хвосту кода и лента от приёмки до рейса", { skip: SKIP }, async () => {
+  const c = await company("path-a@sklad.ru", "10.0.7.7");
+  await seedPath(c, "key-path");
+  const find = (who, q) => call(`/api/cabinet/goods-path?${q}`, who);
+
+  // Хвост серийного номера DataMatrix, хвост кода посылки, заказ, товар.
+  for (const q of ["q=cdef", "q=7KQ2", "q=UK-OUT-7KQ2", "orders=r-a", "products=pr1"]) {
+    const r = await find(c.boss, `warehouse=wh_a&${q}`);
+    assert.equal(r.status, 200, `${q}: ${JSON.stringify(r.json)}`);
+    assert.deepEqual(
+      r.json.matches.map((m) => m.outboundCode),
+      ["UK-OUT-7KQ2"],
+      q,
+    );
+  }
+  const byCode = (await find(c.boss, "warehouse=wh_a&q=cdef")).json.matches[0];
+  assert.deepEqual(byCode.requestIds, ["r-a"]);
+  assert.equal(byCode.code, MARK, "код без криптохвоста");
+  assert.equal(byCode.staffRef, "stf-a");
+  // Дата сужает: посылка была час назад.
+  const later = await find(c.boss, `warehouse=wh_a&q=cdef&since=${Date.now() - 60_000}`);
+  assert.deepEqual(later.json.matches, []);
+  assert.equal((await find(c.boss, "warehouse=wh_a")).status, 400);
+  assert.equal((await find(c.boss, "warehouse=wh_a&orders=r a")).status, 400);
+
+  const steps = await call(
+    `/api/cabinet/goods-path/steps?warehouse=wh_a&parcel=${byCode.id}`,
+    c.boss,
+  );
+  assert.equal(steps.status, 200, JSON.stringify(steps.json));
+  assert.deepEqual(
+    steps.json.events.map((e) => e.kind),
+    [
+      "recv_unit",
+      "recv_place",
+      "pick_unit",
+      "pack_event",
+      "pack_done",
+      "sort_place",
+      "sort_close",
+      "ship_run",
+    ],
+  );
+  const scan = steps.json.events.find((e) => e.kind === "pack_event");
+  assert.equal(scan.refs.code, MARK);
+  assert.equal(steps.json.events.at(-1).refs.vehicle, "А123ВС");
+
+  // Заказ без посылки — лента по заказу.
+  const order = await call(`/api/cabinet/goods-path/steps?warehouse=wh_a&order=r-a`, c.boss);
+  assert.ok(order.json.events.some((e) => e.kind === "pick_unit"));
+
+  // Второй склад той же компании и чужая компания не видят посылку склада А.
+  assert.deepEqual((await find(c.boss, "warehouse=wh_b&q=cdef")).json.matches, []);
+  const lead = await invited(c.boss, "path-lead@sklad.ru", "Старший смены", "wh_b", "stf-l");
+  assert.equal((await find(lead, "warehouse=wh_a&q=cdef")).status, 403);
+  const keeper = await invited(c.boss, "path-keeper@sklad.ru", "Кладовщик", "wh_a", "stf-k");
+  assert.equal((await find(keeper, "warehouse=wh_a&q=cdef")).status, 403);
+  const other = await company("path-b@sklad.ru", "10.0.7.8");
+  assert.deepEqual((await find(other.boss, "warehouse=wh_a&q=cdef")).json.matches, []);
+  const foreign = await call(
+    `/api/cabinet/goods-path/steps?warehouse=wh_a&parcel=${byCode.id}`,
+    other.boss,
+  );
+  assert.equal(foreign.status, 404);
 });

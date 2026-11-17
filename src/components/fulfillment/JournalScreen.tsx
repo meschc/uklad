@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AlertTriangle, History } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { journalRepository } from "@/lib/data";
 import {
-  DESK_KINDS,
   JOURNAL_STEPS,
   isJournalError,
   mergeEntries,
@@ -21,7 +20,8 @@ import { Segmented } from "@/components/ui/segmented";
 import { card } from "@/components/ui/card";
 import { FormError } from "@/components/ui/field";
 import { EmptyState, ScreenShell } from "./ScreenShell";
-import { useEntryText } from "./journalText";
+import { actionKey, useEntryText } from "./journalText";
+import { GoodsPath } from "./GoodsPath";
 
 /** Свежие действия подтягиваются сами, пока экран открыт и смотрят «сейчас». */
 const LIVE_MS = 5000;
@@ -34,6 +34,31 @@ const LIVE_MS = 5000;
  * посмотреть конкретную секунду, например под запись камеры.
  */
 export function JournalScreen() {
+  const t = useT();
+  const [mode, setMode] = useState<"feed" | "path">("feed");
+  const tabs = (
+    <Segmented
+      value={mode}
+      onChange={setMode}
+      ariaLabel={t("journal.title")}
+      options={[
+        { value: "feed", label: t("journal.mode.feed") },
+        { value: "path", label: t("journal.mode.path") },
+      ]}
+    />
+  );
+  if (mode === "path") {
+    return (
+      <ScreenShell wide title={t("journal.title")} subtitle={t("goodsPath.lead")}>
+        <div>{tabs}</div>
+        <GoodsPath />
+      </ScreenShell>
+    );
+  }
+  return <JournalFeed tabs={tabs} />;
+}
+
+function JournalFeed({ tabs }: { tabs: ReactNode }) {
   const t = useT();
   const staff = useEditor((s) => s.warehouse.staff) ?? [];
   const warehouseId = useEditor((s) => s.warehouse.id);
@@ -140,6 +165,7 @@ export function JournalScreen() {
         ) : undefined
       }
     >
+      <div>{tabs}</div>
       <div className="flex flex-wrap items-center gap-2">
         <Select
           size="sm"
@@ -307,15 +333,4 @@ function Row({ e, text }: { e: ActivityEntry; text: ReturnType<typeof useEntryTe
       <td className="whitespace-nowrap px-4 py-2 text-muted-foreground">{text.where(e)}</td>
     </tr>
   );
-}
-
-/** Подпись действия: у упаковки и отметок смены — по виду события внутри. */
-function actionKey(e: ActivityEntry): MsgKey {
-  if (e.source === "cabinet") return "journal.cabinetEdit";
-  const type = e.refs?.type;
-  if ((e.kind === "pack_event" || e.kind === "shift_mark") && type) {
-    return `ws.ev.${type}` as MsgKey;
-  }
-  if (e.source === "desk" && DESK_KINDS.has(e.kind)) return `devices.op.${e.kind}` as MsgKey;
-  return `ws.ev.${e.kind}` as MsgKey;
 }
