@@ -139,15 +139,15 @@ export function WorkstationScreen() {
       <header className="grid h-14 shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:gap-4 [&_button:not(:disabled):hover]:bg-foreground/[0.06]">
         <div className="flex min-w-0 items-center gap-1">
           {device ? (
-            // Стол, привязанный к месту, в кабинет не уходит: вместо выхода —
-            // имя места, чтобы по экрану было видно, какой это стол.
-            <div className="flex min-w-0 items-center gap-1 text-sm font-semibold">
-              <span className="flex h-8 min-w-0 items-center gap-2 px-3 max-md:px-1">
-                <MonitorSmartphone className="size-4 shrink-0 text-muted-foreground" />
-                {/* На телефоне после входа имя стола уступает место имени человека. */}
-                <span className={cn("truncate", member && "max-md:sr-only")}>{device.name}</span>
-              </span>
-              {!member && (
+            // Стол, привязанный к месту, в кабинет не уходит. Имя места и
+            // отвязка — только до входа: человеку за столом они не нужны, а
+            // место в шапке занимали (Кирилл 17.11).
+            !member && (
+              <div className="flex min-w-0 items-center gap-1 text-sm font-semibold">
+                <span className="flex h-8 min-w-0 items-center gap-2 px-3 max-md:px-1">
+                  <MonitorSmartphone className="size-4 shrink-0 text-muted-foreground" />
+                  <span className="truncate">{device.name}</span>
+                </span>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -156,8 +156,8 @@ export function WorkstationScreen() {
                 >
                   {t("ws.kiosk.unbind")}
                 </Button>
-              )}
-            </div>
+              </div>
+            )
           ) : (
             <Button
               variant="ghost"
@@ -220,8 +220,11 @@ export function WorkstationScreen() {
               <KeyHint k={STATION_KEY_LABEL.log} />
             </Button>
             <FullscreenButton />
-            <div className="min-w-0 text-right max-md:max-w-[8rem]">
-              <p className="truncate text-sm font-medium leading-tight">{member.name}</p>
+            <div className="min-w-0 text-right max-md:max-w-[9rem]">
+              {/* На телефоне имя и фамилия — в две строки, а не «Марина Соловьё…». */}
+              <p className="text-sm font-medium leading-tight max-md:line-clamp-2 md:truncate">
+                {member.name}
+              </p>
               <p className="hidden text-xs text-muted-foreground md:block">
                 {t("ws.sessionUntil", { t: formatTime(session!.expiresAt, t.lang) })}
               </p>
