@@ -5,6 +5,7 @@ import { useT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { describeError, journal } from "@/lib/support/journal";
 import { autoReport } from "@/lib/support/autoReport";
+import { isStaleChunk, reloadForNewBuild } from "@/lib/staleChunk";
 
 /**
  * Изоляция сбоя по экранам — та самая «модульность», которая проекту нужна
@@ -34,6 +35,9 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
+    // Вкладка открыта со старой выкладки — это не поломка экрана, а повод
+    // взять новую сборку (`staleChunk.ts`).
+    if (isStaleChunk(error) && reloadForNewBuild()) return;
     console.error(`[uklad] экран «${this.props.label ?? "?"}» упал:`, error, info);
     journal.record(
       "error",
@@ -46,7 +50,11 @@ export class ErrorBoundary extends Component<Props, State> {
 
   render() {
     if (!this.state.error) return this.props.children;
-    return <ScreenCrash error={this.state.error} onRetry={() => this.setState({ error: null })} />;
+    const error = this.state.error;
+    // Повтор без перезагрузки снова попросит тот же пропавший кусок.
+    const retry = () =>
+      isStaleChunk(error) ? window.location.reload() : this.setState({ error: null });
+    return <ScreenCrash error={error} onRetry={retry} />;
   }
 }
 

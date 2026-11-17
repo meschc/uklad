@@ -219,7 +219,7 @@ export const ru = {
   "common.create": "Создать",
   "common.save": "Сохранить",
   "common.undo": "Отменить",
-  "valid.email": "Проверьте почту: так адрес не бывает, например name@company.ru",
+  "valid.email": "Проверьте почту: такого адреса не бывает. Пример: name@company.ru",
   "valid.name": "Имя — буквами, можно дефис и пробел",
   "valid.nameDigits": "В имени не бывает цифр",
   "valid.title": "Нужны буквы, без лишних знаков",
