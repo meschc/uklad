@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, Wrench } from "lucide-react";
+import { Check, ChevronDown, Wrench } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { useT } from "@/lib/i18n";
 import { useCommand } from "@/lib/useCommand";
@@ -11,6 +11,8 @@ import { eyebrow } from "@/components/ui/eyebrow";
 import { FormError } from "@/components/ui/field";
 import { QtyStepper } from "@/components/fulfillment/QtyStepper";
 import { useServiceName } from "@/components/fulfillment/useServiceName";
+import { usePhone } from "@/lib/usePhone";
+import { cn } from "@/lib/utils";
 
 /** Сколько свободных работ видно у стола. */
 const FREE_SHOWN = 2;
@@ -19,13 +21,17 @@ const FREE_SHOWN = 2;
  * Работы склада у стола (Кирилл 13.11: «процессы есть, а задания только на
  * сборку»). После бейджа сотрудник видит свои работы и свободные: маркировку,
  * переупаковку, свою услугу склада — берёт и закрывает их здесь же, не уходя
- * со своего процесса. Нет работ — блока нет.
+ * со своего процесса. Нет работ — блока нет. На телефоне и ТСД блок свёрнут
+ * в одну строку с числом: иначе он сдвигает поле скана за край экрана.
  */
 export function DeskTasks({ staffId }: { staffId: string }) {
   const t = useT();
   const tasks = useEditor((s) => s.tasks);
+  const phone = usePhone();
+  const [open, setOpen] = useState(false);
   const all = deskTasks(tasks, staffId);
   if (all.length === 0) return null;
+  const shown = !phone || open;
   // Своё — всё, свободных — пара: главное у стола всё равно его процесс.
   const own = all.filter((x) => x.staffId === staffId);
   const free = all.filter((x) => x.staffId !== staffId);
@@ -33,16 +39,33 @@ export function DeskTasks({ staffId }: { staffId: string }) {
   const more = free.length - FREE_SHOWN;
   return (
     <section className="flex flex-col gap-2" aria-label={t("ws.tasks.title")}>
-      <h2 className={eyebrow({ tone: "current" })}>
-        <Wrench className="mr-1.5 inline size-3.5" />
-        {t("ws.tasks.title")}
-      </h2>
-      <ul className="flex flex-col">
-        {list.map((task) => (
-          <DeskTaskRow key={task.id} task={task} staffId={staffId} />
-        ))}
-      </ul>
-      {more > 0 && (
+      {phone ? (
+        <button
+          type="button"
+          aria-expanded={open}
+          onClick={() => setOpen((v) => !v)}
+          className={cn(eyebrow({ tone: "current" }), "flex min-h-11 items-center text-left")}
+        >
+          <Wrench className="mr-1.5 size-3.5" />
+          <span className="flex-1">
+            {t("ws.tasks.title")} · {all.length}
+          </span>
+          <ChevronDown className={cn("size-4 transition-transform", open && "rotate-180")} />
+        </button>
+      ) : (
+        <h2 className={eyebrow({ tone: "current" })}>
+          <Wrench className="mr-1.5 inline size-3.5" />
+          {t("ws.tasks.title")}
+        </h2>
+      )}
+      {shown && (
+        <ul className="flex flex-col">
+          {list.map((task) => (
+            <DeskTaskRow key={task.id} task={task} staffId={staffId} />
+          ))}
+        </ul>
+      )}
+      {shown && more > 0 && (
         <p className="text-xs text-muted-foreground">{t("ws.tasks.moreFree", { n: more })}</p>
       )}
     </section>

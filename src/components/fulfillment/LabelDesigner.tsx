@@ -169,7 +169,7 @@ export function LabelDesigner({
                 key={`${p.w}x${p.h}`}
                 onClick={() => onChange({ widthMm: w, heightMm: h })}
                 className={cn(
-                  "rounded-md px-2 py-1 text-xs tabular-nums transition-colors",
+                  "rounded-md px-2 py-1 text-xs tabular-nums transition-colors max-md:min-h-11 max-md:px-3",
                   active
                     ? "bg-primary text-primary-foreground"
                     : "bg-muted text-muted-foreground hover:text-foreground",

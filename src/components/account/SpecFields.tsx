@@ -25,7 +25,7 @@ import { digitsFor, LIMITS, type LimitName } from "@/lib/numberLimits";
 
 /** Общий вид поля-невидимки: значение до клика, поле — после. */
 const GHOST =
-  "w-full rounded-md border border-transparent bg-transparent px-1.5 py-0.5 outline-none transition-colors hover:border-border hover:bg-muted/50 focus:border-input focus:bg-background";
+  "w-full rounded-md border border-transparent bg-transparent px-1.5 py-0.5 outline-none max-md:min-h-11 transition-colors hover:border-border hover:bg-muted/50 focus:border-input focus:bg-background";
 
 // --- Каркас -------------------------------------------------------------------
 
@@ -82,7 +82,9 @@ export function Tile({
   return (
     <div
       className={cn(
-        "flex min-w-0 flex-col gap-0.5 rounded-lg bg-muted/40 px-2.5 py-2",
+        // Длинное слово («непродовольственную») в узкой плитке телефона
+        // переносится, а не торчит за край.
+        "flex min-w-0 flex-col gap-0.5 rounded-lg bg-muted/40 px-2.5 py-2 [overflow-wrap:anywhere]",
         wide && "col-span-full",
       )}
     >
@@ -315,7 +317,7 @@ export function ChipsValue({
     <button
       type="button"
       onClick={() => setEditing(true)}
-      className="w-full rounded-md border border-transparent px-1.5 py-0.5 text-left transition-colors hover:border-border hover:bg-muted/50"
+      className="w-full rounded-md border border-transparent px-1.5 py-0.5 text-left transition-colors hover:border-border hover:bg-muted/50 max-md:min-h-11"
     >
       {chips.length ? (
         list
@@ -430,7 +432,7 @@ export function BoolValue({
       type="button"
       onClick={() => onChange(!value)}
       className={cn(
-        "w-fit rounded-md px-1.5 py-0.5 text-xs font-semibold ring-1 transition-colors hover:brightness-110",
+        "tap-target w-fit rounded-md px-1.5 py-0.5 text-xs font-semibold ring-1 transition-colors hover:brightness-110",
         tone,
       )}
     >

@@ -12,7 +12,10 @@ export function DestinationChip({
   const mark = destinationMark(destination);
   return (
     <span
-      className={cn("inline-flex items-center rounded-full px-3 py-1 font-semibold", className)}
+      className={cn(
+        "inline-flex items-center rounded-full px-3 py-1 max-md:rounded-xl font-semibold",
+        className,
+      )}
       style={{
         backgroundColor: `hsl(var(${mark.token}))`,
         color: mark.darkInk ? "hsl(var(--tag-ink))" : "white",

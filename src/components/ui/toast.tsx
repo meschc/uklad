@@ -58,7 +58,7 @@ export const ToastCard = React.forwardRef<HTMLDivElement, ToastCardProps>(
           <button
             type="button"
             onClick={undo.onClick}
-            className="-my-1 inline-flex h-7 shrink-0 cursor-pointer items-center gap-1 rounded-md px-2 font-semibold text-primary transition-colors duration-fast hover:bg-muted"
+            className="-my-1 inline-flex h-7 shrink-0 cursor-pointer items-center gap-1 rounded-md px-2 font-semibold max-md:-my-2.5 max-md:h-11 text-primary transition-colors duration-fast hover:bg-muted"
           >
             <Undo2 className="size-3.5" aria-hidden />
             {undo.label}
@@ -68,7 +68,7 @@ export const ToastCard = React.forwardRef<HTMLDivElement, ToastCardProps>(
           type="button"
           onClick={close.onClick}
           aria-label={close.label}
-          className="-my-1 inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors duration-fast hover:bg-muted hover:text-foreground"
+          className="-my-1 inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground max-md:-my-2.5 max-md:-mr-2 max-md:size-11 transition-colors duration-fast hover:bg-muted hover:text-foreground"
         >
           <X className="size-3.5" aria-hidden />
         </button>
