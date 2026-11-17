@@ -2,6 +2,7 @@ import { nowMs, uid } from "../utils";
 import { SERVICES } from "../operations";
 import { rng } from "./seedHistory";
 import type {
+  PayAdjustment,
   Device,
   Partner,
   Product,
@@ -77,6 +78,7 @@ interface SeededWork {
   tasks: WarehouseTask[];
   staffEvents: StaffEvent[];
   devices: Device[];
+  payAdjustments: PayAdjustment[];
 }
 
 export function seedWork(
@@ -204,7 +206,54 @@ export function seedWork(
       ev({ staffId: s.id, type: "shift_end", at: end });
     }
   }
+  // Ночная смена позавчера (20:00–08:00) — чтобы в «Выработке» была надбавка
+  // за ночные часы, и ошибка упаковки вчера — к ней привязано удержание.
+  const nightWorker = floor.at(-1);
+  if (nightWorker) {
+    const n = day0 - 2 * DAY + 20 * HOUR;
+    ev({ staffId: nightWorker.id, type: "shift_start", at: n });
+    ev({ staffId: nightWorker.id, type: "break_start", at: n + 4 * HOUR });
+    ev({ staffId: nightWorker.id, type: "break_end", at: n + 4 * HOUR + 45 * MIN });
+    ev({ staffId: nightWorker.id, type: "shift_end", at: n + 12 * HOUR });
+  }
+  const packer = floor.find((s) => /кладов/i.test(s.role));
+  const errorAt = day0 - DAY + 11 * HOUR;
+  if (packer) ev({ staffId: packer.id, type: "pack_error", at: errorAt, station: "pack" });
   staffEvents.sort((a, b) => a.at - b.at);
+  const errorEvent = staffEvents.find((e) => e.type === "pack_error" && e.at === errorAt);
 
-  return { serviceSettings, tasks, staffEvents, devices };
+  const payAdjustments: PayAdjustment[] = [];
+  const adj = (a: Omit<PayAdjustment, "id" | "createdAt" | "by">) => {
+    if (a.at <= now)
+      payAdjustments.push({ id: uid("pay"), ...a, by: "Игорь Панов", createdAt: a.at });
+  };
+  if (packer && errorEvent)
+    adj({
+      staffId: packer.id,
+      kind: "deduction",
+      amount: 300,
+      reason: "Вложил не тот товар, возврат от покупателя",
+      at: errorAt + HOUR,
+      eventId: errorEvent.id,
+    });
+  const best = floor.find((s) => s.id !== packer?.id && packers.has(s.id));
+  if (best)
+    adj({
+      staffId: best.id,
+      kind: "bonus",
+      amount: 2000,
+      reason: "Перевыполнил план недели",
+      at: day0 - DAY,
+    });
+  const senior = floor.find((s) => /старш/i.test(s.role));
+  if (senior)
+    adj({
+      staffId: senior.id,
+      kind: "allowance",
+      amount: 1500,
+      reason: "Наставник новичка",
+      at: day0 - 3 * DAY,
+    });
+
+  return { serviceSettings, tasks, staffEvents, devices, payAdjustments };
 }

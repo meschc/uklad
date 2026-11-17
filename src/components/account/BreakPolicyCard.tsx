@@ -4,6 +4,8 @@ import { useT } from "@/lib/i18n";
 import { Input } from "@/components/ui/input";
 import { TimeSelect } from "./TimeSelect";
 import { LIMITS } from "@/lib/numberLimits";
+import { unpaidMinOf } from "@/lib/paidHours";
+import { holidayPctOf, nightPctOf } from "@/lib/payExtras";
 
 const DAY = 24 * 60;
 
@@ -17,8 +19,22 @@ export function BreakPolicyCard() {
   const t = useT();
   const policy = useEditor((s) => s.breakPolicy);
   const set = useEditor((s) => s.setBreakPolicy);
+  const unpaid = unpaidMinOf(policy);
+  // Поля, которых у старой настройки может не быть: значение — с умолчанием.
+  const opt = (key: "unpaidMin" | "nightPct" | "holidayPct", value: number, max: number) => (
+    <Input
+      max={max}
+      key={`${key}-${value}`}
+      type="number"
+      inputMode="numeric"
+      min={0}
+      defaultValue={value}
+      onBlur={(e) => set({ [key]: Math.max(0, Number(e.target.value) || 0) })}
+      className="h-8 w-16 text-center"
+    />
+  );
 
-  const num = (key: keyof BreakPolicy) => (
+  const num = (key: Exclude<keyof BreakPolicy, "unpaidMin" | "nightPct" | "holidayPct">) => (
     <Input
       max={LIMITS.minutes.max}
       key={`${key}-${policy[key]}`}
@@ -55,9 +71,25 @@ export function BreakPolicyCard() {
         )}
       </p>
       <p className={row}>
+        <span className="w-20 text-muted-foreground">{t("ws.policy.unpaidRow")}</span>
+        {opt("unpaidMin", unpaid, 240)}
+        <span className="text-muted-foreground">{t("ws.policy.unpaidTail")}</span>
+      </p>
+      <p className={row}>
         <span className="w-20 text-muted-foreground">{t("ws.policy.idleRow")}</span>
         {num("autoIdleMin")}
         <span className="text-muted-foreground">{t("ws.policy.idleTail")}</span>
+      </p>
+      <h2 className="mt-2 text-sm font-semibold">{t("ws.policy.extraTitle")}</h2>
+      <p className={row}>
+        <span className="w-20 text-muted-foreground">{t("ws.policy.nightRow")}</span>
+        {opt("nightPct", nightPctOf(policy), 200)}
+        <span className="text-muted-foreground">{t("ws.policy.nightTail")}</span>
+      </p>
+      <p className={row}>
+        <span className="w-20 text-muted-foreground">{t("ws.policy.holidayRow")}</span>
+        {opt("holidayPct", holidayPctOf(policy), 300)}
+        <span className="text-muted-foreground">{t("ws.policy.holidayTail")}</span>
       </p>
     </section>
   );

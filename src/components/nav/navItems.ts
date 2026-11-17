@@ -5,6 +5,7 @@ import {
   Boxes,
   ClipboardList,
   FileText,
+  History,
   ListChecks,
   MessagesSquare,
   MonitorSmartphone,
@@ -63,6 +64,9 @@ const WAREHOUSE_NAV: NavEntry[] = [
   // стоит внизу меню (`WORKSTATION_NAV`), рядом с поддержкой и темой. В кабинете
   // руководителю остаются «Задания» (контроль), документы и аналитика.
   { view: "tasks", key: "nav.side.tasks", icon: ClipboardList },
+  // Посекундная история склада (Кирилл 15.11): спорное разбирают по ней,
+  // поэтому рядом с «Подтверждениями».
+  { view: "journal", key: "nav.side.journal", icon: History },
   // Всё, что ждёт решения старшего: смена процесса, недостача, пересорт,
   // брак, расхождения пересчёта (Кирилл 16.11). Ежедневная работа, а не
   // настройка склада, поэтому не в «О складе». «Спорные» — внутри.
@@ -145,6 +149,8 @@ const VIEW_PERMS: Partial<Record<AppView, string[]>> = {
   integrations: [],
   staff: ["staff.view"],
   analytics: ["staff.view"],
+  // По журналу видно, кто когда и как работал, — то же право, что «Персонал».
+  journal: ["staff.view"],
   labels: ["products.view"],
   documents: [...DESK_VIEWS, "goods.view"],
   lookup: ["stock.view"],

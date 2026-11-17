@@ -508,6 +508,11 @@ function createApp({
       }
       return send(res, 404, { ok: false });
     } catch (error) {
+      // Отказ, решённый в сессии (продавцу закрыт маршрут, `auth.js`), — не сбой.
+      if (error?.httpStatus === 403) {
+        if (!res.headersSent) send(res, 403, { ok: false });
+        return;
+      }
       log.error("[uklad] сбой обработчика:", error);
       if (!res.headersSent) send(res, 500, { ok: false });
     }
@@ -598,6 +603,9 @@ function main() {
     setInterval(account.purge, DAY_MS).unref();
     const { createSnapshot } = require("./cabinet/snapshot");
     const snapshot = createSnapshot({ auth, send, log: console });
+    // Журнал действий склада (миграция 039): операции столов и правки кабинета.
+    const { createJournal } = require("./cabinet/journal");
+    const journal = createJournal({ auth, send, log: console });
     const { createTeam } = require("./cabinet/team");
     const team = createTeam({ auth, cfg, send, log: console });
     const { createDeskBadges } = require("./cabinet/deskBadges");
@@ -633,6 +641,7 @@ function main() {
         (await team.handle(req, res, url)) ||
         (await account.handle(req, res, url)) ||
         (await snapshot.handle(req, res, url)) ||
+        (await journal.handle(req, res, url)) ||
         (await deskBadges.handle(req, res, url)) ||
         (await company.handle(req, res, url)) ||
         (await orgName.handle(req, res, url)) ||

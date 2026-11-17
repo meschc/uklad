@@ -49,6 +49,7 @@ export const APP_VIEWS = [
   "workstation",
   "devices",
   "disputes",
+  "journal",
   "approvals",
 ] as const satisfies readonly AppView[];
 

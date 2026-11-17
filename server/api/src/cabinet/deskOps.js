@@ -347,6 +347,7 @@ function cleanBody(body) {
     "orderId",
     "outboundId",
     "outboundCode",
+    "sortCode",
     "code",
     "requestId",
     "boxId",
@@ -475,9 +476,9 @@ async function runDeskOps(c, deskId, ops, who, now, deps = {}) {
   if (applied.results.length > 0) {
     await c.query(
       `INSERT INTO uklad.desk_ops (org_id, op_key, desk_id, staff_ref, kind, body,
-         status, reason, happened_at)
+         status, reason, happened_at, warehouse_ref)
        SELECT uklad.current_org(), o.key, $2, o.staff, o.kind, o.body, o.status, o.reason,
-         to_timestamp(o.at / 1000.0)
+         to_timestamp(o.at / 1000.0), $3
        FROM jsonb_to_recordset($1::jsonb)
          AS o(key text, staff text, kind text, body jsonb, status text, reason text,
               at double precision)`,
@@ -494,6 +495,9 @@ async function runDeskOps(c, deskId, ops, who, now, deps = {}) {
           })),
         ),
         deskId,
+        // Склад стола — в строку (миграция 044): общий журнал склада читает
+        // по нему, и история не пропадает, если устройство снимут со склада.
+        typeof place?.ref === "string" ? place.ref : null,
       ],
     );
   }

@@ -9,6 +9,7 @@ import type {
   ReceivingEvent,
   Device,
   DocRecord,
+  PayAdjustment,
   StaffEvent,
   StaffMember,
   WarehouseTask,
@@ -110,6 +111,15 @@ export const isDocRecord: Guard<DocRecord> = (v): v is DocRecord => {
     isNum(v.confirmedAt)
   );
 };
+const PAY_KINDS = new Set(["deduction", "bonus", "allowance"]);
+/** Корректировка оплаты: вид из трёх, сумма больше нуля. */
+export const isPayAdjustment: Guard<PayAdjustment> = (v): v is PayAdjustment =>
+  hasId(v) &&
+  isStr(v.staffId) &&
+  PAY_KINDS.has(v.kind as string) &&
+  isNum(v.amount) &&
+  (v.amount as number) > 0 &&
+  isNum(v.at);
 export const isStaffEvent: Guard<StaffEvent> = (v): v is StaffEvent =>
   hasId(v) && isStr(v.staffId) && isStr(v.type) && isNum(v.at);
 /** Задание на операцию: вид, объём, статус и дата заведения. */

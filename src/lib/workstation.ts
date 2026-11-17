@@ -190,6 +190,9 @@ export const DEFAULT_BREAK_POLICY: BreakPolicy = {
   lunchFrom: 13 * 60,
   lunchMin: 45,
   autoIdleMin: 15,
+  unpaidMin: 60,
+  nightPct: 20,
+  holidayPct: 100,
 };
 
 /**
