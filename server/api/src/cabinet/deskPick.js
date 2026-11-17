@@ -17,6 +17,7 @@
 /* global module, require */
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { INVENTORY_KINDS } = require("./deskInventory");
+const { freeInBox } = require("./overageHold");
 
 const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 const list = (v) => (Array.isArray(v) ? v.filter(isObject) : []);
@@ -100,13 +101,15 @@ function applyPickUnit(data, body, staffRef) {
       .filter((d) => !d.resolution && INVENTORY_KINDS.has(d.kind))
       .map((d) => d.boxId),
   );
+  // Излишек с приёмки в карантине (`heldQty`): пока старший не решил, его
+  // штуки лежат в таре, но в сборку не идут.
   const from = boxes.find(
     (b) =>
       b !== tote &&
       !frozen.has(b.id) &&
       b.address &&
       cellKey(b.address) === key &&
-      list(b.lines).some((l) => l.productId === body.productId && Number(l.qty) > 0),
+      freeInBox(data.disputes, b, body.productId) > 0,
   );
   const placements = isObject(data.placements) ? data.placements : {};
   const placed = cellKey(placements[body.productId]) === key;

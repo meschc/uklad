@@ -9,7 +9,8 @@
  * заявками. Чего у записи нет своего, той записи у продавца нет вовсе.
  *
  * Закрыто совсем: персонал и журнал смен, задания склада с исполнителями,
- * спорное, документы склада, переписка, подключения, реквизиты, тариф, другие
+ * спорное (кроме лишнего с приёмки по своему товару — `ownOverage`),
+ * документы склада, переписка, подключения, реквизиты, тариф, другие
  * склады и остальные продавцы. Цены услуг открыты: это цены продавцу.
  */
 /* global module */
@@ -85,6 +86,31 @@ function ownUnits(d, mine, requestIds) {
 }
 
 /**
+ * Из спорного продавцу — только лишнее с приёмки по его товару (Кирилл 17.11):
+ * в акте поставки он видит, что излишек ждёт решения склада, оставлен или
+ * убран. Кто нашёл и кто решил, тара и заметки старшего — не продавцу.
+ */
+const OVERAGE_KEYS = [
+  "id",
+  "kind",
+  "productId",
+  "qty",
+  "lineId",
+  "raisedAt",
+  "resolution",
+  "resolvedAt",
+];
+const ownOverage = (disputes, mine) =>
+  list(disputes)
+    .filter((x) => isObject(x) && x.kind === "receive_overage" && mine.has(x.productId))
+    // «Кто» у записи обязателен (`isDispute` в браузере): за склад — «склад».
+    .map((x) => ({
+      ...pick(x, OVERAGE_KEYS),
+      raisedBy: "warehouse",
+      ...(x.resolution ? { resolvedBy: "warehouse" } : {}),
+    }));
+
+/**
  * Снимок склада (уже собранный на складе продавца, `focusWarehouse`) →
  * то, что видит продавец `partnerRef`.
  */
@@ -127,7 +153,7 @@ function forSeller(data, partnerRef) {
   const s = isObject(d.serviceSettings) ? d.serviceSettings : {};
   Object.assign(out, {
     tasks: [],
-    disputes: [],
+    disputes: ownOverage(d.disputes, mine),
     docRecords: [],
     staffEvents: [],
     chats: {},

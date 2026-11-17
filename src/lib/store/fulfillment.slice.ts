@@ -2,7 +2,8 @@ import { nowMs, uid } from "../utils";
 import { generateBoxBarcode, generatePalletBarcode, labelNumber } from "../barcode";
 import { EMPTY_RECEIVING, resumeProgress } from "../receiving";
 import { mergeCargo } from "../cargo";
-import type { Box, ExpectedShipment, Pallet, ReceivingEvent } from "../types";
+import { overageDisputeId, overReceived } from "../disputes";
+import type { Box, Dispute, ExpectedShipment, Pallet, ReceivingEvent } from "../types";
 import type { FulfillmentSlice, SliceCreator } from "./state";
 
 /**
@@ -81,7 +82,31 @@ export const createFulfillmentSlice: SliceCreator<FulfillmentSlice> = (set, get)
       discrepancy,
     };
 
+    // Лишнее сверх заявленной строки — сразу спорным старшему и в карантин
+    // (`heldQty`): то же, что делает сервер за столом приёмки. Принятое без
+    // строки поставки склад заводит сам и в карантин не берёт.
+    const line = get()
+      .expectedShipments.find((sh) => sh.id === shipmentId)
+      ?.lines.find((l) => l.id === lineId && l.productId === productId);
+    const over = line ? overReceived(line, n) : 0;
+    const hold: Dispute[] = over
+      ? [
+          {
+            id: overageDisputeId(event.id),
+            kind: "receive_overage",
+            boxId,
+            toteCode: get().boxes.find((b) => b.id === boxId)?.barcode,
+            productId,
+            qty: over,
+            lineId,
+            raisedBy: staffId ?? "manager",
+            raisedAt: event.timestamp,
+          },
+        ]
+      : [];
+
     set((s) => ({
+      ...(hold.length ? { disputes: [...(s.disputes ?? []), ...hold] } : {}),
       boxes: s.boxes.map((b) => {
         if (b.id !== boxId) return b;
         const idx = b.lines.findIndex((l) => l.productId === productId);

@@ -44,6 +44,12 @@ export interface Dispute {
   toteCode?: string;
   productId?: string;
   qty: number;
+  /**
+   * Лишнее с приёмки сверх заявленной строки поставки: какой строки. Такой
+   * излишек в карантине до решения старшего (`heldQty`); принятое без строки
+   * поставки строки не знает и в карантин не идёт.
+   */
+  lineId?: string;
   /** Кто нашёл (сотрудник у стола) и когда. */
   raisedBy: string;
   raisedAt: number;

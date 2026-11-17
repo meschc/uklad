@@ -210,3 +210,27 @@ test("короб уехал с места или заморожен пересч
   delete old.staffEvents[0].requestId;
   assert.equal(applyPickUndo(old, undo(), "stf-ivan").flag, "old");
 });
+
+test("излишек с приёмки в карантине: из тары берут только то, что сверх него", () => {
+  const d = data();
+  d.disputes = [
+    {
+      id: "ovr-1",
+      kind: "receive_overage",
+      boxId: "b1",
+      productId: "p1",
+      qty: 1,
+      lineId: "l1",
+      raisedAt: AT,
+    },
+  ];
+  const first = applyPickUnit(d, unit(), "stf-ivan");
+  assert.equal(first.data.boxes[0].lines[0].qty, 1);
+  // Оставшаяся штука — лишняя: пока старший не решил, снять её нельзя.
+  const second = applyPickUnit(first.data, unit({ eventId: "ev-2" }), "stf-ivan");
+  assert.equal(second.flag, "stock");
+  // Старший оставил излишек на складе — карантин снят.
+  first.data.disputes[0].resolution = "accepted";
+  const third = applyPickUnit(first.data, unit({ eventId: "ev-3" }), "stf-ivan");
+  assert.equal(third.data.requests[0].pickedQty, 2);
+});
