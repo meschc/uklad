@@ -323,9 +323,10 @@ export const ru = {
     "У каждой полки в инспекторе есть приоритет отбора: чем меньше число, тем раньше эту полку предложит автоподбор места. Отдельные полки можно закрыть галочкой «не отбирать отсюда» — товар с них никуда не денется, но новые размещения туда не поедут.",
 
   // --- Падение экрана (граница ошибки) ---------------------------------------
-  "crash.title": "Этот экран сломался",
-  "crash.body": "Остальные экраны работают, данные целы — они лежат отдельно от интерфейса.",
-  "crash.retry": "Попробовать снова",
+  "crash.title": "Этот экран не открылся",
+  "crash.body": "Отчёт об ошибке уже у нас. Обновите страницу — обычно этого хватает.",
+  "crash.retry": "Обновить страницу",
+  "crash.report": "Рассказать, что делали",
   "crash.toDashboard": "В личный кабинет",
 
   // --- Слой данных: ожидание и отказ ------------------------------------------
@@ -650,10 +651,10 @@ export const en: Record<keyof typeof ru, string> = {
     "Every shelf has a pick priority in the inspector: the lower the number, the earlier auto-placement suggests that shelf. Individual shelves can be closed with «do not pick from here» — whatever lies there stays, but new placements will not go in.",
 
   // --- Screen crash boundary ---------------------------------------------------
-  "crash.title": "This screen crashed",
-  "crash.body":
-    "Other screens keep working and your data is safe — it is stored separately from the interface.",
-  "crash.retry": "Try again",
+  "crash.title": "This screen did not open",
+  "crash.body": "We already have the error report. Reload the page — that usually helps.",
+  "crash.retry": "Reload the page",
+  "crash.report": "Tell us what you did",
   "crash.toDashboard": "Back to the dashboard",
 
   // --- Data layer: pending and failure -----------------------------------------
