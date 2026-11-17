@@ -21,6 +21,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 
 const { applyPackEvent, applyPackDone } = require("./deskPack");
+const { applyToteMerge } = require("./deskMerge");
 const { applyPickUnit, applyPickDone, applyPickUndo } = require("./deskPick");
 const {
   applyRecvUnit,
@@ -47,7 +48,7 @@ const SHIFT_TYPES = new Set([
   "idle_start",
   "idle_end",
 ]);
-const PACK_KINDS = new Set(["pack_event", "pack_done"]);
+const PACK_KINDS = new Set(["pack_event", "pack_done", "pack_merge"]);
 const PICK_KINDS = new Set(["pick_unit", "pick_done", "pick_undo"]);
 const RECV_KINDS = new Set([
   "recv_open",
@@ -99,6 +100,7 @@ const OP_STATION = new Map([
 const WORK = new Map([
   ["pack_event", applyPackEvent],
   ["pack_done", applyPackDone],
+  ["pack_merge", applyToteMerge],
   ["pick_unit", applyPickUnit],
   ["pick_done", applyPickDone],
   ["pick_undo", applyPickUndo],
@@ -348,6 +350,7 @@ function cleanBody(body) {
   for (const k of [
     "eventId",
     "pickId",
+    "fromToteId",
     "staffId",
     "type",
     "station",

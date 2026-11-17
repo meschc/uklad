@@ -49,6 +49,11 @@ export interface WorkstationRepository {
   /** Начать тару: скан тары с товаром и короба отгрузки. */
   packStart: (sourceCode: string, targetCode?: string) => Promise<Result<void>>;
   packItem: (code: string) => Promise<Result<ItemScan>>;
+  /**
+   * Заказ в двух тарах: пересыпать отсканированную тару в тару на столе
+   * (`toteMerge.ts`). Нельзя — отказ `ws.merge.<причина>`.
+   */
+  packMerge: (code: string) => Promise<Result<void>>;
   /** Скан наклеенной этикетки. Не та этикетка — отказ `ws.label.wrong`. */
   packLabel: (code: string) => Promise<Result<void>>;
   packReject: () => Promise<Result<void>>;
@@ -294,6 +299,24 @@ export function createWorkstationRepository(
       return res.data ? fail(res.data) : ok(undefined);
     },
     packItem: (code) => attempt(() => queuePack(() => port.get().packScanItem(code))),
+    packMerge: async (code) => {
+      const res = await attempt(() => port.get().packMergeTote(code));
+      if (!res.ok) return res;
+      const out = res.data;
+      if ("problem" in out) return fail(`ws.merge.${out.problem}` as const);
+      const s = port.get();
+      const ev = s.staffEvents.find((e) => e.id === out.id);
+      if (ev && s.packSession && onServer(port)) {
+        ops.enqueue("pack_merge", {
+          eventId: ev.id,
+          staffId: ev.staffId,
+          at: ev.at,
+          toteId: s.packSession.sourceBoxId,
+          fromToteId: out.fromId,
+        });
+      }
+      return ok(undefined);
+    },
     packLabel: async (code) => {
       const res = await attempt(() => queuePack(() => port.get().packScanLabel(code)));
       if (!res.ok) return res;

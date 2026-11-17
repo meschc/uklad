@@ -5,7 +5,7 @@ import { signal } from "@/lib/scanSignal";
 import { workstationRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
 import { findByCode } from "@/lib/barcode";
-import { isParcelTote, TARGET_PREFIX, toteContents, toteOrders } from "@/lib/packing";
+import { heldInTote, isParcelTote, TARGET_PREFIX, toteContents, toteOrders } from "@/lib/packing";
 import { cn, uid } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
@@ -46,7 +46,8 @@ export function ToteStart() {
       return;
     }
     setHint(null);
-    if (isParcelTote(toteOrders(useEditor.getState().requests, box))) {
+    const { requests, boxes } = useEditor.getState();
+    if (isParcelTote(toteOrders(requests, box), heldInTote(requests, boxes, box))) {
       void start.run(box.barcode).then((res) => {
         setStatus(res.ok ? "ok" : "error");
         signal(res.ok ? "ok" : "error");

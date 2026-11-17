@@ -353,6 +353,94 @@ test("задним числом и ключи разных столов", { skip
 });
 
 test(
+  "заказ в двух тарах: половину не упаковать, вторая тара пересыпается",
+  { skip: SKIP },
+  async () => {
+    const { a, ivan } = await company("ops-m@sklad.ru", "10.0.5.12");
+    const order = { status: "done", externalId: "OZ-7", source: "ozon", note: "Коледино" };
+    const data = {
+      ...cabinetData(),
+      boxes: [
+        { id: "t1", barcode: "UK-BOX-1", lines: [{ productId: "pr1", qty: 1 }] },
+        { id: "t2", barcode: "UK-BOX-2", lines: [{ productId: "pr1", qty: 1 }] },
+      ],
+      requests: [
+        { id: "r1", productId: "pr1", qty: 1, toteId: "t1", ...order },
+        { id: "r2", productId: "pr1", qty: 1, toteId: "t2", ...order },
+      ],
+      outboundBoxes: [],
+    };
+    const saved = await call("/api/cabinet/snapshot", {
+      ...a,
+      body: { version: 1, format: 8, data },
+    });
+    assert.equal(saved.status, 200);
+    const desk = await makeDesk(a);
+    await call("/api/cabinet/badges/check", { desk, body: { code: ivan } });
+
+    const done = (eventId, lines, requestIds) => ({
+      eventId,
+      staffId: "stf-ivan",
+      at: Date.now() - 300,
+      toteId: "t1",
+      outboundCode: "UK-LBL-OZ7",
+      outboundId: `out-${eventId}`,
+      lines,
+      requestIds,
+      shortages: [],
+    });
+    const half = await ops(desk, [
+      {
+        key: "key-merge-half",
+        kind: "pack_done",
+        body: done("ev-h", [{ productId: "pr1", qty: 1 }], ["r1"]),
+      },
+    ]);
+    assert.deepEqual(half.json.results, [
+      { key: "key-merge-half", status: "flagged", reason: "mixed" },
+    ]);
+
+    const merged = await ops(desk, [
+      {
+        key: "key-merge-0001",
+        kind: "pack_merge",
+        body: {
+          eventId: "ev-m",
+          staffId: "stf-ivan",
+          at: Date.now() - 200,
+          toteId: "t1",
+          fromToteId: "t2",
+        },
+      },
+      {
+        key: "key-merge-done",
+        kind: "pack_done",
+        body: done("ev-d", [{ productId: "pr1", qty: 2 }], ["r1", "r2"]),
+      },
+    ]);
+    assert.deepEqual(
+      merged.json.results.map((x) => [x.status, x.reason ?? null]),
+      [
+        ["applied", null],
+        ["applied", null],
+      ],
+    );
+    const { snap } = await serverEvents("ops-m@sklad.ru", a.org);
+    const box = Object.fromEntries(snap.data.boxes.map((b) => [b.id, b.lines]));
+    assert.deepEqual([box.t1, box.t2], [[], []]);
+    assert.deepEqual(
+      snap.data.outboundBoxes.map((o) => o.requestIds),
+      [["r1", "r2"]],
+    );
+    const kinds = await db.root.query(
+      `SELECT kind, step FROM uklad.desk_ops WHERE org_id = $1 AND kind = 'pack_merge'`,
+      [a.org],
+    );
+    assert.deepEqual(kinds.rows, [{ kind: "pack_merge", step: "pack" }]);
+  },
+);
+
+test(
   "упаковка операцией: тара → короб, движения записаны, лишнего не взять",
   { skip: SKIP },
   async () => {

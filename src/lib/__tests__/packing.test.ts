@@ -200,6 +200,61 @@ describe("тара посылок (FBS)", () => {
   });
 });
 
+describe("заказ в двух тарах", () => {
+  const split = () => {
+    const st = stand(
+      [{ productId: "p1", qty: 1 }],
+      [
+        req({ id: "a", productId: "p1", toteId: "b1", externalId: "7", source: "ozon" }),
+        req({ id: "b", productId: "p2", toteId: "b2", externalId: "7", source: "ozon" }),
+      ],
+    );
+    st.store.setState({
+      boxes: [
+        ...st.s().boxes,
+        { id: "b2", barcode: "UK-BOX-2", createdAt: 0, lines: [{ productId: "p2", qty: 1 }] },
+      ],
+    });
+    return st;
+  };
+
+  it("половину заказа не пакуют: экран называет вторую тару", () => {
+    const { s } = split();
+    expect(s().packScanItem("4600000000017")).toMatchObject({ kind: "held", rest: ["UK-BOX-2"] });
+    s().packFinish();
+    // Штука осталась в таре и ждёт вторую часть: это не недостача.
+    expect(s().disputes).toEqual([]);
+    expect(s().boxes[0].lines).toEqual([{ productId: "p1", qty: 1 }]);
+    expect(s().requests.some((r) => r.packedAt)).toBe(false);
+  });
+
+  it("вторая тара пересыпается, и заказ уходит одной посылкой", () => {
+    const { s, packOne } = split();
+    s().packScanItem("4600000000017");
+    expect(s().packMergeTote("UK-BOX-2")).toMatchObject({ fromId: "b2" });
+    expect(s().boxes.find((b) => b.id === "b2")!.lines).toEqual([]);
+    expect(s().requests.map((r) => r.toteId)).toEqual(["b1", "b1"]);
+    expect(packOne("4600000000017")).toBe("ok");
+    expect(packOne("4600000000024")).toBe("ok");
+    const label = s().packSession!.orderLabels[0];
+    expect(s().packScanLabel(label.labelCode)).toBe(true);
+    expect(s().packFinish()).toHaveLength(1);
+    expect(s().outboundBoxes!.map((o) => o.requestIds)).toEqual([["a", "b"]]);
+    expect(s().staffEvents.some((e) => e.type === "pack_merge")).toBe(true);
+  });
+
+  it("тару с чужим заказом упаковщик не пересыпает", () => {
+    const { s, store } = split();
+    store.setState({
+      requests: [
+        ...s().requests,
+        req({ id: "c", productId: "p2", toteId: "b2", externalId: "8", source: "ozon" }),
+      ],
+    });
+    expect(s().packMergeTote("UK-BOX-2")).toEqual({ problem: "mixed" });
+  });
+});
+
 describe("заказ отменили после сборки", () => {
   const lines = [
     { productId: "p1", qty: 1 },

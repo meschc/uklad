@@ -314,6 +314,7 @@ export const ru = {
   "devices.op.pick_unit": "Сборка",
   "devices.op.pick_done": "Заявка собрана",
   "devices.op.pick_undo": "Отмена скана сборки",
+  "devices.op.pack_merge": "Вторая тара заказа пересыпана",
   "devices.op.recv_open": "Начал приёмку",
   "devices.op.recv_unit": "Принял товар",
   "devices.op.recv_place": "Разместил",
@@ -480,6 +481,11 @@ export const ru = {
   "ws.run.cancelled":
     "{name} — заказ {id} отменён. Не упаковывайте, оставьте в таре: старший вернёт товар на полку.",
   "ws.run.cancelledPacked": "Заказ {id} отменили, пока вы упаковывали: {n} шт. уже в коробе.",
+  "ws.run.held": "{name}: часть заказа в таре {box}. Отложите штуку и отсканируйте ту тару",
+  "ws.run.heldPicking": "{name}: часть заказа ещё собирают. Отложите штуку, паковать заказ рано",
+  "ws.merge.done": "Тара {box} пересыпана в эту — пакуйте заказ целиком",
+  "ws.merge.mixed": "В таре {box} другие заказы или её ещё собирают — позовите старшего",
+  "ws.merge.bad": "Эту тару сюда не пересыпать — позовите старшего",
   "ws.run.cancelledPackedHint":
     "Выньте их и положите обратно в тару {box}. В короб отгрузки они не пойдут.",
   "ws.reject.title": "Отметить как брак?",
@@ -577,6 +583,7 @@ export const ru = {
   "ws.ev.pack_done": "Закрыл тару",
   "ws.ev.pick_scan": "Снял с полки в тару",
   "ws.ev.pick_undo": "Отменил скан: вернул в короб",
+  "ws.ev.pack_merge": "Пересыпал вторую тару заказа",
 };
 
 export const en: Record<keyof typeof ru, string> = {
@@ -890,6 +897,7 @@ export const en: Record<keyof typeof ru, string> = {
   "devices.op.pick_unit": "Picking",
   "devices.op.pick_done": "Request picked",
   "devices.op.pick_undo": "Picking scan undone",
+  "devices.op.pack_merge": "Order's second tote merged",
   "devices.op.recv_open": "Started receiving",
   "devices.op.recv_unit": "Received item",
   "devices.op.recv_place": "Put away",
@@ -1059,6 +1067,13 @@ export const en: Record<keyof typeof ru, string> = {
     "{name} — order {id} is cancelled. Don't pack it, leave it in the tote: the shift lead will put it back on the shelf.",
   "ws.run.cancelledPacked":
     "Order {id} was cancelled while you were packing: {n} pcs are already in the box.",
+  "ws.run.held":
+    "{name}: part of the order is in tote {box}. Set the unit aside and scan that tote",
+  "ws.run.heldPicking":
+    "{name}: part of the order is still being picked. Set the unit aside, too early to pack",
+  "ws.merge.done": "Tote {box} merged into this one — pack the order as a whole",
+  "ws.merge.mixed": "Tote {box} has other orders or is still being picked — call the shift lead",
+  "ws.merge.bad": "This tote can't be merged here — call the shift lead",
   "ws.run.cancelledPackedHint":
     "Take them out and put them back into tote {box}. They won't go into the shipping box.",
   "ws.reject.title": "Mark as defect?",
@@ -1153,4 +1168,5 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.ev.pack_done": "Closed tote",
   "ws.ev.pick_scan": "Picked into tote",
   "ws.ev.pick_undo": "Undid a scan: returned to box",
+  "ws.ev.pack_merge": "Merged the order's second tote",
 };

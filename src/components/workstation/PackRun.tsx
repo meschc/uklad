@@ -5,6 +5,7 @@ import { workstationRepository } from "@/lib/data";
 import {
   boxesHolding,
   cancelledInTote,
+  heldInTote,
   explainScan,
   packSummary,
   pendingLabel,
@@ -15,6 +16,7 @@ import {
   toteShortage,
   type ItemScan,
 } from "@/lib/packing";
+import { findByCode } from "@/lib/barcode";
 import type { PackSession } from "@/lib/types";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { sizeLabel, useLabelPrinter } from "@/lib/labelPrinter";
@@ -98,14 +100,16 @@ export function PackRun({
   if (!box) return null;
   const contents = toteContents(box);
   const cancelled = cancelledInTote(requests, box);
-  const remaining = toteShortage(session, box, cancelled);
+  // Заказ, ждущий вторую тару, остаётся в таре: не недостача (`heldInTote`).
+  const kept = [...cancelled, ...heldInTote(requests, useEditor.getState().boxes, box)];
+  const remaining = toteShortage(session, box, kept);
   const orders = toteOrders(requests, box);
   // Заказ отменили, пока тара на столе: его штуки нужно вынуть из короба.
   const pulled = packedForCancelled(session, cancelled).filter((u) => u.confirmedAt);
   const label = pendingLabel(session);
   const unit = session.units.find((u) => !u.confirmedAt);
   const orderLabel = !unit ? session.orderLabels.find((l) => !l.confirmedAt) : undefined;
-  const summary = packSummary(session, box, cancelled);
+  const summary = packSummary(session, box, kept);
   // Назначение короба отгрузки этой сессии: короб один на адрес (`targetCode`).
   const dest = orders.find((o) => o.target && targetCode(o.target) === session.targetCode)?.target;
   const nameOf = (id: string) => products.find((p) => p.id === id)?.name ?? id;
@@ -115,6 +119,13 @@ export function PackRun({
       // Закрытие подтверждается сканом короба: упакованное не уедет в чужой.
       if (code.trim().toUpperCase() === session.targetCode.toUpperCase()) return void finish();
       return flashError({ status: "error", key: "ws.chk.closeWrong", box: session.targetCode });
+    }
+    // Вторая тара заказа: пересыпать её в эту (`toteMerge.ts`).
+    const other = findByCode(useEditor.getState().boxes, code);
+    if (other && other.id !== box.id && !label) {
+      const res = await workstationRepository.packMerge(code);
+      if (!res.ok) return flashError({ status: "error", key: res.error, box: other.barcode });
+      return flashOk(t("ws.merge.done", { box: other.barcode }));
     }
     const mistake = explainScan(session, box, products, code);
     if (mistake) return flashError({ status: "error", key: `ws.chk.${mistake}` });
@@ -498,6 +509,13 @@ function feedbackFor(r: ItemScan, nameOf: (id: string) => string): Feedback {
   if (r.kind === "ok") return null;
   if (r.kind === "not_in_tote" || r.kind === "extra")
     return { status: "error", key: `ws.run.${r.kind}`, name: nameOf(r.productId) };
+  if (r.kind === "held")
+    return {
+      status: "warn",
+      key: r.picking && !r.rest.length ? "ws.run.heldPicking" : "ws.run.held",
+      name: nameOf(r.productId),
+      box: r.rest.join(", "),
+    };
   if (r.kind === "cancelled")
     return {
       status: "error",

@@ -45,8 +45,12 @@ export function targetCode(destination: string): string {
  * этикеткой, посылки идут в любую тару и дальше на сортировку. Тара поставки
  * (FBO, заказы без номера) пакуется в короба поставки, как раньше.
  */
-export function isParcelTote(orders: readonly ToteOrder[]): boolean {
-  return orders.length > 0 && orders.every((o) => o.external);
+export function isParcelTote(
+  orders: readonly ToteOrder[],
+  /** Заказы площадки, ждущие вторую тару (`heldInTote`): тара всё равно посылочная. */
+  held: readonly unknown[] = [],
+): boolean {
+  return orders.length + held.length > 0 && orders.every((o) => o.external);
 }
 
 /**
@@ -118,7 +122,12 @@ export function toteOrders(requests: readonly FulfillmentRequest[], box: Box): T
   // даже если товар тот же — иначе тара Тулы закрыла бы заказ Казани. По
   // составу угадываем только заявки, собранные без тары (старые).
   const own = open.filter((r) => r.toteId === box.id);
-  const ready = own.length > 0 ? own : open.filter((r) => !r.toteId);
+  // Заказ площадки, часть которого ещё в другой таре или собирается, отсюда
+  // не пакуют: одна этикетка — одна посылка (`heldInTote`).
+  const split = splitOrders(requests, box);
+  const ready = (own.length > 0 ? own : open.filter((r) => !r.toteId)).filter(
+    (r) => !split.has(orderKey(r)),
+  );
   const left = new Map(contents);
   const out: ToteOrder[] = [];
   for (const g of groupRequestsByTarget(ready).flatMap(splitByOrder)) {
@@ -158,15 +167,93 @@ function splitByOrder<G extends { items: FulfillmentRequest[] }>(g: G): G[] {
   return [...byOrder.values()].map((items) => ({ ...g, items }));
 }
 
+/** Ключ заказа площадки (`source` + `externalId`); заявка без номера — сама себе заказ. */
+function orderKey(r: FulfillmentRequest): string {
+  return r.externalId ? `${r.source ?? ""}:${r.externalId.trim().toLowerCase()}` : `#${r.id}`;
+}
+
+/** Заявка ещё в работе: не упакована, не уехала и не отменена. */
+const isOpen = (r: FulfillmentRequest) =>
+  !r.packedAt && r.status !== "shipped" && r.status !== "cancelled";
+
+/**
+ * Заказы площадки из этой тары, у которых часть — в другой таре или ещё
+ * собирается (Кирилл 17.11: «часть заказа в одном ящике, часть в другом»).
+ * Ключ → заявки заказа вне этой тары.
+ */
+function splitOrders(
+  requests: readonly FulfillmentRequest[],
+  box: Box,
+): Map<string, FulfillmentRequest[]> {
+  const here = new Set(
+    requests
+      .filter((r) => r.externalId && r.toteId === box.id && r.status === "done" && isOpen(r))
+      .map(orderKey),
+  );
+  const out = new Map<string, FulfillmentRequest[]>();
+  for (const r of requests) {
+    const key = orderKey(r);
+    if (!here.has(key) || !isOpen(r)) continue;
+    if (r.toteId === box.id && r.status === "done") continue;
+    out.set(key, [...(out.get(key) ?? []), r]);
+  }
+  return out;
+}
+
+/** Заказ, который ждёт вторую часть: его штуки остаются в таре, не недостача. */
+export interface HeldOrder extends CancelledOrder {
+  held: true;
+  /** Тары, где лежит остальное. */
+  rest: string[];
+  /** Часть заказа ещё не собрана. */
+  picking: boolean;
+}
+
+/**
+ * Заказы тары, которые нельзя паковать, пока не пришла вторая часть. Упаковщик
+ * сканирует ту тару, и она пересыпается в эту (`pack_merge`), — тогда заказ
+ * целый и пакуется одной посылкой.
+ */
+export function heldInTote(
+  requests: readonly FulfillmentRequest[],
+  boxes: readonly Box[],
+  box: Box,
+): HeldOrder[] {
+  const out: HeldOrder[] = [];
+  for (const [key, elsewhere] of splitOrders(requests, box)) {
+    const mine = requests.filter(
+      (r) => orderKey(r) === key && r.toteId === box.id && r.status === "done" && isOpen(r),
+    );
+    const need = new Map<string, number>();
+    for (const r of mine) {
+      const n = r.partial ? (r.pickedQty ?? 0) : r.qty;
+      if (n > 0) need.set(r.productId, (need.get(r.productId) ?? 0) + n);
+    }
+    if (need.size === 0) continue;
+    const totes = new Set(elsewhere.map((r) => r.toteId).filter((id): id is string => !!id));
+    out.push({
+      id: mine[0].id,
+      need,
+      held: true,
+      rest: boxes.filter((b) => totes.has(b.id)).map((b) => b.barcode),
+      picking: elsewhere.some((r) => r.status !== "done"),
+    });
+  }
+  return out;
+}
+
 /** Сколько штук товара уже ушло из тары: упаковано или отбраковано. */
 function takenFromTote(session: PackSession, productId: string): number {
   return (
     session.units.filter((u) => u.productId === productId).length +
     session.rejects.filter(
-      (r) => r.productId === productId && (r.reason === "defect" || r.reason === "cancelled"),
+      (r) => r.productId === productId && (r.reason === "defect" || KEPT.has(r.reason)),
     ).length
   );
 }
+
+/** Штука осталась в таре по заказу: отменён или ждёт вторую часть. */
+const KEPT = new Set<string>(["cancelled", "held"]);
 
 /** Отменённый заказ, чей товар уже лежит в таре. */
 export interface CancelledOrder {
@@ -209,7 +296,7 @@ function cancelledLeft(
   const ids = new Set(cancelled.map((o) => o.id));
   const reserved = cancelled.reduce((a, o) => a + (o.need.get(productId) ?? 0), 0);
   const seen =
-    session.rejects.filter((r) => r.productId === productId && r.reason === "cancelled").length +
+    session.rejects.filter((r) => r.productId === productId && KEPT.has(r.reason)).length +
     session.units.filter((u) => u.productId === productId && u.orderId && ids.has(u.orderId))
       .length;
   return Math.max(0, reserved - seen);
@@ -290,6 +377,8 @@ export type ItemScan =
   | { kind: "extra"; productId: string }
   /** Товар отменённого заказа: не паковать, оставить в таре. */
   | { kind: "cancelled"; productId: string; orderId: string }
+  /** Заказ ждёт вторую часть из другой тары: отложить, отсканировать ту тару. */
+  | { kind: "held"; productId: string; orderId: string; rest: string[]; picking: boolean }
   /** Предыдущая этикетка ещё не отсканирована: сначала наклеить её. */
   | { kind: "label_pending" }
   | { kind: "unknown" };
@@ -332,6 +421,16 @@ export function classifyItemScan(
   // она больше никому не нужна.
   if (!order && cancelledLeft(session, cancelled, product.id) > 0) {
     const c = cancelled.find((o) => (o.need.get(product.id) ?? 0) > 0)!;
+    if ("held" in c && c.held) {
+      const h = c as HeldOrder;
+      return {
+        kind: "held",
+        productId: product.id,
+        orderId: h.id,
+        rest: h.rest,
+        picking: h.picking,
+      };
+    }
     return { kind: "cancelled", productId: product.id, orderId: c.id };
   }
   return { kind: "ok", productId: product.id, orderId: order?.id };
@@ -359,7 +458,7 @@ export function packSummary(
   return {
     packed: session.units.filter((u) => u.confirmedAt).length,
     defects: session.rejects.filter((r) => r.reason === "defect").length,
-    errors: session.rejects.filter((r) => r.reason !== "defect" && r.reason !== "cancelled").length,
+    errors: session.rejects.filter((r) => r.reason !== "defect" && !KEPT.has(r.reason)).length,
     shortage: [...shortage.values()].reduce((a, b) => a + b, 0),
     avgMs: average(unitTimes(session)),
   };

@@ -325,7 +325,9 @@ type StaffEventType =
   | "pack_done"
   | "pick_scan"
   /** Сборщик отменил свой скан: штука вернулась из тары в короб (`undoes`). */
-  | "pick_undo";
+  | "pick_undo"
+  /** Вторая тара заказа пересыпана в тару на столе упаковки (`toteMerge.ts`). */
+  | "pack_merge";
 
 /** Отметки, которые ставит сам сотрудник: смена, перерыв, простой. */
 export type ShiftMark = Extract<
@@ -414,7 +416,7 @@ interface PackedUnit {
 }
 
 /** Что пошло не так со штукой: брак, её нет в таре, она лишняя. */
-type PackRejectReason = "defect" | "not_in_tote" | "extra" | "cancelled";
+type PackRejectReason = "defect" | "not_in_tote" | "extra" | "cancelled" | "held";
 
 interface PackReject {
   productId: string;

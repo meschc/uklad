@@ -83,6 +83,7 @@ import type {
 } from "../types";
 import type { IntegrationConfig } from "../integrations";
 import type { HistorySnapshot } from "./history.slice";
+import type { MergeProblem } from "../toteMerge";
 
 /**
  * Форма стора, собранная из срезов (slices pattern). Каждый срез объявляет свой
@@ -832,6 +833,11 @@ export interface WorkstationSlice {
   packStart: (sourceCode: string, targetCode?: string) => MsgKey | null;
   /** Скан товара: этикетка единицы появляется сама, брак и лишнее — в отказы. */
   packScanItem: (code: string) => ItemScan;
+  /**
+   * Заказ в двух тарах: пересыпать тару `fromCode` в тару на столе
+   * (`toteMerge.ts`). Ответ — id события журнала или причина отказа.
+   */
+  packMergeTote: (fromCode: string) => { id: string; fromId: string } | { problem: MergeProblem };
   /** Скан наклеенной этикетки. false — это не та этикетка, которую ждём. */
   packScanLabel: (code: string) => boolean;
   /** Отсканированная, но ещё не упакованная штука оказалась браком. */
