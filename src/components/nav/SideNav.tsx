@@ -10,6 +10,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { selectRole, useEditor } from "@/lib/store";
+import type { AppView } from "@/lib/types";
 import { useNavBadge } from "./useNavBadge";
 import {
   WORKSTATION_NAV,
@@ -76,11 +77,29 @@ interface Drag {
  * там внизу панель `MobileNav`, а это же меню целиком открывается из её
  * пункта «Ещё» (`sheet`) — во всю ширину, без кнопки «свернуть».
  */
-export function SideNav({ variant = "rail" }: { variant?: "rail" | "sheet" }) {
+export function SideNav({
+  variant = "rail",
+  onNavigate,
+}: {
+  variant?: "rail" | "sheet";
+  /**
+   * Выбран пункт — шторка «Ещё» закрывается. Нужно и для пункта текущего
+   * экрана: экран не меняется, и без этого шторка оставалась открытой.
+   */
+  onNavigate?: () => void;
+}) {
   const sheet = variant === "sheet";
   const appView = useEditor((s) => s.appView);
-  const goToView = useEditor((s) => s.goToView);
-  const goToDashboard = useEditor((s) => s.goToDashboard);
+  const storeGoToView = useEditor((s) => s.goToView);
+  const storeGoToDashboard = useEditor((s) => s.goToDashboard);
+  const goToView = (view: AppView) => {
+    storeGoToView(view);
+    onNavigate?.();
+  };
+  const goToDashboard = () => {
+    storeGoToDashboard();
+    onNavigate?.();
+  };
   const warehouseName = useEditor((s) => s.warehouse?.name);
   const orgLogo = useEditor((s) => s.account.orgLogo);
   const role = useEditor(selectRole);

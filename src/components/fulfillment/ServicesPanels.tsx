@@ -90,9 +90,10 @@ export function ServicesPanel() {
           const unit = t(`ops.unit.${s.unit}` as MsgKey);
           const price = settings.prices?.[s.kind];
           return (
-            <li key={s.kind} className="flex flex-wrap items-center gap-3 px-4 py-2.5">
-              {}
-              <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5">
+            <li key={s.kind} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5">
+              {/* На телефоне название — своей строкой, цена под ним: в одну
+                  строку с полем название сжималось и уходило под цену. */}
+              <label className="flex w-full min-w-0 cursor-pointer items-center gap-2.5 sm:w-auto sm:flex-1">
                 <input
                   type="checkbox"
                   checked={on}
@@ -121,9 +122,9 @@ export function ServicesPanel() {
                   const raw = e.target.value.trim().replace(",", ".");
                   setPrice(s.kind, raw === "" ? null : Number(raw));
                 }}
-                className="w-28 text-right tabular-nums"
+                className="ml-[26px] w-28 text-right tabular-nums sm:ml-0"
               />
-              <span className="w-24 whitespace-nowrap text-xs text-muted-foreground">
+              <span className="min-w-0 flex-1 text-xs text-muted-foreground sm:w-24 sm:flex-none sm:whitespace-nowrap">
                 ₽ / {unit}
               </span>
               {isCustomKind(s.kind) ? (
@@ -137,7 +138,7 @@ export function ServicesPanel() {
                   <Trash2 className="size-4" />
                 </Button>
               ) : (
-                <span className="w-8" aria-hidden />
+                <span className="hidden w-8 sm:block" aria-hidden />
               )}
             </li>
           );

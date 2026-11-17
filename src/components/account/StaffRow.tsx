@@ -68,10 +68,12 @@ export function StaffRow({
           </span>
         </button>
       </td>
-      <td className="px-3 py-2 text-muted-foreground">{m.role || "—"}</td>
+      <td className="px-3 py-2 text-muted-foreground" data-label={t("staff.col.role")}>
+        {m.role || "—"}
+      </td>
       {/* Ставка видна прямо в списке: пустая клетка зовёт её задать, а
           задаётся она той же правкой строки, что имя и телефон. */}
-      <td className="px-3 py-2 text-right tabular-nums">
+      <td className="px-3 py-2 text-right tabular-nums" data-label={t("staff.rate")}>
         {m.hourlyRate ? (
           t("staff.rateValue", { r: m.hourlyRate })
         ) : (
@@ -81,7 +83,7 @@ export function StaffRow({
         )}
       </td>
       {roleName !== undefined && (
-        <td className="px-3 py-2">
+        <td className="px-3 py-2" data-label={t("team.role")}>
           {roleName ?? (
             <span className="rounded-full bg-warning-fill px-2 py-0.5 text-xs font-medium text-warning-foreground">
               {t("team.deskNone")}
@@ -89,7 +91,7 @@ export function StaffRow({
           )}
         </td>
       )}
-      <td className="px-3 py-2">
+      <td className="stack-head px-3 py-2">
         <div className="flex items-center gap-1">
           <button
             onClick={async () => {
@@ -100,7 +102,7 @@ export function StaffRow({
             disabled={issue.pending}
             title={t("staff.badge.issue")}
             aria-label={t("staff.badge.issue")}
-            className="flex size-7 items-center justify-center rounded text-muted-foreground transition hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
+            className="flex size-9 items-center md:size-7 justify-center rounded text-muted-foreground transition hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
           >
             <IdCard className="size-3.5" />
           </button>
@@ -110,7 +112,7 @@ export function StaffRow({
             onClick={onEdit}
             title={t("staff.edit")}
             aria-label={t("staff.edit")}
-            className="flex size-7 items-center justify-center rounded text-muted-foreground transition hover:text-foreground"
+            className="flex size-9 items-center md:size-7 justify-center rounded text-muted-foreground transition hover:text-foreground"
           >
             <Pencil className="size-3.5" />
           </button>
@@ -132,7 +134,7 @@ export function StaffRow({
             disabled={remove.pending}
             title={t("staff.remove")}
             aria-label={t("staff.remove")}
-            className="flex size-7 items-center justify-center rounded text-muted-foreground opacity-0 transition hover:text-destructive focus-visible:opacity-100 disabled:pointer-events-none disabled:opacity-30 group-hover:opacity-100"
+            className="flex size-9 items-center md:size-7 justify-center rounded text-muted-foreground transition hover:text-destructive disabled:pointer-events-none disabled:opacity-30 md:opacity-0 md:focus-visible:opacity-100 md:group-hover:opacity-100"
           >
             <Trash2 className="size-3.5" />
           </button>

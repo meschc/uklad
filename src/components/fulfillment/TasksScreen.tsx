@@ -338,7 +338,7 @@ function RequestsTasks({ sections }: { sections: React.ReactNode }) {
                 })()}
               </div>
               <div className="overflow-hidden rounded-xl border border-border">
-                <table className="w-full border-collapse text-sm">
+                <table className="table-stack w-full border-collapse text-sm">
                   <thead className="bg-muted/50 text-xs">
                     <tr className="text-left">
                       <SortTh table={reqTable.table} id="name">
@@ -373,7 +373,10 @@ function RequestsTasks({ sections }: { sections: React.ReactNode }) {
                               )}
                             </div>
                           </td>
-                          <td className="px-3 py-2 text-right tabular-nums">
+                          <td
+                            className="px-3 py-2 text-right tabular-nums"
+                            data-label={t("tasks.col.qty")}
+                          >
                             <span className={cn(have < r.qty && "text-destructive")}>
                               {r.pickedQty ? `${r.pickedQty}/` : ""}
                               {r.qty}
@@ -384,10 +387,13 @@ function RequestsTasks({ sections }: { sections: React.ReactNode }) {
                           </td>
                           {/* Назначение вынесено в шапку группы — в строке
                               остаётся только адрес, если он назначен. */}
-                          <td className="px-3 py-2 text-xs text-muted-foreground">
+                          <td
+                            className="px-3 py-2 text-xs text-muted-foreground"
+                            data-label={t("tasks.col.where")}
+                          >
                             {r.targetAddress ? formatAddress(warehouse, r.targetAddress) : "—"}
                           </td>
-                          <td className="px-3 py-2">
+                          <td className="px-3 py-2" data-label={t("tasks.col.status")}>
                             <StatusBadge status={r.status} partial={r.partial} t={t} />
                           </td>
                           <td className="px-3 py-2">

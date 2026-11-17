@@ -121,7 +121,7 @@ export function TableScreen() {
       />
 
       <div className="scrollbar-thin min-h-0 flex-1 overflow-auto">
-        <table className="w-full border-collapse text-sm">
+        <table className="table-stack w-full border-collapse text-sm">
           <TableHead
             allPicked={pick.allVisiblePicked}
             somePicked={pick.someVisiblePicked}

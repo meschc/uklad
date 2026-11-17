@@ -102,10 +102,8 @@ export const ru = {
   "integr.field.contract": "Номер договора",
   "integr.field.account": "Учётная запись",
   "integr.field.secureKey": "Секретный ключ",
-  "integr.subtitleN":
-    "Внешние системы: {total} доступно, подключено {n}, ещё {soon} — в будущих обновлениях",
+  "integr.subtitleN": "Внешние системы: подключено {n} из {total}",
   "integr.on": "Вкл",
-  "integr.soon": "В будущих обновлениях",
   "integr.cat.market": "Маркетплейсы",
   "integr.cat.erp": "Учёт и CRM",
   "integr.cat.delivery": "Доставка",
@@ -517,10 +515,8 @@ export const en: Record<keyof typeof ru, string> = {
   "integr.field.contract": "Contract number",
   "integr.field.account": "Account",
   "integr.field.secureKey": "Secret key",
-  "integr.subtitleN":
-    "External systems: {total} available, {n} connected, {soon} more in future updates",
+  "integr.subtitleN": "External systems: {n} of {total} connected",
   "integr.on": "On",
-  "integr.soon": "In future updates",
   "integr.cat.market": "Marketplaces",
   "integr.cat.erp": "Accounting & CRM",
   "integr.cat.delivery": "Delivery",

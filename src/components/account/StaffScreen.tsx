@@ -237,7 +237,7 @@ export function StaffScreen() {
                   </p>
                 )}
                 <div className="overflow-x-auto rounded-xl border border-border">
-                  <table className="w-full border-collapse text-sm">
+                  <table className="table-stack w-full border-collapse text-sm">
                     <thead className="bg-muted/50 text-xs">
                       <tr className="text-left">
                         <SortTh table={staffTable.table} id="name">

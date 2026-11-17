@@ -398,6 +398,104 @@
   }
 }
 
+/* Таблица на телефоне — стопкой карточек (Кирилл 17.11: «много таблиц, на
+   телефоне в карточки»). Приём «stacked table» из USWDS и Salesforce LDS:
+   разметка остаётся настоящей `<table>` (скринридер читает строки и
+   колонки, сортировка и поиск те же), а на узком экране строка становится
+   карточкой: шапка прячется, у ячейки слева подпись колонки из `data-label`,
+   справа значение. Ячейка без `data-label` — во всю ширину: первая — заголовок
+   карточки, последняя — кнопки строки. Ширина — та же, что у нижней панели
+   кабинета (`md`): где панель, там и карточки. */
+@media (max-width: 767.98px) {
+  .table-stack,
+  .table-stack tbody,
+  .table-stack tr,
+  .table-stack td {
+    display: block;
+    width: 100%;
+  }
+  .table-stack thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  /* Строка — гибкая лента: шапка карточки (отметка, фото, название,
+     кнопки строки с классом `stack-head`) собирается в одну строку сверху,
+     остальные ячейки — каждая своей строкой ниже. Порядок задаёт `order`,
+     разметка таблицы для компьютера не меняется. */
+  .table-stack tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 0.75rem;
+    padding: 0.75rem 1rem;
+  }
+  .table-stack td.stack-lead {
+    order: -3;
+    width: auto;
+  }
+  .table-stack td.stack-title,
+  .table-stack td:first-child:not([data-label]):not(.stack-lead) {
+    order: -2;
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .table-stack td.stack-head {
+    order: -1;
+    width: auto;
+  }
+  .table-stack tr + tr {
+    border-top: 1px solid hsl(var(--border));
+  }
+  .table-stack td {
+    padding: 0.125rem 0 !important;
+    text-align: left !important;
+    border: 0 !important;
+    white-space: normal !important;
+  }
+  /* Сетка, а не flex: в ячейке бывает значение и под ним пояснение
+     мелким — они встают друг под другом справа, а подпись держит левую
+     колонку на всю высоту. */
+  .table-stack td[data-label] {
+    display: grid;
+    grid-template-columns: minmax(0, 45%) minmax(0, 1fr);
+    column-gap: 1rem;
+    align-items: baseline;
+    justify-items: end;
+    text-align: right !important;
+  }
+  .table-stack td[data-label]::before {
+    content: attr(data-label);
+    grid-column: 1;
+    grid-row: 1 / span 8;
+    justify-self: start;
+    text-align: left;
+    font-size: 0.75rem;
+    color: hsl(var(--muted-foreground));
+  }
+  .table-stack td[data-label] > * {
+    grid-column: 2;
+  }
+  /* Вовсе пустая ячейка (у строки нет кнопок) в карточке — лишний отступ. */
+  .table-stack td:empty {
+    display: none;
+  }
+  .table-stack td.stack-title,
+  .table-stack td:first-child:not([data-label]):not(.stack-lead) {
+    padding-bottom: 0.25rem !important;
+    font-weight: 500;
+  }
+  .table-stack td:last-child:not([data-label]):not(:first-child):not(.stack-head) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding-top: 0.5rem !important;
+  }
+}
+
 /* Доступность: уважаем системную настройку «меньше движения». */
 @media (prefers-reduced-motion: reduce) {
   *,

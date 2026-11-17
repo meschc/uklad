@@ -229,6 +229,17 @@ export default {
           from: { transform: "translateX(100%)" },
           to: { transform: "translateX(0)" },
         },
+        // Меню «Ещё» на телефоне: выезжает снизу, от кнопки на нижней
+        // панели, и туда же уезжает при закрытии (Кирилл 17.11: «меню без
+        // анимации»).
+        "sheet-up": {
+          from: { transform: "translateY(100%)" },
+          to: { transform: "translateY(0)" },
+        },
+        "sheet-down": {
+          from: { transform: "translateY(0)" },
+          to: { transform: "translateY(100%)" },
+        },
         // Баннер cookie: выезжает снизу, оттуда же он и живёт.
         "slide-up": {
           from: { transform: "translateY(120%)", opacity: "0" },
@@ -250,6 +261,8 @@ export default {
         aurora: "aurora 18s ease-in-out infinite",
         float: "float 3.6s ease-in-out infinite",
         "slide-in-right": "slide-in-right 320ms cubic-bezier(0.16, 1, 0.3, 1)",
+        "sheet-up": "sheet-up 280ms cubic-bezier(0.16, 1, 0.3, 1)",
+        "sheet-down": "sheet-down 200ms cubic-bezier(0.7, 0, 0.84, 0) forwards",
         "slide-up": "slide-up 420ms cubic-bezier(0.16, 1, 0.3, 1)",
         ping: "ping 2.4s cubic-bezier(0.16, 1, 0.3, 1) infinite",
       },
