@@ -117,7 +117,12 @@ function destinationsOf(
   return new Set(requests.filter((r) => ids.has(r.id)).map((r) => r.note?.trim() || ""));
 }
 
-export type PackTargetProblem = "tote_mixed_seller" | "target_other_seller" | "target_other_target";
+export type PackTargetProblem =
+  | "tote_mixed_seller"
+  | "target_other_seller"
+  | "target_other_target"
+  /** Короб уже на сортировке: лежит на месте или закрыт в грузовое место. */
+  | "target_sorted";
 
 /**
  * Можно ли паковать эту тару в этот короб отгрузки. Решение Кирилла (24.10):
@@ -137,6 +142,9 @@ export function packTargetProblem(input: {
   const tote = sellersOf(input.toteLines, input.products);
   if (tote.size > 1) return "tote_mixed_seller";
   if (!input.open) return null;
+  // Короб передали на сортировку — для упаковки он закрыт: доложенное в него
+  // уехало бы без проверки места, а сортировщик уже сверил его с направлением.
+  if (input.open.sortCode || input.open.place) return "target_sorted";
   const inBox = sellersOf(input.open.lines, input.products);
   if ([...tote].some((s) => inBox.size > 0 && !inBox.has(s))) return "target_other_seller";
   const boxTargets = destinationsOf(input.open.requestIds, input.requests);

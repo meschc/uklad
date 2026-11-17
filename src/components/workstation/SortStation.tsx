@@ -22,6 +22,7 @@ import { ScanBanner, type BannerTone } from "./ScanBanner";
 import { useDemoHints } from "./useDemoHints";
 import { DestinationChip } from "./DestinationChip";
 import { PrintableLabel } from "./PrintableLabel";
+import { CodeTail, CodeText } from "@/components/fulfillment/CodeTail";
 
 type PrintItem = { code: string; lines: string[] };
 
@@ -158,14 +159,16 @@ export function SortStation() {
         onSubmit={(raw) => void onScan(raw)}
       />
       <ScanBanner tone={banner.tone}>
-        {banner.tone === "idle"
-          ? t(pending ? "ws.sort.idlePoint" : "ws.sort.idleParcel")
-          : banner.text}
+        {banner.tone === "idle" ? (
+          t(pending ? "ws.sort.idlePoint" : "ws.sort.idleParcel")
+        ) : (
+          <CodeText text={banner.text} />
+        )}
       </ScanBanner>
 
       {pending && (
         <div className="flex flex-col items-center gap-3 py-4 text-center">
-          <span className={eyebrow({ tone: "muted" })}>{pending.code}</span>
+          <CodeTail code={pending.code} className={eyebrow({ tone: "muted" })} />
           <DestinationChip destination={pending.destination} className="px-6 py-3 text-3xl" />
           <p className="font-mono text-lg">{pending.point}</p>
           <div className="flex flex-wrap justify-center gap-2">
@@ -194,7 +197,7 @@ export function SortStation() {
             {demo.map((code) => (
               <li key={code}>
                 <Button variant="outline" size="sm" onClick={() => void onScan(code)}>
-                  <span className="font-mono">{code}</span>
+                  <CodeTail code={code} />
                 </Button>
               </li>
             ))}
@@ -210,7 +213,7 @@ export function SortStation() {
               <li key={p.code} className="flex flex-wrap items-center justify-between gap-3">
                 <span className="flex min-w-0 flex-wrap items-center gap-3">
                   {p.destination && <DestinationChip destination={p.destination} />}
-                  <span className="font-mono">{p.code}</span>
+                  <CodeTail code={p.code} />
                   <span className="tabular-nums text-muted-foreground">
                     {p.places.length > 0
                       ? t("ws.sort.closedCount", { n: p.parcels, places: p.places.length })
@@ -256,7 +259,7 @@ export function SortStation() {
           <ul className="flex flex-col gap-1 text-sm">
             {left.map(({ box, destination }) => (
               <li key={box.id} className="flex items-center justify-between gap-3">
-                <span className="font-mono">{box.code}</span>
+                <CodeTail code={box.code} />
                 <span className="truncate text-muted-foreground">{destination}</span>
               </li>
             ))}
