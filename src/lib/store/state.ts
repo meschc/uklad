@@ -927,6 +927,8 @@ export interface OperationsSlice {
    * закрытия — это дата услуги в счёте, и подставлять её руками нельзя.
    */
   setTaskStatus: (id: string, status: TaskStatus) => void;
+  /** Записать работу целиком — отметку стола «взял» / «сделал» (`workTasks.ts`). */
+  putTask: (task: WarehouseTask) => void;
   updateTask: (
     id: string,
     patch: Partial<Pick<WarehouseTask, "qty" | "staffId" | "partnerId" | "note">>,
