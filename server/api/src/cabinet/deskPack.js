@@ -177,6 +177,9 @@ function targetProblem(data, toteLines, closing, open) {
   const tote = sellers(toteLines);
   if (tote.size > 1) return true;
   if (!open) return false;
+  // Короб на сортировке (лежит на месте или закрыт в грузовое место) для
+  // упаковки закрыт — как `packTargetProblem` в браузере.
+  if (open.sortCode || open.place) return true;
   const inBox = sellers(linesOf(open.lines));
   if ([...tote].some((s) => inBox.size > 0 && !inBox.has(s))) return true;
   const openIds = new Set(Array.isArray(open.requestIds) ? open.requestIds : []);

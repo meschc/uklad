@@ -3,6 +3,7 @@ import { startOfDay } from "@/lib/workstation";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { formatTime } from "./useNow";
 import { JournalActions } from "./JournalActions";
+import { CodeTail } from "@/components/fulfillment/CodeTail";
 
 /**
  * Свой журнал за сегодня (узел cab-staff-log). Сотрудник видит ровно то же,
@@ -40,7 +41,7 @@ export function StaffLog({ staffId, now }: { staffId: string; now: number }) {
                   </span>
                 )}
                 {e.code && (
-                  <span className="ml-2 font-mono text-xs text-muted-foreground">{e.code}</span>
+                  <CodeTail code={e.code} className="ml-2 text-xs text-muted-foreground" />
                 )}
               </>
             ),

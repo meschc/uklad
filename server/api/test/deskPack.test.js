@@ -126,6 +126,16 @@ test("короб с чужим продавцом или другим назна
   assert.equal(applyPackDone(d2, done(), "stf-ivan").flag, "mixed");
 });
 
+test("короб на сортировке для упаковки закрыт", () => {
+  for (const extra of [{ sortCode: "UK-SORT-ABC123-1" }, { place: "box" }]) {
+    const d = data();
+    d.outboundBoxes = [
+      { id: "o3", code: "UK-OUT-7", lines: [], requestIds: [], packedBy: [], ...extra },
+    ];
+    assert.equal(applyPackDone(d, done(), "stf-ivan").flag, "mixed");
+  }
+});
+
 test("тот же короб того же назначения — состав копится", () => {
   const d = data();
   d.requests.push({ id: "r0", productId: "p1", qty: 1, status: "done", note: "Тула", packedAt: 1 });

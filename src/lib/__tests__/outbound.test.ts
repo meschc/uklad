@@ -231,6 +231,19 @@ describe("один короб — один продавец и одно назн
     expect(packTargetProblem({ ...same, open: undefined })).toBeNull();
   });
 
+  it("короб на сортировке для упаковки закрыт", () => {
+    const same = {
+      toteLines: [{ productId: "pA2", qty: 1 }],
+      toteTargets: ["Тула"],
+      products,
+      requests,
+    };
+    expect(packTargetProblem({ ...same, open: { ...boxA, sortCode: "UK-SORT-ABC123-1" } })).toBe(
+      "target_sorted",
+    );
+    expect(packTargetProblem({ ...same, open: { ...boxA, place: "box" } })).toBe("target_sorted");
+  });
+
   it("удалённый из каталога товар не смешивается с товаром склада", () => {
     const own = box({ lines: [{ productId: "pOwn", qty: 1 }], requestIds: [] });
     expect(
