@@ -264,3 +264,17 @@ test("тара в ячейку: занятую другим товаром — �
   same.boxes.push({ id: "b7", lines: [], address: CELL });
   assert.equal(place(same).flag, undefined);
 });
+
+test("кроссдок не отдаёт в заявки лишнее сверх строки: оно ждёт решения старшего", () => {
+  const d = data();
+  d.expectedShipments[0].crossDock = true;
+  d.expectedShipments[0].lines[0].receivedQty = 4;
+  d.requests = [{ id: "r2", productId: "p1", qty: 5, status: "new", createdAt: 1 }];
+  // Ждали 5, приняли 4, сейчас ещё 3: в заявку уходит 1, 2 штуки — в таре.
+  const r = applyRecvUnit(d, unit(), "stf-ivan").data;
+  assert.equal(r.requests[0].pickedQty, 1);
+  assert.deepEqual(r.boxes[0].lines, [{ productId: "p1", qty: 2 }]);
+  // Без строки поставки карантина нет: принятое идёт в заявки, как раньше.
+  const none = applyRecvUnit(d, unit({ lineId: undefined }), "stf-ivan").data;
+  assert.equal(none.requests[0].pickedQty, 3);
+});

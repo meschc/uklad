@@ -36,7 +36,6 @@ const EMPTY_BY_DESIGN: Record<string, string> = {
  * остатками и проверкой `stock.invariant`, а не «для вида».
  */
 const GAPS: Record<string, string> = {
-  disputes: "нет спорного: экран «Спорное» и решение старшего пусты",
   docRecords: "нет тронутых и подтверждённых документов: накладные только черновики",
   outboundBoxes: "нет коробов отгрузки: сортировка и погрузка пусты",
 };
@@ -91,7 +90,7 @@ describe("покрытие посева", () => {
       devices: s.devices,
       staffEvents: s.staffEvents,
     };
-    // Споры, документы и короба отгрузки — в `GAPS` выше.
+    // Документы и короба отгрузки — в `GAPS` выше.
     const blank = Object.keys(domains).filter((k) => !filled(domains[k]));
     expect(blank, `в демо пусто: ${blank.join(", ")}`).toEqual([]);
   });

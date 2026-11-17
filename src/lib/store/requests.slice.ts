@@ -1,4 +1,5 @@
 import { frozenBoxes } from "../inventory";
+import { freeInBox } from "../disputes";
 import { planPickUndo, stepBack } from "../pickUndo";
 import { nowMs, uid } from "../utils";
 import { addressKey } from "../address";
@@ -130,13 +131,14 @@ export const createRequestsSlice: SliceCreator<RequestsSlice> = (set, get) => ({
     const key = addressKey(addr);
     // Тара с нерешённым расхождением инвентаризации заморожена: снятая из
     // неё штука сдвинула бы то, что старший сейчас списывает или оприходует.
+    // Излишек с приёмки, по которому старший не решил, в сборку не идёт.
     const frozen = frozenBoxes(s.disputes ?? []);
     const box = s.boxes.find(
       (b) =>
         !frozen.has(b.id) &&
         b.address &&
         addressKey(b.address) === key &&
-        b.lines.some((l) => l.productId === productId && l.qty > 0),
+        freeInBox(s.disputes ?? [], b, productId) > 0,
     );
     let taken = 0;
     if (box) {
@@ -315,7 +317,10 @@ export const createRequestsSlice: SliceCreator<RequestsSlice> = (set, get) => ({
    * и держать её ради формального порядка бессмысленно.
    */
   applyCrossDock: (productId, qty, shipmentId, boxId) => {
-    let left = Math.max(0, Math.round(qty));
+    // Лишнее в карантине с рампы в заявки не уходит: ждёт решения старшего.
+    const tote = boxId ? get().boxes.find((b) => b.id === boxId) : undefined;
+    const free = tote ? freeInBox(get().disputes ?? [], tote, productId) : Infinity;
+    let left = Math.min(free, Math.max(0, Math.round(qty)));
     if (!left) return 0;
 
     const open = get()

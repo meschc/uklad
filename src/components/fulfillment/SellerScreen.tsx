@@ -27,6 +27,7 @@ import { EmptyState } from "./ScreenShell";
 import { Modal } from "./Modal";
 import { Field } from "@/components/ui/field";
 import { SupplyDialog } from "./SupplyDialog";
+import { SellerSupplies } from "./SellerSupplies";
 import { RequestDialog } from "./RequestDialog";
 import { StatusBadge } from "./TasksScreen";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -103,15 +104,6 @@ function RequestsTab({ t }: { t: TFunc }) {
   const [creating, setCreating] = useState(false);
   const [importing, setImporting] = useState(false);
   const [supplying, setSupplying] = useState(false);
-  const expected = useEditor((s) => s.expectedShipments);
-  const openSupplies = useMemo(
-    () =>
-      expected.filter(
-        (sh) => sh.status !== "closed" && sh.lines.some((l) => mine.has(l.productId)),
-      ),
-    [expected, mine],
-  );
-
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
@@ -131,24 +123,8 @@ function RequestsTab({ t }: { t: TFunc }) {
         </Button>
       </div>
 
-      {/* Что уже едет на склад: продавец видит статус своих поставок. */}
-      {openSupplies.length > 0 && (
-        <div className="flex flex-col gap-1 rounded-lg border border-border bg-muted/30 p-2.5">
-          <p className={eyebrow()}>{t("seller.suppliesTitle")}</p>
-          {openSupplies.map((s) => {
-            const total = s.lines.reduce((a, l) => a + l.expectedQty, 0);
-            const got = s.lines.reduce((a, l) => a + l.receivedQty, 0);
-            return (
-              <div key={s.id} className="flex items-center justify-between gap-2 text-xs">
-                <span className="truncate">{s.title ?? t("supply.noName")}</span>
-                <span className="shrink-0 tabular-nums text-muted-foreground">
-                  {t(`supply.status.${s.status}`)} · {got}/{total}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      )}
+      {/* Что едет на склад и что пришло не так, как заявлено. */}
+      <SellerSupplies mine={mine} />
 
       {requests.length > 0 && (
         <div className="flex flex-wrap items-center gap-2">
