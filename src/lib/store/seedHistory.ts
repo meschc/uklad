@@ -227,7 +227,7 @@ export function seedHistory(
     });
   }
 
-  const disputes = seedOverage(warehouse, products, expectedShipments, receivingEvents, boxes);
+  const disputes = seedOverage(warehouse, products, expectedShipments, receivingEvents, boxes, now);
 
   // --- Паллеты --------------------------------------------------------------
   // Часть коробов стоит на паллетах: так возят крупные партии, и экран «Что
@@ -385,6 +385,7 @@ function seedOverage(
   shipments: ExpectedShipment[],
   events: ReceivingEvent[],
   boxes: Box[],
+  now: number,
 ): Dispute[] {
   const seller = warehouse.partners?.[0]?.id;
   const owner = new Map(products.map((p) => [p.id, p.partnerId]));
@@ -407,6 +408,9 @@ function seedOverage(
     discrepancy: "overage",
   };
   events.push(event);
+  // Закрыли вчера: у посетителя демо есть время ответить продавцом на акт
+  // (трое суток с закрытия), а не только посмотреть «срок вышел».
+  if (closed) closed.closedAt = Math.max(event.timestamp, now - DAY);
   return [
     {
       id: overageDisputeId(event.id),

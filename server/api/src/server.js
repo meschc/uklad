@@ -609,6 +609,9 @@ function main() {
     // Путь товара: посылки по коду и лента посылки от приёмки до рейса.
     const { createGoodsPath } = require("./cabinet/goodsPath");
     const goodsPath = createGoodsPath({ auth, send, log: console });
+    // Ответ продавца на акт расхождений приёмки (миграция 047).
+    const { createReceivingAnswers } = require("./cabinet/receivingAnswers");
+    const receivingAnswers = createReceivingAnswers({ auth, send, log: console });
     const { createTeam } = require("./cabinet/team");
     const team = createTeam({ auth, cfg, send, log: console });
     const { createDeskBadges } = require("./cabinet/deskBadges");
@@ -646,6 +649,7 @@ function main() {
         (await snapshot.handle(req, res, url)) ||
         (await journal.handle(req, res, url)) ||
         (await goodsPath.handle(req, res, url)) ||
+        (await receivingAnswers.handle(req, res, url)) ||
         (await deskBadges.handle(req, res, url)) ||
         (await company.handle(req, res, url)) ||
         (await orgName.handle(req, res, url)) ||

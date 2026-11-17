@@ -16,6 +16,7 @@ export { staffRepository } from "./staffRepository";
 export { payRepository } from "./payRepository";
 export { workstationRepository } from "./workstationRepository";
 export { switchRepository, type SwitchRequest } from "./switchRepository";
+export { receivingAnswersRepository } from "./receivingAnswersRepository";
 export { usePendingOps, STUCK_MS, offlineLimitReached } from "./opQueue";
 export { badgeRepository } from "./badgeRepository";
 export { disputesRepository } from "./disputesRepository";
