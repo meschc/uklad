@@ -3,7 +3,7 @@
  * ответ на открытую или давно закрытую поставку либо возражение без слов,
  * с которым старшему нечего делать.
  */
-/* global require */
+/* global require, URL */
 /* eslint-disable @typescript-eslint/no-require-imports */
 const test = require("node:test");
 const assert = require("node:assert/strict");
@@ -12,6 +12,7 @@ const {
   readAnswer,
   readResolve,
   ANSWER_DAYS,
+  createReceivingAnswers,
 } = require("../src/cabinet/receivingAnswers");
 
 const DAY = 24 * 3_600_000;
@@ -47,4 +48,26 @@ test("решение старшего: учёт верный или пересч
   });
   assert.equal(readResolve({ shipmentId: "exp-1", resolution: "kept", reply: "" }), null);
   assert.equal(readResolve({ shipmentId: "exp-1", resolution: "drop", reply: "x" }), null);
+});
+
+test("отказ продавцу на чужой маршрут — 403, а не сбой", async () => {
+  const sent = [];
+  const err = Object.assign(new Error("seller"), { httpStatus: 403 });
+  const api = createReceivingAnswers({
+    auth: {
+      withSession: async () => {
+        throw err;
+      },
+      readJson: async () => ({ shipmentId: "exp-1", resolution: "kept", reply: "верно" }),
+    },
+    send: (_res, status) => sent.push(status),
+    log: { error: () => sent.push("logged") },
+  });
+  const handled = await api.handle(
+    { method: "POST" },
+    { headersSent: false },
+    new URL("http://x/api/receiving/answers/resolve"),
+  );
+  assert.equal(handled, true);
+  assert.deepEqual(sent, [403]);
 });

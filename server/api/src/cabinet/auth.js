@@ -78,7 +78,7 @@ const sellerMay = (req) => {
   return (
     path.startsWith("/api/auth/") ||
     (path === "/api/cabinet/snapshot" && req.method === "GET") ||
-    // Ответ на акт приёмки (миграция 047): своё сервер проверяет сам.
+    // Ответ на акт приёмки (миграция 048): своё сервер проверяет сам.
     path === "/api/receiving/answers"
   );
 };

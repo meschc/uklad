@@ -187,6 +187,11 @@ function createReceivingAnswers({ auth, send, log, now = () => Date.now() }) {
     try {
       await route(req, res, url);
     } catch (err) {
+      // Отказ продавцу на чужой маршрут (`SellerForbidden`) — 403, а не сбой.
+      if (err.httpStatus) {
+        if (!res.headersSent) send(res, err.httpStatus, { ok: false });
+        return true;
+      }
       log.error("[uklad] сбой ответа на акт приёмки:", err.message);
       if (!res.headersSent) send(res, 500, { ok: false });
     }
