@@ -41,13 +41,16 @@ test("ответ: согласие без слов, возражение — т�
 });
 
 test("решение старшего: учёт верный или пересчёт, всегда с ответом продавцу", () => {
-  assert.deepEqual(readResolve({ shipmentId: "exp-1", resolution: "kept", reply: " Верно " }), {
-    shipmentId: "exp-1",
+  const b = { shipmentId: "exp-1", partnerId: "ptr-r" };
+  assert.deepEqual(readResolve({ ...b, resolution: "kept", reply: " Верно " }), {
+    ...b,
     resolution: "kept",
     reply: "Верно",
   });
-  assert.equal(readResolve({ shipmentId: "exp-1", resolution: "kept", reply: "" }), null);
-  assert.equal(readResolve({ shipmentId: "exp-1", resolution: "drop", reply: "x" }), null);
+  assert.equal(readResolve({ ...b, resolution: "kept", reply: "" }), null);
+  assert.equal(readResolve({ ...b, resolution: "drop", reply: "x" }), null);
+  // Чьё возражение — обязательно: в поставке бывает товар нескольких продавцов.
+  assert.equal(readResolve({ shipmentId: "exp-1", resolution: "kept", reply: "x" }), null);
 });
 
 test("отказ продавцу на чужой маршрут — 403, а не сбой", async () => {
@@ -58,7 +61,12 @@ test("отказ продавцу на чужой маршрут — 403, а н�
       withSession: async () => {
         throw err;
       },
-      readJson: async () => ({ shipmentId: "exp-1", resolution: "kept", reply: "верно" }),
+      readJson: async () => ({
+        shipmentId: "exp-1",
+        partnerId: "ptr-r",
+        resolution: "kept",
+        reply: "верно",
+      }),
     },
     send: (_res, status) => sent.push(status),
     log: { error: () => sent.push("logged") },

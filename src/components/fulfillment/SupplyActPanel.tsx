@@ -44,7 +44,9 @@ export function SupplyActPanel({
   const t = useT();
   const { shipment: s, lines } = row;
   const answers = useEditor((st) => st.receivingAnswers);
-  const answer = answers.find((a) => a.shipmentId === s.id);
+  // Свой ответ: в поставке бывает товар нескольких продавцов, у каждого свой.
+  const me = useEditor((st) => st.session.user.partnerId);
+  const answer = answers.find((a) => a.shipmentId === s.id && a.partnerId === me);
   // Срок сверяем на момент открытия акта; окончательно решает сервер.
   const [now] = useState(() => nowMs());
   const state = answerState(s, answer, now);

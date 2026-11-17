@@ -66,7 +66,7 @@ export function SellerObjections({ query, canDecide }: { query: string; canDecid
           : [];
         return (
           <ObjectionLine
-            key={a.shipmentId}
+            key={`${a.shipmentId}:${a.partnerId}`}
             a={a}
             who={nameOf(a.partnerId)}
             title={s?.title ?? t("supply.noName")}
@@ -130,14 +130,14 @@ function ObjectionLine({
               size="sm"
               variant="outline"
               disabled={resolve.pending}
-              onClick={() => void resolve.run(a.shipmentId, "recount", reply)}
+              onClick={() => void resolve.run(a.shipmentId, a.partnerId, "recount", reply)}
             >
               {t("approvals.objection.recount")}
             </Button>
             <Button
               size="sm"
               disabled={resolve.pending}
-              onClick={() => void resolve.run(a.shipmentId, "kept", reply)}
+              onClick={() => void resolve.run(a.shipmentId, a.partnerId, "kept", reply)}
             >
               {t("approvals.objection.kept")}
             </Button>

@@ -148,7 +148,8 @@ function cabinet(now) {
         status: "closed",
         createdAt: now - 30 * HOUR,
         closedAt: now - 24 * HOUR,
-        lines: [line("l1", "p-r", 10, 8)],
+        // Смешанная поставка: строки двух продавцов, каждый отвечает за свои.
+        lines: [line("l1", "p-r", 10, 8), line("l1b", "p-l", 6, 6)],
       },
       {
         id: "exp-old",
@@ -210,12 +211,34 @@ test(
 
     // Продавец решать не может; руководитель — может, один раз.
     const resolve = (who, body) => post("/api/receiving/answers/resolve", { ...who, body });
-    const verdict = { shipmentId: "exp-fresh", resolution: "recount", reply: "Пересчитаем завтра" };
+    const verdict = {
+      shipmentId: "exp-fresh",
+      partnerId: "ptr-r",
+      resolution: "recount",
+      reply: "Пересчитаем завтра",
+    };
     assert.equal((await resolve(seller, verdict)).status, 403);
     const done = await resolve(boss, verdict);
     assert.equal(done.status, 200, JSON.stringify(done.json));
     assert.equal(done.json.answer.resolution, "recount");
     assert.equal((await resolve(boss, verdict)).status, 409);
+
+    // Второй продавец той же поставки отвечает за свои строки сам, чужого ответа не видит.
+    await post("/api/team/invite", {
+      ...boss,
+      body: { email: "lyutik-a@example.com", warehouseRef: "wh-a", partnerRef: "ptr-l" },
+    });
+    const other = await accept("lyutik-a@example.com", boss.ip);
+    const hers = await post("/api/receiving/answers", {
+      ...other,
+      body: { shipmentId: "exp-fresh", answer: "agree" },
+    });
+    assert.equal(hers.status, 200, JSON.stringify(hers.json));
+    const herList = await call("GET", "/api/receiving/answers", other);
+    assert.deepEqual(
+      herList.json.answers.map((a) => [a.partnerId, a.answer]),
+      [["ptr-l", "agree"]],
+    );
 
     // Продавец видит свой ответ и решение склада.
     const mine = await call("GET", "/api/receiving/answers", seller);

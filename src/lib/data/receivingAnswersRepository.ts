@@ -38,11 +38,13 @@ export function createReceivingAnswersRepository(port: StorePort = storePort) {
     port.set({
       receivingAnswers: [
         a,
-        ...(port.get().receivingAnswers ?? []).filter((x) => x.shipmentId !== a.shipmentId),
+        ...(port.get().receivingAnswers ?? []).filter(
+          (x) => x.shipmentId !== a.shipmentId || x.partnerId !== a.partnerId,
+        ),
       ],
     });
-  const local = (id: string) =>
-    (port.get().receivingAnswers ?? []).find((a) => a.shipmentId === id);
+  const local = (id: string, partner: string) =>
+    (port.get().receivingAnswers ?? []).find((a) => a.shipmentId === id && a.partnerId === partner);
 
   /** Ответ сервера → запись в сторе или ключ отказа. */
   const fromServer = async (
@@ -87,11 +89,12 @@ export function createReceivingAnswersRepository(port: StorePort = storePort) {
       const s = port.get();
       const shipment = s.expectedShipments.find((x) => x.id === shipmentId);
       if (!shipment) return fail("data.failed");
-      if (local(shipmentId)) return fail("supply.act.err.answered");
+      const partnerId = s.session.user.partnerId ?? "";
+      if (local(shipmentId, partnerId)) return fail("supply.act.err.answered");
       if (answerState(shipment, undefined, nowMs()) !== "open") return fail("supply.act.err.late");
       const a: ReceivingAnswer = {
         shipmentId,
-        partnerId: s.session.user.partnerId ?? "",
+        partnerId,
         answer,
         ...(text ? { comment: text } : {}),
         answeredAt: nowMs(),
@@ -103,15 +106,21 @@ export function createReceivingAnswersRepository(port: StorePort = storePort) {
     /** Старший: ответ на возражение — учёт верный или пересчитаем. */
     resolve: async (
       shipmentId: string,
+      partnerId: string,
       resolution: NonNullable<ReceivingAnswer["resolution"]>,
       reply: string,
     ): Promise<Result<ReceivingAnswer>> => {
       const text = reply.trim();
       if (!text) return fail("supply.act.err.reply");
       if (onServer(port)) {
-        return fromServer("/receiving/answers/resolve", { shipmentId, resolution, reply: text });
+        return fromServer("/receiving/answers/resolve", {
+          shipmentId,
+          partnerId,
+          resolution,
+          reply: text,
+        });
       }
-      const a = local(shipmentId);
+      const a = local(shipmentId, partnerId);
       if (!a || a.answer !== "dispute" || a.resolution) return fail("supply.act.err.resolved");
       const done = { ...a, resolution, reply: text, resolvedAt: nowMs() };
       put(done);

@@ -31,7 +31,13 @@ function setup(shipments: ExpectedShipment[] = [shipment()]) {
       state = { ...state, ...(patch as Partial<EditorState>) };
     },
   };
-  return { repo: createReceivingAnswersRepository(port), answers: () => state.receivingAnswers };
+  return {
+    repo: createReceivingAnswersRepository(port),
+    answers: () => state.receivingAnswers,
+    as: (partnerId: string) => {
+      state = { ...state, session: { ...state.session, user: { partnerId } } } as EditorState;
+    },
+  };
 }
 
 describe("ответ продавца на акт приёмки", () => {
@@ -49,6 +55,18 @@ describe("ответ продавца на акт приёмки", () => {
       error: "supply.act.err.answered",
     });
     expect(answers()).toHaveLength(1);
+  });
+
+  it("в смешанной поставке каждый продавец отвечает за свои строки", async () => {
+    vi.setSystemTime(NOW);
+    const { repo, answers, as } = setup();
+    await repo.answer("sh1", "dispute", "пришло 10");
+    as("pb");
+    expect((await repo.answer("sh1", "agree", "")).ok).toBe(true);
+    expect(answers().map((a) => [a.partnerId, a.answer])).toEqual([
+      ["pb", "agree"],
+      ["pa", "dispute"],
+    ]);
   });
 
   it("несогласие без комментария не уходит", async () => {
@@ -73,13 +91,13 @@ describe("ответ продавца на акт приёмки", () => {
     vi.setSystemTime(NOW);
     const { repo, answers } = setup();
     await repo.answer("sh1", "dispute", "отгрузили 10, есть накладная");
-    expect((await repo.resolve("sh1", "recount", "")).ok).toBe(false);
-    const res = await repo.resolve("sh1", "recount", "пересчитаем завтра");
+    expect((await repo.resolve("sh1", "pa", "recount", "")).ok).toBe(false);
+    const res = await repo.resolve("sh1", "pa", "recount", "пересчитаем завтра");
     expect(res.ok && res.data).toMatchObject({
       resolution: "recount",
       reply: "пересчитаем завтра",
     });
-    expect(await repo.resolve("sh1", "kept", "ещё раз")).toEqual({
+    expect(await repo.resolve("sh1", "pa", "kept", "ещё раз")).toEqual({
       ok: false,
       error: "supply.act.err.resolved",
     });

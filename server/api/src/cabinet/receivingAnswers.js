@@ -3,7 +3,7 @@
  *
  *   GET  /api/receiving/answers          — ответы по складу (продавцу — свои)
  *   POST /api/receiving/answers          — продавец: { shipmentId, answer, comment }
- *   POST /api/receiving/answers/resolve  — старший: { shipmentId, resolution, reply }
+ *   POST /api/receiving/answers/resolve  — старший: { shipmentId, partnerId, resolution, reply }
  *
  * Продавец отвечает один раз и только на свою закрытую поставку, пока не
  * вышли трое суток после закрытия: дальше молчание — согласие. Свою ли
@@ -56,10 +56,11 @@ function readAnswer(b) {
 /** Тело решения старшего → запись или `null` (400). */
 function readResolve(b) {
   if (!isObject(b) || typeof b.shipmentId !== "string" || !ID_RE.test(b.shipmentId)) return null;
+  if (typeof b.partnerId !== "string" || !ID_RE.test(b.partnerId)) return null;
   if (!RESOLUTIONS.has(b.resolution)) return null;
   const reply = text(b.reply);
   if (!reply || reply.length > MAX_TEXT) return null;
-  return { shipmentId: b.shipmentId, resolution: b.resolution, reply };
+  return { shipmentId: b.shipmentId, partnerId: b.partnerId, resolution: b.resolution, reply };
 }
 
 const ms = (v) => (v ? new Date(v).getTime() : undefined);
@@ -92,9 +93,11 @@ function createReceivingAnswers({ auth, send, log, now = () => Date.now() }) {
       const p = ctx.accountId ? await place(c) : null;
       const seller = sellerOf(p);
       if (!seller && !READ_PERMS.some((x) => ctx.can(x))) return { status: 403 };
-      // Продавец и человек склада — только свой склад; владелец — все.
-      const wh = seller ? placeRef(await snapshotDoc(c), p.warehouse_ref) : p?.warehouse_ref;
-      if (seller && !wh) return { status: 200, rows: [] };
+      // Продавец и человек склада — только свой склад (без закрепления — единственный
+      // склад компании); все склады — только тому, кто ведёт персонал всей компании.
+      const all = !seller && ctx.can("staff.manage") && !p?.warehouse_ref;
+      const wh = all ? null : placeRef(await snapshotDoc(c), p?.warehouse_ref);
+      if (!all && !wh) return { status: 200, rows: [] };
       const { rows } = await c.query(
         `SELECT * FROM uklad.receiving_answers
          WHERE org_id = uklad.current_org()
@@ -161,11 +164,11 @@ function createReceivingAnswers({ auth, send, log, now = () => Date.now() }) {
       const { rows } = await c.query(
         `UPDATE uklad.receiving_answers
          SET resolution = $3, reply = $4, resolved_by = $5, resolved_at = now()
-         WHERE org_id = uklad.current_org() AND shipment_ref = $1
+         WHERE org_id = uklad.current_org() AND shipment_ref = $1 AND partner_ref = $6
            AND ($2::text IS NULL OR warehouse_ref = $2)
            AND answer = 'dispute' AND resolved_at IS NULL
          RETURNING *`,
-        [b.shipmentId, me[0]?.warehouse_ref ?? null, b.resolution, b.reply, by],
+        [b.shipmentId, me[0]?.warehouse_ref ?? null, b.resolution, b.reply, by, b.partnerId],
       );
       if (!rows[0]) return { status: 409, error: "resolved" };
       return { status: 200, row: rows[0] };
@@ -187,7 +190,7 @@ function createReceivingAnswers({ auth, send, log, now = () => Date.now() }) {
     try {
       await route(req, res, url);
     } catch (err) {
-      // Отказ продавцу на чужой маршрут (`SellerForbidden`) — 403, а не сбой.
+      // Отказ продавцу на чужой маршрут (`SellerForbidden`, #167) — 403, а не сбой.
       if (err.httpStatus) {
         if (!res.headersSent) send(res, err.httpStatus, { ok: false });
         return true;
