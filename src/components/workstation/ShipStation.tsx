@@ -265,11 +265,13 @@ function ShipGroup({
 
   return (
     <section className="flex flex-col gap-4">
-      <div className="flex items-baseline justify-between gap-3">
+      {/* «Заявок: 3» не рвётся на две строки: длинный адрес уводит счётчик
+          под себя, а не сжимает его (Кирилл 17.11). */}
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <h3 className="text-lg">
           <DestinationChip destination={target} />
         </h3>
-        <span className={eyebrow({ tone: "muted" })}>
+        <span className={eyebrow({ tone: "muted", className: "whitespace-nowrap" })}>
           {t("ws.ship.count", { n: items.length })}
         </span>
       </div>
