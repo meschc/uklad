@@ -10,7 +10,16 @@ export function FullscreenButton() {
   if (!fullscreenSupported()) return null;
   const label = t(on ? "ws.fullscreen.exit" : "ws.fullscreen.enter");
   return (
-    <Button variant="ghost" size="sm" aria-label={label} title={label} onClick={toggleFullscreen}>
+    // На телефоне кнопки нет (Кирилл 18.11): iPhone полный экран для страницы
+    // не даёт, а на ТСД стол разворачивается сам при входе по бейджу.
+    <Button
+      variant="ghost"
+      size="sm"
+      className="max-md:hidden"
+      aria-label={label}
+      title={label}
+      onClick={toggleFullscreen}
+    >
       {on ? <Minimize /> : <Maximize />}
     </Button>
   );
