@@ -56,7 +56,7 @@ export function ShiftBar({ staffId, onOpen }: { staffId: string; onOpen: () => v
 
   if (state === "idle")
     return (
-      <div className="flex items-start gap-1">
+      <div className="flex items-start gap-1 max-md:contents">
         <Cell
           icon={Timer}
           label={t("ws.bar.shift")}
@@ -77,7 +77,7 @@ export function ShiftBar({ staffId, onOpen }: { staffId: string; onOpen: () => v
     );
 
   return (
-    <div className="flex items-start gap-1">
+    <div className="flex items-start gap-1 max-md:contents">
       <Cell
         icon={Timer}
         label={t("ws.bar.shift")}
@@ -151,14 +151,17 @@ function Cell({
         // Фон при наведении — от цвета текста: шапка лежит на сером, и
         // `bg-muted` на нём не виден, а на заливке сигнала тем более.
         "group relative flex min-h-12 flex-col items-center justify-center rounded-md px-3 py-1 text-center leading-tight hover:bg-foreground/[0.06]",
+        // В нижней панели телефона — равная доля ширины: четыре кнопки на 360 px.
+        "max-md:min-w-0 max-md:flex-1 max-md:basis-0 max-md:px-1",
         // Просроченный перерыв — заливкой, а не рамкой: рамка в шапке читалась
         // как выбранная кнопка (Кирилл 13.11).
         ring && "bg-success/15 hover:bg-success/25",
       )}
     >
-      <span className="flex items-center gap-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-        <Icon className="size-3" />
-        {label}
+      <span className="flex max-w-full items-center gap-1 max-md:gap-0.5 text-xs font-medium uppercase tracking-wider text-muted-foreground max-md:normal-case max-md:tracking-normal">
+        {/* На телефоне без значка: в четверть ширины влезают слово и клавиша ТСД. */}
+        <Icon className="size-3 shrink-0 max-md:hidden" />
+        <span className="truncate">{label}</span>
         {k && <KeyHint k={k} />}
       </span>
       <span

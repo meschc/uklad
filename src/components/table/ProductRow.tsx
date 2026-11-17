@@ -39,6 +39,9 @@ function ProductThumb({ product }: { product: Product }) {
   );
 }
 
+/** Зона касания адреса на телефоне — 44 px при рисунке в 20: как у галочки строки. */
+const TAP = "relative max-md:before:absolute max-md:before:-inset-3 max-md:before:content-['']";
+
 /** Адрес: этаж-секция-полка-ячейка. */
 function AddressChip({ address }: { address: string }) {
   const t = useT();
@@ -161,7 +164,7 @@ export function ProductRow({
             <button
               onClick={onReveal}
               title={t("table.showOnPlan")}
-              className="group/place inline-flex items-center gap-1"
+              className={cn("group/place inline-flex items-center gap-1", TAP)}
             >
               <AddressChip address={place} />
               <MapPin className="size-3 text-muted-foreground opacity-0 transition-opacity group-hover/place:opacity-100" />
@@ -173,13 +176,15 @@ export function ProductRow({
           <span className="group/place inline-flex items-center gap-1">
             {/* Клик по адресу — «показать на плане», карандаш — сменить место:
                 разные намерения, разные цели. */}
-            <button onClick={onReveal} title={t("table.showOnPlan")}>
+            <button onClick={onReveal} title={t("table.showOnPlan")} className={TAP}>
               <AddressChip address={place} />
             </button>
             <button
               onClick={onAssign}
               title={t("table.editPlace")}
-              className="opacity-0 transition-opacity group-hover/place:opacity-100"
+              aria-label={t("table.editPlace")}
+              // На телефоне наведения нет: карандаш виден всегда и под палец.
+              className="opacity-0 transition-opacity group-hover/place:opacity-100 max-md:inline-flex max-md:size-11 max-md:items-center max-md:justify-center max-md:opacity-100"
             >
               <Pencil className="size-3 text-muted-foreground" />
             </button>
@@ -187,7 +192,7 @@ export function ProductRow({
         ) : (
           <button
             onClick={onAssign}
-            className="inline-flex items-center gap-1 rounded border border-dashed border-border px-1.5 py-0.5 text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:bg-primary/5 hover:text-primary"
+            className="inline-flex items-center gap-1 rounded border border-dashed border-border px-1.5 py-0.5 text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:bg-primary/5 hover:text-primary max-md:min-h-11 max-md:px-3"
           >
             <MapPin className="size-3" />
             {t("table.assignBtn")}

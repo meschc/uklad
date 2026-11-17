@@ -141,10 +141,11 @@ export function WorkstationScreen() {
           {device ? (
             // Стол, привязанный к месту, в кабинет не уходит: вместо выхода —
             // имя места, чтобы по экрану было видно, какой это стол.
-            <div className="flex items-center gap-1 text-sm font-semibold">
-              <span className="flex h-8 items-center gap-2 px-3">
-                <MonitorSmartphone className="size-4 text-muted-foreground" />
-                {device.name}
+            <div className="flex min-w-0 items-center gap-1 text-sm font-semibold">
+              <span className="flex h-8 min-w-0 items-center gap-2 px-3 max-md:px-1">
+                <MonitorSmartphone className="size-4 shrink-0 text-muted-foreground" />
+                {/* На телефоне после входа имя стола уступает место имени человека. */}
+                <span className={cn("truncate", member && "max-md:sr-only")}>{device.name}</span>
               </span>
               {!member && (
                 <Button
@@ -194,7 +195,7 @@ export function WorkstationScreen() {
           {member && <ShiftBar staffId={member.id} onOpen={() => setPanel("shift")} />}
         </div>
         {member ? (
-          <div className="flex min-w-0 items-center justify-end gap-3">
+          <div className="flex min-w-0 items-center justify-end gap-3 max-md:gap-1">
             {mayDecideGoods(session, member, onServer) && (
               // Спорное решает старший, не отходя от стола: тара с недостачей
               // приходит к нему, и счётчик виден сразу.
@@ -219,7 +220,7 @@ export function WorkstationScreen() {
               <KeyHint k={STATION_KEY_LABEL.log} />
             </Button>
             <FullscreenButton />
-            <div className="min-w-0 text-right">
+            <div className="min-w-0 text-right max-md:max-w-[8rem]">
               <p className="truncate text-sm font-medium leading-tight">{member.name}</p>
               <p className="hidden text-xs text-muted-foreground md:block">
                 {t("ws.sessionUntil", { t: formatTime(session!.expiresAt, t.lang) })}
@@ -302,13 +303,13 @@ export function WorkstationScreen() {
       {member && (
         // Нижняя панель телефона и ТСД: смена, перерыв и журнал — крупно и
         // под большой палец, чтобы работать одной рукой.
-        <nav className="flex shrink-0 items-center justify-center gap-2 px-2 pb-[max(0.375rem,env(safe-area-inset-bottom))] md:hidden">
+        <nav className="flex shrink-0 items-center justify-center gap-0.5 px-1 pb-[max(0.375rem,env(safe-area-inset-bottom))] md:hidden">
           <ShiftBar staffId={member.id} onOpen={() => setPanel("shift")} />
           {/* На ТСД шапка узкая: процесс — здесь же, под пальцем. */}
           <button
             type="button"
             onClick={() => setPanel("process")}
-            className="flex min-h-12 flex-col items-center justify-center rounded-md px-3 text-xs font-medium text-muted-foreground hover:bg-muted"
+            className="flex min-h-12 min-w-0 flex-1 basis-0 flex-col items-center justify-center rounded-md px-1 text-xs font-medium text-muted-foreground hover:bg-muted"
           >
             <ArrowLeftRight className="size-5" />
             {/* Подпись — «Процесс», а не имя процесса: «Инвентаризация» не
@@ -318,10 +319,13 @@ export function WorkstationScreen() {
           <button
             type="button"
             onClick={() => setPanel("log")}
-            className="flex min-h-12 flex-col items-center justify-center rounded-md px-3 text-xs font-medium text-muted-foreground hover:bg-muted"
+            className="flex min-h-12 min-w-0 flex-1 basis-0 flex-col items-center justify-center rounded-md px-1 text-xs font-medium text-muted-foreground hover:bg-muted"
           >
             <History className="size-5" />
-            {t("ws.tab.log")}
+            <span className="flex items-center gap-1">
+              {t("ws.tab.log")}
+              <KeyHint k={STATION_KEY_LABEL.log} />
+            </span>
           </button>
         </nav>
       )}

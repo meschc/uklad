@@ -10,26 +10,7 @@ import { cn } from "@/lib/utils";
 import { Select } from "@/components/ui/select";
 import { FormError } from "@/components/ui/field";
 import { useEditor } from "@/lib/store";
-
-/** Места, у которых уже есть свой экран. Остальные видны в списке как «скоро». */
-const READY: WorkstationKind[] = [
-  "pack",
-  "receiving",
-  "picking",
-  "sorting",
-  "shipping",
-  "inventory",
-];
-const STATIONS: WorkstationKind[] = [
-  "pack",
-  "receiving",
-  "picking",
-  "sorting",
-  "shipping",
-  "inventory",
-  "marking",
-  "returns",
-];
+import { OPEN_STATIONS } from "@/lib/stationSwitch";
 
 /**
  * Привязать этот компьютер как стол склада. Одна форма на двух экранах:
@@ -99,10 +80,9 @@ export function BindDeviceForm({
               stacked ? "h-10" : "h-9",
             )}
           >
-            {STATIONS.map((st) => (
-              <option key={st} value={st} disabled={!READY.includes(st)}>
+            {OPEN_STATIONS.map((st) => (
+              <option key={st} value={st}>
                 {t(`ws.station.${st}` as MsgKey)}
-                {!READY.includes(st) && ` · ${t("ws.soon")}`}
               </option>
             ))}
           </Select>

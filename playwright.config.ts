@@ -58,7 +58,7 @@ export default defineConfig({
       // полный набор в третий раз — это минута прогона ради повторения того
       // же самого.
       name: "mobile-sm",
-      testMatch: /responsive\.spec\.ts/,
+      testMatch: /(responsive|mobile-fit)\.spec\.ts/,
       use: { ...devices["Pixel 7"], viewport: { width: 375, height: 667 } },
     },
   ],
