@@ -75,7 +75,10 @@ export function Segmented<T extends string>({
         // вылезают за край экрана.
         "no-scrollbar relative inline-flex max-w-full shrink-0 items-center gap-0.5 overflow-x-auto rounded-lg bg-muted",
         s.wrap,
-        grow && "w-full",
+        // Без `grow` — по содержимому. Иначе в колонке (flex-col) контейнер
+        // растягивался на всю строку, а сегменты жались слева: «элемент
+        // в 4 раза длиннее, чем должен быть» (Кирилл 17.11).
+        grow ? "w-full" : "w-fit",
         className,
       )}
     >

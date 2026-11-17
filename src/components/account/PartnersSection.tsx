@@ -145,16 +145,27 @@ export function PartnersSection() {
                 key={p.id}
                 type="button"
                 onClick={() => setOpenId(p.id)}
-                className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_9rem_6rem_1rem] items-center gap-3 rounded-md px-2 py-2 text-left text-sm transition-colors duration-fast hover:bg-muted/60"
+                // На телефоне — карточкой: имя и число товаров сверху, контакты
+                // под ними. В шесть колонок на 390 px от имени оставалось «О…».
+                className="grid grid-cols-[minmax(0,1fr)_auto_1rem] items-center gap-x-3 gap-y-0.5 rounded-md px-2 py-3 text-left text-sm transition-colors duration-fast hover:bg-muted/60 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_9rem_6rem_1rem] md:gap-3 md:py-2"
               >
                 <span className="truncate font-medium">{p.name}</span>
-                <span className="truncate text-muted-foreground">{p.contact || "—"}</span>
-                <span className="truncate">{p.person || "—"}</span>
-                <span className="truncate tabular-nums">{p.phone || "—"}</span>
-                <span className="text-right text-xs text-muted-foreground">
+                <span className="col-start-2 row-start-1 text-right text-xs text-muted-foreground md:col-start-5">
                   {t("partners.goods", { n })}
                 </span>
-                <ChevronRight className="size-4 text-muted-foreground" />
+                <ChevronRight className="col-start-3 row-start-1 size-4 text-muted-foreground md:col-start-6" />
+                <span className="col-span-3 truncate text-xs text-muted-foreground md:hidden">
+                  {[p.person, p.phone, p.contact].filter(Boolean).join(" · ") || "—"}
+                </span>
+                <span className="hidden truncate text-muted-foreground md:col-start-2 md:row-start-1 md:block">
+                  {p.contact || "—"}
+                </span>
+                <span className="hidden truncate md:col-start-3 md:row-start-1 md:block">
+                  {p.person || "—"}
+                </span>
+                <span className="hidden truncate tabular-nums md:col-start-4 md:row-start-1 md:block">
+                  {p.phone || "—"}
+                </span>
               </button>
             );
           })}

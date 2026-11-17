@@ -197,7 +197,7 @@ function RequestsTab({ t }: { t: TFunc }) {
               ))}
             </div>
             <div className="overflow-hidden rounded-xl border border-border">
-              <table className="w-full border-collapse text-sm">
+              <table className="table-stack w-full border-collapse text-sm">
                 <thead className="bg-muted/50 text-xs">
                   <tr className="text-left">
                     <SortTh table={reqTable.table} id="name">
@@ -223,14 +223,20 @@ function RequestsTab({ t }: { t: TFunc }) {
                           <div className="font-medium">{p?.name ?? "—"}</div>
                           <div className="font-mono text-2xs text-muted-foreground">{p?.sku}</div>
                         </td>
-                        <td className="px-3 py-2 text-right tabular-nums">
+                        <td
+                          className="px-3 py-2 text-right tabular-nums"
+                          data-label={t("tasks.col.qty")}
+                        >
                           {r.pickedQty ? `${r.pickedQty}/` : ""}
                           {r.qty}
                         </td>
-                        <td className="px-3 py-2 text-xs text-muted-foreground">
+                        <td
+                          className="px-3 py-2 text-xs text-muted-foreground"
+                          data-label={t("seller.col.shipDate")}
+                        >
                           {r.truckDate ? new Date(r.truckDate).toLocaleDateString() : "—"}
                         </td>
-                        <td className="px-3 py-2">
+                        <td className="px-3 py-2" data-label={t("tasks.col.status")}>
                           <StatusBadge status={r.status} partial={r.partial} t={t} />
                           {r.source && (
                             <div className="mt-0.5 text-2xs text-muted-foreground">

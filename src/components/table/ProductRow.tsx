@@ -7,7 +7,8 @@ import { asciiAvatar } from "@/lib/asciiAvatar";
 import { RowCheck } from "./RowCheck";
 import type { TableRow } from "./tableRows";
 import type { ColId } from "./columns";
-import { Fragment } from "react";
+import { cloneElement, Fragment, type ReactElement } from "react";
+import { COLS } from "./TableHead";
 
 /** URL только с безопасной схемой (http/https), иначе ссылку не рисуем. */
 function safeUrl(url?: string): string | undefined {
@@ -86,15 +87,15 @@ export function ProductRow({
   const t = useT();
   const { product: p, place, qty } = row;
   const url = safeUrl(p.url);
-  const cells: Record<ColId, React.ReactNode> = {
+  const cells: Record<ColId, ReactElement<{ "data-label"?: string }>> = {
     photo: (
-      <td className="px-3 py-1.5">
+      <td className="stack-lead px-3 py-1.5">
         <ProductThumb product={p} />
       </td>
     ),
     sku: <td className="px-3 py-1.5 font-mono text-xs text-muted-foreground">{p.sku}</td>,
     name: (
-      <td className="px-3 py-1.5 font-medium">
+      <td className="stack-title px-3 py-1.5 font-medium">
         <span className="inline-flex items-center gap-1.5">
           {p.name}
           {url && (
@@ -113,7 +114,7 @@ export function ProductRow({
       </td>
     ),
     barcode: (
-      <td className="px-3 py-1.5 font-mono text-xs text-muted-foreground">
+      <td className="px-3 py-1.5 font-mono text-xs text-muted-foreground max-md:!hidden">
         <button
           type="button"
           onClick={onBarcode}
@@ -126,18 +127,18 @@ export function ProductRow({
       </td>
     ),
     category: (
-      <td className="px-3 py-1.5">
+      <td className="px-3 py-1.5 max-md:!hidden">
         <span className="rounded bg-muted px-1.5 py-0.5 text-xs">{catLabel(t, p.category)}</span>
       </td>
     ),
     partner: <td className="px-3 py-1.5 text-xs text-muted-foreground">{partner || "—"}</td>,
     dims: (
-      <td className="whitespace-nowrap px-3 py-1.5 tabular-nums text-muted-foreground">
+      <td className="whitespace-nowrap px-3 py-1.5 tabular-nums text-muted-foreground max-md:!hidden">
         {cm(p.widthCm)} × {cm(p.heightCm)} × {cm(p.depthCm)}
       </td>
     ),
     weight: (
-      <td className="px-3 py-1.5 tabular-nums text-muted-foreground">
+      <td className="px-3 py-1.5 tabular-nums text-muted-foreground max-md:!hidden">
         {p.weightKg != null ? cm(p.weightKg) : "—"}
       </td>
     ),
@@ -203,7 +204,7 @@ export function ProductRow({
         picked && "bg-primary/5",
       )}
     >
-      <td className="px-3 py-1.5">
+      <td className="stack-lead px-3 py-1.5">
         <RowCheck
           checked={picked}
           onChange={onPick}
@@ -214,9 +215,17 @@ export function ProductRow({
       {order
         .filter((c) => !(readOnly && c === "partner"))
         .map((c) => (
-          <Fragment key={c}>{cells[c]}</Fragment>
+          <Fragment key={c}>
+            {/* На телефоне строка — карточка (`table-stack`): у значения
+                подпись колонки. Фото и название — шапка карточки, без подписи;
+                штрихкод, категория, габариты и вес на телефоне не показываем —
+                карточка короче, а всё это есть в карточке товара. */}
+            {c === "photo" || c === "name"
+              ? cells[c]
+              : cloneElement(cells[c], { "data-label": t(COLS[c].label) })}
+          </Fragment>
         ))}
-      <td className="px-2 py-1.5">
+      <td className="stack-head px-2 py-1.5">
         <div className="flex items-center justify-end gap-1">
           {/* Продавцу из таблицы нужна ровно одна операция — набрать заявку
               на отгрузку (п.3). */}
