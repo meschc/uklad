@@ -6,7 +6,7 @@
  * в ту, что на столе (`pack_merge`). Сервер повторяет правку по правилам
  * браузера (`lib/toteMerge.ts`): пересыпать можно только тару, где лежат
  * одни части заказов этой тары, — чужой заказ так в посылку не попадёт.
- * Остальные переносы между тарами делает старший.
+ * Остальные переносы между тарами делает старший (`pack_move`).
  *
  * Тот же закон держит закрытие тары (`orderSplit`): заказ площадки,
  * часть которого ещё в другой таре или собирается, упакованным не станет.
@@ -55,54 +55,102 @@ function mergeProblem(requests, into, from) {
   return null;
 }
 
+/** Строки двух тар — одной: штуки одного товара складываются. */
+function sumLines(a, b) {
+  const lines = new Map();
+  for (const l of [...list(a), ...list(b)]) {
+    const q = Number(l.qty) || 0;
+    if (q > 0 && isId(l.productId)) lines.set(l.productId, (lines.get(l.productId) ?? 0) + q);
+  }
+  return [...lines].map(([productId, qty]) => ({ productId, qty }));
+}
+
+/** Тара `from` пересыпана в `into`: строки сложены, открытые заявки той тары — в этой. */
+function moveAll(data, into, from, event) {
+  const boxes = list(data.boxes);
+  return {
+    ...data,
+    boxes: boxes.map((b) =>
+      b === into
+        ? { ...b, lines: sumLines(into.lines, from.lines) }
+        : b === from
+          ? { ...b, lines: [] }
+          : b,
+    ),
+    requests: list(data.requests).map((r) =>
+      r.toteId === from.id && isOpen(r) ? { ...r, toteId: into.id, updatedAt: event.at } : r,
+    ),
+    staffEvents: [...list(data.staffEvents), event],
+  };
+}
+
+const findBoxes = (data, body) => {
+  const boxes = list(data.boxes);
+  return {
+    into: boxes.find((b) => b.id === body.toteId),
+    from: boxes.find((b) => b.id === body.fromToteId),
+  };
+};
+
 /**
  * Пересыпать тару `fromToteId` в `toteId`: строки складываются, заявки той
  * тары теперь числятся в этой. Сверку остатков проходит общая проверка:
  * сумма по коробам не меняется.
  */
 function applyToteMerge(data, body, staffRef) {
-  const events = list(data.staffEvents);
-  if (events.some((e) => e.id === body.eventId)) return { data };
+  if (list(data.staffEvents).some((e) => e.id === body.eventId)) return { data };
   if (!isId(body.toteId) || !isId(body.fromToteId)) return { flag: "bad" };
-  const boxes = list(data.boxes);
-  const into = boxes.find((b) => b.id === body.toteId);
-  const from = boxes.find((b) => b.id === body.fromToteId);
-  const requests = list(data.requests);
-  const problem = mergeProblem(requests, into, from);
+  const { into, from } = findBoxes(data, body);
+  const problem = mergeProblem(list(data.requests), into, from);
   if (problem) return { flag: problem };
-  const lines = new Map();
-  for (const l of [...list(into.lines), ...list(from.lines)]) {
-    const q = Number(l.qty) || 0;
-    if (q > 0 && isId(l.productId)) lines.set(l.productId, (lines.get(l.productId) ?? 0) + q);
-  }
-  const at = body.at;
   return {
-    data: {
-      ...data,
-      boxes: boxes.map((b) =>
-        b === into
-          ? { ...b, lines: [...lines].map(([productId, qty]) => ({ productId, qty })) }
-          : b === from
-            ? { ...b, lines: [] }
-            : b,
-      ),
-      requests: requests.map((r) =>
-        r.toteId === from.id && isOpen(r) ? { ...r, toteId: into.id, updatedAt: at } : r,
-      ),
-      staffEvents: [
-        ...events,
-        {
-          id: body.eventId,
-          staffId: staffRef,
-          type: "pack_merge",
-          at,
-          station: "pack",
-          code: String(from.barcode ?? "").slice(0, 100),
-          boxId: into.id,
-        },
-      ],
-    },
+    data: moveAll(data, into, from, {
+      id: body.eventId,
+      staffId: staffRef,
+      type: "pack_merge",
+      at: body.at,
+      station: "pack",
+      code: String(from.barcode ?? "").slice(0, 100),
+      boxId: into.id,
+    }),
   };
 }
 
-module.exports = { applyToteMerge, orderSplit };
+/**
+ * Почему старший не может переложить тару `from` в `into` (`moveProblem` в
+ * браузере): null — можно. Чужой заказ здесь не помеха — за это отвечает
+ * старший; нельзя только полку, закрытую тару и тару, в которую ещё собирают.
+ */
+function moveProblem(requests, into, from) {
+  if (!into || !from || into.id === from.id) return "bad";
+  if (into.address || into.sealed || from.address || from.sealed) return "bad";
+  if (!list(from.lines).some((l) => Number(l.qty) > 0)) return "empty";
+  if (requests.some((r) => r.toteId === from.id && isOpen(r) && r.status !== "done")) return "busy";
+  return null;
+}
+
+/**
+ * Старший перекладывает тару целиком (`pack_move`, миграция 048): переполнена,
+ * порвалась, недособранная тара освобождается. Право — решать по товару, и
+ * только у того, кто сейчас за столом (`deskOps.js`). Заявки тары переезжают
+ * вместе с товаром, поэтому упаковка увидит их в новой таре.
+ */
+function applyToteMove(data, body, staffRef) {
+  if (list(data.staffEvents).some((e) => e.id === body.eventId)) return { data };
+  if (!isId(body.toteId) || !isId(body.fromToteId)) return { flag: "bad" };
+  const { into, from } = findBoxes(data, body);
+  const problem = moveProblem(list(data.requests), into, from);
+  if (problem) return { flag: problem };
+  return {
+    data: moveAll(data, into, from, {
+      id: body.eventId,
+      staffId: staffRef,
+      type: "pack_move",
+      at: body.at,
+      code: String(from.barcode ?? "").slice(0, 100),
+      boxId: into.id,
+    }),
+  };
+}
+
+module.exports = { applyToteMerge, applyToteMove, orderSplit };

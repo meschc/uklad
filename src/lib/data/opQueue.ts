@@ -29,6 +29,7 @@ export type DeskOpKind =
   | "pack_event"
   | "pack_done"
   | "pack_merge"
+  | "pack_move"
   | "pick_unit"
   | "pick_done"
   | "pick_undo"
@@ -52,6 +53,7 @@ const KINDS: readonly DeskOpKind[] = [
   "pack_event",
   "pack_done",
   "pack_merge",
+  "pack_move",
   "pick_unit",
   "pick_done",
   "pick_undo",
@@ -364,6 +366,7 @@ const randomKey = () => {
  */
 async function sayFlagged(kinds: DeskOpKind[]) {
   const { useEditor } = await import("../store");
+  const moving = kinds.includes("pack_move");
   const packing = kinds.some((k) => k.startsWith("pack_"));
   const picking = kinds.some((k) => k.startsWith("pick_"));
   const receiving = kinds.some((k) => k.startsWith("recv_"));
@@ -376,21 +379,23 @@ async function sayFlagged(kinds: DeskOpKind[]) {
     .getState()
     .notify(
       "error",
-      packing
-        ? "ws.opPackRejected"
-        : picking
-          ? "ws.opPickRejected"
-          : receiving
-            ? "ws.opRecvRejected"
-            : shipping
-              ? "ws.opShipRejected"
-              : deciding
-                ? "ws.opDisputeRejected"
-                : counting
-                  ? "ws.opCountRejected"
-                  : tasking
-                    ? "ws.opTaskRejected"
-                    : "ws.opRejected",
+      moving
+        ? "ws.opMoveRejected"
+        : packing
+          ? "ws.opPackRejected"
+          : picking
+            ? "ws.opPickRejected"
+            : receiving
+              ? "ws.opRecvRejected"
+              : shipping
+                ? "ws.opShipRejected"
+                : deciding
+                  ? "ws.opDisputeRejected"
+                  : counting
+                    ? "ws.opCountRejected"
+                    : tasking
+                      ? "ws.opTaskRejected"
+                      : "ws.opRejected",
     );
 }
 

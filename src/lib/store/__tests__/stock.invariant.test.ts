@@ -247,6 +247,25 @@ describe("товар не теряется и не двоится на пути 
     expect(onHand(s()).get("p-a")).toBe(2);
   });
 
+  it("старший перекладывает тару с чужим заказом целиком, упаковка находит его в новой", () => {
+    const w = warehouse();
+    const { s, check } = w;
+    stock(w, "p-a", 2, C1);
+    const r = s().createRequest({ productId: "p-a", qty: 1, note: "Тула", externalId: "WB-1" });
+    const [t1, t2] = [s().createBox(), s().createBox()];
+    expect("problem" in s().seniorMoveTote(t1.barcode, t2.barcode)).toBe(true);
+    s().recordPick(r, "p-a", C1, t1.id);
+    s().badgeLogin(badgeCode("s1"), "pack");
+    expect(s().seniorMoveTote(t1.barcode, t2.barcode)).toEqual({ problem: "busy" });
+    s().completeRequest(r);
+    expect("id" in s().seniorMoveTote(t1.barcode, t2.barcode)).toBe(true);
+    check("тара переложена");
+    expect(s().requests.find((x) => x.id === r)!.toteId).toBe(t2.id);
+    expect(s().packStart(t2.barcode)).toBeNull();
+    expect(s().packScanItem("4600000000017").kind).toBe("ok");
+    check("заказ пакуется из новой тары");
+  });
+
   it("начатая заявка не докладывается в другую тару", () => {
     const w = warehouse();
     const { s, check } = w;

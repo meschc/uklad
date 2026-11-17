@@ -440,6 +440,50 @@ test(
   },
 );
 
+test("старший перекладывает тару целиком, упаковщик без права — нет", { skip: SKIP }, async () => {
+  const { a, boss, ivan } = await company("ops-mv@sklad.ru", "10.0.5.13");
+  const data = {
+    ...cabinetData(),
+    boxes: [
+      { id: "t1", barcode: "UK-BOX-1", lines: [{ productId: "pr1", qty: 1 }] },
+      { id: "t2", barcode: "UK-BOX-2", lines: [{ productId: "pr1", qty: 2 }] },
+    ],
+    requests: [
+      { id: "r1", productId: "pr1", qty: 2, toteId: "t2", status: "done", externalId: "WB-1" },
+    ],
+    outboundBoxes: [],
+  };
+  const saved = await call("/api/cabinet/snapshot", {
+    ...a,
+    body: { version: 1, format: 8, data },
+  });
+  assert.equal(saved.status, 200);
+  const desk = await makeDesk(a);
+  const move = (key, staffId) => ({
+    key,
+    kind: "pack_move",
+    body: { eventId: `ev-${key}`, staffId, at: Date.now() - 200, toteId: "t1", fromToteId: "t2" },
+  });
+  await call("/api/cabinet/badges/check", { desk, body: { code: ivan } });
+  const no = await ops(desk, [move("key-move-ivan", "stf-ivan")]);
+  assert.deepEqual(no.json.results, [
+    { key: "key-move-ivan", status: "flagged", reason: "not_yours" },
+  ]);
+  await call("/api/cabinet/badges/check", { desk, body: { code: boss } });
+  const yes = await ops(desk, [move("key-move-boss", "stf-boss")]);
+  assert.deepEqual(yes.json.results, [{ key: "key-move-boss", status: "applied" }]);
+  const { snap } = await serverEvents("ops-mv@sklad.ru", a.org);
+  const box = Object.fromEntries(snap.data.boxes.map((b) => [b.id, b.lines]));
+  assert.deepEqual(box.t1, [{ productId: "pr1", qty: 3 }]);
+  assert.deepEqual(box.t2, []);
+  assert.equal(snap.data.requests[0].toteId, "t1");
+  const row = await db.root.query(
+    `SELECT staff_ref, step FROM uklad.desk_ops WHERE org_id = $1 AND kind = 'pack_move' AND status = 'applied'`,
+    [a.org],
+  );
+  assert.deepEqual(row.rows, [{ staff_ref: "stf-boss", step: "pack" }]);
+});
+
 test(
   "упаковка операцией: тара → короб, движения записаны, лишнего не взять",
   { skip: SKIP },

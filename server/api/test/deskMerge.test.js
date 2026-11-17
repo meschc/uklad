@@ -7,7 +7,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { applyToteMerge, orderSplit } = require("../src/cabinet/deskMerge");
+const { applyToteMerge, applyToteMove, orderSplit } = require("../src/cabinet/deskMerge");
 const { applyPackDone } = require("../src/cabinet/deskPack");
 
 const AT = 1_800_000_000_000;
@@ -111,4 +111,32 @@ test("закрытие тары не делает заказ упакованн�
     "stf-ivan",
   );
   assert.equal(r.flag, "mixed");
+});
+
+test("старший перекладывает тару с чужим заказом целиком", () => {
+  const d = data();
+  d.requests[1] = { ...d.requests[1], externalId: "WB-9", source: "wb" };
+  // Пересыпать упаковщику нельзя: в той таре чужой заказ.
+  assert.equal(applyToteMerge(d, merge(), "stf-ivan").flag, "mixed");
+  const r = applyToteMove(d, merge({ eventId: "ev-mv" }), "stf-olga");
+  const box = Object.fromEntries(r.data.boxes.map((b) => [b.id, b.lines]));
+  assert.deepEqual(box.t2, []);
+  assert.equal(box.t1.length, 2);
+  assert.deepEqual(
+    r.data.requests.map((x) => x.toteId),
+    ["t1", "t1"],
+  );
+  assert.equal(r.data.staffEvents[0].type, "pack_move");
+  assert.equal(r.data.staffEvents[0].staffId, "stf-olga");
+  assert.equal(applyToteMove(r.data, merge({ eventId: "ev-mv" }), "stf-olga").data, r.data);
+});
+
+test("пустую тару, полку и тару в сборке старший не перекладывает", () => {
+  const empty = data();
+  empty.boxes[1].lines = [];
+  assert.equal(applyToteMove(empty, merge(), "stf-olga").flag, "empty");
+  assert.equal(applyToteMove(data(), merge({ toteId: "b1" }), "stf-olga").flag, "bad");
+  const busy = data();
+  busy.requests[1].status = "picking";
+  assert.equal(applyToteMove(busy, merge(), "stf-olga").flag, "busy");
 });

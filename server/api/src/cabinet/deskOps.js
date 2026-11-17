@@ -21,7 +21,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 
 const { applyPackEvent, applyPackDone } = require("./deskPack");
-const { applyToteMerge } = require("./deskMerge");
+const { applyToteMerge, applyToteMove } = require("./deskMerge");
 const { applyPickUnit, applyPickDone, applyPickUndo } = require("./deskPick");
 const {
   applyRecvUnit,
@@ -66,7 +66,9 @@ const INV_KINDS = new Set(["inv_count", "inv_cell"]);
  * маркировку берут с любого стола.
  */
 const TASK_KINDS = new Set(["task_take", "task_done"]);
-const NOW_ONLY = new Set(["dispute_resolve"]);
+/** Действия старшего: право решать по товару, только того, кто сейчас за столом. */
+const SENIOR_KINDS = new Set(["pack_move"]);
+const NOW_ONLY = new Set(["dispute_resolve", ...SENIOR_KINDS]);
 /** Какое право роли нужно операции (миграция 024). */
 const OP_PERM = new Map([
   ...[...PACK_KINDS].map((k) => [k, "packing.do"]),
@@ -77,6 +79,8 @@ const OP_PERM = new Map([
   ["sort_place", "shipping.do"],
   ["sort_close", "shipping.do"],
   ["dispute_resolve", GOODS_DECIDE],
+  // Тару перекладывает старший с любого стола: процесса у действия нет.
+  ...[...SENIOR_KINDS].map((k) => [k, GOODS_DECIDE]),
   ["inv_count", "inventory.count"],
   ["inv_cell", "inventory.count"],
 ]);
@@ -101,6 +105,7 @@ const WORK = new Map([
   ["pack_event", applyPackEvent],
   ["pack_done", applyPackDone],
   ["pack_merge", applyToteMerge],
+  ["pack_move", applyToteMove],
   ["pick_unit", applyPickUnit],
   ["pick_done", applyPickDone],
   ["pick_undo", applyPickUndo],
@@ -128,6 +133,7 @@ const KINDS = new Set([
   ...SHIP_KINDS,
   ...INV_KINDS,
   ...TASK_KINDS,
+  ...SENIOR_KINDS,
 ]);
 /**
  * Окно отмены по часам сервера: как в кабинете (`MARK_UNDO_MS`) плюс запас

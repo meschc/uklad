@@ -55,8 +55,8 @@ import { ShipStation } from "./ShipStation";
 import { InventoryStation } from "./InventoryStation";
 import { DeskTasks } from "./DeskTasks";
 import { StaffLog } from "./StaffLog";
-import { DisputesScreen } from "./DisputesScreen";
 import { StationSwitch } from "./StationSwitch";
+import { SeniorActions } from "./SeniorActions";
 import { useSwitchWatch } from "./useSwitchWatch";
 import { formatTime, useNow } from "./useNow";
 
@@ -200,7 +200,7 @@ export function WorkstationScreen() {
               // приходит к нему, и счётчик виден сразу.
               <Button variant="ghost" size="sm" onClick={() => setPanel("disputes")}>
                 <Gavel />
-                <span className="hidden lg:inline">{t("disputes.title")}</span>
+                <span className="hidden lg:inline">{t("ws.senior.button")}</span>
                 {openDisputes > 0 && (
                   <span className="rounded-full bg-warning px-1.5 text-xs font-semibold text-white tabular-nums">
                     {openDisputes}
@@ -351,7 +351,7 @@ export function WorkstationScreen() {
                     : panel === "printer"
                       ? "ws.printer.title"
                       : panel === "disputes"
-                        ? "disputes.title"
+                        ? "ws.senior.title"
                         : panel === "logout"
                           ? "ws.out.title"
                           : panel === "process"
@@ -377,9 +377,7 @@ export function WorkstationScreen() {
             ) : panel === "process" ? (
               <StationSwitch onDone={() => setPanel(null)} />
             ) : panel === "disputes" ? (
-              <EmbeddedShell.Provider value={true}>
-                <DisputesScreen />
-              </EmbeddedShell.Provider>
+              <SeniorActions />
             ) : (
               <StaffLog staffId={member.id} now={now} />
             )}

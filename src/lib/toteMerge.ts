@@ -41,6 +41,26 @@ export function mergeProblem(
   return null;
 }
 
+/**
+ * Почему старший не может переложить тару `from` в `into` целиком (сервер —
+ * `moveProblem` в `deskMerge.js`): null — можно. Чужой заказ не помеха — за
+ * это отвечает старший; нельзя полку, закрытую тару, пустую и ту, в которую
+ * ещё собирают.
+ */
+export type MoveProblem = "bad" | "empty" | "busy";
+
+export function moveProblem(
+  requests: readonly FulfillmentRequest[],
+  into: Box | undefined,
+  from: Box | undefined,
+): MoveProblem | null {
+  if (!into || !from || into.id === from.id) return "bad";
+  if (into.address || into.sealed || from.address || from.sealed) return "bad";
+  if (!from.lines.some((l) => l.qty > 0)) return "empty";
+  if (requests.some((r) => r.toteId === from.id && isOpen(r) && r.status !== "done")) return "busy";
+  return null;
+}
+
 /** Пересыпать: строки складываются, заявки той тары числятся в этой. */
 export function applyMerge(
   s: { boxes: readonly Box[]; requests: readonly FulfillmentRequest[] },
