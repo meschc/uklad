@@ -5,6 +5,7 @@ import { MODULE_SPECS, type CellRect, type PlacedModule, type XY } from "@/lib/t
 import { clamp } from "@/lib/utils";
 import { CELL } from "../constants";
 import { MARQUEE_MIN_CELLS, marqueeRect, modulesInRect, resizeRect } from "./dragMath";
+import { usePhone } from "@/lib/usePhone";
 import type { Handle } from "./screen";
 
 /**
@@ -77,7 +78,9 @@ export function useCanvasPointer({
   const tool = useEditor((s) => s.tool);
   const stampTemplateId = useEditor((s) => s.stampTemplateId);
   // Продавец план только смотрит: правки плана из его роли не существует (п.26).
-  const readOnly = useEditor((s) => selectRole(s) === "seller");
+  // На телефоне так же: план смотрят, правят на компьютере (16.11).
+  const phone = usePhone();
+  const readOnly = useEditor((s) => selectRole(s) === "seller") || phone;
 
   /**
    * Курсор на время перетаскивания. Раньше он считался прямо из `dragRef` при
@@ -101,9 +104,9 @@ export function useCanvasPointer({
         /* синтетические указатели могут не поддерживать capture */
       }
       const st = useEditor.getState();
-      // У продавца любое нажатие тащит холст, а не модули (п.26).
+      // У продавца и на телефоне любое нажатие тащит холст, а не модули (п.26).
       const panMode =
-        spaceHeld || e.button === 1 || st.tool === "pan" || selectRole(st) === "seller";
+        spaceHeld || e.button === 1 || st.tool === "pan" || selectRole(st) === "seller" || phone;
 
       if (panMode) {
         dragRef.current = {
@@ -231,7 +234,7 @@ export function useCanvasPointer({
       dragRef.current = { kind: "marquee", startWorld: w, additive: e.shiftKey };
       setPreview({ kind: "marquee", rect: marqueeRect(w, w) });
     },
-    [viewportRef, clientToWorld, spaceHeld, tool, rows],
+    [viewportRef, clientToWorld, spaceHeld, tool, rows, phone],
   );
 
   // --- движение -------------------------------------------------------------

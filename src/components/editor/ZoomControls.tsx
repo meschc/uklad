@@ -4,6 +4,7 @@ import { useT } from "@/lib/i18n";
 import { combo, shiftCombo } from "@/lib/platform";
 import { cn } from "@/lib/utils";
 import { ZOOM_STEP } from "./constants";
+import { usePhone } from "@/lib/usePhone";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 function fire(name: string, detail?: unknown) {
@@ -19,7 +20,9 @@ export function ZoomControls() {
   const canUndo = useEditor((s) => s.past.length > 0);
   const canRedo = useEditor((s) => s.future.length > 0);
   // Продавцу отменять нечего: правок из его роли не существует (п.1).
-  const readOnly = useEditor((s) => selectRole(s) === "seller");
+  // Отмена — про правку: у продавца и на телефоне план только смотрят.
+  const phone = usePhone();
+  const readOnly = useEditor((s) => selectRole(s) === "seller") || phone;
   const t = useT();
 
   return (

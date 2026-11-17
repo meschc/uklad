@@ -1,6 +1,7 @@
 import { Suspense, lazy, useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { useShortcuts } from "@/lib/useShortcuts";
+import { usePhone } from "@/lib/usePhone";
 import { selectRole, useEditor } from "@/lib/store";
 import { TableScreen } from "@/components/table/TableScreen";
 import { SHOW_3D } from "./constants";
@@ -34,7 +35,11 @@ export function Editor() {
   const mode = useEditor((s) => s.mode);
   // Продавцу план и таблица доступны только на чтение (п.26): инструменты
   // правки не прячутся «на всякий случай», их просто нет в его интерфейсе.
-  const readOnly = useEditor((s) => selectRole(s) === "seller");
+  const seller = useEditor((s) => selectRole(s) === "seller");
+  // На телефоне план только смотрят (согласовано 16.11): панели правки
+  // закрывали холст целиком (Кирилл 17.11).
+  const phone = usePhone();
+  const readOnly = seller || phone;
 
   // Приветственная подсказка обучения — при первом входе в редактор. Один раз
   // (showHint помнит показанные); «Пройти обучение заново» её возвращает.
@@ -89,7 +94,8 @@ function PlanScreen({ readOnly }: { readOnly: boolean }) {
           {!readOnly && <ToolRail />}
           {!readOnly && <RowProposalPanel />}
           <HelpMenu />
-          <OnboardingHint />
+          {/* Подсказка «стройте план» — про правку; на телефоне план только смотрят. */}
+          {!readOnly && <OnboardingHint />}
           <ZoomControls />
         </main>
         {!readOnly && <Inspector />}
