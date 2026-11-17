@@ -253,7 +253,7 @@ function JournalFeed({ tabs }: { tabs: ReactNode }) {
         />
       ) : (
         <div className={cn(card(), "overflow-x-auto")}>
-          <table className="w-full text-sm">
+          <table className="table-stack w-full text-sm">
             <thead className="text-left text-xs text-muted-foreground">
               <tr className="border-b border-border">
                 <th className="px-4 py-2 font-medium">{t("journal.col.time")}</th>
@@ -304,8 +304,10 @@ function Row({ e, text }: { e: ActivityEntry; text: ReturnType<typeof useEntryTe
       >
         {stamp(e.at)}
       </td>
-      <td className="px-4 py-2">{text.who(e)}</td>
-      <td className="px-4 py-2">
+      <td className="px-4 py-2" data-label={t("journal.col.staff")}>
+        {text.who(e)}
+      </td>
+      <td className="px-4 py-2" data-label={t("journal.col.action")}>
         <span className="flex flex-wrap items-center gap-1.5">
           {/* У правки кабинета процесс и действие — одно и то же: без повтора. */}
           {e.source !== "cabinet" && (
@@ -329,8 +331,15 @@ function Row({ e, text }: { e: ActivityEntry; text: ReturnType<typeof useEntryTe
         {/* Отказ сервера — не ошибка формы: строка журнала, приглушённо под действием. */}
         {e.flagged && <p className="mt-0.5 text-xs text-muted-foreground">{text.reason(e)}</p>}
       </td>
-      <td className="px-4 py-2 text-muted-foreground">{text.what(e)}</td>
-      <td className="whitespace-nowrap px-4 py-2 text-muted-foreground">{text.where(e)}</td>
+      <td className="px-4 py-2 text-muted-foreground" data-label={t("journal.col.what")}>
+        {text.what(e)}
+      </td>
+      <td
+        className="whitespace-nowrap px-4 py-2 text-muted-foreground"
+        data-label={t("journal.col.where")}
+      >
+        {text.where(e)}
+      </td>
     </tr>
   );
 }

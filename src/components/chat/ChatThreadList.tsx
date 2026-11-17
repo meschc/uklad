@@ -20,6 +20,7 @@ export function ChatThreadList({
   query,
   onQuery,
   onPick,
+  className,
 }: {
   partners: Partner[];
   chats: Record<string, ChatMessage[]>;
@@ -28,6 +29,7 @@ export function ChatThreadList({
   query: string;
   onQuery: (v: string) => void;
   onPick: (id: string) => void;
+  className?: string;
 }) {
   const t = useT();
   const [picking, setPicking] = useState(false);
@@ -46,7 +48,7 @@ export function ChatThreadList({
   });
 
   return (
-    <aside className="flex w-72 shrink-0 flex-col border-r border-border bg-card">
+    <aside className={cn("flex w-72 shrink-0 flex-col border-r border-border bg-card", className)}>
       <div className="border-b border-border p-3">
         <div className="flex items-center justify-between gap-2">
           <h1 className="text-sm font-semibold tracking-tight">{t("chat.title")}</h1>

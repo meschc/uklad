@@ -75,7 +75,7 @@ export function DevicesScreen() {
             />
           </div>
           <div className={cn(card(), "overflow-x-auto")}>
-            <table className="w-full text-sm">
+            <table className="table-stack w-full text-sm">
               <thead className="text-left text-xs text-muted-foreground">
                 <tr className="border-b border-border">
                   <SortTh table={devTable.table} id="name" className="px-4">
@@ -110,15 +110,23 @@ export function DevicesScreen() {
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-2.5">{t(`ws.station.${d.station}` as MsgKey)}</td>
-                    <td className="px-4 py-2.5 text-muted-foreground">
+                    <td className="px-4 py-2.5" data-label={t("devices.col.station")}>
+                      {t(`ws.station.${d.station}` as MsgKey)}
+                    </td>
+                    <td
+                      className="px-4 py-2.5 text-muted-foreground"
+                      data-label={t("devices.col.who")}
+                    >
                       {d.revokedAt
                         ? t("devices.revoked", {
                             d: new Date(d.revokedAt).toLocaleDateString(t.lang),
                           })
                         : (who(d.id) ?? t("devices.nobody"))}
                     </td>
-                    <td className="px-4 py-2.5 tabular-nums text-muted-foreground">
+                    <td
+                      className="px-4 py-2.5 tabular-nums text-muted-foreground"
+                      data-label={t("devices.col.since")}
+                    >
                       {new Date(d.createdAt).toLocaleDateString(t.lang)}
                     </td>
                     <td className="px-4 py-2.5 text-right">

@@ -13,6 +13,7 @@ import { SelectionOverlay } from "./canvas/SelectionOverlay";
 import { useCanvasPointer } from "./canvas/useCanvasPointer";
 import { useCanvasView } from "./canvas/useCanvasView";
 import { useSpaceHeld } from "./canvas/useSpaceHeld";
+import { usePhone } from "@/lib/usePhone";
 
 /**
  * Холст плана: два слоя поверх одного вьюпорта.
@@ -41,8 +42,11 @@ export function Canvas() {
   const shelvesVisible = useEditor((s) => s.profile.showShelves !== false);
   const rowProposal = useEditor((s) => s.rowProposal);
   // Продавец план только смотрит: ни «плюсиков» продолжения ряда, ни
-  // контекстного меню правки у него нет (п.1).
-  const readOnly = useEditor((s) => selectRole(s) === "seller");
+  // контекстного меню правки у него нет (п.1). Так же на телефоне: там план
+  // смотрят, а правят на компьютере.
+  const phone = usePhone();
+  const seller = useEditor((s) => selectRole(s) === "seller");
+  const readOnly = seller || phone;
 
   const spaceHeld = useSpaceHeld();
   const { zoom, pan, clientToWorld, worldRectToScreen, onWheel } = useCanvasView(viewportRef);

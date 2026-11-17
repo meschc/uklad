@@ -23,7 +23,7 @@ import { ReportProblemDialog } from "@/components/support/ReportProblemDialog";
 /**
  * Интеграции с внешними системами (п.22, п.9). По каждой системе указано, какой
  * это API, какая авторизация и какие поля она требует. Системы без готового
- * адаптера (`soon`) видны, но не настраиваются: обещать их к запуску нельзя.
+ * адаптера (`soon`) не показываются: обещать их к запуску нельзя (17.11).
  *
  * Список разбит по разделам: продавцу важно увидеть «мой маркетплейс здесь
  * есть» за секунду, а сплошной перечень из двадцати карточек этого не даёт.
@@ -43,11 +43,7 @@ export function IntegrationsScreen() {
   return (
     <ScreenShell
       title={t("integr.title")}
-      subtitle={t("integr.subtitleN", {
-        total: INTEGRATIONS.length - soon,
-        n: connected,
-        soon,
-      })}
+      subtitle={t("integr.subtitleN", { total: INTEGRATIONS.length - soon, n: connected })}
       wide
       actions={
         <Button size="sm" variant="outline" onClick={() => setAsking(true)}>
@@ -63,10 +59,11 @@ export function IntegrationsScreen() {
       </div>
 
       {INTEGRATION_CATEGORIES.map((cat) => {
-        // Готовые к подключению — выше: «позже» не должно заслонять рабочее.
-        const items = INTEGRATIONS.filter((s) => s.category === cat.id).sort(
-          (a, b) => Number(isSoon(a)) - Number(isSoon(b)),
-        );
+        // Только то, что подключается сейчас. Системы без адаптера на
+        // сервере не показываем вовсе: обещание «в будущих обновлениях»
+        // в кабинете запрещено (правило проекта), а нужную систему склад
+        // просит кнопкой «Задать вопрос».
+        const items = INTEGRATIONS.filter((s) => s.category === cat.id && !isSoon(s));
         if (!items.length) return null;
         return (
           <section key={cat.id} className="flex flex-col gap-2">
@@ -202,7 +199,10 @@ function IntegrationCard({
     <section className={card({ pad: "none", className: "overflow-hidden" })}>
       <div className="flex flex-wrap items-center gap-3 px-4 py-3">
         <BrandMark brand={spec.brand} />
-        <div className="min-w-0 flex-1">
+        {/* basis-48: на телефоне описанию не хватает места рядом со
+            значком и кнопкой — они уходят строкой ниже, а не сжимают текст
+            в столбик по слову. */}
+        <div className="min-w-0 flex-1 basis-48">
           <p className="flex items-center gap-1.5 text-sm font-semibold">
             {spec.title}
             {on && (
@@ -215,39 +215,35 @@ function IntegrationCard({
             {t(spec.descriptionKey)}
           </p>
         </div>
-        {isSoon(spec) ? (
-          <span className="shrink-0 text-xs text-muted-foreground">{t("integr.soon")}</span>
-        ) : (
-          <>
-            <span
-              className={eyebrow({
-                size: "xs",
-                weight: "medium",
-                className: "shrink-0 rounded bg-muted px-2 py-0.5",
-              })}
-            >
-              {t(`integr.auth.${spec.auth}`)}
-            </span>
-            {/* У площадок на сервере поля в браузере не заполняются: счётчик
+        <>
+          <span
+            className={eyebrow({
+              size: "xs",
+              weight: "medium",
+              className: "shrink-0 rounded bg-muted px-2 py-0.5",
+            })}
+          >
+            {t(`integr.auth.${spec.auth}`)}
+          </span>
+          {/* У площадок на сервере поля в браузере не заполняются: счётчик
                 старых полей снимка тут только путал. */}
-            {!onServer(spec) && (
-              <span
-                className={cn(
-                  "shrink-0 text-xs tabular-nums",
-                  ready ? "text-success" : "text-muted-foreground",
-                )}
-              >
-                {t("integr.filled", { n: filled, total: spec.fields.length })}
-              </span>
-            )}
-            <Button size="sm" variant="outline" onClick={() => setOpen((v) => !v)}>
-              {t(open ? "integr.hide" : "integr.setup")}
-            </Button>
-          </>
-        )}
+          {!onServer(spec) && (
+            <span
+              className={cn(
+                "shrink-0 text-xs tabular-nums",
+                ready ? "text-success" : "text-muted-foreground",
+              )}
+            >
+              {t("integr.filled", { n: filled, total: spec.fields.length })}
+            </span>
+          )}
+          <Button size="sm" variant="outline" onClick={() => setOpen((v) => !v)}>
+            {t(open ? "integr.hide" : "integr.setup")}
+          </Button>
+        </>
       </div>
 
-      {open && !isSoon(spec) && onServer(spec) && (
+      {open && onServer(spec) && (
         <div className="flex flex-col gap-3 border-t border-border bg-muted/20 px-4 py-3">
           <ServerConnections spec={spec} t={t} />
           <a
@@ -262,7 +258,7 @@ function IntegrationCard({
         </div>
       )}
 
-      {open && !isSoon(spec) && !onServer(spec) && (
+      {open && !onServer(spec) && (
         <div className="flex flex-col gap-3 border-t border-border bg-muted/20 px-4 py-3">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {spec.fields.map((f) => (
