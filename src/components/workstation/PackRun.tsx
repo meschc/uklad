@@ -101,7 +101,8 @@ export function PackRun({
   const contents = toteContents(box);
   const cancelled = cancelledInTote(requests, box);
   // Заказ, ждущий вторую тару, остаётся в таре: не недостача (`heldInTote`).
-  const kept = [...cancelled, ...heldInTote(requests, useEditor.getState().boxes, box)];
+  const held = heldInTote(requests, useEditor.getState().boxes, box);
+  const kept = [...cancelled, ...held];
   const remaining = toteShortage(session, box, kept);
   const orders = toteOrders(requests, box);
   // Заказ отменили, пока тара на столе: его штуки нужно вынуть из короба.
@@ -357,9 +358,21 @@ export function PackRun({
 
         <div className="flex flex-col gap-1.5">
           <h3 className={eyebrow({ tone: "muted", size: "xs" })}>{t("ws.run.orders")}</h3>
-          {orders.length === 0 ? (
+          {/* Заказ, ждущий вторую тару: где остальное — сразу видно. */}
+          {held.map((h) => (
+            <p key={h.id} className="text-sm text-warning">
+              <CodeText
+                text={
+                  h.rest.length
+                    ? t("ws.run.heldRow", { id: shortId(h.id), box: h.rest.join(", ") })
+                    : t("ws.run.heldRowPicking", { id: shortId(h.id) })
+                }
+              />
+            </p>
+          ))}
+          {orders.length === 0 && held.length === 0 ? (
             <p className="text-xs text-muted-foreground">{t("ws.run.ordersNone")}</p>
-          ) : (
+          ) : orders.length === 0 ? null : (
             <ul className="flex flex-col gap-1 text-sm">
               {orders.map((o) => {
                 const packed = session.units.filter(
