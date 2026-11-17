@@ -40,7 +40,7 @@ function ProductThumb({ product }: { product: Product }) {
 }
 
 /** Зона касания адреса на телефоне — 44 px при рисунке в 20: как у галочки строки. */
-const TAP = "relative max-md:before:absolute max-md:before:-inset-3 max-md:before:content-['']";
+const TAP = "tap-target";
 
 /** Адрес: этаж-секция-полка-ячейка. */
 function AddressChip({ address }: { address: string }) {

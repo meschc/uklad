@@ -77,7 +77,7 @@ export function StaffRow({
         {m.hourlyRate ? (
           t("staff.rateValue", { r: m.hourlyRate })
         ) : (
-          <button onClick={onEdit} className="text-xs text-primary hover:underline">
+          <button onClick={onEdit} className="tap-target text-xs text-primary hover:underline">
             {t("staff.rateSet")}
           </button>
         )}
@@ -102,7 +102,7 @@ export function StaffRow({
             disabled={issue.pending}
             title={t("staff.badge.issue")}
             aria-label={t("staff.badge.issue")}
-            className="flex size-9 items-center md:size-7 justify-center rounded text-muted-foreground transition hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
+            className="flex size-11 items-center md:size-7 justify-center rounded text-muted-foreground transition hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
           >
             <IdCard className="size-3.5" />
           </button>
@@ -112,7 +112,7 @@ export function StaffRow({
             onClick={onEdit}
             title={t("staff.edit")}
             aria-label={t("staff.edit")}
-            className="flex size-9 items-center md:size-7 justify-center rounded text-muted-foreground transition hover:text-foreground"
+            className="flex size-11 items-center md:size-7 justify-center rounded text-muted-foreground transition hover:text-foreground"
           >
             <Pencil className="size-3.5" />
           </button>
@@ -134,7 +134,7 @@ export function StaffRow({
             disabled={remove.pending}
             title={t("staff.remove")}
             aria-label={t("staff.remove")}
-            className="flex size-9 items-center md:size-7 justify-center rounded text-muted-foreground transition hover:text-destructive disabled:pointer-events-none disabled:opacity-30 md:opacity-0 md:focus-visible:opacity-100 md:group-hover:opacity-100"
+            className="flex size-11 items-center md:size-7 justify-center rounded text-muted-foreground transition hover:text-destructive disabled:pointer-events-none disabled:opacity-30 md:opacity-0 md:focus-visible:opacity-100 md:group-hover:opacity-100"
           >
             <Trash2 className="size-3.5" />
           </button>

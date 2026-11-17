@@ -44,7 +44,11 @@ test.describe("Телефон: экраны помещаются и нажима
           .getByRole("button", { name: startsWith(name) })
           .first()
           .click();
+        // Меню уезжает анимацией, экран догружается отдельным куском: мерить
+        // раньше — значит мерить пустоту и пропустить беду.
+        await expect(sheet).toHaveCount(0);
         await page.waitForLoadState("networkidle");
+        await page.waitForTimeout(400);
         problems.push(...(await audit(page, name)));
       }
       expect(problems, "экраны, которые не держат телефон").toEqual([]);
@@ -219,6 +223,8 @@ async function audit(page: Page, where: string): Promise<string[]> {
       if (el.children.length > 0 || !el.textContent?.trim() || !visible(el)) continue;
       const cs = getComputedStyle(el);
       if (cs.overflowX !== "visible" || cs.display === "inline") continue;
+      // Невидимая рамка касания (`tap-target`) раздувает scrollWidth, не текст.
+      if (getComputedStyle(el, "::before").position === "absolute") continue;
       if (el.clientWidth > 0 && el.scrollWidth > el.clientWidth + 1)
         out.push(`текст шире рамки «${label(el)}» ${el.scrollWidth}>${el.clientWidth}`);
     }
