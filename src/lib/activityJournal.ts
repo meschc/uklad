@@ -32,6 +32,7 @@ export const DESK_KINDS: ReadonlySet<string> = new Set([
   "pack_event",
   "pack_done",
   "pack_merge",
+  "pack_move",
   "pick_unit",
   "pick_done",
   "pick_undo",
@@ -170,6 +171,7 @@ const LOCAL_STEP: Record<StaffEvent["type"], JournalStep> = {
   pack_reprint: "label",
   pack_done: "pack",
   pack_merge: "pack",
+  pack_move: "pack",
   pick_scan: "pick",
   pick_undo: "pick",
 };

@@ -31,7 +31,7 @@ function login(role: string) {
   });
 }
 
-describe("«Спорные» за столом", () => {
+describe("«Действия старшего» за столом: спорные и перенос тары", () => {
   beforeEach(() => {
     useEditor.setState({ stationSession: null, disputes: [] });
   });
@@ -40,7 +40,7 @@ describe("«Спорные» за столом", () => {
     login("Старший смены");
     render(<WorkstationScreen />);
 
-    await userEvent.click(screen.getByRole("button", { name: /Спорные\s*1/ }));
+    await userEvent.click(screen.getByRole("button", { name: /Старший\s*1/ }));
     await userEvent.click(screen.getByRole("button", { name: /Вернуть/ }));
 
     expect(useEditor.getState().disputes[0]).toMatchObject({
@@ -49,17 +49,25 @@ describe("«Спорные» за столом", () => {
     });
   });
 
-  test("рядовой сотрудник кнопки «Спорные» не видит", () => {
+  test("старший переключается на «Переложить тару» в той же панели", async () => {
+    login("Старший смены");
+    render(<WorkstationScreen />);
+    await userEvent.click(screen.getByRole("button", { name: /Старший\s*1/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Переложить тару" }));
+    expect(screen.getByText("Отсканируйте тару, которую перекладываете")).toBeTruthy();
+  });
+
+  test("рядовой сотрудник кнопки «Старший» не видит", () => {
     login("Упаковщик");
     render(<WorkstationScreen />);
 
-    expect(screen.queryByRole("button", { name: /Спорные/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Старший/ })).toBeNull();
   });
 
   test("панель закрывается, когда за столом меняется сотрудник", async () => {
     login("Старший смены");
     render(<WorkstationScreen />);
-    await userEvent.click(screen.getByRole("button", { name: /Спорные\s*1/ }));
+    await userEvent.click(screen.getByRole("button", { name: /Старший\s*1/ }));
     expect(screen.getByRole("button", { name: /Вернуть/ })).toBeTruthy();
 
     // Старший вышел, за стол встал рядовой сотрудник.

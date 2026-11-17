@@ -327,7 +327,8 @@ type StaffEventType =
   /** Сборщик отменил свой скан: штука вернулась из тары в короб (`undoes`). */
   | "pick_undo"
   /** Вторая тара заказа пересыпана в тару на столе упаковки (`toteMerge.ts`). */
-  | "pack_merge";
+  | "pack_merge"
+  | "pack_move";
 
 /** Отметки, которые ставит сам сотрудник: смена, перерыв, простой. */
 export type ShiftMark = Extract<

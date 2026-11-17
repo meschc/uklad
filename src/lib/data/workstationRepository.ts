@@ -54,6 +54,11 @@ export interface WorkstationRepository {
    * (`toteMerge.ts`). Нельзя — отказ `ws.merge.<причина>`.
    */
   packMerge: (code: string) => Promise<Result<void>>;
+  /**
+   * Старший перекладывает тару целиком (`pack_move`). Нельзя — отказ
+   * `ws.move.<причина>`.
+   */
+  seniorMove: (fromCode: string, toCode: string) => Promise<Result<void>>;
   /** Скан наклеенной этикетки. Не та этикетка — отказ `ws.label.wrong`. */
   packLabel: (code: string) => Promise<Result<void>>;
   packReject: () => Promise<Result<void>>;
@@ -312,6 +317,23 @@ export function createWorkstationRepository(
           staffId: ev.staffId,
           at: ev.at,
           toteId: s.packSession.sourceBoxId,
+          fromToteId: out.fromId,
+        });
+      }
+      return ok(undefined);
+    },
+    seniorMove: async (fromCode, toCode) => {
+      const res = await attempt(() => port.get().seniorMoveTote(fromCode, toCode));
+      if (!res.ok) return res;
+      const out = res.data;
+      if ("problem" in out) return fail(`ws.move.${out.problem}` as const);
+      const ev = port.get().staffEvents.find((e) => e.id === out.id);
+      if (ev && onServer(port)) {
+        ops.enqueue("pack_move", {
+          eventId: ev.id,
+          staffId: ev.staffId,
+          at: ev.at,
+          toteId: out.toId,
           fromToteId: out.fromId,
         });
       }

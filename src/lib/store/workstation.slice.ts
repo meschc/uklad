@@ -30,7 +30,7 @@ import {
 import { addToOutbound, openOutbound, packTargetProblem, type PackedLine } from "../outbound";
 import type { Device, PackSession, StaffEvent } from "../types";
 import type { EditorState, SliceCreator, WorkstationSlice } from "./state";
-import { applyMerge, mergeProblem } from "../toteMerge";
+import { applyMerge, mergeProblem, moveProblem } from "../toteMerge";
 
 /**
  * Рабочее место по бейджу и журнал сотрудника.
@@ -366,6 +366,26 @@ export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get)
       packSession: { ...ps, rejects: ps.rejects.filter((r) => r.reason !== "held") },
     });
     return { id: ev.id, fromId: from.id };
+  },
+
+  seniorMoveTote: (fromCode, toCode) => {
+    const s = get();
+    const staffId = s.stationSession?.staffId;
+    const from = findByCode(s.boxes, fromCode);
+    const into = findByCode(s.boxes, toCode);
+    const problem = moveProblem(s.requests, into, from);
+    if (problem || !staffId || !into || !from) return { problem: problem ?? "bad" };
+    const now = nowMs();
+    const ev = event({
+      staffId,
+      type: "pack_move",
+      at: now,
+      code: from.barcode,
+      boxId: into.id,
+      ...(s.stationSession?.deviceId ? { deviceId: s.stationSession.deviceId } : {}),
+    });
+    set({ ...applyMerge(s, into, from, now), staffEvents: [...s.staffEvents, ev] });
+    return { id: ev.id, fromId: from.id, toId: into.id };
   },
 
   packScanLabel: (code) => {
