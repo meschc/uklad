@@ -70,6 +70,11 @@ export const ru = {
   "integr.check": "Проверить связь",
   "integr.check.running": "Спрашиваем площадку…",
   "integr.check.ok": "Связь есть, новых заказов: {n}",
+  "integr.pull": "Загрузить заказы",
+  "integr.pull.hint":
+    "Пока кабинет открыт, новые заказы сами приходят в «Задания» раз в полторы минуты. Товар узнаём по артикулу или штрихкоду из номенклатуры.",
+  "integr.pull.ok": "Новых заказов в заданиях: {n}",
+  "integr.pull.unknown": "Не нашли товар в номенклатуре, заказы: {list}",
   "integr.remove": "Удалить",
   "integr.saveToServer": "Сохранить подключение",
   "integr.field.label": "Чей магазин",
@@ -484,6 +489,11 @@ export const en: Record<keyof typeof ru, string> = {
   "integr.check": "Check connection",
   "integr.check.running": "Asking the platform…",
   "integr.check.ok": "Connected, new orders: {n}",
+  "integr.pull": "Load orders",
+  "integr.pull.hint":
+    "While the cabinet is open, new orders arrive in Tasks every 90 seconds. Products are matched by SKU or barcode.",
+  "integr.pull.ok": "New orders added to tasks: {n}",
+  "integr.pull.unknown": "Product not found in the catalog, orders: {list}",
   "integr.remove": "Remove",
   "integr.saveToServer": "Save connection",
   "integr.field.label": "Whose shop",
