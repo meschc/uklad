@@ -13,7 +13,7 @@ import {
   type Track,
 } from "../../data/roadmap";
 import { ROADMAP_ITEMS } from "../../data/roadmapItems";
-import { groupByStatus, quarterLabel } from "../../lib/roadmapStats";
+import { groupByStatus } from "../../lib/roadmapStats";
 import { useRoadmap } from "../../lib/roadmap/store";
 import { RoadmapVote } from "./RoadmapVote";
 import { c, useT } from "../../lib/copy";
@@ -280,9 +280,7 @@ function Card({ item, my, count }: { item: RoadmapItem; my: 0 | 1 | -1; count: n
       ? item.version
         ? t(T.releasedIn, { version: item.version })
         : t(T.unreleased)
-      : item.quarter
-        ? quarterLabel(t.lang, item.quarter)
-        : null;
+      : null;
 
   return (
     <article className="r-window relative h-full border border-[var(--wh-line)] bg-[var(--wh-tile)] p-4 transition-colors hover:border-[var(--wh-blue)]">

@@ -1,4 +1,3 @@
-import type { SiteLang } from "./lang";
 import type { Milestone, RoadmapItem, Status, Track } from "../data/roadmap";
 
 /**
@@ -9,11 +8,6 @@ import type { Milestone, RoadmapItem, Status, Track } from "../data/roadmap";
  * молча. Всё здесь — чистые функции без состояния: их одинаково зовут и
  * компонент, и пререндер, и тест.
  */
-
-/** Римские номера кварталов: в русском тексте «IV квартал» привычнее «Q4». */
-const ROMAN_QUARTERS = ["I", "II", "III", "IV"] as const;
-
-const QUARTER_PATTERN = /^(\d{4})-Q([1-4])$/;
 
 export type StatusCounts = Record<Status, number>;
 
@@ -71,31 +65,6 @@ export function milestoneProgress(
     donePercent: share(done),
     progressPercent: share(progress),
   };
-}
-
-/**
- * Подпись квартала: «IV квартал 2026» / «Q4 2026».
- *
- * Неразобранная строка возвращается как есть: подпись — не то место, где
- * стоит падать, а тест на формат стоит рядом с данными.
- */
-export function quarterLabel(lang: SiteLang, quarter: string): string {
-  const match = QUARTER_PATTERN.exec(quarter);
-  if (!match) return quarter;
-  const [, year, index] = match;
-  if (lang === "en") return `Q${index} ${year}`;
-  return `${ROMAN_QUARTERS[Number(index) - 1]} квартал ${year}`;
-}
-
-/** Кварталы, которые встречаются у пунктов, по возрастанию. */
-export function quartersOf(items: readonly RoadmapItem[]): string[] {
-  const seen = new Set<string>();
-  for (const item of items) {
-    if (item.quarter) seen.add(item.quarter);
-  }
-  // Формат «ГГГГ-Qn» сортируется как обычная строка — год впереди, номер один
-  // знак, так что лексикографический порядок совпадает с хронологическим.
-  return [...seen].sort();
 }
 
 /** Доля готового от всей карты, 0–100 — одна цифра для шапки страницы. */

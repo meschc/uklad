@@ -49,8 +49,8 @@ const T = {
   ],
   nextTitle: c("Что дальше", "What happens next"),
   next: c(
-    "Разбираем голоса и новые идеи и переносим карточки между колонками. Срок у запланированного — квартал, а не число.",
-    "We go through votes and new ideas and move cards between columns. Planned work gets a quarter, not a date.",
+    "Разбираем голоса и новые идеи и переносим карточки между колонками. Сроков не обещаем: колонка показывает, где работа сейчас.",
+    "We go through votes and new ideas and move cards between columns. We promise no dates: the column shows where the work stands now.",
   ),
 };
 

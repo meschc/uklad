@@ -8,7 +8,6 @@ import {
   TRACK_LABELS,
   type RoadmapItem,
 } from "../../data/roadmap";
-import { quarterLabel } from "../../lib/roadmapStats";
 import { c, useT } from "../../lib/copy";
 import { ORIGIN_TONE, STATUS_TONE, TRACK_TONE } from "./roadmapColors";
 import { useOverlay } from "../../lib/useOverlay";
@@ -51,9 +50,7 @@ export function RoadmapIdea({
       ? item.version
         ? t(T.releasedIn, { version: item.version })
         : t(T.unreleased)
-      : item.quarter
-        ? quarterLabel(t.lang, item.quarter)
-        : t(T.noDate);
+      : t(T.noDate);
 
   return (
     <SidePanel onClose={onClose} label={t(item.title)}>

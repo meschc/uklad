@@ -9,10 +9,16 @@ import type { RoadmapItem } from "./roadmap";
  * руками раз в неделю, и ради него не нужны ни база, ни админка: правка это
  * коммит, а история правок это история git.
  *
- * Готовым здесь считается то, что действительно открывается в демо. Проверять
- * это глазами по экранам — единственный способ: автоматически «работает» от
- * «написано» не отличить, а роадмап, который называет готовым недоделанное,
- * вреднее отсутствующего.
+ * Статус пункта следует за узлом карты продукта (`mapNode`, db артефакта
+ * https://claude.ai/artifact/2m7ZxFcT6uFBWeNohwsaPF), а не за памятью:
+ * узел `done` → «Готово», `now` → «Делаем», `next` → «Запланировали»,
+ * `later`/`question` → «Обсуждаем». Сессия, которая влила PR и сдвинула узел,
+ * в том же PR или следующем правит и пункт здесь (правило в CLAUDE.md). Без
+ * этого блок на главной отстал на месяц: показывал «делаем» про сервер,
+ * который уже работал, и «запланировали» про витрину, поставленную на паузу.
+ *
+ * Внутреннее (безопасность, админка, долг демо) сюда не выносим: публичная
+ * карта — про то, что склад увидит в работе.
  */
 export const ROADMAP_ITEMS: readonly RoadmapItem[] = [
   // ——— Готово и выпущено: прототип 0.1.0 ———
@@ -87,17 +93,6 @@ export const ROADMAP_ITEMS: readonly RoadmapItem[] = [
     track: "plan",
     milestone: "browser",
     version: "0.1.0",
-  },
-  {
-    id: "view-3d",
-    title: c("Объёмный вид плана", "The 3D view of the plan"),
-    summary: c(
-      "Мезонин в объёме, чтобы показать склад клиенту. Режим написан, но скрыт: визуализацию дорабатываем",
-      "The mezzanine in three dimensions, to show a client the warehouse. The mode is built but hidden while we refine the visuals",
-    ),
-    status: "idea",
-    track: "plan",
-    milestone: "service",
   },
   {
     id: "receiving",
@@ -205,7 +200,7 @@ export const ROADMAP_ITEMS: readonly RoadmapItem[] = [
     status: "progress",
     track: "platform",
     milestone: "server",
-    quarter: "2026-Q4",
+    mapNode: "cab-seller-access",
   },
   {
     id: "chat",
@@ -283,66 +278,53 @@ export const ROADMAP_ITEMS: readonly RoadmapItem[] = [
 
   // ——— Готово, но ещё не выпущено: раздел «Не выпущено» в CHANGELOG.md ———
   {
-    id: "market",
-    title: c("Витрина складов", "The warehouse catalogue"),
-    summary: c(
-      "Селлер находит склад по городу, услугам и цене и пишет ему без комиссии.",
-      "A seller finds a warehouse by city, services and price and writes to it with no commission.",
-    ),
-    status: "planned",
-    track: "market",
-    milestone: "launch",
-    quarter: "2027-Q1",
-    mapNode: "site-catalog",
-  },
-  {
     id: "database",
-    title: c("База и вход по паролю", "A database and a password login"),
+    title: c("Данные на сервере в России", "Data on a server in Russia"),
     summary: c(
-      "Данные переезжают из браузера на сервер: склад открывается с любого устройства и не пропадает вместе с кэшем",
-      "Data moves out of the browser onto a server: the warehouse opens on any device and does not vanish with the cache",
+      "Кабинет склада открывается с любого устройства: данные хранятся на сервере, а не в браузере",
+      "The warehouse account opens on any device: the data lives on a server, not in the browser",
     ),
-    status: "progress",
+    status: "done",
     track: "platform",
     milestone: "server",
-    quarter: "2026-Q4",
+    mapNode: "back-snapshot",
+    landing: true,
   },
   {
     id: "rights",
     title: c("Аккаунты и права", "Accounts and rights"),
     summary: c(
-      "Кладовщик, бригадир, владелец и продавец видят разное и правят разное",
-      "The storekeeper, the foreman, the owner and the seller each see and edit something different",
+      "Владелец, старший смены, кладовщик и продавец видят разное: каждому раздел открыт на чтение, на запись или закрыт",
+      "The owner, the shift lead, the storekeeper and the seller each see something different: every section is read, write or closed",
     ),
-    status: "progress",
+    status: "done",
     track: "platform",
     milestone: "server",
-    quarter: "2026-Q4",
   },
   {
     id: "marketplaces",
     title: c("Обмен с маркетплейсами", "Exchange with the marketplaces"),
     summary: c(
-      "Wildberries, Ozon, Яндекс Маркет, Авито и Мегамаркет: заказы приезжают в заявки, остатки уходят на площадку",
-      "Wildberries, Ozon, Yandex Market, Avito and Megamarket: orders arrive as requests, stock goes out to the platform",
+      "Wildberries, Ozon, Яндекс Маркет, Авито и Мегамаркет: ключи площадок хранятся на сервере зашифрованными, заказы приезжают в задания склада",
+      "Wildberries, Ozon, Yandex Market, Avito and Megamarket: platform keys are stored encrypted on the server, orders arrive as warehouse tasks",
     ),
-    status: "planned",
+    status: "progress",
     track: "integrations",
     milestone: "exchange",
-    quarter: "2027-Q1",
     mapNode: "cab-integrations",
+    landing: true,
   },
   {
     id: "mobile-picker",
-    title: c("Терминал сборщика", "The picker's terminal"),
+    title: c("Работа с телефона и ТСД", "Working from a phone or handheld"),
     summary: c(
-      "Телефон вместо ТСД: задание, сканирование камерой и подтверждение прямо в проходе",
-      "A phone instead of a handheld: the task, the scan and the confirmation right there in the aisle",
+      "Рабочие места и кабинет открываются на телефоне: крупные кнопки, короткие экраны, скан прямо в проходе",
+      "Workstations and the account open on a phone: big buttons, short screens, the scan right there in the aisle",
     ),
-    status: "planned",
+    status: "progress",
     track: "fulfillment",
     milestone: "floor",
-    quarter: "2027-Q1",
+    mapNode: "cab-mobile",
   },
   {
     id: "pick-route",
@@ -351,10 +333,11 @@ export const ROADMAP_ITEMS: readonly RoadmapItem[] = [
       "Порядок обхода считается по настоящей геометрии склада, а не по номеру ячейки",
       "The walking order is computed from the real geometry of the warehouse, not from cell numbers",
     ),
-    status: "planned",
+    status: "idea",
     track: "plan",
     milestone: "floor",
-    quarter: "2027-Q1",
+    mapNode: "cab-pick-route",
+    landing: true,
   },
   {
     id: "inventory",
@@ -366,7 +349,8 @@ export const ROADMAP_ITEMS: readonly RoadmapItem[] = [
     status: "progress",
     track: "fulfillment",
     milestone: "floor",
-    quarter: "2026-Q4",
+    landing: true,
+    mapNode: "cab-inventory",
   },
   {
     id: "accounting",
@@ -378,7 +362,7 @@ export const ROADMAP_ITEMS: readonly RoadmapItem[] = [
     status: "planned",
     track: "integrations",
     milestone: "exchange",
-    quarter: "2027-Q2",
+    landing: true,
   },
   {
     id: "delivery",
@@ -390,7 +374,6 @@ export const ROADMAP_ITEMS: readonly RoadmapItem[] = [
     status: "planned",
     track: "integrations",
     milestone: "exchange",
-    quarter: "2027-Q2",
   },
   {
     id: "reports",
@@ -402,10 +385,9 @@ export const ROADMAP_ITEMS: readonly RoadmapItem[] = [
     status: "planned",
     track: "platform",
     milestone: "exchange",
-    quarter: "2027-Q2",
   },
 
-  // ——— Идеи: сроков нет намеренно ———
+  // ——— Счёт и маркировка ———
   {
     id: "billing",
     title: c("Счёт за хранение", "A storage invoice"),
@@ -416,29 +398,7 @@ export const ROADMAP_ITEMS: readonly RoadmapItem[] = [
     status: "progress",
     track: "platform",
     milestone: "service",
-    quarter: "2027-Q1",
-  },
-  {
-    id: "client-cabinet",
-    title: c("Кабинет клиента склада", "An account for the warehouse's client"),
-    summary: c(
-      "Отдельный вход для того, чей товар лежит: свой остаток, свои заявки, свой счёт",
-      "A separate login for whoever owns the stock: their balance, their requests, their invoice",
-    ),
-    status: "idea",
-    track: "platform",
-    milestone: "service",
-  },
-  {
-    id: "api",
-    title: c("Открытый API", "A public API"),
-    summary: c(
-      "Чтобы соседняя система забирала остатки и ставила задания без нас",
-      "So a neighbouring system can read stock and create tasks without us",
-    ),
-    status: "idea",
-    track: "integrations",
-    milestone: "service",
+    mapNode: "cab-storage-fee",
   },
   {
     id: "markirovka",
@@ -450,29 +410,6 @@ export const ROADMAP_ITEMS: readonly RoadmapItem[] = [
     status: "progress",
     track: "integrations",
     milestone: "exchange",
-    quarter: "2027-Q1",
-  },
-  {
-    id: "edo",
-    title: c("ЭДО накладных", "Electronic waybills"),
-    summary: c(
-      "Накладная уходит контрагенту подписанной — без печати и курьера",
-      "The waybill goes to the counterparty signed — no printing, no courier",
-    ),
-    status: "idea",
-    track: "integrations",
-    milestone: "exchange",
-  },
-  {
-    id: "voice",
-    title: c("Голосовой набор", "Voice picking"),
-    summary: c(
-      "Руки заняты коробкой: сборка подтверждается голосом, а не тапом",
-      "Hands are busy holding a box: a pick is confirmed by voice, not by a tap",
-    ),
-    status: "idea",
-    track: "fulfillment",
-    milestone: "floor",
   },
 
   // ——— Добавлено 20.10.2026 по карте продукта ———
@@ -487,20 +424,18 @@ export const ROADMAP_ITEMS: readonly RoadmapItem[] = [
     track: "staff",
     origin: "warehouses",
     milestone: "floor",
-    quarter: "2026-Q4",
     mapNode: "cab-staff-login",
   },
   {
     id: "backup",
     title: c("Резервные копии данных", "Data backups"),
     summary: c(
-      "Данные на сервере копируются каждую ночь в зашифрованном виде; архив склада можно скачать и восстановить в один шаг",
-      "Server data is copied every night in encrypted form; the warehouse archive can be downloaded and restored in one step",
+      "Данные на сервере копируются каждую ночь в зашифрованном виде и хранятся во втором месте",
+      "Server data is copied every night in encrypted form and kept in a second place",
     ),
-    status: "progress",
+    status: "done",
     track: "platform",
     milestone: "server",
-    quarter: "2026-Q4",
     mapNode: "cab-backup",
   },
   {
@@ -510,25 +445,23 @@ export const ROADMAP_ITEMS: readonly RoadmapItem[] = [
       "Товары с остатками выгружаются одной таблицей для сверки и учёта",
       "Products with stock export as one sheet for reconciliation and accounting",
     ),
-    status: "progress",
+    status: "planned",
     track: "fulfillment",
     origin: "warehouses",
     milestone: "service",
-    quarter: "2026-Q4",
     mapNode: "cab-export-products",
   },
   {
     id: "work-hours",
-    title: c("Учёт рабочих часов", "Working hours"),
+    title: c("Учёт часов и оплата сотрудников", "Hours and staff pay"),
     summary: c(
-      "Склад видит, кто сколько отработал за смену, по входам и операциям",
-      "The warehouse sees who worked how long per shift, from sign-ins and operations",
+      "Кто сколько отработал за смену, сколько из этого оплачивается, надбавки и удержания с причиной",
+      "Who worked how long per shift, how much of it is paid, and bonuses and deductions with a reason",
     ),
-    status: "planned",
+    status: "progress",
     track: "staff",
     origin: "warehouses",
     milestone: "service",
-    quarter: "2027-Q1",
     mapNode: "cab-hours",
   },
   {
@@ -546,19 +479,6 @@ export const ROADMAP_ITEMS: readonly RoadmapItem[] = [
   // ——— Сверено с картой продукта 26 окт. Внутреннее (безопасность, админка,
   // камера над столом, доступ поддержки) на дорожную карту не выносим ———
   {
-    id: "warehouse-card",
-    title: c("Публичная карточка склада", "A public warehouse page"),
-    summary: c(
-      "Цены, услуги и свободные места на витрине берутся из кабинета, а склад сам решает, показываться ли",
-      "Prices, services and free space on the catalogue come from the account, and the warehouse decides whether to be listed",
-    ),
-    status: "planned",
-    track: "market",
-    milestone: "launch",
-    quarter: "2027-Q1",
-    mapNode: "site-card",
-  },
-  {
     id: "workstation",
     title: c("Рабочее место упаковщика", "The packer's workstation"),
     summary: c(
@@ -570,6 +490,7 @@ export const ROADMAP_ITEMS: readonly RoadmapItem[] = [
     origin: "warehouses",
     milestone: "browser",
     mapNode: "cab-workstations",
+    landing: true,
   },
   {
     id: "operations",
@@ -605,8 +526,8 @@ export const ROADMAP_ITEMS: readonly RoadmapItem[] = [
     status: "planned",
     track: "fulfillment",
     milestone: "floor",
-    quarter: "2027-Q1",
     mapNode: "cab-uklad-id",
+    landing: true,
   },
   {
     id: "analytics-pro",
@@ -796,30 +717,6 @@ export const ROADMAP_ITEMS: readonly RoadmapItem[] = [
     mapNode: "cab-producer-access",
   },
   {
-    id: "referrals",
-    title: c("Реферальные программы", "Referral programs"),
-    summary: c(
-      "Обсуждаем, нужна ли награда за приведённого в Уклад человека — сотрудникам, селлерам и складам. Условий пока нет",
-      "We are discussing whether to reward bringing someone to Uklad — staff, sellers and warehouses. There are no terms yet",
-    ),
-    status: "idea",
-    track: "market",
-    milestone: "service",
-    mapNode: "growth-referrals",
-  },
-  {
-    id: "plan-monitoring",
-    title: c("План склада как мониторинг", "The plan as a monitoring view"),
-    summary: c(
-      "Камеры, датчики и оборудование безопасности на плане, события и действия сотрудников там, где они произошли",
-      "Cameras, sensors and safety equipment on the plan, with events and staff actions where they happen",
-    ),
-    status: "idea",
-    track: "plan",
-    milestone: "service",
-    mapNode: "cab-plan-monitoring",
-  },
-  {
     id: "productivity-board",
     title: c("Экран выработки для монитора", "A productivity screen for a wall monitor"),
     summary: c(
@@ -842,5 +739,66 @@ export const ROADMAP_ITEMS: readonly RoadmapItem[] = [
     track: "plan",
     milestone: "service",
     mapNode: "cab-zone-print",
+  },
+  // ——— Сверено с картой продукта 17 ноя ———
+  {
+    id: "approvals",
+    title: c("Подтверждения старшего", "Shift lead approvals"),
+    summary: c(
+      "Брак, пересорт, недостача, расхождения пересчёта и смена процесса собираются в одном месте, и решение подписано именем",
+      "Damage, mis-sorts, shortages, recount mismatches and process changes gather in one place, and each decision carries a name",
+    ),
+    status: "done",
+    track: "fulfillment",
+    milestone: "floor",
+  },
+  {
+    id: "receiving-disputes",
+    title: c("Споры с продавцом по приёмке", "Intake disputes with the seller"),
+    summary: c(
+      "Недостача и излишек уходят продавцу актом, он отвечает в кабинете, а итог остаётся в журнале",
+      "Shortages and surpluses go to the seller as an act, they reply in their account, and the outcome stays in the log",
+    ),
+    status: "progress",
+    track: "fulfillment",
+    origin: "warehouses",
+    milestone: "service",
+    mapNode: "cab-receiving-disputes",
+  },
+  {
+    id: "autoprint",
+    title: c("Этикетка сразу после скана", "A label right after the scan"),
+    summary: c(
+      "На столе упаковки этикетка отправления печатается сама, без окна печати и лишних нажатий",
+      "At the packing desk the shipping label prints on its own, with no print dialog and no extra clicks",
+    ),
+    status: "progress",
+    track: "fulfillment",
+    milestone: "floor",
+    mapNode: "cab-autoprint",
+  },
+  {
+    id: "goods-path",
+    title: c("Путь товара", "The path of an item"),
+    summary: c(
+      "По артикулу, коду или заказу видно, где товар был от приёмки до рейса и кто его трогал",
+      "By SKU, code or order you see where an item went from intake to the truck and who handled it",
+    ),
+    status: "progress",
+    track: "fulfillment",
+    milestone: "floor",
+    mapNode: "cab-goods-path",
+  },
+  {
+    id: "user-ideas",
+    title: c("Идеи пользователей в кабинете", "User ideas inside the account"),
+    summary: c(
+      "Сейчас идея с этой страницы приходит нам письмом. Дальше — общий список прямо в кабинете склада: видно чужие идеи и голоса, и что с ними стало",
+      "Today an idea from this page reaches us by email. Next: a shared list right in the warehouse account, with other people's ideas, their votes and what became of them",
+    ),
+    status: "idea",
+    track: "platform",
+    milestone: "service",
+    mapNode: "user-ideas",
   },
 ];
