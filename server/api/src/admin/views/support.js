@@ -23,15 +23,15 @@ function supportList({ session, reports, status }) {
           <td><span class="badge ${BADGE[r.status] ?? ""}">${STATUS[r.status] ?? esc(r.status)}</span></td></tr>`,
         )
         .join("")}</tbody></table>`
-    : `<p class="empty">Обращений нет.</p>`;
+    : `<p class="empty">${status === "archived" ? "В архиве пусто." : "Обращений нет."}</p>`;
   return page(
     session,
     "Поддержка",
     `${b.head("Клиенты", `Поддержка · ${reports.length}`)}
     <p class="lede">Обращения «Сообщить о проблеме» из кабинета. Журнал и копия данных приходят уже без имён и контактов. Хранятся 90 дней.</p>
-    <div class="bar"><div class="seg">${tab("", "Все")}${Object.entries(STATUS)
+    <div class="bar"><div class="seg">${tab("", "Активные")}${Object.entries(STATUS)
       .map(([k, v]) => tab(k, v))
-      .join("")}</div></div>
+      .join("")}${tab("archived", "Архив")}</div></div>
     ${body}`,
   );
 }
@@ -56,7 +56,7 @@ function supportPage({ session, report: r, payload }) {
     session,
     `Обращение № ${r.id}`,
     `<a class="back" href="/support">${icon("back", 16)}Поддержка</a>
-    ${b.head(`Обращение · ${when(r.created_at)}`, `Обращение № ${r.id}`, `<span class="badge ${BADGE[r.status] ?? ""}">${STATUS[r.status] ?? esc(r.status)}</span>`)}
+    ${b.head(`Обращение · ${when(r.created_at)}`, `Обращение № ${r.id}`, `<span class="badge ${BADGE[r.status] ?? ""}">${STATUS[r.status] ?? esc(r.status)}</span>${r.archived_at ? ` <span class="badge">в архиве</span>` : ""}`)}
     <div class="side-col">
       <section class="panel">
         <h2>Что случилось</h2>
@@ -80,6 +80,11 @@ function supportPage({ session, report: r, payload }) {
         <label>Заметка<textarea name="note" maxlength="2000">${esc(r.note)}</textarea></label>
         <div class="actions"><button>Сохранить</button></div>
       </form>
+      <section class="panel">
+        <h2>Убрать обращение</h2>
+        <p class="hint">Архив прячет обращение из списка, вернуть можно в любой момент. Через 90 дней оно сотрётся само, как и остальные.</p>
+        <div class="actions mt"><form method="post" action="/support/${r.id}/archive">${hidden(session)}<button class="soft">${r.archived_at ? "Вернуть из архива" : "В архив"}</button></form></div>
+      </section>
     </div>
     <section class="sec">
     <h2>Журнал событий · ${journal.length}</h2>

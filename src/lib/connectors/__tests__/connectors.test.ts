@@ -5,7 +5,7 @@ import { getConnector, indexRefs, linkRef, resolveProduct } from "..";
 import { mapCisesInfo, signInHonestSign } from "../honestSign";
 import { mapOzonPostings } from "../ozon";
 import type { ConnectorRequest, ConnectorTransport } from "../transport";
-import { createServerTransport, offlineTransport } from "../transport";
+import { createServerTransport, lastConnectorFailure, offlineTransport } from "../transport";
 import { mapWbOrders } from "../wildberries";
 import { mapYmOrders } from "../yandexMarket";
 import { mapAvitoOrders } from "../avito";
@@ -184,6 +184,10 @@ describe("адаптеры и транспорт", () => {
       fail("integr.error.rejected"),
     );
     expect(await mk(429, {}).request(req)).toEqual(fail("integr.error.rateLimit"));
+    expect(await mk(502, { error: "upstream", status: 400, detail: "x" }).request(req)).toEqual(
+      fail("integr.error.upstream"),
+    );
+    expect(lastConnectorFailure()).toBe("400: x");
     expect(await mk(503, { error: "not_configured" }).request(req)).toEqual(
       fail("integr.error.notConfigured"),
     );

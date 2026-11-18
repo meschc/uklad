@@ -1,5 +1,6 @@
-import { Component, type ErrorInfo, type ReactNode } from "react";
-import { AlertTriangle, RotateCcw } from "lucide-react";
+import { Component, useState, type ErrorInfo, type ReactNode } from "react";
+import { AlertTriangle, MessageSquareWarning, RotateCcw } from "lucide-react";
+import { ReportProblemDialog } from "@/components/support/ReportProblemDialog";
 import { useEditor } from "@/lib/store";
 import { useT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
@@ -50,11 +51,10 @@ export class ErrorBoundary extends Component<Props, State> {
 
   render() {
     if (!this.state.error) return this.props.children;
-    const error = this.state.error;
-    // Повтор без перезагрузки снова попросит тот же пропавший кусок.
-    const retry = () =>
-      isStaleChunk(error) ? window.location.reload() : this.setState({ error: null });
-    return <ScreenCrash error={error} onRetry={retry} />;
+    // Повтор — перезагрузка страницы, а не перерисовка: перерисовка снова
+    // попросит тот же пропавший кусок сборки или упадёт на том же состоянии.
+    // Сотруднику нужна одна понятная кнопка (Кирилл 18.11).
+    return <ScreenCrash error={this.state.error} onRetry={() => window.location.reload()} />;
   }
 }
 
@@ -65,6 +65,7 @@ export class ErrorBoundary extends Component<Props, State> {
 function ScreenCrash({ error, onRetry }: { error: Error; onRetry: () => void }) {
   const t = useT();
   const goToDashboard = useEditor((s) => s.goToDashboard);
+  const [reporting, setReporting] = useState(false);
 
   return (
     <div className="flex h-full items-center justify-center bg-background p-6">
@@ -86,6 +87,13 @@ function ScreenCrash({ error, onRetry }: { error: Error; onRetry: () => void }) 
             {t("crash.toDashboard")}
           </Button>
         </div>
+        {/* Отчёт уходит сам (`autoReport`), но что человек делал перед сбоем,
+            знает только он: подробности — тем же окном «Сообщить о проблеме». */}
+        <Button size="sm" variant="ghost" onClick={() => setReporting(true)}>
+          <MessageSquareWarning className="size-3.5" />
+          {t("crash.report")}
+        </Button>
+        {reporting && <ReportProblemDialog onClose={() => setReporting(false)} />}
       </div>
     </div>
   );

@@ -87,6 +87,8 @@ test("белый список: только известные пути и ме�
   assert.equal(allowed("wildberries", "GET", "/api/v3/orders/new/../../x"), false);
   assert.equal(allowed("wildberries", "GET", "/content/v2/cards"), false);
   assert.equal(allowed("ozon", "POST", "/v2/products/stocks"), true);
+  assert.equal(allowed("ozon", "POST", "/v4/posting/fbs/unfulfilled/list"), true);
+  assert.equal(allowed("ozon", "POST", "/v3/posting/fbs/unfulfilled/list"), false);
   assert.equal(allowed("yandex-market", "GET", "/v2/campaigns/{campaignId}/orders"), true);
   // Чужой номер кампании тем же ключом — нет.
   assert.equal(allowed("yandex-market", "GET", "/v2/campaigns/999/orders"), false);
@@ -196,4 +198,12 @@ test("прокси: PDF площадки — в поле file, отказ пло
   const r2 = await denied.call("POST", "/api/connectors/ozon/proxy", req);
   assert.equal(r2.status, 502);
   assert.equal(r2.body.error, "rejected");
+
+  const bad = make({
+    reply: () => new Response('{"code":3,"message":"invalid filter"}', { status: 400 }),
+  });
+  await bad.call("POST", "/api/connectors/save", save);
+  const r3 = await bad.call("POST", "/api/connectors/ozon/proxy", req);
+  assert.equal(r3.body.error, "upstream");
+  assert.equal(r3.body.detail, "invalid filter");
 });

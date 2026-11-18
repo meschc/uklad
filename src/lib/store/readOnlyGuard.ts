@@ -19,6 +19,7 @@ const DEVICE_KEYS = new Set([
   "session",
   "thisDeviceId",
   "stationSession",
+  "stationTaken",
   "packSession",
   "seenHints",
   "profile",

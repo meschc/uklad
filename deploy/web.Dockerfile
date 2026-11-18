@@ -27,3 +27,7 @@ RUN npm run build
 FROM caddy:2-alpine
 COPY deploy/Caddyfile /etc/caddy/Caddyfile
 COPY --from=build /src/dist /srv
+# Старые куски сборки держим после выкладки, чтобы открытая вкладка не падала
+# (`web-entrypoint.sh`, том `web_assets` в compose.yml).
+COPY deploy/web-entrypoint.sh /usr/local/bin/web-entrypoint.sh
+CMD ["/usr/local/bin/web-entrypoint.sh"]

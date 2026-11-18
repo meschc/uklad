@@ -220,7 +220,7 @@ function createRoutes({ store, cfg, invoices }) {
 
     if (path === "/support") {
       const st = url.searchParams.get("status");
-      const status = views.SUPPORT_STATUSES.includes(st) ? st : "";
+      const status = [...views.SUPPORT_STATUSES, "archived"].includes(st) ? st : "";
       return page(views.supportList({ session: s, reports: store.reports(status), status }));
     }
     const rep = /^\/support\/(\d{1,10})(\.json)?$/.exec(path);
@@ -534,10 +534,20 @@ function createRoutes({ store, cfg, invoices }) {
       );
     }
 
-    const rep = /^\/support\/(\d{1,10})$/.exec(path);
+    const rep = /^\/support\/(\d{1,10})(\/archive)?$/.exec(path);
     if (rep) {
       const r = store.report(Number(rep[1]));
       if (!r) return notFound();
+      if (rep[2]) {
+        // Как у заявок: отменяемое, без подтверждения, вернуть — той же кнопкой.
+        const back = r.archived_at ? null : nowIso;
+        store.archiveReport(r.id, back);
+        store.log(t, by, back ? "support_archive" : "support_restore", `support:${r.id}`, {});
+        return redirect(
+          back ? "/support" : `/support/${r.id}`,
+          back ? "support_archived" : "support_restored",
+        );
+      }
       const status = form.get("status");
       if (!views.SUPPORT_STATUSES.includes(status)) return notFound();
       store.setReport(r.id, status, text(form, "note", 2000));

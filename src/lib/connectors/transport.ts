@@ -40,6 +40,7 @@ function toError(status: number, error: unknown): MsgKey {
   if (error === "rate_limit" || status === 429) return "integr.error.rateLimit";
   if (error === "not_configured" || error === "no_connection") return "integr.error.notConfigured";
   if (status === 403) return "integr.error.forbidden";
+  if (error === "upstream" || error === "too_large") return "integr.error.upstream";
   return "data.failed";
 }
 
@@ -52,6 +53,17 @@ export const offlineTransport: ConnectorTransport = {
     return fail("integr.error.noServer");
   },
 };
+
+let lastFailure: string | null = null;
+
+/**
+ * Что ответила площадка на последний отказ: код и её текст («400: invalid
+ * filter»). Ключ словаря говорит человеку, что делать, а это — для «Проверить
+ * связь», чтобы без доступа к журналам сервера было видно, где именно отказ.
+ */
+export function lastConnectorFailure(): string | null {
+  return lastFailure;
+}
 
 /** Запрос к своему серверу: путь от `/api`, тело — JSON. */
 export type ApiCall = (
@@ -70,7 +82,14 @@ export function createServerTransport(call: ApiCall): ConnectorTransport {
     async request(req) {
       try {
         const { status, body } = await call(`/connectors/${req.system}/proxy`, { ...req });
-        if (status !== 200 || body.ok !== true) return fail(toError(status, body.error));
+        if (status !== 200 || body.ok !== true) {
+          lastFailure =
+            typeof body.status === "number"
+              ? `${body.status}${typeof body.detail === "string" && body.detail ? `: ${body.detail}` : ""}`
+              : null;
+          return fail(toError(status, body.error));
+        }
+        lastFailure = null;
         return ok(body.data ?? null);
       } catch (e) {
         console.error("[uklad] подключение не ответило:", e);

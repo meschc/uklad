@@ -43,6 +43,12 @@ export interface Snapshot {
  * (копия считала её не от той версии): ничего не записано, кабинет пишется
  * целиком.
  */
+/** Ответ стола на «какая версия»: и заодно — не перехватили ли вход. */
+export interface DeskVersion {
+  version: number | null;
+  taken?: { staffRef: string; at: number; by: string | null };
+}
+
 export type SaveOutcome =
   | { saved: number }
   | { conflict: number; rejected?: "stock" | "products" | "records" }
@@ -94,13 +100,24 @@ export const snapshotRepository = {
     });
   },
 
-  /** Версия снимка на сервере (только стол). `null` — снимка ещё нет. */
-  version: async (): Promise<Result<number | null>> => {
+  /**
+   * Версия снимка на сервере (только стол). `null` — снимка ещё нет.
+   * `taken` — сотрудника этого стола сняли входом за другим (миграция 049).
+   */
+  version: async (): Promise<Result<DeskVersion>> => {
     const res = await attempt(() => apiRequest("GET", "/desk/version"), "sync.err.network");
     if (!res.ok) return res;
     const { status, body } = res.data;
     if (status !== 200) return fail("sync.err.network");
-    return ok(typeof body.version === "number" ? body.version : null);
+    const t = body.taken as { staffRef?: unknown; at?: unknown; by?: unknown } | undefined;
+    const taken =
+      t && typeof t.staffRef === "string" && typeof t.at === "number"
+        ? { staffRef: t.staffRef, at: t.at, by: typeof t.by === "string" ? t.by : null }
+        : undefined;
+    return ok({
+      version: typeof body.version === "number" ? body.version : null,
+      ...(taken ? { taken } : {}),
+    });
   },
 
   /** Записать снимок поверх версии `version` (0 — первая запись). */
