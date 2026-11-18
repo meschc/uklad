@@ -32,6 +32,10 @@ export const ru = {
   "ws.equip.off": "не подключено",
 
   "ws.login.title": "Приложите бейдж",
+  "ws.taken.title": "Вход перехвачен: ваш бейдж отсканировали за столом «{name}» в {time}",
+  "ws.taken.titleNoName": "Вход перехвачен: ваш бейдж отсканировали за другим столом в {time}",
+  "ws.taken.body":
+    "Здесь вы вышли, работа отсюда на вас не пишется. Работаете за этим столом — отсканируйте бейдж снова. Это были не вы — скажите старшему смены.",
   "ws.login.station": "Какой стол",
   "ws.login.stationHint":
     "На этом компьютере стол не закреплён — выберите, с чем будете работать. Закреплённый стол открывается сразу.",
@@ -640,6 +644,10 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.equip.off": "not connected",
 
   "ws.login.title": "Scan your badge",
+  "ws.taken.title": "Signed in elsewhere: your badge was scanned at desk “{name}” at {time}",
+  "ws.taken.titleNoName": "Signed in elsewhere: your badge was scanned at another desk at {time}",
+  "ws.taken.body":
+    "You are signed out here, and work from this desk no longer counts as yours. Working at this desk? Scan your badge again. It was not you? Tell your shift lead.",
   "ws.login.station": "Which desk",
   "ws.login.stationHint":
     "This computer is not tied to a desk — pick what you will work on. A tied desk opens right away.",

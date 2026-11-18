@@ -806,6 +806,13 @@ export interface WorkstationSlice {
   ) => string | null;
   stationLogout: () => void;
   /**
+   * Вход перехвачен (миграция 049): этот же бейдж отсканировали за другим
+   * столом, сервер снял сотрудника отсюда. Стол выходит и говорит, где он
+   * теперь. Только на этом экране: в снимок не идёт, гаснет при новом входе.
+   */
+  stationTaken: { at: number; by: string | null } | null;
+  stationTakenOver: (notice: { at: number; by: string | null }) => void;
+  /**
    * Заявки на смену процесса (`switchRepository`): в демо — все заявки
    * склада, их видит кабинет в той же вкладке. В снимок не идут.
    */
