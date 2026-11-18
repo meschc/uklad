@@ -52,6 +52,7 @@ const TEAM_STATUS = {
   bad_name: 400,
   no_warehouse: 400,
   card_taken: 409,
+  plan_unpaid: 402,
 };
 function teamError(err) {
   const m = /^team:(\w+)/.exec(err?.message ?? "");
@@ -68,18 +69,21 @@ function createTeam({ auth, cfg, send, log, limits = null }) {
   async function guarded(req, res, act, ok = () => ({})) {
     const b = req.method === "POST" ? await readJson(req, res) : {};
     if (!b) return;
-    const out = await withSession(req, async (c, ctx) => {
-      if (!mayUse(ctx)) return { status: 403, error: "forbidden" };
-      try {
-        return { value: await act(c, ctx, b) };
-      } catch (err) {
-        const known = teamError(err);
-        if (known) return known;
-        throw err;
-      }
-    });
+    const out = await overLimit(
+      withSession(req, async (c, ctx) => {
+        if (!mayUse(ctx)) return { status: 403, error: "forbidden" };
+        try {
+          return { value: await act(c, ctx, b) };
+        } catch (err) {
+          if (err instanceof PlanLimitError) throw err;
+          const known = teamError(err);
+          if (known) return known;
+          throw err;
+        }
+      }),
+    );
     if (!out) return send(res, 401, { ok: false });
-    if (out.status) return send(res, out.status, { ok: false, error: out.error });
+    if (out.status) return send(res, out.status, { ok: false, error: out.error, ...out.extra });
     return send(res, 200, { ok: true, ...ok(out.value) });
   }
 
@@ -252,17 +256,21 @@ function createTeam({ auth, cfg, send, log, limits = null }) {
     return rows[0].id;
   }
 
+  // Перевод на другую карточку может добавить человека в лимите: старая
+  // карточка с живым бейджем остаётся посчитанной (ревью безопасности #201).
   const setPlace = (req, res) =>
-    guarded(req, res, async (c, _ctx, b) => {
+    guarded(req, res, async (c, ctx, b) => {
       const m = uuid(b.memberId);
       const place = placeOf(b);
       if (!m || !place?.warehouseRef) throw new Error("team:not_found");
       await assertPlace(c, place);
+      const room = limits ? await limits.guard(c, ctx.orgId, "staff") : null;
       await c.query(`SELECT auth.set_member_place($1, $2, $3)`, [
         m,
         place.warehouseRef,
         place.staffRef,
       ]);
+      await room?.check();
     });
 
   const revokeInvite = (req, res) =>
@@ -279,11 +287,24 @@ function createTeam({ auth, cfg, send, log, limits = null }) {
       await c.query(`SELECT auth.change_role($1, $2)`, [m, r]);
     });
 
+  // Выключить можно всегда — это гасит доступ, в том числе в неоплате.
+  // Включить — это вернуть человека: лимит тарифа и неоплата как у приглашения.
   const disable = (req, res) =>
-    guarded(req, res, async (c, _ctx, b) => {
+    guarded(req, res, async (c, ctx, b) => {
       const m = uuid(b.memberId);
       if (!m) throw new Error("team:not_found");
-      await c.query(`SELECT auth.set_member_disabled($1, $2)`, [m, b.disabled !== false]);
+      const off = b.disabled !== false;
+      let room = null;
+      if (!off && limits) {
+        if (limits.paymentFor(ctx.orgId).readOnly) throw new Error("team:plan_unpaid");
+        const { rows } = await c.query(
+          `SELECT partner_ref FROM uklad.members WHERE id = $1 AND org_id = uklad.current_org()`,
+          [m],
+        );
+        room = await limits.guard(c, ctx.orgId, rows[0]?.partner_ref ? "sellers" : "staff");
+      }
+      await c.query(`SELECT auth.set_member_disabled($1, $2)`, [m, off]);
+      await room?.check();
     });
 
   const saveRole = (req, res) =>

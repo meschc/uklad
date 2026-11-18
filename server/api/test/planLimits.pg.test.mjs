@@ -118,7 +118,8 @@ async function owner(email, ip, account = {}) {
     new Date(),
   );
   const who = { cookie, org, ip };
-  const data = { warehouse: { id: "w1", name: "Склад", staff: [] } };
+  const staff = ["stf-x", "stf-y", "stf-z"].map((id) => ({ id, name: id }));
+  const data = { warehouse: { id: "w1", name: "Склад", staff } };
   const s = await post("/api/cabinet/snapshot", { ...who, body: { version: 0, format: 8, data } });
   assert.equal(s.status, 200, JSON.stringify(s.json));
   return { ...who, id };
@@ -199,4 +200,66 @@ test("функции тарифа с ручным включением из ад
   assert.equal(r.json.limits.staff, 10);
   assert.equal(r.json.payment.readOnly, false);
   assert.equal((await call("GET", "/api/company/features", {})).status, 401);
+});
+
+/** Пригласить сотрудника по почте → id участника. */
+async function invite(who, email, extra = {}) {
+  const roles = (await call("GET", "/api/team", who)).json.roles;
+  const roleId = roles.find((x) => x.name !== "Владелец").id;
+  const r = await post("/api/team/invite", {
+    ...who,
+    body: { email, roleId, warehouseRef: "w1", ...extra },
+  });
+  if (r.status !== 200) return { status: r.status, json: r.json };
+  const m = (await call("GET", "/api/team", who)).json.members.find((x) => x.email === email);
+  return { status: 200, id: m.id };
+}
+const disable = (who, memberId, disabled) =>
+  post("/api/team/disable", { ...who, body: { memberId, disabled } });
+
+test(
+  "включить выключенного сверх лимита нельзя: выключить, позвать, включить",
+  { skip: SKIP },
+  async () => {
+    const a = await owner("limit-e@sklad.ru", "10.0.7.6", { limits: JSON.stringify({ staff: 2 }) });
+    const x = await invite(a, "x@sklad.ru");
+    assert.equal(x.status, 200);
+    assert.equal((await disable(a, x.id, true)).status, 200);
+    assert.equal((await invite(a, "y@sklad.ru")).status, 200);
+    const back = await disable(a, x.id, false);
+    assert.equal(back.status, 409, JSON.stringify(back.json));
+    assert.equal(back.json.error, "plan_limit");
+  },
+);
+
+test(
+  "перевод на новую карточку сверх лимита — отказ: бейдж старой остаётся",
+  { skip: SKIP },
+  async () => {
+    const a = await owner("limit-f@sklad.ru", "10.0.7.7", { limits: JSON.stringify({ staff: 3 }) });
+    // Владелец, x на карточке stf-x с бейджем — двое.
+    const x = await invite(a, "px@sklad.ru", { staffRef: "stf-x" });
+    assert.equal(x.status, 200);
+    assert.equal((await issue(a, "stf-x")).status, 200);
+    const place = (staffRef) =>
+      post("/api/team/place", { ...a, body: { memberId: x.id, warehouseRef: "w1", staffRef } });
+    // stf-y: бейдж stf-x остаётся, x теперь stf-y — трое, в лимите.
+    assert.equal((await place("stf-y")).status, 200);
+    // Бейдж на stf-y — тот же человек, лимит не тратит.
+    assert.equal((await issue(a, "stf-y")).status, 200);
+    // Снова перевод: бейдж stf-y остаётся, x на stf-z — четвёртый сверх лимита.
+    const over = await place("stf-z");
+    assert.equal(over.status, 409, JSON.stringify(over.json));
+    assert.equal(over.json.error, "plan_limit");
+  },
+);
+
+test("неоплата: выключить можно, включить — нет", { skip: SKIP }, async () => {
+  const a = await owner("limit-g@sklad.ru", "10.0.7.8");
+  const x = await invite(a, "gx@sklad.ru");
+  store.updateAccount(a.id, { trial_until: iso(-8) }, new Date());
+  assert.equal((await disable(a, x.id, true)).status, 200);
+  const on = await disable(a, x.id, false);
+  assert.equal(on.status, 402);
+  assert.equal(on.json.error, "plan_unpaid");
 });
