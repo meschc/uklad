@@ -62,8 +62,9 @@ export function createOzonConnector(transport: ConnectorTransport, account: stri
           cutoff_from: new Date(now - 7 * 864e5).toISOString(),
           cutoff_to: new Date(now + 14 * 864e5).toISOString(),
         },
-        limit: 1000,
-        offset: 0,
+        // v4 принимает не больше 100 за запрос (ответ Ozon 18.11). Больше 100
+        // неотгруженных за раз — следующей страницей, когда дойдёт подкачка.
+        limit: 100,
       });
       return res.ok ? ok(mapOzonPostings(res.data)) : res;
     },
