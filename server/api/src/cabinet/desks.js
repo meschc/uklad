@@ -583,11 +583,21 @@ function createDesks({ auth, cfg, send, log }) {
       const { rows } = await c.query(
         `SELECT version FROM uklad.cabinet_snapshots WHERE org_id = uklad.current_org()`,
       );
-      return { version: rows[0]?.version ?? null };
+      // Один вход на бейдж (миграция 049): сотрудника этого стола сняли
+      // сканом за другим — стол показывает «Вход перехвачен».
+      const { rows: taken } = await c.query(`SELECT * FROM auth.desk_taken($1)`, [deskHash(req)]);
+      return { version: rows[0]?.version ?? null, taken: taken[0] ?? null };
     });
     if (!out) return gone(res);
     if (out.limited) return limited(res);
-    return send(res, 200, { ok: true, version: out.version });
+    const t = out.taken;
+    return send(res, 200, {
+      ok: true,
+      version: out.version,
+      ...(t
+        ? { taken: { staffRef: t.staff_ref, at: new Date(t.taken_at).getTime(), by: t.by_name } }
+        : {}),
+    });
   }
 
   /**
@@ -684,7 +694,8 @@ function createDesks({ auth, cfg, send, log }) {
         if (!place.staffHere(staffRef)) return { otherWarehouse: true };
       }
       // Узнанный бейдж — это «встал за стол»: дальше запись стола сверяется
-      // с ним 12 часов, как и вход по бейджу в браузере.
+      // с ним 12 часов, как и вход по бейджу в браузере. Вход у сотрудника
+      // один: за другим столом его снимает этот скан (миграция 049).
       if (staffRef) {
         await c.query(`SELECT auth.desk_set_staff($1, $2, $3::interval)`, [
           deskHash(req),

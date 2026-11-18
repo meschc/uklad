@@ -23,9 +23,11 @@ interface OzonPosting {
   products?: { sku: number; offer_id?: string; quantity: number }[];
 }
 
-/** Ответ `POST /v3/posting/fbs/unfulfilled/list` → заказы в общей форме. */
+/** Ответ `POST /v4/posting/fbs/unfulfilled/list` → заказы в общей форме. */
 export function mapOzonPostings(payload: unknown): ExternalOrder[] {
-  const postings = (payload as { result?: { postings?: OzonPosting[] } } | null)?.result?.postings;
+  // v4 отдаёт список в `result.postings`; на случай другой формы — и `postings`.
+  const p = payload as { result?: { postings?: OzonPosting[] }; postings?: OzonPosting[] } | null;
+  const postings = p?.result?.postings ?? p?.postings;
   if (!Array.isArray(postings)) return [];
   return postings
     .filter((p) => p && typeof p.posting_number === "string")
@@ -54,14 +56,15 @@ export function createOzonConnector(transport: ConnectorTransport, account: stri
 
     async fetchOrders(): Promise<Result<ExternalOrder[]>> {
       const now = Date.now();
-      const res = await post("/v3/posting/fbs/unfulfilled/list", {
+      const res = await post("/v4/posting/fbs/unfulfilled/list", {
         dir: "ASC",
         filter: {
           cutoff_from: new Date(now - 7 * 864e5).toISOString(),
           cutoff_to: new Date(now + 14 * 864e5).toISOString(),
         },
-        limit: 1000,
-        offset: 0,
+        // v4 принимает не больше 100 за запрос (ответ Ozon 18.11). Больше 100
+        // неотгруженных за раз — следующей страницей, когда дойдёт подкачка.
+        limit: 100,
       });
       return res.ok ? ok(mapOzonPostings(res.data)) : res;
     },
