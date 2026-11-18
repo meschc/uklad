@@ -30,6 +30,15 @@ export interface OrderImportPlan {
   unknown: string[];
 }
 
+/**
+ * Товары, среди которых ищем строки заказа одного подключения: магазин
+ * партнёра — только его товары; «свой товар» — товары без партнёра. Так
+ * одинаковый артикул у двух продавцов не путается.
+ */
+export function productsOfConnection(products: Product[], partnerId: string | null): Product[] {
+  return products.filter((p) => (partnerId ? p.partnerId === partnerId : !p.partnerId));
+}
+
 const norm = (v: string | undefined) => v?.trim().toLowerCase() || "";
 
 const IMPORTABLE: readonly string[] = ["ozon", "wildberries", "yandex-market"];

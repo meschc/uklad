@@ -72,12 +72,13 @@ export const ru = {
   "integr.check.ok": "Связь есть, новых заказов: {n}",
   "integr.pull": "Загрузить заказы",
   "integr.pull.hint":
-    "Пока кабинет открыт, новые заказы сами приходят в «Задания» раз в полторы минуты. Товар узнаём по артикулу или штрихкоду из номенклатуры.",
+    "Пока кабинет открыт, новые заказы сами приходят в «Задания» раз в полторы минуты. Товар узнаём по артикулу или штрихкоду среди товаров этого партнёра.",
   "integr.pull.ok": "Новых заказов в заданиях: {n}",
   "integr.pull.unknown": "Не нашли товар в номенклатуре, заказы: {list}",
   "integr.remove": "Удалить",
   "integr.saveToServer": "Сохранить подключение",
-  "integr.field.label": "Чей магазин",
+  "integr.field.partner": "Партнёр",
+  "integr.ownGoods": "Свой товар склада",
   "integr.securityNote":
     "Ключи хранятся на сервере Уклада в зашифрованном виде и не показываются после сохранения.",
   "integr.setup": "Настроить",
@@ -491,12 +492,13 @@ export const en: Record<keyof typeof ru, string> = {
   "integr.check.ok": "Connected, new orders: {n}",
   "integr.pull": "Load orders",
   "integr.pull.hint":
-    "While the cabinet is open, new orders arrive in Tasks every 90 seconds. Products are matched by SKU or barcode.",
+    "While the cabinet is open, new orders arrive in Tasks every 90 seconds. Products are matched by SKU or barcode among this partner's goods.",
   "integr.pull.ok": "New orders added to tasks: {n}",
   "integr.pull.unknown": "Product not found in the catalog, orders: {list}",
   "integr.remove": "Remove",
   "integr.saveToServer": "Save connection",
-  "integr.field.label": "Whose shop",
+  "integr.field.partner": "Partner",
+  "integr.ownGoods": "Warehouse's own goods",
   "integr.securityNote":
     "Keys are stored encrypted on the Uklad server and are not shown again after saving.",
   "integr.setup": "Set up",
