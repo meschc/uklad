@@ -534,19 +534,31 @@ function createRoutes({ store, cfg, invoices }) {
       );
     }
 
-    const rep = /^\/support\/(\d{1,10})(\/archive)?$/.exec(path);
+    const rep = /^\/support\/(\d{1,10})(\/archive|\/done)?$/.exec(path);
     if (rep) {
       const r = store.report(Number(rep[1]));
       if (!r) return notFound();
-      if (rep[2]) {
+      // Из списка кнопки возвращают на ту же вкладку, из карточки — в список.
+      const tab = form.get("tab");
+      const list = [...views.SUPPORT_STATUSES, "archived"].includes(tab)
+        ? `/support?status=${tab}`
+        : "/support";
+      if (rep[2] === "/archive") {
         // Как у заявок: отменяемое, без подтверждения, вернуть — той же кнопкой.
         const back = r.archived_at ? null : nowIso;
         store.archiveReport(r.id, back);
         store.log(t, by, back ? "support_archive" : "support_restore", `support:${r.id}`, {});
         return redirect(
-          back ? "/support" : `/support/${r.id}`,
+          back || form.get("tab") ? list : `/support/${r.id}`,
           back ? "support_archived" : "support_restored",
         );
+      }
+      if (rep[2] === "/done") {
+        // Как «Разобрано» у ошибок: одна кнопка, заметка остаётся, вернуть — той же.
+        const next = r.status === "done" ? "work" : "done";
+        store.setReport(r.id, next, r.note);
+        store.log(t, by, "support_update", `support:${r.id}`, { было: r.status, стало: next });
+        return redirect(list, "support_saved");
       }
       const status = form.get("status");
       if (!views.SUPPORT_STATUSES.includes(status)) return notFound();

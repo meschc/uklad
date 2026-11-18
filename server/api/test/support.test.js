@@ -219,6 +219,27 @@ test("админка: обращение уходит в архив и возв�
   assert.ok(actions.includes("support_archive") && actions.includes("support_restore"));
 });
 
+test("админка: «Разобрано» ставит статус одной кнопкой и сохраняет заметку", async (t) => {
+  const app = await start();
+  t.after(app.stop);
+  const { id } = await (await app.send(report())).json();
+  const cookie = await app.adminLogin();
+  const list = await (await app.adminGet("/support", cookie)).text();
+  assert.ok(list.includes(`/support/${id}/done`), "кнопка в списке");
+  assert.ok(list.includes(`/support/${id}/archive`), "архив в списке");
+  const csrf = /name="csrf" value="([^"]+)"/.exec(list)[1];
+  app.store.setReport(id, "work", "уже смотрим");
+
+  const done = await app.adminPost(`/support/${id}/done`, { csrf, tab: "work" }, cookie);
+  assert.equal(done.status, 303);
+  assert.match(done.headers.get("location"), /^\/support\?status=work/);
+  assert.equal(app.store.report(id).status, "done");
+  assert.equal(app.store.report(id).note, "уже смотрим", "заметка цела");
+
+  await app.adminPost(`/support/${id}/done`, { csrf }, cookie);
+  assert.equal(app.store.report(id).status, "work", "второй раз — вернуть");
+});
+
 test("старые обращения стираются через 90 дней", async (t) => {
   const app = await start();
   t.after(app.stop);
