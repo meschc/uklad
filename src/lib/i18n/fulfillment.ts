@@ -66,6 +66,7 @@ export const ru = {
   "integr.error.serverKey":
     "Сервер не готов хранить ключи: администратору нужно задать ключ шифрования",
   "integr.error.badInput": "Заполните название, номер и ключ",
+  "integr.error.upstream": "Площадка не приняла запрос",
   "integr.check": "Проверить связь",
   "integr.check.running": "Спрашиваем площадку…",
   "integr.check.ok": "Связь есть, новых заказов: {n}",
@@ -479,6 +480,7 @@ export const en: Record<keyof typeof ru, string> = {
   "integr.error.serverKey":
     "The server cannot store keys yet: the admin must set the encryption key",
   "integr.error.badInput": "Fill in the name, number and key",
+  "integr.error.upstream": "The platform rejected the request",
   "integr.check": "Check connection",
   "integr.check.running": "Asking the platform…",
   "integr.check.ok": "Connected, new orders: {n}",

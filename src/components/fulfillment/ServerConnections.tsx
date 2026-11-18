@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getConnector } from "@/lib/connectors";
+import { lastConnectorFailure } from "@/lib/connectors/transport";
 import {
   connectorsRepository,
   type ServerConnection,
@@ -20,6 +21,10 @@ const CLIENT_LABEL: Partial<
   ozon: "integr.field.clientId",
   "yandex-market": "integr.field.campaignId",
 };
+
+/** Текст отказа + что ответила площадка, если она ответила. */
+const withPlatformReply = (text: string, reply: string | null) =>
+  reply ? `${text} (${reply})` : text;
 
 /**
  * Подключения площадки, ключи которых хранит сервер. Магазинов у склада
@@ -76,7 +81,7 @@ export function ServerConnections({ spec, t }: { spec: IntegrationSpec; t: TFunc
       ? t("integr.error.unsupported")
       : res.ok
         ? t("integr.check.ok", { n: res.data.length })
-        : t(res.error);
+        : withPlatformReply(t(res.error), lastConnectorFailure());
     setChecks((c) => ({ ...c, [id]: text }));
   };
 
