@@ -17,9 +17,8 @@ import { getConnector } from "./connectors";
 import { connectorsRepository } from "./data/connectorsRepository";
 import { requestsRepository } from "./data/requestsRepository";
 import { fail, ok, type Result } from "./data/result";
-import type { ExternalOrder } from "./connectors/types";
 import type { MsgKey } from "./i18n";
-import { planOrderImport } from "./orderImport";
+import { planOrderImport, productsOfConnection } from "./orderImport";
 import { useEditor } from "./store";
 import { productsOfWarehouse } from "./warehouseProducts";
 
@@ -33,35 +32,35 @@ export interface OrderSyncResult {
 const PERIOD_MS = 90_000;
 let running: Promise<Result<OrderSyncResult>> | null = null;
 
-async function collectOrders(): Promise<Result<ExternalOrder[]>> {
+async function syncOnce(): Promise<Result<OrderSyncResult>> {
   const conns = await connectorsRepository.list();
   if (!conns.ok) return conns;
-  const orders: ExternalOrder[] = [];
+  const result: OrderSyncResult = { created: 0, unknown: [] };
   let error: MsgKey | null = null;
+  let answered = false;
   for (const c of conns.data) {
-    const res = await getConnector(c.system, c.id)?.fetchOrders?.();
-    if (!res) continue;
-    if (res.ok) orders.push(...res.data);
-    else error ??= res.error;
+    const fetched = await getConnector(c.system, c.id)?.fetchOrders?.();
+    if (!fetched) continue;
+    // Одна площадка не ответила — остальные всё равно заводим.
+    if (!fetched.ok) {
+      error ??= fetched.error;
+      continue;
+    }
+    answered = true;
+    const s = useEditor.getState();
+    const plan = planOrderImport(
+      fetched.data,
+      productsOfConnection(productsOfWarehouse(s.products, s.warehouse), c.partnerId),
+      s.requests,
+    );
+    if (plan.items.length) {
+      const made = await requestsRepository.create(plan.items);
+      if (!made.ok) return made;
+    }
+    result.created += plan.orders;
+    result.unknown.push(...plan.unknown);
   }
-  // Одна площадка не ответила — остальные всё равно заводим.
-  return orders.length || !error ? ok(orders) : fail(error);
-}
-
-async function syncOnce(): Promise<Result<OrderSyncResult>> {
-  const fetched = await collectOrders();
-  if (!fetched.ok) return fetched;
-  const s = useEditor.getState();
-  const plan = planOrderImport(
-    fetched.data,
-    productsOfWarehouse(s.products, s.warehouse),
-    s.requests,
-  );
-  if (plan.items.length) {
-    const made = await requestsRepository.create(plan.items);
-    if (!made.ok) return made;
-  }
-  return ok({ created: plan.orders, unknown: plan.unknown });
+  return answered || !error ? ok(result) : fail(error);
 }
 
 /** Один проход сейчас. Параллельный вызов ждёт уже идущий, а не запускает второй. */

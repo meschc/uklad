@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { planOrderImport } from "./orderImport";
+import { planOrderImport, productsOfConnection } from "./orderImport";
 import type { ExternalOrder } from "./connectors/types";
 import type { FulfillmentRequest, Product } from "./types";
 
@@ -74,5 +74,18 @@ describe("planOrderImport", () => {
       [],
     );
     expect(twice.orders).toBe(1);
+  });
+
+  it("магазин партнёра ищет только среди его товаров, «свой товар» — среди ничьих", () => {
+    const a = { ...product("a", "PEN-1"), partnerId: "pa" };
+    const b = { ...product("b", "PEN-1"), partnerId: "pb" };
+    const own = product("o", "PEN-1");
+    const all = [a, b, own];
+    const pick = (pid: string | null) =>
+      planOrderImport([order("0007-1", ["PEN-1", 1])], productsOfConnection(all, pid), []).items[0]
+        ?.productId;
+    expect(pick("pa")).toBe("a");
+    expect(pick("pb")).toBe("b");
+    expect(pick(null)).toBe("o");
   });
 });
