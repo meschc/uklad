@@ -196,4 +196,12 @@ test("прокси: PDF площадки — в поле file, отказ пло
   const r2 = await denied.call("POST", "/api/connectors/ozon/proxy", req);
   assert.equal(r2.status, 502);
   assert.equal(r2.body.error, "rejected");
+
+  const bad = make({
+    reply: () => new Response('{"code":3,"message":"invalid filter"}', { status: 400 }),
+  });
+  await bad.call("POST", "/api/connectors/save", save);
+  const r3 = await bad.call("POST", "/api/connectors/ozon/proxy", req);
+  assert.equal(r3.body.error, "upstream");
+  assert.equal(r3.body.detail, "invalid filter");
 });

@@ -269,7 +269,18 @@ function createConnectors({ auth, send, log, secretKey, fetchImpl = fetch }) {
         const st = upstream.status;
         const error =
           st === 401 || st === 403 ? "rejected" : st === 429 ? "rate_limit" : "upstream";
-        return send(res, 502, { ok: false, error, status: st });
+        // Текст отказа площадки (у Ozon `message`, у WB `title`/`detail`) — без
+        // заголовков и ключа: по нему человек на экране поймёт, что не так.
+        let detail = "";
+        try {
+          const j = JSON.parse(buf.toString("utf8"));
+          const m = j?.message ?? j?.detail ?? j?.title ?? j?.error?.message ?? j?.errorText;
+          if (typeof m === "string") detail = m.slice(0, 200);
+        } catch {
+          // не JSON — хватит кода
+        }
+        log.error("[uklad] площадка отказала:", system, b.method, b.path, st, detail);
+        return send(res, 502, { ok: false, error, status: st, detail });
       }
       const type = upstream.headers.get("content-type") ?? "";
       // Бинарное (PDF этикеток) — в поле `file`, как ждут адаптеры.
