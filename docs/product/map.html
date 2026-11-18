@@ -1,62 +1,94 @@
 <title>Карта Уклада</title>
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link
-  rel="stylesheet"
-  href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap"
-/>
 <style>
-  /* Раскладка: сводка (этапы запуска → сейчас → отсечка) сверху, ниже карта: Уклад в центре, разработка слева, смысл и маркетинг справа, связи пунктиром; справа карточка узла */
+  /* Шрифт дизайн-системы Уклада: файлы лежат рядом со страницей (fonts/), как в public/fonts */
+  @font-face {
+    font-family: "Medeo Sans";
+    src: url("fonts/medeo-sans-cyrillic.woff2") format("woff2");
+    font-weight: 100 900;
+    font-display: swap;
+    unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+  }
+  @font-face {
+    font-family: "Medeo Sans";
+    src: url("fonts/medeo-sans-latin.woff2") format("woff2");
+    font-weight: 100 900;
+    font-display: swap;
+    unicode-range:
+      U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+      U+2000-206F, U+20AC, U+20BD, U+2122, U+2190-2199, U+2212, U+2215, U+FEFF, U+FFFD;
+  }
+  @font-face {
+    font-family: "Medeo Mono";
+    src: url("fonts/medeo-mono-cyrillic.woff2") format("woff2");
+    font-weight: 100 900;
+    font-display: swap;
+    unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+  }
+  @font-face {
+    font-family: "Medeo Mono";
+    src: url("fonts/medeo-mono-latin.woff2") format("woff2");
+    font-weight: 100 900;
+    font-display: swap;
+    unicode-range:
+      U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+      U+2000-206F, U+20AC, U+20BD, U+2122, U+2190-2199, U+2212, U+2215, U+FEFF, U+FFFD;
+  }
+  /* Раскладка: сводка (этапы запуска → осталось до запуска) сверху, ниже карта: Уклад в центре, разработка слева, смысл и маркетинг справа, связи пунктиром; справа карточка узла */
+  /* Токены — из src/index.css (дизайн-система Уклада): фон #FAFAFA, поверхность белая, primary #2563EB */
   :root {
-    --bg: hsl(220 20% 98%);
+    --bg: hsl(0 0% 98%);
     --surface: hsl(0 0% 100%);
     --fg: hsl(224 12% 12%);
-    --muted: hsl(220 9% 46%);
-    --line: hsl(220 13% 88%);
-    --soft: hsl(220 14% 95%);
+    --muted: hsl(220 9% 42%);
+    --line: hsl(220 13% 91%);
+    --soft: hsl(220 14% 96%);
     --accent: hsl(221 83% 53%);
-    --accent-soft: hsl(221 83% 53% / 0.1);
-    --st-done: hsl(152 52% 36%);
+    --accent-soft: hsl(221 83% 53% / 0.08);
+    --st-done: hsl(163 94% 24%);
     --st-now: hsl(221 83% 53%);
+    --st-check: hsl(190 80% 36%);
     --st-next: hsl(262 52% 55%);
-    --st-blocked: hsl(4 72% 50%);
-    --st-question: hsl(36 92% 42%);
+    --st-blocked: hsl(0 72% 51%);
+    --st-question: hsl(43 96% 33%);
     --st-later: hsl(220 9% 60%);
-    --font: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-    --mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    --font: "Medeo Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --mono: "Medeo Mono", ui-monospace, "SF Mono", Menlo, monospace;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --bg: hsl(224 14% 8%);
-      --surface: hsl(224 14% 11%);
+      --bg: hsl(224 14% 9%);
+      --surface: hsl(224 13% 11%);
       --fg: hsl(220 14% 92%);
-      --muted: hsl(220 9% 62%);
-      --line: hsl(223 12% 22%);
-      --soft: hsl(223 12% 15%);
-      --accent: hsl(214 100% 63%);
-      --accent-soft: hsl(214 100% 63% / 0.14);
-      --st-done: hsl(152 45% 52%);
-      --st-now: hsl(214 100% 66%);
+      --muted: hsl(220 9% 60%);
+      --line: hsl(223 12% 20%);
+      --soft: hsl(223 12% 16%);
+      --accent: hsl(217 91% 60%);
+      --accent-soft: hsl(217 91% 60% / 0.14);
+      --st-done: hsl(158 64% 52%);
+      --st-now: hsl(217 91% 64%);
+      --st-check: hsl(190 70% 55%);
       --st-next: hsl(262 70% 72%);
-      --st-blocked: hsl(4 80% 64%);
-      --st-question: hsl(40 90% 58%);
+      --st-blocked: hsl(0 63% 60%);
+      --st-question: hsl(43 96% 56%);
       --st-later: hsl(220 9% 52%);
       color-scheme: dark;
     }
   }
   :root[data-theme="dark"] {
-    --bg: hsl(224 14% 8%);
-    --surface: hsl(224 14% 11%);
+    --bg: hsl(224 14% 9%);
+    --surface: hsl(224 13% 11%);
     --fg: hsl(220 14% 92%);
-    --muted: hsl(220 9% 62%);
-    --line: hsl(223 12% 22%);
-    --soft: hsl(223 12% 15%);
-    --accent: hsl(214 100% 63%);
-    --accent-soft: hsl(214 100% 63% / 0.14);
-    --st-done: hsl(152 45% 52%);
-    --st-now: hsl(214 100% 66%);
+    --muted: hsl(220 9% 60%);
+    --line: hsl(223 12% 20%);
+    --soft: hsl(223 12% 16%);
+    --accent: hsl(217 91% 60%);
+    --accent-soft: hsl(217 91% 60% / 0.14);
+    --st-done: hsl(158 64% 52%);
+    --st-now: hsl(217 91% 64%);
+    --st-check: hsl(190 70% 55%);
     --st-next: hsl(262 70% 72%);
-    --st-blocked: hsl(4 80% 64%);
-    --st-question: hsl(40 90% 58%);
+    --st-blocked: hsl(0 63% 60%);
+    --st-question: hsl(43 96% 56%);
     --st-later: hsl(220 9% 52%);
     color-scheme: dark;
   }
@@ -269,6 +301,26 @@
   [data-st="question"] .dot,
   .dot[data-st="question"] {
     background: var(--st-question);
+  }
+  [data-st="check"] .dot,
+  .dot[data-st="check"] {
+    background: var(--st-check);
+  }
+  /* «Осталось до запуска»: группы по веткам в колонки */
+  .launch-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 14px 24px;
+  }
+  .launch-grid h3 {
+    margin: 0 0 6px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .launch-sum {
+    font-size: 13px;
+    color: var(--muted);
+    margin: -4px 0 12px;
   }
 
   .legend {
@@ -749,11 +801,25 @@
     <h1>Карта Уклада</h1>
     <nav class="quick" aria-label="Ссылки проекта">
       <a class="btn" href="https://u-klad.ru/" target="_blank" rel="noopener"
-        >Витрина <span class="ext" aria-hidden="true">↗</span></a
+        >Сайт <span class="ext" aria-hidden="true">↗</span></a
       >
-      <!-- после переезда кабинета (ADR 0008) — https://app.u-klad.ru/ -->
-      <a class="btn" href="https://u-klad.ru/app/" target="_blank" rel="noopener"
-        >Демо WMS <span class="ext" aria-hidden="true">↗</span></a
+      <!-- u-klad.ru/app/ — GitHub Pages, демо без сервера (данные в браузере) -->
+      <a
+        class="btn"
+        href="https://u-klad.ru/app/"
+        target="_blank"
+        rel="noopener"
+        title="Без сервера: данные живут в браузере"
+        >Демо без сервера <span class="ext" aria-hidden="true">↗</span></a
+      >
+      <!-- кабинет с сервером; на запуске переедет на u-klad.ru (узел l-prod-domain) -->
+      <a
+        class="btn"
+        href="https://staging.u-klad.ru/app/"
+        target="_blank"
+        rel="noopener"
+        title="Кабинет с сервером и базой"
+        >Кабинет staging <span class="ext" aria-hidden="true">↗</span></a
       >
       <a
         class="btn"
@@ -763,7 +829,7 @@
         >Дизайн-система <span class="ext" aria-hidden="true">↗</span></a
       >
     </nav>
-    <span class="meta" id="meta">загружаю данные…</span>
+    <span class="meta"><span id="ver"></span><span id="meta">загружаю данные…</span></span>
   </header>
 
   <section class="panel" aria-labelledby="h-stages">
@@ -773,18 +839,11 @@
     </div>
   </section>
 
-  <div class="cols">
-    <section class="panel" aria-labelledby="h-now">
-      <h2 id="h-now">Делаем сейчас и что блокирует</h2>
-      <ul class="plain" id="now"></ul>
-    </section>
-    <section class="panel" aria-labelledby="h-cp">
-      <h2 id="h-cp">Отсечки сессий</h2>
-      <div id="cps">
-        <div class="empty">Отсечек пока нет. Каждая сессия добавляет свою в конце работы.</div>
-      </div>
-    </section>
-  </div>
+  <section class="panel" aria-labelledby="h-launch">
+    <h2 id="h-launch">Осталось до запуска</h2>
+    <div class="launch-sum" id="launch-sum"></div>
+    <div class="launch-grid" id="launch"></div>
+  </section>
 
   <section aria-labelledby="h-map" id="map-sec">
     <div class="mapbar">
@@ -840,12 +899,13 @@
   const STATUS = {
     now: { label: "в работе" },
     blocked: { label: "блокер" },
+    check: { label: "проверить" },
     question: { label: "открытый вопрос" },
-    next: { label: "следующее" },
+    next: { label: "следующее" }, // после запуска
     done: { label: "готово" },
     later: { label: "потом" },
   };
-  const STATUS_ORDER = ["now", "blocked", "question", "next", "done", "later"];
+  const STATUS_ORDER = ["now", "blocked", "check", "question", "next", "later", "done"];
   const COL_W = 236,
     ROW_H = 34,
     PAD = 16,
@@ -863,6 +923,7 @@
       prompt: (p) =>
         `Открой и прочитай файл ${p}. Коротко перескажи, что в нём, и скажи, что в нём устарело или не сходится с картой продукта.`,
     },
+    vscode: { label: "VS Code", url: (p) => "vscode://file" + encodeURI(p) }, // VS Code сам ставит обработчик vscode://
     sublime: { label: "Sublime", url: (p) => "subl://open?url=file://" + encodeURI(p) }, // нужен обработчик subl:// (macOS сам его не ставит)
   };
   const readEditor = () => {
@@ -891,7 +952,6 @@
     nodes: new Map(),
     links: [],
     stages: [],
-    cps: [],
     open: new Set(["root"]),
     sel: null,
     // какие статусы показывать; по умолчанию всё, кроме готового (запоминается в браузере)
@@ -917,7 +977,7 @@
   };
   const safeUrl = (u) =>
     typeof u === "string" &&
-    /^(https:\/\/|claude:\/\/|http:\/\/(127\.0\.0\.1|localhost):\d+\/)/.test(u);
+    /^(https:\/\/|claude:\/\/|vscode:\/\/|http:\/\/(127\.0\.0\.1|localhost):\d+\/)/.test(u);
   const dot = (st) => el("span", { class: "dot", "data-st": st });
 
   function childrenOf(id) {
@@ -930,8 +990,20 @@
   }
   // Узел виден, если показан его статус (или статуса нет в списке) либо виден кто-то из потомков:
   // открытое под готовым не теряется
+  // Документы и артефакты видны всегда, какой бы статус ни был скрыт: это справочник, а не задачи
+  const ALWAYS = new Set(["docs-root", "docs", "pdocs"]);
+  function isDoc(n) {
+    for (let c = n, i = 0; c && i < 20; c = state.nodes.get(c.parent), i++)
+      if (ALWAYS.has(c.id)) return true;
+    return false;
+  }
   function subtreeShown(n) {
-    return !STATUS[n.status] || state.show.has(n.status) || childrenOf(n.id).some(subtreeShown);
+    return (
+      !STATUS[n.status] ||
+      state.show.has(n.status) ||
+      isDoc(n) ||
+      childrenOf(n.id).some(subtreeShown)
+    );
   }
   const visKids = (id) => childrenOf(id).filter(subtreeShown);
   function pathOf(n) {
@@ -971,72 +1043,55 @@
     n.updated ? Math.floor((Date.now() - Date.parse(n.updated)) / 86400000) : null;
   const isStale = (n) =>
     ["now", "blocked", "question"].includes(n.status) && (ageDays(n) ?? 0) > STALE_DAYS;
-  function renderNow() {
-    const list = [...state.nodes.values()]
-      .filter((n) => n.status === "now" || n.status === "blocked")
-      .sort((a, b) => STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status));
-    const ul = $("now");
-    if (!list.length) {
-      ul.replaceChildren(
-        el("li", { class: "msg", text: "Ничего не помечено «в работе» или «блокер»." }),
-      );
-      return;
-    }
-    ul.replaceChildren(
-      ...list.map((n) =>
-        el("li", { "data-st": n.status }, [
-          dot(n.status),
-          el("span", {}, [
-            el("button", { type: "button", text: n.title, onclick: () => select(n.id, true) }),
-            el("span", {
-              class: "where",
-              text: `  ${branchOf(n)?.title || ""}${n.owner ? " · " + n.owner : ""}${isStale(n) ? " · не правили " + ageDays(n) + " дн." : ""}`,
-            }),
-          ]),
-        ]),
-      ),
-    );
-  }
-
-  /* ---------- отсечки ---------- */
-  function cpBlock(c) {
-    const list = (label, arr) =>
-      arr && arr.length
-        ? [
-            el("div", { class: "lbl", text: label }),
-            el(
-              "ul",
-              {},
-              arr.map((t) => el("li", { text: t })),
-            ),
-          ]
-        : [];
-    return el("div", { class: "cp" }, [
-      el("div", {
-        class: "h",
-        text: `${c.date || ""} · ${c.session || ""}${c.branch ? " · " + c.branch : ""}`,
-      }),
-      el("div", { class: "s", text: c.summary || "" }),
-      ...list("Сделано", c.done),
-      ...list("Дальше", c.next),
-      ...list("Открыто", c.questions),
+  // До запуска: всё с пометкой launch = "before", кроме готового, по веткам. Остальное — после запуска.
+  function launchItem(n) {
+    return el("li", { "data-st": n.status }, [
+      dot(n.status),
+      el("span", {}, [
+        el("button", { type: "button", text: n.title, onclick: () => select(n.id, true) }),
+        el("span", {
+          class: "where",
+          text: `  ${STATUS[n.status]?.label || ""}${isStale(n) ? " · не правили " + ageDays(n) + " дн." : ""}`,
+        }),
+      ]),
     ]);
   }
-  function renderCps() {
-    if (!state.cps.length) return;
-    const sorted = [...state.cps].sort((a, b) =>
-      String(b.date + b.id).localeCompare(String(a.date + a.id)),
+  function renderLaunch() {
+    const all = [...state.nodes.values()];
+    const left = all.filter(
+      (n) => n.launch === "before" && n.status !== "done" && n.id !== "launch",
     );
-    const [first, ...rest] = sorted;
-    const kids = [cpBlock(first)];
-    if (rest.length)
-      kids.push(
-        el("details", { class: "older" }, [
-          el("summary", { text: `Ещё ${rest.length}` }),
-          ...rest.map(cpBlock),
-        ]),
-      );
-    $("cps").replaceChildren(...kids);
+    const groups = new Map();
+    for (const n of left) {
+      const b = n.parent === "launch" ? state.nodes.get("launch") : branchOf(n);
+      const key = b?.title || "Прочее";
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(n);
+    }
+    const order = (st) => STATUS_ORDER.indexOf(st);
+    $("launch").replaceChildren(
+      ...[...groups.entries()]
+        .sort((a, b) => b[1].length - a[1].length)
+        .map(([title, list]) =>
+          el("div", {}, [
+            el("h3", { text: `${title} · ${list.length}` }),
+            el(
+              "ul",
+              { class: "plain" },
+              list
+                .sort(
+                  (a, b) => order(a.status) - order(b.status) || (a.order ?? 99) - (b.order ?? 99),
+                )
+                .map(launchItem),
+            ),
+          ]),
+        ),
+    );
+    const check = all.filter((n) => n.status === "check").length;
+    const after = all.filter((n) => n.launch === "after" && n.status !== "done").length;
+    $("launch-sum").textContent = left.length
+      ? `${left.length} пунктов до запуска. Ещё ${check} влиты, но не проверены вживую (статус «проверить»), ${after} отложены на после запуска.`
+      : "До запуска ничего не осталось.";
   }
 
   /* ---------- легенда ---------- */
@@ -1879,6 +1934,10 @@
         el("dl", {}, [
           el("dt", { text: "Статус" }),
           el("dd", { "data-st": n.status }, [STATUS[n.status]?.label || "—"]),
+          n.launch ? el("dt", { text: "Запуск" }) : null,
+          n.launch
+            ? el("dd", { text: n.launch === "before" ? "до запуска" : "после запуска" })
+            : null,
           n.owner ? el("dt", { text: "Кто" }) : null,
           n.owner ? el("dd", { text: n.owner }) : null,
           n.refs ? el("dt", { text: "Где" }) : null,
@@ -1954,7 +2013,7 @@
   function render() {
     renderLegend();
     renderTree();
-    renderNow();
+    renderLaunch();
     if (state.sel) renderCard();
   }
   function updateMeta() {
@@ -2005,9 +2064,10 @@
         .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
       renderStages();
     }, fail);
-    db.collection("checkpoints").onSnapshot((snap) => {
-      state.cps = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      renderCps();
+    // версия продукта: meta/product.version, правится вместе с package.json
+    db.collection("meta").onSnapshot((snap) => {
+      const v = snap.docs.find((d) => d.id === "product")?.data();
+      $("ver").textContent = v?.version ? `версия ${v.version} · ` : "";
     }, fail);
   })();
   initPan();
