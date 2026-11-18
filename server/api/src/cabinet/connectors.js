@@ -53,7 +53,7 @@ const SYSTEMS = {
   ozon: {
     base: "https://api-seller.ozon.ru",
     allow: [
-      ["POST", /^\/v3\/posting\/fbs\/unfulfilled\/list$/],
+      ["POST", /^\/v4\/posting\/fbs\/unfulfilled\/list$/],
       ["POST", /^\/v2\/posting\/fbs\/package-label$/],
       ["POST", /^\/v2\/products\/stocks$/],
     ],

@@ -87,6 +87,8 @@ test("белый список: только известные пути и ме�
   assert.equal(allowed("wildberries", "GET", "/api/v3/orders/new/../../x"), false);
   assert.equal(allowed("wildberries", "GET", "/content/v2/cards"), false);
   assert.equal(allowed("ozon", "POST", "/v2/products/stocks"), true);
+  assert.equal(allowed("ozon", "POST", "/v4/posting/fbs/unfulfilled/list"), true);
+  assert.equal(allowed("ozon", "POST", "/v3/posting/fbs/unfulfilled/list"), false);
   assert.equal(allowed("yandex-market", "GET", "/v2/campaigns/{campaignId}/orders"), true);
   // Чужой номер кампании тем же ключом — нет.
   assert.equal(allowed("yandex-market", "GET", "/v2/campaigns/999/orders"), false);
