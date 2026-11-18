@@ -95,17 +95,6 @@ export const ROADMAP_ITEMS: readonly RoadmapItem[] = [
     version: "0.1.0",
   },
   {
-    id: "view-3d",
-    title: c("Объёмный вид плана", "The 3D view of the plan"),
-    summary: c(
-      "Мезонин в объёме, чтобы показать склад клиенту. Режим написан, но скрыт: визуализацию дорабатываем",
-      "The mezzanine in three dimensions, to show a client the warehouse. The mode is built but hidden while we refine the visuals",
-    ),
-    status: "idea",
-    track: "plan",
-    milestone: "service",
-  },
-  {
     id: "receiving",
     title: c("Приёмка от тары", "Intake by container"),
     summary: c(
@@ -289,18 +278,6 @@ export const ROADMAP_ITEMS: readonly RoadmapItem[] = [
 
   // ——— Готово, но ещё не выпущено: раздел «Не выпущено» в CHANGELOG.md ———
   {
-    id: "market",
-    title: c("Витрина складов", "The warehouse catalogue"),
-    summary: c(
-      "Селлер находит склад по городу, услугам и цене и пишет ему без комиссии. Сейчас витрина на паузе: сначала кабинет для складов",
-      "A seller finds a warehouse by city, services and price and writes to it with no commission. The catalogue is paused for now: the warehouse account comes first",
-    ),
-    status: "idea",
-    track: "market",
-    milestone: "launch",
-    mapNode: "site-paused",
-  },
-  {
     id: "database",
     title: c("Данные на сервере в России", "Data on a server in Russia"),
     summary: c(
@@ -410,7 +387,7 @@ export const ROADMAP_ITEMS: readonly RoadmapItem[] = [
     milestone: "exchange",
   },
 
-  // ——— Идеи: сроков нет намеренно ———
+  // ——— Счёт и маркировка ———
   {
     id: "billing",
     title: c("Счёт за хранение", "A storage invoice"),
@@ -424,28 +401,6 @@ export const ROADMAP_ITEMS: readonly RoadmapItem[] = [
     mapNode: "cab-storage-fee",
   },
   {
-    id: "client-cabinet",
-    title: c("Кабинет клиента склада", "An account for the warehouse's client"),
-    summary: c(
-      "Отдельный вход для того, чей товар лежит: свой остаток, свои заявки, свой счёт",
-      "A separate login for whoever owns the stock: their balance, their requests, their invoice",
-    ),
-    status: "idea",
-    track: "platform",
-    milestone: "service",
-  },
-  {
-    id: "api",
-    title: c("Открытый API", "A public API"),
-    summary: c(
-      "Чтобы соседняя система забирала остатки и ставила задания без нас",
-      "So a neighbouring system can read stock and create tasks without us",
-    ),
-    status: "idea",
-    track: "integrations",
-    milestone: "service",
-  },
-  {
     id: "markirovka",
     title: c("Подключение Честного знака", "Connecting Chestny Znak"),
     summary: c(
@@ -455,28 +410,6 @@ export const ROADMAP_ITEMS: readonly RoadmapItem[] = [
     status: "progress",
     track: "integrations",
     milestone: "exchange",
-  },
-  {
-    id: "edo",
-    title: c("ЭДО накладных", "Electronic waybills"),
-    summary: c(
-      "Накладная уходит контрагенту подписанной — без печати и курьера",
-      "The waybill goes to the counterparty signed — no printing, no courier",
-    ),
-    status: "idea",
-    track: "integrations",
-    milestone: "exchange",
-  },
-  {
-    id: "voice",
-    title: c("Голосовой набор", "Voice picking"),
-    summary: c(
-      "Руки заняты коробкой: сборка подтверждается голосом, а не тапом",
-      "Hands are busy holding a box: a pick is confirmed by voice, not by a tap",
-    ),
-    status: "idea",
-    track: "fulfillment",
-    milestone: "floor",
   },
 
   // ——— Добавлено 20.10.2026 по карте продукта ———
@@ -545,18 +478,6 @@ export const ROADMAP_ITEMS: readonly RoadmapItem[] = [
   },
   // ——— Сверено с картой продукта 26 окт. Внутреннее (безопасность, админка,
   // камера над столом, доступ поддержки) на дорожную карту не выносим ———
-  {
-    id: "warehouse-card",
-    title: c("Публичная карточка склада", "A public warehouse page"),
-    summary: c(
-      "Цены, услуги и свободные места на витрине берутся из кабинета, а склад сам решает, показываться ли",
-      "Prices, services and free space on the catalogue come from the account, and the warehouse decides whether to be listed",
-    ),
-    status: "idea",
-    track: "market",
-    milestone: "launch",
-    mapNode: "site-card",
-  },
   {
     id: "workstation",
     title: c("Рабочее место упаковщика", "The packer's workstation"),
@@ -794,30 +715,6 @@ export const ROADMAP_ITEMS: readonly RoadmapItem[] = [
     track: "platform",
     milestone: "service",
     mapNode: "cab-producer-access",
-  },
-  {
-    id: "referrals",
-    title: c("Реферальные программы", "Referral programs"),
-    summary: c(
-      "Обсуждаем, нужна ли награда за приведённого в Уклад человека — сотрудникам, селлерам и складам. Условий пока нет",
-      "We are discussing whether to reward bringing someone to Uklad — staff, sellers and warehouses. There are no terms yet",
-    ),
-    status: "idea",
-    track: "market",
-    milestone: "service",
-    mapNode: "growth-referrals",
-  },
-  {
-    id: "plan-monitoring",
-    title: c("План склада как мониторинг", "The plan as a monitoring view"),
-    summary: c(
-      "Камеры, датчики и оборудование безопасности на плане, события и действия сотрудников там, где они произошли",
-      "Cameras, sensors and safety equipment on the plan, with events and staff actions where they happen",
-    ),
-    status: "idea",
-    track: "plan",
-    milestone: "service",
-    mapNode: "cab-plan-monitoring",
   },
   {
     id: "productivity-board",
