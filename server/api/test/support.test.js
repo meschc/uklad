@@ -186,6 +186,39 @@ test("админка: список, карточка, статус и скачи
   assert.ok(actions.includes("support_update"));
 });
 
+test("админка: обращение уходит в архив и возвращается, счётчик новых его не считает", async (t) => {
+  const app = await start();
+  t.after(app.stop);
+  const { id } = await (await app.send(report())).json();
+  const cookie = await app.adminLogin();
+  const card = await (await app.adminGet(`/support/${id}`, cookie)).text();
+  const csrf = /name="csrf" value="([^"]+)"/.exec(card)[1];
+  assert.equal(app.store.countNewReports(), 1);
+
+  const gone = await app.adminPost(`/support/${id}/archive`, { csrf }, cookie);
+  assert.equal(gone.status, 303);
+  assert.ok(app.store.report(id).archived_at, "в архиве");
+  assert.deepEqual(
+    app.store.reports("").map((r) => r.id),
+    [],
+    "из списка пропало",
+  );
+  assert.deepEqual(
+    app.store.reports("archived").map((r) => r.id),
+    [id],
+    "видно в архиве",
+  );
+  assert.equal(app.store.countNewReports(), 0, "в счётчик новых не входит");
+  const archive = await (await app.adminGet("/support?status=archived", cookie)).text();
+  assert.ok(archive.includes(`/support/${id}`));
+
+  await app.adminPost(`/support/${id}/archive`, { csrf }, cookie);
+  assert.equal(app.store.report(id).archived_at, null, "вернулось");
+  assert.equal(app.store.countNewReports(), 1);
+  const actions = app.store.audit(50).map((a) => a.action);
+  assert.ok(actions.includes("support_archive") && actions.includes("support_restore"));
+});
+
 test("старые обращения стираются через 90 дней", async (t) => {
   const app = await start();
   t.after(app.stop);

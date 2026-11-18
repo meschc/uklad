@@ -14,6 +14,8 @@ import { QrSvg } from "@/components/table/QrSvg";
 import { ScanField, type ScanStatus } from "@/components/fulfillment/ScanField";
 import { enterFullscreen } from "@/lib/fullscreen";
 import { useDemoHints } from "./useDemoHints";
+import { ScanBanner } from "./ScanBanner";
+import { formatTime } from "./useNow";
 
 /**
  * Вход по бейджу. Сканер «печатает» код в поле — тот же путь, что на приёмке.
@@ -37,6 +39,8 @@ export function BadgeLogin() {
   // называет его до скана — и после входа видит только его.
   const device = useEditor(boundDevice);
   const [station, setStation] = useState<WorkstationKind>("pack");
+  // Этот же бейдж отсканировали за другим столом — здесь вход закрыт.
+  const taken = useEditor((s) => s.stationTaken);
 
   const submit = async (code: string) => {
     // Привязанный стол — рабочее место: при входе он сам разворачивается во
@@ -50,6 +54,17 @@ export function BadgeLogin() {
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-10">
+      {taken && (
+        <div className="flex flex-col gap-2">
+          <ScanBanner tone="warn">
+            {taken.by
+              ? t("ws.taken.title", { name: taken.by, time: formatTime(taken.at, t.lang) })
+              : t("ws.taken.titleNoName", { time: formatTime(taken.at, t.lang) })}
+          </ScanBanner>
+          <p className="text-sm text-muted-foreground">{t("ws.taken.body")}</p>
+        </div>
+      )}
+
       <div className="flex flex-col items-center gap-2 text-center">
         <span className="flex size-12 items-center justify-center rounded-full bg-primary text-primary-foreground">
           <BadgeCheck className="size-6" />

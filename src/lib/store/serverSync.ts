@@ -3,13 +3,15 @@ import { makeBackup } from "../backup";
 import { SECRET_INTEGRATION_FIELDS } from "../integrations";
 import { diffCabinet, splitCabinet, type Split } from "../data/cabinetRows";
 import { deskOps } from "../data/opQueue";
-import { snapshotRepository, type Snapshot } from "../data/snapshotRepository";
+import { snapshotRepository, type DeskVersion, type Snapshot } from "../data/snapshotRepository";
 import { isTariffId, planRepository } from "../data/planRepository";
 import { readLocal, writeLocal } from "../safeStorage";
 import { readSaved, writeSaved } from "./persistStorage";
 import { PERSIST_KEY, PERSIST_VERSION, persistedState, useEditor } from "./index";
 import { blankWarehouse } from "./seed";
 import { emptyWarehouseData } from "./warehouseData";
+import { takenHere } from "../workstation";
+import { nowMs } from "../utils";
 
 /**
  * Кабинет компании живёт на сервере (ADR 0010), браузер держит его копию.
@@ -105,6 +107,16 @@ export function sendDeskOps<T extends { before: number; version: number } | null
     }
     return out;
   });
+}
+
+/**
+ * Вход этого стола перехвачен: тот же бейдж отсканировали за другим столом.
+ * Сервер уже не пишет сюда работу этого человека — стол выходит и говорит,
+ * где он теперь (`BadgeLogin`).
+ */
+function noteTaken(t: NonNullable<DeskVersion["taken"]>) {
+  const s = useEditor.getState();
+  if (takenHere(s.stationSession, t, nowMs())) s.stationTakenOver({ at: t.at, by: t.by });
 }
 
 function readMeta(): SyncMeta | null {
@@ -539,12 +551,16 @@ export function startServerSync(orgId: string): () => void {
   /** Один заход стола: версия ушла вперёд или копия разошлась — забрать снимок. */
   const deskTick = async () => {
     if (stopped || !desk || !booted) return;
+    // Версию спрашиваем и с неотправленной работой: в том же ответе сервер
+    // говорит, что вход этого стола перехвачен другим (миграция 049).
+    const v = await snapshotRepository.version();
+    if (stopped) return;
+    if (v.ok && v.data.taken) noteTaken(v.data.taken);
     if (deskOps.pending().count > 0) return;
     if (!needsResync) {
-      const v = await snapshotRepository.version();
       const meta = readMeta();
-      if (!v.ok || v.data === null || !meta || meta.orgId !== orgId) return;
-      if (meta.version === v.data) return;
+      if (!v.ok || v.data.version === null || !meta || meta.orgId !== orgId) return;
+      if (meta.version === v.data.version) return;
     }
     const res = await snapshotRepository.load();
     if (stopped || !res.ok || !res.data?.desk) return;

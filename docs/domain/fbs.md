@@ -22,7 +22,7 @@
 
 **1. Подключение.** Ozon: Client-Id + Api-Key, свой склад FBS со временем отгрузки (cutoff). WB: токен категории «Маркетплейс», склад продавца (`warehouseId`). Маркет: Api-Key + `campaignId`. Склад площадки надо связать со складом фулфилмента: по нему фильтруют заказы и шлют остатки.
 
-**2. Заказы и срок.** Ozon: `POST /v3/posting/fbs/unfulfilled/list`, срок — `shipment_date`; срок сборки задаётся в настройках склада, не больше 5 дней ([docs.ozon.by](https://docs.ozon.by/global/en/faq/zakazy)). WB: `GET /api/v3/orders/new`, предельный срок передачи 120 ч, потом автоотмена со штрафом ([selsup](https://selsup.ru/blog/qr-postavka-wildberries-instruktsiya/)); лимит 300 запросов в минуту на продавца, 409 считается за 5. Маркет: опрос или уведомления, дата отгрузки в `delivery.shipments`. Работа склада сортируется по сроку: опоздание — штраф и рейтинг.
+**2. Заказы и срок.** Ozon: `POST /v4/posting/fbs/unfulfilled/list` (v3 отключён: 18.11 живой ключ на staging получил 404; [канал Seller API](https://t.me/s/OzonSellerAPI?before=675)), срок — `shipment_date`; срок сборки задаётся в настройках склада, не больше 5 дней ([docs.ozon.by](https://docs.ozon.by/global/en/faq/zakazy)). WB: `GET /api/v3/orders/new`, предельный срок передачи 120 ч, потом автоотмена со штрафом ([selsup](https://selsup.ru/blog/qr-postavka-wildberries-instruktsiya/)); лимит 300 запросов в минуту на продавца, 409 считается за 5. Маркет: опрос или уведомления, дата отгрузки в `delivery.shipments`. Работа склада сортируется по сроку: опоздание — штраф и рейтинг.
 
 **3. Лист подбора.** Маркет: `POST v2/reports/documents/shipment-list/generate` → `GET v2/reports/info/{reportId}`. У Ozon и WB — из кабинета или своя WMS.
 
