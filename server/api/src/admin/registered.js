@@ -13,7 +13,7 @@
 const { adminStore } = require("./store");
 const plans = require("./plans");
 
-function registeredAccount(db, { email, kind, company, name }, now) {
+function registeredAccount(db, { email, kind, company, name, orgId }, now) {
   const store = adminStore(db);
   if (store.accountByEmail(email)) return null;
   const id = store.addAccount(
@@ -23,6 +23,8 @@ function registeredAccount(db, { email, kind, company, name }, now) {
       email,
       contact_name: name || null,
       source: "cabinet",
+      // По компании кабинет потом узнаёт свой тариф (`cabinet/plan.js`).
+      org_id: orgId || null,
       tariff: "start",
       price: plans.PLANS.start.price,
       trial_until: plans.addMonths(now.toISOString(), plans.TRIAL_MONTHS),

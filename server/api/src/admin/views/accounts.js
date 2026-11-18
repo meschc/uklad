@@ -209,6 +209,13 @@ function tariffForm(session, a, managers) {
   const manager = managers.find((m) => m.id === a.manager_id);
   return `<form class="panel form" method="post" action="/accounts/${a.id}/tariff">
     <h2>Тариф и сроки</h2>${hidden(session)}
+    ${
+      a.tariff_request
+        ? `<div class="note warn"><strong>Склад просит тариф «${esc(
+            plans.PLANS[a.tariff_request]?.title ?? a.tariff_request,
+          )}»</strong><p>Из кабинета, ${day(a.tariff_request_at)}. Сохраните тариф — просьба погаснет.</p></div>`
+        : ""
+    }
     <div class="row">
       <label>Тариф<select name="tariff">${Object.entries(plans.PLANS)
         .map(([k, p]) => opt(k, p.title, a.tariff))
@@ -228,6 +235,7 @@ function tariffForm(session, a, managers) {
         .map((m) => opt(m.id, m.name, a.manager_id))
         .join("")}</select></label>
     </div>
+    <label>Компания в кабинете (id)<input name="org_id" value="${esc(a.org_id ?? "")}" placeholder="связывается сама при входе владельца"></label>
     <div class="row">
       <label>Пробный период до<input type="date" name="trial_until" value="${b.dateInput(a.trial_until)}"></label>
       <label>Оплачено до<input type="date" name="paid_until" value="${b.dateInput(a.paid_until)}"></label>

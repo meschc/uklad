@@ -324,6 +324,9 @@ function deskStaff(m) {
 /** Снимок глазами стола. */
 function forDesk(data) {
   const out = { ...data, ...HIDE_ON_READ };
+  // Тариф и копии столу не нужны — дело владельца. Ключ убираем, а не
+  // пустим: без него кабинет стола оставит своё значение по умолчанию.
+  delete out.subscription;
   if (isObject(data.warehouse)) {
     const w = data.warehouse;
     out.warehouse = {

@@ -624,6 +624,9 @@ function main() {
     // сохраняет ИНН и пишет, что справочник не подключён.
     const { createOrgName } = require("./cabinet/orgName");
     const orgName = createOrgName({ auth, send });
+    // Тариф компании: назначает админка, кабинет только видит и просит другой.
+    const { createPlan } = require("./cabinet/plan");
+    const plan = createPlan({ auth, db: db.raw, send, mail, log: console });
     const { createCompanyLookup } = require("./cabinet/company");
     const company = createCompanyLookup({
       auth,
@@ -653,6 +656,7 @@ function main() {
         (await deskBadges.handle(req, res, url)) ||
         (await company.handle(req, res, url)) ||
         (await orgName.handle(req, res, url)) ||
+        (await plan.handle(req, res, url)) ||
         (await connectors.handle(req, res, url)) ||
         (await chat.handle(req, res, url)) ||
         (await telegram.handle(req, res, url)),

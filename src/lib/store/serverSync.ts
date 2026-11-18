@@ -4,6 +4,7 @@ import { SECRET_INTEGRATION_FIELDS } from "../integrations";
 import { diffCabinet, splitCabinet, type Split } from "../data/cabinetRows";
 import { deskOps } from "../data/opQueue";
 import { snapshotRepository, type DeskVersion, type Snapshot } from "../data/snapshotRepository";
+import { isTariffId, planRepository } from "../data/planRepository";
 import { readLocal, writeLocal } from "../safeStorage";
 import { readSaved, writeSaved } from "./persistStorage";
 import { PERSIST_KEY, PERSIST_VERSION, persistedState, useEditor } from "./index";
@@ -593,7 +594,16 @@ export function startServerSync(orgId: string): () => void {
   } catch {
     // нет sessionStorage — нет и пометки
   }
-  void boot();
+  // Тариф назначает Уклад (`cabinet/plan.js`): функции кабинета — по тарифу с
+  // сервера, а не по выбранному когда-то в браузере. Владелец получает его
+  // сразу и пишет в копию, остальные — с копией. Нет права — ничего не меняем.
+  void boot().then(async () => {
+    if (stopped) return;
+    const plan = await planRepository.get();
+    if (stopped || !plan.ok || !plan.data || !isTariffId(plan.data.tariff)) return;
+    const state = useEditor.getState();
+    if (state.subscription.tariff !== plan.data.tariff) state.setTariff(plan.data.tariff);
+  });
 
   // Вкладка снова на экране — сначала свежее с сервера: правка с другого
   // устройства придёт до того, как здесь начнут править устаревшее. С

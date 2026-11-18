@@ -232,7 +232,7 @@ function createAuth({ pool, cfg, send, readBody, log, mail, onRegister = null })
     }
     const hash = await hashPassword(b.password);
     const { rows } = await tx((c) =>
-      c.query(`SELECT account_id FROM auth.register($1, $2, $3, $4, $5, $6)`, [
+      c.query(`SELECT account_id, org_id FROM auth.register($1, $2, $3, $4, $5, $6)`, [
         email,
         hash,
         company,
@@ -248,7 +248,13 @@ function createAuth({ pool, cfg, send, readBody, log, mail, onRegister = null })
       // Новый человек сразу виден в админке: с источником «кабинет» и
       // пробным периодом. Сбой записи не мешает регистрации.
       try {
-        onRegister?.({ email, kind: b.kind, company, name: String(b.name ?? "").slice(0, 200) });
+        onRegister?.({
+          email,
+          kind: b.kind,
+          company,
+          name: String(b.name ?? "").slice(0, 200),
+          orgId: rows[0].org_id,
+        });
       } catch (e) {
         log.error("[uklad] регистрация не попала в админку:", e?.message);
       }
