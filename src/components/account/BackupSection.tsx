@@ -3,7 +3,7 @@ import { BellRing, Download, Mail, Upload } from "lucide-react";
 import { useEditor, PERSIST_VERSION } from "@/lib/store";
 import { backupRepository } from "@/lib/data";
 import { parseBackup } from "@/lib/backup";
-import { REMIND_OPTIONS, TARIFF_FEATURES } from "@/lib/tariff";
+import { REMIND_OPTIONS, featuresOf } from "@/lib/tariff";
 import { useCommand } from "@/lib/useCommand";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,7 @@ const MAX_BACKUP_BYTES = 20 * 1024 * 1024;
 export function BackupSection() {
   const t = useT();
   const backup = useEditor((s) => s.subscription.backup);
-  const tariff = useEditor((s) => s.subscription.tariff);
+  const canEmail = useEditor((s) => featuresOf(s.subscription).weeklyEmailBackup);
   const email = useEditor((s) => s.profile.email);
   const update = useEditor((s) => s.updateBackupSettings);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -67,7 +67,6 @@ export function BackupSection() {
     if (res.ok) window.location.reload();
   };
 
-  const canEmail = TARIFF_FEATURES[tariff].weeklyEmailBackup;
   const restoreError = pickError ?? restore.error;
 
   return (

@@ -32,6 +32,7 @@ const { createRateLimit, clientIp } = require("../rateLimit");
 const { inviteLetter } = require("./letters");
 const { FAIL_WINDOW_MS, FAIL_PAIR, FAIL_EMAIL } = require("./auth");
 const { findPlace } = require("./viewerPlace");
+const { PlanLimitError } = require("./planLimits");
 
 const INVITE_TTL_MS = 7 * 86_400_000;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -57,7 +58,7 @@ function teamError(err) {
   return m && TEAM_STATUS[m[1]] ? { status: TEAM_STATUS[m[1]], error: m[1] } : null;
 }
 
-function createTeam({ auth, cfg, send, log }) {
+function createTeam({ auth, cfg, send, log, limits = null }) {
   const { withSession, readJson, tx } = auth;
   const mayUse = (ctx) => Boolean(ctx.accountId) && ctx.can("staff.manage");
   const inviteLimiter = createRateLimit({ capacity: 10, refillPerMinute: 5 });
@@ -138,6 +139,16 @@ function createTeam({ auth, cfg, send, log }) {
     );
   }
 
+  /** Отказ лимита тарифа — 409 `plan_limit` с самим лимитом; транзакция уже откачена. */
+  async function overLimit(pending) {
+    try {
+      return await pending;
+    } catch (err) {
+      if (!(err instanceof PlanLimitError)) throw err;
+      return { status: 409, error: "plan_limit", extra: { limit: err.key, max: err.limit } };
+    }
+  }
+
   async function invite(req, res) {
     const b = await readJson(req, res);
     if (!b) return;
@@ -155,41 +166,47 @@ function createTeam({ auth, cfg, send, log }) {
       return bad(res);
     }
     const token = randomBytes(32).toString("base64url");
-    const out = await withSession(req, async (c, ctx) => {
-      if (!mayUse(ctx)) return { status: 403, error: "forbidden" };
-      if (!inviteLimiter.take(ctx.orgId)) return { status: 429, error: "too_often" };
-      try {
-        await assertPlace(c, place, partnerRef || null);
-        if (seller) roleId = await sellerRole(c);
-        const { rows: made } = await c.query(
-          `SELECT auth.invite_member($1, $2, $3, $4, $5::interval, $6, $7) AS id`,
-          [
-            email,
-            roleId,
-            String(b.name ?? "").slice(0, 200),
-            sha256(token),
-            `${INVITE_TTL_MS / 1000} seconds`,
-            place.warehouseRef,
-            place.staffRef,
-          ],
-        );
-        // Ждущее приглашение на ту же почту переиспользуется: продавец,
-        // позванный сотрудником, перестаёт быть продавцом, и наоборот.
-        await c.query(`SELECT auth.set_member_partner($1, $2)`, [made[0].id, partnerRef || null]);
-      } catch (err) {
-        const known = teamError(err);
-        if (known) return known;
-        throw err;
-      }
-      const { rows } = await c.query(
-        `SELECT (SELECT name FROM uklad.orgs WHERE id = uklad.current_org()) AS company,
+    const out = await overLimit(
+      withSession(req, async (c, ctx) => {
+        if (!mayUse(ctx)) return { status: 403, error: "forbidden" };
+        if (!inviteLimiter.take(ctx.orgId)) return { status: 429, error: "too_often" };
+        // Лимит тарифа из админки: сотрудники или кабинеты продавцов (planLimits).
+        const room = limits ? await limits.guard(c, ctx.orgId, seller ? "sellers" : "staff") : null;
+        try {
+          await assertPlace(c, place, partnerRef || null);
+          if (seller) roleId = await sellerRole(c);
+          const { rows: made } = await c.query(
+            `SELECT auth.invite_member($1, $2, $3, $4, $5::interval, $6, $7) AS id`,
+            [
+              email,
+              roleId,
+              String(b.name ?? "").slice(0, 200),
+              sha256(token),
+              `${INVITE_TTL_MS / 1000} seconds`,
+              place.warehouseRef,
+              place.staffRef,
+            ],
+          );
+          // Ждущее приглашение на ту же почту переиспользуется: продавец,
+          // позванный сотрудником, перестаёт быть продавцом, и наоборот.
+          await c.query(`SELECT auth.set_member_partner($1, $2)`, [made[0].id, partnerRef || null]);
+          await room?.check();
+        } catch (err) {
+          if (err instanceof PlanLimitError) throw err;
+          const known = teamError(err);
+          if (known) return known;
+          throw err;
+        }
+        const { rows } = await c.query(
+          `SELECT (SELECT name FROM uklad.orgs WHERE id = uklad.current_org()) AS company,
                 (SELECT name FROM uklad.roles WHERE id = $1) AS role`,
-        [roleId],
-      );
-      return { company: rows[0].company, role: rows[0].role };
-    });
+          [roleId],
+        );
+        return { company: rows[0].company, role: rows[0].role };
+      }),
+    );
     if (!out) return send(res, 401, { ok: false });
-    if (out.status) return send(res, out.status, { ok: false, error: out.error });
+    if (out.status) return send(res, out.status, { ok: false, error: out.error, ...out.extra });
     // Ссылка с `#`: фрагмент не уходит на сервер и в его журналы.
     const link = `${cfg.publicUrl}/app/#invite=${token}`;
     auth.deliver(email, inviteLetter({ company: out.company, role: out.role, link }));

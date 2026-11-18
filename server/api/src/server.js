@@ -612,10 +612,12 @@ function main() {
     // Ответ продавца на акт расхождений приёмки (миграция 047).
     const { createReceivingAnswers } = require("./cabinet/receivingAnswers");
     const receivingAnswers = createReceivingAnswers({ auth, send, log: console });
+    const { createPlanLimits } = require("./cabinet/planLimits");
+    const limits = db.raw ? createPlanLimits({ db: db.raw, auth, send }) : null;
     const { createTeam } = require("./cabinet/team");
-    const team = createTeam({ auth, cfg, send, log: console });
+    const team = createTeam({ auth, cfg, send, log: console, limits });
     const { createDeskBadges } = require("./cabinet/deskBadges");
-    const deskBadges = createDeskBadges({ auth, send, log: console });
+    const deskBadges = createDeskBadges({ auth, send, log: console, limits });
     // Стол первым: со своей кукой он отвечает за вход и снимок сам, а в
     // остальной кабинет его не пускает.
     const { createDesks } = require("./cabinet/desks");
@@ -645,6 +647,8 @@ function main() {
     });
     cabinet = {
       handle: async (req, res, url) =>
+        // Неоплата: правка кабинета закрыта, столы работают (planLimits).
+        (await limits?.handle(req, res, url)) ||
         (await desks.handle(req, res, url)) ||
         (await auth.handle(req, res, url)) ||
         (await team.handle(req, res, url)) ||

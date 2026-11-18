@@ -6,7 +6,7 @@ import { useEditor } from "@/lib/store";
 import { hasCabinetServer } from "@/lib/data/api";
 import { isTariffId, planRepository, type CompanyPlan } from "@/lib/data/planRepository";
 import { useCommand } from "@/lib/useCommand";
-import { TARIFF_FEATURES } from "@/lib/tariff";
+import { TARIFF_FEATURES, featuresOf } from "@/lib/tariff";
 import type { TariffId } from "@/lib/types";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -44,7 +44,7 @@ export function TariffSection() {
   const t = useT();
   const sub = useEditor((s) => s.subscription);
   const setTariff = useEditor((s) => s.setTariff);
-  const hasManager = TARIFF_FEATURES[sub.tariff].personalManager;
+  const hasManager = featuresOf(sub).personalManager;
   // Смена тарифа — в два шага: выбрать плитку и подтвердить. Один клик по
   // плитке тариф больше не переключает.
   const [pick, setPick] = useState<TariffId | null>(null);
@@ -56,10 +56,9 @@ export function TariffSection() {
     if (!hasCabinetServer) return;
     void load.run().then((r) => {
       if (!r.ok) return;
+      // Функции кабинета ставит синхронизация (`serverSync`, `/company/features`):
+      // тариф плюс ручные включения, а не таблица тарифа.
       setPlan(r.data);
-      // Функции кабинета — по назначенному тарифу, а не по выбранному когда-то
-      // в браузере.
-      if (r.data && isTariffId(r.data.tariff)) setTariff(r.data.tariff);
     });
     // Один раз при открытии вкладки.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -226,6 +225,16 @@ function PlanStatus({
           </span>
         )}
       </p>
+      {plan.readOnly ? (
+        <p className="text-destructive">{t("plan.readOnly")}</p>
+      ) : (
+        plan.state === "overdue" &&
+        plan.readOnlyAt && (
+          <p className="text-muted-foreground">
+            {t("plan.readOnlySoon", { date: day(plan.readOnlyAt) })}
+          </p>
+        )
+      )}
       {plan.invoice && (
         <p className="text-muted-foreground">
           {t("plan.invoice", {

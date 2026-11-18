@@ -16,7 +16,7 @@ import {
   requestStats,
   storageCost,
 } from "@/lib/fulfillment";
-import { TARIFF_FEATURES } from "@/lib/tariff";
+import { featuresOf } from "@/lib/tariff";
 import { useT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { eyebrow } from "@/components/ui/eyebrow";
@@ -48,7 +48,7 @@ export function AnalyticsScreen() {
   const trips = useWithArchive("shipments").length;
   // «Старт» на сайте — «основные показатели»: верхний ряд чисел без графиков
   // и разбивок. Расчёт тот же, режется только показ.
-  const full = useEditor((s) => TARIFF_FEATURES[s.subscription.tariff].fullAnalytics);
+  const full = useEditor((s) => featuresOf(s.subscription).fullAnalytics);
   const goToProfile = useEditor((s) => s.goToProfile);
 
   const occ = useMemo(

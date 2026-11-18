@@ -36,6 +36,16 @@ export const ru = {
   "plan.err.network": "Не удалось узнать тариф. Обновите страницу.",
   "plan.err.forbidden": "Тариф и оплату видит владелец компании.",
   "plan.err.noAccount": "Тариф ещё не назначен. Напишите нам в чат.",
+  "plan.readOnly":
+    "Кабинет только для просмотра, пока счёт не оплачен. Столы работают, сотрудники отгружают как обычно.",
+  "plan.readOnlySoon":
+    "Оплатите счёт до {date}. После этого кабинет станет только для просмотра, столы продолжат работать.",
+  "plan.err.unpaid":
+    "Счёт не оплачен: кабинет только для просмотра. Оплатите счёт в разделе «Тариф».",
+  "plan.err.staffLimit":
+    "Сотрудников уже столько, сколько позволяет тариф. Попросите тариф выше в разделе «Тариф».",
+  "plan.err.sellerLimit":
+    "Кабинетов продавцов уже столько, сколько позволяет тариф. Попросите тариф выше в разделе «Тариф».",
   "tariff.onlyIn": "Только в «{plan}е»",
   "tariff.onlyInMany": "В «Складе» и «Операторе»",
 
@@ -116,6 +126,15 @@ export const en: Record<keyof typeof ru, string> = {
   "plan.err.network": "Could not load the plan. Refresh the page.",
   "plan.err.forbidden": "The plan and billing are visible to the company owner.",
   "plan.err.noAccount": "No plan assigned yet. Message us in chat.",
+  "plan.readOnly":
+    "The cabinet is view-only until the invoice is paid. Workstations keep working, staff ship as usual.",
+  "plan.readOnlySoon":
+    "Pay the invoice by {date}. After that the cabinet becomes view-only, workstations keep working.",
+  "plan.err.unpaid": "The invoice is unpaid: the cabinet is view-only. Pay it in the Plan section.",
+  "plan.err.staffLimit":
+    "You have as many staff members as your plan allows. Request a higher plan in the Plan section.",
+  "plan.err.sellerLimit":
+    "You have as many seller cabinets as your plan allows. Request a higher plan in the Plan section.",
   "tariff.onlyIn": "Only in “{plan}”",
   "tariff.onlyInMany": "In Warehouse and Operator",
 

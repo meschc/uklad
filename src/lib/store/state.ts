@@ -2,6 +2,7 @@ import type { StateCreator } from "zustand";
 // Только тип: `import type` стирается при сборке, поэтому кольца
 // «словарь → хранилище → словарь» не возникает.
 import type { MsgKey } from "../i18n";
+import type { TariffFeatures } from "../tariff";
 import type { Notice, NoticeInput, NoticeTone } from "../notice";
 import type { SwitchRequest } from "../data/switchRepository";
 import type { ItemScan, PackDoneFacts } from "../packing";
@@ -760,6 +761,8 @@ export interface SubscriptionSlice {
   subscription: Subscription;
   /** Сменить тариф. Сегодня — переключатель в профиле, завтра — биллинг. */
   setTariff: (tariff: TariffId) => void;
+  /** Тариф и функции, как их назначил Уклад (сервер, `GET /company/features`). */
+  setPlanFeatures: (tariff: TariffId, features: TariffFeatures) => void;
   updateBackupSettings: (patch: Partial<BackupSettings>) => void;
   /** Архив скачан: сбрасывает напоминание. */
   markBackupDone: (at: number) => void;
