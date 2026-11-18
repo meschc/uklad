@@ -7,7 +7,7 @@ import { ROADMAP_ITEMS } from "../roadmapItems";
  * код», а «не врёт ли страница». Врать она может тремя способами, и на каждый
  * есть проверка ниже:
  *
- *  - сроком там, где срока нет (квартал у идеи читается как обещание);
+ *  - сроком, которого не держим (кварталов нет вовсе, решение 17.11);
  *  - выпуском, которого не было (версия обязана существовать в журнале);
  *  - вехой, у которой ничего нет (пустая полоса прогресса выглядит работой).
  *
@@ -15,11 +15,10 @@ import { ROADMAP_ITEMS } from "../roadmapItems";
  * это единственная причина, по которой такие проверки вообще возможны.
  */
 
-const QUARTER_PATTERN = /^\d{4}-Q[1-4]$/;
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
-/** Стадии, у которых срок — ориентир, а не факт и не пустое обещание. */
-const DATED_STATUSES: readonly Status[] = ["planned", "progress"];
+/** Сколько карточек каждой колонки показывает блок на главной (`Offer.tsx`). */
+const LANDING_PER_STATUS: Record<Status, number> = { idea: 1, planned: 2, progress: 2, done: 2 };
 
 describe("пункты дорожной карты", () => {
   test("идентификаторы не повторяются", () => {
@@ -42,18 +41,31 @@ describe("пункты дорожной карты", () => {
     expect(unknown.map((item) => item.id)).toEqual([]);
   });
 
-  test("квартал стоит ровно у запланированного и у того, что делается", () => {
-    const wrong = ROADMAP_ITEMS.filter(
-      (item) => Boolean(item.quarter) !== DATED_STATUSES.includes(item.status),
+  test("на главной в каждой колонке ровно столько карточек, сколько в неё влезает", () => {
+    const counts = STATUS_ORDER.map(
+      (status) => ROADMAP_ITEMS.filter((item) => item.landing && item.status === status).length,
     );
 
-    expect(wrong.map((item) => item.id)).toEqual([]);
+    expect(counts).toEqual(STATUS_ORDER.map((status) => LANDING_PER_STATUS[status]));
   });
 
-  test("квартал записан форматом ГГГГ-Qn", () => {
-    const quarters = ROADMAP_ITEMS.flatMap((item) => (item.quarter ? [item.quarter] : []));
+  test("в «Обсуждаем» только то, что есть узлом на карте продукта", () => {
+    // Мысль, которой нет на карте, ещё не обсуждение (Кирилл 18.11: объёмный
+    // вид висел в «Обсуждаем», хотя его никто не обсуждал).
+    const loose = ROADMAP_ITEMS.filter((item) => item.status === "idea" && !item.mapNode);
 
-    expect(quarters.every((quarter) => QUARTER_PATTERN.test(quarter))).toBe(true);
+    expect(loose.map((item) => item.id)).toEqual([]);
+  });
+
+  test("незаконченное связано с узлом карты продукта, кроме давних пунктов из списка", () => {
+    // Статус берётся с узла (`mapNode`), иначе пункт правится по памяти и
+    // отстаёт. Давние пункты без узла — долг, новые без узла не заводим.
+    const legacy = new Set(["markirovka", "accounting", "delivery", "reports"]);
+    const unlinked = ROADMAP_ITEMS.filter(
+      (item) => (item.status === "planned" || item.status === "progress") && !item.mapNode,
+    );
+
+    expect(unlinked.map((item) => item.id).filter((id) => !legacy.has(id))).toEqual([]);
   });
 
   test("версия стоит только у готового", () => {
@@ -98,22 +110,6 @@ describe("вехи", () => {
     );
 
     expect(empty.map((milestone) => milestone.id)).toEqual([]);
-  });
-
-  test("ориентир вехи записан форматом ГГГГ-Qn", () => {
-    const targets = MILESTONES.flatMap((milestone) => (milestone.target ? [milestone.target] : []));
-
-    expect(targets.every((target) => QUARTER_PATTERN.test(target))).toBe(true);
-  });
-
-  test("веха без ориентира — только завершённая целиком", () => {
-    const openEnded = MILESTONES.filter((milestone) => !milestone.target);
-
-    const unfinished = openEnded.filter((milestone) =>
-      ROADMAP_ITEMS.some((item) => item.milestone === milestone.id && item.status !== "done"),
-    );
-
-    expect(unfinished.map((milestone) => milestone.id)).toEqual([]);
   });
 });
 

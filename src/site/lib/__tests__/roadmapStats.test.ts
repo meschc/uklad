@@ -7,8 +7,6 @@ import {
   filterByTrack,
   groupByStatus,
   milestoneProgress,
-  quarterLabel,
-  quartersOf,
 } from "../roadmapStats";
 
 /**
@@ -40,7 +38,7 @@ describe("countByStatus", () => {
     const items = [
       item({ id: "a", status: "done" }),
       item({ id: "b", status: "done" }),
-      item({ id: "c", status: "progress", quarter: "2026-Q4" }),
+      item({ id: "c", status: "progress" }),
     ];
 
     const counts = countByStatus(items);
@@ -94,8 +92,8 @@ describe("milestoneProgress", () => {
   test("считает готовое и начатое разными долями", () => {
     const items = [
       item({ id: "a", status: "done" }),
-      item({ id: "b", status: "progress", quarter: "2026-Q4" }),
-      item({ id: "c", status: "planned", quarter: "2027-Q1" }),
+      item({ id: "b", status: "progress" }),
+      item({ id: "c", status: "planned" }),
       item({ id: "d", status: "idea" }),
     ];
 
@@ -123,34 +121,6 @@ describe("milestoneProgress", () => {
     expect(progress.total).toBe(0);
     expect(progress.donePercent).toBe(0);
     expect(progress.progressPercent).toBe(0);
-  });
-});
-
-describe("quarterLabel", () => {
-  test("по-русски пишет римский номер квартала", () => {
-    expect(quarterLabel("ru", "2026-Q4")).toBe("IV квартал 2026");
-    expect(quarterLabel("ru", "2027-Q1")).toBe("I квартал 2027");
-  });
-
-  test("по-английски пишет привычное Q4", () => {
-    expect(quarterLabel("en", "2026-Q4")).toBe("Q4 2026");
-  });
-
-  test("неразобранную строку возвращает как есть, а не падает", () => {
-    expect(quarterLabel("ru", "когда-нибудь")).toBe("когда-нибудь");
-  });
-});
-
-describe("quartersOf", () => {
-  test("собирает кварталы без повторов и по возрастанию", () => {
-    const items = [
-      item({ id: "a", status: "planned", quarter: "2027-Q1" }),
-      item({ id: "b", status: "progress", quarter: "2026-Q4" }),
-      item({ id: "c", status: "planned", quarter: "2027-Q1" }),
-      item({ id: "d", status: "idea" }),
-    ];
-
-    expect(quartersOf(items)).toEqual(["2026-Q4", "2027-Q1"]);
   });
 });
 
