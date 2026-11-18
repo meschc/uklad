@@ -20,7 +20,8 @@
  *
  * Маршруты:
  *   GET  /api/connectors                 — подключения компании, без ключей
- *   POST /api/connectors/save            — { system, label, clientId?, token } → { id }
+ *   POST /api/connectors/save            — { system, label, clientId?, partnerId?, token } → { id }
+ *     partnerId — партнёр-продавец, чей это магазин; нет — свой товар склада.
  *   POST /api/connectors/delete          — { id }
  *   POST /api/connectors/<system>/proxy  — `ConnectorRequest` → { ok, data } (JSON площадки)
  */
@@ -162,6 +163,7 @@ function createConnectors({ auth, send, log, secretKey, fetchImpl = fetch }) {
         system: x.system,
         label: x.label,
         clientId: x.params?.clientId ?? null,
+        partnerId: x.params?.partnerId ?? null,
         createdAt: x.created_at,
       }));
     });
@@ -176,8 +178,11 @@ function createConnectors({ auth, send, log, secretKey, fetchImpl = fetch }) {
     const label = str(b.label, 100);
     const token = str(b.token, 4000);
     const clientId = str(b.clientId, 64);
+    const partnerId = str(b.partnerId, 64);
     if (!system || !label || !token) return send(res, 400, { ok: false, error: "bad_input" });
     if (SYSTEMS[system].needsClientId && !/^[A-Za-z0-9_-]{1,64}$/.test(clientId))
+      return send(res, 400, { ok: false, error: "bad_input" });
+    if (partnerId && !/^[A-Za-z0-9_-]{1,64}$/.test(partnerId))
       return send(res, 400, { ok: false, error: "bad_input" });
     const out = await session(req, res, async (c, ctx) => {
       const id = (await c.query("SELECT gen_random_uuid() AS id")).rows[0].id;
@@ -189,7 +194,7 @@ function createConnectors({ auth, send, log, secretKey, fetchImpl = fetch }) {
           ctx.orgId,
           system,
           label,
-          clientId ? { clientId } : {},
+          { ...(clientId ? { clientId } : {}), ...(partnerId ? { partnerId } : {}) },
           sealer.seal({ token }, aad(ctx.orgId, id)),
           ctx.accountId,
         ],

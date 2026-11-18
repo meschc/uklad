@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getConnector } from "@/lib/connectors";
 import { lastConnectorFailure } from "@/lib/connectors/transport";
+import { syncOrdersNow } from "@/lib/orderSync";
 import {
   connectorsRepository,
   type ServerConnection,
@@ -11,6 +12,8 @@ import type { MsgKey, TFunc } from "@/lib/i18n";
 import { useCommand } from "@/lib/useCommand";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { useEditor } from "@/lib/store";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { FormError } from "@/components/ui/field";
 
@@ -37,7 +40,9 @@ export function ServerConnections({ spec, t }: { spec: IntegrationSpec; t: TFunc
   const system = spec.id as ServerConnectorSystem;
   const clientLabel = CLIENT_LABEL[system];
   const [rows, setRows] = useState<ServerConnection[]>([]);
-  const [label, setLabel] = useState("");
+  const partners = useEditor((s) => s.warehouse.partners) ?? [];
+  // "" — свой товар склада (склад без продавцов), иначе id партнёра.
+  const [partnerId, setPartnerId] = useState("");
   const [clientId, setClientId] = useState("");
   const [token, setToken] = useState("");
   const [checks, setChecks] = useState<Record<string, string>>({});
@@ -61,15 +66,17 @@ export function ServerConnections({ spec, t }: { spec: IntegrationSpec; t: TFunc
   }, [system, version]);
 
   const onSave = async () => {
+    const label = partners.find((p) => p.id === partnerId)?.name ?? t("integr.ownGoods");
     const res = await save.run({
       system,
       label,
       token,
+      ...(partnerId ? { partnerId } : {}),
       ...(clientLabel ? { clientId } : {}),
     });
     if (!res.ok) return;
     setToken("");
-    setLabel("");
+    setPartnerId("");
     setClientId("");
     reload();
   };
@@ -85,12 +92,23 @@ export function ServerConnections({ spec, t }: { spec: IntegrationSpec; t: TFunc
     setChecks((c) => ({ ...c, [id]: text }));
   };
 
+  const [pulled, setPulled] = useState<string | null>(null);
+  const onPull = async () => {
+    setPulled(t("integr.check.running"));
+    const res = await syncOrdersNow();
+    if (!res.ok) return setPulled(withPlatformReply(t(res.error), lastConnectorFailure()));
+    const { created, unknown } = res.data;
+    const lines = [t("integr.pull.ok", { n: created })];
+    if (unknown.length) lines.push(t("integr.pull.unknown", { list: unknown.join(", ") }));
+    setPulled(lines.join(". "));
+  };
+
   const onRemove = async (id: string) => {
     if ((await remove.run(id)).ok) reload();
   };
 
   const error = loadError ?? save.error ?? remove.error;
-  const canSave = !!label.trim() && !!token.trim() && (!clientLabel || !!clientId.trim());
+  const canSave = !!token.trim() && (!clientLabel || !!clientId.trim());
 
   return (
     <div className="flex flex-col gap-3">
@@ -118,11 +136,33 @@ export function ServerConnections({ spec, t }: { spec: IntegrationSpec; t: TFunc
           ))}
         </ul>
       )}
+      {rows.length > 0 && (
+        <div className="flex flex-col gap-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button size="sm" onClick={() => void onPull()}>
+              {t("integr.pull")}
+            </Button>
+            {pulled && <span className="text-xs text-muted-foreground">{pulled}</span>}
+          </div>
+          <p className="text-xs text-muted-foreground">{t("integr.pull.hint")}</p>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <label className="flex flex-col gap-1">
-          <span className={eyebrow()}>{t("integr.field.label")}</span>
-          <Input value={label} onChange={(e) => setLabel(e.target.value)} className="h-9" />
+          <span className={eyebrow()}>{t("integr.field.partner")}</span>
+          <Select
+            value={partnerId}
+            onChange={(e) => setPartnerId(e.target.value)}
+            className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+          >
+            <option value="">{t("integr.ownGoods")}</option>
+            {partners.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </Select>
         </label>
         {clientLabel && (
           <label className="flex flex-col gap-1">
