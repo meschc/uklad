@@ -9,6 +9,7 @@ import { useT } from "@/lib/i18n";
 import { authRepository } from "@/lib/data/authRepository";
 import { hasCabinetServer, setUnauthorizedHandler } from "@/lib/data/api";
 import { holdsCompanyCopy, startServerSync } from "@/lib/store/serverSync";
+import { startOrderSync } from "@/lib/orderSync";
 import { demoRepository } from "@/lib/data/demoRepository";
 import { startDemoTrack } from "@/lib/demoTrack";
 import { SideNav } from "@/components/nav/SideNav";
@@ -220,6 +221,10 @@ export default function App() {
   // логотип, в профиль — шапка кабинета), но выкидывать с них по «не нашёл в
   // списке разрешённых» нельзя — иначе кабинет стал бы недостижим.
   const perms = useEditor((s) => s.session.permissions);
+  // Заказы площадок подкачивает кабинет того, кто ведёт интеграции, а не
+  // стол: за столом сотрудник по бейджу, ключей площадок он не касается.
+  const pullOrders = !!syncOrg && !locked && perms?.includes("integrations.manage") === true;
+  useEffect(() => (pullOrders ? startOrderSync() : undefined), [pullOrders]);
   // Смотрящему профиль не нужен: выход — на главной (Кирилл 14.11).
   const viewer = useEditor((s) => s.session.readOnly === true);
   const allowed = navFor(role, perms).map((n) => n.view);

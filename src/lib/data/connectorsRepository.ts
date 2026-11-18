@@ -13,6 +13,8 @@ export interface ServerConnection {
   label: string;
   /** Client-Id Ozon или campaignId Маркета; у WB нет. */
   clientId: string | null;
+  /** Партнёр-продавец, чей это магазин; null — свой товар склада. */
+  partnerId: string | null;
 }
 
 function statusError(status: number, error: unknown): MsgKey {
@@ -47,6 +49,7 @@ export const connectorsRepository = {
             system: x.system,
             label: String(x.label ?? ""),
             clientId: typeof x.clientId === "string" ? x.clientId : null,
+            partnerId: typeof x.partnerId === "string" ? x.partnerId : null,
           },
         ];
       }),
@@ -57,6 +60,7 @@ export const connectorsRepository = {
     system: ServerConnectorSystem;
     label: string;
     clientId?: string;
+    partnerId?: string;
     token: string;
   }): Promise<Result<string>> => {
     const res = await attempt(

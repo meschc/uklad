@@ -120,12 +120,14 @@ test("сохранение: в базе шифротекст, в списке к
     system: "ozon",
     label: "ИП Иванов",
     clientId: "12345",
+    partnerId: "partner_1",
     token: "ozon-key-xyz",
   });
   assert.equal(saved.status, 200);
   assert.equal(rows[0].secret.includes(Buffer.from("ozon-key-xyz")), false);
   const list = await call("GET", "/api/connectors");
   assert.equal(list.body.connections[0].clientId, "12345");
+  assert.equal(list.body.connections[0].partnerId, "partner_1");
   assert.equal(list.raw.includes("ozon-key-xyz"), false);
 });
 
