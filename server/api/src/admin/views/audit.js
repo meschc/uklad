@@ -31,6 +31,8 @@ const ACTION = {
   lead_restore: "Заявка из архива",
   lead_delete: "Заявка удалена",
   support_update: "Обращение обновлено",
+  support_archive: "Обращение в архиве",
+  support_restore: "Обращение из архива",
   support_download: "Обращение скачано",
   error_resolve: "Ошибка разобрана",
   error_reopen: "Ошибка снова открыта",

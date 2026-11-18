@@ -106,6 +106,8 @@ const FLASH = {
   saved: ["success", "Сохранено."],
   invoice_saved: ["success", "Счёт сохранён."],
   support_saved: ["success", "Статус обращения сохранён."],
+  support_archived: ["success", "Обращение в архиве. Вернуть — во вкладке «Архив»."],
+  support_restored: ["success", "Обращение возвращено из архива."],
   lead_saved: ["success", "Заявка сохранена."],
   lead_archived: ["success", "Заявка в архиве. Вернуть — во вкладке «Архив»."],
   lead_restored: ["success", "Заявка возвращена из архива."],
