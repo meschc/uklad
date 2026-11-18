@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getConnector } from "@/lib/connectors";
 import { lastConnectorFailure } from "@/lib/connectors/transport";
+import { syncOrdersNow } from "@/lib/orderSync";
 import {
   connectorsRepository,
   type ServerConnection,
@@ -85,6 +86,17 @@ export function ServerConnections({ spec, t }: { spec: IntegrationSpec; t: TFunc
     setChecks((c) => ({ ...c, [id]: text }));
   };
 
+  const [pulled, setPulled] = useState<string | null>(null);
+  const onPull = async () => {
+    setPulled(t("integr.check.running"));
+    const res = await syncOrdersNow();
+    if (!res.ok) return setPulled(withPlatformReply(t(res.error), lastConnectorFailure()));
+    const { created, unknown } = res.data;
+    const lines = [t("integr.pull.ok", { n: created })];
+    if (unknown.length) lines.push(t("integr.pull.unknown", { list: unknown.join(", ") }));
+    setPulled(lines.join(". "));
+  };
+
   const onRemove = async (id: string) => {
     if ((await remove.run(id)).ok) reload();
   };
@@ -117,6 +129,17 @@ export function ServerConnections({ spec, t }: { spec: IntegrationSpec; t: TFunc
             </li>
           ))}
         </ul>
+      )}
+      {rows.length > 0 && (
+        <div className="flex flex-col gap-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button size="sm" onClick={() => void onPull()}>
+              {t("integr.pull")}
+            </Button>
+            {pulled && <span className="text-xs text-muted-foreground">{pulled}</span>}
+          </div>
+          <p className="text-xs text-muted-foreground">{t("integr.pull.hint")}</p>
+        </div>
       )}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
