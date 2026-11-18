@@ -64,6 +64,7 @@ export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get)
   stationSession: null,
   switchRequests: [],
   pendingSwitch: null,
+  stationTaken: null,
   devices: [],
   thisDeviceId: null,
 
@@ -121,6 +122,7 @@ export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get)
     const now = nowMs();
     const device = boundDevice(get());
     set({
+      stationTaken: null,
       stationSession: {
         staffId: member.id,
         // На привязанном устройстве вид места задаёт оно, а не экран.
@@ -136,6 +138,8 @@ export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get)
 
   // Ушёл со стола — его заявка на переход больше не его забота.
   stationLogout: () => set({ stationSession: null, pendingSwitch: null }),
+  stationTakenOver: (notice) =>
+    set({ stationSession: null, pendingSwitch: null, stationTaken: notice }),
 
   markShift: (type, reason) => {
     const s = get();
