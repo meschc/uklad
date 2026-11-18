@@ -383,6 +383,10 @@ function createRoutes({ store, cfg, invoices }) {
             paid_until: paidRaw ? dateEnd(paidRaw) : null,
           };
           const changed = diff(a, patch);
+          // Просьба склада из кабинета (`cabinet/plan.js`) решена сохранением:
+          // тариф поменяли или оставили — кабинет больше её не показывает.
+          if (a.tariff_request)
+            Object.assign(patch, { tariff_request: null, tariff_request_at: null });
           store.updateAccount(a.id, patch, t);
           if (Object.keys(changed).length) store.log(t, by, "account_tariff", target, changed);
           return back();

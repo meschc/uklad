@@ -59,6 +59,9 @@ const ACCOUNT_FIELDS = [
   "features",
   "limits",
   "source",
+  "org_id",
+  "tariff_request",
+  "tariff_request_at",
 ];
 
 function adminStore(db) {
@@ -147,6 +150,12 @@ function adminStore(db) {
     // Откуда пришёл: admin — завела админка, lead — из заявки, cabinet —
     // сам зарегистрировался в кабинете. Пусто у старых строк = admin.
     source: "TEXT",
+    // Компания кабинета (uklad.orgs.id): по ней кабинет узнаёт свой тариф.
+    // Пусто у заведённых до связки — связывается при первом входе владельца.
+    org_id: "TEXT",
+    // Склад попросил другой тариф из кабинета; гасится сохранением тарифа.
+    tariff_request: "TEXT",
+    tariff_request_at: "TEXT",
   });
   // Таблицы заявок создаёт db.js; в тестах админки их может не быть.
   const hasLeads = db.prepare(`SELECT 1 FROM sqlite_master WHERE name = 'leads'`).get();
@@ -188,6 +197,7 @@ function adminStore(db) {
     allAccounts: db.prepare(`SELECT * FROM accounts ORDER BY created_at DESC`),
     account: db.prepare(`SELECT * FROM accounts WHERE id = ?`),
     accountByEmail: db.prepare(`SELECT * FROM accounts WHERE email = ?`),
+    accountByOrg: db.prepare(`SELECT * FROM accounts WHERE org_id = ?`),
     insertAccount: db.prepare(
       `INSERT INTO accounts (kind, name, email, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
     ),
@@ -312,6 +322,7 @@ function adminStore(db) {
     allAccounts: () => q.allAccounts.all(),
     account: (id) => q.account.get(id),
     accountByEmail: (email) => q.accountByEmail.get(email),
+    accountByOrg: (orgId) => q.accountByOrg.get(orgId),
     addAccount: (a, now) => {
       const t = now.toISOString();
       const id = Number(q.insertAccount.run(a.kind, a.name, a.email, t, t).lastInsertRowid);
