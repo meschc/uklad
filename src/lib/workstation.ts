@@ -44,6 +44,19 @@ export function isSessionLive(session: StationSession | null, now: number): bool
   return !!session && now < session.expiresAt;
 }
 
+/**
+ * Перехватили ли вход этого экрана: сервер снял сотрудника отсюда, потому что
+ * его бейдж отсканировали за другим столом (миграция 049). Касается только
+ * того, кто здесь сейчас: за столом уже вошёл другой — его не трогаем.
+ */
+export function takenHere(
+  session: StationSession | null,
+  taken: { staffRef: string },
+  now: number,
+): boolean {
+  return isSessionLive(session, now) && session!.staffId === taken.staffRef;
+}
+
 // --- Смена ----------------------------------------------------------------------
 
 export type ShiftState = "off" | "on" | "break" | "idle";

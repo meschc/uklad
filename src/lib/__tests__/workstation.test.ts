@@ -11,6 +11,7 @@ import {
   nextBreak,
   parseBadge,
   shiftState,
+  takenHere,
   workedMs,
 } from "../workstation";
 import type { StaffEvent } from "../types";
@@ -36,6 +37,15 @@ describe("бейдж и вход", () => {
     expect(isSessionLive(s, SESSION_TTL_MS - 1)).toBe(true);
     expect(isSessionLive(s, SESSION_TTL_MS)).toBe(false);
     expect(isSessionLive(null, 0)).toBe(false);
+  });
+
+  it("вход перехвачен только у того, кто за столом сейчас", () => {
+    const s = { staffId: "s1", station: "pack" as const, startedAt: 0, expiresAt: SESSION_TTL_MS };
+    expect(takenHere(s, { staffRef: "s1" }, 1)).toBe(true);
+    // За столом уже другой — весть о прежнем его не выкидывает.
+    expect(takenHere(s, { staffRef: "s2" }, 1)).toBe(false);
+    expect(takenHere(s, { staffRef: "s1" }, SESSION_TTL_MS)).toBe(false);
+    expect(takenHere(null, { staffRef: "s1" }, 1)).toBe(false);
   });
 });
 
