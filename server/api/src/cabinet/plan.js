@@ -23,6 +23,10 @@ const plans = require("../admin/plans");
 
 /** Тарифы, которые склад может попросить сам. Свой и корпоративный — разговором. */
 const REQUESTABLE = ["start", "warehouse", "operator"];
+/** Роль создателя компании (`auth.register`, миграция 004). */
+const OWNER_ROLE = "Владелец";
+/** Письмо о просьбе — не чаще раза в час на аккаунт: чередованием тарифов почту не завалить. */
+const LETTER_EVERY_MS = 3_600_000;
 
 /** Что кабинет показывает о тарифе. Цена — своя у аккаунта (спеццена) или тарифа. */
 function planView(a, invoice, nowIso) {
@@ -63,7 +67,7 @@ function createPlan({
   now = () => new Date(),
   log = console,
 }) {
-  const { withSession, readJson, tokenHash } = auth;
+  const { withSession, readJson, tokenHash, tx } = auth;
   const store = adminStore(db);
   // Таблицу счетов заводит `admin/invoices.js` — позже нас и только с
   // включённой админкой. Поэтому запрос готовится при первом обращении.
@@ -78,29 +82,41 @@ function createPlan({
     return openInvoice.get(accountId) ?? null;
   };
 
-  /** Аккаунт админки для компании вошедшего; связывает старый по почте. */
-  async function accountFor(c, ctx, hash) {
-    const linked = store.accountByOrg(ctx.orgId);
-    if (linked) return linked;
-    const me = (await c.query(`SELECT email FROM auth.my_account($1)`, [hash])).rows[0];
+  /**
+   * Связать старый аккаунт админки (без `org_id`) с компанией по почте.
+   * Только если вошедший — «Владелец» ровно одной компании, и это она: иначе
+   * владелец склада А, позванный в компанию Б, привязал бы свой аккаунт к Б и
+   * показал бы ей свой тариф и счёт (ревью безопасности #193). Остальное
+   * связывается вручную в админке. Свой запрос к базе, вне транзакции сессии:
+   * `my_orgs` переставляет контекст входа.
+   */
+  async function linkByEmail(orgId, hash) {
+    const { me, orgs } = await tx(async (c) => ({
+      me: (await c.query(`SELECT email FROM auth.my_account($1)`, [hash])).rows[0],
+      orgs: (await c.query(`SELECT org_id, role_name FROM auth.my_orgs($1)`, [hash])).rows,
+    }));
+    if (orgs.length !== 1 || orgs[0].org_id !== orgId || orgs[0].role_name !== OWNER_ROLE) {
+      return null;
+    }
     const byEmail = me?.email ? store.accountByEmail(me.email) : null;
     // Только склад и только ещё не связанный: чужую связку почтой не перебить.
     if (!byEmail || byEmail.kind !== "warehouse" || byEmail.org_id) return null;
-    store.updateAccount(byEmail.id, { org_id: ctx.orgId }, now());
-    store.log(now(), null, "account_link", `account:${byEmail.id}`, { компания: ctx.orgId });
+    store.updateAccount(byEmail.id, { org_id: orgId }, now());
+    store.log(now(), null, "account_link", `account:${byEmail.id}`, { компания: orgId });
     return store.account(byEmail.id);
   }
 
   /** `fn(account)` от имени владельца; статус ошибки — числом. */
   async function asOwner(req, fn) {
     const hash = tokenHash(req);
-    const out = await withSession(req, async (c, ctx) => {
+    const out = await withSession(req, async (_c, ctx) => {
       if (!ctx.accountId || !ctx.can("org.manage")) return { status: 403 };
-      return { account: await accountFor(c, ctx, hash) };
+      return { orgId: ctx.orgId };
     });
     if (!out) return { status: 401 };
     if (out.status) return out;
-    return fn(out.account);
+    const account = store.accountByOrg(out.orgId) ?? (await linkByEmail(out.orgId, hash));
+    return fn(account);
   }
 
   const view = (a) => planView(a, invoiceOf(a.id), now().toISOString());
@@ -122,12 +138,14 @@ function createPlan({
       // Та же просьба второй раз письма не шлёт: владелец Уклада её уже видел.
       if (a.tariff_request === tariff) return { plan: view(a) };
       const t = now();
+      const lastAt = a.tariff_request_at ? Date.parse(a.tariff_request_at) : 0;
+      const letter = !(t.getTime() - lastAt < LETTER_EVERY_MS);
       store.updateAccount(a.id, { tariff_request: tariff, tariff_request_at: t.toISOString() }, t);
       store.log(t, null, "account_tariff_request", `account:${a.id}`, {
         было: a.tariff,
         просит: tariff,
       });
-      if (mail && mailTo) {
+      if (letter && mail && mailTo) {
         mail
           .sendTo({ to: mailTo, ...requestLetter(a, tariff) })
           .catch((e) => log.error?.(`[uklad] письмо о смене тарифа не ушло: ${e.message}`));

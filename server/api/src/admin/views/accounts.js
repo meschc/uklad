@@ -235,6 +235,7 @@ function tariffForm(session, a, managers) {
         .map((m) => opt(m.id, m.name, a.manager_id))
         .join("")}</select></label>
     </div>
+    <label>Компания в кабинете (id)<input name="org_id" value="${esc(a.org_id ?? "")}" placeholder="связывается сама при входе владельца"></label>
     <div class="row">
       <label>Пробный период до<input type="date" name="trial_until" value="${b.dateInput(a.trial_until)}"></label>
       <label>Оплачено до<input type="date" name="paid_until" value="${b.dateInput(a.paid_until)}"></label>

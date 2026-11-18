@@ -14,7 +14,14 @@ const { createPlan } = require("../src/cabinet/plan");
 
 const NOW = new Date("2026-11-18T10:00:00Z");
 
-function setup({ perms = ["org.manage"], session = true, orgId = "org-1", account = {} } = {}) {
+function setup({
+  perms = ["org.manage"],
+  session = true,
+  orgId = "org-1",
+  account = {},
+  orgs = [{ org_id: "org-1", role_name: "Владелец" }],
+  email = "boss@example.ru",
+} = {}) {
   const db = openDb(":memory:").raw;
   const store = adminStore(db);
   const id = store.addAccount(
@@ -36,9 +43,12 @@ function setup({ perms = ["org.manage"], session = true, orgId = "org-1", accoun
     readJson: async (req) => req.body,
     withSession: async (_req, act) => {
       if (!session) return null;
-      const c = { query: async () => ({ rows: [{ email: "boss@example.ru" }] }) };
-      return act(c, { accountId: "acc", orgId, can: (p) => perms.includes(p) });
+      return act({}, { accountId: "acc", orgId, can: (p) => perms.includes(p) });
     },
+    tx: async (fn) =>
+      fn({
+        query: async (sql) => ({ rows: /my_orgs/.test(sql) ? orgs : [{ email }] }),
+      }),
   };
   const mail = { sendTo: async (l) => letters.push(l) };
   const api = createPlan({
@@ -75,6 +85,32 @@ test("аккаунт без связки находится по почте вл
   assert.equal(s.store.account(s.id).org_id, "org-1");
 });
 
+test("владелец в двух компаниях — без связки: аккаунт не уйдёт в чужую", async () => {
+  const s = setup({
+    orgId: "org-b",
+    orgs: [
+      { org_id: "org-a", role_name: "Владелец" },
+      { org_id: "org-b", role_name: "Владелец" },
+    ],
+  });
+  await s.call("GET", "plan");
+  assert.deepEqual(s.sent[0].body, { ok: true, plan: null });
+  assert.equal(s.store.account(s.id).org_id, null);
+});
+
+test("не создатель компании — без связки, даже с org.manage", async () => {
+  const s = setup({ orgs: [{ org_id: "org-1", role_name: "Руководитель" }] });
+  await s.call("GET", "plan");
+  assert.equal(s.sent[0].body.plan, null);
+  assert.equal(s.store.account(s.id).org_id, null);
+});
+
+test("почта сравнивается без учёта регистра", async () => {
+  const s = setup({ email: "Boss@Example.RU" });
+  await s.call("GET", "plan");
+  assert.equal(s.store.account(s.id).org_id, "org-1");
+});
+
 test("связанный с другой компанией аккаунт почтой не перехватить", async () => {
   const s = setup({ account: { org_id: "org-other" } });
   await s.call("GET", "plan");
@@ -102,6 +138,12 @@ test("просьба другого тарифа: тариф не меняетс
   assert.equal(s.letters.length, 1, "повтор той же просьбы письма не шлёт");
   assert.match(s.letters[0].subject, /Оператор/);
   assert.equal(s.store.account(s.id).tariff, "start");
+  // Чередование тарифов в течение часа писем не множит.
+  await s.call("POST", "plan/request", { tariff: "warehouse" });
+  await s.call("POST", "plan/request", { tariff: "operator" });
+  await new Promise((r) => setImmediate(r));
+  assert.equal(s.letters.length, 1);
+  assert.equal(s.store.account(s.id).tariff_request, "operator");
 });
 
 test("просьба: свой тариф — 409, корпоративный и чужой ключ — 400", async () => {

@@ -196,7 +196,7 @@ function adminStore(db) {
 
     allAccounts: db.prepare(`SELECT * FROM accounts ORDER BY created_at DESC`),
     account: db.prepare(`SELECT * FROM accounts WHERE id = ?`),
-    accountByEmail: db.prepare(`SELECT * FROM accounts WHERE email = ?`),
+    accountByEmail: db.prepare(`SELECT * FROM accounts WHERE lower(email) = lower(?)`),
     accountByOrg: db.prepare(`SELECT * FROM accounts WHERE org_id = ?`),
     insertAccount: db.prepare(
       `INSERT INTO accounts (kind, name, email, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
