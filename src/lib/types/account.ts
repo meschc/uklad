@@ -1,3 +1,4 @@
+import type { TariffFeatures } from "../tariff";
 // ---------------------------------------------------------------------------
 // Верхний уровень: кто вошёл, что он видит и как настроен интерфейс
 // (ТЗ, разд. 3.1–3.4). Форма `User`/`Session` заранее совпадает с будущими
@@ -163,6 +164,11 @@ export interface BackupSettings {
 
 export interface Subscription {
   tariff: TariffId;
+  /**
+   * Функции с сервера: тариф плюс ручные включения из админки Уклада. Нет —
+   * по таблице тарифа (демо, сервер ещё не ответил). Читать через `featuresOf`.
+   */
+  features?: TariffFeatures;
   manager?: Manager;
   backup: BackupSettings;
 }

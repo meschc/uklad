@@ -18,6 +18,7 @@
 /* global module, require */
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { warehousesOf, placeRef } = require("./viewerPlace");
+const { withWarehouses } = require("./warehouses");
 
 const REF_RE = /^[A-Za-z0-9_.:#/-]{1,200}$/;
 const STEPS = new Set([
@@ -74,11 +75,12 @@ function readFilters(url) {
 /** Склад, чей журнал отдаём, или `null` — нельзя. */
 async function journalPlace(c, ctx, asked) {
   const { rows } = await c.query(
-    `SELECT data->'warehouse' AS warehouse, data->'otherWarehouses' AS others
-     FROM uklad.cabinet_snapshots WHERE org_id = uklad.current_org()`,
+    `SELECT data FROM uklad.cabinet_snapshots WHERE org_id = uklad.current_org()`,
   );
   if (!rows[0]) return null;
-  const doc = { warehouse: rows[0].warehouse, otherWarehouses: list(rows[0].others) };
+  // Склады — строками (миграция 051), в старом документе — в нём самом.
+  const full = await withWarehouses(c, rows[0].data);
+  const doc = { warehouse: full.warehouse, otherWarehouses: list(full.otherWarehouses) };
   const all = warehousesOf(doc);
   if (ctx.can("staff.manage")) {
     const ref = asked ?? (all.length === 1 ? all[0].id : null);
