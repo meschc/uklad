@@ -25,6 +25,7 @@
 /* global require, module, Buffer, URL, URLSearchParams, console, __dirname */
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { randomBytes, timingSafeEqual } = require("node:crypto");
+const { trimSlashes } = require("../trimSlashes");
 const fs = require("node:fs");
 const nodePath = require("node:path");
 const { adminStore, sha256 } = require("./store");
@@ -263,7 +264,7 @@ function createAdminApp({ cfg, db, now = () => new Date(), log = console, invoic
 
   async function handle(req, res) {
     const url = new URL(req.url ?? "/", "http://local");
-    const path = url.pathname.length > 1 ? url.pathname.replace(/\/+$/, "") : "/";
+    const path = url.pathname.length > 1 ? trimSlashes(url.pathname) : "/";
 
     if (path === "/admin.css" && req.method === "GET") {
       res.writeHead(200, {

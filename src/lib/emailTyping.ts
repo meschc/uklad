@@ -35,9 +35,12 @@ export function fixKeyboardLayout(value: string): string {
  * буквы уже стали латиницей, а «@» человек набирает той же клавишей.
  */
 export function fixEmailLayout(value: string): string {
-  let out = fixKeyboardLayout(value);
-  if (!value.includes("@")) out = out.replace('"', "@");
-  return out;
+  const out = fixKeyboardLayout(value);
+  if (value.includes("@")) return out;
+  // Только первая кавычка: «@» в адресе одна. Не `replace('"', …)` — CodeQL
+  // принимает его за неполное экранирование (js/incomplete-sanitization).
+  const at = out.indexOf('"');
+  return at < 0 ? out : `${out.slice(0, at)}@${out.slice(at + 1)}`;
 }
 
 /** Почтовые сервисы по частоте у наших людей: сначала российские. */

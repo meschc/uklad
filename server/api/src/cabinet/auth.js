@@ -28,6 +28,7 @@
 /* global require, module, URL */
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { isEmail, looksLikeEmail } = require("../validate");
+const { trimSlashes } = require("../trimSlashes");
 const { randomBytes, randomInt, createHash } = require("node:crypto");
 const { hashPassword, checkPassword, isAcceptable } = require("./password");
 const { createRateLimit, clientIp } = require("../rateLimit");
@@ -171,7 +172,7 @@ function createAuth({ pool, cfg, send, readBody, log, mail, onRegister = null })
   // POST только с нашего сайта и только JSON: форма с чужого сайта не
   // пройдёт ни по Origin, ни по типу тела (CSRF).
   async function readJson(req, res, maxBytes) {
-    const origin = (req.headers.origin ?? "").replace(/\/+$/, "");
+    const origin = trimSlashes(req.headers.origin);
     if (!cfg.allowedOrigins.includes(origin)) {
       send(res, 403, { ok: false });
       return null;
