@@ -42,6 +42,7 @@ export const APP_VIEWS = [
   "picking",
   "operations",
   "staff",
+  "partners",
   "analytics",
   "spec",
   "seller",
