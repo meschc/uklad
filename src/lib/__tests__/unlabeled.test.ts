@@ -39,7 +39,12 @@ describe("findUnlabeled", () => {
     expect(res?.product.id).toBe("cup");
     expect(res?.leads.map((l) => l.box.code)).toEqual(["UK-LBL-AB12-001"]);
     expect(res?.leads[0].sorted).toBe(true);
+    expect(res?.leads[0].before).toEqual([]);
     expect(res?.leads[0].after.map((b) => b.code)).toEqual(["UK-LBL-AB12-002", "UK-LBL-AB12-003"]);
+    // У середины тары — и сосед перед ней.
+    const tee = findUnlabeled(list, products, "4600000000028")!.leads[0];
+    expect(tee.before.map((b) => b.code)).toEqual(["UK-LBL-AB12-001"]);
+    expect(tee.after.map((b) => b.code)).toEqual(["UK-LBL-AB12-003"]);
   });
 
   it("короб поставки и уехавшая посылка — не кандидаты; другая тара — не «следом»", () => {
@@ -58,6 +63,7 @@ describe("findUnlabeled", () => {
       products,
       "SKU-cup",
     )!;
+    expect(res.leads[0].ordered).toBe(false);
     expect(res.leads[0].after.map((b) => b.code)).toEqual(["UK-ORD-BBBBBB"]);
   });
 

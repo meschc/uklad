@@ -15,13 +15,19 @@ import type { OutboundBox, Product } from "./types";
  * Что делает сортировщик. Сканирует штрихкод самого товара. Мы показываем
  * открытые посылки с этим товаром: чья это этикетка. Если её посылку уже
  * разложили, значит, эту этикетку носит другой товар. Следом идут этикетки,
- * упакованные после неё в той же таре: по ним сдвиг и ищут. Этикетка штуки
+ * упакованные перед ней и после в той же таре: по ним и ищут, куда ушла
+ * этикетка. Этикетка штуки
  * (`UK-LBL-<сессия>-<номер>`) несёт порядковый номер упаковки, поэтому
  * «после» известно точно; у этикетки заказа номера нет — показываем всю тару.
  */
 
-/** Сколько посылок «следом» показываем: дальше цепочку видно и так. */
-const AFTER_MAX = 5;
+/**
+ * Сколько соседей показываем. Чаще всего ошибка — одна посылка: товар упаковали
+ * без скана, а этикетку отложенного клеят на него (сценарий Кирилла 20.11).
+ * Сдвиг цепочкой реже, его видно по первым же соседям.
+ */
+const BEFORE_MAX = 1;
+const AFTER_MAX = 3;
 
 const UNIT_RE = /^UK-LBL-([A-Z0-9]{1,4})-(\d{1,5})$/;
 
@@ -30,8 +36,12 @@ interface UnlabeledLead {
   box: OutboundBox;
   /** Уже лежит в месте сортировки: эту этикетку носит другой товар. */
   sorted: boolean;
-  /** Посылки той же тары, упакованные после: этикетки могли сдвинуться на них. */
+  /** Упакована перед ней в той же таре. */
+  before: OutboundBox[];
+  /** Упакованы после неё в той же таре: этикетка могла уйти на них. */
   after: OutboundBox[];
+  /** Порядок упаковки известен (этикетки штук); нет — `after` это вся тара. */
+  ordered: boolean;
 }
 
 export interface UnlabeledScan {
@@ -54,18 +64,32 @@ function unitSeq(code: string): { session: string; n: number } | null {
   return m ? { session: m[1], n: Number(m[2]) } : null;
 }
 
-/** Посылки той же тары после `box` — в порядке упаковки. */
-function packedAfter(list: readonly OutboundBox[], box: OutboundBox): OutboundBox[] {
-  const own = unitSeq(box.code);
+/** Соседи `box` по таре — в порядке упаковки. */
+function neighbours(
+  list: readonly OutboundBox[],
+  box: OutboundBox,
+): Pick<UnlabeledLead, "before" | "after" | "ordered"> {
   const tote = list.filter((b) => b.id !== box.id && isOpenParcel(b) && sameTote(b, box));
-  const ranked = tote.map((b) => ({ b, seq: unitSeq(b.code) }));
-  const after = own
-    ? ranked.filter((x) => x.seq?.session === own.session && x.seq.n > own.n)
-    : ranked;
-  return after
-    .sort((x, y) => (x.seq?.n ?? 0) - (y.seq?.n ?? 0))
-    .slice(0, AFTER_MAX)
-    .map((x) => x.b);
+  const own = unitSeq(box.code);
+  if (!own) return { before: [], after: tote.slice(0, AFTER_MAX + BEFORE_MAX), ordered: false };
+  const ranked = tote
+    .map((b) => ({ b, seq: unitSeq(b.code) }))
+    .filter(
+      (x): x is { b: OutboundBox; seq: { session: string; n: number } } =>
+        x.seq?.session === own.session,
+    )
+    .sort((x, y) => x.seq.n - y.seq.n);
+  return {
+    before: ranked
+      .filter((x) => x.seq.n < own.n)
+      .slice(-BEFORE_MAX)
+      .map((x) => x.b),
+    after: ranked
+      .filter((x) => x.seq.n > own.n)
+      .slice(0, AFTER_MAX)
+      .map((x) => x.b),
+    ordered: true,
+  };
 }
 
 /**
@@ -81,7 +105,7 @@ export function findUnlabeled(
   if (!product) return null;
   const leads = list
     .filter((b) => isOpenParcel(b) && b.lines.some((l) => l.productId === product.id && l.qty > 0))
-    .map((box) => ({ box, sorted: !!box.sortCode, after: packedAfter(list, box) }))
+    .map((box) => ({ box, sorted: !!box.sortCode, ...neighbours(list, box) }))
     // Уже разложенная — главная подозреваемая, потом свежие.
     .sort((a, b) => Number(b.sorted) - Number(a.sorted) || b.box.createdAt - a.box.createdAt);
   return { product, leads };
