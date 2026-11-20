@@ -18,6 +18,7 @@
 /* global require, module, fetch, Buffer, AbortSignal */
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { createHmac } = require("node:crypto");
+const { trimSlashes } = require("../trimSlashes");
 
 // Подключение живёт сутки; кабинет просит новый токен сам, когда старый истёк.
 const TOKEN_TTL_S = 24 * 3600;
@@ -51,7 +52,7 @@ function createRealtime({ apiUrl, apiKey, tokenSecret, log, now = () => Date.now
   async function notify(memberIds, data) {
     if (!enabled || memberIds.length === 0) return;
     try {
-      const res = await fetch(`${apiUrl.replace(/\/+$/, "")}/api/broadcast`, {
+      const res = await fetch(`${trimSlashes(apiUrl)}/api/broadcast`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-API-Key": apiKey },
         body: JSON.stringify({ channels: memberIds.map(personalChannel), data }),
