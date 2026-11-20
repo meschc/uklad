@@ -38,6 +38,26 @@ function makeMember(member: Omit<StaffMember, "id">): StaffMember {
   };
 }
 
+/** Необязательные поля партнёра: пробелы срезаны, пустое — «нет», а не "". */
+const PARTNER_OPTIONAL = [
+  "contact",
+  "person",
+  "phone",
+  "inn",
+  "legalName",
+  "kpp",
+  "ogrn",
+  "legalAddress",
+] as const;
+
+function trimPartner<T extends Partial<Omit<Partner, "id">>>(p: T): T {
+  const out = { ...p };
+  for (const key of PARTNER_OPTIONAL) {
+    if (key in out) out[key] = (out[key] as string | undefined)?.trim() || undefined;
+  }
+  return out;
+}
+
 export const createStaffSlice: SliceCreator<StaffSlice> = (set) => ({
   payAdjustments: [],
 
@@ -133,13 +153,7 @@ export const createStaffSlice: SliceCreator<StaffSlice> = (set) => ({
     set((s) => ({
       warehouse: patchPartners(s.warehouse, (list) => [
         ...list,
-        {
-          id,
-          name: partner.name.trim() || "Без названия",
-          contact: partner.contact?.trim() || undefined,
-          person: partner.person?.trim() || undefined,
-          phone: partner.phone?.trim() || undefined,
-        },
+        { ...trimPartner(partner), id, name: partner.name.trim() || "Без названия" },
       ]),
     }));
     return id;
@@ -152,7 +166,7 @@ export const createStaffSlice: SliceCreator<StaffSlice> = (set) => ({
           p.id === id
             ? {
                 ...p,
-                ...patch,
+                ...trimPartner(patch),
                 name: patch.name != null ? patch.name.trim() || p.name : p.name,
               }
             : p,

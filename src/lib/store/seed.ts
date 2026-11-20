@@ -227,7 +227,8 @@ export function seedStaff(): StaffMember[] {
 function seedPartners(): Partner[] {
   // Контакт — почта продавца (на неё уходит приглашение в кабинет), а
   // контактное лицо и телефон — заполнены у всех: пустые поля в демо
-  // выглядят как недоделка (Кирилл 12 ноя).
+  // выглядят как недоделка (Кирилл 12 ноя). Реквизиты — у первых трёх:
+  // остальные показывают, что партнёра заводят и без ИНН.
   return [
     {
       id: uid("ptn"),
@@ -235,6 +236,11 @@ function seedPartners(): Partner[] {
       contact: "orders@romashka-trade.ru",
       person: "Елена Жукова",
       phone: "+7 495 780-12-40",
+      inn: "7728451361",
+      legalName: "ООО «РОМАШКА ТРЕЙД»",
+      kpp: "772801001",
+      ogrn: "1177746183922",
+      legalAddress: "г. Москва, ул. Профсоюзная, д. 56, помещ. 12",
     },
     {
       id: uid("ptn"),
@@ -242,6 +248,9 @@ function seedPartners(): Partner[] {
       contact: "kovalev.shop@mail.ru",
       person: "Андрей Ковалёв",
       phone: "+7 903 512-44-19",
+      inn: "502917483684",
+      legalName: "ИП Ковалёв Андрей Сергеевич",
+      ogrn: "319502900018424",
     },
     {
       id: uid("ptn"),
@@ -249,6 +258,11 @@ function seedPartners(): Partner[] {
       contact: "info@sever-sklad.ru",
       person: "Павел Ершов",
       phone: "+7 812 640-33-11",
+      inn: "7814629030",
+      legalName: "ООО «СЕВЕРНЫЙ СКЛАД»",
+      kpp: "781401001",
+      ogrn: "1157847012740",
+      legalAddress: "г. Санкт-Петербург, Выборгское ш., д. 212, лит. А",
     },
     {
       id: uid("ptn"),

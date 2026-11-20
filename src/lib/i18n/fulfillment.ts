@@ -79,6 +79,7 @@ export const ru = {
   "integr.saveToServer": "Сохранить подключение",
   "integr.field.partner": "Партнёр",
   "integr.ownGoods": "Свой товар склада",
+  "integr.partner.new": "+ Новый партнёр",
   "integr.securityNote":
     "Ключи хранятся на сервере Уклада в зашифрованном виде и не показываются после сохранения.",
   "integr.setup": "Настроить",
@@ -499,6 +500,7 @@ export const en: Record<keyof typeof ru, string> = {
   "integr.saveToServer": "Save connection",
   "integr.field.partner": "Partner",
   "integr.ownGoods": "Warehouse's own goods",
+  "integr.partner.new": "+ New partner",
   "integr.securityNote":
     "Keys are stored encrypted on the Uklad server and are not shown again after saving.",
   "integr.setup": "Set up",

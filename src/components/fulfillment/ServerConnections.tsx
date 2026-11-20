@@ -16,6 +16,10 @@ import { Select } from "@/components/ui/select";
 import { useEditor } from "@/lib/store";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { FormError } from "@/components/ui/field";
+import { PartnerCard } from "@/components/account/PartnerCard";
+
+/** Пункт списка «Партнёр», который открывает панель нового партнёра. */
+const NEW_PARTNER = "__new__";
 
 /** Подпись второго поля: Client-Id у Ozon, номер кампании у Маркета, у WB нет. */
 const CLIENT_LABEL: Partial<
@@ -43,6 +47,9 @@ export function ServerConnections({ spec, t }: { spec: IntegrationSpec; t: TFunc
   const partners = useEditor((s) => s.warehouse.partners) ?? [];
   // "" — свой товар склада (склад без продавцов), иначе id партнёра.
   const [partnerId, setPartnerId] = useState("");
+  // Продавца ещё нет в списке — заводим тут же, не уходя со страницы
+  // (Кирилл 18.11): панель справа, после «Добавить» он выбран.
+  const [adding, setAdding] = useState(false);
   const [clientId, setClientId] = useState("");
   const [token, setToken] = useState("");
   const [checks, setChecks] = useState<Record<string, string>>({});
@@ -153,7 +160,9 @@ export function ServerConnections({ spec, t }: { spec: IntegrationSpec; t: TFunc
           <span className={eyebrow()}>{t("integr.field.partner")}</span>
           <Select
             value={partnerId}
-            onChange={(e) => setPartnerId(e.target.value)}
+            onChange={(e) =>
+              e.target.value === NEW_PARTNER ? setAdding(true) : setPartnerId(e.target.value)
+            }
             className="h-9 rounded-md border border-input bg-background px-2 text-sm"
           >
             <option value="">{t("integr.ownGoods")}</option>
@@ -162,6 +171,7 @@ export function ServerConnections({ spec, t }: { spec: IntegrationSpec; t: TFunc
                 {p.name}
               </option>
             ))}
+            <option value={NEW_PARTNER}>{t("integr.partner.new")}</option>
           </Select>
         </label>
         {clientLabel && (
@@ -187,6 +197,7 @@ export function ServerConnections({ spec, t }: { spec: IntegrationSpec; t: TFunc
         </Button>
         {error && <FormError>{t(error)}</FormError>}
       </div>
+      {adding && <PartnerCard onClose={() => setAdding(false)} onCreated={setPartnerId} />}
     </div>
   );
 }
