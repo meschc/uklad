@@ -495,7 +495,7 @@ function createSnapshot({ auth, send, log }) {
         await c.query(`ROLLBACK TO SAVEPOINT changes`);
         return { conflict: true, error: "diverged" };
       }
-      // Склады — строками (миграция 051), в документе их нет.
+      // Склады — строками (миграция 052), в документе их нет.
       const wh = splitWarehouses(b.doc);
       doc = JSON.stringify(wh.doc);
       await storeWarehouses(c, wh.cards);

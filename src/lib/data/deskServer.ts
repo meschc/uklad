@@ -61,7 +61,7 @@ export interface DeskServer {
    * на сервер: после открытия стола писать от его имени уже некому.
    */
   /**
-   * Сделать этот браузер столом. Руководитель — здесь и сейчас (миграция 051):
+   * Сделать этот браузер столом. Руководитель — здесь и сейчас (миграция 052):
    * вошёл паролем только что или подтверждает бейджем либо паролем, иначе
    * отказ `devices.confirmNeeded`.
    */
@@ -91,7 +91,7 @@ export interface DeskServer {
   leave: () => Promise<Result<void>>;
 }
 
-/** Ответ сервера на привязку и её проверку (миграция 051) — ключ словаря. */
+/** Ответ сервера на привязку и её проверку (миграция 052) — ключ словаря. */
 function bindAnswer(status: number, body: { error?: unknown }): Result<void> {
   if (status === 200) return ok(undefined);
   if (status === 428) return fail("devices.confirmNeeded");

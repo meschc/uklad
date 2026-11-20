@@ -26,7 +26,7 @@ async function stored(org) {
      WHERE org_id = $1 AND deleted_at IS NULL ORDER BY warehouse_ref, domain, position`,
     [org],
   );
-  // Склады — строками (миграция 051).
+  // Склады — строками (миграция 052).
   const wh = await db.root.query(
     `SELECT card || jsonb_build_object('id', ref) AS card FROM uklad.warehouses
      WHERE org_id = $1 AND deleted_at IS NULL AND card IS NOT NULL ORDER BY position`,
