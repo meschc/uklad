@@ -26,7 +26,7 @@ async function stored(org) {
      WHERE org_id = $1 AND deleted_at IS NULL ORDER BY warehouse_ref, domain, position`,
     [org],
   );
-  // Склады — строками (миграция 051).
+  // Склады — строками (миграция 052).
   const wh = await db.root.query(
     `SELECT card || jsonb_build_object('id', ref) AS card FROM uklad.warehouses
      WHERE org_id = $1 AND deleted_at IS NULL AND card IS NOT NULL ORDER BY position`,
@@ -303,6 +303,56 @@ test("стол: вход руководителя гаснет, стол вид�
   assert.ok(boss.json.permissions.includes("goods.decide"));
 });
 
+test("привязать стол может только руководитель здесь и сейчас", { skip: SKIP }, async () => {
+  const { a, boss, ivan } = await company("desk-bind@sklad.ru", "10.0.3.30");
+  // Вход руководителя открыт давно и забыт: одной его сессии мало.
+  await db.root.query(
+    `UPDATE auth.sessions SET created_at = now() - interval '1 hour' WHERE account_id =
+       (SELECT id FROM auth.accounts WHERE email = 'desk-bind@sklad.ru')`,
+  );
+  const bind = (extra = {}, ip = "10.0.3.31") =>
+    call("/api/cabinet/desks", { ...a, ip, body: { deviceRef: "dev-1", name: "Стол", ...extra } });
+  const bare = await bind();
+  assert.deepEqual([bare.status, bare.json.error], [428, "confirm"]);
+  // Проверка до привязки отвечает так же и ничего не меняет.
+  const check = (body) => call("/api/cabinet/desks/check", { ...a, body });
+  assert.equal((await check({})).status, 428);
+  assert.equal((await check({ code: ivan })).status, 422);
+  assert.equal((await check({ code: boss })).status, 200);
+  assert.equal((await call("/api/cabinet/snapshot", a)).status, 200);
+  // Бейдж кладовщика — не руководитель; не тот пароль — отказ; стол не заведён.
+  const byIvan = await bind({ code: ivan });
+  assert.deepEqual([byIvan.status, byIvan.json.error], [422, "not_manager"]);
+  const wrong = await bind({ email: "desk-bind@sklad.ru", password: "не-тот-пароль" });
+  assert.deepEqual([wrong.status, wrong.json.error], [422, "bad_credentials"]);
+  // Верный пароль чужой учётной записи — тоже нет: подтверждает тот, кто вошёл.
+  await company("desk-bind-other@sklad.ru", "10.0.3.32");
+  const other = await bind({ email: "desk-bind-other@sklad.ru", password: PW });
+  assert.deepEqual([other.status, other.json.error], [422, "bad_credentials"]);
+  assert.equal((await call("/api/cabinet/snapshot", a)).status, 200);
+  // Бейдж руководителя — да.
+  const byBoss = await bind({ code: boss });
+  assert.equal(byBoss.status, 200);
+  // Пароль руководителя — да (новый вход, второй стол).
+  const again = { cookie: await login("desk-bind@sklad.ru"), org: a.org };
+  await db.root.query(
+    `UPDATE auth.sessions SET created_at = now() - interval '1 hour' WHERE account_id =
+       (SELECT id FROM auth.accounts WHERE email = 'desk-bind@sklad.ru')`,
+  );
+  const byPw = await call("/api/cabinet/desks", {
+    ...again,
+    body: { deviceRef: "dev-2", name: "Стол 2", email: "desk-bind@sklad.ru", password: PW },
+  });
+  assert.equal(byPw.status, 200);
+  // Только что вошёл паролем — подтверждать второй раз не нужно.
+  const fresh = { cookie: await login("desk-bind@sklad.ru"), org: a.org };
+  assert.equal(
+    (await call("/api/cabinet/desks", { ...fresh, body: { deviceRef: "dev-1", name: "С" } }))
+      .status,
+    200,
+  );
+});
+
 test("бейдж старшего снимает остановку и за стол не встаёт", { skip: SKIP }, async () => {
   const { a, ivan, boss } = await company("desk-senior@sklad.ru", "10.0.3.9");
   const desk = await makeDesk(a);
@@ -410,11 +460,14 @@ test(
     const right = await pw(PW);
     assert.equal(right.status, 200);
     assert.ok(right.cookies.some((c) => c.startsWith(`${deskCookieName}=;`)));
-    // Новой сессии входа отвязка не даёт: компьютер не становится кабинетом.
-    assert.ok(
-      !right.cookies.some((c) => c.startsWith(`${cookieName}=`) && !c.includes("Max-Age=0")),
-    );
+    // Почта и пароль руководителя — это и вход: он сразу в кабинете, без
+    // второго такого же экрана (Кирилл 20.11).
+    const office0 = tokenOf(right.cookies, cookieName);
+    assert.ok(office0);
     assert.equal((await call("/api/auth/me", { desk })).status, 401);
+    const inCabinet = await call("/api/auth/me", { cookie: office0 });
+    assert.equal(inCabinet.status, 200);
+    assert.equal(inCabinet.json.kind, "password");
 
     // Второй стол отвязывают бейджем: журнал знает, чей это бейдж.
     const second = await makeDesk({ cookie: await login("desk-pw@sklad.ru"), org: a.org }, "dev-2");

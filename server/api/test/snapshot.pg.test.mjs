@@ -1184,7 +1184,7 @@ test(
   },
 );
 
-test("миграция 051: склады старого снимка переезжают в строки", { skip: SKIP }, async () => {
+test("миграция 052: склады старого снимка переезжают в строки", { skip: SKIP }, async () => {
   const a = await owner("snap-wh-mig@sklad.ru", "10.0.1.41");
   assert.equal(
     (
