@@ -349,14 +349,20 @@ function createConnectors({ auth, send, log, secretKey, fetchImpl = fetch, pull 
         `SELECT id, system FROM uklad.connector_accounts WHERE deleted_at IS NULL
          ORDER BY created_at`,
       );
-      return { orgId: ctx.orgId, rows: r.rows };
+      // Билет прохода — под сессией и только своей компании (миграция 050).
+      const rows = [];
+      for (const row of r.rows) {
+        const t = await c.query(`SELECT auth.connector_pull_ticket($1) AS t`, [row.id]);
+        if (t.rows[0].t) rows.push({ ...row, ticket: t.rows[0].t });
+      }
+      return { orgId: ctx.orgId, rows };
     });
     if (!out) return;
     const { orgId, rows } = out.value;
     if (!pullLimit.take(orgId)) return send(res, 429, { ok: false }, { "Retry-After": "30" });
     const total = { created: 0, unknown: [], failed: [] };
     for (const row of rows) {
-      const r = await pull.pullAccount({ orgId, id: row.id, system: row.system });
+      const r = await pull.pullAccount({ orgId, ...row });
       total.created += r.created ?? 0;
       total.unknown.push(...(r.unknown ?? []));
       if (r.error) total.failed.push({ id: row.id, error: r.error, detail: r.detail ?? "" });

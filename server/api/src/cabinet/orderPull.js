@@ -279,19 +279,24 @@ function createOrderPull({ auth, log, secretKey, fetchImpl = fetch, now = () => 
 
   /**
    * Транзакция под компанией подключения. Компанию ставит база
-   * (`auth.connector_pull_enter`), а не сервер: она та, чьё это подключение.
-   * Не совпала с ожидаемой (подключение удалили) — прохода нет.
+   * (`auth.connector_pull_enter`) по билету прохода, а не сервер. Билет
+   * истёк, подключение или компанию удалили — прохода нет.
    */
-  const inOrg = (orgId, id, fn) =>
+  const inOrg = (orgId, id, ticket, fn) =>
     auth.tx(async (c) => {
-      const r = await c.query(`SELECT auth.connector_pull_enter($1) AS org`, [id]);
+      const r = await c.query(`SELECT auth.connector_pull_enter($1, $2) AS org`, [id, ticket]);
       if (r.rows[0]?.org !== orgId) return { gone: true };
       return fn(c);
     });
 
-  const remember = (orgId, id, result) =>
-    inOrg(orgId, id, (c) =>
-      c.query(`UPDATE uklad.connector_accounts SET pull_result = $2 WHERE id = $1`, [id, result]),
+  // Итог записан — проход кончен, билет больше не нужен.
+  const remember = (orgId, id, ticket, result) =>
+    inOrg(orgId, id, ticket, (c) =>
+      c.query(
+        `UPDATE uklad.connector_accounts
+         SET pull_result = $2, pull_ticket = NULL, pull_ticket_until = NULL WHERE id = $1`,
+        [id, result],
+      ),
     ).catch((e) => log.error("[uklad] подкачка: итог не записан", id, e.message));
 
   /** Шаг 3: новые заявки на складе подключения. */
@@ -344,14 +349,15 @@ function createOrderPull({ auth, log, secretKey, fetchImpl = fetch, now = () => 
   }
 
   /**
-   * Один проход по подключению `{ orgId, id, system }`. Возвращает и пишет в
+   * Один проход по подключению `{ orgId, id, system, ticket }` (билет — из
+   * `connector_pull_claim` или `connector_pull_ticket`). Возвращает и пишет в
    * `pull_result`: `{ at, created, unknown }` или `{ at, error, detail? }`.
    */
-  async function pullAccount({ orgId, id, system }) {
+  async function pullAccount({ orgId, id, system, ticket }) {
     const at = now();
     let account;
     try {
-      account = await inOrg(orgId, id, async (c) => {
+      account = await inOrg(orgId, id, ticket, async (c) => {
         const r = await c.query(
           `SELECT id, system, params, secret FROM uklad.connector_accounts
            WHERE id = $1 AND system = $2 AND deleted_at IS NULL`,
@@ -370,7 +376,7 @@ function createOrderPull({ auth, log, secretKey, fetchImpl = fetch, now = () => 
     } catch {
       log.error("[uklad] подкачка: ключ не расшифровался", id);
       const result = { at, error: "key" };
-      await remember(orgId, id, result);
+      await remember(orgId, id, ticket, result);
       return result;
     }
     const params = isObject(account.params) ? account.params : {};
@@ -380,14 +386,14 @@ function createOrderPull({ auth, log, secretKey, fetchImpl = fetch, now = () => 
       result = { at, error: fetched.error, ...(fetched.detail ? { detail: fetched.detail } : {}) };
     } else {
       try {
-        const stored = await inOrg(orgId, id, (c) => store(c, account, fetched.orders, at));
+        const stored = await inOrg(orgId, id, ticket, (c) => store(c, account, fetched.orders, at));
         result = stored.gone ? { at, error: "no_connection" } : { at, ...stored };
       } catch (e) {
         log.error("[uklad] подкачка: заявки не записаны", id, e.message);
         result = { at, error: "server" };
       }
     }
-    await remember(orgId, id, result);
+    await remember(orgId, id, ticket, result);
     return result;
   }
 
@@ -404,7 +410,12 @@ function createOrderPull({ auth, log, secretKey, fetchImpl = fetch, now = () => 
               .rows[0],
         );
         if (!claim) break;
-        await pullAccount({ orgId: claim.org_id, id: claim.id, system: claim.system });
+        await pullAccount({
+          orgId: claim.org_id,
+          id: claim.id,
+          system: claim.system,
+          ticket: claim.ticket,
+        });
       }
     } catch (e) {
       log.error("[uklad] подкачка заказов:", e.message);

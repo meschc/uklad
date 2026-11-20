@@ -327,23 +327,30 @@ test("живой: сервер сам заводит заказы площадк
   });
   assert.equal(saveB.status, 200);
 
-  // Поиск «кому пора» отдаёт только компанию, номер и площадку.
+  // Поиск «кому пора» отдаёт только компанию, номер, площадку и билет.
   const app = await db.pool.connect();
   try {
     await app.query("BEGIN");
     const claim = await app.query(`SELECT * FROM auth.connector_pull_claim('90 seconds')`);
-    assert.deepEqual(Object.keys(claim.rows[0]).sort(), ["id", "org_id", "system"]);
+    assert.deepEqual(Object.keys(claim.rows[0]).sort(), ["id", "org_id", "system", "ticket"]);
     // Флаг подкачки приложению поверх компаний ничего не открывает.
     await app.query(`SELECT set_config('app.order_pull', 'on', true)`);
     const peek = await app.query(`SELECT count(*)::int AS n FROM uklad.connector_accounts`);
     assert.equal(peek.rows[0].n, 0);
-    // Вход в компанию — только по живому подключению, и только в его компанию.
-    const none = await app.query(`SELECT auth.connector_pull_enter(gen_random_uuid()) AS org`);
-    assert.equal(none.rows[0].org, null);
-    const own = await app.query(`SELECT auth.connector_pull_enter($1) AS org`, [saveB.json.id]);
-    assert.equal(own.rows[0].org, b.org);
-    const seen = await app.query(`SELECT array_agg(id) AS ids FROM uklad.connector_accounts`);
-    assert.deepEqual(seen.rows[0].ids, [saveB.json.id]);
+    // Вход в компанию — только по билету своего подключения.
+    const { id: cid, ticket, org_id: corg } = claim.rows[0];
+    const other = cid === saveB.json.id ? save.json.id : saveB.json.id;
+    const enter = async (id, t) =>
+      (await app.query(`SELECT auth.connector_pull_enter($1, $2) AS org`, [id, t])).rows[0].org;
+    assert.equal(await enter(cid, null), null);
+    assert.equal(await enter(cid, "0".repeat(64)), null);
+    assert.equal(await enter(other, ticket), null);
+    assert.equal(await enter(cid, ticket), corg);
+    const seen = await app.query(`SELECT DISTINCT org_id FROM uklad.connector_accounts`);
+    assert.deepEqual(
+      seen.rows.map((r) => r.org_id),
+      [corg],
+    );
     await app.query("ROLLBACK");
   } finally {
     app.release();
@@ -395,5 +402,13 @@ test("живой: сервер сам заводит заказы площадк
   await post("/api/connectors/pull", { ...a, body: {} });
   const last = (await call("GET", "/api/cabinet/snapshot", a)).json.snapshot;
   assert.equal(last.data.requests.filter((r) => r.externalId === "111").length, 1);
+
+  // Удалённая компания площадку больше не спрашивает.
+  await db.root.query(`UPDATE uklad.orgs SET deleted_at = now() WHERE id = $1`, [a.org]);
+  await db.root.query(`UPDATE uklad.connector_accounts SET pulled_at = NULL`);
+  const before = HITS.length;
+  await pull.tick();
+  const asked = HITS.slice(before).map((h) => h.h.Authorization);
+  assert.ok(asked.includes("WB-B") && !asked.includes("WB-A"), JSON.stringify(asked));
   globalThis.REPLY = null;
 });
