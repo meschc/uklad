@@ -51,6 +51,7 @@ function fakeServer(): BadgeServer {
 function legacyDesks(over: Partial<DeskServer> = {}): DeskServer {
   return {
     open: vi.fn(async () => ok(undefined)),
+    checkBind: vi.fn(async () => ok(undefined)),
     revoke: vi.fn(async () => ok(undefined)),
     journal: vi.fn(async () => ok({ entries: [] })),
     unbind: vi.fn(async () => ok(null)),
@@ -151,7 +152,24 @@ describe("workstationRepository: стол с пропуском на серве�
     const desks = legacyDesks();
     const repo = createWorkstationRepository(port, fakeServer(), desks);
     expect((await repo.addDevice("Стол 1", "pack")).ok).toBe(true);
-    expect(desks.open).toHaveBeenCalledWith("dev-1", "Стол 1");
+    expect(desks.open).toHaveBeenCalledWith("dev-1", "Стол 1", undefined);
+  });
+
+  it("сервер просит подтвердить руководителя — устройство не заводится, бейдж уходит с привязкой", async () => {
+    const port = fakePort(true);
+    const desks = legacyDesks({ checkBind: vi.fn(async () => fail("devices.confirmNeeded")) });
+    const repo = createWorkstationRepository(port, fakeServer(), desks);
+    expect(await repo.addDevice("Стол 1", "pack")).toEqual({
+      ok: false,
+      error: "devices.confirmNeeded",
+    });
+    expect(port.get().addDevice).not.toHaveBeenCalled();
+    expect(desks.open).not.toHaveBeenCalled();
+    vi.mocked(desks.checkBind).mockResolvedValue(ok(undefined));
+    const confirm = { code: "UK-STF-BBBBBBBBBBBBBBBBBBBBBB" };
+    expect((await repo.addDevice("Стол 1", "pack", confirm)).ok).toBe(true);
+    expect(desks.checkBind).toHaveBeenLastCalledWith(confirm);
+    expect(desks.open).toHaveBeenLastCalledWith("dev-1", "Стол 1", confirm);
   });
 
   it("сервер не открыл стол — устройство гаснет, отказ виден", async () => {
@@ -199,9 +217,10 @@ describe("workstationRepository: стол с пропуском на серве�
     expect(port.get().sessionLost).not.toHaveBeenCalled();
 
     vi.mocked(desks.unbindByPassword).mockResolvedValue(ok(true));
-    expect((await repo.unbindDeviceByPassword("boss@sklad.ru", "пароль")).ok).toBe(true);
+    expect((await repo.unbindDeviceByPassword("Boss@sklad.ru", "пароль")).ok).toBe(true);
     expect(port.get().revokeDevice).toHaveBeenCalledWith("dev-1");
-    expect(port.get().sessionLost).toHaveBeenCalled();
+    // Сервер открыл вход: экран входа узнает руководителя без второго пароля.
+    expect(port.get().sessionLost).toHaveBeenCalledWith("boss@sklad.ru");
   });
 
   it("отвязка паролем при неотправленной работе — сервер не спрашиваем", async () => {

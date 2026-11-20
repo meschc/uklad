@@ -7,6 +7,9 @@ import { attempt, fail, ok, type Result } from "./result";
  * получает пропуск стола с узким правом. Стол гасят бейджем руководителя на
  * самом столе или с экрана «Устройства» другого компьютера.
  */
+/** Чем руководитель подтверждает привязку стола: своим бейджем или паролем. */
+export type BindConfirm = { code: string } | { email: string; password: string };
+
 /** Строка журнала устройства: операция стола и кто был за ним. */
 export interface DeviceJournalEntry {
   at: number;
@@ -57,7 +60,14 @@ export interface DeskServer {
    * Сделать этот браузер столом. Перед этим правки руководителя дописываются
    * на сервер: после открытия стола писать от его имени уже некому.
    */
-  open: (deviceRef: string, name: string) => Promise<Result<void>>;
+  /**
+   * Сделать этот браузер столом. Руководитель — здесь и сейчас (миграция 051):
+   * вошёл паролем только что или подтверждает бейджем либо паролем, иначе
+   * отказ `devices.confirmNeeded`.
+   */
+  open: (deviceRef: string, name: string, confirm?: BindConfirm) => Promise<Result<void>>;
+  /** То же подтверждение без привязки: до того как завести устройство у себя. */
+  checkBind: (confirm?: BindConfirm) => Promise<Result<void>>;
   revoke: (deviceRef: string) => Promise<Result<void>>;
   /** Журнал устройства (миграция 026), новые сверху. */
   journal: (deviceRef: string) => Promise<Result<DeviceJournalData>>;
@@ -69,8 +79,8 @@ export interface DeskServer {
   unbind: (code: string) => Promise<Result<boolean | null>>;
   /**
    * Отвязать стол паролем руководителя — когда бейджа старшего нет под рукой.
-   * `false` — учётная запись не управляет персоналом этой компании. Новой
-   * сессии входа не открывает: после отвязки сюда входят как обычно.
+   * `false` — учётная запись не управляет персоналом этой компании. Почта и
+   * пароль — это и вход: сервер вместе с отвязкой открывает вход руководителя.
    */
   unbindByPassword: (email: string, password: string) => Promise<Result<boolean>>;
   /**
@@ -81,18 +91,34 @@ export interface DeskServer {
   leave: () => Promise<Result<void>>;
 }
 
+/** Ответ сервера на привязку и её проверку (миграция 051) — ключ словаря. */
+function bindAnswer(status: number, body: { error?: unknown }): Result<void> {
+  if (status === 200) return ok(undefined);
+  if (status === 428) return fail("devices.confirmNeeded");
+  if (status === 422) {
+    return fail(body.error === "not_manager" ? "ws.device.notManager" : "login.err.badCredentials");
+  }
+  if (status === 429) return fail("login.err.tooOften");
+  return fail("data.failed");
+}
+
 export const serverDesks: DeskServer = {
-  open: async (deviceRef, name) => {
+  open: async (deviceRef, name, confirm) => {
     // Динамический импорт: синхронизация живёт в сторе, а стор зависит от
     // слоя данных — прямой импорт замкнул бы круг.
     const { flushServerSync } = await import("../store/serverSync");
     if (!(await flushServerSync())) return fail("data.failed");
-    const res = await attempt(() => apiRequest("POST", "/cabinet/desks", { deviceRef, name }));
+    const res = await attempt(() =>
+      apiRequest("POST", "/cabinet/desks", { deviceRef, name, ...confirm }),
+    );
     if (!res.ok) return res;
-    if (res.data.status === 409 && res.data.body.error === "desk_warehouse") {
-      return fail("ws.deskNoWarehouse");
-    }
-    return res.data.status === 200 ? ok(undefined) : fail("data.failed");
+    const { status, body } = res.data;
+    if (status === 409 && body.error === "desk_warehouse") return fail("ws.deskNoWarehouse");
+    return bindAnswer(status, body);
+  },
+  checkBind: async (confirm) => {
+    const res = await attempt(() => apiRequest("POST", "/cabinet/desks/check", { ...confirm }));
+    return res.ok ? bindAnswer(res.data.status, res.data.body) : res;
   },
   revoke: async (deviceRef) => {
     const res = await attempt(() => apiRequest("POST", "/cabinet/desks/revoke", { deviceRef }));
