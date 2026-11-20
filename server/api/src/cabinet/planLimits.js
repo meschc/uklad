@@ -36,8 +36,8 @@ const UNPAID_ALLOWED = [
   /^\/api\/company\/plan\/request$/,
   /^\/api\/cabinet\/switch-requests\/decide$/,
   /^\/api\/cabinet\/badges\/(check|revoke)$/,
-  // Открыть стол на устройстве и погасить его: без этого встанет склад.
-  /^\/api\/cabinet\/desks(\/revoke)?$/,
+  // Открыть стол на устройстве, проверить его (#215) и погасить: без этого встанет склад.
+  /^\/api\/cabinet\/desks(\/revoke|\/check)?$/,
   /^\/api\/staff\/badge\/revoke$/,
   /^\/api\/team\/(disable|invite\/revoke)$/,
 ];
