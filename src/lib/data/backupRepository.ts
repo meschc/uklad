@@ -1,7 +1,7 @@
 import { backupFileName, makeBackup, parseBackup } from "../backup";
 import { PERSIST_KEY, PERSIST_VERSION, persistedState } from "../store";
 import { writeSaved } from "../store/persistStorage";
-import { TARIFF_FEATURES } from "../tariff";
+import { featuresOf } from "../tariff";
 import { storePort, type StorePort } from "./repository";
 import { attempt, fail, type Result } from "./result";
 
@@ -71,7 +71,7 @@ export function createBackupRepository(
 
     setWeeklyEmail: async (on) => {
       const s = port.get();
-      if (on && !TARIFF_FEATURES[s.subscription.tariff].weeklyEmailBackup) {
+      if (on && !featuresOf(s.subscription).weeklyEmailBackup) {
         return fail("backup.err.tariff");
       }
       return attempt(() => s.updateBackupSettings({ emailWeekly: on }));

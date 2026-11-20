@@ -1,4 +1,4 @@
-import type { BackupSettings, TariffId } from "./types";
+import type { BackupSettings, Subscription, TariffId } from "./types";
 
 /**
  * Что входит в тариф — только то, чем кабинет отличается по тарифам. Источник
@@ -19,6 +19,13 @@ export const TARIFF_FEATURES: Record<TariffId, TariffFeatures> = {
   warehouse: { fullAnalytics: true, personalManager: false, weeklyEmailBackup: true },
   start: { fullAnalytics: false, personalManager: false, weeklyEmailBackup: false },
 };
+
+/**
+ * Что включено у этого склада. С сервером — ответ сервера (тариф и ручные
+ * включения в админке, `GET /company/features`), иначе — таблица тарифа.
+ */
+export const featuresOf = (sub: Pick<Subscription, "tariff" | "features">): TariffFeatures =>
+  sub.features ?? TARIFF_FEATURES[sub.tariff];
 
 export const TARIFF_IDS: TariffId[] = ["operator", "warehouse", "start"];
 

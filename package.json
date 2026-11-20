@@ -1,7 +1,7 @@
 {
   "name": "uklad",
   "private": true,
-  "version": "0.9.8",
+  "version": "0.9.9",
   "type": "module",
   "description": "Уклад — маркетплейс фулфилмент-складов и WMS: витрина складов и демо учётной системы с 2D-планом мезонина",
   "engines": {

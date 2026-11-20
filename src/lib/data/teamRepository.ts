@@ -77,7 +77,10 @@ export function decidersOf(state: Pick<TeamState, "roles" | "deskRoles">): strin
 /** Что показать человеку, когда сервер отказал. */
 function teamError(res: ApiResponse): MsgKey {
   if (res.status === 429) return "team.err.tooOften";
+  if (res.status === 402) return "plan.err.unpaid";
   switch (res.body.error) {
+    case "plan_limit":
+      return res.body.limit === "sellers" ? "plan.err.sellerLimit" : "plan.err.staffLimit";
     case "role_not_allowed":
       return "team.err.roleNotAllowed";
     case "self":
