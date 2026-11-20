@@ -25,6 +25,21 @@ export const ru = {
   "plan.hint":
     "Тариф меняем мы: выберите другой и отправьте просьбу, переключим после разговора. Счёт приходит на почту за 7 дней до конца срока.",
   "plan.ask": "Попросить «{plan}»",
+  "lock.chip": "«{plan}»",
+  "lock.title": "Доступно в тарифе «{plan}»",
+  "lock.current": "Сейчас у вас «{plan}»",
+  "lock.price": "«{plan}» — {sum} в месяц",
+  "lock.offer.special": "Первым {places} складам — {sum} в месяц на {period}",
+  "lock.offer.trial": "Пробный период {period} — на любом тарифе",
+  "lock.offer.noMove": "Тариф меняется без переноса данных",
+  "lock.asked": "Просьба перейти на «{plan}» отправлена. Напишем вам.",
+  "lock.compare": "Сравнить тарифы",
+  "lock.ok": "Понятно",
+  "lock.close": "Закрыть",
+  "lock.body.analytics":
+    "Приёмка по дням, заявки по статусам, занятость по этажам и стоимость хранения.",
+  "lock.body.email": "Каждую неделю копия всех данных склада приходит вам на почту сама.",
+  "lock.body.manager": "Один человек Уклада ведёт ваш склад: настройка, вопросы, новые функции.",
   "plan.asked": "Просьба перейти на «{plan}» отправлена {date}. Напишем вам.",
   "plan.none": "Тариф ещё не назначен. Напишите нам в чат, подключим.",
   "plan.state.trial": "Пробный период до {date}",
@@ -36,8 +51,6 @@ export const ru = {
   "plan.err.network": "Не удалось узнать тариф. Обновите страницу.",
   "plan.err.forbidden": "Тариф и оплату видит владелец компании.",
   "plan.err.noAccount": "Тариф ещё не назначен. Напишите нам в чат.",
-  "tariff.onlyIn": "Только в «{plan}е»",
-  "tariff.onlyInMany": "В «Складе» и «Операторе»",
 
   "manager.label": "Менеджер",
   "manager.pending": "Чат с менеджером — с подключением сервера",
@@ -80,7 +93,6 @@ export const ru = {
 
   "an.basic.title": "Подробная аналитика — в тарифах «Склад» и «Оператор»",
   "an.basic.body": "Приёмка по дням, заявки по статусам, занятость по этажам и стоимость хранения.",
-  "an.basic.cta": "Сменить тариф",
 };
 
 export const en: Record<keyof typeof ru, string> = {
@@ -105,6 +117,22 @@ export const en: Record<keyof typeof ru, string> = {
   "plan.hint":
     "We change the plan: pick another and send a request, we switch it after a call. The invoice arrives by email 7 days before the term ends.",
   "plan.ask": "Request “{plan}”",
+  "lock.chip": "“{plan}”",
+  "lock.title": "Available on the “{plan}” plan",
+  "lock.current": "You are on “{plan}”",
+  "lock.price": "“{plan}” — {sum} a month",
+  "lock.offer.special": "First {places} warehouses — {sum} a month for {period}",
+  "lock.offer.trial": "Trial for {period} on any plan",
+  "lock.offer.noMove": "The plan changes with no data migration",
+  "lock.asked": "Request to switch to “{plan}” sent. We will get back to you.",
+  "lock.compare": "Compare plans",
+  "lock.ok": "Got it",
+  "lock.close": "Close",
+  "lock.body.analytics":
+    "Receiving by day, requests by status, occupancy by floor and storage cost.",
+  "lock.body.email": "Every week a copy of all warehouse data arrives in your inbox automatically.",
+  "lock.body.manager":
+    "One Uklad person looks after your warehouse: setup, questions, new features.",
   "plan.asked": "Request to switch to “{plan}” sent on {date}. We will get in touch.",
   "plan.none": "No plan assigned yet. Message us in chat and we will connect you.",
   "plan.state.trial": "Trial until {date}",
@@ -116,8 +144,6 @@ export const en: Record<keyof typeof ru, string> = {
   "plan.err.network": "Could not load the plan. Refresh the page.",
   "plan.err.forbidden": "The plan and billing are visible to the company owner.",
   "plan.err.noAccount": "No plan assigned yet. Message us in chat.",
-  "tariff.onlyIn": "Only in “{plan}”",
-  "tariff.onlyInMany": "In Warehouse and Operator",
 
   "manager.label": "Manager",
   "manager.pending": "Manager chat once the server is connected",
@@ -161,5 +187,4 @@ export const en: Record<keyof typeof ru, string> = {
 
   "an.basic.title": "Detailed analytics are in the Warehouse and Operator plans",
   "an.basic.body": "Receiving by day, requests by status, occupancy by floor and storage cost.",
-  "an.basic.cta": "Change plan",
 };
