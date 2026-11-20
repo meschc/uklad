@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ExternalLink, MessageCircleQuestion, ShieldAlert } from "lucide-react";
+import { ChevronDown, ExternalLink, MessageCircleQuestion, ShieldAlert } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import {
   INTEGRATIONS,
@@ -23,7 +23,9 @@ import { ReportProblemDialog } from "@/components/support/ReportProblemDialog";
 /**
  * Интеграции с внешними системами (п.22, п.9). По каждой системе указано, какой
  * это API, какая авторизация и какие поля она требует. Системы без готового
- * адаптера (`soon`) не показываются: обещать их к запуску нельзя (17.11).
+ * адаптера (`soon`) видны с пометкой «В следующих обновлениях» и не
+ * настраиваются (Кирилл 19.11: полный список привлекает склад; скрыли их в
+ * #181 без его «да»). Подключить можно только то, что работает.
  *
  * Список разбит по разделам: продавцу важно увидеть «мой маркетплейс здесь
  * есть» за секунду, а сплошной перечень из двадцати карточек этого не даёт.
@@ -43,7 +45,7 @@ export function IntegrationsScreen() {
   return (
     <ScreenShell
       title={t("integr.title")}
-      subtitle={t("integr.subtitleN", { total: INTEGRATIONS.length - soon, n: connected })}
+      subtitle={t("integr.subtitleN", { total: INTEGRATIONS.length - soon, n: connected, soon })}
       wide
       actions={
         <Button size="sm" variant="outline" onClick={() => setAsking(true)}>
@@ -59,11 +61,12 @@ export function IntegrationsScreen() {
       </div>
 
       {INTEGRATION_CATEGORIES.map((cat) => {
-        // Только то, что подключается сейчас. Системы без адаптера на
-        // сервере не показываем вовсе: обещание «в будущих обновлениях»
-        // в кабинете запрещено (правило проекта), а нужную систему склад
-        // просит кнопкой «Задать вопрос».
-        const items = INTEGRATIONS.filter((s) => s.category === cat.id && !isSoon(s));
+        // Готовые к подключению — выше: «в следующих обновлениях» не должно
+        // заслонять рабочее. Нужную систему, которой нет, склад просит
+        // кнопкой «Задать вопрос».
+        const items = INTEGRATIONS.filter((s) => s.category === cat.id).sort(
+          (a, b) => Number(isSoon(a)) - Number(isSoon(b)),
+        );
         if (!items.length) return null;
         return (
           <section key={cat.id} className="flex flex-col gap-2">
@@ -77,6 +80,7 @@ export function IntegrationsScreen() {
                   spec={spec}
                   config={integrations[spec.id] ?? {}}
                   on={isOn(spec)}
+                  soon={isSoon(spec)}
                   onChange={(patch) => updateIntegration(spec.id, patch)}
                   t={t}
                 />
@@ -182,12 +186,14 @@ function IntegrationCard({
   spec,
   config,
   on,
+  soon,
   onChange,
   t,
 }: {
   spec: IntegrationSpec;
   config: IntegrationConfig;
   on: boolean;
+  soon: boolean;
   onChange: (patch: IntegrationConfig) => void;
   t: TFunc;
 }) {
@@ -215,50 +221,50 @@ function IntegrationCard({
             {t(spec.descriptionKey)}
           </p>
         </div>
-        <>
-          <span
-            className={eyebrow({
-              size: "xs",
-              weight: "medium",
-              className: "shrink-0 rounded bg-muted px-2 py-0.5",
-            })}
-          >
-            {t(`integr.auth.${spec.auth}`)}
+        {soon ? (
+          // Не кнопка и не ссылка: подключить нельзя, а серый текст рядом с
+          // «Настроить» у соседей читается как «ещё не готово», а не как сбой.
+          <span className="shrink-0 rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+            {t("integr.soon")}
           </span>
-          {/* У площадок на сервере поля в браузере не заполняются: счётчик
-                старых полей снимка тут только путал. */}
-          {!onServer(spec) && (
+        ) : (
+          <>
             <span
-              className={cn(
-                "shrink-0 text-xs tabular-nums",
-                ready ? "text-success" : "text-muted-foreground",
-              )}
+              className={eyebrow({
+                size: "xs",
+                weight: "medium",
+                className: "shrink-0 rounded bg-muted px-2 py-0.5",
+              })}
             >
-              {t("integr.filled", { n: filled, total: spec.fields.length })}
+              {t(`integr.auth.${spec.auth}`)}
             </span>
-          )}
-          <Button size="sm" variant="outline" onClick={() => setOpen((v) => !v)}>
-            {t(open ? "integr.hide" : "integr.setup")}
-          </Button>
-        </>
+            {/* У площадок на сервере поля в браузере не заполняются: счётчик
+                старых полей снимка тут только путал. */}
+            {!onServer(spec) && (
+              <span
+                className={cn(
+                  "shrink-0 text-xs tabular-nums",
+                  ready ? "text-success" : "text-muted-foreground",
+                )}
+              >
+                {t("integr.filled", { n: filled, total: spec.fields.length })}
+              </span>
+            )}
+            <Button size="sm" variant="outline" onClick={() => setOpen((v) => !v)}>
+              {t(open ? "integr.hide" : "integr.setup")}
+            </Button>
+          </>
+        )}
       </div>
 
-      {open && onServer(spec) && (
+      {open && !soon && onServer(spec) && (
         <div className="flex flex-col gap-3 border-t border-border bg-muted/20 px-4 py-3">
           <ServerConnections spec={spec} t={t} />
-          <a
-            href={spec.docsUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-xs text-muted-foreground underline-offset-2 hover:text-primary hover:underline"
-          >
-            <ExternalLink className="size-3" />
-            {t("integr.docs")}
-          </a>
+          <HowToAndDocs spec={spec} t={t} />
         </div>
       )}
 
-      {open && !onServer(spec) && (
+      {open && !soon && !onServer(spec) && (
         <div className="flex flex-col gap-3 border-t border-border bg-muted/20 px-4 py-3">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {spec.fields.map((f) => (
@@ -286,20 +292,54 @@ function IntegrationCard({
               />
               {t("integr.enable")}
             </label>
-            <a
-              href={spec.docsUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-xs text-muted-foreground underline-offset-2 hover:text-primary hover:underline"
-            >
-              <ExternalLink className="size-3" />
-              {t("integr.docs")}
-            </a>
           </div>
+          <HowToAndDocs spec={spec} t={t} />
 
           <p className="text-xs text-muted-foreground">{t("integr.pendingNote")}</p>
         </div>
       )}
     </section>
+  );
+}
+
+/**
+ * «Инструкция» и «Документация системы» одной строкой (Кирилл 19.11):
+ * сначала короткие шаги «где взять ключ», раскрываются по нажатию, потом
+ * ссылка на документацию площадки. Шагов нет — только ссылка.
+ */
+function HowToAndDocs({ spec, t }: { spec: IntegrationSpec; t: TFunc }) {
+  const [open, setOpen] = useState(false);
+  const steps = spec.howToKey ? t(spec.howToKey).split("\n") : [];
+  const link =
+    "inline-flex items-center gap-1 text-xs text-muted-foreground underline-offset-2 hover:text-primary hover:underline";
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+        {steps.length > 0 && (
+          <button
+            type="button"
+            aria-expanded={open}
+            onClick={() => setOpen((v) => !v)}
+            className={cn(link, "cursor-pointer")}
+          >
+            <ChevronDown
+              className={cn("size-3 transition-transform duration-base", open && "rotate-180")}
+            />
+            {t("integr.howTo")}
+          </button>
+        )}
+        <a href={spec.docsUrl} target="_blank" rel="noopener noreferrer" className={link}>
+          <ExternalLink className="size-3" />
+          {t("integr.docs")}
+        </a>
+      </div>
+      {open && (
+        <ol className="flex list-decimal flex-col gap-1 rounded-md bg-background px-4 py-2 pl-8 text-xs leading-relaxed">
+          {steps.map((step) => (
+            <li key={step}>{step}</li>
+          ))}
+        </ol>
+      )}
+    </div>
   );
 }

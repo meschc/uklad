@@ -35,7 +35,7 @@ export interface OrderPullResult {
   detail?: string;
 }
 
-/** Итог «Загрузить заказы» по всем подключениям компании. */
+/** Итог «Проверить связь» (одно подключение) или прохода по всем подключениям. */
 export interface OrderPullTotal {
   created: number;
   unknown: string[];
@@ -115,13 +115,13 @@ export const connectorsRepository = {
   },
 
   /**
-   * «Загрузить заказы»: сервер сейчас же спрашивает площадки всех подключений
-   * и заводит новые заказы заявками. Без кнопки он делает то же раз в
-   * полторы минуты, кабинет для этого открывать не нужно.
+   * Сервер сейчас же спрашивает площадку и заводит новые заказы заявками:
+   * одно подключение (`id`, «Проверить связь») или все. Без кнопки он делает
+   * то же раз в полторы минуты, кабинет для этого открывать не нужно.
    */
-  pull: async (): Promise<Result<OrderPullTotal>> => {
+  pull: async (id?: string): Promise<Result<OrderPullTotal>> => {
     const res = await attempt(
-      () => apiRequest("POST", "/connectors/pull", {}),
+      () => apiRequest("POST", "/connectors/pull", id ? { id } : {}),
       "integr.error.noServer",
     );
     if (!res.ok) return res;
@@ -138,6 +138,16 @@ export const connectorsRepository = {
           : [];
       }),
     });
+  },
+
+  rename: async (input: { id: string; label: string }): Promise<Result<void>> => {
+    const res = await attempt(
+      () => apiRequest("POST", "/connectors/rename", { ...input }),
+      "integr.error.noServer",
+    );
+    if (!res.ok) return res;
+    const { status, body } = res.data;
+    return status === 200 ? ok(undefined) : fail(statusError(status, body.error));
   },
 
   remove: async (id: string): Promise<Result<void>> => {

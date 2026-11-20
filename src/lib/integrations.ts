@@ -58,6 +58,12 @@ export interface IntegrationSpec {
   descriptionKey: MsgKey;
   /** Документация вендора — открывается в новой вкладке. */
   docsUrl: string;
+  /**
+   * Короткая «Инструкция»: где взять ключ, по шагам, через перевод строки.
+   * Только у тех, что подключаются через сервер: шаги должны вести к
+   * рабочему подключению, а не к форме, которая ничего не включит.
+   */
+  howToKey?: MsgKey;
   auth: AuthKind;
   /** Базовый адрес API по умолчанию (можно переопределить). */
   defaultBaseUrl?: string;
@@ -113,6 +119,7 @@ export const INTEGRATIONS: IntegrationSpec[] = [
     brand: { short: "OZ", bg: "#005BFF", logo: "ozon.svg" },
     descriptionKey: "integr.ozon.desc",
     docsUrl: "https://docs.ozon.ru/api/seller/",
+    howToKey: "integr.howto.ozon",
     auth: "token",
     defaultBaseUrl: "https://api-seller.ozon.ru",
     fields: [
@@ -129,6 +136,7 @@ export const INTEGRATIONS: IntegrationSpec[] = [
     brand: { short: "WB", bg: "#CB11AB", logo: "wildberries.svg" },
     descriptionKey: "integr.wb.desc",
     docsUrl: "https://dev.wildberries.ru/openapi/api-information",
+    howToKey: "integr.howto.wb",
     auth: "token",
     defaultBaseUrl: "https://marketplace-api.wildberries.ru",
     fields: TOKEN_SET,
@@ -146,6 +154,7 @@ export const INTEGRATIONS: IntegrationSpec[] = [
     },
     descriptionKey: "integr.ym.desc",
     docsUrl: "https://yandex.ru/dev/market/partner-api/doc/ru/",
+    howToKey: "integr.howto.ym",
     auth: "token",
     defaultBaseUrl: "https://api.partner.market.yandex.ru",
     fields: [

@@ -23,9 +23,11 @@
  *   POST /api/connectors/save            — { system, label, clientId?, partnerId?, warehouseId?, token } → { id }
  *     partnerId — партнёр-продавец, чей это магазин; нет — свой товар склада.
  *     warehouseId — склад, на который заказы этого магазина приходят заявками.
- *   POST /api/connectors/pull            — подкачать заказы всех подключений сейчас
+ *   POST /api/connectors/pull            — { id? } подкачать заказы сейчас: одного подключения
+ *     («Проверить связь») или всех
  *     (`orderPull.js`; сам сервер делает это раз в полторы минуты и без кнопки)
  *   POST /api/connectors/delete          — { id }
+ *   POST /api/connectors/rename          — { id, label }
  *   POST /api/connectors/<system>/proxy  — `ConnectorRequest` → { ok, data } (JSON площадки)
  */
 /* global require, module, fetch, AbortSignal, Buffer, URLSearchParams */
@@ -277,6 +279,23 @@ function createConnectors({ auth, send, log, secretKey, fetchImpl = fetch, pull 
     if (out) send(res, 200, { ok: true, id: out.value });
   }
 
+  /** Новое название подключения; ключ и параметры не меняются. */
+  async function rename(req, res) {
+    const b = await readJson(req, res, 1024);
+    if (!b) return;
+    const label = str(b.label, 100);
+    if (typeof b.id !== "string" || !ID_RE.test(b.id) || !label)
+      return send(res, 400, { ok: false, error: "bad_input" });
+    const out = await session(req, res, async (c) => {
+      const r = await c.query(
+        `UPDATE uklad.connector_accounts SET label = $2 WHERE id = $1 AND deleted_at IS NULL`,
+        [b.id, label],
+      );
+      return r.rowCount;
+    });
+    if (out) send(res, out.value ? 200 : 404, { ok: out.value > 0 });
+  }
+
   async function remove(req, res) {
     const b = await readJson(req, res, 1024);
     if (!b) return;
@@ -336,18 +355,24 @@ function createConnectors({ auth, send, log, secretKey, fetchImpl = fetch, pull 
   }
 
   /**
-   * Кнопка «Загрузить заказы»: тот же проход, что делает сервер сам, но
-   * сейчас и по всем подключениям компании. Запрос к площадке — вне
+   * «Проверить связь»: тот же проход, что делает сервер сам, но сейчас —
+   * по одному подключению (`id`) или по всем подключениям компании. Запрос к площадке — вне
    * транзакции сессии: ждать площадку до 20 с с открытой транзакцией нельзя.
    */
   async function pullNow(req, res) {
     const b = await readJson(req, res, 1024);
     if (!b) return;
     if (!sealer || !pull) return send(res, 503, { ok: false, error: "not_configured" });
+    // `id` — одно подключение («Проверить связь»), нет — все подключения компании.
+    if (b.id !== undefined && (typeof b.id !== "string" || !ID_RE.test(b.id)))
+      return send(res, 400, { ok: false });
+    const one = typeof b.id === "string" ? b.id : null;
     const out = await session(req, res, async (c, ctx) => {
       const r = await c.query(
-        `SELECT id, system FROM uklad.connector_accounts WHERE deleted_at IS NULL
+        `SELECT id, system FROM uklad.connector_accounts
+         WHERE deleted_at IS NULL AND ($1::uuid IS NULL OR id = $1)
          ORDER BY created_at`,
+        [one],
       );
       // Билет прохода — под сессией и только своей компании (миграция 050).
       const rows = [];
@@ -359,6 +384,7 @@ function createConnectors({ auth, send, log, secretKey, fetchImpl = fetch, pull 
     });
     if (!out) return;
     const { orgId, rows } = out.value;
+    if (one && rows.length === 0) return send(res, 404, { ok: false, error: "no_connection" });
     if (!pullLimit.take(orgId)) return send(res, 429, { ok: false }, { "Retry-After": "30" });
     const total = { created: 0, unknown: [], failed: [] };
     for (const row of rows) {
@@ -376,6 +402,7 @@ function createConnectors({ auth, send, log, secretKey, fetchImpl = fetch, pull 
     if (p === "/api/connectors" && req.method === "GET") await list(req, res);
     else if (p === "/api/connectors/save" && req.method === "POST") await save(req, res);
     else if (p === "/api/connectors/delete" && req.method === "POST") await remove(req, res);
+    else if (p === "/api/connectors/rename" && req.method === "POST") await rename(req, res);
     else if (p === "/api/connectors/pull" && req.method === "POST") await pullNow(req, res);
     else {
       const m = /^\/api\/connectors\/([a-z-]{1,30})\/proxy$/.exec(p);
