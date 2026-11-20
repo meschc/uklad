@@ -40,6 +40,7 @@ const path = require("node:path");
 const { parseLead, letterSubject, letterText } = require("../../leads/lead");
 const { openDb } = require("./db");
 const { createRateLimit, clientIp } = require("./rateLimit");
+const { trimSlashes } = require("./trimSlashes");
 const { newToken, isToken, demoLetter, deviceOf } = require("./demo");
 const { parseReport, scrubDeep } = require("./support");
 const { parseClientError, errorStore, createClientErrors } = require("./clientErrors");
@@ -61,10 +62,10 @@ function readEnv(env) {
   return {
     port: num("PORT", 8080),
     dbFile: env.DB_FILE ?? "/data/uklad.db",
-    publicUrl: (env.PUBLIC_URL ?? "https://u-klad.ru").replace(/\/+$/, ""),
+    publicUrl: trimSlashes(env.PUBLIC_URL ?? "https://u-klad.ru"),
     allowedOrigins: (env.ALLOWED_ORIGIN ?? env.PUBLIC_URL ?? "https://u-klad.ru")
       .split(",")
-      .map((o) => o.trim().replace(/\/+$/, ""))
+      .map((o) => trimSlashes(o.trim()))
       .filter(Boolean),
     trustProxy: env.TRUST_PROXY === "1",
     retentionDays: num("LEADS_RETENTION_DAYS", 180),
@@ -77,7 +78,7 @@ function readEnv(env) {
     ratePerMinute: num("RATE_LIMIT_PER_MINUTE", 2),
     // Админка — свой порт и свой адрес. Без ADMIN_ORIGIN не запускается.
     adminPort: num("ADMIN_PORT", 8081),
-    adminOrigin: (env.ADMIN_ORIGIN ?? "").replace(/\/+$/, ""),
+    adminOrigin: trimSlashes(env.ADMIN_ORIGIN),
   };
 }
 
@@ -99,15 +100,9 @@ function send(res, status, payload, headers = {}) {
   res.end(body);
 }
 
-/**
- * Origin запроса без хвостовых «/». Циклом, а не `/\/+$/`: на строке из
- * тысяч «/» такое выражение работает за квадратичное время (CodeQL).
- */
+/** Origin запроса без хвостовых «/». */
 function originOf(req) {
-  const raw = String(req.headers.origin ?? "");
-  let end = raw.length;
-  while (end > 0 && raw[end - 1] === "/") end--;
-  return raw.slice(0, end);
+  return trimSlashes(req.headers.origin);
 }
 
 function corsHeaders(origin) {
@@ -638,12 +633,13 @@ function main() {
     // Площадки (WB, Ozon, Маркет): без CONNECTOR_SECRET_KEY сохранить ключ и
     // сходить к площадке нельзя — маршрут отвечает 503.
     const { createConnectors, readSecretKey } = require("./cabinet/connectors");
-    const connectors = createConnectors({
-      auth,
-      send,
-      log: console,
-      secretKey: readSecretKey(process.env.CONNECTOR_SECRET_KEY),
-    });
+    const secretKey = readSecretKey(process.env.CONNECTOR_SECRET_KEY);
+    // Заказы площадок сервер подкачивает сам, раз в полторы минуты на
+    // подключение, без открытого кабинета (миграция 050).
+    const { createOrderPull } = require("./cabinet/orderPull");
+    const pull = createOrderPull({ auth, log: console, secretKey });
+    pull?.start();
+    const connectors = createConnectors({ auth, send, log: console, secretKey, pull });
     cabinet = {
       handle: async (req, res, url) =>
         (await desks.handle(req, res, url)) ||
