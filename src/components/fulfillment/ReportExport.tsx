@@ -35,9 +35,11 @@ export function ReportExport({
   const [busy, setBusy] = useState(false);
   const locale = t.lang === "en" ? "en-US" : "ru-RU";
   const date = (ms: number) => new Date(ms).toLocaleDateString(locale);
-  const partnerName = partnerId
-    ? (warehouse.partners ?? []).find((p) => p.id === partnerId)?.name
+  // Отчёт — документ для продавца: в шапке юрназвание, если оно есть.
+  const partner = partnerId
+    ? (warehouse.partners ?? []).find((p) => p.id === partnerId)
     : undefined;
+  const partnerName = partner ? partner.legalName || partner.name : undefined;
   const staffName = new Map((warehouse.staff ?? []).map((s) => [s.id, s.name]));
   const partners = new Map((warehouse.partners ?? []).map((p) => [p.id, p.name]));
   const period = `${from ? date(from) : "…"} — ${date(to)}`;

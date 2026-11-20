@@ -160,23 +160,33 @@ export function checkPerson(p: {
   return Object.fromEntries(Object.entries(all).filter(([, v]) => v)) as PersonErrors;
 }
 
-export type PartnerErrors = Partial<Record<"name" | "contact" | "person" | "phone", MsgKey>>;
+export type PartnerErrors = Partial<
+  Record<"name" | "contact" | "person" | "phone" | "inn" | "kpp" | "ogrn", MsgKey>
+>;
 
 /**
  * Партнёр-продавец: название обязательно, почта — куда звать в кабинет
- * продавца (обязательна при добавлении, `needContact`), контакт — имя
- * человека, телефон.
+ * продавца (необязательна: позвать можно и позже, из карточки), контакт — имя
+ * человека, телефон. Реквизиты (ИНН, КПП, ОГРН) — по тем же правилам, что у
+ * профиля компании; пустые не мешают: склад заводит продавца и без них.
  */
-export function checkPartner(
-  p: { name: string; contact: string; person: string; phone: string },
-  needContact = false,
-): PartnerErrors {
+export function checkPartner(p: {
+  name: string;
+  contact: string;
+  person: string;
+  phone: string;
+  inn?: string;
+  kpp?: string;
+  ogrn?: string;
+}): PartnerErrors {
   const all: PartnerErrors = {
     name: p.name.trim() ? (checkTitle(p.name, 120) ?? undefined) : "valid.required",
-    contact:
-      needContact && !p.contact.trim() ? "valid.email" : (checkEmail(p.contact) ?? undefined),
+    contact: checkEmail(p.contact) ?? undefined,
     person: checkPersonName(p.person) ?? undefined,
     phone: checkPhone(p.phone) ?? undefined,
+    inn: checkInn(p.inn ?? "") ?? undefined,
+    kpp: checkKpp(p.kpp ?? "") ?? undefined,
+    ogrn: checkOgrn(p.ogrn ?? "") ?? undefined,
   };
   return Object.fromEntries(Object.entries(all).filter(([, v]) => v)) as PartnerErrors;
 }
