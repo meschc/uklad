@@ -1,10 +1,13 @@
 import { useState } from "react";
 import {
   Building2,
+  Camera,
   ChevronLeft,
   DatabaseBackup,
+  FileText,
   Globe,
   Hash,
+  ImageIcon,
   Mail,
   LogOut,
   RotateCcw,
@@ -31,6 +34,7 @@ import { TariffSection } from "./TariffSection";
 import { NotifySection, ProfileHero, Section, ThemeTile } from "./ProfileParts";
 import { BackupSection } from "./BackupSection";
 import { AccountDataSection } from "./AccountDataSection";
+import { BankRow } from "./BankRow";
 import { FieldError } from "@/components/ui/field";
 
 /** Вкладки профиля: длинная страница из всех разделов сразу не читалась. */
@@ -329,7 +333,7 @@ export function Profile() {
           {tab === "account" && (
             <Section title={t("profile.section.account")}>
               <div className="flex flex-col divide-y divide-border/60">
-                <Row icon={<User className="size-4" />} label={t("profile.image.photo")}>
+                <Row icon={<Camera className="size-4" />} label={t("profile.image.photo")}>
                   <ImagePicker
                     value={account.avatar}
                     fallback={
@@ -437,7 +441,7 @@ export function Profile() {
                     )}
                   </Row>
 
-                  <Row icon={<Building2 className="size-4" />} label={t("profile.image.logo")}>
+                  <Row icon={<ImageIcon className="size-4" />} label={t("profile.image.logo")}>
                     <ImagePicker
                       value={account.orgLogo}
                       fallback={
@@ -467,7 +471,7 @@ export function Profile() {
                     )}
                   </Row>
 
-                  <Row icon={<Building2 className="size-4" />} label={t("profile.companyDetails")}>
+                  <Row icon={<FileText className="size-4" />} label={t("profile.companyDetails")}>
                     {edit === "details" ? (
                       <RowEditor
                         onSave={saveDetails}
@@ -534,6 +538,7 @@ export function Profile() {
                       </ReadValue>
                     )}
                   </Row>
+                  <BankRow />
                 </>
               </div>
             </Section>

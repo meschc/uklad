@@ -292,3 +292,42 @@ test(
     assert.equal((await save(base)).status, 200);
   },
 );
+
+test(
+  "лимит складов: живой склад, помеченный заготовкой, считается — новый сверх тарифа не пройдёт",
+  { skip: SKIP },
+  async () => {
+    const a = await owner("limit-p@sklad.ru", "10.0.7.10", {
+      limits: JSON.stringify({ warehouses: 1 }),
+    });
+    const cur = (await call("GET", "/api/cabinet/snapshot", a)).json.snapshot;
+    const save = (data, version = cur.version) =>
+      post("/api/cabinet/snapshot", { ...a, body: { version, format: 8, data } });
+    // Работающий склад с планом выдают за заготовку и заводят второй.
+    const sly = await save({
+      ...cur.data,
+      warehouse: { ...cur.data.warehouse, placeholder: true, floors: [{ id: "f1" }] },
+      otherWarehouses: [{ id: "w2", name: "Второй", staff: [] }],
+    });
+    assert.equal(sly.status, 409, JSON.stringify(sly.json));
+    assert.equal(sly.json.error, "plan_limit");
+    // Пустая заготовка одна — бесплатна: склад плюс заготовка проходят.
+    const ok = await save({
+      ...cur.data,
+      otherWarehouses: [{ id: "ph", placeholder: true, floors: [] }],
+    });
+    assert.equal(ok.status, 200, JSON.stringify(ok.json));
+    // Вторая пустая заготовка — уже склад.
+    const two = await save(
+      {
+        ...cur.data,
+        otherWarehouses: [
+          { id: "ph", placeholder: true, floors: [] },
+          { id: "ph2", placeholder: true, floors: [] },
+        ],
+      },
+      ok.json.version,
+    );
+    assert.equal(two.status, 409, JSON.stringify(two.json));
+  },
+);
