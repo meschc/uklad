@@ -264,7 +264,9 @@ export function WorkstationScreen() {
         {!member && unbinding ? (
           // Вместо входа, а не поверх него: иначе бейдж руководителя прочитал
           // бы и вход и пустил его за стол.
-          <UnbindDevice onDone={() => setUnbinding(false)} />
+          <div className="flex min-h-full flex-col justify-center">
+            <UnbindDevice onDone={() => setUnbinding(false)} />
+          </div>
         ) : !member && !device ? (
           // Компьютер ещё не стол: сначала привязать его здесь же, а не искать
           // «Устройства» в кабинете. Без привязки можно войти (демо, проверка).
@@ -280,16 +282,18 @@ export function WorkstationScreen() {
             </div>
           </div>
         ) : !member ? (
-          <>
+          // Вход — короткий экран: по центру окна и по высоте, и по ширине,
+          // вместе с подсказкой печати (Кирилл 20.11).
+          <div className="flex min-h-full flex-col justify-center">
             <BadgeLogin />
             {/* Стол печатает этикетки, а печать без окна ещё не включена:
                 строка-подсказка под входом, настроить до смены. */}
             {PRINT_STATIONS.has(device?.station ?? "pack") && printMode !== "silent" && (
               <div className="mx-auto mb-10 w-full max-w-xl px-4">
-                <PrintSetup />
+                <PrintSetup centered />
               </div>
             )}
-          </>
+          </div>
         ) : (
           <div className="mx-auto flex max-w-5xl flex-col gap-5 px-4 py-6">
             <ShiftGate staffId={member.id}>

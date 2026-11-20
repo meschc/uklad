@@ -612,6 +612,10 @@ export const ru = {
   "ws.device.notManagerAccount": "Эта учётная запись не управляет персоналом компании",
   "devices.bindNeedsManager":
     "Сделать компьютер столом может руководитель с правом менять персонал. Войдите его паролем.",
+  "devices.confirmNeeded": "Подтвердите, что привязывает руководитель: бейдж или пароль",
+  "devices.managerBadge": "Бейдж руководителя",
+  "devices.byPassword": "Нет бейджа — ввести пароль",
+  "devices.confirmBind": "Подтвердить и привязать",
   "ws.equip.title": "Устройства",
   "ws.equip.docPrinter": "Принтер",
   "ws.ev.shift_start": "Начал смену",
@@ -1239,6 +1243,10 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.device.notManagerAccount": "This account does not manage the company's staff",
   "devices.bindNeedsManager":
     "Only a manager who can edit staff can make this computer a desk. Sign in with their password.",
+  "devices.confirmNeeded": "Confirm a manager is binding it: badge or password",
+  "devices.managerBadge": "Manager's badge",
+  "devices.byPassword": "No badge? Enter the password",
+  "devices.confirmBind": "Confirm and bind",
   "ws.equip.title": "Devices",
   "ws.equip.docPrinter": "Printer",
   "ws.ev.shift_start": "Started shift",

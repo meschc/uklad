@@ -78,7 +78,7 @@ async function journalPlace(c, ctx, asked) {
     `SELECT data FROM uklad.cabinet_snapshots WHERE org_id = uklad.current_org()`,
   );
   if (!rows[0]) return null;
-  // Склады — строками (миграция 051), в старом документе — в нём самом.
+  // Склады — строками (миграция 052), в старом документе — в нём самом.
   const full = await withWarehouses(c, rows[0].data);
   const doc = { warehouse: full.warehouse, otherWarehouses: list(full.otherWarehouses) };
   const all = warehousesOf(doc);
