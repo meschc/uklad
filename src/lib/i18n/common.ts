@@ -18,6 +18,7 @@ export const ru = {
   "nav.theme": "Переключить тему",
   "nav.collapse": "Свернуть меню",
   "nav.expand": "Развернуть меню",
+  "nav.version": "Уклад {v}",
 
   // Личный кабинет (§3.2)
   "dash.title": "Личный кабинет",
@@ -361,6 +362,7 @@ export const en: Record<keyof typeof ru, string> = {
   "nav.theme": "Toggle theme",
   "nav.collapse": "Collapse menu",
   "nav.expand": "Expand menu",
+  "nav.version": "Uklad {v}",
 
   // Dashboard (§3.2)
   "dash.title": "Dashboard",
