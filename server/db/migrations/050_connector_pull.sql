@@ -9,7 +9,7 @@
 -- подключение, которому пора, поверх изоляции компаний. Это делает одна
 -- функция `auth.connector_pull_claim()`, и отдаёт она только компанию, номер
 -- и площадку — без ключа и параметров. Ключ сервер читает уже под компанией
--- (`app.org_id`), обычным правилом RLS, как в маршрутах кабинета.
+-- этого подключения (`auth.connector_pull_enter`), обычным правилом RLS.
 --
 -- Правило чтения поверх компаний — как у рассылки (миграция 007): только роли
 -- владельца и только пока функция сама поставила `app.order_pull`.
@@ -62,3 +62,24 @@ BEGIN
 END $$;
 REVOKE EXECUTE ON FUNCTION auth.connector_pull_claim(interval) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION auth.connector_pull_claim(interval) TO uklad_app;
+
+-- Компания для прохода подкачки. Приложение `app.org_id` само не ставит
+-- (проверка CI): компанию ставит эта функция — ту, чьё это живое
+-- подключение, и только её. Нет подключения — пусто, компании нет.
+CREATE FUNCTION auth.connector_pull_enter(p_account uuid)
+RETURNS uuid
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = uklad, pg_temp AS $$
+DECLARE
+  v_org uuid;
+BEGIN
+  PERFORM set_config('app.order_pull', 'on', true);
+  SELECT a.org_id INTO v_org FROM uklad.connector_accounts a
+  WHERE a.id = p_account AND a.deleted_at IS NULL;
+  PERFORM set_config('app.order_pull', '', true);
+  IF v_org IS NOT NULL THEN
+    PERFORM set_config('app.org_id', v_org::text, true);
+  END IF;
+  RETURN v_org;
+END $$;
+REVOKE EXECUTE ON FUNCTION auth.connector_pull_enter(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION auth.connector_pull_enter(uuid) TO uklad_app;

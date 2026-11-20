@@ -337,6 +337,13 @@ test("живой: сервер сам заводит заказы площадк
     await app.query(`SELECT set_config('app.order_pull', 'on', true)`);
     const peek = await app.query(`SELECT count(*)::int AS n FROM uklad.connector_accounts`);
     assert.equal(peek.rows[0].n, 0);
+    // Вход в компанию — только по живому подключению, и только в его компанию.
+    const none = await app.query(`SELECT auth.connector_pull_enter(gen_random_uuid()) AS org`);
+    assert.equal(none.rows[0].org, null);
+    const own = await app.query(`SELECT auth.connector_pull_enter($1) AS org`, [saveB.json.id]);
+    assert.equal(own.rows[0].org, b.org);
+    const seen = await app.query(`SELECT array_agg(id) AS ids FROM uklad.connector_accounts`);
+    assert.deepEqual(seen.rows[0].ids, [saveB.json.id]);
     await app.query("ROLLBACK");
   } finally {
     app.release();

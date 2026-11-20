@@ -277,15 +277,20 @@ function createOrderPull({ auth, log, secretKey, fetchImpl = fetch, now = () => 
   const sealer = createSealer(secretKey);
   if (!sealer) return null;
 
-  /** Транзакция под компанией без сессии: компанию дал claim или сессия. */
-  const inOrg = (orgId, fn) =>
+  /**
+   * Транзакция под компанией подключения. Компанию ставит база
+   * (`auth.connector_pull_enter`), а не сервер: она та, чьё это подключение.
+   * Не совпала с ожидаемой (подключение удалили) — прохода нет.
+   */
+  const inOrg = (orgId, id, fn) =>
     auth.tx(async (c) => {
-      await c.query(`SELECT set_config('app.org_id', $1, true)`, [orgId]);
+      const r = await c.query(`SELECT auth.connector_pull_enter($1) AS org`, [id]);
+      if (r.rows[0]?.org !== orgId) return { gone: true };
       return fn(c);
     });
 
   const remember = (orgId, id, result) =>
-    inOrg(orgId, (c) =>
+    inOrg(orgId, id, (c) =>
       c.query(`UPDATE uklad.connector_accounts SET pull_result = $2 WHERE id = $1`, [id, result]),
     ).catch((e) => log.error("[uklad] подкачка: итог не записан", id, e.message));
 
@@ -346,7 +351,7 @@ function createOrderPull({ auth, log, secretKey, fetchImpl = fetch, now = () => 
     const at = now();
     let account;
     try {
-      account = await inOrg(orgId, async (c) => {
+      account = await inOrg(orgId, id, async (c) => {
         const r = await c.query(
           `SELECT id, system, params, secret FROM uklad.connector_accounts
            WHERE id = $1 AND system = $2 AND deleted_at IS NULL`,
@@ -358,7 +363,7 @@ function createOrderPull({ auth, log, secretKey, fetchImpl = fetch, now = () => 
       log.error("[uklad] подкачка: подключение не прочитано", id, e.message);
       return { at, error: "server" };
     }
-    if (!account) return { at, error: "no_connection" };
+    if (!account || account.gone) return { at, error: "no_connection" };
     let key;
     try {
       key = sealer.open(account.secret, `${orgId}:${id}`);
@@ -375,7 +380,8 @@ function createOrderPull({ auth, log, secretKey, fetchImpl = fetch, now = () => 
       result = { at, error: fetched.error, ...(fetched.detail ? { detail: fetched.detail } : {}) };
     } else {
       try {
-        result = { at, ...(await inOrg(orgId, (c) => store(c, account, fetched.orders, at))) };
+        const stored = await inOrg(orgId, id, (c) => store(c, account, fetched.orders, at));
+        result = stored.gone ? { at, error: "no_connection" } : { at, ...stored };
       } catch (e) {
         log.error("[uklad] подкачка: заявки не записаны", id, e.message);
         result = { at, error: "server" };
