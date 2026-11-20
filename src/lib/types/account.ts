@@ -29,6 +29,7 @@ export type AppView =
   | "picking"
   | "operations"
   | "staff"
+  | "partners"
   | "analytics"
   | "spec"
   | "seller"

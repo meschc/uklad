@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Plus } from "lucide-react";
 import { getConnector } from "@/lib/connectors";
 import { lastConnectorFailure } from "@/lib/connectors/transport";
 import {
@@ -17,9 +18,6 @@ import { useEditor } from "@/lib/store";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { FormError } from "@/components/ui/field";
 import { PartnerCard } from "@/components/account/PartnerCard";
-
-/** Пункт списка «Партнёр», который открывает панель нового партнёра. */
-const NEW_PARTNER = "__new__";
 
 /** Подпись второго поля: Client-Id у Ozon, номер кампании у Маркета, у WB нет. */
 const CLIENT_LABEL: Partial<
@@ -188,13 +186,24 @@ export function ServerConnections({ spec, t }: { spec: IntegrationSpec; t: TFunc
       )}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <label className="flex flex-col gap-1">
-          <span className={eyebrow()}>{t("integr.field.partner")}</span>
+        <div className="flex flex-col gap-1">
+          {/* Кнопка рядом с подписью, а не пунктом списка (Кирилл 20.11):
+              пункт «+ Новый партнёр» среди продавцов не замечали. */}
+          <div className="flex items-baseline justify-between gap-2">
+            <span className={eyebrow()}>{t("integr.field.partner")}</span>
+            <button
+              type="button"
+              className="inline-flex items-center gap-0.5 text-xs text-primary hover:underline"
+              onClick={() => setAdding(true)}
+            >
+              <Plus className="size-3" />
+              {t("integr.partner.new")}
+            </button>
+          </div>
           <Select
+            aria-label={t("integr.field.partner")}
             value={partnerId}
-            onChange={(e) =>
-              e.target.value === NEW_PARTNER ? setAdding(true) : setPartnerId(e.target.value)
-            }
+            onChange={(e) => setPartnerId(e.target.value)}
             className="h-9 rounded-md border border-input bg-background px-2 text-sm"
           >
             <option value="">{t("integr.ownGoods")}</option>
@@ -203,9 +212,8 @@ export function ServerConnections({ spec, t }: { spec: IntegrationSpec; t: TFunc
                 {p.name}
               </option>
             ))}
-            <option value={NEW_PARTNER}>{t("integr.partner.new")}</option>
           </Select>
-        </label>
+        </div>
         {clientLabel && (
           <label className="flex flex-col gap-1">
             <span className={eyebrow()}>{t(clientLabel)}</span>
