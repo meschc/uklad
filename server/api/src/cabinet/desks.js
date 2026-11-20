@@ -24,7 +24,10 @@
  * кто за столом (миграция 012) и куда делся товар (`deskStock.js`).
  *
  * Маршруты руководителя (вход по паролю с правом staff.manage):
- *   POST /api/cabinet/desks        — { deviceRef, name } → кука стола, вход руководителя гаснет
+ *   POST /api/cabinet/desks        — { deviceRef, name, email?+password? | code? } → кука
+ *                                    стола, вход руководителя гаснет. Руководитель здесь и
+ *                                    сейчас (052): вход паролем ≤10 мин, пароль или его бейдж
+ *   POST /api/cabinet/desks/check  — то же подтверждение без привязки: 200 / 428 / 422
  *   POST /api/cabinet/desks/revoke — { deviceRef } → стол гаснет с другого компьютера
  * Маршруты стола (кука стола и нет куки входа):
  *   GET  /api/auth/me              — { kind: "desk", current: { orgId } }
@@ -33,7 +36,7 @@
  *   POST /api/desk/ops             — пачка операций с ключами повтора
  *   POST /api/cabinet/badges/check — чей бейдж
  *   POST /api/desk/unbind          — { code } бейдж старшего или { email, password }
- *                                    руководителя → стол отвязан
+ *                                    руководителя → стол отвязан; по паролю — сразу вход
  *   /api/desk/switch…, /api/cabinet/switch-requests… — смена процесса с
  *                                    подтверждением старшего (`deskSwitch.js`, 042)
  *   POST /api/desk/senior          — { code } → { staffRef, decide }: бейдж старшего
@@ -62,6 +65,8 @@ const { deskPlace } = require("./deskPlace");
 
 // Стол живёт, пока его не отвяжут; срок — страховка от забытого компьютера.
 const DESK_TTL_MS = 180 * 86_400_000;
+// Сколько вход паролем считается «руководитель здесь» для привязки стола (052).
+const FRESH_LOGIN_MS = 10 * 60_000;
 const DEVICE_RE = /^[A-Za-z0-9_-]{1,100}$/;
 /**
  * Пачки операций — на стол: отметок смены у человека единицы за смену, а
@@ -453,8 +458,12 @@ function createDesks({ auth, cfg, send, log }) {
     }
     const token = randomBytes(32).toString("base64url");
     const hash = tokenHash(req);
+    const byPassword = await passwordOf(req, res, b);
+    if (byPassword === undefined) return;
     const out = await withSession(req, async (c, ctx) => {
       if (!ctx.accountId || !ctx.can("staff.manage")) return 403;
+      const confirmed = await bindConfirmed(c, ctx, hash, b, byPassword);
+      if (confirmed !== true) return confirmed;
       // Стол — устройство склада: без него стол не знал бы, чью работу вести.
       // Кабинет дописывает устройство на сервер до этого запроса (`deskServer.ts`).
       if (!deskPlace(await companyDoc(c), deviceRef)) return 409;
@@ -471,8 +480,73 @@ function createDesks({ auth, cfg, send, log }) {
     });
     if (out === null) return send(res, 401, { ok: false });
     if (out === 409) return send(res, 409, { ok: false, error: "desk_warehouse" });
+    if (typeof out === "object") return send(res, out.status, { ok: false, error: out.error });
     if (out !== 200) return send(res, out, { ok: false });
     return send(res, 200, { ok: true }, { "Set-Cookie": [deskCookie(token), clearCookie] });
+  }
+
+  /**
+   * Руководитель здесь и сейчас (миграция 052): вошёл паролем только что, или
+   * в запросе его пароль, или бейдж сотрудника с правом на персонал. Иначе
+   * забытый открытым вход руководителя давал бы любому завести стол.
+   * `true` — можно; иначе ответ отказа `{ status, error }`.
+   */
+  async function bindConfirmed(c, ctx, hash, b, byPassword) {
+    if (byPassword) {
+      return byPassword === ctx.accountId ? true : { status: 422, error: "bad_credentials" };
+    }
+    if (typeof b.code === "string" && b.code) {
+      if (!checks.take(ctx.orgId)) return { status: 429, error: "too_many" };
+      const staffRef = await whoseBadge(c, b.code);
+      const perms = staffRef ? await loadDeskPerms(c, [staffRef]) : {};
+      return staffRef && may({ perms }, staffRef, STAFF_MANAGE)
+        ? true
+        : { status: 422, error: "not_manager" };
+    }
+    const { rows } = await c.query(`SELECT auth.session_fresh($1, $2::interval) AS fresh`, [
+      hash,
+      `${FRESH_LOGIN_MS / 1000} seconds`,
+    ]);
+    return rows[0].fresh === true ? true : { status: 428, error: "confirm" };
+  }
+
+  /**
+   * Проверить подтверждение до привязки, ничего не меняя: кабинет заводит
+   * устройство у себя только после «да», иначе каждый отказ оставлял бы в
+   * списке погашенное устройство. Те же ответы, что у привязки.
+   */
+  async function checkBind(req, res) {
+    const b = await readJson(req, res);
+    if (!b) return;
+    const pw = await passwordOf(req, res, b);
+    if (pw === undefined) return;
+    const out = await withSession(req, async (c, ctx) => {
+      if (!ctx.accountId || !ctx.can("staff.manage")) return 403;
+      const confirmed = await bindConfirmed(c, ctx, tokenHash(req), b, pw);
+      return confirmed === true ? 200 : confirmed;
+    });
+    if (out === null) return send(res, 401, { ok: false });
+    if (typeof out === "object") return send(res, out.status, { ok: false, error: out.error });
+    return send(res, out, { ok: out === 200 });
+  }
+
+  /**
+   * Пароль из запроса привязки: `null` — его нет, id учётной записи — верный,
+   * `undefined` — отказ уже отправлен. До транзакции: у пароля свои счётчики.
+   */
+  async function passwordOf(req, res, b) {
+    if (typeof b.password !== "string" || !b.password) return null;
+    const who = await auth.checkCredentials(req, b);
+    if (who.status === 429) {
+      send(res, 429, { ok: false, error: who.error }, who.headers);
+      return undefined;
+    }
+    // 422, а не 401: кабинет принял бы 401 за потерю своего входа.
+    if (!who.accountId) {
+      send(res, 422, { ok: false, error: "bad_credentials" });
+      return undefined;
+    }
+    return who.accountId;
   }
 
   async function revoke(req, res) {
@@ -792,11 +866,14 @@ function createDesks({ auth, cfg, send, log }) {
         deskHash(req),
         who.accountId,
       ]);
-      return { manager: rows[0].ok === true };
+      if (rows[0].ok !== true) return { manager: false };
+      // Руководитель только что ввёл почту и пароль — это и есть вход: он
+      // сразу в кабинете, а не на втором таком же экране (Кирилл 20.11).
+      return { manager: true, cookie: await auth.startSession(c, who.accountId) };
     });
     if (!out) return gone(res);
     if (!out.manager) return send(res, 404, { ok: false, error: "not_manager" });
-    return send(res, 200, { ok: true }, { "Set-Cookie": clearDesk });
+    return send(res, 200, { ok: true }, { "Set-Cookie": [clearDesk, out.cookie] });
   }
 
   const switches = createSwitchRoutes({
@@ -814,6 +891,7 @@ function createDesks({ auth, cfg, send, log }) {
     ...switches.manager,
     "POST /api/cabinet/desks": open,
     "POST /api/cabinet/desks/revoke": revoke,
+    "POST /api/cabinet/desks/check": checkBind,
     "GET /api/cabinet/desks/journal": journal,
   };
   const deskRoutes = {

@@ -23,3 +23,4 @@ export { disputesRepository } from "./disputesRepository";
 export { documentsRepository } from "./documentsRepository";
 export { journalRepository } from "./journalRepository";
 export type { Result } from "./result";
+export type { BindConfirm } from "./deskServer";

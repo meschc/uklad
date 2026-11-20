@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { MonitorSmartphone } from "lucide-react";
-import { workstationRepository } from "@/lib/data";
+import { workstationRepository, type BindConfirm } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
 import type { WorkstationKind } from "@/lib/types";
 import { useT, type MsgKey } from "@/lib/i18n";
@@ -11,11 +11,16 @@ import { Select } from "@/components/ui/select";
 import { FormError } from "@/components/ui/field";
 import { useEditor } from "@/lib/store";
 import { OPEN_STATIONS } from "@/lib/stationSwitch";
+import { BindConfirmStep } from "./BindConfirmStep";
 
 /**
  * Привязать этот компьютер как стол склада. Одна форма на двух экранах:
  * «Устройства» в кабинете и само рабочее место — привязывают, сидя за тем
  * компьютером, поэтому первый раз это удобнее сделать прямо на столе.
+ *
+ * Привязывает руководитель здесь и сейчас (миграция 052): вошёл паролем
+ * только что — сразу; вход давний — сервер просит его бейдж или пароль, и
+ * форма показывает этот шаг. Забытый открытым вход стол не заводит.
  */
 export function BindDeviceForm({
   onBound,
@@ -38,9 +43,12 @@ export function BindDeviceForm({
       s.session.permissions.includes("staff.manage"),
   );
 
-  const bind = async () => {
-    const res = await add.run(name, station);
+  // Сервер попросил подтвердить: дальше форма ждёт бейдж или пароль.
+  const [confirming, setConfirming] = useState(false);
+  const bind = async (confirm?: BindConfirm) => {
+    const res = await add.run(name, station, confirm);
     if (res.ok) onBound?.();
+    else if (res.error === "devices.confirmNeeded") setConfirming(true);
   };
 
   if (!canBind) {
@@ -92,7 +100,15 @@ export function BindDeviceForm({
           {t("devices.bind")}
         </Button>
       </form>
-      {add.error && <FormError>{t(add.error)}</FormError>}
+      {confirming ? (
+        <BindConfirmStep
+          pending={add.pending}
+          error={add.error && add.error !== "devices.confirmNeeded" ? add.error : null}
+          onConfirm={(confirm) => void bind(confirm)}
+        />
+      ) : (
+        add.error && <FormError>{t(add.error)}</FormError>
+      )}
     </>
   );
 }
