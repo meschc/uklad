@@ -762,7 +762,11 @@ export interface SubscriptionSlice {
   /** Сменить тариф. Сегодня — переключатель в профиле, завтра — биллинг. */
   setTariff: (tariff: TariffId) => void;
   /** Тариф и функции, как их назначил Уклад (сервер, `GET /company/features`). */
-  setPlanFeatures: (tariff: TariffId, features: TariffFeatures) => void;
+  setPlanFeatures: (
+    tariff: TariffId,
+    features: TariffFeatures,
+    warehouseLimit?: number | null,
+  ) => void;
   updateBackupSettings: (patch: Partial<BackupSettings>) => void;
   /** Архив скачан: сбрасывает напоминание. */
   markBackupDone: (at: number) => void;

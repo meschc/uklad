@@ -39,7 +39,7 @@ before(async () => {
   const limits = createPlanLimits({ db: admin, auth, send });
   const team = createTeam({ auth, cfg, send, log: quiet, limits });
   const badges = createDeskBadges({ auth, send, log: quiet, limits });
-  const snapshot = createSnapshot({ auth, send, log: quiet });
+  const snapshot = createSnapshot({ auth, send, log: quiet, limits });
   const plan = createPlan({ auth, db: admin, send, log: quiet });
   cookieName = auth.cookieName;
   const cabinet = {
@@ -263,3 +263,32 @@ test("неоплата: выключить можно, включить — не
   assert.equal(on.status, 402);
   assert.equal(on.json.error, "plan_unpaid");
 });
+
+test(
+  "лимит складов: новый склад сверх тарифа — отказ, правка своего — нет",
+  { skip: SKIP },
+  async () => {
+    const a = await owner("limit-h@sklad.ru", "10.0.7.9", {
+      limits: JSON.stringify({ warehouses: 1 }),
+    });
+    const cur = (await call("GET", "/api/cabinet/snapshot", a)).json.snapshot;
+    const save = (data) =>
+      post("/api/cabinet/snapshot", { ...a, body: { version: cur.version, format: 8, data } });
+    const base = { ...cur.data, warehouse: { ...cur.data.warehouse, name: "Склад Север" } };
+    // Второй склад — сверх «одного по тарифу».
+    const over = await save({
+      ...base,
+      otherWarehouses: [{ id: "w2", name: "Второй", staff: [] }],
+    });
+    assert.equal(over.status, 409, JSON.stringify(over.json));
+    assert.deepEqual(over.json, { ok: false, error: "plan_limit", limit: "warehouses", max: 1 });
+    // Откат: второго склада в таблице нет.
+    const { rows } = await db.root.query(
+      `SELECT count(*)::int AS n FROM uklad.warehouses WHERE org_id = $1 AND deleted_at IS NULL`,
+      [a.org],
+    );
+    assert.equal(rows[0].n, 1);
+    // Переименовать свой склад — можно.
+    assert.equal((await save(base)).status, 200);
+  },
+);

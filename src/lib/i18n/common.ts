@@ -250,6 +250,8 @@ export const ru = {
   "edit.redo": "Повторить",
   "editor.rotate": "Повернуть на 90°",
   "dash.newWarehouse": "Новый склад",
+  "dash.warehouseLimit":
+    "Складов столько, сколько позволяет тариф. Чтобы добавить склад, попросите тариф выше в разделе «Тариф».",
   "dash.aboutWarehouse": "О складе и сотрудниках",
   "dash.editWarehouse": "Редактировать склад",
   "dash.deleteWarehouse": "Удалить склад",
@@ -579,6 +581,8 @@ export const en: Record<keyof typeof ru, string> = {
   "edit.redo": "Redo",
   "editor.rotate": "Rotate 90°",
   "dash.newWarehouse": "New warehouse",
+  "dash.warehouseLimit":
+    "You have as many warehouses as your plan allows. To add one, request a higher plan in the Plan section.",
   "dash.aboutWarehouse": "About the warehouse and staff",
   "dash.editWarehouse": "Edit warehouse",
   "dash.deleteWarehouse": "Delete warehouse",

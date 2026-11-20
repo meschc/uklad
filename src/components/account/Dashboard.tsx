@@ -76,6 +76,11 @@ export function Dashboard() {
   const [dialog, setDialog] = useState<DialogState>(null);
 
   const warehouses = allWarehouses();
+  // Лимит складов тарифа (сервер): дальше новый склад не сохранится — не
+  // предлагаем его, а говорим, что делать. Заготовка склада не считается.
+  const warehouseLimit = useEditor((s) => s.subscription.warehouseLimit ?? null);
+  const atLimit =
+    warehouseLimit != null && warehouses.filter((w) => !w.placeholder).length >= warehouseLimit;
 
   return (
     <div className="h-full overflow-y-auto bg-background">
@@ -173,7 +178,12 @@ export function Dashboard() {
             ))}
 
             {/* Создать склад */}
-            {!readOnly && (
+            {!readOnly && atLimit && (
+              <p className="flex min-h-[13rem] items-center justify-center rounded-xl border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
+                {t("dash.warehouseLimit")}
+              </p>
+            )}
+            {!readOnly && !atLimit && (
               <button
                 onClick={() => setDialog({ mode: "new" })}
                 className="flex min-h-[13rem] flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border text-muted-foreground transition-colors hover:border-primary/50 hover:bg-primary/5 hover:text-primary"

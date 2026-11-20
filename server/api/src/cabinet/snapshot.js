@@ -41,6 +41,7 @@ const { recordMoves, invalidWork } = require("./moves");
 const { recordStorage, loadStorage, parsePeriod } = require("./storage");
 const { loadInventoryLog, parseLogPeriod } = require("./inventoryLog");
 const { splitWarehouses, withWarehouses, storeWarehouses } = require("./warehouses");
+const { PlanLimitError } = require("./planLimits");
 const {
   WAREHOUSE_LISTS,
   COMPANY_LISTS,
@@ -260,8 +261,28 @@ async function storeProducts(c, data) {
   await c.query(`SELECT uklad.save_products($1::jsonb)`, [JSON.stringify(data.products)]);
 }
 
-function createSnapshot({ auth, send, log }) {
+function createSnapshot({ auth, send, log, limits = null }) {
   const { withSession, readJson } = auth;
+
+  /**
+   * Склады — в таблицу, под лимитом тарифа (`planLimits`, ключ `warehouses`):
+   * новый склад сверх тарифа — `PlanLimitError`, запись откатывается.
+   * Правка, переименование и удаление склада лимит не трогают.
+   */
+  async function storeWarehousesLimited(c, ctx, cards) {
+    const room = cards && limits ? await limits.guard(c, ctx.orgId, "warehouses") : null;
+    await storeWarehouses(c, cards);
+    await room?.check();
+  }
+
+  /** Отказ лимита тарифа из записи — ответ 409 `plan_limit`, а не 500. */
+  const overLimit = (pending) =>
+    pending.catch((err) => {
+      if (err instanceof PlanLimitError) return { planLimit: err };
+      throw err;
+    });
+  const sendLimit = (res, err) =>
+    send(res, 409, { ok: false, error: "plan_limit", limit: err.key, max: err.limit });
   const writes = createRateLimit({
     capacity: WRITES_PER_MINUTE,
     refillPerMinute: WRITES_PER_MINUTE,
@@ -344,70 +365,73 @@ function createSnapshot({ auth, send, log }) {
     }
     const split = splitCabinet(b.data);
     const data = JSON.stringify(split.doc);
-    const out = await withSession(req, async (c, ctx) => {
-      if (!mayUse(ctx) || sellerOf(await actorPlace(c))) return FORBIDDEN;
-      if (!writes.take(ctx.orgId)) return LIMITED;
-      if (await massDelete(c, b.data)) return { conflict: true, error: "products_mass_delete" };
-      if (await massGone(c, split.items, split.slots)) {
-        return { conflict: true, error: "records_mass_delete" };
-      }
-      // Архив не переписывается: копия забирает свежие данные.
-      if (await archivedChanged(c, split.items)) return { conflict: true };
-      if (await decisionsForbidden(c, ctx, split.items)) return FORBIDDEN;
-      // Список, лежавший строками, пропал вовсе (ключа нет, не список) —
-      // кабинет показал бы пустоту, а массовое удаление этого не увидело бы.
-      const prev = await c.query(
-        `SELECT data FROM uklad.cabinet_snapshots WHERE org_id = uklad.current_org() FOR UPDATE`,
-      );
-      if (prev.rows[0]) {
-        const lost = lostLists(await withWarehouses(c, prev.rows[0].data), split.withStores);
-        if (lost.missing.length > 0 || (await inlineDrops(c, lost.inline))) {
+    const out = await overLimit(
+      withSession(req, async (c, ctx) => {
+        if (!mayUse(ctx) || sellerOf(await actorPlace(c))) return FORBIDDEN;
+        if (!writes.take(ctx.orgId)) return LIMITED;
+        if (await massDelete(c, b.data)) return { conflict: true, error: "products_mass_delete" };
+        if (await massGone(c, split.items, split.slots)) {
           return { conflict: true, error: "records_mass_delete" };
         }
-      }
-      // Первая запись: строки ещё нет. Двое одновременно — второй получит
-      // конфликт ключа и ответ 409, а не вторую строку.
-      if (version === 0) {
-        const { rows } = await c.query(
-          `INSERT INTO uklad.cabinet_snapshots (org_id, format, data, updated_by)
+        // Архив не переписывается: копия забирает свежие данные.
+        if (await archivedChanged(c, split.items)) return { conflict: true };
+        if (await decisionsForbidden(c, ctx, split.items)) return FORBIDDEN;
+        // Список, лежавший строками, пропал вовсе (ключа нет, не список) —
+        // кабинет показал бы пустоту, а массовое удаление этого не увидело бы.
+        const prev = await c.query(
+          `SELECT data FROM uklad.cabinet_snapshots WHERE org_id = uklad.current_org() FOR UPDATE`,
+        );
+        if (prev.rows[0]) {
+          const lost = lostLists(await withWarehouses(c, prev.rows[0].data), split.withStores);
+          if (lost.missing.length > 0 || (await inlineDrops(c, lost.inline))) {
+            return { conflict: true, error: "records_mass_delete" };
+          }
+        }
+        // Первая запись: строки ещё нет. Двое одновременно — второй получит
+        // конфликт ключа и ответ 409, а не вторую строку.
+        if (version === 0) {
+          const { rows } = await c.query(
+            `INSERT INTO uklad.cabinet_snapshots (org_id, format, data, updated_by)
            VALUES (uklad.current_org(), $1, $2::jsonb, $3)
            ON CONFLICT (org_id) DO NOTHING
            RETURNING version`,
-          [format, data, ctx.memberId],
-        );
-        if (!rows[0]) return { conflict: true };
-        await storeProducts(c, b.data);
-        await storeWarehouses(c, split.warehouses);
-        await storeRecords(c, split.items, split.slots);
-        await recordMoves(c, {}, b.data, rows[0].version, { memberId: ctx.memberId });
-        await recordStorage(c, b.data);
-        return { version: rows[0].version, orgId: ctx.orgId };
-      }
-      const { rows } = await c.query(
-        `UPDATE uklad.cabinet_snapshots
+            [format, data, ctx.memberId],
+          );
+          if (!rows[0]) return { conflict: true };
+          await storeProducts(c, b.data);
+          await storeWarehousesLimited(c, ctx, split.warehouses);
+          await storeRecords(c, split.items, split.slots);
+          await recordMoves(c, {}, b.data, rows[0].version, { memberId: ctx.memberId });
+          await recordStorage(c, b.data);
+          return { version: rows[0].version, orgId: ctx.orgId };
+        }
+        const { rows } = await c.query(
+          `UPDATE uklad.cabinet_snapshots
          SET previous = data, data = $1::jsonb, format = $2, version = version + 1,
              updated_at = now(), updated_by = $3, updated_by_desk = NULL
          WHERE org_id = uklad.current_org() AND version = $4
          RETURNING version, previous`,
-        [data, format, ctx.memberId, version],
-      );
-      // Версия не сошлась — товары тоже не трогаем: запись целиком не прошла.
-      if (!rows[0]) return { conflict: true };
-      // Прежний кабинет целиком — пока строки ещё старые: по нему журнал
-      // движений считает, что прибыло и убыло.
-      const before = await loadRecords(c, rows[0].previous);
-      await storeProducts(c, b.data);
-      await storeWarehouses(c, split.warehouses);
-      await storeRecords(c, split.items, split.slots);
-      // Что где прибыло и убыло — в журнал движений, с тем, кто записал.
-      await recordMoves(c, before, b.data, rows[0].version, {
-        memberId: ctx.memberId,
-      });
-      // Сколько паллето-мест и коробов занято сегодня — для счёта за хранение.
-      await recordStorage(c, b.data);
-      return { version: rows[0].version, orgId: ctx.orgId };
-    });
+          [data, format, ctx.memberId, version],
+        );
+        // Версия не сошлась — товары тоже не трогаем: запись целиком не прошла.
+        if (!rows[0]) return { conflict: true };
+        // Прежний кабинет целиком — пока строки ещё старые: по нему журнал
+        // движений считает, что прибыло и убыло.
+        const before = await loadRecords(c, rows[0].previous);
+        await storeProducts(c, b.data);
+        await storeWarehousesLimited(c, ctx, split.warehouses);
+        await storeRecords(c, split.items, split.slots);
+        // Что где прибыло и убыло — в журнал движений, с тем, кто записал.
+        await recordMoves(c, before, b.data, rows[0].version, {
+          memberId: ctx.memberId,
+        });
+        // Сколько паллето-мест и коробов занято сегодня — для счёта за хранение.
+        await recordStorage(c, b.data);
+        return { version: rows[0].version, orgId: ctx.orgId };
+      }),
+    );
     if (out === null) return send(res, 401, { ok: false });
+    if (out?.planLimit) return sendLimit(res, out.planLimit);
     if (out === FORBIDDEN) return send(res, 403, { ok: false });
     if (out === LIMITED) return send(res, 429, { ok: false }, { "Retry-After": "30" });
     if (out.conflict) {
@@ -438,85 +462,88 @@ function createSnapshot({ auth, send, log }) {
     if (!b) return;
     if (badChanges(b)) return send(res, 400, { ok: false, error: "bad_request" });
     let doc = JSON.stringify(b.doc);
-    const out = await withSession(req, async (c, ctx) => {
-      // Без «Персонала» — только то, на что есть право роли (`writeScope.js`).
-      if (sellerOf(await actorPlace(c))) return FORBIDDEN;
-      const scoped = !mayUse(ctx);
-      if (scoped && !(mayView(ctx) && writableKeys(ctx.can).length > 0)) return FORBIDDEN;
-      if (scoped && (foreignRows(b.upsert, ctx.can) || foreignRows(b.remove, ctx.can))) {
-        return FORBIDDEN;
-      }
-      if (scoped && "products" in b && !ctx.can("products.edit")) return FORBIDDEN;
-      if (!writes.take(ctx.orgId)) return LIMITED;
-      const { rows } = await c.query(
-        `SELECT version, data FROM uklad.cabinet_snapshots
+    const out = await overLimit(
+      withSession(req, async (c, ctx) => {
+        // Без «Персонала» — только то, на что есть право роли (`writeScope.js`).
+        if (sellerOf(await actorPlace(c))) return FORBIDDEN;
+        const scoped = !mayUse(ctx);
+        if (scoped && !(mayView(ctx) && writableKeys(ctx.can).length > 0)) return FORBIDDEN;
+        if (scoped && (foreignRows(b.upsert, ctx.can) || foreignRows(b.remove, ctx.can))) {
+          return FORBIDDEN;
+        }
+        if (scoped && "products" in b && !ctx.can("products.edit")) return FORBIDDEN;
+        if (!writes.take(ctx.orgId)) return LIMITED;
+        const { rows } = await c.query(
+          `SELECT version, data FROM uklad.cabinet_snapshots
          WHERE org_id = uklad.current_org() FOR UPDATE`,
-      );
-      const cur = rows[0] && { ...rows[0], data: await withWarehouses(c, rows[0].data) };
-      if (!cur || cur.version !== b.version) return { conflict: true };
-      // Документ без складов — склады не менялись: берём их из таблицы, иначе
-      // проверки ниже не знали бы, чьи списки в корне.
-      if (!("warehouse" in b.doc)) b.doc = await withWarehouses(c, b.doc);
-      if (scoped) {
-        // Закрытое смотрящему он не получал — берём из базы, а не из копии.
-        const place = await actorPlace(c);
-        const ref = placeRef(cur.data, place?.warehouse_ref);
-        if (!ref || !focusWarehouse(cur.data, ref)) return FORBIDDEN;
-        b.doc = mergeScoped(cur.data, b.doc, ctx.can, ref);
-        doc = JSON.stringify(b.doc);
-      }
-      if ("products" in b && (await massDelete(c, b))) {
-        return { conflict: true, error: "products_mass_delete" };
-      }
-      // Список, лежавший строками, обязан остаться меткой: иначе кабинет
-      // показал бы пустоту, не тронув строк. Пусть пишет себя целиком —
-      // там такую запись судит защита от массового удаления.
-      const lost = lostLists(cur.data, b.doc);
-      if (lost.missing.length + lost.inline.length > 0)
-        return { conflict: true, error: "diverged" };
-      if (await massRemoved(c, b.remove)) return { conflict: true, error: "records_mass_delete" };
-      if (await archivedChanged(c, b.upsert)) return { conflict: true };
-      if (await decisionsForbidden(c, ctx, b.upsert)) return FORBIDDEN;
-      const before = await loadRecords(c, cur.data, MOVE_LISTS);
-      await c.query(`SAVEPOINT changes`);
-      await upsertRecords(c, b.upsert);
-      await removeRecords(c, b.remove);
-      // Каждая метка документа — ровно столько живых строк. Иначе копия в
-      // браузере считала правку не от того, что лежит здесь.
-      const marks = marksOf(b.doc);
-      const live = await liveCounts(
-        c,
-        [...marks.keys()].map((k) => {
-          const [w, d] = k.split("\u0000");
-          return { w, d };
-        }),
-      );
-      if ([...marks].some(([k, n]) => live.get(k) !== n)) {
-        await c.query(`ROLLBACK TO SAVEPOINT changes`);
-        return { conflict: true, error: "diverged" };
-      }
-      // Склады — строками (миграция 051), в документе их нет.
-      const wh = splitWarehouses(b.doc);
-      doc = JSON.stringify(wh.doc);
-      await storeWarehouses(c, wh.cards);
-      const upd = await c.query(
-        `UPDATE uklad.cabinet_snapshots
+        );
+        const cur = rows[0] && { ...rows[0], data: await withWarehouses(c, rows[0].data) };
+        if (!cur || cur.version !== b.version) return { conflict: true };
+        // Документ без складов — склады не менялись: берём их из таблицы, иначе
+        // проверки ниже не знали бы, чьи списки в корне.
+        if (!("warehouse" in b.doc)) b.doc = await withWarehouses(c, b.doc);
+        if (scoped) {
+          // Закрытое смотрящему он не получал — берём из базы, а не из копии.
+          const place = await actorPlace(c);
+          const ref = placeRef(cur.data, place?.warehouse_ref);
+          if (!ref || !focusWarehouse(cur.data, ref)) return FORBIDDEN;
+          b.doc = mergeScoped(cur.data, b.doc, ctx.can, ref);
+          doc = JSON.stringify(b.doc);
+        }
+        if ("products" in b && (await massDelete(c, b))) {
+          return { conflict: true, error: "products_mass_delete" };
+        }
+        // Список, лежавший строками, обязан остаться меткой: иначе кабинет
+        // показал бы пустоту, не тронув строк. Пусть пишет себя целиком —
+        // там такую запись судит защита от массового удаления.
+        const lost = lostLists(cur.data, b.doc);
+        if (lost.missing.length + lost.inline.length > 0)
+          return { conflict: true, error: "diverged" };
+        if (await massRemoved(c, b.remove)) return { conflict: true, error: "records_mass_delete" };
+        if (await archivedChanged(c, b.upsert)) return { conflict: true };
+        if (await decisionsForbidden(c, ctx, b.upsert)) return FORBIDDEN;
+        const before = await loadRecords(c, cur.data, MOVE_LISTS);
+        await c.query(`SAVEPOINT changes`);
+        await upsertRecords(c, b.upsert);
+        await removeRecords(c, b.remove);
+        // Каждая метка документа — ровно столько живых строк. Иначе копия в
+        // браузере считала правку не от того, что лежит здесь.
+        const marks = marksOf(b.doc);
+        const live = await liveCounts(
+          c,
+          [...marks.keys()].map((k) => {
+            const [w, d] = k.split("\u0000");
+            return { w, d };
+          }),
+        );
+        if ([...marks].some(([k, n]) => live.get(k) !== n)) {
+          await c.query(`ROLLBACK TO SAVEPOINT changes`);
+          return { conflict: true, error: "diverged" };
+        }
+        // Склады — строками (миграция 051), в документе их нет.
+        const wh = splitWarehouses(b.doc);
+        doc = JSON.stringify(wh.doc);
+        await storeWarehousesLimited(c, ctx, wh.cards);
+        const upd = await c.query(
+          `UPDATE uklad.cabinet_snapshots
          SET previous = data, data = $1::jsonb, format = $2, version = version + 1,
              updated_at = now(), updated_by = $3, updated_by_desk = NULL
          WHERE org_id = uklad.current_org()
          RETURNING version`,
-        [doc, b.format, ctx.memberId],
-      );
-      const version = upd.rows[0].version;
-      if ("products" in b) await storeProducts(c, b);
-      const after = await loadRecords(c, b.doc, MOVE_LISTS);
-      await recordMoves(c, before, after, version, { memberId: ctx.memberId });
-      // Правка могла сдвинуть тару, отметить паллетное место или сменить
-      // продавца товара — занятость считаем по кабинету целиком.
-      await recordStorage(c, await loadCabinet(c, b.doc));
-      return { version, orgId: ctx.orgId };
-    });
+          [doc, b.format, ctx.memberId],
+        );
+        const version = upd.rows[0].version;
+        if ("products" in b) await storeProducts(c, b);
+        const after = await loadRecords(c, b.doc, MOVE_LISTS);
+        await recordMoves(c, before, after, version, { memberId: ctx.memberId });
+        // Правка могла сдвинуть тару, отметить паллетное место или сменить
+        // продавца товара — занятость считаем по кабинету целиком.
+        await recordStorage(c, await loadCabinet(c, b.doc));
+        return { version, orgId: ctx.orgId };
+      }),
+    );
     if (out === null) return send(res, 401, { ok: false });
+    if (out?.planLimit) return sendLimit(res, out.planLimit);
     if (out === FORBIDDEN) return send(res, 403, { ok: false });
     if (out === LIMITED) return send(res, 429, { ok: false }, { "Retry-After": "30" });
     if (out.conflict) {
