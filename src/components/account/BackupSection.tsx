@@ -5,6 +5,7 @@ import { backupRepository } from "@/lib/data";
 import { parseBackup } from "@/lib/backup";
 import { REMIND_OPTIONS, featuresOf } from "@/lib/tariff";
 import { useCommand } from "@/lib/useCommand";
+import { TariffLock } from "@/components/tariff/TariffLock";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/segmented";
@@ -158,9 +159,7 @@ export function BackupSection() {
               ]}
             />
           ) : (
-            <span className="text-right text-sm text-muted-foreground">
-              {t("tariff.onlyInMany")}
-            </span>
+            <TariffLock feature="weeklyEmailBackup" />
           )}
         </Row>
         {weekly.error && <FieldError className="px-4 pb-3">{t(weekly.error)}</FieldError>}

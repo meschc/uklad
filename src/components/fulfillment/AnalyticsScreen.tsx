@@ -1,13 +1,5 @@
 import { useMemo } from "react";
-import {
-  AlertTriangle,
-  ChartColumn,
-  ClipboardList,
-  Gauge,
-  PackagePlus,
-  Timer,
-  Truck,
-} from "lucide-react";
+import { AlertTriangle, Lock, ClipboardList, Gauge, PackagePlus, Timer, Truck } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import {
   formatDuration,
@@ -18,7 +10,7 @@ import {
 } from "@/lib/fulfillment";
 import { featuresOf } from "@/lib/tariff";
 import { useT } from "@/lib/i18n";
-import { Button } from "@/components/ui/button";
+import { TariffLock } from "@/components/tariff/TariffLock";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { card } from "@/components/ui/card";
 import { ScreenShell } from "./ScreenShell";
@@ -49,7 +41,6 @@ export function AnalyticsScreen() {
   // «Старт» на сайте — «основные показатели»: верхний ряд чисел без графиков
   // и разбивок. Расчёт тот же, режется только показ.
   const full = useEditor((s) => featuresOf(s.subscription).fullAnalytics);
-  const goToProfile = useEditor((s) => s.goToProfile);
 
   const occ = useMemo(
     () => occupancyStats(warehouse, placements, boxes),
@@ -118,15 +109,13 @@ export function AnalyticsScreen() {
           className={card({ className: "flex flex-wrap items-center justify-between gap-3" })}
         >
           <div className="flex min-w-0 items-start gap-3">
-            <ChartColumn className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+            <Lock className="mt-0.5 size-4 shrink-0 text-primary" />
             <div className="min-w-0">
               <h2 className="text-sm font-semibold">{t("an.basic.title")}</h2>
               <p className="text-xs text-muted-foreground">{t("an.basic.body")}</p>
             </div>
           </div>
-          <Button size="sm" variant="outline" onClick={goToProfile}>
-            {t("an.basic.cta")}
-          </Button>
+          <TariffLock feature="fullAnalytics" />
         </section>
       )}
 

@@ -11,6 +11,7 @@ import type { TariffId } from "@/lib/types";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Row } from "./ProfileRow";
+import { TariffLock } from "@/components/tariff/TariffLock";
 
 /**
  * В кабинете тарифы идут по возрастанию возможностей: Старт → Склад →
@@ -161,9 +162,7 @@ export function TariffSection() {
       <div>
         <Row icon={<Headset className="size-4" />} label={t("manager.label")}>
           {!hasManager ? (
-            <span className="text-right text-sm text-muted-foreground">
-              {t("tariff.onlyIn", { plan: t("tariff.operator") })}
-            </span>
+            <TariffLock feature="personalManager" />
           ) : sub.manager ? (
             <div className="flex flex-col items-end text-sm">
               <span className="font-medium">{sub.manager.name}</span>
