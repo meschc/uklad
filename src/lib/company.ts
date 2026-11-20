@@ -47,6 +47,15 @@ export interface CompanyInfo {
  * ИНН и производными реквизитами, чтобы форма и экраны собирались на реальной
  * форме данных, а не на пустоте.
  */
+/**
+ * ОГРН заготовки с верной контрольной цифрой: иначе подставленные реквизиты
+ * тут же не проходят `checkOgrn`, и карточку партнёра нельзя сохранить.
+ */
+function mockOgrn(body: string): string {
+  const mod = BigInt(body.length === 12 ? 11 : 13);
+  return `${body}${Number((BigInt(body) % mod) % 10n)}`;
+}
+
 export function lookupCompany(raw: string): CompanyInfo | null {
   const inn = raw.replace(/\D/g, "");
   if (!isValidInn(inn)) return null;
@@ -55,7 +64,7 @@ export function lookupCompany(raw: string): CompanyInfo | null {
     inn,
     name: isSole ? `ИП по ИНН ${inn}` : `ООО по ИНН ${inn}`,
     kpp: isSole ? undefined : `${inn.slice(0, 4)}01001`,
-    ogrn: isSole ? `3${inn}${inn.slice(0, 2)}` : `1${inn}${inn.slice(0, 2)}`,
+    ogrn: mockOgrn(isSole ? `3${inn}${inn[0]}` : `1${inn}${inn[0]}`),
     legalAddress: "Уточните адрес — справочник ещё не подключён",
     mock: true,
   };

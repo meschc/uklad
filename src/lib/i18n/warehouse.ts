@@ -175,7 +175,6 @@ export const ru = {
   "partners.namePlaceholder": "Название партнёра",
   "partners.contactPlaceholder": "Почта продавца",
   "partners.personPlaceholder": "Контактное лицо",
-  "partners.inviteHint": "На эту почту придёт ссылка на кабинет продавца в Укладе",
   "partners.saved": "Партнёр «{name}» сохранён",
   "partners.invite.title": "Кабинет продавца",
   "partners.invite.lead":
@@ -184,6 +183,19 @@ export const ru = {
   "partners.invite.send": "Пригласить",
   "partners.invite.again": "Пригласить ещё",
   "partners.invite.sent": "Приглашение отправлено на {email}",
+  "partners.new": "Новый партнёр",
+  "partners.create": "Добавить",
+  "partners.added": "Партнёр «{name}» добавлен",
+  "partners.ownName": "Название в Укладе",
+  "partners.ownName.hint":
+    "Так партнёр называется в списках и заданиях. Для актов — юрназвание ниже.",
+  "partners.requisites": "Реквизиты",
+  "partners.legalName": "Юридическое название",
+  "partners.inn.hint": "Введите ИНН — реквизиты заполнятся из справочника ФНС.",
+  "partners.inn.err":
+    "Справочник ФНС не ответил. Заполните реквизиты вручную или попробуйте позже.",
+  "partners.inn.inactive":
+    "По данным ФНС компания не действует: ликвидирована, банкрот или в процессе.",
   "staff.tab.people": "Сотрудники",
   "staff.tab.partners": "Партнёры",
   "staff.tab.schedule": "Режим работы",
@@ -644,7 +656,6 @@ export const en: Record<keyof typeof ru, string> = {
   "partners.namePlaceholder": "Partner name",
   "partners.contactPlaceholder": "Seller email",
   "partners.personPlaceholder": "Contact person",
-  "partners.inviteHint": "A link to the seller account in Uklad will be sent to this email",
   "partners.saved": "Partner “{name}” saved",
   "partners.invite.title": "Seller account",
   "partners.invite.lead":
@@ -653,6 +664,17 @@ export const en: Record<keyof typeof ru, string> = {
   "partners.invite.send": "Invite",
   "partners.invite.again": "Invite another",
   "partners.invite.sent": "Invitation sent to {email}",
+  "partners.new": "New partner",
+  "partners.create": "Add",
+  "partners.added": "Partner “{name}” added",
+  "partners.ownName": "Name in Uklad",
+  "partners.ownName.hint": "Shown in lists and tasks. Documents use the legal name below.",
+  "partners.requisites": "Company details",
+  "partners.legalName": "Legal name",
+  "partners.inn.hint": "Enter the tax id and the details fill in from the tax registry.",
+  "partners.inn.err": "The tax registry did not answer. Fill the details in by hand or try later.",
+  "partners.inn.inactive":
+    "Per the tax registry the company is not active: liquidated, bankrupt or closing.",
   "staff.tab.people": "Staff",
   "staff.tab.partners": "Partners",
   "staff.tab.schedule": "Working hours",
