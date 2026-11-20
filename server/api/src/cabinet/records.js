@@ -22,7 +22,9 @@
  * читают её отдельно (`loadArchive`). Все проверки и счёт строк ниже — по
  * живым неархивным строкам.
  */
-/* global module */
+/* global module, require */
+/* eslint-disable @typescript-eslint/no-require-imports */
+const { withWarehouses } = require("./warehouses");
 
 /** Списки работы склада: у активного склада — в корне, у остальных — в `warehouseData`. */
 const WAREHOUSE_LISTS = [
@@ -184,6 +186,8 @@ function lostLists(prevDoc, next) {
  * станут пустыми списками.
  */
 async function loadRecords(c, doc, domains = null) {
+  // Склады — строками (миграция 051): без них не понять, чьи списки в корне.
+  doc = await withWarehouses(c, doc);
   const { rows } = await c.query(
     `SELECT warehouse_ref AS w, domain AS d, data FROM uklad.cabinet_records
      WHERE org_id = uklad.current_org() AND deleted_at IS NULL AND archived_at IS NULL
