@@ -212,6 +212,16 @@ export interface Partner {
   person?: string;
   /** Телефон продавца, если почты мало. */
   phone?: string;
+  /**
+   * Реквизиты продавца — из справочника ФНС по ИНН (DaData) или вручную.
+   * `name` — своё название склада для продавца («Ромашка», «Вася с WB»): его
+   * видят списки и задания. `legalName` — как в ЕГРЮЛ, для актов и отчётов.
+   */
+  inn?: string;
+  legalName?: string;
+  kpp?: string;
+  ogrn?: string;
+  legalAddress?: string;
 }
 
 /**

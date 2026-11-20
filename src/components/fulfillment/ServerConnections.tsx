@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { getConnector } from "@/lib/connectors";
 import { lastConnectorFailure } from "@/lib/connectors/transport";
-import { syncOrdersNow } from "@/lib/orderSync";
 import {
   connectorsRepository,
+  type OrderPullResult,
   type ServerConnection,
   type ServerConnectorSystem,
 } from "@/lib/data/connectorsRepository";
@@ -16,6 +16,10 @@ import { Select } from "@/components/ui/select";
 import { useEditor } from "@/lib/store";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { FormError } from "@/components/ui/field";
+import { PartnerCard } from "@/components/account/PartnerCard";
+
+/** Пункт списка «Партнёр», который открывает панель нового партнёра. */
+const NEW_PARTNER = "__new__";
 
 /** Подпись второго поля: Client-Id у Ozon, номер кампании у Маркета, у WB нет. */
 const CLIENT_LABEL: Partial<
@@ -24,6 +28,31 @@ const CLIENT_LABEL: Partial<
   ozon: "integr.field.clientId",
   "yandex-market": "integr.field.campaignId",
 };
+
+/** Коды отказа подкачки на сервере → текст (`orderPull.js`). */
+const PULL_ERROR: Record<string, MsgKey> = {
+  rejected: "integr.error.rejected",
+  rate_limit: "integr.error.rateLimit",
+  warehouse: "integr.pull.error.warehouse",
+  partner: "integr.pull.error.partner",
+};
+
+/** Итог последней подкачки подключения одной строкой. */
+function lastPullText(r: OrderPullResult, t: TFunc): string {
+  const time = new Date(r.at).toLocaleString("ru-RU", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  if (r.error) {
+    const text = t(PULL_ERROR[r.error] ?? "integr.error.upstream");
+    return t("integr.pull.lastFailed", { time, text: withPlatformReply(text, r.detail ?? null) });
+  }
+  const lines = [t("integr.pull.last", { time, n: r.created ?? 0 })];
+  if (r.unknown?.length) lines.push(t("integr.pull.unknown", { list: r.unknown.join(", ") }));
+  return lines.join(". ");
+}
 
 /** Текст отказа + что ответила площадка, если она ответила. */
 const withPlatformReply = (text: string, reply: string | null) =>
@@ -41,8 +70,12 @@ export function ServerConnections({ spec, t }: { spec: IntegrationSpec; t: TFunc
   const clientLabel = CLIENT_LABEL[system];
   const [rows, setRows] = useState<ServerConnection[]>([]);
   const partners = useEditor((s) => s.warehouse.partners) ?? [];
+  const warehouseId = useEditor((s) => s.warehouse.id);
   // "" — свой товар склада (склад без продавцов), иначе id партнёра.
   const [partnerId, setPartnerId] = useState("");
+  // Продавца ещё нет в списке — заводим тут же, не уходя со страницы
+  // (Кирилл 18.11): панель справа, после «Добавить» он выбран.
+  const [adding, setAdding] = useState(false);
   const [clientId, setClientId] = useState("");
   const [token, setToken] = useState("");
   const [checks, setChecks] = useState<Record<string, string>>({});
@@ -72,6 +105,8 @@ export function ServerConnections({ spec, t }: { spec: IntegrationSpec; t: TFunc
       label,
       token,
       ...(partnerId ? { partnerId } : {}),
+      // Заказы магазина приходят заявками на склад, где его подключили.
+      warehouseId,
       ...(clientLabel ? { clientId } : {}),
     });
     if (!res.ok) return;
@@ -95,12 +130,14 @@ export function ServerConnections({ spec, t }: { spec: IntegrationSpec; t: TFunc
   const [pulled, setPulled] = useState<string | null>(null);
   const onPull = async () => {
     setPulled(t("integr.check.running"));
-    const res = await syncOrdersNow();
-    if (!res.ok) return setPulled(withPlatformReply(t(res.error), lastConnectorFailure()));
+    const res = await connectorsRepository.pull();
+    if (!res.ok) return setPulled(t(res.error));
     const { created, unknown } = res.data;
     const lines = [t("integr.pull.ok", { n: created })];
     if (unknown.length) lines.push(t("integr.pull.unknown", { list: unknown.join(", ") }));
     setPulled(lines.join(". "));
+    // Итог по каждому подключению сервер записал — показать его в строках.
+    reload();
   };
 
   const onRemove = async (id: string) => {
@@ -120,7 +157,9 @@ export function ServerConnections({ spec, t }: { spec: IntegrationSpec; t: TFunc
               {r.clientId && (
                 <span className="text-xs tabular-nums text-muted-foreground">{r.clientId}</span>
               )}
-              <span className="flex-1 text-xs text-muted-foreground">{checks[r.id]}</span>
+              <span className="flex-1 text-xs text-muted-foreground">
+                {checks[r.id] ?? (r.lastPull ? lastPullText(r.lastPull, t) : null)}
+              </span>
               <Button size="sm" variant="outline" onClick={() => void onCheck(r.id)}>
                 {t("integr.check")}
               </Button>
@@ -153,7 +192,9 @@ export function ServerConnections({ spec, t }: { spec: IntegrationSpec; t: TFunc
           <span className={eyebrow()}>{t("integr.field.partner")}</span>
           <Select
             value={partnerId}
-            onChange={(e) => setPartnerId(e.target.value)}
+            onChange={(e) =>
+              e.target.value === NEW_PARTNER ? setAdding(true) : setPartnerId(e.target.value)
+            }
             className="h-9 rounded-md border border-input bg-background px-2 text-sm"
           >
             <option value="">{t("integr.ownGoods")}</option>
@@ -162,6 +203,7 @@ export function ServerConnections({ spec, t }: { spec: IntegrationSpec; t: TFunc
                 {p.name}
               </option>
             ))}
+            <option value={NEW_PARTNER}>{t("integr.partner.new")}</option>
           </Select>
         </label>
         {clientLabel && (
@@ -187,6 +229,7 @@ export function ServerConnections({ spec, t }: { spec: IntegrationSpec; t: TFunc
         </Button>
         {error && <FormError>{t(error)}</FormError>}
       </div>
+      {adding && <PartnerCard onClose={() => setAdding(false)} onCreated={setPartnerId} />}
     </div>
   );
 }

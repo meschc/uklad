@@ -72,13 +72,19 @@ export const ru = {
   "integr.check.ok": "Связь есть, новых заказов: {n}",
   "integr.pull": "Загрузить заказы",
   "integr.pull.hint":
-    "Пока кабинет открыт, новые заказы сами приходят в «Задания» раз в полторы минуты. Товар узнаём по артикулу или штрихкоду среди товаров этого партнёра.",
+    "Новые заказы сами приходят в «Задания» раз в полторы минуты, даже когда кабинет закрыт. Кнопка спрашивает площадки сразу. Товар узнаём по артикулу или штрихкоду среди товаров этого партнёра.",
   "integr.pull.ok": "Новых заказов в заданиях: {n}",
+  "integr.pull.last": "Заказы спрашивали {time}, новых: {n}",
+  "integr.pull.lastFailed": "Заказы не загрузились {time}: {text}",
+  "integr.pull.error.warehouse":
+    "непонятно, на какой склад их заводить. Удалите подключение и сохраните заново на нужном складе",
+  "integr.pull.error.partner": "этого партнёра больше нет на складе",
   "integr.pull.unknown": "Не нашли товар в номенклатуре, заказы: {list}",
   "integr.remove": "Удалить",
   "integr.saveToServer": "Сохранить подключение",
   "integr.field.partner": "Партнёр",
   "integr.ownGoods": "Свой товар склада",
+  "integr.partner.new": "+ Новый партнёр",
   "integr.securityNote":
     "Ключи хранятся на сервере Уклада в зашифрованном виде и не показываются после сохранения.",
   "integr.setup": "Настроить",
@@ -492,13 +498,19 @@ export const en: Record<keyof typeof ru, string> = {
   "integr.check.ok": "Connected, new orders: {n}",
   "integr.pull": "Load orders",
   "integr.pull.hint":
-    "While the cabinet is open, new orders arrive in Tasks every 90 seconds. Products are matched by SKU or barcode among this partner's goods.",
+    "New orders arrive in Tasks every 90 seconds, even when the cabinet is closed. The button asks the platforms right away. Products are matched by SKU or barcode among this partner's goods.",
   "integr.pull.ok": "New orders added to tasks: {n}",
+  "integr.pull.last": "Orders checked {time}, new: {n}",
+  "integr.pull.lastFailed": "Orders did not load {time}: {text}",
+  "integr.pull.error.warehouse":
+    "it is unclear which warehouse they belong to. Remove the connection and save it again on the right warehouse",
+  "integr.pull.error.partner": "this partner is no longer on the warehouse",
   "integr.pull.unknown": "Product not found in the catalog, orders: {list}",
   "integr.remove": "Remove",
   "integr.saveToServer": "Save connection",
   "integr.field.partner": "Partner",
   "integr.ownGoods": "Warehouse's own goods",
+  "integr.partner.new": "+ New partner",
   "integr.securityNote":
     "Keys are stored encrypted on the Uklad server and are not shown again after saving.",
   "integr.setup": "Set up",
