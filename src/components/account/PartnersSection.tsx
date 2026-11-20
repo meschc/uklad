@@ -11,7 +11,7 @@ import { PartnerCard } from "./PartnerCard";
  * продавцам, и это отдельная сущность, а не поле в карточке товара: партнёра
  * заводят один раз, а дальше выбирают из списка.
  */
-export function PartnersSection() {
+export function PartnersSection({ readOnly = false }: { readOnly?: boolean }) {
   const partners = useEditor((s) => s.warehouse.partners);
   // id открытой карточки; "" — панель нового партнёра.
   const [openId, setOpenId] = useState<string | null>(null);
@@ -28,10 +28,12 @@ export function PartnersSection() {
           <Store className="size-3.5 text-muted-foreground" />
           {t("partners.title")} · {list.length}
         </h2>
-        <Button size="sm" onClick={() => setOpenId("")}>
-          <Plus className="size-3.5" />
-          {t("partners.add")}
-        </Button>
+        {!readOnly && (
+          <Button size="sm" onClick={() => setOpenId("")}>
+            <Plus className="size-3.5" />
+            {t("partners.add")}
+          </Button>
+        )}
       </div>
 
       {list.length === 0 ? (

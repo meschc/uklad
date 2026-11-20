@@ -43,6 +43,9 @@ const Profile = lazy(() =>
 const StaffScreen = lazy(() =>
   import("@/components/account/StaffScreen").then((m) => ({ default: m.StaffScreen })),
 );
+const PartnersScreen = lazy(() =>
+  import("@/components/account/PartnersScreen").then((m) => ({ default: m.PartnersScreen })),
+);
 const WarehouseSpecScreen = lazy(() =>
   import("@/components/account/WarehouseSpecScreen").then((m) => ({
     default: m.WarehouseSpecScreen,
@@ -375,6 +378,8 @@ function renderView(view: string) {
       return <OperationsScreen />;
     case "staff":
       return <StaffScreen />;
+    case "partners":
+      return <PartnersScreen />;
     case "analytics":
       return <AnalyticsScreen />;
     case "labels":
