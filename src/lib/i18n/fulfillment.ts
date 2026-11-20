@@ -69,11 +69,8 @@ export const ru = {
   "integr.error.upstream": "Площадка не приняла запрос",
   "integr.check": "Проверить связь",
   "integr.check.running": "Спрашиваем площадку…",
-  "integr.check.ok": "Связь есть, новых заказов: {n}",
-  "integr.pull": "Загрузить заказы",
-  "integr.pull.hint":
-    "Новые заказы сами приходят в «Задания» раз в полторы минуты, даже когда кабинет закрыт. Кнопка спрашивает площадки сразу. Товар узнаём по артикулу или штрихкоду среди товаров этого партнёра.",
-  "integr.pull.ok": "Новых заказов в заданиях: {n}",
+  "integr.pull.auto": "Заказы обновляются сами раз в 1,5 минуты",
+  "integr.rename": "Изменить название",
   "integr.pull.last": "Заказы спрашивали {time}, новых: {n}",
   "integr.pull.lastFailed": "Заказы не загрузились {time}: {text}",
   "integr.pull.error.warehouse":
@@ -84,7 +81,7 @@ export const ru = {
   "integr.saveToServer": "Сохранить подключение",
   "integr.field.partner": "Партнёр",
   "integr.ownGoods": "Свой товар склада",
-  "integr.partner.new": "+ Новый партнёр",
+  "integr.partner.new": "Добавить партнёра",
   "integr.securityNote":
     "Ключи хранятся на сервере Уклада в зашифрованном виде и не показываются после сохранения.",
   "integr.setup": "Настроить",
@@ -503,11 +500,8 @@ export const en: Record<keyof typeof ru, string> = {
   "integr.error.upstream": "The platform rejected the request",
   "integr.check": "Check connection",
   "integr.check.running": "Asking the platform…",
-  "integr.check.ok": "Connected, new orders: {n}",
-  "integr.pull": "Load orders",
-  "integr.pull.hint":
-    "New orders arrive in Tasks every 90 seconds, even when the cabinet is closed. The button asks the platforms right away. Products are matched by SKU or barcode among this partner's goods.",
-  "integr.pull.ok": "New orders added to tasks: {n}",
+  "integr.pull.auto": "Orders update by themselves every 1.5 minutes",
+  "integr.rename": "Rename",
   "integr.pull.last": "Orders checked {time}, new: {n}",
   "integr.pull.lastFailed": "Orders did not load {time}: {text}",
   "integr.pull.error.warehouse":
@@ -518,7 +512,7 @@ export const en: Record<keyof typeof ru, string> = {
   "integr.saveToServer": "Save connection",
   "integr.field.partner": "Partner",
   "integr.ownGoods": "Warehouse's own goods",
-  "integr.partner.new": "+ New partner",
+  "integr.partner.new": "Add partner",
   "integr.securityNote":
     "Keys are stored encrypted on the Uklad server and are not shown again after saving.",
   "integr.setup": "Set up",

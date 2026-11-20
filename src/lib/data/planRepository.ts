@@ -1,6 +1,7 @@
 import { apiRequest, hasCabinetServer } from "./api";
 import { attempt, fail, ok, type Result } from "./result";
 import type { TariffId } from "../types";
+import type { TariffFeatures } from "../tariff";
 
 /** Состояние оплаты, как его считает админка (`admin/plans.js`, `billingState`). */
 type PlanState = "trial" | "paid" | "overdue" | "blocked" | "archived";
@@ -11,6 +12,10 @@ export interface CompanyPlan {
   tariff: string;
   price: number | null;
   state: PlanState;
+  /** Срок вышел и неделя отсрочки прошла: правка кабинета закрыта, столы работают. */
+  readOnly: boolean;
+  /** С какого момента правка закрыта или закроется, если не оплатить. */
+  readOnlyAt: string | null;
   trialUntil: string | null;
   paidUntil: string | null;
   invoice: { number: string; amount: number; dueAt: string } | null;
@@ -34,6 +39,8 @@ export function readPlan(raw: unknown): CompanyPlan | null {
     tariff: p.tariff,
     price: typeof p.price === "number" ? p.price : null,
     state: p.state as PlanState,
+    readOnly: p.readOnly === true,
+    readOnlyAt: str(p.readOnlyAt),
     trialUntil: str(p.trialUntil),
     paidUntil: str(p.paidUntil),
     invoice:
@@ -44,6 +51,37 @@ export function readPlan(raw: unknown): CompanyPlan | null {
   };
 }
 
+/** Тариф и функции для любого сотрудника: сервер сводит тариф и ручные включения. */
+export interface CompanyFeatures {
+  tariff: TariffId;
+  features: TariffFeatures;
+  readOnly: boolean;
+}
+
+/** Ключи функций админки (`admin/plans.js`, FEATURES) → функции кабинета. */
+const FEATURE_KEYS: Record<keyof TariffFeatures, string> = {
+  fullAnalytics: "analytics_full",
+  personalManager: "personal_manager",
+  weeklyEmailBackup: "weekly_backup",
+};
+
+/** Ответ `GET /company/features` → функции; чужая форма или свой тариф — `null`. */
+export function readFeatures(body: Record<string, unknown>): CompanyFeatures | null {
+  const f = body.features as Record<string, unknown> | null | undefined;
+  if (!f || typeof f !== "object" || !isTariffId(body.tariff)) return null;
+  const pay = body.payment as Record<string, unknown> | undefined;
+  const on = (k: keyof TariffFeatures) => f[FEATURE_KEYS[k]] === true;
+  return {
+    tariff: body.tariff,
+    features: {
+      fullAnalytics: on("fullAnalytics"),
+      personalManager: on("personalManager"),
+      weeklyEmailBackup: on("weeklyEmailBackup"),
+    },
+    readOnly: pay?.readOnly === true,
+  };
+}
+
 /**
  * Тариф компании (`GET /company/plan`, право `org.manage`) и просьба другого
  * (`POST /company/plan/request`). Переключить тариф сам кабинет не может:
@@ -51,6 +89,14 @@ export function readPlan(raw: unknown): CompanyPlan | null {
  * браузере.
  */
 export const planRepository = {
+  features: async (): Promise<Result<CompanyFeatures | null>> => {
+    if (!hasCabinetServer) return ok(null);
+    const res = await attempt(() => apiRequest("GET", "/company/features"), "plan.err.network");
+    if (!res.ok) return res;
+    if (res.data.status !== 200) return fail("plan.err.network");
+    return ok(readFeatures(res.data.body));
+  },
+
   get: async (): Promise<Result<CompanyPlan | null>> => {
     if (!hasCabinetServer) return ok(null);
     const res = await attempt(() => apiRequest("GET", "/company/plan"), "plan.err.network");
