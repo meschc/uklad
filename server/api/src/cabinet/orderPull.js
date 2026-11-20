@@ -319,7 +319,10 @@ function createOrderPull({ auth, log, secretKey, fetchImpl = fetch, now = () => 
     for (const r of archived.rows) known.add(r.x);
     const plan = planImport(orders, productsFor(full.products, view.warehouse, partnerId), known);
     if (plan.items.length) {
-      const next = { ...view, requests: [...newRequests(plan, source, at), ...list(view.requests)] };
+      const next = {
+        ...view,
+        requests: [...newRequests(plan, source, at), ...list(view.requests)],
+      };
       const split = splitCabinet(restore(full, next, ref));
       const payload = JSON.stringify(split.doc);
       if (Buffer.byteLength(payload) > MAX_SNAPSHOT_BYTES) return { error: "too_large" };
