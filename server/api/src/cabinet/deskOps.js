@@ -532,6 +532,8 @@ async function runDeskOps(c, deskId, ops, who, now, deps = {}) {
     );
     version = upd.rows[0].version;
     if (split.items && deps.storeRecords) await deps.storeRecords(c, split.items, split.slots);
+    // Склады — строками (миграция 051): `split` вынул их из документа.
+    if (split.warehouses && deps.storeWarehouses) await deps.storeWarehouses(c, split.warehouses);
     // Тару разместили, сняли или пересчитали — занятость на сегодня (037).
     if (deps.recordStorage) await deps.recordStorage(c, applied.data);
     if (packing && deps.recordMoves) {
