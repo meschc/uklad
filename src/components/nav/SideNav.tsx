@@ -27,6 +27,7 @@ import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { ReportProblemDialog } from "@/components/support/ReportProblemDialog";
 import { UkladLockup } from "@/components/brand/UkladLockup";
+import { APP_VERSION } from "@/lib/version";
 
 /** Свёрнуто ли меню — удобство одного человека, поэтому в localStorage, а не в сторе. */
 const COLLAPSED_KEY = "uklad-nav-collapsed";
@@ -355,6 +356,11 @@ export function SideNav({
             badge={0}
             onClick={toggleCollapsed}
           />
+        )}
+        {!collapsed && (
+          <p className="px-3 pt-1 text-xs text-muted-foreground">
+            {t("nav.version", { v: APP_VERSION })}
+          </p>
         )}
       </div>
       {reporting && <ReportProblemDialog onClose={() => setReporting(false)} />}
