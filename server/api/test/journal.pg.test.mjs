@@ -366,6 +366,14 @@ test("тип скана и «пик за товар» — правило баз�
   // Старые строки без склада получают его по привязке устройства — тот же
   // кусок миграции, что прошёл на сервере.
   await db.root.query(`UPDATE uklad.desk_ops SET warehouse_ref = NULL WHERE org_id = $1`, [c.org]);
+  // Миграция 044 шла, когда склады лежали в снимке (до 051): возвращаем их туда.
+  await db.root.query(
+    `UPDATE uklad.cabinet_snapshots SET data = data || jsonb_build_object('warehouse',
+       (SELECT card || jsonb_build_object('id', ref) FROM uklad.warehouses
+        WHERE org_id = $1 AND position = 0 AND card IS NOT NULL AND deleted_at IS NULL))
+     WHERE org_id = $1`,
+    [c.org],
+  );
   const sql = readFileSync(
     new URL("../../db/migrations/044_activity_journal.sql", import.meta.url),
     "utf8",
