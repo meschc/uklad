@@ -387,6 +387,27 @@ test("живой: сервер сам заводит заказы площадк
   const now = await post("/api/connectors/pull", { ...a, body: {} });
   assert.equal(now.status, 200, JSON.stringify(now.json));
   assert.equal(now.json.created, 0);
+  // «Проверить связь» — одно подключение, и только своей компании.
+  const one = await post("/api/connectors/pull", { ...a, body: { id: save.json.id } });
+  assert.equal(one.status, 200, JSON.stringify(one.json));
+  const foreign = await post("/api/connectors/pull", { ...a, body: { id: saveB.json.id } });
+  assert.equal(foreign.status, 404);
+
+  // Название меняется, ключ остаётся; чужое подключение не переименовать.
+  const renamed = await post("/api/connectors/rename", {
+    ...a,
+    body: { id: save.json.id, label: "Иванов, Ozon" },
+  });
+  assert.equal(renamed.status, 200, JSON.stringify(renamed.json));
+  const relisted = (await call("GET", "/api/connectors", a)).json.connections[0];
+  assert.equal(relisted.label, "Иванов, Ozon");
+  const hijack = await post("/api/connectors/rename", {
+    ...a,
+    body: { id: saveB.json.id, label: "чужое" },
+  });
+  assert.equal(hijack.status, 404);
+  const bList = (await call("GET", "/api/connectors", b)).json.connections[0];
+  assert.equal(bList.label, "Свой");
   const again = (await call("GET", "/api/cabinet/snapshot", a)).json.snapshot;
   assert.equal(again.data.requests.filter((r) => r.externalId === "111").length, 1);
 
