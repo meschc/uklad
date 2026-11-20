@@ -57,7 +57,8 @@ function plan(row, target, now, next, label) {
   const skip = (why) => problems.push(`${row.id}: ${label} — ${why}`);
   if (!target) return skip("в коде нет пары, правка не применена");
   if (!same(target.text, now)) return skip(`в коде уже другой текст («${target.text}»), пропущено`);
-  if (placeholders(now) !== placeholders(next)) return skip(`подстановки {…} не совпадают («${next}»), пропущено`);
+  if (placeholders(now) !== placeholders(next))
+    return skip(`подстановки {…} не совпадают («${next}»), пропущено`);
   const fileText = fs.readFileSync(path.join(ROOT, row.file), "utf8");
   let out;
   if (row.kind === "jsx") {
@@ -122,12 +123,17 @@ if (!dry) {
     touched.push(abs);
   }
   if (touched.length) {
-    execFileSync("npx", ["prettier", "--write", "--log-level", "warn", ...touched], { stdio: "inherit" });
+    execFileSync("npx", ["prettier", "--write", "--log-level", "warn", ...touched], {
+      stdio: "inherit",
+    });
   }
 }
 
-const report = (title, list) => list.length && console.log(`\n${title} (${list.length}):\n  ${list.join("\n  ")}`);
-console.log(`${dry ? "Проверка без записи" : "Применено"}: ${applied} правок в ${edits.size} файлах.`);
+const report = (title, list) =>
+  list.length && console.log(`\n${title} (${list.length}):\n  ${list.join("\n  ")}`);
+console.log(
+  `${dry ? "Проверка без записи" : "Применено"}: ${applied} правок в ${edits.size} файлах.`,
+);
 report("Не применено", problems);
 report("Русский поменялся, английский — нет (проверить перевод)", enStale);
 report("Комментарии", comments);

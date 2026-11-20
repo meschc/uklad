@@ -4,11 +4,23 @@
  */
 
 /** Колонки листа. Применение ищет их по названию, а не по номеру. */
-export const HEAD = ["Раздел", "Сейчас", "Новый текст", "Комментарий", "English", "Новый English", "Где", "ID"];
+export const HEAD = [
+  "Раздел",
+  "Сейчас",
+  "Новый текст",
+  "Комментарий",
+  "English",
+  "Новый English",
+  "Где",
+  "ID",
+];
 
 /** Листы и какие строки на них. */
 export const SHEETS = [
-  ["Кабинет", (r) => r.sheet === "cabinet" || (r.sheet === "raw" && !r.file.startsWith("src/site/"))],
+  [
+    "Кабинет",
+    (r) => r.sheet === "cabinet" || (r.sheet === "raw" && !r.file.startsWith("src/site/")),
+  ],
   ["Сайт", (r) => r.sheet === "site" || (r.sheet === "raw" && r.file.startsWith("src/site/"))],
 ];
 

@@ -41,7 +41,13 @@ const DICT_SECTIONS = {
  * Не интерфейс: тесты, посев демо (выдуманные товары и люди), сам словарь и
  * помощник пар сайта — их русский текст в таблицу правки не идёт.
  */
-const SKIP = [/__tests__\//, /\.test\.tsx?$/, /^src\/lib\/i18n\//, /^src\/lib\/store\/seed/, /^src\/site\/lib\/copy\.ts$/];
+const SKIP = [
+  /__tests__\//,
+  /\.test\.tsx?$/,
+  /^src\/lib\/i18n\//,
+  /^src\/lib\/store\/seed/,
+  /^src\/site\/lib\/copy\.ts$/,
+];
 
 function walk(dir, out = []) {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -148,7 +154,9 @@ function sectionOf(rel) {
     .replace(/^src\/(site\/)?/, "")
     .replace(/\.tsx?$/, "")
     .split("/")
-    .filter((p) => !(site && (p === "components" || p === "data" || p === "lib")) && p !== "components");
+    .filter(
+      (p) => !(site && (p === "components" || p === "data" || p === "lib")) && p !== "components",
+    );
   return tail.join(" / ");
 }
 
@@ -156,7 +164,8 @@ function sectionOf(rel) {
 function isImportOrType(node) {
   const p = node.parent;
   if (!p) return false;
-  if (ts.isImportDeclaration(p) || ts.isExportDeclaration(p) || ts.isLiteralTypeNode(p)) return true;
+  if (ts.isImportDeclaration(p) || ts.isExportDeclaration(p) || ts.isLiteralTypeNode(p))
+    return true;
   const callee = ts.isCallExpression(p) ? p.expression : null;
   return (
     !!callee &&
@@ -188,7 +197,14 @@ function collectSource(rows) {
       ) {
         const [a, b] = node.arguments;
         const only = node.expression.text === "ru";
-        push({ sheet, kind: "copy", section, ru: lit(sf, a), en: !only && isStr(b) ? lit(sf, b) : null, ruOnly: only });
+        push({
+          sheet,
+          kind: "copy",
+          section,
+          ru: lit(sf, a),
+          en: !only && isStr(b) ? lit(sf, b) : null,
+          ruOnly: only,
+        });
         taken.add(a);
         if (b) taken.add(b);
       }
@@ -202,7 +218,13 @@ function collectSource(rows) {
           const enEls = enArr && ts.isArrayLiteralExpression(enArr) ? enArr.elements : [];
           ruArr.elements.forEach((el, i) => {
             const enEl = i < 2 ? enEls[i] : null;
-            push({ sheet, kind: "plural", section: `${section} · формы числа`, ru: lit(sf, el), en: isStr(enEl) ? lit(sf, enEl) : null });
+            push({
+              sheet,
+              kind: "plural",
+              section: `${section} · формы числа`,
+              ru: lit(sf, el),
+              en: isStr(enEl) ? lit(sf, enEl) : null,
+            });
             taken.add(el);
           });
           enEls.forEach((el) => taken.add(el));
@@ -214,10 +236,23 @@ function collectSource(rows) {
         } else if (ts.isJsxText(node) && CYR.test(node.text) && node.text.trim()) {
           const start = node.getStart(sf);
           const line = sf.getLineAndCharacterOfPosition(start).line + 1;
-          push({ sheet: "raw", kind: "jsx", section, ru: { text: node.text.trim(), start, end: node.getEnd(), line, quote: "" }, en: null });
+          push({
+            sheet: "raw",
+            kind: "jsx",
+            section,
+            ru: { text: node.text.trim(), start, end: node.getEnd(), line, quote: "" },
+            en: null,
+          });
         } else if (ts.isTemplateExpression(node) && CYR.test(node.getText(sf))) {
           const l = lit(sf, node);
-          push({ sheet: "raw", kind: "template", section, ru: { ...l, text: node.getText(sf).slice(1, -1) }, en: null, readOnly: true });
+          push({
+            sheet: "raw",
+            kind: "template",
+            section,
+            ru: { ...l, text: node.getText(sf).slice(1, -1) },
+            en: null,
+            readOnly: true,
+          });
           return; // части шаблона уже в этой строке
         }
       }
