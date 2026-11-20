@@ -3,6 +3,7 @@ import { Layers, PackageCheck, Printer } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { workstationRepository } from "@/lib/data";
 import { classifySortScan, parseSortCode, sortPoints, unsorted } from "@/lib/sorting";
+import { findUnlabeled, type UnlabeledScan } from "@/lib/unlabeled";
 import { beepNotes } from "@/lib/beep";
 import { holdSignal, signal } from "@/lib/scanSignal";
 import { destinationMark } from "@/lib/destinationMark";
@@ -22,6 +23,7 @@ import { ScanBanner, type BannerTone } from "./ScanBanner";
 import { useDemoHints } from "./useDemoHints";
 import { DestinationChip } from "./DestinationChip";
 import { PrintableLabel } from "./PrintableLabel";
+import { UnlabeledPanel } from "./UnlabeledPanel";
 import { CodeTail, CodeText } from "@/components/fulfillment/CodeTail";
 
 type PrintItem = { code: string; lines: string[] };
@@ -41,6 +43,7 @@ export function SortStation() {
   const printer = useLabelPrinter();
   const outbound = useEditor((s) => s.outboundBoxes) ?? [];
   const requests = useEditor((s) => s.requests);
+  const products = useEditor((s) => s.products);
   const seniorOf = useSeniorBadge();
   const [pending, setPending] = useState<{
     code: string;
@@ -50,6 +53,7 @@ export function SortStation() {
   const [locked, setLocked] = useState<string | null>(null);
   const [closing, setClosing] = useState<string | null>(null);
   const [print, setPrint] = useState<PrintItem[] | null>(null);
+  const [lost, setLost] = useState<UnlabeledScan | null>(null);
   const [banner, setBanner] = useState<{ tone: BannerTone; text: string }>({
     tone: "idle",
     text: "",
@@ -94,9 +98,15 @@ export function SortStation() {
       return show("ok", t("ws.sort.unlocked", { name: senior.name }));
     }
     const res = classifySortScan(outbound, requests, pending?.code ?? null, raw);
+    if (res.kind !== "unknown") setLost(null);
     switch (res.kind) {
-      case "unknown":
-        return show("error", t("ws.sort.unknown", { code: res.code }));
+      case "unknown": {
+        // Штрихкод товара вместо посылки: этикетки на нём нет — ищем, чью он потерял.
+        const item = pending ? null : findUnlabeled(outbound, products, raw);
+        if (!item) return show("error", t("ws.sort.unknown", { code: res.code }));
+        setLost(item);
+        return show("warn", t("ws.sort.unlabeled", { name: item.product.name }));
+      }
       case "no_destination":
         return show("error", t("ws.sort.noDestination", { code: res.code }));
       case "dup":
@@ -165,6 +175,8 @@ export function SortStation() {
           <CodeText text={banner.text} />
         )}
       </ScanBanner>
+
+      {lost && <UnlabeledPanel scan={lost} onDone={() => setLost(null)} />}
 
       {pending && (
         <div className="flex flex-col items-center gap-3 py-4 text-center">

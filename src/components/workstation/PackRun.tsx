@@ -302,7 +302,15 @@ export function PackRun({
                 </p>
               )}
               <div className="mt-auto flex flex-col items-start gap-3">
-                <LabelBlock code={unit.labelCode} title={t("ws.run.labelPrinted")} />
+                <LabelBlock
+                  code={unit.labelCode}
+                  title={t("ws.run.labelPrinted")}
+                  lines={[
+                    product.name,
+                    product.sku,
+                    ...(order ? [t("ws.run.forOrder", { id: shortId(order.id) })] : []),
+                  ]}
+                />
                 {/* Брак — средняя по опасности: жёлтая, красная оставлена для необратимого. */}
                 <Button
                   className="bg-warning-fill text-warning-foreground shadow-sm hover:bg-warning-fill/90"
@@ -320,7 +328,16 @@ export function PackRun({
               {t("ws.run.orderLabel", { id: shortId(orderLabel.orderId) })}
             </p>
             <p className="text-sm text-muted-foreground">{t("ws.run.orderLabelHint")}</p>
-            <LabelBlock code={orderLabel.labelCode} title={t("ws.run.labelPrinted")} />
+            <LabelBlock
+              code={orderLabel.labelCode}
+              title={t("ws.run.labelPrinted")}
+              lines={[
+                t("ws.run.forOrder", { id: shortId(orderLabel.orderId) }),
+                t("ws.run.labelUnits", {
+                  n: orders.find((o) => o.id === orderLabel.orderId)?.units ?? 0,
+                }),
+              ]}
+            />
           </div>
         ) : (
           <div className="flex min-h-40 flex-col items-center justify-center gap-2 text-center">
@@ -540,12 +557,24 @@ function feedbackFor(r: ItemScan, nameOf: (id: string) => string): Feedback {
 }
 
 /**
+ * Строка этикетки: название с площадки бывает в сотню знаков, а строка длиннее
+ * 18 знаков на ленте 58×40 мельчит весь текст до нечитаемого, и раскладка его
+ * прячет (`planLabel`). Начала хватает, чтобы упаковщик увидел, что этикетка
+ * не от этого товара (сдвиг этикеток — `lib/unlabeled.ts`).
+ */
+const LABEL_LINE_MAX = 18;
+function clip(name: string): string {
+  const s = name.trim().replace(/\s+/g, " ");
+  return s.length > LABEL_LINE_MAX ? `${s.slice(0, LABEL_LINE_MAX - 1).trimEnd()}…` : s;
+}
+
+/**
  * Этикетка, которая «вышла из принтера». Печатается сама, как только появилась
  * (если стол не переключили на печать по кнопке): в Chrome с тихой печатью
  * лента выходит без окна, в обычном браузере окно открывается само. Кнопка
  * остаётся — перепечатать, если этикетка не вышла или помялась.
  */
-function LabelBlock({ code, title }: { code: string; title: string }) {
+function LabelBlock({ code, title, lines }: { code: string; title: string; lines: string[] }) {
   const t = useT();
   const printer = useLabelPrinter();
   const mode = usePrintMode();
@@ -557,7 +586,7 @@ function LabelBlock({ code, title }: { code: string; title: string }) {
   }, [code]);
   return (
     <div className="flex w-full flex-wrap items-center gap-x-3 gap-y-1 py-1 text-sm">
-      <PrintableLabel code={code} lines={[]} printer={printer} />
+      <PrintableLabel code={code} lines={lines.map(clip)} printer={printer} />
       <Tag className="size-4 shrink-0 text-primary" />
       <span className="font-medium text-primary">{title}</span>
       <CodeTail code={code} className="text-xs text-muted-foreground" />

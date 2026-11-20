@@ -146,6 +146,16 @@ export const ru = {
   "ws.sort.locked":
     "{code} уже лежит в месте сортировки. Проверьте, не ушла ли похожая посылка не туда, и позовите старшего — продолжить можно его бейджем",
   "ws.sort.unlocked": "{name} разрешил продолжить сортировку",
+  "ws.sort.unlabeled": "Это товар, а не посылка: {name}. Ниже — чью этикетку он потерял",
+  "ws.sort.unlabeledTitle": "Без этикетки: {name}",
+  "ws.sort.unlabeledHint":
+    "Этикетку этого товара, скорее всего, наклеили на другой. Найдите посылки ниже, вскройте и сверьте товар с этикеткой. Отложите их вместе с этим товаром и позовите старшего.",
+  "ws.sort.unlabeledSorted": "уже в {point}: внутри, скорее всего, другой товар",
+  "ws.sort.unlabeledWaiting": "ещё не разложена",
+  "ws.sort.unlabeledAfter": "Упакованы следом, проверьте и их:",
+  "ws.sort.unlabeledNone":
+    "Открытых посылок с этим товаром нет. Отложите товар и позовите старшего.",
+  "ws.sort.unlabeledDone": "Понятно",
   "ws.sort.failed": "Не удалось записать. Сканируйте QR места ещё раз",
   "ws.sort.drop": "Отложить посылку",
   "ws.sort.points": "Места сортировки",
@@ -493,6 +503,7 @@ export const ru = {
   "ws.run.defect": "Брак",
   "ws.run.orderLabel": "Заказ {id} собран полностью",
   "ws.run.orderLabelHint": "Закройте упаковку заказа, наклейте этикетку заказа и отсканируйте её.",
+  "ws.run.labelUnits": "{n} шт.",
   "ws.run.not_in_tote":
     "{name} — этого товара не должно быть в таре. Отнесите его старшему смены. По учёту товар числится в таре {box}.",
   "ws.run.not_in_toteNowhere":
@@ -756,6 +767,15 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.sort.locked":
     "{code} is already in a sort point. Check that a similar parcel did not go the wrong way and call a senior: their badge lets you continue",
   "ws.sort.unlocked": "{name} allowed sorting to continue",
+  "ws.sort.unlabeled": "This is an item, not a parcel: {name}. Below is whose label it lost",
+  "ws.sort.unlabeledTitle": "No label: {name}",
+  "ws.sort.unlabeledHint":
+    "This item's label was most likely stuck on another one. Find the parcels below, open them and check the item against the label. Put them aside with this item and call a senior.",
+  "ws.sort.unlabeledSorted": "already in {point}: most likely a different item inside",
+  "ws.sort.unlabeledWaiting": "not sorted yet",
+  "ws.sort.unlabeledAfter": "Packed right after, check them too:",
+  "ws.sort.unlabeledNone": "No open parcels with this item. Put it aside and call a senior.",
+  "ws.sort.unlabeledDone": "Got it",
   "ws.sort.failed": "Could not save. Scan the sort point QR again",
   "ws.sort.drop": "Put the parcel aside",
   "ws.sort.points": "Sort points",
@@ -1106,6 +1126,7 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.run.defect": "Defect",
   "ws.run.orderLabel": "Order {id} is complete",
   "ws.run.orderLabelHint": "Close the order's package, stick the order label on and scan it.",
+  "ws.run.labelUnits": "{n} pcs",
   "ws.run.not_in_tote":
     "{name} — should not be in this tote. Take it to the shift lead. By the records it belongs to tote {box}.",
   "ws.run.not_in_toteNowhere":
