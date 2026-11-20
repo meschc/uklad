@@ -10,7 +10,12 @@ import type {
   WorkstationKind,
 } from "../types";
 import { onServer, serverBadges, type BadgeServer } from "./badgeRepository";
-import { serverDesks, type DeskServer, type DeviceJournalData } from "./deskServer";
+import {
+  serverDesks,
+  type BindConfirm,
+  type DeskServer,
+  type DeviceJournalData,
+} from "./deskServer";
 import { isStaffEvent } from "./guards";
 import { deskOps, type OpQueue } from "./opQueue";
 import { readList, storePort, type StorePort } from "./repository";
@@ -35,7 +40,11 @@ export interface WorkstationRepository {
    * Завести устройство и привязать к нему этот браузер. Пустое имя — отказ
    * `ws.device.nameEmpty`: на экране «Устройства» столы различают по имени.
    */
-  addDevice: (name: string, station: WorkstationKind) => Promise<Result<Device>>;
+  addDevice: (
+    name: string,
+    station: WorkstationKind,
+    confirm?: BindConfirm,
+  ) => Promise<Result<Device>>;
   revokeDevice: (id: string) => Promise<Result<void>>;
   /** Журнал устройства: кто и что делал за ним, новые сверху. */
   deviceJournal: (id: string) => Promise<Result<DeviceJournalData>>;
@@ -221,13 +230,19 @@ export function createWorkstationRepository(
       queueUndo(before, at);
       return ok(undefined);
     },
-    addDevice: async (name, station) => {
+    addDevice: async (name, station, confirm) => {
       if (!name.trim()) return fail("ws.device.nameEmpty");
+      if (onServer(port)) {
+        // Сначала — что руководитель подтверждён: иначе каждый отказ оставлял
+        // бы у себя заведённое и тут же погашенное устройство.
+        const allowed = await desks.checkBind(confirm);
+        if (!allowed.ok) return allowed;
+      }
       const made = await attempt(() => port.get().addDevice(name, station));
       if (!made.ok || !onServer(port)) return made;
       // На сервере компьютер становится столом по-настоящему: вход
       // руководителя здесь гаснет, остаётся пропуск стола с узким правом.
-      const opened = await desks.open(made.data.id, made.data.name);
+      const opened = await desks.open(made.data.id, made.data.name, confirm);
       if (opened.ok) return made;
       port.get().revokeDevice(made.data.id);
       return opened;
@@ -295,7 +310,10 @@ export function createWorkstationRepository(
       if (!res.data) return fail("ws.device.notManagerAccount");
       const s = port.get();
       if (s.thisDeviceId) s.revokeDevice(s.thisDeviceId);
-      s.sessionLost();
+      // Сервер вместе с отвязкой открыл вход руководителя (почта и пароль
+      // только что введены): экран входа узнает куку и сразу пустит в
+      // кабинет, второго такого же входа нет (Кирилл 20.11).
+      s.sessionLost(email.trim().toLowerCase());
       return ok(undefined);
     },
     packStart: async (source, target) => {
