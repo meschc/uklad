@@ -3,17 +3,13 @@ import { useEffect, useMemo, useState } from "react";
 import {
   FileText,
   CalendarClock,
-  CalendarDays,
   ClipboardList,
-  List,
-  ListTodo,
   MapPin,
   Play,
   Plus,
   Printer,
   ScanLine,
   Truck,
-  Wrench,
   X,
 } from "lucide-react";
 import { useEditor } from "@/lib/store";
@@ -71,9 +67,9 @@ export function TasksScreen() {
       onChange={setSection}
       ariaLabel={t("tasks.title")}
       options={[
-        { value: "queue" as const, label: t("tasks.section.queue"), icon: <ListTodo /> },
-        { value: "requests" as const, label: t("tasks.section.requests"), icon: <ClipboardList /> },
-        { value: "work" as const, label: t("tasks.section.work"), icon: <Wrench /> },
+        { value: "queue" as const, label: t("tasks.section.queue") },
+        { value: "requests" as const, label: t("tasks.section.requests") },
+        { value: "work" as const, label: t("tasks.section.work") },
       ]}
     />
   );
@@ -216,11 +212,10 @@ function RequestsTasks({ sections }: { sections: React.ReactNode }) {
         }}
         ariaLabel={t("tasks.viewMode")}
         options={[
-          { value: "list" as const, label: t("tasks.view.list"), icon: <List /> },
+          { value: "list" as const, label: t("tasks.view.list") },
           {
             value: "calendar" as const,
             label: t("tasks.view.calendar"),
-            icon: <CalendarDays />,
           },
         ]}
       />

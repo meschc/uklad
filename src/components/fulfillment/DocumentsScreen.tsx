@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ClipboardCheck, ClipboardList, PackageCheck, Pencil, Printer, Truck } from "lucide-react";
+import { ClipboardList, Pencil, Printer } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { useWithArchive } from "@/lib/store/archive";
 import { buildPickDoc, buildReceivingDoc, type DocModel } from "@/lib/documents";
@@ -214,17 +214,15 @@ export function DocumentsScreen() {
             setAct(false);
           }}
           options={[
-            { value: "pick" as Tab, label: t("doc.kind.pickShort"), icon: <ClipboardList /> },
-            { value: "shipment" as Tab, label: t("doc.kind.shipmentShort"), icon: <Truck /> },
+            { value: "pick" as Tab, label: t("doc.kind.pickShort") },
+            { value: "shipment" as Tab, label: t("doc.kind.shipmentShort") },
             {
               value: "receiving" as Tab,
               label: t("doc.kind.receivingShort"),
-              icon: <PackageCheck />,
             },
             {
               value: "inventory" as Tab,
               label: t("doc.kind.inventoryShort"),
-              icon: <ClipboardCheck />,
             },
           ]}
         />

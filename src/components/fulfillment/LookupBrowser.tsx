@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Boxes, Layers, Package, PackageCheck, Search, Truck } from "lucide-react";
+import { Search } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { useT } from "@/lib/i18n";
 import { Segmented } from "@/components/ui/segmented";
@@ -96,11 +96,11 @@ export function LookupBrowser({ onCode }: { onCode: (code: string) => void }) {
           }}
           ariaLabel={t("lookup.browse.title")}
           options={[
-            { value: "products", label: t("lookup.browse.products"), icon: <Package /> },
-            { value: "pallets", label: t("lookup.browse.pallets"), icon: <Layers /> },
-            { value: "boxes", label: t("lookup.browse.boxes"), icon: <Boxes /> },
-            { value: "receiving", label: t("lookup.browse.receiving"), icon: <PackageCheck /> },
-            { value: "shipments", label: t("lookup.browse.shipments"), icon: <Truck /> },
+            { value: "products", label: t("lookup.browse.products") },
+            { value: "pallets", label: t("lookup.browse.pallets") },
+            { value: "boxes", label: t("lookup.browse.boxes") },
+            { value: "receiving", label: t("lookup.browse.receiving") },
+            { value: "shipments", label: t("lookup.browse.shipments") },
           ]}
         />
         <div className="relative min-w-48 flex-1">

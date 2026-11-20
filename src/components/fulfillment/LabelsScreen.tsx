@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Check, Eye, Layers, Loader2, Package, Printer, Search, Tag } from "lucide-react";
+import { Check, Eye, Loader2, Printer, Search } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { fulfillmentRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
@@ -290,13 +290,12 @@ export function LabelsScreen() {
                 setBatch([]);
               }}
               options={[
-                { value: "box" as Mode, label: t("labels.kind.box"), icon: <Package /> },
+                { value: "box" as Mode, label: t("labels.kind.box") },
                 {
                   value: "pallet" as Mode,
                   label: t("labels.kind.pallet"),
-                  icon: <Layers />,
                 },
-                { value: "product" as Mode, label: t("labels.kind.product"), icon: <Tag /> },
+                { value: "product" as Mode, label: t("labels.kind.product") },
               ]}
             />
 
