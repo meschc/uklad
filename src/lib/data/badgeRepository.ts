@@ -65,6 +65,8 @@ export const serverBadges: BadgeServer = {
     if (status === 403) return fail("staff.badge.forbidden");
     // Роль у стола не назначена и назначить её выпускающий не вправе.
     if (status === 409 && body.error === "no_role") return fail("ws.badgeNoRoleIssue");
+    if (status === 409 && body.error === "plan_limit") return fail("plan.err.staffLimit");
+    if (status === 402) return fail("plan.err.unpaid");
     return fail("data.failed");
   },
   revoke: async (staffId) => {

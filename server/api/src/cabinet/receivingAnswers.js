@@ -16,6 +16,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { loadCabinet } = require("./snapshot");
 const { placeRef, focusWarehouse } = require("./viewerPlace");
+const { withWarehouses } = require("./warehouses");
 const { forSeller } = require("./seller");
 const { GOODS_DECIDE } = require("./deskPerms");
 
@@ -83,9 +84,12 @@ function createReceivingAnswers({ auth, send, log, now = () => Date.now() }) {
   const { withSession, readJson } = auth;
 
   const place = async (c) => (await c.query(`SELECT * FROM auth.actor_place()`)).rows[0] ?? null;
-  const snapshotDoc = async (c) =>
-    (await c.query(`SELECT data FROM uklad.cabinet_snapshots WHERE org_id = uklad.current_org()`))
-      .rows[0]?.data ?? null;
+  const snapshotDoc = async (c) => {
+    const { rows } = await c.query(
+      `SELECT data FROM uklad.cabinet_snapshots WHERE org_id = uklad.current_org()`,
+    );
+    return rows[0] ? withWarehouses(c, rows[0].data) : null;
+  };
   const sellerOf = (p) => (typeof p?.partner_ref === "string" ? p.partner_ref : null);
 
   async function list(req, res) {

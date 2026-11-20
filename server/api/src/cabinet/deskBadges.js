@@ -19,6 +19,7 @@
 /* global require, module */
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { createHash, randomBytes } = require("node:crypto");
+const { PlanLimitError } = require("./planLimits");
 const { createRateLimit } = require("../rateLimit");
 const { loadDeskPerms } = require("./deskPerms");
 
@@ -100,7 +101,7 @@ function answerCheck(res, send, who) {
     : send(res, 404, { ok: false, error: "bad_badge" });
 }
 
-function createDeskBadges({ auth, send, log }) {
+function createDeskBadges({ auth, send, log, limits = null }) {
   const { withSession, readJson } = auth;
   const checks = createRateLimit({
     capacity: CHECKS_PER_MINUTE,
@@ -129,6 +130,9 @@ function createDeskBadges({ auth, send, log }) {
       // Без роли стол не примет ни одной операции (Кирилл 13.11): бейдж без
       // роли выдаёт её сам — «Кладовщик», вся работа без решений по товару.
       if (!(await ensureDeskRole(c, ctx, staffRef))) return NO_ROLE;
+      // Лимит сотрудников тарифа (planLimits): новый человек сверх лимита — отказ,
+      // перевыпуск бейджа тому же сотруднику — нет.
+      const room = limits ? await limits.guard(c, ctx.orgId, "staff") : null;
       // Сначала гасим старый, потом выпускаем новый: индекс «один живой»
       // не даст двум одновременным выпускам оставить оба бейджа.
       await c.query(
@@ -141,8 +145,15 @@ function createDeskBadges({ auth, send, log }) {
          VALUES (uklad.current_org(), $1, $2, $3)`,
         [staffRef, sha256(secret), ctx.memberId],
       );
+      await room?.check();
       return true;
+    }).catch((err) => {
+      if (err instanceof PlanLimitError) return err;
+      throw err;
     });
+    if (out instanceof PlanLimitError) {
+      return send(res, 409, { ok: false, error: "plan_limit", limit: out.key, max: out.limit });
+    }
     // Код в ответе один раз: в базе его нет, только хэш.
     return reply(res, out, () => send(res, 200, { ok: true, code: BADGE_PREFIX + secret }));
   }

@@ -67,6 +67,7 @@ function outcome({ status, body }: Reply): Result<SaveOutcome> {
       ...(body.error === "records_mass_delete" ? { rejected: "records" as const } : {}),
     });
   if (status === 413) return fail("sync.err.tooBig");
+  if (status === 402) return fail("plan.err.unpaid");
   if (status === 400) return fail("sync.err.badData");
   if (status === 403) return fail("sync.err.forbidden");
   return fail("sync.err.network");
