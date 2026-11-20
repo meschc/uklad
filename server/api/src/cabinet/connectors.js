@@ -20,8 +20,11 @@
  *
  * Маршруты:
  *   GET  /api/connectors                 — подключения компании, без ключей
- *   POST /api/connectors/save            — { system, label, clientId?, partnerId?, token } → { id }
+ *   POST /api/connectors/save            — { system, label, clientId?, partnerId?, warehouseId?, token } → { id }
  *     partnerId — партнёр-продавец, чей это магазин; нет — свой товар склада.
+ *     warehouseId — склад, на который заказы этого магазина приходят заявками.
+ *   POST /api/connectors/pull            — подкачать заказы всех подключений сейчас
+ *     (`orderPull.js`; сам сервер делает это раз в полторы минуты и без кнопки)
  *   POST /api/connectors/delete          — { id }
  *   POST /api/connectors/<system>/proxy  — `ConnectorRequest` → { ok, data } (JSON площадки)
  */
@@ -135,11 +138,71 @@ async function readLimited(res) {
   return buf.length > MAX_RESPONSE ? null : buf;
 }
 
-function createConnectors({ auth, send, log, secretKey, fetchImpl = fetch }) {
+/**
+ * Один запрос к площадке от имени подключения: адрес и заголовки ключа — из
+ * `SYSTEMS`, ответ — с пределом размера и времени. Ключ не попадает ни в
+ * ответ, ни в журнал. Возвращает `{ ok: true, data }` (бинарное — в
+ * `data.file` base64) или `{ ok: false, error, status?, detail? }`.
+ * Путь должен быть уже проверен по белому списку (`allowed`).
+ */
+async function askPlatform({ system, key, params, log, fetchImpl }, { method, path, qs, body }) {
+  const s = SYSTEMS[system];
+  const full = s.path ? s.path(path, params) : path;
+  try {
+    const upstream = await fetchImpl(`${s.base}${full}${qs ?? ""}`, {
+      method,
+      headers: {
+        Accept: "application/json, application/pdf",
+        ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+        ...s.headers(key, params),
+      },
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+      redirect: "error",
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    const buf = await readLimited(upstream);
+    if (!buf) return { ok: false, error: "too_large" };
+    // Отказ площадки — с причиной, а не её 401: иначе кабинет решил бы, что
+    // кончилась сессия Уклада, и выкинул человека на вход.
+    if (!upstream.ok) {
+      const st = upstream.status;
+      const error = st === 401 || st === 403 ? "rejected" : st === 429 ? "rate_limit" : "upstream";
+      // Текст отказа площадки (у Ozon `message`, у WB `title`/`detail`) — без
+      // заголовков и ключа: по нему человек на экране поймёт, что не так.
+      let detail = "";
+      try {
+        const j = JSON.parse(buf.toString("utf8"));
+        const m = j?.message ?? j?.detail ?? j?.title ?? j?.error?.message ?? j?.errorText;
+        if (typeof m === "string") detail = m.slice(0, 200);
+      } catch {
+        // не JSON — хватит кода
+      }
+      log.error("[uklad] площадка отказала:", system, method, path, st, detail);
+      return { ok: false, error, status: st, detail };
+    }
+    const type = upstream.headers.get("content-type") ?? "";
+    // Бинарное (PDF этикеток) — в поле `file`, как ждут адаптеры.
+    if (buf.length && !type.includes("json")) {
+      return { ok: true, data: { file: buf.toString("base64") } };
+    }
+    try {
+      return { ok: true, data: buf.length ? JSON.parse(buf.toString("utf8")) : null };
+    } catch {
+      return { ok: false, error: "upstream" };
+    }
+  } catch (err) {
+    log.error("[uklad] подключение:", system, err.name);
+    return { ok: false, error: "upstream" };
+  }
+}
+
+function createConnectors({ auth, send, log, secretKey, fetchImpl = fetch, pull = null }) {
   const { withSession, readJson } = auth;
   const sealer = createSealer(secretKey);
   const perOrg = createRateLimit({ capacity: 60, refillPerMinute: 60 });
   const perAccount = createRateLimit({ capacity: 20, refillPerMinute: 20 });
+  // Кнопка подкачки: площадку и так спрашивает сервер, чаще незачем.
+  const pullLimit = createRateLimit({ capacity: 3, refillPerMinute: 3 });
   const aad = (orgId, id) => `${orgId}:${id}`;
 
   /** Сессия с правом на интеграции; иначе ответ уже отправлен и `null`. */
@@ -155,7 +218,7 @@ function createConnectors({ auth, send, log, secretKey, fetchImpl = fetch }) {
   async function list(req, res) {
     const out = await session(req, res, async (c) => {
       const r = await c.query(
-        `SELECT id, system, label, params, created_at FROM uklad.connector_accounts
+        `SELECT id, system, label, params, created_at, pull_result FROM uklad.connector_accounts
          WHERE deleted_at IS NULL ORDER BY created_at`,
       );
       return r.rows.map((x) => ({
@@ -164,6 +227,9 @@ function createConnectors({ auth, send, log, secretKey, fetchImpl = fetch }) {
         label: x.label,
         clientId: x.params?.clientId ?? null,
         partnerId: x.params?.partnerId ?? null,
+        warehouseId: x.params?.warehouseId ?? null,
+        // Итог последней подкачки заказов (`orderPull.js`): когда, сколько, отказ.
+        lastPull: x.pull_result ?? null,
         createdAt: x.created_at,
       }));
     });
@@ -179,10 +245,13 @@ function createConnectors({ auth, send, log, secretKey, fetchImpl = fetch }) {
     const token = str(b.token, 4000);
     const clientId = str(b.clientId, 64);
     const partnerId = str(b.partnerId, 64);
+    const warehouseId = str(b.warehouseId, 100);
     if (!system || !label || !token) return send(res, 400, { ok: false, error: "bad_input" });
     if (SYSTEMS[system].needsClientId && !/^[A-Za-z0-9_-]{1,64}$/.test(clientId))
       return send(res, 400, { ok: false, error: "bad_input" });
     if (partnerId && !/^[A-Za-z0-9_-]{1,64}$/.test(partnerId))
+      return send(res, 400, { ok: false, error: "bad_input" });
+    if (warehouseId && !/^[A-Za-z0-9_-]{1,100}$/.test(warehouseId))
       return send(res, 400, { ok: false, error: "bad_input" });
     const out = await session(req, res, async (c, ctx) => {
       const id = (await c.query("SELECT gen_random_uuid() AS id")).rows[0].id;
@@ -194,7 +263,11 @@ function createConnectors({ auth, send, log, secretKey, fetchImpl = fetch }) {
           ctx.orgId,
           system,
           label,
-          { ...(clientId ? { clientId } : {}), ...(partnerId ? { partnerId } : {}) },
+          {
+            ...(clientId ? { clientId } : {}),
+            ...(partnerId ? { partnerId } : {}),
+            ...(warehouseId ? { warehouseId } : {}),
+          },
           sealer.seal({ token }, aad(ctx.orgId, id)),
           ctx.accountId,
         ],
@@ -244,7 +317,6 @@ function createConnectors({ auth, send, log, secretKey, fetchImpl = fetch }) {
     if (!perOrg.take(orgId) || !perAccount.take(row.id))
       return send(res, 429, { ok: false }, { "Retry-After": "30" });
 
-    const s = SYSTEMS[system];
     let key;
     try {
       key = sealer.open(row.secret, aad(orgId, row.id));
@@ -252,56 +324,44 @@ function createConnectors({ auth, send, log, secretKey, fetchImpl = fetch }) {
       log.error("[uklad] подключение: ключ не расшифровался", row.id);
       return send(res, 500, { ok: false });
     }
-    const params = row.params ?? {};
-    const path = s.path ? s.path(b.path, params) : b.path;
-    try {
-      const upstream = await fetchImpl(`${s.base}${path}${qs}`, {
-        method: b.method,
-        headers: {
-          Accept: "application/json, application/pdf",
-          ...(b.body !== undefined ? { "Content-Type": "application/json" } : {}),
-          ...s.headers(key, params),
-        },
-        body: b.body !== undefined ? JSON.stringify(b.body) : undefined,
-        redirect: "error",
-        signal: AbortSignal.timeout(TIMEOUT_MS),
-      });
-      const buf = await readLimited(upstream);
-      if (!buf) return send(res, 502, { ok: false, error: "too_large" });
-      // Отказ площадки — 502 с причиной, а не её 401: иначе кабинет решил бы,
-      // что кончилась сессия Уклада, и выкинул человека на вход.
-      if (!upstream.ok) {
-        const st = upstream.status;
-        const error =
-          st === 401 || st === 403 ? "rejected" : st === 429 ? "rate_limit" : "upstream";
-        // Текст отказа площадки (у Ozon `message`, у WB `title`/`detail`) — без
-        // заголовков и ключа: по нему человек на экране поймёт, что не так.
-        let detail = "";
-        try {
-          const j = JSON.parse(buf.toString("utf8"));
-          const m = j?.message ?? j?.detail ?? j?.title ?? j?.error?.message ?? j?.errorText;
-          if (typeof m === "string") detail = m.slice(0, 200);
-        } catch {
-          // не JSON — хватит кода
-        }
-        log.error("[uklad] площадка отказала:", system, b.method, b.path, st, detail);
-        return send(res, 502, { ok: false, error, status: st, detail });
-      }
-      const type = upstream.headers.get("content-type") ?? "";
-      // Бинарное (PDF этикеток) — в поле `file`, как ждут адаптеры.
-      if (buf.length && !type.includes("json"))
-        return send(res, 200, { ok: true, data: { file: buf.toString("base64") } });
-      let data = null;
-      try {
-        data = buf.length ? JSON.parse(buf.toString("utf8")) : null;
-      } catch {
-        return send(res, 502, { ok: false, error: "upstream" });
-      }
-      return send(res, 200, { ok: true, data });
-    } catch (err) {
-      log.error("[uklad] подключение:", system, err.name);
-      return send(res, 502, { ok: false, error: "upstream" });
+    const answer = await askPlatform(
+      { system, key, params: row.params ?? {}, log, fetchImpl },
+      { method: b.method, path: b.path, qs, body: b.body },
+    );
+    if (!answer.ok) {
+      const { error, status, detail } = answer;
+      return send(res, 502, { ok: false, error, ...(status ? { status, detail } : {}) });
     }
+    return send(res, 200, { ok: true, data: answer.data });
+  }
+
+  /**
+   * Кнопка «Загрузить заказы»: тот же проход, что делает сервер сам, но
+   * сейчас и по всем подключениям компании. Запрос к площадке — вне
+   * транзакции сессии: ждать площадку до 20 с с открытой транзакцией нельзя.
+   */
+  async function pullNow(req, res) {
+    const b = await readJson(req, res, 1024);
+    if (!b) return;
+    if (!sealer || !pull) return send(res, 503, { ok: false, error: "not_configured" });
+    const out = await session(req, res, async (c, ctx) => {
+      const r = await c.query(
+        `SELECT id, system FROM uklad.connector_accounts WHERE deleted_at IS NULL
+         ORDER BY created_at`,
+      );
+      return { orgId: ctx.orgId, rows: r.rows };
+    });
+    if (!out) return;
+    const { orgId, rows } = out.value;
+    if (!pullLimit.take(orgId)) return send(res, 429, { ok: false }, { "Retry-After": "30" });
+    const total = { created: 0, unknown: [], failed: [] };
+    for (const row of rows) {
+      const r = await pull.pullAccount({ orgId, id: row.id, system: row.system });
+      total.created += r.created ?? 0;
+      total.unknown.push(...(r.unknown ?? []));
+      if (r.error) total.failed.push({ id: row.id, error: r.error, detail: r.detail ?? "" });
+    }
+    send(res, 200, { ok: true, ...total });
   }
 
   async function handle(req, res, url) {
@@ -310,6 +370,7 @@ function createConnectors({ auth, send, log, secretKey, fetchImpl = fetch }) {
     if (p === "/api/connectors" && req.method === "GET") await list(req, res);
     else if (p === "/api/connectors/save" && req.method === "POST") await save(req, res);
     else if (p === "/api/connectors/delete" && req.method === "POST") await remove(req, res);
+    else if (p === "/api/connectors/pull" && req.method === "POST") await pullNow(req, res);
     else {
       const m = /^\/api\/connectors\/([a-z-]{1,30})\/proxy$/.exec(p);
       if (!m || req.method !== "POST" || !SYSTEMS[m[1]]) send(res, 404, { ok: false });
@@ -321,4 +382,11 @@ function createConnectors({ auth, send, log, secretKey, fetchImpl = fetch }) {
   return { handle };
 }
 
-module.exports = { createConnectors, allowed, queryString, createSealer, readSecretKey };
+module.exports = {
+  createConnectors,
+  allowed,
+  queryString,
+  createSealer,
+  readSecretKey,
+  askPlatform,
+};
