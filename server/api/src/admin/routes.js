@@ -68,6 +68,8 @@ function accountRows(store, nowIso) {
   }));
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 function createRoutes({ store, cfg, invoices }) {
   /** Профиль аккаунта из формы. Ошибка — строкой, иначе патч. */
   function profileFrom(form, selfId) {
@@ -369,6 +371,14 @@ function createRoutes({ store, cfg, invoices }) {
           if (managerId === undefined || (managerId && !store.manager(managerId))) {
             return fail("Такого менеджера нет.");
           }
+          // Связка с компанией кабинета (`cabinet/plan.js`): вручную, когда
+          // сама не сложилась (владелец в нескольких компаниях).
+          const orgRaw = text(form, "org_id", 36);
+          if (orgRaw && !UUID_RE.test(orgRaw)) return fail("Id компании — UUID из кабинета.");
+          const orgOwner = orgRaw ? store.accountByOrg(orgRaw) : null;
+          if (orgOwner && orgOwner.id !== a.id) {
+            return fail(`Эта компания уже связана с аккаунтом #${orgOwner.id}.`);
+          }
           const trialRaw = text(form, "trial_until", 10);
           const paidRaw = text(form, "paid_until", 10);
           if ((trialRaw && !dateEnd(trialRaw)) || (paidRaw && !dateEnd(paidRaw))) {
@@ -381,8 +391,13 @@ function createRoutes({ store, cfg, invoices }) {
             manager_id: managerId || null,
             trial_until: trialRaw ? dateEnd(trialRaw) : null,
             paid_until: paidRaw ? dateEnd(paidRaw) : null,
+            org_id: orgRaw ? orgRaw.toLowerCase() : null,
           };
           const changed = diff(a, patch);
+          // Просьба склада из кабинета (`cabinet/plan.js`) решена сохранением:
+          // тариф поменяли или оставили — кабинет больше её не показывает.
+          if (a.tariff_request)
+            Object.assign(patch, { tariff_request: null, tariff_request_at: null });
           store.updateAccount(a.id, patch, t);
           if (Object.keys(changed).length) store.log(t, by, "account_tariff", target, changed);
           return back();

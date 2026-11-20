@@ -7,7 +7,9 @@ import { c, type Copy } from "../lib/copy";
  * меняются каждую неделю, а этот файл — раз в квартал. В одном файле правка
  * содержания каждый раз задевала бы описание модели.
  *
- * Роадмап — обещание наружу, поэтому у пункта нет ни одной выдуманной цифры.
+ * Роадмап — обещание наружу, поэтому у пункта нет ни одной выдуманной цифры
+ * и ни одного срока: кварталы убраны 17.11 — все до одного разошлись с
+ * делом, а срок, которого не держим, хуже никакого.
  * Ни счётчика голосов (сложить их негде — витрина статическая, и отметки живут
  * в браузере того, кто их поставил, см. `lib/roadmap/store`), ни даты выхода у
  * каждой строки (её неоткуда взять точнее, чем «в таком-то выпуске»). Когда что
@@ -44,11 +46,11 @@ export interface RoadmapItem {
   /** Веха, к которой относится пункт (`Milestone.id`). */
   milestone: string;
   /**
-   * Ориентир по кварталу, «2026-Q4». Есть только у запланированного и того,
-   * что пишется: у готового срок уже не ориентир, а у идеи его нет вовсе —
-   * проставленный «на всякий случай» квартал у идеи читается как обещание.
+   * Пункт показан в блоке дорожной карты на главной (`Offer.tsx`). Блок берёт
+   * отмеченные пункты в их текущей колонке: сменился статус — карточка на
+   * главной переехала сама. Сколько отметок в колонке, проверяет тест.
    */
-  quarter?: string;
+  landing?: true;
   /**
    * Выпуск, в котором вышел пункт (`Release.version`). Есть только у готового,
    * и не у всего готового: работающее, но ещё не выпущенное, живёт без версии
@@ -63,8 +65,6 @@ export interface Milestone {
   title: Copy;
   /** Зачем этап нужен клиенту — одной фразой. */
   goal: Copy;
-  /** Ориентир завершения, «2026-Q4». У завершённого — пусто. */
-  target?: string;
 }
 
 /** Запись в журнале обновлений. */
@@ -119,8 +119,8 @@ export const MILESTONES: readonly Milestone[] = [
     id: "browser",
     title: c("Склад в браузере", "The warehouse in a browser"),
     goal: c(
-      "Нарисовать план, разложить товар и провести смену целиком — без установки и без сервера",
-      "Draw the plan, put the stock away and run a whole shift — with no install and no server",
+      "Нарисовать план, разложить товар и провести смену целиком — в браузере, без установки",
+      "Draw the plan, put the stock away and run a whole shift — in a browser, with no install",
     ),
   },
   {
@@ -130,16 +130,14 @@ export const MILESTONES: readonly Milestone[] = [
       "Склад находят снаружи: каталог в поиске, заявка без звонка, документы на месте",
       "Warehouses get found from outside: in search, a request with no call, the paperwork in place",
     ),
-    target: "2026-Q4",
   },
   {
     id: "server",
     title: c("Данные на сервере", "Data on a server"),
     goal: c(
-      "Один склад — несколько людей: общая база, вход по паролю, права по роли",
-      "One warehouse, several people: a shared database, a password, rights by role",
+      "Один склад — несколько людей: общие данные на сервере, свой вход и права по роли",
+      "One warehouse, several people: shared data on a server, a personal sign-in and rights by role",
     ),
-    target: "2027-Q1",
   },
   {
     id: "floor",
@@ -148,7 +146,6 @@ export const MILESTONES: readonly Milestone[] = [
       "Сборщик работает с телефона в проходе, а не с ноутбука в кабинете",
       "The picker works from a phone in the aisle, not a laptop in the office",
     ),
-    target: "2027-Q1",
   },
   {
     id: "exchange",
@@ -157,7 +154,6 @@ export const MILESTONES: readonly Milestone[] = [
       "Заказы и остатки ходят между Укладом, маркетплейсами и учётной системой сами",
       "Orders and stock move between Uklad, the marketplaces and the accounting system on their own",
     ),
-    target: "2027-Q2",
   },
   {
     id: "service",
@@ -166,7 +162,6 @@ export const MILESTONES: readonly Milestone[] = [
       "Считать хранение и показывать клиенту его товар и его счёт",
       "Bill for storage and show the client their own stock and their own invoice",
     ),
-    target: "2027-Q3",
   },
 ];
 

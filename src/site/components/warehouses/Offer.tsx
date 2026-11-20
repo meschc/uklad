@@ -50,14 +50,15 @@ const NUMBERS: { value: string; unit: Copy; body: Copy }[] = [
  * Колонки — те же четыре, что на доске /roadmap, в том же порядке и с теми же
  * метками (Кирилл 31 окт). Пункты берутся с доски, а не пишутся здесь
  * отдельно: иначе блок разойдётся с картой на первой же правке.
+ *
+ * Какие именно — решает отметка `landing` у пункта, а не его место в списке:
+ * раньше брались первые по порядку, и на главной месяц висели самые старые
+ * пункты (17.11). Отметка едет вместе со статусом, число отметок в колонке
+ * держит тест `data/__tests__/roadmap.test.ts`.
  */
-const PER_COLUMN = 2;
 const COLUMNS = STATUS_ORDER.map((status) => ({
   status,
-  items: ROADMAP_ITEMS.filter((item) => item.status === status).slice(
-    0,
-    status === "idea" ? PER_COLUMN - 1 : PER_COLUMN,
-  ),
+  items: ROADMAP_ITEMS.filter((item) => item.status === status && item.landing),
 }));
 
 export function Offer() {
