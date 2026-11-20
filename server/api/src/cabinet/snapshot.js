@@ -40,6 +40,7 @@ const { placeRef, focusWarehouse } = require("./viewerPlace");
 const { recordMoves, invalidWork } = require("./moves");
 const { recordStorage, loadStorage, parsePeriod } = require("./storage");
 const { loadInventoryLog, parseLogPeriod } = require("./inventoryLog");
+const { splitWarehouses, withWarehouses, storeWarehouses } = require("./warehouses");
 const {
   WAREHOUSE_LISTS,
   COMPANY_LISTS,
@@ -182,11 +183,17 @@ function withoutProducts(data) {
 }
 
 /**
- * Кабинет → что хранится в `cabinet_snapshots` (`doc`: без товаров, с
- * метками вместо списков) и строки работы склада (`items`).
+ * Кабинет → что хранится в `cabinet_snapshots` (`doc`: без товаров и складов,
+ * с метками вместо списков), строки работы склада (`items`) и склады
+ * (`warehouses`, `null` — не трогать). Строки раскладываются до того, как
+ * склады уйдут из документа: списки в корне — открытого склада.
  */
 function splitCabinet(data) {
-  return splitRecords(withoutProducts(data));
+  const split = splitRecords(withoutProducts(data));
+  const { doc, cards } = splitWarehouses(split.doc);
+  // `withStores` — тот же документ со складами: проверкам списков нужно знать,
+  // чьи списки в корне.
+  return { ...split, doc, warehouses: cards, withStores: split.doc };
 }
 
 /**
@@ -276,8 +283,9 @@ function createSnapshot({ auth, send, log }) {
       if (viewer) {
         // Смотрящий архив не двигает: это работа руководителя. Кабинет — на
         // его складе (миграция 034), а не на том, что открыт у руководителя.
-        const ref = placeRef(rows[0].data, place?.warehouse_ref);
-        const focused = focusWarehouse(await loadCabinet(c, rows[0].data), ref);
+        const full = await loadCabinet(c, rows[0].data);
+        const ref = placeRef(full, place?.warehouse_ref);
+        const focused = focusWarehouse(full, ref);
         if (!focused) return NO_WAREHOUSE;
         if (seller) {
           return {
@@ -352,7 +360,7 @@ function createSnapshot({ auth, send, log }) {
         `SELECT data FROM uklad.cabinet_snapshots WHERE org_id = uklad.current_org() FOR UPDATE`,
       );
       if (prev.rows[0]) {
-        const lost = lostLists(prev.rows[0].data, split.doc);
+        const lost = lostLists(await withWarehouses(c, prev.rows[0].data), split.withStores);
         if (lost.missing.length > 0 || (await inlineDrops(c, lost.inline))) {
           return { conflict: true, error: "records_mass_delete" };
         }
@@ -369,6 +377,7 @@ function createSnapshot({ auth, send, log }) {
         );
         if (!rows[0]) return { conflict: true };
         await storeProducts(c, b.data);
+        await storeWarehouses(c, split.warehouses);
         await storeRecords(c, split.items, split.slots);
         await recordMoves(c, {}, b.data, rows[0].version, { memberId: ctx.memberId });
         await recordStorage(c, b.data);
@@ -388,6 +397,7 @@ function createSnapshot({ auth, send, log }) {
       // движений считает, что прибыло и убыло.
       const before = await loadRecords(c, rows[0].previous);
       await storeProducts(c, b.data);
+      await storeWarehouses(c, split.warehouses);
       await storeRecords(c, split.items, split.slots);
       // Что где прибыло и убыло — в журнал движений, с тем, кто записал.
       await recordMoves(c, before, b.data, rows[0].version, {
@@ -442,8 +452,11 @@ function createSnapshot({ auth, send, log }) {
         `SELECT version, data FROM uklad.cabinet_snapshots
          WHERE org_id = uklad.current_org() FOR UPDATE`,
       );
-      const cur = rows[0];
+      const cur = rows[0] && { ...rows[0], data: await withWarehouses(c, rows[0].data) };
       if (!cur || cur.version !== b.version) return { conflict: true };
+      // Документ без складов — склады не менялись: берём их из таблицы, иначе
+      // проверки ниже не знали бы, чьи списки в корне.
+      if (!("warehouse" in b.doc)) b.doc = await withWarehouses(c, b.doc);
       if (scoped) {
         // Закрытое смотрящему он не получал — берём из базы, а не из копии.
         const place = await actorPlace(c);
@@ -482,6 +495,10 @@ function createSnapshot({ auth, send, log }) {
         await c.query(`ROLLBACK TO SAVEPOINT changes`);
         return { conflict: true, error: "diverged" };
       }
+      // Склады — строками (миграция 051), в документе их нет.
+      const wh = splitWarehouses(b.doc);
+      doc = JSON.stringify(wh.doc);
+      await storeWarehouses(c, wh.cards);
       const upd = await c.query(
         `UPDATE uklad.cabinet_snapshots
          SET previous = data, data = $1::jsonb, format = $2, version = version + 1,

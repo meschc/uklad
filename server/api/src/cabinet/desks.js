@@ -54,6 +54,7 @@ const {
   storeRecords,
 } = require("./snapshot");
 const { whoseBadge, badgeAnswer, answerCheck, CHECKS_PER_MINUTE } = require("./deskBadges");
+const { withWarehouses, storeWarehouses } = require("./warehouses");
 const { GOODS_DECIDE, GOODS_WRITEOFF, STAFF_MANAGE, may, loadDeskPerms } = require("./deskPerms");
 const { mergeDeskStock, STOCK_KEYS } = require("./deskStock");
 const { recordMoves, diffMoves } = require("./moves");
@@ -395,7 +396,7 @@ async function companyDoc(c) {
   const { rows } = await c.query(
     `SELECT data FROM uklad.cabinet_snapshots WHERE org_id = uklad.current_org()`,
   );
-  return rows[0]?.data ?? null;
+  return rows[0] ? withWarehouses(c, rows[0].data) : null;
 }
 
 function createDesks({ auth, cfg, send, log }) {
@@ -713,6 +714,7 @@ function createDesks({ auth, cfg, send, log }) {
         load: loadCabinet,
         split: splitCabinet,
         storeRecords,
+        storeWarehouses,
         recordMoves,
         recordStorage,
         maxBytes: MAX_SNAPSHOT_BYTES,

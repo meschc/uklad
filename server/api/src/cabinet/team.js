@@ -32,6 +32,7 @@ const { createRateLimit, clientIp } = require("../rateLimit");
 const { inviteLetter } = require("./letters");
 const { FAIL_WINDOW_MS, FAIL_PAIR, FAIL_EMAIL } = require("./auth");
 const { findPlace } = require("./viewerPlace");
+const { withWarehouses } = require("./warehouses");
 
 const INVITE_TTL_MS = 7 * 86_400_000;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -214,7 +215,8 @@ function createTeam({ auth, cfg, send, log }) {
     const { rows } = await c.query(
       `SELECT data FROM uklad.cabinet_snapshots WHERE org_id = uklad.current_org()`,
     );
-    const found = findPlace(rows[0]?.data, place.warehouseRef, place.staffRef);
+    const doc = rows[0] ? await withWarehouses(c, rows[0].data) : null;
+    const found = findPlace(doc, place.warehouseRef, place.staffRef);
     if (!found) throw new Error("team:not_found");
     // Продавец — из списка продавцов этого склада, а не любой строкой.
     const partners = Array.isArray(found.warehouse.partners) ? found.warehouse.partners : [];

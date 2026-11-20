@@ -26,7 +26,17 @@ async function stored(org) {
      WHERE org_id = $1 AND deleted_at IS NULL ORDER BY warehouse_ref, domain, position`,
     [org],
   );
-  return { version: doc.rows[0].version, data: assembleRecords(doc.rows[0].data, rows.rows) };
+  // Склады — строками (миграция 051).
+  const wh = await db.root.query(
+    `SELECT card || jsonb_build_object('id', ref) AS card FROM uklad.warehouses
+     WHERE org_id = $1 AND deleted_at IS NULL AND card IS NOT NULL ORDER BY position`,
+    [org],
+  );
+  const cards = wh.rows.map((r) => r.card);
+  const base = cards.length
+    ? { ...doc.rows[0].data, warehouse: cards[0], otherWarehouses: cards.slice(1) }
+    : doc.rows[0].data;
+  return { version: doc.rows[0].version, data: assembleRecords(base, rows.rows) };
 }
 const sent = [];
 
