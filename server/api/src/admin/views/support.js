@@ -15,12 +15,17 @@ function supportList({ session, reports, status }) {
   const tab = (v, label) =>
     `<a class="${status === v ? "on" : ""}" href="/support${v ? `?status=${v}` : ""}">${label}</a>`;
   const body = reports.length
-    ? `<table><thead><tr><th>№</th><th>Когда</th><th>Что случилось</th><th>Экран</th><th class="r">Ошибок</th><th>Копия</th><th>Статус</th></tr></thead><tbody>${reports
+    ? `<table><thead><tr><th>№</th><th>Когда</th><th>Что случилось</th><th>Экран</th><th class="r">Ошибок</th><th>Копия</th><th>Статус</th><th></th></tr></thead><tbody>${reports
         .map(
           (r) => `<tr><td class="num">${r.id}</td><td class="num">${when(r.created_at)}</td>
           <td><a href="/support/${r.id}">${esc(r.message.length > 90 ? `${r.message.slice(0, 90)}…` : r.message)}</a></td>
           <td>${esc(r.view)}</td><td class="num r">${r.errors}</td><td>${r.has_snapshot ? "есть" : "—"}</td>
-          <td><span class="badge ${BADGE[r.status] ?? ""}">${STATUS[r.status] ?? esc(r.status)}</span></td></tr>`,
+          <td><span class="badge ${BADGE[r.status] ?? ""}">${STATUS[r.status] ?? esc(r.status)}</span></td>
+          <td class="actions">${
+            r.archived_at
+              ? ""
+              : `<form method="post" action="/support/${r.id}/done">${hidden(session)}<input type="hidden" name="tab" value="${esc(status)}"><button class="btn soft sm">${r.status === "done" ? "Вернуть в работу" : "Разобрано"}</button></form>`
+          }<form method="post" action="/support/${r.id}/archive">${hidden(session)}<input type="hidden" name="tab" value="${esc(status)}"><button class="btn soft sm">${r.archived_at ? "Из архива" : "В архив"}</button></form></td></tr>`,
         )
         .join("")}</tbody></table>`
     : `<p class="empty">${status === "archived" ? "В архиве пусто." : "Обращений нет."}</p>`;
@@ -81,9 +86,9 @@ function supportPage({ session, report: r, payload }) {
         <div class="actions"><button>Сохранить</button></div>
       </form>
       <section class="panel">
-        <h2>Убрать обращение</h2>
+        <h2>Разобрать или убрать</h2>
         <p class="hint">Архив прячет обращение из списка, вернуть можно в любой момент. Через 90 дней оно сотрётся само, как и остальные.</p>
-        <div class="actions mt"><form method="post" action="/support/${r.id}/archive">${hidden(session)}<button class="soft">${r.archived_at ? "Вернуть из архива" : "В архив"}</button></form></div>
+        <div class="actions mt"><form method="post" action="/support/${r.id}/done">${hidden(session)}<button class="soft">${r.status === "done" ? "Вернуть в работу" : "Разобрано"}</button></form><form method="post" action="/support/${r.id}/archive">${hidden(session)}<button class="soft">${r.archived_at ? "Вернуть из архива" : "В архив"}</button></form></div>
       </section>
     </div>
     <section class="sec">
