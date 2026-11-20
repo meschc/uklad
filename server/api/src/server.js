@@ -632,12 +632,13 @@ function main() {
     // Площадки (WB, Ozon, Маркет): без CONNECTOR_SECRET_KEY сохранить ключ и
     // сходить к площадке нельзя — маршрут отвечает 503.
     const { createConnectors, readSecretKey } = require("./cabinet/connectors");
-    const connectors = createConnectors({
-      auth,
-      send,
-      log: console,
-      secretKey: readSecretKey(process.env.CONNECTOR_SECRET_KEY),
-    });
+    const secretKey = readSecretKey(process.env.CONNECTOR_SECRET_KEY);
+    // Заказы площадок сервер подкачивает сам, раз в полторы минуты на
+    // подключение, без открытого кабинета (миграция 050).
+    const { createOrderPull } = require("./cabinet/orderPull");
+    const pull = createOrderPull({ auth, log: console, secretKey });
+    pull?.start();
+    const connectors = createConnectors({ auth, send, log: console, secretKey, pull });
     cabinet = {
       handle: async (req, res, url) =>
         (await desks.handle(req, res, url)) ||

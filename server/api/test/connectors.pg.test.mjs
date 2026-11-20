@@ -2,7 +2,7 @@
 // в ответы, журналы и базу открытым текстом; обходы белого списка — 403;
 // чужая компания не видит и не ходит; роли без `integrations.manage` — 403.
 // Без PG_ADMIN_URL тест пропускается.
-/* global process, fetch, setTimeout, Buffer, Response, LOGS, HITS */
+/* global process, fetch, setTimeout, Buffer, Response, LOGS, HITS, REPLY */
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
@@ -13,7 +13,7 @@ const SKIP = !process.env.PG_ADMIN_URL && "нет PG_ADMIN_URL";
 
 const ORIGIN = "https://u-klad.ru";
 const PW = "очень-длинный-пароль";
-let db, server, base, cookieName;
+let db, server, base, cookieName, pull;
 const sent = [];
 
 before(async () => {
@@ -35,18 +35,21 @@ before(async () => {
   const { createConnectors } = require("../src/cabinet/connectors.js");
   globalThis.LOGS = [];
   globalThis.HITS = [];
-  const conn = createConnectors({
+  globalThis.REPLY = null;
+  const deps = {
     auth,
-    send,
     log: { error: (...a) => LOGS.push(a.join(" ")) },
     secretKey: Buffer.alloc(32, 7),
     fetchImpl: async (u, o) => {
-      HITS.push({ u, h: o.headers });
-      return new Response(JSON.stringify({ orders: [] }), {
+      HITS.push({ u, h: o.headers, body: o.body });
+      return new Response(JSON.stringify(REPLY ?? { orders: [] }), {
         headers: { "content-type": "application/json" },
       });
     },
-  });
+  };
+  const { createOrderPull } = require("../src/cabinet/orderPull.js");
+  pull = createOrderPull(deps);
+  const conn = createConnectors({ ...deps, send, pull });
   cookieName = auth.cookieName;
   const cabinet = {
     handle: async (req, res, url) =>
@@ -292,4 +295,120 @@ test("живой: подключения площадок", { skip: SKIP }, asyn
     404,
   );
   assert.ok(!LOGS.join("\n").includes(TOKEN));
+});
+
+// Подкачка заказов на сервере (миграция 050): без открытого кабинета заказ
+// площадки становится заявкой склада, второй раз не заводится, чужая компания
+// его не видит, а поиск «кому пора» не отдаёт ключ.
+test("живой: сервер сам заводит заказы площадки заявками", { skip: SKIP }, async () => {
+  const a = await owner("pull-a@example.com", "10.4.0.1");
+  const b = await owner("pull-b@example.com", "10.4.0.2");
+  const products = [
+    { id: "p1", name: "Кружка", sku: "ART-1", barcode: "4600000000001", partnerId: "pt1" },
+    { id: "p2", name: "Кружка склада", sku: "ART-1", barcode: "4600000000002" },
+  ];
+  const data = {
+    warehouse: { id: WH, name: "Склад", staff: [], partners: [{ id: "pt1", name: "ИП Иванов" }] },
+    products,
+    requests: [],
+  };
+  const w = await post("/api/cabinet/snapshot", { ...a, body: { version: 0, format: 8, data } });
+  assert.equal(w.status, 200, JSON.stringify(w.json));
+  await ensureCabinet(b);
+  // Подключение партнёра, сохранено до 050 — без склада: склад в компании один.
+  const save = await post("/api/connectors/save", {
+    ...a,
+    body: { system: "wildberries", label: "ИП Иванов", token: "WB-A", partnerId: "pt1" },
+  });
+  assert.equal(save.status, 200, JSON.stringify(save.json));
+  const saveB = await post("/api/connectors/save", {
+    ...b,
+    body: { system: "wildberries", label: "Свой", token: "WB-B" },
+  });
+  assert.equal(saveB.status, 200);
+
+  // Поиск «кому пора» отдаёт только компанию, номер, площадку и билет.
+  const app = await db.pool.connect();
+  try {
+    await app.query("BEGIN");
+    const claim = await app.query(`SELECT * FROM auth.connector_pull_claim('90 seconds')`);
+    assert.deepEqual(Object.keys(claim.rows[0]).sort(), ["id", "org_id", "system", "ticket"]);
+    // Флаг подкачки приложению поверх компаний ничего не открывает.
+    await app.query(`SELECT set_config('app.order_pull', 'on', true)`);
+    const peek = await app.query(`SELECT count(*)::int AS n FROM uklad.connector_accounts`);
+    assert.equal(peek.rows[0].n, 0);
+    // Вход в компанию — только по билету своего подключения.
+    const { id: cid, ticket, org_id: corg } = claim.rows[0];
+    const other = cid === saveB.json.id ? save.json.id : saveB.json.id;
+    const enter = async (id, t) =>
+      (await app.query(`SELECT auth.connector_pull_enter($1, $2) AS org`, [id, t])).rows[0].org;
+    assert.equal(await enter(cid, null), null);
+    assert.equal(await enter(cid, "0".repeat(64)), null);
+    assert.equal(await enter(other, ticket), null);
+    assert.equal(await enter(cid, ticket), corg);
+    const seen = await app.query(`SELECT DISTINCT org_id FROM uklad.connector_accounts`);
+    assert.deepEqual(
+      seen.rows.map((r) => r.org_id),
+      [corg],
+    );
+    await app.query("ROLLBACK");
+  } finally {
+    app.release();
+  }
+
+  globalThis.REPLY = {
+    orders: [
+      { id: 111, article: "ART-1", skus: ["4600000000001"] },
+      { id: 222, article: "NOPE", skus: [] },
+    ],
+  };
+  const version = (await call("GET", "/api/cabinet/snapshot", a)).json.snapshot.version;
+  await pull.tick();
+  const snap = (await call("GET", "/api/cabinet/snapshot", a)).json.snapshot;
+  assert.equal(snap.version, version + 1);
+  const made = snap.data.requests.filter((r) => r.source === "wildberries");
+  // Товар партнёра, а не одноимённый товар склада.
+  assert.deepEqual(
+    made.map((r) => [r.externalId, r.productId, r.qty, r.status]),
+    [["111", "p1", 1, "new"]],
+  );
+  const listed = (await call("GET", "/api/connectors", a)).json.connections[0];
+  assert.equal(listed.lastPull.created, 1);
+  assert.deepEqual(listed.lastPull.unknown, ["222"]);
+  assert.ok(!JSON.stringify(listed).includes("WB-A"));
+  // Чужая компания своего заказа не получила и чужого не видит.
+  const snapB = (await call("GET", "/api/cabinet/snapshot", b)).json.snapshot;
+  assert.ok(!(snapB.data.requests ?? []).some((r) => r.externalId === "111"));
+
+  // Второй обход в ту же минуту никого не берёт; кнопка — берёт, но дубля нет.
+  const hits = HITS.length;
+  await pull.tick();
+  assert.equal(HITS.length, hits);
+  const now = await post("/api/connectors/pull", { ...a, body: {} });
+  assert.equal(now.status, 200, JSON.stringify(now.json));
+  assert.equal(now.json.created, 0);
+  const again = (await call("GET", "/api/cabinet/snapshot", a)).json.snapshot;
+  assert.equal(again.data.requests.filter((r) => r.externalId === "111").length, 1);
+
+  // Отменённый складом заказ не воскресает.
+  const cancelled = again.data.requests.map((r) =>
+    r.externalId === "111" ? { ...r, status: "cancelled" } : r,
+  );
+  const put = await post("/api/cabinet/snapshot", {
+    ...a,
+    body: { version: again.version, format: 8, data: { ...again.data, requests: cancelled } },
+  });
+  assert.equal(put.status, 200, JSON.stringify(put.json));
+  await post("/api/connectors/pull", { ...a, body: {} });
+  const last = (await call("GET", "/api/cabinet/snapshot", a)).json.snapshot;
+  assert.equal(last.data.requests.filter((r) => r.externalId === "111").length, 1);
+
+  // Удалённая компания площадку больше не спрашивает.
+  await db.root.query(`UPDATE uklad.orgs SET deleted_at = now() WHERE id = $1`, [a.org]);
+  await db.root.query(`UPDATE uklad.connector_accounts SET pulled_at = NULL`);
+  const before = HITS.length;
+  await pull.tick();
+  const asked = HITS.slice(before).map((h) => h.h.Authorization);
+  assert.ok(asked.includes("WB-B") && !asked.includes("WB-A"), JSON.stringify(asked));
+  globalThis.REPLY = null;
 });
