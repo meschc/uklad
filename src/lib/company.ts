@@ -60,3 +60,34 @@ export function lookupCompany(raw: string): CompanyInfo | null {
     mock: true,
   };
 }
+
+export interface BankInfo {
+  bik: string;
+  name: string;
+  correspondentAccount?: string;
+  /** true — данные не из справочника, а сгенерированы прототипом. */
+  mock: boolean;
+}
+
+/**
+ * «Банк по БИК» в демо без сервера: справочника нет, поэтому заглушка с
+ * пометкой `mock`. Корсчёт собран по правилам ЦБ (30101810…, последние три
+ * цифры — из БИК, ключ сходится), чтобы проверка счёта работала и в демо.
+ */
+export function lookupBank(raw: string): BankInfo | null {
+  const bik = raw.replace(/\D/g, "");
+  if (!/^04\d{7}$/.test(bik)) return null;
+  const weights = [7, 1, 3];
+  const tail = `00000000${bik.slice(-3)}`;
+  const prefix = `0${bik.slice(4, 6)}30101810`;
+  const keyless = [...`${prefix}0${tail}`];
+  const sum = keyless.reduce((a, d, i) => a + ((Number(d) * weights[i % 3]) % 10), 0);
+  // Ключ стоит девятым знаком счёта (12-м в строке с префиксом), вес у него 3.
+  const key = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].find((k) => (sum + ((k * 3) % 10)) % 10 === 0) ?? 0;
+  return {
+    bik,
+    name: `Банк по БИК ${bik}`,
+    correspondentAccount: `30101810${key}${tail}`,
+    mock: true,
+  };
+}

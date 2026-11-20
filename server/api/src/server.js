@@ -27,6 +27,7 @@
  *   /api/auth/*, /api/staff/* — вход в кабинет (`cabinet/auth.js`), если
  *                           задан DATABASE_URL (Postgres, `server/db`)
  *   POST /api/company/lookup — реквизиты по ИНН (`cabinet/company.js`)
+ *   POST /api/company/bank   — банк по БИК (`cabinet/company.js`)
  *   /api/chat/*           — чат кабинета (`cabinet/chat.js`, `cabinet/telegram.js`)
  *   POST /api/telegram/webhook — обновления Телеграм-бота уведомлений
  *

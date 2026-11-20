@@ -31,6 +31,7 @@ import { TariffSection } from "./TariffSection";
 import { NotifySection, ProfileHero, Section, ThemeTile } from "./ProfileParts";
 import { BackupSection } from "./BackupSection";
 import { AccountDataSection } from "./AccountDataSection";
+import { BankRow } from "./BankRow";
 import { FieldError } from "@/components/ui/field";
 
 /** Вкладки профиля: длинная страница из всех разделов сразу не читалась. */
@@ -534,6 +535,7 @@ export function Profile() {
                       </ReadValue>
                     )}
                   </Row>
+                  <BankRow />
                 </>
               </div>
             </Section>
