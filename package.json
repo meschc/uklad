@@ -29,6 +29,7 @@
     "tokens": "node scripts/design-tokens.mjs",
     "texts:export": "node scripts/texts/export.mjs",
     "texts:apply": "node scripts/texts/apply.mjs",
+    "texts:edit": "node scripts/texts/editor.mjs",
     "prepare": "husky || true"
   },
   "dependencies": {
