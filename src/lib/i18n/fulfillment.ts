@@ -91,6 +91,14 @@ export const ru = {
   "integr.hide": "Свернуть",
   "integr.enable": "Включить обмен",
   "integr.docs": "Документация системы",
+  "integr.howTo": "Инструкция",
+  "integr.soon": "В следующих обновлениях",
+  "integr.howto.ozon":
+    "Войдите в кабинет Ozon Seller того продавца, чьи заказы собирает склад.\nОткройте «Настройки» → «Seller API».\nНажмите «Сгенерировать ключ», назовите его «Уклад» и выберите роль Admin.\nСразу скопируйте ключ: Ozon показывает его один раз. Client ID — на той же странице.\nЗдесь выберите партнёра, вставьте Client ID и ключ, нажмите «Сохранить подключение», потом «Проверить связь».",
+  "integr.howto.wb":
+    "Войдите в кабинет продавца Wildberries того продавца, чьи заказы собирает склад.\nОткройте «Настройки» → «Доступ к API».\nНажмите «Создать токен», назовите его «Уклад» и отметьте категорию «Маркетплейс».\nСразу скопируйте токен. У него есть срок действия: когда истечёт, создайте новый и сохраните здесь.\nЗдесь выберите партнёра, вставьте токен, нажмите «Сохранить подключение», потом «Проверить связь».",
+  "integr.howto.ym":
+    "В кабинете продавца Яндекс Маркета нажмите на значок аккаунта → «Настройки» → «API и модули».\nВ блоке «Токены авторизации» нажмите «Создать новый токен». Это может владелец или менеджер кабинета.\nНазовите токен «Уклад», выберите доступ «Обработка заказов и учёт товаров» и нажмите «Создать».\nНа той же странице в блоке «Идентификатор кампании» скопируйте номер магазина.\nЗдесь выберите партнёра, вставьте идентификатор кампании и токен, нажмите «Сохранить подключение», потом «Проверить связь».",
   "integr.filled": "заполнено {n} из {total}",
   "integr.pendingNote":
     "Значения сохраняются сразу. Ключ создаётся в кабинете площадки — по ссылке на документацию.",
@@ -115,7 +123,7 @@ export const ru = {
   "integr.field.contract": "Номер договора",
   "integr.field.account": "Учётная запись",
   "integr.field.secureKey": "Секретный ключ",
-  "integr.subtitleN": "Внешние системы: подключено {n} из {total}",
+  "integr.subtitleN": "Подключено {n} из {total}, ещё {soon} — в следующих обновлениях",
   "integr.on": "Вкл",
   "integr.cat.market": "Маркетплейсы",
   "integr.cat.erp": "Учёт и CRM",
@@ -517,6 +525,14 @@ export const en: Record<keyof typeof ru, string> = {
   "integr.hide": "Collapse",
   "integr.enable": "Enable exchange",
   "integr.docs": "Vendor documentation",
+  "integr.howTo": "How to connect",
+  "integr.soon": "In upcoming updates",
+  "integr.howto.ozon":
+    "Sign in to the Ozon Seller account of the seller whose orders the warehouse fulfils.\nOpen Settings → Seller API.\nClick “Generate key”, name it “Uklad” and pick the Admin role.\nCopy the key right away: Ozon shows it only once. The Client ID is on the same page.\nHere, pick the partner, paste the Client ID and key, click “Save connection”, then “Check connection”.",
+  "integr.howto.wb":
+    "Sign in to the Wildberries seller account of the seller whose orders the warehouse fulfils.\nOpen Settings → API access.\nClick “Create token”, name it “Uklad” and tick the Marketplace category.\nCopy the token right away. It expires: when it does, create a new one and save it here.\nHere, pick the partner, paste the token, click “Save connection”, then “Check connection”.",
+  "integr.howto.ym":
+    "In the Yandex Market seller account click the account icon → Settings → API and modules.\nIn “Authorization tokens” click “Create new token”. The account owner or a manager can do this.\nName the token “Uklad”, choose the “Order processing and inventory” access and click “Create”.\nOn the same page, copy the shop number from “Campaign ID”.\nHere, pick the partner, paste the campaign ID and token, click “Save connection”, then “Check connection”.",
   "integr.filled": "{n} of {total} filled",
   "integr.pendingNote":
     "Values are saved immediately. The key is created in the platform account — see the documentation link.",
@@ -541,7 +557,7 @@ export const en: Record<keyof typeof ru, string> = {
   "integr.field.contract": "Contract number",
   "integr.field.account": "Account",
   "integr.field.secureKey": "Secret key",
-  "integr.subtitleN": "External systems: {n} of {total} connected",
+  "integr.subtitleN": "{n} of {total} connected, {soon} more in upcoming updates",
   "integr.on": "On",
   "integr.cat.market": "Marketplaces",
   "integr.cat.erp": "Accounting & CRM",
