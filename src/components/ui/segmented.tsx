@@ -19,10 +19,6 @@ import { cn } from "@/lib/utils";
 export interface SegmentedOption<T extends string> {
   value: T;
   label: string;
-  /**
-   * Только когда картинка сама показывает выбор (форма наклейки, QR или
-   * штрихкод) или в шапке и меню. Вкладки экрана — без иконок (Кирилл 20.11).
-   */
   icon?: React.ReactNode;
   title?: string;
 }

@@ -2,12 +2,14 @@ import { useState } from "react";
 import {
   Building2,
   ChevronLeft,
+  CreditCard,
   DatabaseBackup,
   Globe,
   Hash,
-  Mail,
   LogOut,
+  Mail,
   RotateCcw,
+  Settings,
   ShieldCheck,
   User,
 } from "lucide-react";
@@ -100,16 +102,17 @@ export function Profile() {
   const [edit, setEdit] = useState<FieldId | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
   const [tab, setTab] = useState<ProfileTab>("account");
-  const tabs: { value: ProfileTab; label: string }[] = [
-    { value: "account", label: t("profile.section.account") },
+  const tabs: { value: ProfileTab; label: string; icon: React.ReactNode }[] = [
+    { value: "account", label: t("profile.section.account"), icon: <User /> },
     ...(account.type === "company"
-      ? [{ value: "company" as const, label: t("profile.section.company") }]
+      ? [{ value: "company" as const, label: t("profile.section.company"), icon: <Building2 /> }]
       : []),
     {
       value: "tariff",
       label: t(isSeller ? "profile.sellerOptions.title" : "profile.tab.tariff"),
+      icon: <CreditCard />,
     },
-    { value: "settings", label: t("profile.tab.settings") },
+    { value: "settings", label: t("profile.tab.settings"), icon: <Settings /> },
   ];
 
   /**

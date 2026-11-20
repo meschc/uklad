@@ -1,3 +1,4 @@
+import { ListChecks, Receipt } from "lucide-react";
 import { useState } from "react";
 import { useT } from "@/lib/i18n";
 import { Segmented } from "@/components/ui/segmented";
@@ -25,8 +26,8 @@ export function OperationsScreen() {
           onChange={setTab}
           ariaLabel={t("ops.title")}
           options={[
-            { value: "services", label: t("ops.tab.services") },
-            { value: "report", label: t("ops.tab.report") },
+            { value: "services", label: t("ops.tab.services"), icon: <ListChecks /> },
+            { value: "report", label: t("ops.tab.report"), icon: <Receipt /> },
           ]}
         />
       </div>
