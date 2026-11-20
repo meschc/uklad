@@ -1,0 +1,64 @@
+# Тег версии ставится сам. Версия продукта живёт в `package.json` (правило —
+# CLAUDE.md, «Версия продукта»). Когда в main приходит коммит с новой версией,
+# этот прогон создаёт тег `vX.Y.Z` и релиз на GitHub с разделом CHANGELOG этой
+# версии. Руками тег никто не ставит: сессии Claude пушат только в свою ветку,
+# а тег без релиза ломает ссылки сравнения внизу CHANGELOG.
+#
+# Тег уже есть — ничего не делаем, повторный прогон безопасен. Секретов не
+# нужно: хватает прав самого прогона (`contents: write`).
+name: Тег версии
+
+on:
+  push:
+    branches: [main]
+    paths: [package.json]
+  # Кнопка «поставить тег руками» — например, для версии, влитой до этого файла.
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-tag
+  cancel-in-progress: false
+
+jobs:
+  tag:
+    name: Тег и релиз
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Версия из package.json
+        id: v
+        run: |
+          version=$(node -p "require('./package.json').version")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if git rev-parse -q --verify "refs/tags/v$version" >/dev/null; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Тег v$version уже есть — пропускаю."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Текст релиза — раздел «## [X.Y.Z]» из CHANGELOG до следующего «## ».
+      # Раздела нет (версию подняли, а строку не записали) — релиз всё равно
+      # выходит, с честной пометкой, а не молча.
+      - name: Тег и релиз
+        if: steps.v.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.v.outputs.version }}
+        run: |
+          awk -v v="$VERSION" '
+            index($0, "## [" v "]") == 1 { on = 1; next }
+            on && /^## / { exit }
+            on { print }
+          ' CHANGELOG.md > notes.md
+          if [ ! -s notes.md ]; then
+            echo "В CHANGELOG нет раздела [$VERSION]." > notes.md
+          fi
+          gh release create "v$VERSION" --target "$GITHUB_SHA" \
+            --title "Уклад $VERSION" --notes-file notes.md
