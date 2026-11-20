@@ -10,14 +10,19 @@
  * Без ключа маршрут честно отвечает 503 `not_configured`, и профиль пишет,
  * что справочник не подключён, — ИНН при этом сохраняется.
  *
- * Маршрут:
+ * Банк по БИК — тот же справочник и те же правила (`findById/bank`):
+ * название банка и корреспондентский счёт для реквизитов в счёте продавцу.
+ * Расчётный счёт справочник не знает — его вводит человек.
+ *
+ * Маршруты:
  *   POST /api/company/lookup — { inn } → { ok, company | null }
+ *   POST /api/company/bank   — { bik } → { ok, bank | null }
  */
 /* global require, module, fetch, AbortSignal */
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { createRateLimit } = require("../rateLimit");
 
-const ENDPOINT = "https://suggestions.dadata.ru/suggestions/api/4_1/rs/findById/party";
+const BASE = "https://suggestions.dadata.ru/suggestions/api/4_1/rs/findById";
 const DAY_MS = 86_400_000;
 const CACHE_MAX = 2000;
 const TIMEOUT_MS = 5000;
@@ -50,6 +55,47 @@ function pick(data) {
   };
 }
 
+/** БИК банка России: 9 цифр, начинается с 04. */
+function isValidBik(value) {
+  return typeof value === "string" && /^04\d{7}$/.test(value);
+}
+
+/** Из ответа справочника банков — только то, что идёт в реквизиты. */
+function pickBank(data) {
+  if (!data || typeof data !== "object") return null;
+  const str = (v) => (typeof v === "string" && v.trim() ? v.trim() : undefined);
+  const name = str(data.name?.payment) ?? str(data.name?.short) ?? str(data.value);
+  if (!name) return null;
+  return {
+    bik: str(data.bic),
+    name,
+    correspondentAccount: str(data.correspondent_account),
+    status: str(data.state?.status),
+  };
+}
+
+/** Что и как спрашивать у справочника: ИНН — организации, БИК — банки. */
+const KINDS = {
+  "/api/company/lookup": {
+    field: "inn",
+    out: "company",
+    valid: isValidInn,
+    error: "bad_inn",
+    url: `${BASE}/party`,
+    query: (inn) => ({ query: inn, branch_type: "MAIN" }),
+    pick,
+  },
+  "/api/company/bank": {
+    field: "bik",
+    out: "bank",
+    valid: isValidBik,
+    error: "bad_bik",
+    url: `${BASE}/bank`,
+    query: (bik) => ({ query: bik }),
+    pick: pickBank,
+  },
+};
+
 function createCompanyLookup({
   auth,
   send,
@@ -62,32 +108,34 @@ function createCompanyLookup({
   const perOrg = createRateLimit({ capacity: 20, refillPerMinute: 10 });
   const cache = new Map();
 
-  async function ask(inn) {
-    const hit = cache.get(inn);
-    if (hit && hit.until > now()) return hit.company;
-    const res = await fetchImpl(ENDPOINT, {
+  async function ask(kind, value) {
+    const key = `${kind.field}:${value}`;
+    const hit = cache.get(key);
+    if (hit && hit.until > now()) return hit.found;
+    const res = await fetchImpl(kind.url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
         Authorization: `Token ${token}`,
       },
-      body: JSON.stringify({ query: inn, branch_type: "MAIN" }),
+      body: JSON.stringify(kind.query(value)),
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
     if (!res.ok) throw new Error(`справочник ответил ${res.status}`);
     const body = await res.json();
-    const company = pick(body?.suggestions?.[0]?.data);
+    const found = kind.pick(body?.suggestions?.[0]?.data);
     if (cache.size >= CACHE_MAX) cache.delete(cache.keys().next().value);
-    cache.set(inn, { company, until: now() + DAY_MS });
-    return company;
+    cache.set(key, { found, until: now() + DAY_MS });
+    return found;
   }
 
-  async function lookup(req, res) {
+  async function lookup(kind, req, res) {
     const b = await readJson(req, res, 1024);
     if (!b) return;
-    const inn = typeof b.inn === "string" ? b.inn.replace(/\D/g, "") : "";
-    if (!isValidInn(inn)) return send(res, 400, { ok: false, error: "bad_inn" });
+    const raw = b[kind.field];
+    const value = typeof raw === "string" ? raw.replace(/\D/g, "") : "";
+    if (!kind.valid(value)) return send(res, 400, { ok: false, error: kind.error });
     // Справочник — только вошедшим: иначе это бесплатный прокси к чужой квоте.
     const ctx = await withSession(req, async (_c, c) => c);
     if (!ctx) return send(res, 401, { ok: false });
@@ -96,7 +144,7 @@ function createCompanyLookup({
       return send(res, 429, { ok: false }, { "Retry-After": "30" });
     }
     try {
-      return send(res, 200, { ok: true, company: await ask(inn) });
+      return send(res, 200, { ok: true, [kind.out]: await ask(kind, value) });
     } catch (err) {
       log.error("[uklad] справочник компаний:", err.message);
       return send(res, 502, { ok: false, error: "upstream" });
@@ -104,12 +152,13 @@ function createCompanyLookup({
   }
 
   async function handle(req, res, url) {
-    if (url.pathname !== "/api/company/lookup" || req.method !== "POST") return false;
-    await lookup(req, res);
+    const kind = Object.hasOwn(KINDS, url.pathname) ? KINDS[url.pathname] : null;
+    if (!kind || req.method !== "POST") return false;
+    await lookup(kind, req, res);
     return true;
   }
 
   return { handle };
 }
 
-module.exports = { createCompanyLookup, isValidInn, pick };
+module.exports = { createCompanyLookup, isValidInn, isValidBik, pick, pickBank };

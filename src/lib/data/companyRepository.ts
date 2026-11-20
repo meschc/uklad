@@ -1,9 +1,12 @@
 import { apiRequest, hasCabinetServer } from "./api";
 import { attempt, fail, ok, type Result } from "./result";
-import { lookupCompany, type CompanyInfo } from "../company";
+import { lookupBank, lookupCompany, type BankInfo, type CompanyInfo } from "../company";
 
 /** Реквизиты из справочника: что показывает профиль. */
 export type CompanyDetails = Omit<CompanyInfo, "mock"> & { mock: boolean; status?: string };
+
+/** Банк из справочника: название и корсчёт для реквизитов. */
+export type BankDetails = BankInfo & { status?: string };
 
 /**
  * Реквизиты компании по ИНН.
@@ -34,6 +37,33 @@ export const companyRepository = {
       ogrn: c.ogrn,
       legalAddress: c.legalAddress,
       status: c.status,
+      mock: false,
+    });
+  },
+
+  /**
+   * Банк по БИК (`POST /company/bank`): тот же справочник и те же правила,
+   * что у ИНН. Демо без сервера — заглушка `lookupBank` с пометкой `mock`.
+   * `null` — справочник такого БИК не знает.
+   */
+  bank: async (bik: string): Promise<Result<BankDetails | null>> => {
+    if (!hasCabinetServer) return ok(lookupBank(bik));
+    const res = await attempt(
+      () => apiRequest("POST", "/company/bank", { bik }),
+      "bank.err.network",
+    );
+    if (!res.ok) return res;
+    const { status, body } = res.data;
+    if (status === 503) return fail("bank.err.notConfigured");
+    if (status === 429) return fail("company.err.tooOften");
+    if (status !== 200) return fail("bank.err.network");
+    const b = body.bank as Partial<BankDetails> | null | undefined;
+    if (!b || typeof b.name !== "string") return ok(null);
+    return ok({
+      bik: typeof b.bik === "string" ? b.bik : bik,
+      name: b.name,
+      correspondentAccount: b.correspondentAccount,
+      status: b.status,
       mock: false,
     });
   },
