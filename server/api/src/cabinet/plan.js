@@ -15,11 +15,16 @@
  * Маршруты (право `org.manage` — «Компания: настройки, оплата, удаление»):
  *   GET  /api/company/plan          — { ok, plan } или { ok, plan: null }
  *   POST /api/company/plan/request  — { tariff } → { ok, plan }
+ *
+ * Любому вошедшему сотруднику компании (стол и экраны решают, что показать):
+ *   GET  /api/company/features      — { ok, tariff, features, limits, payment } или
+ *                                     { ok, features: null } без аккаунта админки
  */
 /* global require, module, process, console */
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { adminStore } = require("../admin/store");
 const plans = require("../admin/plans");
+const { paymentOf } = require("./planLimits");
 
 /** Тарифы, которые склад может попросить сам. Свой и корпоративный — разговором. */
 const REQUESTABLE = ["start", "warehouse", "operator"];
@@ -30,7 +35,10 @@ const LETTER_EVERY_MS = 3_600_000;
 
 /** Что кабинет показывает о тарифе. Цена — своя у аккаунта (спеццена) или тарифа. */
 function planView(a, invoice, nowIso) {
+  const pay = paymentOf(a, new Date(nowIso));
   return {
+    readOnly: pay.readOnly,
+    readOnlyAt: pay.readOnlyAt,
     tariff: a.tariff,
     price: a.price ?? plans.PLANS[a.tariff]?.price ?? null,
     period: a.period,
@@ -156,7 +164,28 @@ function createPlan({
     return send(res, 200, { ok: true, plan: out.plan });
   }
 
+  /**
+   * Функции и лимиты тарифа с ручными правками из карточки админки и
+   * состояние оплаты. Только «да/нет» и числа: цены и счёт — владельцу (`get`).
+   */
+  async function features(req, res) {
+    const out = await withSession(req, async (_c, ctx) => ({ orgId: ctx.orgId }));
+    if (!out) return send(res, 401, { ok: false });
+    const a = store.accountByOrg(out.orgId);
+    if (!a) return send(res, 200, { ok: true, features: null });
+    const flat = (o, f) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, f(v)]));
+    const p = paymentOf(a, now());
+    return send(res, 200, {
+      ok: true,
+      tariff: a.tariff,
+      features: flat(plans.effectiveFeatures(a), (v) => v.on),
+      limits: flat(plans.effectiveLimits(a), (v) => v.value ?? null),
+      payment: { readOnly: p.readOnly, readOnlyAt: p.readOnlyAt },
+    });
+  }
+
   const routes = {
+    "GET /api/company/features": features,
     "GET /api/company/plan": get,
     "POST /api/company/plan/request": request,
   };

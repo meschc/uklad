@@ -1,4 +1,4 @@
-import { TARIFF_FEATURES } from "../tariff";
+import { featuresOf } from "../tariff";
 import type { SliceCreator, SubscriptionSlice } from "./state";
 
 /**
@@ -12,14 +12,28 @@ export const createSubscriptionSlice: SliceCreator<SubscriptionSlice> = (set) =>
     backup: { remindEveryDays: 7, emailWeekly: false },
   },
 
+  // Демо: тариф выбирается в браузере, функции — по таблице тарифа.
   setTariff: (tariff) =>
     set((s) => ({
       subscription: {
         ...s.subscription,
         tariff,
+        features: undefined,
         // Копия на почту не переживает переход на тариф без неё: иначе
         // настройка выглядела бы включённой, а писем не было бы.
-        backup: TARIFF_FEATURES[tariff].weeklyEmailBackup
+        backup: featuresOf({ tariff }).weeklyEmailBackup
+          ? s.subscription.backup
+          : { ...s.subscription.backup, emailWeekly: false },
+      },
+    })),
+
+  setPlanFeatures: (tariff, features) =>
+    set((s) => ({
+      subscription: {
+        ...s.subscription,
+        tariff,
+        features,
+        backup: featuresOf({ tariff, features }).weeklyEmailBackup
           ? s.subscription.backup
           : { ...s.subscription.backup, emailWeekly: false },
       },
