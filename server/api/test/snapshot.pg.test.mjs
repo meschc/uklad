@@ -1,10 +1,11 @@
 // Снимок кабинета на сервере (ADR 0010): своя компания пишет и читает,
 // чужая не видит; устаревшая версия — 409, а не молчаливое затирание.
-/* global process, fetch, setTimeout */
+/* global process, fetch, setTimeout, URL */
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import http from "node:http";
+import { readFileSync } from "node:fs";
 
 const require = createRequire(import.meta.url);
 const SKIP = !process.env.PG_ADMIN_URL && "нет PG_ADMIN_URL";
@@ -85,7 +86,7 @@ async function owner(email, ip) {
   return { cookie: token, org: (await res.json()).orgId };
 }
 
-const data = (mark) => ({ warehouse: { id: "wh_1", name: mark }, products: [] });
+const data = (mark) => ({ warehouse: { id: "wh_1", name: mark }, mark, products: [] });
 
 test("снимок: первая запись, чтение, версия растёт, устаревшая — 409", { skip: SKIP }, async () => {
   const a = await owner("snap-a@sklad.ru", "10.0.1.2");
@@ -126,7 +127,7 @@ test("снимок: первая запись, чтение, версия рас
   assert.equal(read.json.snapshot.format, 8);
   assert.equal(read.json.snapshot.data.warehouse.name, "А2");
   const { rows } = await db.root.query(
-    `SELECT previous->'warehouse'->>'name' AS prev FROM uklad.cabinet_snapshots WHERE org_id = $1`,
+    `SELECT previous->>'mark' AS prev FROM uklad.cabinet_snapshots WHERE org_id = $1`,
     [a.org],
   );
   assert.equal(rows[0].prev, "А1");
@@ -1097,3 +1098,124 @@ test(
     );
   },
 );
+
+test(
+  "склады строками: в документе их нет, кабинет получает тот же JSON, удалённый — в корзине",
+  { skip: SKIP },
+  async () => {
+    const a = await owner("snap-wh@sklad.ru", "10.0.1.40");
+    const main = { id: "wh_m", name: "Основной", kind: "fulfillment", floors: [{ id: "f1" }] };
+    const second = { id: "wh_s", name: "Второй", address: "Тула", staff: [{ id: "st1" }] };
+    const put = async (version, warehouse, otherWarehouses) =>
+      call("/api/cabinet/snapshot", {
+        ...a,
+        body: { version, format: 8, data: { warehouse, otherWarehouses, products: [] } },
+      });
+    assert.equal((await put(0, main, [second])).status, 200);
+
+    const raw = await db.root.query(
+      `SELECT data ? 'warehouse' AS w, data ? 'otherWarehouses' AS o
+       FROM uklad.cabinet_snapshots WHERE org_id = $1`,
+      [a.org],
+    );
+    assert.deepEqual(raw.rows[0], { w: false, o: false });
+    const rows = async () =>
+      (
+        await db.root.query(
+          `SELECT ref, name, address, position, placeholder, deleted_at IS NOT NULL AS gone
+           FROM uklad.warehouses WHERE org_id = $1 ORDER BY ref`,
+          [a.org],
+        )
+      ).rows;
+    assert.deepEqual(await rows(), [
+      {
+        ref: "wh_m",
+        name: "Основной",
+        address: null,
+        position: 0,
+        placeholder: false,
+        gone: false,
+      },
+      {
+        ref: "wh_s",
+        name: "Второй",
+        address: "Тула",
+        position: 1,
+        placeholder: false,
+        gone: false,
+      },
+    ]);
+    const read = (await call("/api/cabinet/snapshot", a)).json.snapshot.data;
+    assert.deepEqual(read.warehouse, main);
+    assert.deepEqual(read.otherWarehouses, [second]);
+
+    // Руководитель открыл второй склад и убрал первый — первый в корзине.
+    assert.equal((await put(1, second, [])).status, 200);
+    assert.deepEqual(
+      (await rows()).map((r) => [r.ref, r.position, r.gone]),
+      [
+        ["wh_m", 0, true],
+        ["wh_s", 0, false],
+      ],
+    );
+    const again = (await call("/api/cabinet/snapshot", a)).json.snapshot.data;
+    assert.deepEqual([again.warehouse.id, again.otherWarehouses], ["wh_s", []]);
+
+    // Заготовка в лимит не идёт.
+    assert.equal((await put(2, { id: "ph", placeholder: true, floors: [] }, [second])).status, 200);
+    const n = await db.root.query(
+      `SELECT count(*)::int AS n FROM uklad.warehouses
+       WHERE org_id = $1 AND deleted_at IS NULL AND card IS NOT NULL AND NOT placeholder`,
+      [a.org],
+    );
+    assert.equal(n.rows[0].n, 1);
+
+    // Список с повтором id остаётся в документе, таблица не трогается.
+    assert.equal((await put(3, second, [second])).status, 200);
+    const kept = await db.root.query(
+      `SELECT data->'otherWarehouses'->0->>'id' AS id FROM uklad.cabinet_snapshots WHERE org_id = $1`,
+      [a.org],
+    );
+    assert.equal(kept.rows[0].id, "wh_s");
+    assert.equal(
+      (await call("/api/cabinet/snapshot", a)).json.snapshot.data.otherWarehouses.length,
+      1,
+    );
+  },
+);
+
+test("миграция 051: склады старого снимка переезжают в строки", { skip: SKIP }, async () => {
+  const a = await owner("snap-wh-mig@sklad.ru", "10.0.1.41");
+  assert.equal(
+    (
+      await call("/api/cabinet/snapshot", {
+        ...a,
+        body: { version: 0, format: 8, data: { mark: "x", products: [] } },
+      })
+    ).status,
+    200,
+  );
+  // Снимок до 051: склады в документе.
+  await db.root.query(
+    `UPDATE uklad.cabinet_snapshots
+     SET data = data || '{"warehouse": {"id": "old_1", "name": "Старый"},
+                          "otherWarehouses": [{"id": "old_2", "name": "Ещё"}]}'::jsonb
+     WHERE org_id = $1`,
+    [a.org],
+  );
+  const sql = readFileSync(
+    new URL("../../db/migrations/051_warehouses_cards.sql", import.meta.url),
+    "utf8",
+  );
+  const from = sql.indexOf("ALTER TABLE uklad.cabinet_snapshots NO FORCE");
+  await db.root.query(sql.slice(from));
+  const doc = await db.root.query(
+    `SELECT data ? 'warehouse' AS w FROM uklad.cabinet_snapshots WHERE org_id = $1`,
+    [a.org],
+  );
+  assert.equal(doc.rows[0].w, false);
+  const read = (await call("/api/cabinet/snapshot", a)).json.snapshot.data;
+  assert.deepEqual(read.warehouse, { id: "old_1", name: "Старый" });
+  assert.deepEqual(read.otherWarehouses, [{ id: "old_2", name: "Ещё" }]);
+  assert.equal(read.mark, "x");
+});
