@@ -129,20 +129,29 @@ async function fetchCancelled(ask, system, now, open) {
 const isOpen = (r) =>
   isObject(r) && r.status !== "cancelled" && r.status !== "shipped" && !r.packedAt;
 
-/** Нормализованные номера открытых заявок площадки `source`. */
-function openOrders(requests, source) {
+/**
+ * Заявки подключения: та же площадка и товар того же партнёра (`partnerOf`
+ * — партнёр товара заявки; `null` — свой товар склада), как у `productsFor`.
+ */
+const ofConnection = (r, source, partnerOf, partnerId) =>
+  r.source === source && (partnerOf ? partnerOf(r.productId) === partnerId : true);
+
+/** Нормализованные номера открытых заявок подключения. */
+function openOrders(requests, source, partnerOf, partnerId = null) {
   const out = new Set();
   for (const r of list(requests)) {
-    if (isOpen(r) && r.source === source && r.externalId) out.add(norm(r.externalId));
+    if (isOpen(r) && r.externalId && ofConnection(r, source, partnerOf, partnerId))
+      out.add(norm(r.externalId));
   }
   return out;
 }
 
-/** Открытые заявки отменённых заказов → «отменена». Чистое правило. */
-function cancelRequests(requests, source, ids, at) {
+/** Открытые заявки отменённых заказов подключения → «отменена». Чистое правило. */
+function cancelRequests(requests, source, ids, at, partnerOf, partnerId = null) {
   let n = 0;
   const next = list(requests).map((r) => {
-    if (!isOpen(r) || r.source !== source || !ids.has(norm(r.externalId))) return r;
+    if (!isOpen(r) || !ofConnection(r, source, partnerOf, partnerId)) return r;
+    if (!ids.has(norm(r.externalId))) return r;
     n += 1;
     return { ...r, status: "cancelled", updatedAt: at };
   });

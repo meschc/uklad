@@ -511,9 +511,19 @@ function createOrderPull({
     // Собранное на складе — площадке «собран», открытое — спросить об отмене
     // (после записи, вне транзакции).
     const picked = pickedOrders(view.requests, source);
-    const open = openOrders(view.requests, source);
+    const open = openOrders(view.requests, source, partnerOfIn(full), partnerId);
     return { created: plan.orders, unknown: plan.unknown, picked, open };
   }
+
+  /** Партнёр товара по id (`null` — свой товар склада). */
+  const partnerOfIn = (full) => {
+    const by = new Map(
+      list(full.products)
+        .filter(isObject)
+        .map((p) => [p.id, typeof p.partnerId === "string" ? p.partnerId : null]),
+    );
+    return (productId) => by.get(productId) ?? null;
+  };
 
   /** Записать склад `next` в снимок компании: версия +1, строки — как у стола. */
   async function writeView(c, full, next, ref) {
@@ -545,7 +555,16 @@ function createOrderPull({
     const ref = connectionWarehouse(full, isObject(account.params) ? account.params : {});
     const view = ref ? focusWarehouse(full, ref) : null;
     if (!view) return 0;
-    const out = cancelRequests(view.requests, account.system, ids, at);
+    const params = isObject(account.params) ? account.params : {};
+    const partnerId = typeof params.partnerId === "string" ? params.partnerId : null;
+    const out = cancelRequests(
+      view.requests,
+      account.system,
+      ids,
+      at,
+      partnerOfIn(full),
+      partnerId,
+    );
     if (!out.cancelled) return 0;
     const bad = await writeView(c, full, { ...view, requests: out.requests }, ref);
     return bad ? 0 : out.cancelled;

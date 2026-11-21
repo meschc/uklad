@@ -29,6 +29,22 @@ test("открытые заявки: не отменённые, не упако�
   assert.deepEqual([...openOrders(rs, "ozon")], ["1-1", "1-2"]);
 });
 
+test("отмены — только заявки партнёра этого подключения", () => {
+  const partnerOf = (p) => ({ pa: "A", pb: "B" })[p] ?? null;
+  const rs = [
+    req("a", { externalId: "1", productId: "pa" }),
+    req("b", { externalId: "2", productId: "pb" }),
+    req("c", { externalId: "3", productId: "own" }),
+  ];
+  assert.deepEqual([...openOrders(rs, "ozon", partnerOf, "A")], ["1"]);
+  assert.deepEqual([...openOrders(rs, "ozon", partnerOf, null)], ["3"]);
+  const out = cancelRequests(rs, "ozon", new Set(["1", "2"]), NOW, partnerOf, "A");
+  assert.deepEqual(
+    out.requests.map((r) => r.status),
+    ["cancelled", "new", "new"],
+  );
+});
+
 test("отмена: открытые заявки заказа — «отменена», упакованную не трогаем", () => {
   const rs = [
     req("a", { externalId: "1-1", status: "in_progress" }),
