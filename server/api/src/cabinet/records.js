@@ -38,6 +38,7 @@ const WAREHOUSE_LISTS = [
   "disputes",
   "docRecords",
   "outboundBoxes",
+  "warehouseSettings",
 ];
 /**
  * Списки, куда кабинет добавляет новое в начало. Место в списке у них
@@ -47,7 +48,20 @@ const WAREHOUSE_LISTS = [
  */
 const NEWEST_FIRST = new Set(["expectedShipments", "requests", "shipments", "tasks", "disputes"]);
 /** Списки всей компании, без склада. */
-const COMPANY_LISTS = ["staffEvents", "payAdjustments"];
+const COMPANY_LISTS = ["staffEvents", "payAdjustments", "companySettings"];
+/**
+ * Справочники строками (миграции не нужно, план переноса снимка 21.11):
+ * реквизиты, перерывы и номера тары компании, услуги с ценами и устройства
+ * склада — не списки, а значения. Чтобы их не держал документ, каждое
+ * значение становится записью `{ id: ключ, value }` списка-справочника и
+ * дальше живёт строкой, как работа склада. При сборке значения
+ * возвращаются на свои ключи: кабинет, права смотрящих и стол видят тот же
+ * JSON. Чужой ключ в справочнике не разворачивается.
+ */
+const VALUES = {
+  companySettings: ["account", "breakPolicy", "boxSeq", "palletSeq"],
+  warehouseSettings: ["serviceSettings", "devices"],
+};
 /** Склад для списков компании. */
 const COMPANY = "";
 const MARK = "$rows";
@@ -76,6 +90,25 @@ function rowable(list) {
   return true;
 }
 
+/** Значения справочника — одним списком на месте `key` (есть хоть одно). */
+function fold(holder, key) {
+  const keys = VALUES[key]?.filter((k) => holder[k] !== undefined) ?? [];
+  if (keys.length === 0) return;
+  holder[key] = keys.map((k) => ({ id: k, value: holder[k] }));
+  for (const k of keys) delete holder[k];
+}
+
+/** Справочник-список → значения на своих ключах. Метку не трогаем. */
+function unfold(holder, key) {
+  const list = holder[key];
+  if (!VALUES[key] || list === undefined || isMark(list)) return;
+  delete holder[key];
+  if (!Array.isArray(list)) return;
+  for (const item of list) {
+    if (isObject(item) && VALUES[key].includes(item.id)) holder[item.id] = item.value;
+  }
+}
+
 /**
  * Пройти по всем местам, где лежат списки: корень (активный склад и
  * компания) и `warehouseData` остальных складов. `visit(holder, key, wh)`
@@ -84,8 +117,12 @@ function rowable(list) {
 function eachList(data, visit) {
   const out = { ...data };
   const active = isRef(data.warehouse?.id) ? data.warehouse.id : null;
-  if (active) for (const key of WAREHOUSE_LISTS) visit(out, key, active);
-  for (const key of COMPANY_LISTS) visit(out, key, COMPANY);
+  const step = (holder, key, wh) => {
+    fold(holder, key);
+    visit(holder, key, wh);
+  };
+  if (active) for (const key of WAREHOUSE_LISTS) step(out, key, active);
+  for (const key of COMPANY_LISTS) step(out, key, COMPANY);
   if (isObject(data.warehouseData)) {
     out.warehouseData = { ...data.warehouseData };
     for (const [wh, work] of Object.entries(data.warehouseData)) {
@@ -94,7 +131,7 @@ function eachList(data, visit) {
       if (!isObject(work) || !isRef(wh) || wh === active) continue;
       const copy = { ...work };
       out.warehouseData[wh] = copy;
-      for (const key of WAREHOUSE_LISTS) visit(copy, key, wh);
+      for (const key of WAREHOUSE_LISTS) step(copy, key, wh);
     }
   }
   return out;
@@ -122,8 +159,11 @@ function splitRecords(data) {
   return { doc, items, slots };
 }
 
-/** Документ с метками и строки базы → кабинет целиком. */
-function assembleRecords(doc, rows) {
+/**
+ * Документ с метками и строки базы → кабинет целиком. `only` — собрать
+ * только эти списки, остальные метки оставить как есть.
+ */
+function assembleRecords(doc, rows, only = null) {
   const lists = new Map();
   for (const r of rows) {
     const k = `${r.w}\u0000${r.d}`;
@@ -131,7 +171,10 @@ function assembleRecords(doc, rows) {
     lists.get(k).push(r.data);
   }
   return eachList(doc, (holder, key, wh) => {
-    if (isMark(holder[key])) holder[key] = lists.get(`${wh}\u0000${key}`) ?? [];
+    if (isMark(holder[key]) && (!only || only.includes(key))) {
+      holder[key] = lists.get(`${wh}\u0000${key}`) ?? [];
+    }
+    unfold(holder, key);
   });
 }
 
@@ -196,6 +239,25 @@ async function loadRecords(c, doc, domains = null) {
     [domains],
   );
   return assembleRecords(doc, rows);
+}
+
+/**
+ * Документ из базы с одними справочниками: склады, реквизиты, устройства,
+ * цены — на своих ключах, метки работы склада остаются метками. Для тех, кто
+ * читает документ компании, не собирая работу (стол ищет своё устройство).
+ */
+async function withSettings(c, doc) {
+  doc = await withWarehouses(c, doc);
+  if (!isObject(doc)) return doc;
+  const domains = Object.keys(VALUES);
+  const { rows } = await c.query(
+    `SELECT warehouse_ref AS w, domain AS d, data FROM uklad.cabinet_records
+     WHERE org_id = uklad.current_org() AND deleted_at IS NULL AND archived_at IS NULL
+       AND domain = ANY($1::text[])
+     ORDER BY warehouse_ref, domain, position`,
+    [domains],
+  );
+  return assembleRecords(doc, rows, domains);
 }
 
 /** Сколько живых строк в каждом из списков: «склад\0список» → число. */
@@ -441,6 +503,7 @@ module.exports = {
   hasMarks,
   isMark,
   loadRecords,
+  withSettings,
   storeRecords,
   massGone,
   massRemoved,

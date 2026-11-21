@@ -73,10 +73,18 @@ describe("cabinetRows", () => {
       boxSeq: 8,
     };
     const changes = diffCabinet(base, splitCabinet(after), after.products);
-    expect(changes.upsert.map((r) => `${r.d}/${r.ref}`)).toEqual(["requests/r3"]);
+    // Номер тары — значение справочника: меняется одной строкой.
+    expect(changes.upsert.map((r) => `${r.d}/${r.ref}`)).toEqual([
+      "requests/r3",
+      "companySettings/boxSeq",
+    ]);
     expect(changes.remove.map((r) => `${r.d}/${r.ref}`)).toEqual(["receivingEvents/e2"]);
     expect(changes.products).toBeUndefined();
-    expect(changes.slots.map((s) => s.d).sort()).toEqual(["receivingEvents", "requests"]);
+    expect(changes.slots.map((s) => s.d).sort()).toEqual([
+      "companySettings",
+      "receivingEvents",
+      "requests",
+    ]);
     const rows = new Map(
       server.splitRecords(before).items.map((r) => [`${r.w}|${r.d}|${r.ref}`, r] as const),
     );
