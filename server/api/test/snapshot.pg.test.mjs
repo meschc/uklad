@@ -1236,12 +1236,15 @@ test(
     assert.deepEqual(after.warehouse.staff, [{ ...ivan, hourlyRate: 350 }]);
     assert.deepEqual(after.otherWarehouses, [empty]);
 
-    // Склад без ключа staff так и читается — без него.
+    // Карточка без ключа staff — «не менялись»: люди склада на месте.
     assert.equal((await put(2, undefined)).status, 200);
-    assert.equal("staff" in (await read()).warehouse, false);
+    assert.deepEqual((await read()).warehouse.staff, [{ ...ivan, hourlyRate: 350 }]);
+    // Новый склад без ключа так и читается — без него.
+    assert.equal((await put(3, [], [{ id: "wh_n", name: "Новый" }])).status, 200);
+    assert.equal("staff" in (await read()).otherWarehouses[0], false);
 
     // Повтор id — список остаётся в карточке склада как был.
-    assert.equal((await put(3, [olga, olga])).status, 200);
+    assert.equal((await put(4, [olga, olga])).status, 200);
     assert.deepEqual((await read()).warehouse.staff, [olga, olga]);
   },
 );

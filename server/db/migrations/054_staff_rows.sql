@@ -87,6 +87,9 @@ LANGUAGE sql STABLE AS $$
 $$;
 
 -- Склады → строки, сотрудники каждого склада — своими строками (051 + 054).
+-- Карточка без ключа `staff` значит «сотрудники не менялись»: пометка и
+-- строки остаются как были (ревью безопасности #231), иначе одна такая
+-- запись спрятала бы людей склада от кабинета и бейджей.
 CREATE OR REPLACE FUNCTION uklad.save_warehouses(p_cards jsonb) RETURNS void
 LANGUAGE plpgsql SET search_path = pg_catalog, uklad, pg_temp AS $$
 DECLARE
@@ -111,10 +114,13 @@ BEGIN
   ON CONFLICT (org_id, ref) DO UPDATE SET
     name = excluded.name, kind = excluded.kind, address = excluded.address,
     placeholder = excluded.placeholder, card = excluded.card, position = excluded.position,
-    staff_rows = excluded.staff_rows, deleted_at = NULL, updated_at = now()
+    staff_rows = CASE WHEN excluded.staff_rows OR excluded.card ? 'staff'
+                      THEN excluded.staff_rows ELSE w.staff_rows END,
+    deleted_at = NULL, updated_at = now()
   WHERE w.deleted_at IS NOT NULL
-    OR (w.card, w.position, w.staff_rows)
-       IS DISTINCT FROM (excluded.card, excluded.position, excluded.staff_rows);
+    OR (w.card, w.position) IS DISTINCT FROM (excluded.card, excluded.position)
+    OR (excluded.staff_rows OR excluded.card ? 'staff')
+       AND w.staff_rows IS DISTINCT FROM excluded.staff_rows;
 
   FOR one IN SELECT x FROM jsonb_array_elements(p_cards) x LOOP
     IF uklad.staff_cards_ok(one->'staff') THEN
