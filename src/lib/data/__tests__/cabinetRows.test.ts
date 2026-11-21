@@ -92,6 +92,21 @@ describe("cabinetRows", () => {
     expect(applyLikeServer(rows, changes)).toEqual(rest);
   });
 
+  it("размещения и справочники раскладывает так же, как сервер", () => {
+    const data = {
+      warehouse: { id: "w" },
+      placements: { p1: { floorId: "f", cellIndex: 0 }, p2: { floorId: "f", cellIndex: 1 } },
+      boxSeq: 3,
+      devices: [{ id: "d1" }],
+    };
+    const mine = splitCabinet(data);
+    const theirs = server.splitRecords(data);
+    expect(mine.doc).toEqual(theirs.doc);
+    expect([...mine.rows.values()].map(({ d, ref }) => `${d}/${ref}`)).toEqual(
+      theirs.items.map(({ d, ref }: { d: string; ref: string }) => `${d}/${ref}`),
+    );
+  });
+
   it("порядок ключей из базы не делает запись изменённой", () => {
     const base = splitCabinet({ warehouse: { id: "w" }, requests: [{ qty: 1, id: "a" }] });
     const next = splitCabinet({ warehouse: { id: "w" }, requests: [{ id: "a", qty: 1 }] });

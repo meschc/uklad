@@ -48,7 +48,7 @@ const WAREHOUSE_LISTS = [
  */
 const NEWEST_FIRST = new Set(["expectedShipments", "requests", "shipments", "tasks", "disputes"]);
 /** Списки всей компании, без склада. */
-const COMPANY_LISTS = ["staffEvents", "payAdjustments", "companySettings"];
+const COMPANY_LISTS = ["staffEvents", "payAdjustments", "companySettings", "placements"];
 /**
  * Справочники строками (миграции не нужно, план переноса снимка 21.11):
  * реквизиты, перерывы и номера тары компании, услуги с ценами и устройства
@@ -62,6 +62,12 @@ const VALUES = {
   companySettings: ["account", "breakPolicy", "boxSeq", "palletSeq"],
   warehouseSettings: ["serviceSettings", "devices"],
 };
+/**
+ * Словари «id → значение», которые лежат строками по записи на ключ:
+ * размещения «товар → ячейка» (`placements`, план переноса 21.11). Каждая
+ * пара — запись `{ id, value }` своего списка; при сборке — снова словарь.
+ */
+const MAPS = new Set(["placements"]);
 /** Склад для списков компании. */
 const COMPANY = "";
 const MARK = "$rows";
@@ -92,6 +98,13 @@ function rowable(list) {
 
 /** Значения справочника — одним списком на месте `key` (есть хоть одно). */
 function fold(holder, key) {
+  if (MAPS.has(key)) {
+    const map = holder[key];
+    if (isObject(map) && !isMark(map)) {
+      holder[key] = Object.entries(map).map(([id, value]) => ({ id, value }));
+    }
+    return;
+  }
   const keys = VALUES[key]?.filter((k) => holder[k] !== undefined) ?? [];
   if (keys.length === 0) return;
   holder[key] = keys.map((k) => ({ id: k, value: holder[k] }));
@@ -101,6 +114,13 @@ function fold(holder, key) {
 /** Справочник-список → значения на своих ключах. Метку не трогаем. */
 function unfold(holder, key) {
   const list = holder[key];
+  if (MAPS.has(key)) {
+    if (!Array.isArray(list)) return;
+    holder[key] = Object.fromEntries(
+      list.filter((x) => isObject(x) && isRef(x.id)).map((x) => [x.id, x.value]),
+    );
+    return;
+  }
   if (!VALUES[key] || list === undefined || isMark(list)) return;
   delete holder[key];
   if (!Array.isArray(list)) return;
