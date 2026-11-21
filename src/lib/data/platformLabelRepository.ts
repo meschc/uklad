@@ -11,6 +11,8 @@ const ERROR: Record<string, MsgKey> = {
   no_staff: "ws.plabel.err.noStaff",
   no_connection: "ws.plabel.err.noConnection",
   not_marketplace: "ws.plabel.err.noConnection",
+  desk_warehouse: "ws.plabel.err.deskWarehouse",
+  not_configured: "ws.plabel.err.serverKey",
 };
 
 /**
@@ -27,6 +29,8 @@ export const platformLabelRepository = {
     const b = body as { file?: unknown; error?: unknown; detail?: unknown };
     if (status === 200 && typeof b.file === "string") return { ok: true, file: b.file };
     const detail = typeof b.detail === "string" ? b.detail : "";
+    // Каждый отказ говорит, почему и что сделать (Кирилл 21.11).
+    if (status === 429) return { ok: false, error: "ws.plabel.err.limited", detail: "" };
     const code = typeof b.error === "string" ? b.error : "";
     return { ok: false, error: ERROR[code] ?? "ws.plabel.err.platform", detail };
   },

@@ -463,10 +463,20 @@ export const ru = {
   "ws.plabel.printed": "Ярлык {platform} напечатан — наклейте его на посылку",
   "ws.plabel.retry": "Ярлык {platform} ещё раз",
   "ws.plabel.reprint": "Перепечатать ярлык {platform}",
-  "ws.plabel.err.notPicked": "Ярлыка {platform} нет: заказ ещё не собран",
-  "ws.plabel.err.noStaff": "Отсканируйте бейдж упаковщика, чтобы напечатать ярлык {platform}",
-  "ws.plabel.err.noConnection": "Ярлыка {platform} нет: нет подключения этого продавца",
-  "ws.plabel.err.platform": "Ярлык {platform} ещё не готов — повторите через минуту",
+  "ws.plabel.err.notPicked":
+    "Ярлыка {platform} нет: заказ собран не весь. Дособерите его на сборке и нажмите «Ярлык {platform} ещё раз»",
+  "ws.plabel.err.noStaff":
+    "Ярлык {platform} печатается только при упаковщике: отсканируйте свой бейдж и нажмите «Ярлык {platform} ещё раз»",
+  "ws.plabel.err.noConnection":
+    "Ярлыка {platform} нет: магазин этого продавца не подключён. Руководитель подключает его в «Интеграциях», затем нажмите «Ярлык {platform} ещё раз»",
+  "ws.plabel.err.platform":
+    "{platform} ещё не выдал ярлык. Подождите минуту и нажмите «Ярлык {platform} ещё раз»",
+  "ws.plabel.err.limited":
+    "Слишком много ярлыков подряд. Подождите полминуты и нажмите «Ярлык {platform} ещё раз»",
+  "ws.plabel.err.deskWarehouse":
+    "Стол не привязан к складу, ярлыка {platform} нет. Руководитель привязывает стол к складу в «Устройствах»",
+  "ws.plabel.err.serverKey":
+    "Ярлык {platform} пока не печатается: на сервере не включены подключения. Напишите в поддержку Уклада",
   "ws.run.printerOff": "Принтер не выбран: в окне печати выберите принтер этикеток.",
   "ws.run.printerOn": "В окне печати выберите «{name}», лента {size} мм.",
   "ws.run.printerSizeOnly": "Лента {size} мм. В окне печати выберите принтер этикеток.",
@@ -1103,10 +1113,20 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.plabel.printed": "{platform} label printed — stick it on the parcel",
   "ws.plabel.retry": "{platform} label again",
   "ws.plabel.reprint": "Reprint the {platform} label",
-  "ws.plabel.err.notPicked": "No {platform} label: the order is not picked yet",
-  "ws.plabel.err.noStaff": "Scan a packer badge to print the {platform} label",
-  "ws.plabel.err.noConnection": "No {platform} label: this seller has no connection",
-  "ws.plabel.err.platform": "The {platform} label is not ready yet — try again in a minute",
+  "ws.plabel.err.notPicked":
+    "No {platform} label: the order is not fully picked. Finish picking it, then press “{platform} label again”",
+  "ws.plabel.err.noStaff":
+    "The {platform} label prints only for a packer: scan your badge and press “{platform} label again”",
+  "ws.plabel.err.noConnection":
+    "No {platform} label: this seller's store is not connected. A manager connects it in Integrations, then press “{platform} label again”",
+  "ws.plabel.err.platform":
+    "{platform} has not issued the label yet. Wait a minute and press “{platform} label again”",
+  "ws.plabel.err.limited":
+    "Too many labels in a row. Wait half a minute and press “{platform} label again”",
+  "ws.plabel.err.deskWarehouse":
+    "This desk is not linked to a warehouse, so there is no {platform} label. A manager links the desk in Devices",
+  "ws.plabel.err.serverKey":
+    "{platform} labels are not available yet: connections are off on the server. Contact Uklad support",
   "ws.run.printerOff": "No printer chosen: pick the label printer in the print window.",
   "ws.run.printerOn": "In the print window choose “{name}”, {size} mm label.",
   "ws.run.printerSizeOnly": "{size} mm label. Pick the label printer in the print window.",
