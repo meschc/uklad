@@ -616,6 +616,11 @@ test("кладовщик с почтой смотрит кабинет без с
         { id: "stf-ivan", name: "Иван", role: "Упаковщик", hourlyRate: 300, phone: "+7 900" },
       ],
     },
+    // Справочники лежат строками, а не в документе: права смотрящего — те же.
+    account: { type: "company", name: "Кирилл", org: "ООО Склад", inn: "7700000000" },
+    serviceSettings: { enabled: { pick: true }, prices: { pick: 15 }, twoStageReceiving: true },
+    breakPolicy: { mode: "x" },
+    boxSeq: 7,
   };
   const first = await post("/api/cabinet/snapshot", {
     ...boss,
@@ -626,6 +631,19 @@ test("кладовщик с почтой смотрит кабинет без с
   const seen = await call("GET", "/api/cabinet/snapshot", keeper);
   assert.equal(seen.status, 200);
   assert.equal(seen.json.snapshot.viewer, true);
+  const raw = await db.root.query(
+    `SELECT data ?| array['account', 'serviceSettings', 'breakPolicy', 'boxSeq'] AS inline
+     FROM uklad.cabinet_snapshots WHERE org_id = $1`,
+    [boss.org],
+  );
+  assert.equal(raw.rows[0].inline, false);
+  const v = seen.json.snapshot.data;
+  // Номер тары — с «Остатками»; реквизиты без ИНН и цены без сумм — как прежде.
+  assert.equal(v.boxSeq, 7);
+  assert.equal(v.account.org, "ООО Склад");
+  assert.equal(v.account.inn, undefined);
+  assert.deepEqual(v.serviceSettings, { enabled: {}, prices: {}, twoStageReceiving: true });
+  assert.equal("companySettings" in v || "warehouseSettings" in v, false);
   // Персонала у кладовщика нет вовсе: «Персонал: чтение» (`staff.view`) не
   // выдан (033). Имена и должности без ставок видит старший — матрица ниже.
   assert.deepEqual(seen.json.snapshot.data.warehouse.staff, []);
@@ -639,6 +657,9 @@ test("кладовщик с почтой смотрит кабинет без с
   const full = await call("GET", "/api/cabinet/snapshot", boss);
   assert.equal(full.json.snapshot.viewer, undefined);
   assert.equal(full.json.snapshot.data.warehouse.staff[0].hourlyRate, 300);
+  assert.equal(full.json.snapshot.data.account.inn, "7700000000");
+  assert.deepEqual(full.json.snapshot.data.serviceSettings.prices, { pick: 15 });
+  assert.deepEqual(full.json.snapshot.data.breakPolicy, { mode: "x" });
   // Роль без «Остатков» кабинет не видит вовсе.
   const chatOnly = await post("/api/team/roles/save", {
     ...boss,

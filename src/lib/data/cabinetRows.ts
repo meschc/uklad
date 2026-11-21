@@ -22,8 +22,14 @@ const WAREHOUSE_LISTS = [
   "disputes",
   "docRecords",
   "outboundBoxes",
+  "warehouseSettings",
 ] as const;
-const COMPANY_LISTS = ["staffEvents", "payAdjustments"] as const;
+const COMPANY_LISTS = ["staffEvents", "payAdjustments", "companySettings"] as const;
+/** Справочники-значения — записями списка, как `VALUES` в `records.js`. */
+const VALUES: Record<string, readonly string[]> = {
+  companySettings: ["account", "breakPolicy", "boxSeq", "palletSeq"],
+  warehouseSettings: ["serviceSettings", "devices"],
+};
 const NEWEST_FIRST = new Set(["expectedShipments", "requests", "shipments", "tasks", "disputes"]);
 const COMPANY = "";
 const MARK = "$rows";
@@ -89,13 +95,25 @@ function rowable(list: unknown): list is Obj[] {
   return true;
 }
 
+/** Значения справочника — одним списком на месте `key`, как `fold` на сервере. */
+function fold(holder: Obj, key: string) {
+  const keys = VALUES[key]?.filter((k) => holder[k] !== undefined) ?? [];
+  if (keys.length === 0) return;
+  holder[key] = keys.map((k) => ({ id: k, value: holder[k] }));
+  for (const k of keys) delete holder[k];
+}
+
 /** Тот же обход, что `eachList` на сервере: корень и `warehouseData`. */
 function eachList(data: Obj, visit: (holder: Obj, key: string, wh: string) => void): Obj {
   const out: Obj = { ...data };
   const wh = (data.warehouse as Obj | undefined)?.id;
   const active = isRef(wh) ? wh : null;
-  if (active) for (const key of WAREHOUSE_LISTS) visit(out, key, active);
-  for (const key of COMPANY_LISTS) visit(out, key, COMPANY);
+  const step = (holder: Obj, key: string, at: string) => {
+    fold(holder, key);
+    visit(holder, key, at);
+  };
+  if (active) for (const key of WAREHOUSE_LISTS) step(out, key, active);
+  for (const key of COMPANY_LISTS) step(out, key, COMPANY);
   if (isObject(data.warehouseData)) {
     const stash: Obj = { ...data.warehouseData };
     out.warehouseData = stash;
@@ -103,7 +121,7 @@ function eachList(data: Obj, visit: (holder: Obj, key: string, wh: string) => vo
       if (!isObject(work) || !isRef(id) || id === active) continue;
       const copy = { ...work };
       stash[id] = copy;
-      for (const key of WAREHOUSE_LISTS) visit(copy, key, id);
+      for (const key of WAREHOUSE_LISTS) step(copy, key, id);
     }
   }
   return out;

@@ -42,10 +42,13 @@ test("кабинет раскладывается по строкам и соб�
   assert.deepEqual(doc.warehouseData.wh_1, { requests: [{ id: "r1", qty: 5 }] });
   // Не работа склада — не трогается.
   assert.deepEqual(doc.chats, [{ id: "c1" }]);
-  assert.equal(doc.boxSeq, 7);
+  // Номер тары — значение справочника: строкой, а не в документе.
+  assert.equal(doc.boxSeq, undefined);
+  assert.deepEqual(doc.companySettings, { $rows: 1 });
   assert.deepEqual(
     items.map((i) => `${i.w}/${i.d}/${i.ref}`).sort(),
     [
+      "/companySettings/boxSeq",
       "/staffEvents/s1",
       "wh_1/receivingEvents/e1",
       "wh_1/receivingEvents/e2",
@@ -57,6 +60,33 @@ test("кабинет раскладывается по строкам и соб�
   assert.deepEqual(assembleRecords(doc, asRows(items)), data);
   // Исходник не тронут.
   assert.deepEqual(data, cabinet());
+});
+
+test("справочники — строками, на своих ключах после сборки", () => {
+  const data = {
+    warehouse: { id: "wh_1" },
+    account: { company: "ООО Склад", inn: "7700000000" },
+    breakPolicy: { minutes: 30 },
+    palletSeq: 3,
+    serviceSettings: { enabled: { pick: true }, prices: { pick: 15 } },
+    devices: [{ id: "d1", name: "Стол 1" }],
+    warehouseData: { wh_2: { serviceSettings: { enabled: {}, prices: {} }, devices: [] } },
+  };
+  const { doc, items } = splitRecords(data);
+  for (const k of ["account", "breakPolicy", "palletSeq", "serviceSettings", "devices"]) {
+    assert.equal(doc[k], undefined, k);
+  }
+  assert.deepEqual(doc.companySettings, { $rows: 3 });
+  assert.deepEqual(doc.warehouseSettings, { $rows: 2 });
+  assert.deepEqual(doc.warehouseData.wh_2, { warehouseSettings: { $rows: 2 } });
+  assert.deepEqual(assembleRecords(doc, asRows(items)), data);
+  // Чужой ключ в справочнике на кабинет не попадает.
+  const odd = [
+    { w: "", d: "companySettings", data: { id: "subscription", value: { plan: "max" } } },
+  ];
+  assert.equal(assembleRecords({ companySettings: { $rows: 1 } }, odd).subscription, undefined);
+  // Старый документ со значениями на месте читается как есть.
+  assert.deepEqual(assembleRecords({ boxSeq: 4 }, []), { boxSeq: 4 });
 });
 
 test("новое сверху не сдвигает остальные строки, новое снизу — тоже", () => {
