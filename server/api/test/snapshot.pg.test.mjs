@@ -1250,6 +1250,57 @@ test(
 );
 
 test(
+  "партнёры строками: в карточке склада их нет, без ключа — не менялись, убранный — в корзине",
+  { skip: SKIP },
+  async () => {
+    const a = await owner("snap-partners@sklad.ru", "10.0.1.44");
+    const p1 = { id: "p1", name: "ИП Иванов", inn: "770000000000", phone: "+7 900" };
+    const p2 = { id: "p2", name: "ООО Ромашка" };
+    const put = async (version, partners) =>
+      call("/api/cabinet/snapshot", {
+        ...a,
+        body: {
+          version,
+          format: 8,
+          data: { warehouse: { id: "wh_r", name: "Склад", partners }, otherWarehouses: [] },
+        },
+      });
+    assert.equal((await put(0, [p1, p2])).status, 200);
+    const card = await db.root.query(
+      `SELECT card ? 'partners' AS inline, partner_rows FROM uklad.warehouses
+       WHERE org_id = $1 AND ref = 'wh_r'`,
+      [a.org],
+    );
+    assert.deepEqual(card.rows[0], { inline: false, partner_rows: true });
+    const rows = async () =>
+      (
+        await db.root.query(
+          `SELECT ref, name, inn, deleted_at IS NOT NULL AS gone
+           FROM uklad.partners WHERE org_id = $1 ORDER BY ref`,
+          [a.org],
+        )
+      ).rows;
+    assert.deepEqual(await rows(), [
+      { ref: "p1", name: "ИП Иванов", inn: "770000000000", gone: false },
+      { ref: "p2", name: "ООО Ромашка", inn: null, gone: false },
+    ]);
+    const read = async () => (await call("/api/cabinet/snapshot", a)).json.snapshot.data;
+    assert.deepEqual((await read()).warehouse.partners, [p1, p2]);
+    assert.equal((await put(1, undefined)).status, 200);
+    assert.deepEqual((await read()).warehouse.partners, [p1, p2]);
+    assert.equal((await put(2, [p2])).status, 200);
+    assert.deepEqual(
+      (await rows()).map((r) => [r.ref, r.gone]),
+      [
+        ["p1", true],
+        ["p2", false],
+      ],
+    );
+    assert.deepEqual((await read()).warehouse.partners, [p2]);
+  },
+);
+
+test(
   "миграция 054: сотрудники из карточек складов переезжают в строки",
   { skip: SKIP },
   async () => {
