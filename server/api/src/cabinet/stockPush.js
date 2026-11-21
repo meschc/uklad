@@ -1,0 +1,130 @@
+/**
+ * Выгрузка остатков на площадку (шаг 13 `docs/domain/fbs.md`).
+ *
+ * Остаток на площадке больше реального — площадка продаёт то, чего нет,
+ * заказ отменяют, продавцу штраф. Поэтому считаем осторожно, только то, что
+ * точно лежит на складе подключения:
+ *
+ *   на складе = строки коробов и тары (`boxes`) + открытые короба отгрузки
+ *               + снятое в заявку без тары, пока заявка не уехала;
+ *   свободно  = на складе − штуки открытых заявок (не уехали, не отменены).
+ *
+ * Это те же суммы, что книга остатков кабинета (`lib/store/__tests__/ledger.ts`),
+ * без размещений «товар в ячейке» (`placements`): количество там не записано.
+ * Такой товар не шлём вовсе — ни «одну штуку» (может быть больше или ноль),
+ * ни ноль (снимет с продажи то, что лежит на полке).
+ *
+ * Свободный остаток — то, что ждёт площадка: Ozon «количество в наличии без
+ * учёта зарезервированных» (`/v2/products/stocks`).
+ *
+ * Шлём только изменившееся с прошлой выгрузки (её числа — в `pull_result`
+ * подключения) и всё заново раз в день. Ozon обновляет пару «товар — склад»
+ * не чаще раза в 30 с; проход раз в 1,5 мин.
+ */
+/* global module */
+
+const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
+const list = (v) => (Array.isArray(v) ? v : []);
+const qtyOf = (v) => (Number.isFinite(v) && v > 0 ? Math.floor(v) : 0);
+
+/** Свободный остаток по товару (id → штук) на складе `view`. Чистое правило. */
+function freeStock(view) {
+  const unknown = new Set(isObject(view.placements) ? Object.keys(view.placements) : []);
+  const have = new Map();
+  const add = (id, n) => {
+    if (typeof id === "string" && n) have.set(id, (have.get(id) ?? 0) + n);
+  };
+  for (const b of list(view.boxes))
+    for (const l of list(b?.lines)) add(l?.productId, qtyOf(l?.qty));
+  for (const b of list(view.outboundBoxes)) {
+    if (!isObject(b) || b.shipmentId) continue;
+    for (const l of list(b.lines)) add(l?.productId, qtyOf(l?.qty));
+  }
+  const reserved = new Map();
+  for (const r of list(view.requests)) {
+    if (!isObject(r) || r.status === "shipped" || r.status === "cancelled") continue;
+    // Снятое в заявку без тары лежит «у заявки», пока она не уехала.
+    if (!r.toteId) add(r.productId, qtyOf(r.pickedQty));
+    reserved.set(r.productId, (reserved.get(r.productId) ?? 0) + qtyOf(r.qty));
+  }
+  const out = new Map();
+  for (const [id, n] of have) out.set(id, Math.max(0, n - (reserved.get(id) ?? 0)));
+  // Количество в ячейке неизвестно — `undefined`, `stockBySku` такой не шлёт.
+  for (const id of unknown) out.set(id, undefined);
+  return out;
+}
+
+/**
+ * Что отправить: `{ артикул: штук }` по товарам подключения с артикулом.
+ * Товар без остатка — 0: площадка должна перестать его продавать. Один
+ * артикул у двух товаров — не шлём ни один (не знаем, чей остаток); товар с
+ * неизвестным количеством (`undefined` из `freeStock`) — тоже.
+ */
+function stockBySku(products, free) {
+  const by = new Map();
+  const twice = new Set();
+  for (const p of list(products)) {
+    const sku = typeof p?.sku === "string" ? p.sku.trim() : "";
+    if (!sku || sku.length > 255) continue;
+    if (by.has(sku)) twice.add(sku);
+    by.set(sku, free.has(p.id) ? free.get(p.id) : 0);
+  }
+  for (const s of twice) by.delete(s);
+  for (const [s, n] of by) if (n === undefined) by.delete(s);
+  return Object.fromEntries(by);
+}
+
+/** Изменившееся с прошлой выгрузки `prev` (тот же день) или всё (новый день). */
+function changed(now, prev, day) {
+  const same = isObject(prev) && prev.day === day && isObject(prev.sent);
+  return Object.fromEntries(
+    Object.entries(now).filter(([sku, n]) => !same || prev.sent[sku] !== n),
+  );
+}
+
+/** Запросы выгрузки Ozon: по 100 пар «товар — склад» за запрос. */
+function ozonStockRequests(items, warehouseId) {
+  const rows = Object.entries(items).map(([offer_id, stock]) => ({
+    offer_id,
+    stock,
+    warehouse_id: warehouseId,
+  }));
+  const out = [];
+  for (let i = 0; i < rows.length; i += 100) {
+    out.push({
+      method: "POST",
+      path: "/v2/products/stocks",
+      body: { stocks: rows.slice(i, i + 100) },
+    });
+  }
+  return out;
+}
+
+/** Склады FBS магазина Ozon из `/v2/warehouse/list` (без rFBS). */
+function ozonWarehouses(data) {
+  return list(data?.warehouses ?? data?.result?.warehouses)
+    .filter(
+      (w) =>
+        isObject(w) &&
+        Number.isSafeInteger(w.warehouse_id) &&
+        !w.is_rfbs &&
+        w.status !== "disabled",
+    )
+    .map((w) => ({ id: w.warehouse_id, name: String(w.name ?? "").slice(0, 100) }));
+}
+
+/** Ответ Ozon по строкам: артикулы, которые Ozon не принял, и его причина. */
+function ozonRejected(data) {
+  const bad = list(data?.result).filter((r) => isObject(r) && r.updated === false);
+  const why = bad.map((r) => list(r.errors)[0]?.code ?? list(r.errors)[0]?.message).find(Boolean);
+  return { skus: bad.map((r) => String(r.offer_id ?? "")), detail: why ? String(why) : "" };
+}
+
+module.exports = {
+  freeStock,
+  stockBySku,
+  changed,
+  ozonStockRequests,
+  ozonWarehouses,
+  ozonRejected,
+};

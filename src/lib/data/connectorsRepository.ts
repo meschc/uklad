@@ -17,6 +17,8 @@ export interface ServerConnection {
   partnerId: string | null;
   /** Склад, на который заказы приходят заявками; null — склад в компании один. */
   warehouseId: string | null;
+  /** Сервер выгружает остатки на площадку (включает руководитель). */
+  stockPush: boolean;
   /** Итог последней подкачки заказов на сервере; null — ещё не было. */
   lastPull: OrderPullResult | null;
 }
@@ -38,6 +40,17 @@ export interface OrderPullResult {
   assembleDetail?: string;
   /** Сколько заявок площадка отменила за проход: сняты со сборки (`orderCancel.js`). */
   cancelled?: number;
+  /** Остатки на площадку (`stockPush.js`): сколько товаров отправлено за проход. */
+  stocked?: number;
+  /** Артикулы, остаток которых площадка не приняла, и её ответ. */
+  stockFailed?: string[];
+  stockDetail?: string;
+  /** Остатки не отправлены совсем: `ozon_warehouse` — не выбран склад Ozon. */
+  stockError?: string;
+  /** Склады FBS магазина на выбор, когда их несколько. */
+  stockChoices?: { id: number; name: string }[];
+  /** Склад Ozon, куда ушли остатки. */
+  stockWarehouseId?: number;
   error?: string;
   detail?: string;
 }
@@ -49,9 +62,16 @@ export interface OrderPullTotal {
   failed: { id: string; error: string; detail: string }[];
 }
 
+const choices = (v: unknown[]) =>
+  v.flatMap((w) => {
+    const x = w as { id?: unknown; name?: unknown } | null;
+    return x && typeof x.id === "number" ? [{ id: x.id, name: String(x.name ?? x.id) }] : [];
+  });
+
 function pullResult(v: unknown): OrderPullResult | null {
-  const x = v as Partial<OrderPullResult> | null;
+  const x = v as (Partial<OrderPullResult> & { stocks?: { warehouseId?: unknown } }) | null;
   if (!x || typeof x !== "object" || typeof x.at !== "number") return null;
+  const stocks = x.stocks && typeof x.stocks === "object" ? x.stocks : null;
   return {
     at: x.at,
     ...(typeof x.created === "number" ? { created: x.created } : {}),
@@ -62,6 +82,14 @@ function pullResult(v: unknown): OrderPullResult | null {
       : {}),
     ...(typeof x.assembleDetail === "string" ? { assembleDetail: x.assembleDetail } : {}),
     ...(typeof x.cancelled === "number" ? { cancelled: x.cancelled } : {}),
+    ...(typeof x.stocked === "number" ? { stocked: x.stocked } : {}),
+    ...(Array.isArray(x.stockFailed) && x.stockFailed.length
+      ? { stockFailed: x.stockFailed.map(String) }
+      : {}),
+    ...(typeof x.stockDetail === "string" ? { stockDetail: x.stockDetail } : {}),
+    ...(typeof x.stockError === "string" ? { stockError: x.stockError } : {}),
+    ...(Array.isArray(x.stockChoices) ? { stockChoices: choices(x.stockChoices) } : {}),
+    ...(typeof stocks?.warehouseId === "number" ? { stockWarehouseId: stocks.warehouseId } : {}),
     ...(typeof x.error === "string" ? { error: x.error } : {}),
     ...(typeof x.detail === "string" ? { detail: x.detail } : {}),
   };
@@ -102,6 +130,7 @@ export const connectorsRepository = {
             clientId: typeof x.clientId === "string" ? x.clientId : null,
             partnerId: typeof x.partnerId === "string" ? x.partnerId : null,
             warehouseId: typeof x.warehouseId === "string" ? x.warehouseId : null,
+            stockPush: x.stockPush === true,
             lastPull: pullResult(x.lastPull),
           },
         ];
@@ -156,6 +185,21 @@ export const connectorsRepository = {
   rename: async (input: { id: string; label: string }): Promise<Result<void>> => {
     const res = await attempt(
       () => apiRequest("POST", "/connectors/rename", { ...input }),
+      "integr.error.noServer",
+    );
+    if (!res.ok) return res;
+    const { status, body } = res.data;
+    return status === 200 ? ok(undefined) : fail(statusError(status, body.error));
+  },
+
+  /** Выгрузка остатков на Ozon: включить/выключить и склад магазина на Ozon. */
+  stock: async (input: {
+    id: string;
+    enabled?: boolean;
+    warehouseId?: number;
+  }): Promise<Result<void>> => {
+    const res = await attempt(
+      () => apiRequest("POST", "/connectors/stock", { ...input }),
       "integr.error.noServer",
     );
     if (!res.ok) return res;
