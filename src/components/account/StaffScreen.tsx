@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Download, Plus, Upload, Users } from "lucide-react";
+import { CalendarClock, Download, KeyRound, Plus, TrendingUp, Upload, Users } from "lucide-react";
 import { selectRole, useEditor } from "@/lib/store";
 import { staffRepository } from "@/lib/data";
 import { useTeam } from "./useTeam";
@@ -16,7 +16,6 @@ import { ScreenShell, EmptyState } from "@/components/fulfillment/ScreenShell";
 import { BreakPolicyCard } from "./BreakPolicyCard";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { card } from "@/components/ui/card";
-import { PartnersSection } from "./PartnersSection";
 import { TeamAccess } from "./TeamAccess";
 import { StaffOutput } from "./StaffOutput";
 import { PersonForm } from "./PersonForm";
@@ -34,7 +33,7 @@ import { ArchiveNote } from "@/components/fulfillment/ArchiveNote";
 /** Кликабельный контакт: тот же вид, что у ссылок витрины. */
 const contactLink = "text-primary underline-offset-4 hover:underline";
 
-type StaffTab = "people" | "output" | "partners" | "schedule" | "access";
+type StaffTab = "people" | "output" | "schedule" | "access";
 
 export function StaffScreen() {
   const warehouse = useEditor((s) => s.warehouse);
@@ -135,8 +134,8 @@ export function StaffScreen() {
       wide
     >
       <ArchiveNote />
-      {/* Три вкладки вместо одной длинной простыни: люди склада, партнёры-
-          продавцы и режим работы. Контакты склада живут в паспорте. */}
+      {/* Вкладки вместо одной длинной простыни: люди склада, выработка
+          и режим работы. Партнёры — своим пунктом меню, контакты — в паспорте. */}
       <div className="w-fit max-w-full">
         <Segmented<StaffTab>
           size="md"
@@ -144,11 +143,12 @@ export function StaffScreen() {
           value={tab}
           onChange={setTab}
           options={[
-            { value: "people", label: t("staff.tab.people") },
-            { value: "output", label: t("staff.tab.output") },
-            { value: "partners", label: t("staff.tab.partners") },
-            { value: "schedule", label: t("staff.tab.schedule") },
-            ...(onServer ? [{ value: "access" as const, label: t("staff.tab.access") }] : []),
+            { value: "people", label: t("staff.tab.people"), icon: <Users /> },
+            { value: "output", label: t("staff.tab.output"), icon: <TrendingUp /> },
+            { value: "schedule", label: t("staff.tab.schedule"), icon: <CalendarClock /> },
+            ...(onServer
+              ? [{ value: "access" as const, label: t("staff.tab.access"), icon: <KeyRound /> }]
+              : []),
           ]}
         />
       </div>
@@ -298,7 +298,6 @@ export function StaffScreen() {
         </section>
       )}
 
-      {tab === "partners" && <PartnersSection />}
       {panel && (panel === "new" || panelMember) && (
         <StaffPanel
           key={panel}

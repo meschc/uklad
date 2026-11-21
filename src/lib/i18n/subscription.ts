@@ -61,6 +61,8 @@ export const ru = {
     "Сотрудников уже столько, сколько позволяет тариф. Попросите тариф выше в разделе «Тариф».",
   "plan.err.sellerLimit":
     "Кабинетов продавцов уже столько, сколько позволяет тариф. Попросите тариф выше в разделе «Тариф».",
+  "plan.err.warehouseLimit":
+    "Складов уже столько, сколько позволяет тариф. Новый склад не сохранён: попросите тариф выше в разделе «Тариф».",
 
   "manager.label": "Менеджер",
   "manager.pending": "Чат с менеджером — с подключением сервера",
@@ -163,6 +165,8 @@ export const en: Record<keyof typeof ru, string> = {
     "You have as many staff members as your plan allows. Request a higher plan in the Plan section.",
   "plan.err.sellerLimit":
     "You have as many seller cabinets as your plan allows. Request a higher plan in the Plan section.",
+  "plan.err.warehouseLimit":
+    "You have as many warehouses as your plan allows. The new warehouse was not saved: request a higher plan in the Plan section.",
 
   "manager.label": "Manager",
   "manager.pending": "Manager chat once the server is connected",

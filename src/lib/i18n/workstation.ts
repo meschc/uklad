@@ -146,6 +146,19 @@ export const ru = {
   "ws.sort.locked":
     "{code} уже лежит в месте сортировки. Проверьте, не ушла ли похожая посылка не туда, и позовите старшего — продолжить можно его бейджем",
   "ws.sort.unlocked": "{name} разрешил продолжить сортировку",
+  "ws.sort.unlabeled": "Это товар, а не посылка: {name}. Ниже — чью этикетку он потерял",
+  "ws.sort.unlabeledTitle": "Без этикетки: {name}",
+  "ws.sort.unlabeledHint":
+    "Скорее всего, его этикетку наклеили на соседний товар, который упаковали без скана. Откройте посылку ниже и сверьте товар внутри с названием на этикетке. Не тот — переложите туда этот товар, а тот верните на упаковку: его не сканировали.",
+  "ws.sort.unlabeledSorted": "уже в {point}: внутри, скорее всего, другой товар",
+  "ws.sort.unlabeledWaiting": "ещё не разложена",
+  "ws.sort.unlabeledAfter": "Упакованы после:",
+  "ws.sort.unlabeledNone":
+    "Открытых посылок с этим товаром нет: его, видимо, не сканировали. Верните товар на упаковку.",
+  "ws.sort.unlabeledDone": "Понятно",
+  "ws.sort.unlabeledBefore": "Упакована перед ней:",
+  "ws.sort.unlabeledTote": "Из той же тары:",
+  "ws.sort.unlabeledIn": "в {point}",
   "ws.sort.failed": "Не удалось записать. Сканируйте QR места ещё раз",
   "ws.sort.drop": "Отложить посылку",
   "ws.sort.points": "Места сортировки",
@@ -454,7 +467,7 @@ export const ru = {
   "ws.idle.close": "Отсканируйте короб отгрузки",
   "ws.handoff.title": "В таре не хватает товара",
   "ws.handoff.body":
-    "Недостачу не оформляют сами: отнесите тару {box} старшему смены и покажите, чего нет.",
+    "Тара пуста, а товар числится? Скорее всего, его упаковали без скана и наклеили этикетку предыдущего: найдите эту посылку среди упакованных. Если товара нет совсем — отнесите тару {box} старшему смены и покажите, чего нет.",
   "ws.handoff.line": "{name}: не хватает {n} шт.",
   "ws.handoff.confirm": "Тару отнесу старшему",
   "ws.run.print": "Печать",
@@ -493,6 +506,7 @@ export const ru = {
   "ws.run.defect": "Брак",
   "ws.run.orderLabel": "Заказ {id} собран полностью",
   "ws.run.orderLabelHint": "Закройте упаковку заказа, наклейте этикетку заказа и отсканируйте её.",
+  "ws.run.labelUnits": "{n} шт.",
   "ws.run.not_in_tote":
     "{name} — этого товара не должно быть в таре. Отнесите его старшему смены. По учёту товар числится в таре {box}.",
   "ws.run.not_in_toteNowhere":
@@ -598,6 +612,10 @@ export const ru = {
   "ws.device.notManagerAccount": "Эта учётная запись не управляет персоналом компании",
   "devices.bindNeedsManager":
     "Сделать компьютер столом может руководитель с правом менять персонал. Войдите его паролем.",
+  "devices.confirmNeeded": "Подтвердите, что привязывает руководитель: бейдж или пароль",
+  "devices.managerBadge": "Бейдж руководителя",
+  "devices.byPassword": "Нет бейджа — ввести пароль",
+  "devices.confirmBind": "Подтвердить и привязать",
   "ws.equip.title": "Устройства",
   "ws.equip.docPrinter": "Принтер",
   "ws.ev.shift_start": "Начал смену",
@@ -756,6 +774,19 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.sort.locked":
     "{code} is already in a sort point. Check that a similar parcel did not go the wrong way and call a senior: their badge lets you continue",
   "ws.sort.unlocked": "{name} allowed sorting to continue",
+  "ws.sort.unlabeled": "This is an item, not a parcel: {name}. Below is whose label it lost",
+  "ws.sort.unlabeledTitle": "No label: {name}",
+  "ws.sort.unlabeledHint":
+    "Most likely its label went onto the neighbouring item, which was packed without a scan. Open the parcel below and check the item inside against the name on the label. If it is wrong, put this item in instead and return that one to packing: it was never scanned.",
+  "ws.sort.unlabeledSorted": "already in {point}: most likely a different item inside",
+  "ws.sort.unlabeledWaiting": "not sorted yet",
+  "ws.sort.unlabeledAfter": "Packed after:",
+  "ws.sort.unlabeledNone":
+    "No open parcels with this item: it was probably never scanned. Return it to packing.",
+  "ws.sort.unlabeledDone": "Got it",
+  "ws.sort.unlabeledBefore": "Packed before it:",
+  "ws.sort.unlabeledTote": "From the same tote:",
+  "ws.sort.unlabeledIn": "in {point}",
   "ws.sort.failed": "Could not save. Scan the sort point QR again",
   "ws.sort.drop": "Put the parcel aside",
   "ws.sort.points": "Sort points",
@@ -1066,7 +1097,7 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.idle.close": "Scan the outbound box",
   "ws.handoff.title": "Items are missing from the tote",
   "ws.handoff.body":
-    "A shortage is not filed by the worker: take tote {box} to the shift lead and show what is missing.",
+    "Tote empty but the item is still listed? It was most likely packed without a scan and got the previous item's label: find that parcel among the packed ones. If the item is really missing, take tote {box} to the shift lead and show what is missing.",
   "ws.handoff.line": "{name}: {n} pcs missing",
   "ws.handoff.confirm": "I will take the tote to the shift lead",
   "ws.run.print": "Print",
@@ -1106,6 +1137,7 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.run.defect": "Defect",
   "ws.run.orderLabel": "Order {id} is complete",
   "ws.run.orderLabelHint": "Close the order's package, stick the order label on and scan it.",
+  "ws.run.labelUnits": "{n} pcs",
   "ws.run.not_in_tote":
     "{name} — should not be in this tote. Take it to the shift lead. By the records it belongs to tote {box}.",
   "ws.run.not_in_toteNowhere":
@@ -1211,6 +1243,10 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.device.notManagerAccount": "This account does not manage the company's staff",
   "devices.bindNeedsManager":
     "Only a manager who can edit staff can make this computer a desk. Sign in with their password.",
+  "devices.confirmNeeded": "Confirm a manager is binding it: badge or password",
+  "devices.managerBadge": "Manager's badge",
+  "devices.byPassword": "No badge? Enter the password",
+  "devices.confirmBind": "Confirm and bind",
   "ws.equip.title": "Devices",
   "ws.equip.docPrinter": "Printer",
   "ws.ev.shift_start": "Started shift",

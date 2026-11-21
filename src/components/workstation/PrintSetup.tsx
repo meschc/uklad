@@ -10,13 +10,15 @@ import { Button } from "@/components/ui/button";
  * инструкция. Это справка, а не главное: стоит под входом стола, который
  * печатает (настроить до смены), и внизу панели принтера.
  */
-export function PrintSetup() {
+export function PrintSetup({ centered }: { centered?: boolean } = {}) {
   const t = useT();
   const mode = usePrintMode();
   const url = deskUrl(window.location.origin, import.meta.env.BASE_URL);
 
   return (
-    <div className="flex flex-col gap-1 text-sm">
+    // Под входом стола — по центру, как и сам вход (Кирилл 20.11); в панели
+    // принтера — от левого края, как всё в панели.
+    <div className={cn("flex flex-col gap-1 text-sm", centered && "items-center text-center")}>
       {mode === "silent" ? (
         <p className="flex items-center gap-2 text-success">
           <Check className="size-4 shrink-0" />
@@ -29,8 +31,11 @@ export function PrintSetup() {
         </p>
       )}
       {/* Инструкция — справка по запросу, свёрнута: главное на экране не она. */}
-      <Fold label={mode === "silent" ? "ws.printer.otherDesk" : "ws.printer.howTo"}>
-        <ol className="flex list-decimal flex-col gap-2 pl-5 text-muted-foreground">
+      <Fold
+        label={mode === "silent" ? "ws.printer.otherDesk" : "ws.printer.howTo"}
+        centered={centered}
+      >
+        <ol className="flex list-decimal flex-col gap-2 pl-5 text-left text-muted-foreground">
           <li>
             {t("ws.printer.step1")}
             <Button
@@ -71,15 +76,23 @@ export function PrintSetup() {
 }
 
 /** Сворачиваемый блок: призрачная кнопка со стрелкой, как «Устройства» стола. */
-function Fold({ label, children }: { label: MsgKey; children: React.ReactNode }) {
+function Fold({
+  label,
+  centered,
+  children,
+}: {
+  label: MsgKey;
+  centered?: boolean;
+  children: React.ReactNode;
+}) {
   const t = useT();
   const [open, setOpen] = useState(false);
   return (
-    <div className="flex flex-col gap-3">
+    <div className={cn("flex flex-col gap-3", centered && "w-full items-center")}>
       <Button
         variant="ghost"
         size="sm"
-        className="-ml-3 self-start"
+        className={centered ? "self-center" : "-ml-3 self-start"}
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
       >

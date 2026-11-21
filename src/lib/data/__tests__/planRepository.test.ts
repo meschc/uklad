@@ -50,7 +50,12 @@ describe("readFeatures", () => {
       tariff: "start",
       features: { fullAnalytics: true, personalManager: false, weeklyEmailBackup: false },
       readOnly: true,
+      warehouseLimit: null,
     });
+    // Лимит складов — числом из админки, без ограничения — null.
+    expect(
+      readFeatures({ tariff: "start", features: {}, limits: { warehouses: 1 } })?.warehouseLimit,
+    ).toBe(1);
   });
 
   it("без аккаунта в админке или со своим тарифом — null, остаётся таблица тарифа", () => {

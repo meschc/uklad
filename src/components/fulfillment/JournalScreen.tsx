@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { AlertTriangle, History } from "lucide-react";
+import { AlertTriangle, History, Route } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { journalRepository } from "@/lib/data";
 import {
@@ -42,8 +42,8 @@ export function JournalScreen() {
       onChange={setMode}
       ariaLabel={t("journal.title")}
       options={[
-        { value: "feed", label: t("journal.mode.feed") },
-        { value: "path", label: t("journal.mode.path") },
+        { value: "feed", label: t("journal.mode.feed"), icon: <History /> },
+        { value: "path", label: t("journal.mode.path"), icon: <Route /> },
       ]}
     />
   );

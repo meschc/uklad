@@ -663,8 +663,10 @@ export interface SessionSlice {
    * Сервер сказал «сессии нет» (истекла, отозвана). Данные не стираются: они
    * пока живут только здесь. Остаётся пометка, чьи они (`session.orgId`), и
    * кабинет закрыт экраном входа, пока их владелец не войдёт снова.
+   * `email` — кто уже вошёл заново (отвязка стола паролем открыла вход):
+   * экран входа узнаёт живую куку и пускает его без второго пароля.
    */
-  sessionLost: () => void;
+  sessionLost: (email?: string) => void;
 }
 
 // --- Переписка склада с продавцами -------------------------------------------
@@ -762,7 +764,11 @@ export interface SubscriptionSlice {
   /** Сменить тариф. Сегодня — переключатель в профиле, завтра — биллинг. */
   setTariff: (tariff: TariffId) => void;
   /** Тариф и функции, как их назначил Уклад (сервер, `GET /company/features`). */
-  setPlanFeatures: (tariff: TariffId, features: TariffFeatures) => void;
+  setPlanFeatures: (
+    tariff: TariffId,
+    features: TariffFeatures,
+    warehouseLimit?: number | null,
+  ) => void;
   updateBackupSettings: (patch: Partial<BackupSettings>) => void;
   /** Архив скачан: сбрасывает напоминание. */
   markBackupDone: (at: number) => void;

@@ -602,7 +602,9 @@ export function startServerSync(orgId: string): () => void {
     // Тариф и функции — от сервера (админка Уклада), для любого сотрудника.
     const plan = await planRepository.features();
     if (stopped || !plan.ok || !plan.data) return;
-    useEditor.getState().setPlanFeatures(plan.data.tariff, plan.data.features);
+    useEditor
+      .getState()
+      .setPlanFeatures(plan.data.tariff, plan.data.features, plan.data.warehouseLimit);
   });
 
   // Вкладка снова на экране — сначала свежее с сервера: правка с другого

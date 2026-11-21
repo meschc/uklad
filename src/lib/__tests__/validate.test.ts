@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import cases from "./validate.cases.json";
+import { lookupBank } from "../company";
 import {
+  accountKeyOk,
+  checkBankAccount,
+  checkBik,
   checkEmail,
   checkInn,
   checkKpp,
@@ -101,4 +105,29 @@ it("карточка человека — ошибки по полям, как �
     email: "valid.email",
   });
   expect(checkPerson({ name: "Игорь Панов", role: "Управляющий" })).toEqual({});
+});
+
+describe("банк: БИК и расчётный счёт", () => {
+  const BIK = "044525225";
+  it("БИК — 9 цифр с 04", () => {
+    expect(checkBik(BIK)).toBeNull();
+    expect(checkBik("")).toBeNull();
+    expect(checkBik("123456789")).toBe("valid.bik");
+    expect(checkBik("04452522")).toBe("valid.bik");
+  });
+  it("ключ счёта сходится с БИК, опечатка в цифре — нет", () => {
+    expect(accountKeyOk(BIK, "30101810400000000225", true)).toBe(true);
+    expect(checkBankAccount("40702810938000071234", BIK)).toBeNull();
+    expect(checkBankAccount("40702810938000071235", BIK)).toBe("valid.bankAccountKey");
+    expect(checkBankAccount("4070281093800007123", BIK)).toBe("valid.bankAccount");
+    // БИК ещё не введён — длину проверяем, ключ не с чем сверять.
+    expect(checkBankAccount("40702810938000071235", "")).toBeNull();
+  });
+  it("заглушка банка в демо собирает корсчёт с верным ключом", () => {
+    const bank = lookupBank(BIK);
+    expect(bank?.mock).toBe(true);
+    expect(accountKeyOk(BIK, bank!.correspondentAccount!, true)).toBe(true);
+    expect(bank?.correspondentAccount).toMatch(/^30101810\d00000000225$/);
+    expect(lookupBank("123")).toBeNull();
+  });
 });
