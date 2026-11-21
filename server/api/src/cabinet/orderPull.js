@@ -243,7 +243,8 @@ async function assembleWb(ask, orders, picked, prev, at) {
   const out = { assembled: 0, assembleFailed: [] };
   const groups = new Map();
   for (const o of orders) {
-    if (!picked.has(norm(o.externalId)) || !/^\d{1,20}$/.test(o.externalId)) continue;
+    // До 15 цифр: длиннее Number(...) округлит и WB получит соседний номер.
+    if (!picked.has(norm(o.externalId)) || !/^\d{1,15}$/.test(o.externalId)) continue;
     const g = `${o.wbWarehouse ?? ""}:${o.cargoType ?? ""}`;
     groups.set(g, [...(groups.get(g) ?? []), o.externalId]);
   }

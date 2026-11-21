@@ -391,6 +391,11 @@ test("WB «собран»: закрытая поставка — новая, о�
     AT,
   );
   assert.equal(odd.calls.length, 0);
+  // 16 цифр числом не передать без округления — тоже не идёт.
+  const long = fakeWb();
+  const big = "1234567890123456";
+  await assembleWb(long.ask, [{ externalId: big, lines: [] }], new Set([big]), undefined, AT);
+  assert.equal(long.calls.length, 0);
 });
 
 test("смену статуса на площадке может только сервер, не прокси кабинета", () => {

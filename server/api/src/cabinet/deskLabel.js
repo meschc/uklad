@@ -41,7 +41,8 @@ const LABEL = {
   }),
   // Стикер WB — только для задания в поставке (`confirm`), см. `assembleWb`.
   wildberries: (externalId) =>
-    /^\d{1,20}$/.test(externalId)
+    // До 15 цифр: номер уходит числом, длиннее Number(...) округлит.
+    /^\d{1,15}$/.test(externalId)
       ? {
           method: "POST",
           path: "/api/v3/orders/stickers",
