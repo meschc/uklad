@@ -88,8 +88,21 @@ function mapYm(payload) {
     .filter((o) => isObject(o) && typeof o.id === "number")
     .map((o) => ({
       externalId: String(o.id),
+      shipBy: ymDate(o.delivery?.shipments?.[0]?.shipmentDate),
       lines: list(o.items).map((l) => ({ vendorCode: l?.offerId, qty: Number(l?.count) || 0 })),
     }));
+}
+
+/** Дата Маркета «ДД-ММ-ГГГГ» (время по Москве) → ISO; иначе нет даты. */
+function ymDate(v) {
+  const m = typeof v === "string" && /^(\d{2})-(\d{2})-(\d{4})$/.exec(v);
+  return m ? `${m[3]}-${m[2]}-${m[1]}T00:00:00+03:00` : undefined;
+}
+
+/** Срок отгрузки заказа → мс; площадка не дала или дала не дату — нет срока. */
+function shipByMs(v) {
+  const t = typeof v === "string" ? Date.parse(v) : NaN;
+  return Number.isFinite(t) ? t : undefined;
 }
 
 /**
@@ -222,8 +235,14 @@ function planImport(orders, products, known) {
       continue;
     }
     plan.orders += 1;
+    const truckDate = shipByMs(order.shipBy);
     lines.forEach((l, i) =>
-      plan.items.push({ productId: matched[i], qty: Math.max(1, Math.round(l.qty)), externalId }),
+      plan.items.push({
+        productId: matched[i],
+        qty: Math.max(1, Math.round(l.qty)),
+        externalId,
+        ...(truckDate !== undefined ? { truckDate } : {}),
+      }),
     );
   }
   return plan;
@@ -237,6 +256,9 @@ function newRequests(plan, source, now, makeId = () => `req_${randomUUID()}`) {
     qty: it.qty,
     source,
     externalId: it.externalId,
+    // Срок отгрузки площадки — дата машины заявки: по ней «Задания» и
+    // «Сборка» ставят срочное первым, календарь показывает день.
+    ...(it.truckDate !== undefined ? { truckDate: it.truckDate } : {}),
     status: "new",
     createdAt: now,
     updatedAt: now,

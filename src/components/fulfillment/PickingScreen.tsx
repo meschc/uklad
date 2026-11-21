@@ -94,9 +94,14 @@ export function PickingScreen({ autoStart = false }: { autoStart?: boolean } = {
   const [skipped, setSkipped] = useState<string[]>([]);
   const queue = requests.filter((r) => r.status === "new" || r.status === "in_progress");
   // Начатое — первым: заявку, которую бросили на полпути, надо закончить.
+  // Дальше — по сроку отгрузки (у заказа площадки он есть), без срока — в конце.
   const upcoming = [...queue]
     .filter((r) => !skipped.includes(r.id))
-    .sort((a, b) => Number(b.status === "in_progress") - Number(a.status === "in_progress"));
+    .sort(
+      (a, b) =>
+        Number(b.status === "in_progress") - Number(a.status === "in_progress") ||
+        (a.truckDate ?? Infinity) - (b.truckDate ?? Infinity),
+    );
   const next = upcoming[0] ?? queue[0];
   const active = requests.find((r) => r.id === activeId) ?? null;
   const product = active ? products.find((p) => p.id === active.productId) : undefined;

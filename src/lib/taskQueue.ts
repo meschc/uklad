@@ -52,6 +52,8 @@ export interface QueueItem {
   since: number;
   /** Уже начато: приёмка идёт, заявку собирают, работу взяли. */
   active: boolean;
+  /** Срок: ближайшая дата машины (отгрузки) сборки. Есть — идёт раньше прочих. */
+  due?: number;
   /** Кто взял — только там, где это записано. */
   staffId?: string;
 }
@@ -102,6 +104,7 @@ function pickingItems(requests: readonly FulfillmentRequest[]): QueueItem[] {
     units: sum(g.items.map((r) => r.qty)),
     since: earliest(g.items.map((r) => r.createdAt)),
     active: g.items.some((r) => r.status === "in_progress"),
+    ...(g.shipDate != null ? { due: g.shipDate } : {}),
   }));
 }
 
@@ -194,7 +197,11 @@ function approvalItems(disputes: readonly Dispute[]): QueueItem[] {
     }));
 }
 
-/** Вся очередь склада: процессы с работой, внутри — сначала то, что ждёт дольше. */
+/** Сначала то, у чего ближе срок; без срока — что ждёт дольше. */
+const byUrgency = (a: QueueItem, b: QueueItem) =>
+  (a.due ?? Infinity) - (b.due ?? Infinity) || a.since - b.since;
+
+/** Вся очередь склада: процессы с работой, внутри — сначала срочное, потом то, что ждёт дольше. */
 export function taskQueue(input: QueueInput, now: number): QueueGroup[] {
   const by: Record<QueueProcess, QueueItem[]> = {
     receiving: receivingItems(input),
@@ -208,6 +215,6 @@ export function taskQueue(input: QueueInput, now: number): QueueGroup[] {
   };
   return QUEUE_PROCESSES.map((process) => ({
     process,
-    items: [...by[process]].sort((a, b) => a.since - b.since),
+    items: [...by[process]].sort(byUrgency),
   })).filter((g) => g.items.length > 0);
 }

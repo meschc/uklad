@@ -42,6 +42,25 @@ test("заказ из двух товаров — две заявки с одн�
   ]);
 });
 
+test("срок отгрузки площадки становится датой машины заявки", () => {
+  const plan = planImport(
+    [
+      {
+        externalId: "S-1",
+        shipBy: "2026-11-20T10:00:00Z",
+        lines: [{ vendorCode: "ART-A", qty: 1 }],
+      },
+      { externalId: "S-2", shipBy: "завтра", lines: [{ vendorCode: "ART-B", qty: 1 }] },
+    ],
+    P,
+    new Set(),
+  );
+  const reqs = newRequests(plan, "ozon", 5, () => "r");
+  assert.equal(reqs[0].truckDate, Date.parse("2026-11-20T10:00:00Z"));
+  // Не дата — срока нет, а не «сегодня» или ноль.
+  assert.equal("truckDate" in reqs[1], false);
+});
+
 test("товар узнаётся и по штрихкоду", () => {
   const plan = planImport(
     [order("1", [{ vendorCode: "?", barcode: "222", qty: 1 }])],
@@ -160,9 +179,24 @@ test("разбор ответов Ozon, WB и Маркета", () => {
   assert.deepEqual(mapWb({ orders: [{ id: 7, article: "ART-B", skus: ["222"] }] }), [
     { externalId: "7", lines: [{ vendorCode: "ART-B", barcode: "222", qty: 1 }] },
   ]);
-  assert.deepEqual(mapYm({ orders: [{ id: 8, items: [{ offerId: "ART-A", count: 3 }] }] }), [
-    { externalId: "8", lines: [{ vendorCode: "ART-A", qty: 3 }] },
-  ]);
+  assert.deepEqual(
+    mapYm({
+      orders: [
+        {
+          id: 8,
+          delivery: { shipments: [{ shipmentDate: "21-11-2026" }] },
+          items: [{ offerId: "ART-A", count: 3 }],
+        },
+      ],
+    }),
+    [
+      {
+        externalId: "8",
+        shipBy: "2026-11-21T00:00:00+03:00",
+        lines: [{ vendorCode: "ART-A", qty: 3 }],
+      },
+    ],
+  );
   assert.deepEqual(mapOzon(null), []);
   assert.deepEqual(mapWb({ orders: "x" }), []);
 });
