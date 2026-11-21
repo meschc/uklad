@@ -449,3 +449,56 @@ test("живой: сервер сам заводит заказы площадк
   assert.ok(asked.includes("WB-B") && !asked.includes("WB-A"), JSON.stringify(asked));
   globalThis.REPLY = null;
 });
+
+// Шаг 5 `docs/domain/fbs.md`: собранный на складе заказ сервер сам отмечает
+// «собран» на площадке — и только собранный целиком.
+test(
+  "живой: собранный заказ Маркета — «готов к отгрузке» на площадке",
+  { skip: SKIP },
+  async () => {
+    const c = await owner("assemble-c@example.com", "10.4.0.3");
+    const data = {
+      warehouse: { id: WH, name: "Склад", staff: [], partners: [] },
+      products: [{ id: "p1", name: "Кружка", sku: "ART-9" }],
+      requests: [],
+    };
+    const w = await post("/api/cabinet/snapshot", { ...c, body: { version: 0, format: 8, data } });
+    assert.equal(w.status, 200, JSON.stringify(w.json));
+    const save = await post("/api/connectors/save", {
+      ...c,
+      body: { system: "yandex-market", label: "Свой", token: "YM-C", clientId: "777" },
+    });
+    assert.equal(save.status, 200, JSON.stringify(save.json));
+    globalThis.REPLY = { orders: [{ id: 555, items: [{ offerId: "ART-9", count: 1 }] }] };
+    const statusHits = () => HITS.filter((h) => /\/orders\/555\/status$/.test(h.u));
+    const again = async () => {
+      await db.root.query(`UPDATE uklad.connector_accounts SET pulled_at = NULL`);
+      await pull.tick();
+    };
+    await again();
+    // Заказ только пришёл — площадке ещё нечего сказать.
+    assert.equal(statusHits().length, 0);
+    const snap = (await call("GET", "/api/cabinet/snapshot", c)).json.snapshot;
+    const req = snap.data.requests.find((r) => r.externalId === "555");
+    assert.ok(req, "заявка заведена");
+    const put = await post("/api/cabinet/snapshot", {
+      ...c,
+      body: {
+        version: snap.version,
+        format: 8,
+        data: { ...snap.data, requests: [{ ...req, status: "done", pickedAt: 1 }] },
+      },
+    });
+    assert.equal(put.status, 200, JSON.stringify(put.json));
+    await again();
+    const hits = statusHits();
+    assert.equal(hits.length, 1);
+    assert.match(hits[0].u, /\/v2\/campaigns\/777\/orders\/555\/status$/);
+    assert.deepEqual(JSON.parse(hits[0].body), {
+      order: { status: "PROCESSING", substatus: "READY_TO_SHIP" },
+    });
+    const listed = (await call("GET", "/api/connectors", c)).json.connections[0];
+    assert.equal(listed.lastPull.assembled, 1);
+    globalThis.REPLY = null;
+  },
+);

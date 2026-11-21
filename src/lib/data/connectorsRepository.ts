@@ -31,6 +31,11 @@ export interface OrderPullResult {
   at: number;
   created?: number;
   unknown?: string[];
+  /** Сколько заказов отмечено «собран» на площадке за проход. */
+  assembled?: number;
+  /** Номера, которые площадка не приняла как «собран», и её ответ. */
+  assembleFailed?: string[];
+  assembleDetail?: string;
   error?: string;
   detail?: string;
 }
@@ -49,6 +54,11 @@ function pullResult(v: unknown): OrderPullResult | null {
     at: x.at,
     ...(typeof x.created === "number" ? { created: x.created } : {}),
     ...(Array.isArray(x.unknown) ? { unknown: x.unknown.map(String) } : {}),
+    ...(typeof x.assembled === "number" ? { assembled: x.assembled } : {}),
+    ...(Array.isArray(x.assembleFailed) && x.assembleFailed.length
+      ? { assembleFailed: x.assembleFailed.map(String) }
+      : {}),
+    ...(typeof x.assembleDetail === "string" ? { assembleDetail: x.assembleDetail } : {}),
     ...(typeof x.error === "string" ? { error: x.error } : {}),
     ...(typeof x.detail === "string" ? { detail: x.detail } : {}),
   };
