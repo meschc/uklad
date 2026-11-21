@@ -233,7 +233,7 @@ export function SideNav({
         className={cn(
           // Отступ вокруг знака одинаковый со всех сторон.
           // Скругление снаружи = скругление знака (10) + отступ (6).
-          "mb-2 flex min-h-12 cursor-pointer items-center rounded-2xl p-1.5 text-left hover:bg-accent",
+          "mb-2 flex min-h-12 cursor-pointer items-center rounded-2xl p-1.5 text-left hover:bg-wash",
         )}
       >
         <UkladLockup
@@ -407,7 +407,7 @@ function NavRow({
         collapsed && "justify-center px-0",
         active
           ? "bg-primary/10 text-primary"
-          : "text-muted-foreground hover:bg-accent hover:text-foreground",
+          : "text-muted-foreground hover:bg-wash hover:text-foreground",
       )}
     >
       <Icon className={cn("shrink-0", nested ? "size-4" : "size-[1.15rem]")} />
