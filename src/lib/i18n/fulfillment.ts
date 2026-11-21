@@ -80,6 +80,13 @@ export const ru = {
   "integr.pull.unknown": "Не нашли товар в номенклатуре, заказы: {list}",
   "integr.pull.assembled": "Отмечено «собран» на площадке: {n}",
   "integr.pull.cancelled": "Отменено площадкой, сняты со сборки: {n}",
+  "integr.stock.sent": "Остатки отправлены на площадку, товаров: {n}",
+  "integr.stock.failed":
+    "Площадка не приняла остаток, артикулы: {list} — сверьте артикул в карточке товара с артикулом на площадке",
+  "integr.stock.error.warehouse":
+    "Остатки не отправлены: у магазина на Ozon несколько складов FBS — выберите справа, куда их выгружать",
+  "integr.stock.error.other": "Остатки не отправлены: {text}",
+  "integr.stock.warehouse": "Склад Ozon для остатков",
   "integr.pull.assembleFailed": "Площадка не приняла «собран», заказы: {list}",
   "integr.remove": "Удалить",
   "integr.saveToServer": "Сохранить подключение",
@@ -516,6 +523,13 @@ export const en: Record<keyof typeof ru, string> = {
   "integr.pull.unknown": "Product not found in the catalog, orders: {list}",
   "integr.pull.assembled": "Marked as assembled on the platform: {n}",
   "integr.pull.cancelled": "Cancelled by the platform, removed from picking: {n}",
+  "integr.stock.sent": "Stock sent to the platform, products: {n}",
+  "integr.stock.failed":
+    "The platform did not accept stock for SKUs: {list} — check that the SKU on the product card matches the one on the platform",
+  "integr.stock.error.warehouse":
+    "Stock not sent: the Ozon store has several FBS warehouses — pick on the right where to send it",
+  "integr.stock.error.other": "Stock not sent: {text}",
+  "integr.stock.warehouse": "Ozon warehouse for stock",
   "integr.pull.assembleFailed": "The platform did not accept “assembled”, orders: {list}",
   "integr.remove": "Remove",
   "integr.saveToServer": "Save connection",
