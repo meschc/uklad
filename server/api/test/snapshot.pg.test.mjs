@@ -1301,6 +1301,81 @@ test(
 );
 
 test(
+  "размещения строками: по строке на товар, журнал движений и счёт штук до и после сходятся",
+  { skip: SKIP },
+  async () => {
+    const { splitRecords } = require("../src/cabinet/records.js");
+    const a = await owner("snap-plc@sklad.ru", "10.0.1.45");
+    const cell = (i) => ({ floorId: "f1", moduleId: "m1", shelfIndex: 0, cellIndex: i });
+    const full = (placements) => ({ ...data("склад"), placements });
+    const before = { p1: cell(0), p2: cell(1), p3: cell(2) };
+    assert.equal(
+      (
+        await call("/api/cabinet/snapshot", {
+          ...a,
+          body: { version: 0, format: 8, data: full(before) },
+        })
+      ).status,
+      200,
+    );
+    const raw = await db.root.query(
+      `SELECT data->'placements' AS p FROM uklad.cabinet_snapshots WHERE org_id = $1`,
+      [a.org],
+    );
+    assert.deepEqual(raw.rows[0].p, { $rows: 3 });
+    const read = async () => (await call("/api/cabinet/snapshot", a)).json.snapshot.data;
+    assert.deepEqual((await read()).placements, before);
+
+    // p2 переехал в другую ячейку, p3 сняли с полки — только изменённое.
+    const after = { p1: cell(0), p2: cell(5) };
+    const was = new Map(splitRecords(full(before)).items.map((r) => [`${r.d}/${r.ref}`, r]));
+    const now = splitRecords(full(after));
+    const upsert = now.items.filter(
+      (r) => JSON.stringify(was.get(`${r.d}/${r.ref}`)?.data) !== JSON.stringify(r.data),
+    );
+    const left = new Set(now.items.map((r) => `${r.d}/${r.ref}`));
+    const remove = [...was.values()]
+      .filter((r) => !left.has(`${r.d}/${r.ref}`))
+      .map(({ w, d, ref }) => ({ w, d, ref }));
+    assert.deepEqual(
+      upsert.map((r) => r.ref),
+      ["p2"],
+    );
+    const doc = { ...now.doc };
+    delete doc.products;
+    const ok = await call("/api/cabinet/snapshot/changes", {
+      ...a,
+      body: { version: 1, format: 8, doc, slots: now.slots, upsert, remove },
+    });
+    assert.equal(ok.status, 200);
+    assert.deepEqual((await read()).placements, after);
+
+    // Журнал: p2 ушёл из ячейки 1 и пришёл в 5, p3 ушёл из 2, p1 не двигался.
+    const { rows } = await db.root.query(
+      `SELECT product_ref, delta FROM uklad.stock_moves
+       WHERE org_id = $1 AND snapshot_version = 2 AND place_kind = 'cell'
+       ORDER BY product_ref, delta`,
+      [a.org],
+    );
+    assert.deepEqual(
+      rows.map((r) => [r.product_ref, r.delta]),
+      [
+        ["p2", -1],
+        ["p2", 1],
+        ["p3", -1],
+      ],
+    );
+    // Сверка: штук по журналу = размещений после.
+    const total = await db.root.query(
+      `SELECT coalesce(sum(delta), 0)::int AS n FROM uklad.stock_moves
+       WHERE org_id = $1 AND place_kind = 'cell'`,
+      [a.org],
+    );
+    assert.equal(total.rows[0].n, Object.keys(after).length);
+  },
+);
+
+test(
   "миграция 054: сотрудники из карточек складов переезжают в строки",
   { skip: SKIP },
   async () => {

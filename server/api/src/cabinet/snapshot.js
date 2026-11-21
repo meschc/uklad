@@ -222,8 +222,8 @@ async function massDelete(c, data) {
 
 const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 const LISTS = new Set([...WAREHOUSE_LISTS, ...COMPANY_LISTS]);
-/** Что из работы склада нужно журналу движений: тара и короба отгрузки. */
-const MOVE_LISTS = ["boxes", "outboundBoxes"];
+/** Что из работы склада нужно журналу движений: тара, короба отгрузки и размещения. */
+const MOVE_LISTS = ["boxes", "outboundBoxes", "placements"];
 const slotKey = (x) => `${x.w}\u0000${x.d}`;
 const isSlot = (x) => isObject(x) && typeof x.w === "string" && x.w.length <= 200 && LISTS.has(x.d);
 

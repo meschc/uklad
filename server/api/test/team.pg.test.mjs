@@ -752,7 +752,7 @@ test(
 // входит по почте: что видит на своём складе, что может записать и что чужая
 // компания ей закрыта. Новая роль или раздел — строка в `MATRIX`.
 const WORK = {
-  placements: [{ id: "pl1" }],
+  placements: { pr1: { floorId: "f1", moduleId: "m1", shelfIndex: 0, cellIndex: 0 } },
   expectedShipments: [{ id: "es1" }],
   receivingEvents: [{ id: "re1" }],
   requests: [{ id: "rq1" }],

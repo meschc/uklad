@@ -24,12 +24,14 @@ const WAREHOUSE_LISTS = [
   "outboundBoxes",
   "warehouseSettings",
 ] as const;
-const COMPANY_LISTS = ["staffEvents", "payAdjustments", "companySettings"] as const;
+const COMPANY_LISTS = ["staffEvents", "payAdjustments", "companySettings", "placements"] as const;
 /** Справочники-значения — записями списка, как `VALUES` в `records.js`. */
 const VALUES: Record<string, readonly string[]> = {
   companySettings: ["account", "breakPolicy", "boxSeq", "palletSeq"],
   warehouseSettings: ["serviceSettings", "devices"],
 };
+/** Словари «id → значение» строками, как `MAPS` в `records.js`. */
+const MAPS = new Set(["placements"]);
 const NEWEST_FIRST = new Set(["expectedShipments", "requests", "shipments", "tasks", "disputes"]);
 const COMPANY = "";
 const MARK = "$rows";
@@ -64,6 +66,8 @@ export interface Changes {
 const isObject = (v: unknown): v is Obj => v !== null && typeof v === "object" && !Array.isArray(v);
 const isRef = (v: unknown): v is string =>
   typeof v === "string" && v.length > 0 && v.length <= MAX_REF;
+const isMark = (v: unknown) =>
+  isObject(v) && Object.keys(v).length === 1 && Number.isInteger(v[MARK]);
 const slotKey = (w: string, d: string) => `${w}\u0000${d}`;
 
 /**
@@ -97,6 +101,13 @@ function rowable(list: unknown): list is Obj[] {
 
 /** Значения справочника — одним списком на месте `key`, как `fold` на сервере. */
 function fold(holder: Obj, key: string) {
+  if (MAPS.has(key)) {
+    const map = holder[key];
+    if (isObject(map) && !isMark(map)) {
+      holder[key] = Object.entries(map).map(([id, value]) => ({ id, value }));
+    }
+    return;
+  }
   const keys = VALUES[key]?.filter((k) => holder[k] !== undefined) ?? [];
   if (keys.length === 0) return;
   holder[key] = keys.map((k) => ({ id: k, value: holder[k] }));
