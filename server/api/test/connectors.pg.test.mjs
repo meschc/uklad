@@ -42,7 +42,9 @@ before(async () => {
     secretKey: Buffer.alloc(32, 7),
     fetchImpl: async (u, o) => {
       HITS.push({ u, h: o.headers, body: o.body });
-      return new Response(JSON.stringify(REPLY ?? { orders: [] }), {
+      // REPLY — ответ на всё или функция от адреса (у WB у поставки свой ответ).
+      const r = typeof REPLY === "function" ? REPLY(u, o) : REPLY;
+      return new Response(JSON.stringify(r ?? { orders: [] }), {
         headers: { "content-type": "application/json" },
       });
     },
@@ -499,6 +501,70 @@ test(
     });
     const listed = (await call("GET", "/api/connectors", c)).json.connections[0];
     assert.equal(listed.lastPull.assembled, 1);
+    globalThis.REPLY = null;
+  },
+);
+
+test(
+  "живой: собранное задание WB — в поставку дня, второй раз не добавляется",
+  { skip: SKIP },
+  async () => {
+    const c = await owner("assemble-wb@example.com", "10.4.0.4");
+    const data = {
+      warehouse: { id: WH, name: "Склад", staff: [], partners: [] },
+      products: [{ id: "p1", name: "Кружка", sku: "ART-W" }],
+      requests: [],
+    };
+    const w = await post("/api/cabinet/snapshot", { ...c, body: { version: 0, format: 8, data } });
+    assert.equal(w.status, 200, JSON.stringify(w.json));
+    const save = await post("/api/connectors/save", {
+      ...c,
+      body: { system: "wildberries", label: "Свой WB", token: "WB-C" },
+    });
+    assert.equal(save.status, 200, JSON.stringify(save.json));
+    // Задание в «новых», пока не в поставке; в поставке — уходит из «новых».
+    let inSupply = false;
+    globalThis.REPLY = (u, o) => {
+      if (o.method === "POST" && u.endsWith("/api/v3/supplies")) return { id: "WB-GI-42" };
+      if (o.method === "PATCH") {
+        inSupply = true;
+        return null;
+      }
+      return inSupply
+        ? { orders: [] }
+        : { orders: [{ id: 9001, article: "ART-W", skus: [], warehouseId: 3, cargoType: 1 }] };
+    };
+    const supplyHits = () => HITS.filter((h) => /\/supplies/.test(h.u));
+    const again = async () => {
+      await db.root.query(`UPDATE uklad.connector_accounts SET pulled_at = NULL`);
+      await pull.tick();
+    };
+    await again();
+    assert.equal(supplyHits().length, 0, "несобранное в поставку не идёт");
+    const snap = (await call("GET", "/api/cabinet/snapshot", c)).json.snapshot;
+    const req = snap.data.requests.find((r) => r.externalId === "9001");
+    assert.ok(req, "заявка заведена");
+    const put = await post("/api/cabinet/snapshot", {
+      ...c,
+      body: {
+        version: snap.version,
+        format: 8,
+        data: { ...snap.data, requests: [{ ...req, status: "done", pickedAt: 1 }] },
+      },
+    });
+    assert.equal(put.status, 200, JSON.stringify(put.json));
+    await again();
+    const hits = supplyHits();
+    assert.deepEqual(
+      hits.map((h) => h.u.replace("https://marketplace-api.wildberries.ru", "")),
+      ["/api/v3/supplies", "/api/marketplace/v3/supplies/WB-GI-42/orders"],
+    );
+    assert.deepEqual(JSON.parse(hits[1].body), { orders: [9001] });
+    const listed = (await call("GET", "/api/connectors", c)).json.connections[0];
+    assert.equal(listed.lastPull.assembled, 1);
+    // Следующий проход: задания уже нет в «новых» — к WB с поставкой не ходим.
+    await again();
+    assert.equal(supplyHits().length, 2);
     globalThis.REPLY = null;
   },
 );

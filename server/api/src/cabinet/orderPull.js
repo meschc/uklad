@@ -82,6 +82,10 @@ function mapWb(payload) {
     .filter((o) => isObject(o) && typeof o.id === "number")
     .map((o) => ({
       externalId: String(o.id),
+      // Склад WB и габаритный тип: в одну поставку — только задания с
+      // одинаковыми (WB, «Добавить сборочные задания к поставке»).
+      ...(Number.isSafeInteger(o.warehouseId) ? { wbWarehouse: o.warehouseId } : {}),
+      ...(Number.isSafeInteger(o.cargoType) ? { cargoType: o.cargoType } : {}),
       lines: [{ vendorCode: o.article, barcode: list(o.skus)[0], qty: 1 }],
     }));
 }
@@ -183,8 +187,7 @@ async function fetchOrders(ctx, system, now) {
  * Запрос «собран» к площадке для заказа или `null`, если по этому заказу
  * площадке сказать нечего. Ozon: `/v4/posting/fbs/ship`, одно грузовое место
  * со всеми товарами (только из «ждёт сборки», SKU у каждой строки). Маркет:
- * `PROCESSING / READY_TO_SHIP`. WB — после сверки пути поставки с живым
- * ключом: старый метод добавления в поставку WB убрал.
+ * `PROCESSING / READY_TO_SHIP`. WB — поставкой, см. `assembleWb`.
  */
 const ASSEMBLE = {
   ozon: (o) => {
@@ -212,6 +215,80 @@ const ASSEMBLE = {
 
 /** Сколько заказов за проход отмечаем «собран»: остальные — следующим. */
 const MAX_ASSEMBLE = 20;
+
+const SUPPLY_RE = /^WB-GI-\d{1,20}$/;
+const MAX_SUPPLIES_A_DAY = 3;
+
+/** День по Москве `ГГГГ-ММ-ДД`: поставка WB — одна на день, склад и габарит. */
+const moscowDay = (at) => new Date(at + 3 * 36e5).toISOString().slice(0, 10);
+
+/**
+ * Собранные на складе задания WB — в поставку (WB переводит их в `confirm`,
+ * это и есть «собран»; после этого WB отдаёт стикер). Из `orders/new` они
+ * уходят сами, поэтому повторно не добавляются.
+ *
+ * Поставка одна на день, склад WB и габаритный тип: номер — в `pull_result`
+ * подключения (`prev`), чтобы не плодить поставки каждые полторы минуты.
+ * Поставка закрыта или не принимает задание — заводим новую и пробуем раз
+ * (не больше трёх новых за день на склад и габарит).
+ * Передать поставку в доставку — шаг отгрузки, здесь его нет.
+ */
+async function assembleWb(ask, orders, picked, prev, at) {
+  const day = moscowDay(at);
+  const today = prev?.day === day;
+  const byGroup = today && isObject(prev.byGroup) ? { ...prev.byGroup } : {};
+  // Сколько поставок завели за день: задание, которое WB не берёт ни в какую
+  // поставку, не должно плодить новую каждые полторы минуты.
+  const made = today && isObject(prev.made) ? { ...prev.made } : {};
+  const out = { assembled: 0, assembleFailed: [] };
+  const groups = new Map();
+  for (const o of orders) {
+    // До 15 цифр: длиннее Number(...) округлит и WB получит соседний номер.
+    if (!picked.has(norm(o.externalId)) || !/^\d{1,15}$/.test(o.externalId)) continue;
+    const g = `${o.wbWarehouse ?? ""}:${o.cargoType ?? ""}`;
+    groups.set(g, [...(groups.get(g) ?? []), o.externalId]);
+  }
+  let left = MAX_ASSEMBLE;
+  const create = async () => {
+    const r = await ask({
+      method: "POST",
+      path: "/api/v3/supplies",
+      body: { name: `Уклад ${day.split("-").reverse().join(".")}` },
+    });
+    const id = r.ok ? r.data?.id : null;
+    return typeof id === "string" && SUPPLY_RE.test(id) ? { id } : { failed: r };
+  };
+  const add = (id, ids) =>
+    ask({
+      method: "PATCH",
+      path: `/api/marketplace/v3/supplies/${id}/orders`,
+      body: { orders: ids.map(Number) },
+    });
+  for (const [g, all] of groups) {
+    const ids = all.slice(0, left);
+    if (!ids.length) break;
+    left -= ids.length;
+    let id = SUPPLY_RE.test(byGroup[g] ?? "") ? byGroup[g] : null;
+    let res = null;
+    if (id) res = await add(id, ids);
+    if ((!id || !res.ok) && (made[g] ?? 0) < MAX_SUPPLIES_A_DAY) {
+      const fresh = await create();
+      made[g] = (made[g] ?? 0) + 1;
+      if (fresh.id) {
+        id = fresh.id;
+        byGroup[g] = id;
+        res = await add(id, ids);
+      } else res = fresh.failed;
+    }
+    res ??= { ok: false, error: "supply" };
+    if (res.ok) out.assembled += ids.length;
+    else {
+      out.assembleFailed.push(...ids);
+      out.assembleDetail ??= res.detail || res.error || "upstream";
+    }
+  }
+  return { ...out, wbSupply: { day, byGroup, made } };
+}
 
 /**
  * Номера заказов, собранных на складе целиком: есть заявки этой площадки с
@@ -444,7 +521,14 @@ function createOrderPull({
   }
 
   /** «Собран» на площадке для собранных на складе заказов из ответа площадки. */
-  async function assemble(ctx, system, orders, picked) {
+  async function assemble(ctx, system, orders, picked, prev, at) {
+    if (system === "wildberries") {
+      const ask = (req) =>
+        allowed(system, req.method, req.path, "server")
+          ? askPlatform({ ...ctx, system }, { ...req, qs: "" })
+          : Promise.resolve({ ok: false, error: "not_allowed" });
+      return assembleWb(ask, orders, picked, prev, at);
+    }
     const make = ASSEMBLE[system];
     const out = { assembled: 0, assembleFailed: [] };
     if (!make) return out;
@@ -481,7 +565,7 @@ function createOrderPull({
     try {
       account = await inOrg(orgId, id, ticket, async (c) => {
         const r = await c.query(
-          `SELECT id, system, params, secret FROM uklad.connector_accounts
+          `SELECT id, system, params, secret, pull_result FROM uklad.connector_accounts
            WHERE id = $1 AND system = $2 AND deleted_at IS NULL`,
           [id, system],
         );
@@ -502,10 +586,20 @@ function createOrderPull({
       return result;
     }
     const params = isObject(account.params) ? account.params : {};
+    // Поставка WB дня переживает и отказ площадки: иначе завели бы вторую.
+    const prevSupply = isObject(account.pull_result?.wbSupply)
+      ? account.pull_result.wbSupply
+      : undefined;
+    const keep = prevSupply ? { wbSupply: prevSupply } : {};
     const fetched = await fetchOrders({ key, params, log, fetchImpl }, system, at);
     let result;
     if (!fetched.ok) {
-      result = { at, error: fetched.error, ...(fetched.detail ? { detail: fetched.detail } : {}) };
+      result = {
+        at,
+        error: fetched.error,
+        ...(fetched.detail ? { detail: fetched.detail } : {}),
+        ...keep,
+      };
     } else {
       try {
         const stored = await inOrg(orgId, id, ticket, (c) => store(c, account, fetched.orders, at));
@@ -513,9 +607,16 @@ function createOrderPull({
         else {
           const { picked, ...rest } = stored;
           const done = picked
-            ? await assemble({ key, params, log, fetchImpl }, system, fetched.orders, picked)
+            ? await assemble(
+                { key, params, log, fetchImpl },
+                system,
+                fetched.orders,
+                picked,
+                prevSupply,
+                at,
+              )
             : {};
-          result = { at, ...rest, ...done };
+          result = { at, ...rest, ...keep, ...done };
         }
       } catch (e) {
         log.error("[uklad] подкачка: заявки не записаны", id, e.message);
@@ -575,4 +676,5 @@ module.exports = {
   fetchOrders,
   pickedOrders,
   ASSEMBLE,
+  assembleWb,
 };

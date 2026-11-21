@@ -19,7 +19,7 @@ import {
 } from "@/lib/packing";
 
 /** Площадки, чей ярлык стол печатает сам (WB — после «собран» в поставке). */
-const PLATFORM_LABEL = new Set(["ozon", "yandex-market"]);
+const PLATFORM_LABEL = new Set(["ozon", "yandex-market", "wildberries"]);
 import { findByCode } from "@/lib/barcode";
 import type { PackSession } from "@/lib/types";
 import { useT, type MsgKey } from "@/lib/i18n";

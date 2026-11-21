@@ -38,7 +38,11 @@ before(async () => {
   const secretKey = Buffer.alloc(32, 9);
   const fetchImpl = async (u, o) => {
     hits.push({ u, h: o.headers, body: o.body });
-    if (reply) return new Response(JSON.stringify(reply.body), { status: reply.status });
+    if (reply)
+      return new Response(JSON.stringify(reply.body), {
+        status: reply.status,
+        headers: { "content-type": "application/json" },
+      });
     return new Response(PDF, { headers: { "content-type": "application/pdf" } });
   };
   const desks = createDesks({ auth, cfg, send, log: quiet, secretKey, fetchImpl });
@@ -126,6 +130,7 @@ const cabinet = () => ({
     req("r-oz", { source: "ozon", externalId: "123-1", status: "done" }),
     req("r-new", { source: "ozon", externalId: "123-2", status: "new" }),
     req("r-own", { status: "done", note: "Тула" }),
+    req("r-wb", { source: "wildberries", externalId: "777", status: "done" }),
   ],
 });
 
@@ -187,6 +192,24 @@ test("живой: стол получает ярлык площадки свое
   const no = await label(desk, "r-oz");
   assert.deepEqual([no.status, no.json.detail], [502, "POSTING_NOT_AWAITING_DELIVER"]);
   reply = null;
+
+  // WB: стикер картинкой из JSON-ответа, номер — числом в теле.
+  const wbSave = await call("/api/connectors/save", {
+    ...a,
+    body: { system: "wildberries", label: "Иванов WB", token: "WB-SECRET", partnerId: "p1" },
+  });
+  assert.equal(wbSave.status, 200, JSON.stringify(wbSave.json));
+  reply = { status: 200, body: { stickers: [{ orderId: 777, file: "iVBORw0K" }] } };
+  const wb = await label(desk, "r-wb");
+  reply = null;
+  assert.deepEqual([wb.status, wb.json.mime, wb.json.file], [200, "image/png", "iVBORw0K"]);
+  const wbHit = hits.at(-1);
+  assert.equal(
+    wbHit.u,
+    "https://marketplace-api.wildberries.ru/api/v3/orders/stickers?type=png&width=58&height=40",
+  );
+  assert.deepEqual(JSON.parse(wbHit.body), { orders: [777] });
+  assert.equal(wbHit.h.Authorization, "WB-SECRET");
 
   // Кабинет руководителя этот маршрут не обслуживает: он только для стола.
   const boss = await call("/api/desk/platform-label", { ...a, body: { requestId: "r-oz" } });

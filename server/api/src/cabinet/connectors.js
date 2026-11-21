@@ -54,6 +54,12 @@ const SYSTEMS = {
       ["PUT", new RegExp(`^/api/v3/stocks/${SEG}$`)],
       ["PUT", /^\/api\/v3\/orders\/\d{1,20}\/meta\/sgtin$/],
     ],
+    // «Собран» у WB — задание в поставке (статус `confirm`): создать поставку
+    // и добавить в неё задания. Только серверу, как смена статуса у Ozon.
+    serverAllow: [
+      ["POST", /^\/api\/v3\/supplies$/],
+      ["PATCH", /^\/api\/marketplace\/v3\/supplies\/WB-GI-\d{1,20}\/orders$/],
+    ],
     headers: (key) => ({ Authorization: key.token }),
   },
   ozon: {
