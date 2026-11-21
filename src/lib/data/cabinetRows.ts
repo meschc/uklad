@@ -24,14 +24,38 @@ const WAREHOUSE_LISTS = [
   "outboundBoxes",
   "warehouseSettings",
 ] as const;
-const COMPANY_LISTS = ["staffEvents", "payAdjustments", "companySettings", "placements"] as const;
+const COMPANY_LISTS = [
+  "staffEvents",
+  "payAdjustments",
+  "companySettings",
+  "placements",
+  "addressing",
+  "categories",
+  "categoryFields",
+  "fieldValues",
+  "templates",
+  "layoutTemplates",
+  "labelTemplates",
+  "integrations",
+  "chats",
+] as const;
 /** Справочники-значения — записями списка, как `VALUES` в `records.js`. */
 const VALUES: Record<string, readonly string[]> = {
-  companySettings: ["account", "breakPolicy", "boxSeq", "palletSeq"],
-  warehouseSettings: ["serviceSettings", "devices"],
+  companySettings: [
+    "account",
+    "breakPolicy",
+    "boxSeq",
+    "palletSeq",
+    "subscription",
+    "activeFloorId",
+  ],
+  warehouseSettings: ["serviceSettings", "devices", "receiving"],
+  // Своим списком, а не в справочнике компании: право «План: запись» пишет
+  // адресацию строкой своего ключа (`writeScope.js`).
+  addressing: ["addressing"],
 };
 /** Словари «id → значение» строками, как `MAPS` в `records.js`. */
-const MAPS = new Set(["placements"]);
+const MAPS = new Set(["placements", "fieldValues", "integrations", "chats"]);
 const NEWEST_FIRST = new Set(["expectedShipments", "requests", "shipments", "tasks", "disputes"]);
 const COMPANY = "";
 const MARK = "$rows";
@@ -108,10 +132,13 @@ function fold(holder: Obj, key: string) {
     }
     return;
   }
+  // Список своего же ключа (адресация) уже свёрнут — метка или строки.
+  if (VALUES[key]?.includes(key) && (isMark(holder[key]) || Array.isArray(holder[key]))) return;
   const keys = VALUES[key]?.filter((k) => holder[k] !== undefined) ?? [];
   if (keys.length === 0) return;
-  holder[key] = keys.map((k) => ({ id: k, value: holder[k] }));
+  const list = keys.map((k) => ({ id: k, value: holder[k] }));
   for (const k of keys) delete holder[k];
+  holder[key] = list;
 }
 
 /** Тот же обход, что `eachList` на сервере: корень и `warehouseData`. */
