@@ -19,6 +19,7 @@ export const createSubscriptionSlice: SliceCreator<SubscriptionSlice> = (set) =>
         ...s.subscription,
         tariff,
         features: undefined,
+        warehouseLimit: undefined,
         // Копия на почту не переживает переход на тариф без неё: иначе
         // настройка выглядела бы включённой, а писем не было бы.
         backup: featuresOf({ tariff }).weeklyEmailBackup
@@ -27,12 +28,13 @@ export const createSubscriptionSlice: SliceCreator<SubscriptionSlice> = (set) =>
       },
     })),
 
-  setPlanFeatures: (tariff, features) =>
+  setPlanFeatures: (tariff, features, warehouseLimit = null) =>
     set((s) => ({
       subscription: {
         ...s.subscription,
         tariff,
         features,
+        warehouseLimit,
         backup: featuresOf({ tariff, features }).weeklyEmailBackup
           ? s.subscription.backup
           : { ...s.subscription.backup, emailWeekly: false },

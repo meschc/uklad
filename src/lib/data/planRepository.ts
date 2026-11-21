@@ -56,6 +56,8 @@ export interface CompanyFeatures {
   tariff: TariffId;
   features: TariffFeatures;
   readOnly: boolean;
+  /** Сколько складов позволяет тариф; `null` — без ограничения. */
+  warehouseLimit: number | null;
 }
 
 /** Ключи функций админки (`admin/plans.js`, FEATURES) → функции кабинета. */
@@ -70,6 +72,7 @@ export function readFeatures(body: Record<string, unknown>): CompanyFeatures | n
   const f = body.features as Record<string, unknown> | null | undefined;
   if (!f || typeof f !== "object" || !isTariffId(body.tariff)) return null;
   const pay = body.payment as Record<string, unknown> | undefined;
+  const lim = body.limits as Record<string, unknown> | undefined;
   const on = (k: keyof TariffFeatures) => f[FEATURE_KEYS[k]] === true;
   return {
     tariff: body.tariff,
@@ -79,6 +82,7 @@ export function readFeatures(body: Record<string, unknown>): CompanyFeatures | n
       weeklyEmailBackup: on("weeklyEmailBackup"),
     },
     readOnly: pay?.readOnly === true,
+    warehouseLimit: typeof lim?.warehouses === "number" ? lim.warehouses : null,
   };
 }
 

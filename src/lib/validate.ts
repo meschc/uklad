@@ -122,6 +122,38 @@ export function checkOgrn(raw: string): Check {
   return Number((body % mod) % 10n) === Number(v.slice(-1)) ? null : "valid.ogrn";
 }
 
+/** БИК банка России: 9 цифр, начинается с 04. */
+export function checkBik(raw: string): Check {
+  const v = raw.trim();
+  if (!v) return null;
+  return /^04\d{7}$/.test(v) ? null : "valid.bik";
+}
+
+const KEY_WEIGHTS = [7, 1, 3];
+
+/**
+ * Контрольный ключ счёта (правила Банка России): три цифры из БИК плюс 20
+ * цифр счёта, веса 7-1-3 по кругу, сумма младших разрядов делится на 10. Для
+ * расчётного счёта берутся последние три цифры БИК, для корреспондентского —
+ * «0» и 5–6-я. Ловит опечатку в счёте до того, как она попадёт в счёт продавцу.
+ */
+export function accountKeyOk(bik: string, account: string, corr = false): boolean {
+  const s = (corr ? `0${bik.slice(4, 6)}` : bik.slice(-3)) + account;
+  const sum = [...s].reduce((acc, d, i) => acc + ((Number(d) * KEY_WEIGHTS[i % 3]) % 10), 0);
+  return sum % 10 === 0;
+}
+
+/** Расчётный счёт: 20 цифр; если БИК уже верный — сверяем и ключ. */
+export function checkBankAccount(raw: string, bik: string): Check {
+  const v = raw.trim();
+  if (!v) return null;
+  if (!/^\d{20}$/.test(v)) return "valid.bankAccount";
+  if (checkBik(bik) === null && bik.trim() && !accountKeyOk(bik.trim(), v)) {
+    return "valid.bankAccountKey";
+  }
+  return null;
+}
+
 /** Ссылка: только http(s) и настоящий домен с зоной. Загруженный файл (`data:`) — не ссылка. */
 export function checkUrl(raw: string): Check {
   const v = raw.trim();

@@ -58,6 +58,12 @@ export interface Account {
   kpp?: string;
   ogrn?: string;
   legalAddress?: string;
+  /** Банк для счёта продавцу: БИК вводит человек, название и корсчёт — справочник. */
+  bik?: string;
+  bankName?: string;
+  correspondentAccount?: string;
+  /** Расчётный счёт — справочник его не знает, только человек. */
+  bankAccount?: string;
   /** Фото человека, data-URL до 256×256. */
   avatar?: string;
   /** Логотип компании, data-URL до 256×256. */
@@ -170,6 +176,8 @@ export interface Subscription {
    * по таблице тарифа (демо, сервер ещё не ответил). Читать через `featuresOf`.
    */
   features?: TariffFeatures;
+  /** Сколько складов позволяет тариф (сервер); `null` или нет — без ограничения. */
+  warehouseLimit?: number | null;
   manager?: Manager;
   backup: BackupSettings;
 }
