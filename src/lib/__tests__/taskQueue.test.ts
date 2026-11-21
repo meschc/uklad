@@ -67,6 +67,20 @@ describe("taskQueue", () => {
     expect(at({ ...r, status: "cancelled" })).toEqual([]);
   });
 
+  it("сборка: со сроком отгрузки — первой, хоть и заведена позже", () => {
+    const g = groupOf(
+      {
+        requests: [
+          req({ id: "old", note: "Склад А", createdAt: NOW - 5 * DAY }),
+          req({ id: "late", note: "Склад Б", truckDate: NOW + 2 * DAY }),
+          req({ id: "soon", note: "Склад В", truckDate: NOW + DAY }),
+        ],
+      },
+      "picking",
+    );
+    expect(g?.items.map((i) => i.label)).toEqual(["Склад В", "Склад Б", "Склад А"]);
+  });
+
   it("упаковка — по таре: код тары и собранные штуки, частичная — сколько собрали", () => {
     const tote: Box = { id: "b1", barcode: "UK-BOX-1", createdAt: 0, lines: [] };
     const g = groupOf(
