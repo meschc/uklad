@@ -27,12 +27,14 @@ before(async () => {
   const { createSnapshot } = require("../src/cabinet/snapshot.js");
   const { createDesks } = require("../src/cabinet/desks.js");
   const { createConnectors } = require("../src/cabinet/connectors.js");
+  const { createDeskBadges } = require("../src/cabinet/deskBadges.js");
   db = await helpers.setupDb();
   const cfg = { publicUrl: ORIGIN, allowedOrigins: [ORIGIN], trustProxy: true };
   const quiet = { error() {}, warn() {} };
   const mail = { sendTo: async (m) => void sent.push(m) };
   const auth = createAuth({ pool: db.pool, cfg, send, readBody, log: quiet, mail });
   const snapshot = createSnapshot({ auth, send, log: quiet });
+  const badges = createDeskBadges({ auth, send, log: quiet });
   const secretKey = Buffer.alloc(32, 9);
   const fetchImpl = async (u, o) => {
     hits.push({ u, h: o.headers, body: o.body });
@@ -48,6 +50,7 @@ before(async () => {
       (await desks.handle(req, res, url)) ||
       (await auth.handle(req, res, url)) ||
       (await snapshot.handle(req, res, url)) ||
+      (await badges.handle(req, res, url)) ||
       (await conn.handle(req, res, url)),
   };
   server = http.createServer(
@@ -108,7 +111,12 @@ async function owner(email, ip) {
 
 const req = (id, over) => ({ id, productId: "pr1", qty: 1, createdAt: 1, updatedAt: 1, ...over });
 const cabinet = () => ({
-  warehouse: { id: "wh_a", name: "Склад", staff: [], partners: [{ id: "p1", name: "ИП Иванов" }] },
+  warehouse: {
+    id: "wh_a",
+    name: "Склад",
+    staff: [{ id: "stf-ivan", name: "Иван", role: "Упаковщик", hourlyRate: 300 }],
+    partners: [{ id: "p1", name: "ИП Иванов" }],
+  },
   devices: [{ id: "dev-a", name: "Стол", station: "pack", createdAt: 1 }],
   products: [{ id: "pr1", sku: "A-1", name: "Кружка", partnerId: "p1" }],
   boxes: [],
@@ -139,6 +147,14 @@ test("живой: стол получает ярлык площадки свое
     ip: "10.0.7.9",
   });
   a.cookie = tokenOf(r.cookies, cookieName);
+
+  // За столом никого: на ярлыке имя и город получателя — не отдаём.
+  const empty = await label(desk, "r-oz");
+  assert.deepEqual([empty.status, empty.json.error], [409, "no_staff"]);
+  const ivan = (await call("/api/cabinet/badges/issue", { ...a, body: { staffRef: "stf-ivan" } }))
+    .json.code;
+  const at = await call("/api/cabinet/badges/check", { desk, body: { code: ivan } });
+  assert.equal(at.status, 200, JSON.stringify(at.json));
 
   // Подключения ещё нет — ярлыка нет, а не чужой ключ.
   assert.deepEqual([(await label(desk, "r-oz")).status], [404]);

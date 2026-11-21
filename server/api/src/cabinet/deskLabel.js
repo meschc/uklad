@@ -12,12 +12,15 @@
  * Чужое не отдаётся: заявка — со склада этого стола (`deskPlace`), собранная,
  * не отменённая, заказ площадки; подключение — этой компании (RLS) и того же
  * партнёра. Номер заказа в путь не подставляется — только в тело (Ozon) или
- * цифрами (Маркет).
+ * цифрами (Маркет). На ярлыке имя получателя и город, поэтому его дают только
+ * при человеке за столом с правом на упаковку — как операции упаковки
+ * (`deskOps.js`); стол без человека получает 409 `no_staff`.
  */
 /* global require, module */
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { allowed, askPlatform, createSealer } = require("./connectors");
 const { deskPlace } = require("./deskPlace");
+const { may, loadDeskPerms } = require("./deskPerms");
 const { loadCabinet } = require("./snapshot");
 const { createRateLimit } = require("../rateLimit");
 
@@ -48,7 +51,20 @@ function connectionFor(rows, partnerId, warehouseRef) {
   return fit.length === 1 ? fit[0] : null;
 }
 
-function createLabelRoutes({ withDesk, readJson, send, gone, limited, log, secretKey, fetchImpl }) {
+// То же право, что у операций упаковки (`OP_PERM` в `deskOps.js`).
+const PACK_PERM = "packing.do";
+
+function createLabelRoutes({
+  withDesk,
+  deskHash,
+  readJson,
+  send,
+  gone,
+  limited,
+  log,
+  secretKey,
+  fetchImpl,
+}) {
   const sealer = createSealer(secretKey);
   // Ярлык — раз на посылку; перепечатка и «ещё не готов» — с запасом.
   const perDesk = createRateLimit({ capacity: 20, refillPerMinute: 20 });
@@ -61,6 +77,13 @@ function createLabelRoutes({ withDesk, readJson, send, gone, limited, log, secre
     if (!sealer) return send(res, 503, { ok: false, error: "not_configured" });
     const out = await withDesk(req, async (c, d) => {
       if (!perDesk.take(d.deskId)) return { limited: true };
+      // Кто за столом сейчас (смена не истекла) и может ли он упаковывать.
+      const { rows: at } = await c.query(`SELECT staff_ref FROM auth.desk_staff_times($1)`, [
+        deskHash(req),
+      ]);
+      const staffRef = at[0]?.staff_ref;
+      if (!may({ perms: await loadDeskPerms(c, [staffRef]) }, staffRef, PACK_PERM))
+        return { error: "no_staff", status: 409 };
       // Заявки лежат строками (ADR 0010) — снимок целиком, как у стола.
       const { rows: snap } = await c.query(
         `SELECT data FROM uklad.cabinet_snapshots WHERE org_id = uklad.current_org()`,

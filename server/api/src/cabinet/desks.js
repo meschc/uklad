@@ -890,6 +890,7 @@ function createDesks({ auth, cfg, send, log, secretKey = null, fetchImpl = fetch
   });
   const labels = createLabelRoutes({
     withDesk,
+    deskHash,
     readJson,
     send,
     gone,

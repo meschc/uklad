@@ -8,6 +8,7 @@ export type PlatformLabelAnswer =
 
 const ERROR: Record<string, MsgKey> = {
   not_picked: "ws.plabel.err.notPicked",
+  no_staff: "ws.plabel.err.noStaff",
   no_connection: "ws.plabel.err.noConnection",
   not_marketplace: "ws.plabel.err.noConnection",
 };
