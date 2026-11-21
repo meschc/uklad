@@ -78,6 +78,8 @@ export const ru = {
   "integr.pull.error.partner": "этого партнёра больше нет на складе",
   "integr.pull.error.unpaid": "кабинет не оплачен. После оплаты заказы загрузятся сами",
   "integr.pull.unknown": "Не нашли товар в номенклатуре, заказы: {list}",
+  "integr.pull.assembled": "Отмечено «собран» на площадке: {n}",
+  "integr.pull.assembleFailed": "Площадка не приняла «собран», заказы: {list}",
   "integr.remove": "Удалить",
   "integr.saveToServer": "Сохранить подключение",
   "integr.field.partner": "Партнёр",
@@ -511,6 +513,8 @@ export const en: Record<keyof typeof ru, string> = {
   "integr.pull.error.unpaid":
     "the cabinet is not paid. Orders will load by themselves after payment",
   "integr.pull.unknown": "Product not found in the catalog, orders: {list}",
+  "integr.pull.assembled": "Marked as assembled on the platform: {n}",
+  "integr.pull.assembleFailed": "The platform did not accept “assembled”, orders: {list}",
   "integr.remove": "Remove",
   "integr.saveToServer": "Save connection",
   "integr.field.partner": "Partner",

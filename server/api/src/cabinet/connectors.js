@@ -63,6 +63,9 @@ const SYSTEMS = {
       ["POST", /^\/v2\/posting\/fbs\/package-label$/],
       ["POST", /^\/v2\/products\/stocks$/],
     ],
+    // Меняет статус заказа на площадке — только из прохода сервера, кабинету
+    // через прокси недоступно (`allowed(…, "server")`).
+    serverAllow: [["POST", /^\/v4\/posting\/fbs\/ship$/]],
     headers: (key, params) => ({ "Client-Id": params.clientId, "Api-Key": key.token }),
     needsClientId: true,
   },
@@ -73,6 +76,7 @@ const SYSTEMS = {
       ["GET", new RegExp(`^/v2/campaigns/\\{campaignId\\}/orders/${SEG}/delivery/labels$`)],
       ["PUT", /^\/v2\/campaigns\/\{campaignId\}\/offers\/stocks$/],
     ],
+    serverAllow: [["PUT", /^\/v2\/campaigns\/\{campaignId\}\/orders\/\d{1,20}\/status$/]],
     headers: (key) => ({ "Api-Key": key.token }),
     needsClientId: true, // campaignId
     path: (p, params) => p.replace("{campaignId}", encodeURIComponent(params.clientId)),
@@ -80,11 +84,16 @@ const SYSTEMS = {
 };
 
 /** Разрешён ли вызов: метод и путь из белого списка системы. */
-function allowed(system, method, path) {
+/**
+ * Можно ли этот запрос к площадке. `scope` — "proxy" (кабинет через прокси)
+ * или "server" (проход сервера: ещё и `serverAllow`, смена статуса заказа).
+ */
+function allowed(system, method, path, scope = "proxy") {
   const s = SYSTEMS[system];
   if (!s || typeof method !== "string" || typeof path !== "string") return false;
   if (path.length > 300 || path.includes("..") || path.includes("//")) return false;
-  return s.allow.some(([m, re]) => m === method && re.test(path));
+  const rules = scope === "server" ? [...s.allow, ...(s.serverAllow ?? [])] : s.allow;
+  return rules.some(([m, re]) => m === method && re.test(path));
 }
 
 /** Строка запроса: только простые значения, не больше 20 ключей. */

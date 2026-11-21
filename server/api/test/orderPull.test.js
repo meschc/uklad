@@ -14,7 +14,10 @@ const {
   knownIn,
   connectionWarehouse,
   fetchOrders,
+  pickedOrders,
+  ASSEMBLE,
 } = require("../src/cabinet/orderPull");
+const { allowed } = require("../src/cabinet/connectors");
 
 const P = [
   { id: "a", sku: "ART-A", barcode: "111" },
@@ -250,4 +253,65 @@ test("Маркет: номер кампании подставляет серв�
   );
   assert.match(seen[0].url, /status=PROCESSING/);
   assert.ok(!JSON.stringify(res).includes("SECRET"));
+});
+
+test("«собран» — только когда все заявки заказа собраны, без частичных", () => {
+  const r = (externalId, status, extra = {}) => ({ source: "ozon", externalId, status, ...extra });
+  const picked = pickedOrders(
+    [
+      r("A", "done"),
+      r("A", "shipped"),
+      r("B", "done"),
+      r("B", "in_progress"),
+      r("C", "done", { partial: true }),
+      r("D", "new"),
+      r("E", "done"),
+      r("E", "cancelled"),
+      { source: "wildberries", externalId: "F", status: "done" },
+    ],
+    "ozon",
+  );
+  assert.deepEqual([...picked].sort(), ["a", "e"]);
+});
+
+test("Ozon «собран»: одно место со всеми товарами по SKU, только из «ждёт сборки»", () => {
+  const o = {
+    externalId: "1-2-3",
+    status: "awaiting_packaging",
+    lines: [
+      { sku: 11, qty: 2 },
+      { sku: 12, qty: 1 },
+    ],
+  };
+  assert.deepEqual(ASSEMBLE.ozon(o), {
+    method: "POST",
+    path: "/v4/posting/fbs/ship",
+    body: {
+      posting_number: "1-2-3",
+      packages: [
+        {
+          products: [
+            { product_id: 11, quantity: 2 },
+            { product_id: 12, quantity: 1 },
+          ],
+        },
+      ],
+      with: { additional_data: false },
+    },
+  });
+  assert.equal(ASSEMBLE.ozon({ ...o, status: "awaiting_deliver" }), null);
+  assert.equal(ASSEMBLE.ozon({ ...o, lines: [{ qty: 1 }] }), null);
+  assert.equal(ASSEMBLE["yandex-market"]({ externalId: "12/../x", lines: [] }), null);
+});
+
+test("смену статуса на площадке может только сервер, не прокси кабинета", () => {
+  assert.equal(allowed("ozon", "POST", "/v4/posting/fbs/ship"), false);
+  assert.equal(allowed("ozon", "POST", "/v4/posting/fbs/ship", "server"), true);
+  const ym = "/v2/campaigns/{campaignId}/orders/555/status";
+  assert.equal(allowed("yandex-market", "PUT", ym), false);
+  assert.equal(allowed("yandex-market", "PUT", ym, "server"), true);
+  assert.equal(
+    allowed("yandex-market", "PUT", "/v2/campaigns/{campaignId}/orders/x/status", "server"),
+    false,
+  );
 });

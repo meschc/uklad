@@ -65,8 +65,12 @@ function mapOzon(payload) {
     .map((p) => ({
       externalId: p.posting_number,
       shipBy: typeof p.shipment_date === "string" ? p.shipment_date : undefined,
+      // `awaiting_packaging` — ждёт сборки; после «собран» — `awaiting_deliver`.
+      ...(typeof p.status === "string" ? { status: p.status } : {}),
       lines: list(p.products).map((l) => ({
         vendorCode: l?.offer_id,
+        // SKU Ozon — им «собрать» называет товар (`product_id`).
+        ...(Number.isSafeInteger(l?.sku) ? { sku: l.sku } : {}),
         qty: Number(l?.quantity) || 0,
       })),
     }));
@@ -160,7 +164,8 @@ async function fetchOrders(ctx, system, now) {
   const orders = [];
   let req = spec.first(now);
   for (let page = 0; req && page < MAX_PAGES; page += 1) {
-    if (!allowed(system, req.method, req.path)) return { ok: false, error: "not_allowed" };
+    if (!allowed(system, req.method, req.path, "server"))
+      return { ok: false, error: "not_allowed" };
     const res = await askPlatform(
       { ...ctx, system },
       { method: req.method, path: req.path, qs: queryString(req.query), body: req.body },
@@ -170,6 +175,62 @@ async function fetchOrders(ctx, system, now) {
     req = spec.next(req, res.data);
   }
   return { ok: true, orders };
+}
+
+// ---- «Собран» на площадке (шаг 5 `docs/domain/fbs.md`) ----
+
+/**
+ * Запрос «собран» к площадке для заказа или `null`, если по этому заказу
+ * площадке сказать нечего. Ozon: `/v4/posting/fbs/ship`, одно грузовое место
+ * со всеми товарами (только из «ждёт сборки», SKU у каждой строки). Маркет:
+ * `PROCESSING / READY_TO_SHIP`. WB — после сверки пути поставки с живым
+ * ключом: старый метод добавления в поставку WB убрал.
+ */
+const ASSEMBLE = {
+  ozon: (o) => {
+    if (o.status !== "awaiting_packaging") return null;
+    if (!o.lines.length || o.lines.some((l) => !l.sku || !(l.qty > 0))) return null;
+    return {
+      method: "POST",
+      path: "/v4/posting/fbs/ship",
+      body: {
+        posting_number: o.externalId,
+        packages: [{ products: o.lines.map((l) => ({ product_id: l.sku, quantity: l.qty })) }],
+        with: { additional_data: false },
+      },
+    };
+  },
+  "yandex-market": (o) =>
+    /^\d{1,20}$/.test(o.externalId)
+      ? {
+          method: "PUT",
+          path: `/v2/campaigns/{campaignId}/orders/${o.externalId}/status`,
+          body: { order: { status: "PROCESSING", substatus: "READY_TO_SHIP" } },
+        }
+      : null,
+};
+
+/** Сколько заказов за проход отмечаем «собран»: остальные — следующим. */
+const MAX_ASSEMBLE = 20;
+
+/**
+ * Номера заказов, собранных на складе целиком: есть заявки этой площадки с
+ * этим номером, ни одна не ждёт и не собирается, ни одна не закрыта частично
+ * (недособранное площадке «собран» не говорим — решает человек).
+ */
+function pickedOrders(requests, source) {
+  const by = new Map();
+  for (const r of list(requests)) {
+    if (!isObject(r) || r.source !== source || !r.externalId || r.status === "cancelled") continue;
+    const k = norm(r.externalId);
+    by.set(k, [...(by.get(k) ?? []), r]);
+  }
+  const out = new Set();
+  for (const [k, rs] of by) {
+    const done = rs.every((r) => (r.status === "done" || r.status === "shipped") && !r.partial);
+    if (done) out.add(k);
+  }
+  return out;
 }
 
 // ---- Заказы → заявки (чистое правило) ----
@@ -377,7 +438,31 @@ function createOrderPull({
       );
       if (split.items) await storeRecords(c, split.items, split.slots);
     }
-    return { created: plan.orders, unknown: plan.unknown };
+    // Собранное на складе — площадке «собран» (после записи, вне транзакции).
+    const picked = pickedOrders(view.requests, source);
+    return { created: plan.orders, unknown: plan.unknown, picked };
+  }
+
+  /** «Собран» на площадке для собранных на складе заказов из ответа площадки. */
+  async function assemble(ctx, system, orders, picked) {
+    const make = ASSEMBLE[system];
+    const out = { assembled: 0, assembleFailed: [] };
+    if (!make) return out;
+    const todo = orders
+      .filter((o) => picked.has(norm(o.externalId)))
+      .map((o) => [o.externalId, make(o)])
+      .filter(([, req]) => req)
+      .slice(0, MAX_ASSEMBLE);
+    for (const [externalId, req] of todo) {
+      if (!allowed(system, req.method, req.path, "server")) continue;
+      const res = await askPlatform({ ...ctx, system }, { ...req, qs: "" });
+      if (res.ok) out.assembled += 1;
+      else {
+        out.assembleFailed.push(externalId);
+        out.assembleDetail ??= res.detail || res.error;
+      }
+    }
+    return out;
   }
 
   /**
@@ -424,7 +509,14 @@ function createOrderPull({
     } else {
       try {
         const stored = await inOrg(orgId, id, ticket, (c) => store(c, account, fetched.orders, at));
-        result = stored.gone ? { at, error: "no_connection" } : { at, ...stored };
+        if (stored.gone) result = { at, error: "no_connection" };
+        else {
+          const { picked, ...rest } = stored;
+          const done = picked
+            ? await assemble({ key, params, log, fetchImpl }, system, fetched.orders, picked)
+            : {};
+          result = { at, ...rest, ...done };
+        }
       } catch (e) {
         log.error("[uklad] подкачка: заявки не записаны", id, e.message);
         result = { at, error: "server" };
@@ -481,4 +573,6 @@ module.exports = {
   knownIn,
   connectionWarehouse,
   fetchOrders,
+  pickedOrders,
+  ASSEMBLE,
 };
