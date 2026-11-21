@@ -85,7 +85,7 @@ export function MobileNav() {
             type="button"
             onClick={() => setClosing(true)}
             aria-label={t("nav.side.close")}
-            className="absolute right-3 top-3 z-10 flex size-11 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
+            className="absolute right-3 top-3 z-10 flex size-11 items-center justify-center rounded-full text-muted-foreground hover:bg-wash hover:text-foreground"
           >
             <X className="size-5" />
           </button>
