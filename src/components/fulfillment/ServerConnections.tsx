@@ -25,6 +25,9 @@ const CLIENT_LABEL: Partial<
   "yandex-market": "integr.field.campaignId",
 };
 
+/** Площадки, куда сервер выгружает остатки (`stockPush.js`); WB — после запуска. */
+const STOCK_SYSTEMS: ReadonlySet<ServerConnectorSystem> = new Set(["ozon", "yandex-market"]);
+
 /** Коды отказа подкачки на сервере → текст (`orderPull.js`). */
 const PULL_ERROR: Record<string, MsgKey> = {
   rejected: "integr.error.rejected",
@@ -59,7 +62,8 @@ function lastPullText(r: OrderPullResult, t: TFunc): string {
     const text = t("integr.stock.failed", { list: r.stockFailed.join(", ") });
     lines.push(withPlatformReply(text, r.stockDetail ?? null));
   }
-  if (r.stockError === "ozon_warehouse") lines.push(t("integr.stock.error.warehouse"));
+  if (r.stockError === "ozon_warehouse" || r.stockError === "ym_warehouse")
+    lines.push(t("integr.stock.error.warehouse"));
   else if (r.stockError) {
     const text = t(PULL_ERROR[r.stockError] ?? "integr.error.upstream");
     lines.push(t("integr.stock.error.other", { text }));
@@ -220,7 +224,7 @@ export function ServerConnections({ spec, t }: { spec: IntegrationSpec; t: TFunc
               >
                 {t("integr.remove")}
               </Button>
-              {r.system === "ozon" && (
+              {STOCK_SYSTEMS.has(r.system) && (
                 <label
                   className="flex w-full items-center gap-2 text-xs text-muted-foreground"
                   title={t("integr.stock.hint")}
@@ -239,7 +243,7 @@ export function ServerConnections({ spec, t }: { spec: IntegrationSpec; t: TFunc
                   </span>
                 </label>
               )}
-              {r.system === "ozon" &&
+              {STOCK_SYSTEMS.has(r.system) &&
                 r.stockPush &&
                 (r.lastPull?.stockChoices?.length ?? 0) > 1 && (
                   <Select
