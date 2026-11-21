@@ -29,6 +29,12 @@ describe("CSP", () => {
     expect(scriptSrc).not.toContain("'unsafe-eval'");
   });
 
+  // Ярлык площадки печатается из кадра с `blob:` (`printLabelFile.ts`):
+  // без этого `default-src 'self'` молча не даёт его открыть.
+  it("кадр печати ярлыка разрешён", () => {
+    expect(header?.[2]).toMatch(/frame-src [^;]*blob:/);
+  });
+
   it.each(["index.html", "app/index.html"])("встроенные скрипты %s разрешены хэшем", (f) => {
     const hashes = inlineHashes(read(f));
     expect(hashes.length).toBeGreaterThan(0);

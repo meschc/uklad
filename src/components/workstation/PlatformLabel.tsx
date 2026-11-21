@@ -2,12 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import { Printer, TriangleAlert } from "lucide-react";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { platformLabelRepository } from "@/lib/data/platformLabelRepository";
-import { printPdf } from "@/lib/printPdf";
+import { printLabelFile } from "@/lib/printLabelFile";
 import { Button } from "@/components/ui/button";
 
 const PLATFORM_NAME: Record<string, MsgKey> = {
   ozon: "ws.plabel.name.ozon",
   "yandex-market": "ws.plabel.name.ym",
+  wildberries: "ws.plabel.name.wb",
 };
 
 /**
@@ -32,7 +33,7 @@ export function PlatformLabel({ requestId, source }: { requestId: string; source
       const text = t(res.error, { platform: name });
       return setState({ kind: "failed", text: res.detail ? `${text} (${res.detail})` : text });
     }
-    printPdf(res.file);
+    printLabelFile(res.file, res.mime);
     setState({ kind: "printed" });
   };
 

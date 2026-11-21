@@ -5,7 +5,7 @@
  *
  * Без ярлыка площадки посылку FBS не примут. Ярлык дают только после
  * «собран» (#222): Ozon — для «Ожидает отгрузки», Маркет — для
- * `READY_TO_SHIP`. Стол сам ключ площадки не видит: сервер находит
+ * `READY_TO_SHIP`, WB — для задания в поставке (`confirm`). Стол сам ключ площадки не видит: сервер находит
  * подключение заявки (площадка, партнёр товара, склад стола), расшифровывает
  * ключ и спрашивает ярлык. Запрос к площадке — вне транзакции.
  *
@@ -27,13 +27,33 @@ const { createRateLimit } = require("../rateLimit");
 const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 const list = (v) => (Array.isArray(v) ? v : []);
 
-/** Запрос ярлыка к площадке для номера заказа или `null`. */
+/**
+ * Запрос ярлыка к площадке для номера заказа или `null`. `file(data)` достаёт
+ * ярлык из ответа, `mime` — что это: Ozon и Маркет отдают PDF, WB — картинку
+ * (PDF у WB нет; PNG 58×40 мм — лента стола).
+ */
+const pdfFile = (data) => data?.file;
 const LABEL = {
   ozon: (externalId) => ({
     method: "POST",
     path: "/v2/posting/fbs/package-label",
     body: { posting_number: [externalId] },
   }),
+  // Стикер WB — только для задания в поставке (`confirm`), см. `assembleWb`.
+  wildberries: (externalId) =>
+    /^\d{1,20}$/.test(externalId)
+      ? {
+          method: "POST",
+          path: "/api/v3/orders/stickers",
+          qs: "?type=png&width=58&height=40",
+          body: { orders: [Number(externalId)] },
+          mime: "image/png",
+          file: (data) => {
+            const st = list(data?.stickers).find((x) => String(x?.orderId) === externalId);
+            return st?.file;
+          },
+        }
+      : null,
   "yandex-market": (externalId) =>
     /^\d{1,20}$/.test(externalId)
       ? { method: "GET", path: `/v2/campaigns/{campaignId}/orders/${externalId}/delivery/labels` }
@@ -120,17 +140,19 @@ function createLabelRoutes({
       return send(res, 500, { ok: false, error: "key" });
     }
     const params = isObject(out.account.params) ? out.account.params : {};
+    const { mime = "application/pdf", file: fileOf = pdfFile, ...call } = ask;
     const got = await askPlatform(
       { system: out.system, key, params, log, fetchImpl },
-      { ...ask, qs: "" },
+      { ...call, qs: call.qs ?? "" },
     );
     if (!got.ok) {
       // Чаще всего — «ещё не собран» на площадке: стол предложит повторить.
       return send(res, 502, { ok: false, error: got.error, detail: got.detail ?? "" });
     }
-    const file = got.data?.file;
+    const file = fileOf(got.data);
+    // Стикера нет — чаще всего задание ещё не в поставке WB: повторить позже.
     if (typeof file !== "string" || !file) return send(res, 502, { ok: false, error: "upstream" });
-    return send(res, 200, { ok: true, mime: "application/pdf", file });
+    return send(res, 200, { ok: true, mime, file });
   }
 
   return { "POST /api/desk/platform-label": platformLabel };

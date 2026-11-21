@@ -459,6 +459,7 @@ export const ru = {
   "ws.run.labelPrinted": "Этикетка напечатана — наклейте и отсканируйте её",
   "ws.plabel.name.ozon": "Ozon",
   "ws.plabel.name.ym": "Маркета",
+  "ws.plabel.name.wb": "WB",
   "ws.plabel.loading": "Запрашиваем ярлык {platform}…",
   "ws.plabel.printed": "Ярлык {platform} напечатан — наклейте его на посылку",
   "ws.plabel.retry": "Ярлык {platform} ещё раз",
@@ -470,7 +471,7 @@ export const ru = {
   "ws.plabel.err.noConnection":
     "Ярлыка {platform} нет: магазин этого продавца не подключён. Руководитель подключает его в «Интеграциях», затем нажмите «Ярлык {platform} ещё раз»",
   "ws.plabel.err.platform":
-    "{platform} ещё не выдал ярлык. Подождите минуту и нажмите «Ярлык {platform} ещё раз»",
+    "Площадка ещё не выдала ярлык {platform}. Подождите минуту и нажмите «Ярлык {platform} ещё раз»",
   "ws.plabel.err.limited":
     "Слишком много ярлыков подряд. Подождите полминуты и нажмите «Ярлык {platform} ещё раз»",
   "ws.plabel.err.deskWarehouse":
@@ -1109,6 +1110,7 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.run.labelPrinted": "Label printed — stick it on and scan it",
   "ws.plabel.name.ozon": "Ozon",
   "ws.plabel.name.ym": "Market",
+  "ws.plabel.name.wb": "WB",
   "ws.plabel.loading": "Requesting the {platform} label…",
   "ws.plabel.printed": "{platform} label printed — stick it on the parcel",
   "ws.plabel.retry": "{platform} label again",
@@ -1120,7 +1122,7 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.plabel.err.noConnection":
     "No {platform} label: this seller's store is not connected. A manager connects it in Integrations, then press “{platform} label again”",
   "ws.plabel.err.platform":
-    "{platform} has not issued the label yet. Wait a minute and press “{platform} label again”",
+    "The marketplace has not issued the {platform} label yet. Wait a minute and press “{platform} label again”",
   "ws.plabel.err.limited":
     "Too many labels in a row. Wait half a minute and press “{platform} label again”",
   "ws.plabel.err.deskWarehouse":

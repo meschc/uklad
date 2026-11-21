@@ -16,6 +16,7 @@ const {
   fetchOrders,
   pickedOrders,
   ASSEMBLE,
+  assembleWb,
 } = require("../src/cabinet/orderPull");
 const { allowed } = require("../src/cabinet/connectors");
 
@@ -304,7 +305,104 @@ test("Ozon «собран»: одно место со всеми товарам�
   assert.equal(ASSEMBLE["yandex-market"]({ externalId: "12/../x", lines: [] }), null);
 });
 
+// Площадка-заглушка WB: поставки по номерам, «закрытые» не принимают задания.
+function fakeWb({ closed = [], refuse = [] } = {}) {
+  const calls = [];
+  let n = 100;
+  const ask = async (req) => {
+    calls.push(req);
+    if (req.method === "POST") return { ok: true, data: { id: `WB-GI-${(n += 1)}` } };
+    const id = /supplies\/(WB-GI-\d+)\//.exec(req.path)[1];
+    if (closed.includes(id)) return { ok: false, error: "upstream", status: 409, detail: "closed" };
+    if (req.body.orders.some((o) => refuse.includes(o)))
+      return { ok: false, error: "upstream", status: 409, detail: "нельзя" };
+    return { ok: true, data: null };
+  };
+  return { ask, calls };
+}
+
+const AT = Date.parse("2026-11-21T10:00:00Z");
+const wbOrders = [
+  { externalId: "11", wbWarehouse: 7, cargoType: 1, lines: [] },
+  { externalId: "12", wbWarehouse: 7, cargoType: 1, lines: [] },
+  { externalId: "13", wbWarehouse: 8, cargoType: 1, lines: [] },
+  { externalId: "14", wbWarehouse: 7, cargoType: 1, lines: [] },
+];
+
+test("WB «собран»: собранные задания — в поставку дня, по складу WB", async () => {
+  const wb = fakeWb();
+  const picked = new Set(["11", "12", "13"]);
+  const r = await assembleWb(wb.ask, wbOrders, picked, undefined, AT);
+  assert.deepEqual([r.assembled, r.assembleFailed], [3, []]);
+  // Два склада WB — две поставки; несобранное (14) не трогаем.
+  assert.deepEqual(
+    wb.calls.filter((c) => c.method === "PATCH").map((c) => [c.path, c.body.orders]),
+    [
+      ["/api/marketplace/v3/supplies/WB-GI-101/orders", [11, 12]],
+      ["/api/marketplace/v3/supplies/WB-GI-102/orders", [13]],
+    ],
+  );
+  assert.equal(wb.calls[0].body.name, "Уклад 21.11.2026");
+  assert.deepEqual(r.wbSupply.byGroup, { "7:1": "WB-GI-101", "8:1": "WB-GI-102" });
+
+  // Следующий проход того же дня — в ту же поставку, новой не заводим.
+  const again = fakeWb();
+  await assembleWb(again.ask, wbOrders, new Set(["14"]), r.wbSupply, AT + 36e5);
+  assert.deepEqual(
+    again.calls.map((c) => c.method),
+    ["PATCH"],
+  );
+  assert.match(again.calls[0].path, /WB-GI-101/);
+
+  // Назавтра — новая поставка.
+  const tomorrow = fakeWb();
+  await assembleWb(tomorrow.ask, wbOrders, new Set(["14"]), r.wbSupply, AT + 864e5);
+  assert.deepEqual(
+    tomorrow.calls.map((c) => c.method),
+    ["POST", "PATCH"],
+  );
+});
+
+test("WB «собран»: закрытая поставка — новая, отказ — без новых поставок без конца", async () => {
+  const prev = { day: "2026-11-21", byGroup: { "7:1": "WB-GI-5" }, made: {} };
+  const wb = fakeWb({ closed: ["WB-GI-5"] });
+  const r = await assembleWb(wb.ask, wbOrders, new Set(["11"]), prev, AT);
+  assert.deepEqual([r.assembled, r.wbSupply.byGroup["7:1"]], [1, "WB-GI-101"]);
+
+  // Задание, которое WB не берёт ни в какую поставку: не больше трёх новых за день.
+  let state;
+  let posts = 0;
+  for (let i = 0; i < 6; i += 1) {
+    const bad = fakeWb({ refuse: [12] });
+    const res = await assembleWb(bad.ask, wbOrders, new Set(["12"]), state, AT);
+    posts += bad.calls.filter((c) => c.method === "POST").length;
+    assert.deepEqual(res.assembleFailed, ["12"]);
+    assert.equal(res.assembleDetail, "нельзя");
+    state = res.wbSupply;
+  }
+  assert.equal(posts, 3);
+  // Номер не цифрами — в путь не идёт.
+  const odd = fakeWb();
+  await assembleWb(
+    odd.ask,
+    [{ externalId: "1/../x", lines: [] }],
+    new Set(["1/../x"]),
+    undefined,
+    AT,
+  );
+  assert.equal(odd.calls.length, 0);
+});
+
 test("смену статуса на площадке может только сервер, не прокси кабинета", () => {
+  assert.equal(allowed("wildberries", "POST", "/api/v3/supplies"), false);
+  assert.equal(allowed("wildberries", "POST", "/api/v3/supplies", "server"), true);
+  const wbAdd = "/api/marketplace/v3/supplies/WB-GI-123/orders";
+  assert.equal(allowed("wildberries", "PATCH", wbAdd), false);
+  assert.equal(allowed("wildberries", "PATCH", wbAdd, "server"), true);
+  assert.equal(
+    allowed("wildberries", "PATCH", "/api/marketplace/v3/supplies/x/orders", "server"),
+    false,
+  );
   assert.equal(allowed("ozon", "POST", "/v4/posting/fbs/ship"), false);
   assert.equal(allowed("ozon", "POST", "/v4/posting/fbs/ship", "server"), true);
   const ym = "/v2/campaigns/{campaignId}/orders/555/status";
