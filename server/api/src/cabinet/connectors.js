@@ -28,6 +28,7 @@
  *     (`orderPull.js`; сам сервер делает это раз в полторы минуты и без кнопки)
  *   POST /api/connectors/delete          — { id }
  *   POST /api/connectors/rename          — { id, label }
+ *   POST /api/connectors/platform-warehouse — { id, warehouseId } (склад Ozon для остатков)
  *   POST /api/connectors/<system>/proxy  — `ConnectorRequest` → { ok, data } (JSON площадки)
  */
 /* global require, module, fetch, AbortSignal, Buffer, URLSearchParams */
@@ -77,6 +78,8 @@ const SYSTEMS = {
       ["POST", /^\/v4\/posting\/fbs\/ship$/],
       // Отменённые отправления (`orderCancel.js`).
       ["POST", /^\/v4\/posting\/fbs\/list$/],
+      // Склады FBS магазина — для выгрузки остатков (`stockPush.js`).
+      ["POST", /^\/v2\/warehouse\/list$/],
     ],
     headers: (key, params) => ({ "Client-Id": params.clientId, "Api-Key": key.token }),
     needsClientId: true,
@@ -317,6 +320,33 @@ function createConnectors({ auth, send, log, secretKey, fetchImpl = fetch, pull 
     if (out) send(res, out.value ? 200 : 404, { ok: out.value > 0 });
   }
 
+  /**
+   * Склад магазина на Ozon, куда сервер выгружает остатки (`stockPush.js`):
+   * нужен, когда складов FBS у магазина несколько. Номер — из списка, который
+   * подкачка показала в подключении (`stockChoices`).
+   */
+  async function platformWarehouse(req, res) {
+    const b = await readJson(req, res, 1024);
+    if (!b) return;
+    if (
+      typeof b.id !== "string" ||
+      !ID_RE.test(b.id) ||
+      !Number.isSafeInteger(b.warehouseId) ||
+      b.warehouseId <= 0
+    )
+      return send(res, 400, { ok: false, error: "bad_input" });
+    const out = await session(req, res, async (c) => {
+      const r = await c.query(
+        `UPDATE uklad.connector_accounts
+         SET params = coalesce(params, '{}'::jsonb) || jsonb_build_object('platformWarehouseId', $2::bigint)
+         WHERE id = $1 AND system = 'ozon' AND deleted_at IS NULL`,
+        [b.id, b.warehouseId],
+      );
+      return r.rowCount;
+    });
+    if (out) send(res, out.value ? 200 : 404, { ok: out.value > 0 });
+  }
+
   async function remove(req, res) {
     const b = await readJson(req, res, 1024);
     if (!b) return;
@@ -424,6 +454,8 @@ function createConnectors({ auth, send, log, secretKey, fetchImpl = fetch, pull 
     else if (p === "/api/connectors/save" && req.method === "POST") await save(req, res);
     else if (p === "/api/connectors/delete" && req.method === "POST") await remove(req, res);
     else if (p === "/api/connectors/rename" && req.method === "POST") await rename(req, res);
+    else if (p === "/api/connectors/platform-warehouse" && req.method === "POST")
+      await platformWarehouse(req, res);
     else if (p === "/api/connectors/pull" && req.method === "POST") await pullNow(req, res);
     else {
       const m = /^\/api\/connectors\/([a-z-]{1,30})\/proxy$/.exec(p);

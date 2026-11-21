@@ -54,6 +54,16 @@ function lastPullText(r: OrderPullResult, t: TFunc): string {
     const text = t("integr.pull.assembleFailed", { list: r.assembleFailed.join(", ") });
     lines.push(withPlatformReply(text, r.assembleDetail ?? null));
   }
+  if (r.stocked) lines.push(t("integr.stock.sent", { n: r.stocked }));
+  if (r.stockFailed?.length) {
+    const text = t("integr.stock.failed", { list: r.stockFailed.join(", ") });
+    lines.push(withPlatformReply(text, r.stockDetail ?? null));
+  }
+  if (r.stockError === "ozon_warehouse") lines.push(t("integr.stock.error.warehouse"));
+  else if (r.stockError) {
+    const text = t(PULL_ERROR[r.stockError] ?? "integr.error.upstream");
+    lines.push(t("integr.stock.error.other", { text }));
+  }
   return lines.join(". ");
 }
 
@@ -144,7 +154,14 @@ export function ServerConnections({ spec, t }: { spec: IntegrationSpec; t: TFunc
     if ((await remove.run(id)).ok) reload();
   };
 
-  const error = loadError ?? save.error ?? remove.error ?? rename.error;
+  // Складов FBS у магазина Ozon несколько — руководитель выбирает, куда
+  // сервер выгружает остатки. Пока не выбрал, остатки не уходят никуда.
+  const pickWarehouse = useCommand(connectorsRepository.platformWarehouse);
+  const onPickWarehouse = async (id: string, warehouseId: number) => {
+    if ((await pickWarehouse.run({ id, warehouseId })).ok) reload();
+  };
+
+  const error = loadError ?? save.error ?? remove.error ?? rename.error ?? pickWarehouse.error;
   const canSave = !!token.trim() && (!clientLabel || !!clientId.trim());
 
   return (
@@ -201,6 +218,24 @@ export function ServerConnections({ spec, t }: { spec: IntegrationSpec; t: TFunc
               >
                 {t("integr.remove")}
               </Button>
+              {r.system === "ozon" && (r.lastPull?.stockChoices?.length ?? 0) > 1 && (
+                <Select
+                  aria-label={t("integr.stock.warehouse")}
+                  value={String(r.lastPull?.stockWarehouseId ?? "")}
+                  disabled={pickWarehouse.pending}
+                  onChange={(e) => void onPickWarehouse(r.id, Number(e.target.value))}
+                  className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm sm:w-64"
+                >
+                  <option value="" disabled>
+                    {t("integr.stock.warehouse")}
+                  </option>
+                  {r.lastPull?.stockChoices?.map((w) => (
+                    <option key={w.id} value={w.id}>
+                      {w.name}
+                    </option>
+                  ))}
+                </Select>
+              )}
             </li>
           ))}
         </ul>

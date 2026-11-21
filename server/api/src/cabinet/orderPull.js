@@ -38,6 +38,7 @@ const { restore } = require("./deskPlace");
 const { loadCabinet, splitCabinet, MAX_SNAPSHOT_BYTES } = require("./snapshot");
 const { storeRecords } = require("./records");
 const { fetchCancelled, openOrders, cancelRequests } = require("./orderCancel");
+const stock = require("./stockPush");
 
 /** Как часто одно подключение спрашивает площадку. */
 const EVERY = "90 seconds";
@@ -220,6 +221,8 @@ const MAX_ASSEMBLE = 20;
 
 const SUPPLY_RE = /^WB-GI-\d{1,20}$/;
 const MAX_SUPPLIES_A_DAY = 3;
+/** Куда сервер сам выгружает остатки (`stockPush.js`). Маркет и WB — следом. */
+const STOCK_SYSTEMS = new Set(["ozon"]);
 
 /** День по Москве `ГГГГ-ММ-ДД`: поставка WB — одна на день, склад и габарит. */
 const moscowDay = (at) => new Date(at + 3 * 36e5).toISOString().slice(0, 10);
@@ -499,20 +502,27 @@ function createOrderPull({
       [source, ids],
     );
     for (const r of archived.rows) known.add(r.x);
-    const plan = planImport(orders, productsFor(full.products, view.warehouse, partnerId), known);
+    const mine = productsFor(full.products, view.warehouse, partnerId);
+    const plan = planImport(orders, mine, known);
+    let after = view;
     if (plan.items.length) {
-      const next = {
+      after = {
         ...view,
         requests: [...newRequests(plan, source, at), ...list(view.requests)],
       };
-      const bad = await writeView(c, full, next, ref);
+      const bad = await writeView(c, full, after, ref);
       if (bad) return bad;
     }
+    // Свободный остаток товаров подключения — после новых заявок (их штуки
+    // уже не свободны). Отправляет его площадке `pushStocks` вне транзакции.
+    const stockNow = STOCK_SYSTEMS.has(source)
+      ? stock.stockBySku(mine, stock.freeStock(after))
+      : null;
     // Собранное на складе — площадке «собран», открытое — спросить об отмене
     // (после записи, вне транзакции).
     const picked = pickedOrders(view.requests, source);
     const open = openOrders(view.requests, source, partnerOfIn(full), partnerId);
-    return { created: plan.orders, unknown: plan.unknown, picked, open };
+    return { created: plan.orders, unknown: plan.unknown, picked, open, stockNow };
   }
 
   /** Партнёр товара по id (`null` — свой товар склада). */
@@ -568,6 +578,62 @@ function createOrderPull({
     if (!out.cancelled) return 0;
     const bad = await writeView(c, full, { ...view, requests: out.requests }, ref);
     return bad ? 0 : out.cancelled;
+  }
+
+  /**
+   * Остатки товаров подключения — площадке, только изменившиеся (раз в день
+   * все). Ozon: склад магазина — выбранный в подключении или единственный
+   * склад FBS; складов несколько, а склад не выбран — не шлём и говорим
+   * почему (`stockError: "ozon_warehouse"` и список складов для выбора).
+   */
+  async function pushStocks(ctx, system, params, now, prev, at) {
+    const ask = (req) =>
+      allowed(system, req.method, req.path, "server")
+        ? askPlatform({ ...ctx, system }, { ...req, qs: "" })
+        : Promise.resolve({ ok: false, error: "not_allowed" });
+    let warehouseId = Number.isSafeInteger(params.platformWarehouseId)
+      ? params.platformWarehouseId
+      : null;
+    if (!warehouseId) {
+      const got = await ask({ method: "POST", path: "/v2/warehouse/list", body: { limit: 100 } });
+      if (!got.ok) return { stockError: got.error, ...(prev ? { stocks: prev } : {}) };
+      const all = stock.ozonWarehouses(got.data);
+      if (all.length !== 1) {
+        return {
+          stockError: "ozon_warehouse",
+          stockChoices: all.slice(0, 20),
+          ...(prev ? { stocks: prev } : {}),
+        };
+      }
+      warehouseId = all[0].id;
+    }
+    const day = new Date(at + 3 * 36e5).toISOString().slice(0, 10);
+    // Сменили склад — всё заново.
+    const base = prev?.warehouseId === warehouseId ? prev : undefined;
+    const todo = stock.changed(now, base, day);
+    const sent = base?.day === day ? { ...base.sent } : {};
+    const out = { stocked: 0 };
+    for (const req of stock.ozonStockRequests(todo, warehouseId)) {
+      const res = await ask(req);
+      const rows = req.body.stocks;
+      if (!res.ok) {
+        out.stockFailed = [...(out.stockFailed ?? []), ...rows.map((r) => r.offer_id)];
+        out.stockDetail ??= res.detail || res.error;
+        continue;
+      }
+      const bad = stock.ozonRejected(res.data);
+      for (const r of rows) {
+        if (bad.skus.includes(r.offer_id)) continue;
+        sent[r.offer_id] = r.stock;
+        out.stocked += 1;
+      }
+      if (bad.skus.length) {
+        out.stockFailed = [...(out.stockFailed ?? []), ...bad.skus];
+        out.stockDetail ??= bad.detail;
+      }
+    }
+    if (out.stockFailed) out.stockFailed = out.stockFailed.slice(0, 20);
+    return { ...out, stocks: { day, warehouseId, sent } };
   }
 
   /**
@@ -670,7 +736,14 @@ function createOrderPull({
     const prevSupply = isObject(account.pull_result?.wbSupply)
       ? account.pull_result.wbSupply
       : undefined;
-    const keep = prevSupply ? { wbSupply: prevSupply } : {};
+    // Что уже отправлено площадке как остаток (`stockPush.js`).
+    const prevStocks = isObject(account.pull_result?.stocks)
+      ? account.pull_result.stocks
+      : undefined;
+    const keep = {
+      ...(prevSupply ? { wbSupply: prevSupply } : {}),
+      ...(prevStocks ? { stocks: prevStocks } : {}),
+    };
     const fetched = await fetchOrders({ key, params, log, fetchImpl }, system, at);
     let result;
     if (!fetched.ok) {
@@ -685,7 +758,7 @@ function createOrderPull({
         const stored = await inOrg(orgId, id, ticket, (c) => store(c, account, fetched.orders, at));
         if (stored.gone) result = { at, error: "no_connection" };
         else {
-          const { picked, open, ...rest } = stored;
+          const { picked, open, stockNow, ...rest } = stored;
           const ctx = { key, params, log, fetchImpl };
           const gone = open?.size
             ? await cancels(ctx, orgId, id, ticket, account, open, at)
@@ -703,7 +776,17 @@ function createOrderPull({
                 at,
               )
             : {};
-          result = { at, ...rest, ...keep, ...done, ...(cancelled ? { cancelled } : {}) };
+          const stocks = stockNow
+            ? await pushStocks(ctx, system, params, stockNow, prevStocks, at)
+            : {};
+          result = {
+            at,
+            ...rest,
+            ...keep,
+            ...done,
+            ...(cancelled ? { cancelled } : {}),
+            ...stocks,
+          };
         }
       } catch (e) {
         log.error("[uklad] подкачка: заявки не записаны", id, e.message);

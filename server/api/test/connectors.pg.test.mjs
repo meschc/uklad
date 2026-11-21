@@ -614,3 +614,98 @@ test(
     globalThis.REPLY = null;
   },
 );
+
+test(
+  "живой: остатки уходят на Ozon — свободное после заявок, склад выбирает руководитель",
+  { skip: SKIP },
+  async () => {
+    const c = await owner("stock-oz@example.com", "10.4.0.6");
+    const data = {
+      warehouse: { id: WH, name: "Склад", staff: [], partners: [] },
+      products: [
+        { id: "p1", name: "Кружка", sku: "MUG-1" },
+        { id: "p2", name: "Ложка", sku: "SPOON-1" },
+      ],
+      boxes: [{ id: "b1", lines: [{ productId: "p1", qty: 5 }] }],
+      requests: [],
+    };
+    const w = await post("/api/cabinet/snapshot", { ...c, body: { version: 0, format: 8, data } });
+    assert.equal(w.status, 200, JSON.stringify(w.json));
+    const save = await post("/api/connectors/save", {
+      ...c,
+      body: { system: "ozon", label: "Свой", token: "OZ-S", clientId: "991" },
+    });
+    assert.equal(save.status, 200, JSON.stringify(save.json));
+    const id = save.json.id;
+    let warehouses = [
+      { warehouse_id: 11, name: "Первый" },
+      { warehouse_id: 22, name: "Второй" },
+    ];
+    globalThis.REPLY = (u, o) => {
+      if (u.endsWith("/v2/warehouse/list")) return { warehouses };
+      if (u.endsWith("/v2/products/stocks")) {
+        const rows = JSON.parse(o.body).stocks;
+        return { result: rows.map((r) => ({ offer_id: r.offer_id, updated: true, errors: [] })) };
+      }
+      if (u.endsWith("/v4/posting/fbs/unfulfilled/list"))
+        return {
+          result: {
+            postings: [
+              {
+                posting_number: "77-1",
+                status: "awaiting_packaging",
+                products: [{ offer_id: "MUG-1", quantity: 2 }],
+              },
+            ],
+          },
+        };
+      return { result: { postings: [] }, postings: [] };
+    };
+    const again = async () => {
+      await db.root.query(`UPDATE uklad.connector_accounts SET pulled_at = NULL`);
+      await pull.tick();
+    };
+    const pushed = () => HITS.filter((h) => h.u.endsWith("/v2/products/stocks"));
+
+    // Два склада FBS — без выбора остатки не уходят, руководитель видит почему.
+    await again();
+    assert.equal(pushed().length, 0);
+    let listed = (await call("GET", "/api/connectors", c)).json.connections.find(
+      (x) => x.id === id,
+    );
+    assert.equal(listed.lastPull.stockError, "ozon_warehouse");
+    assert.equal(listed.lastPull.stockChoices.length, 2);
+
+    const pick = await post("/api/connectors/platform-warehouse", {
+      ...c,
+      body: { id, warehouseId: 22 },
+    });
+    assert.equal(pick.status, 200, JSON.stringify(pick.json));
+    const bad = await post("/api/connectors/platform-warehouse", {
+      ...c,
+      body: { id, warehouseId: "22" },
+    });
+    assert.equal(bad.status, 400);
+
+    await again();
+    const sent = pushed().flatMap((h) => JSON.parse(h.body).stocks);
+    // Кружка: 5 на складе − 2 в новой заявке; ложки нет — ноль.
+    assert.deepEqual(
+      sent.sort((a, b) => a.offer_id.localeCompare(b.offer_id)),
+      [
+        { offer_id: "MUG-1", stock: 3, warehouse_id: 22 },
+        { offer_id: "SPOON-1", stock: 0, warehouse_id: 22 },
+      ],
+    );
+    listed = (await call("GET", "/api/connectors", c)).json.connections.find((x) => x.id === id);
+    assert.equal(listed.lastPull.stocked, 2);
+    assert.equal(listed.lastPull.stockError, undefined);
+
+    // Ничего не изменилось — второй раз не шлём.
+    const n = pushed().length;
+    await again();
+    assert.equal(pushed().length, n);
+    warehouses = [];
+    globalThis.REPLY = null;
+  },
+);
