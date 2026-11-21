@@ -24,7 +24,7 @@ const deviceKeys = () => {
 /** Таблицы: склады (051, сотрудники и партнёры в них — 054, 055) и товары (013). */
 const TABLES = ["warehouse", "otherWarehouses", "products", "warehouseData"];
 /** Сколько ключей ещё в снимке — меньше можно, больше нельзя. */
-const LEFT_MAX = 12;
+const LEFT_MAX = 0;
 
 test("новое сохраняемое поле — в строки или таблицу, а не в снимок", () => {
   const keys = persisted();
@@ -62,9 +62,11 @@ test("в документе снимка после раскладки — то�
     placements: { p1: { cellIndex: 0 } },
     warehouseData: {},
   });
+  const folded = new Set([...Object.keys(records.VALUES), ...records.MAPS]);
   for (const k of [...records.WAREHOUSE_LISTS, ...records.COMPANY_LISTS]) {
-    if (k !== "placements" && k !== "companySettings" && k !== "warehouseSettings") data[k] = [];
+    if (!folded.has(k)) data[k] = [{ id: `${k}-1` }];
   }
+  for (const k of records.MAPS) data[k] = { a: { probe: k } };
   const { doc } = records.splitRecords(data);
   const left = Object.keys(doc).filter((k) => !records.isMark(doc[k]) && !TABLES.includes(k));
   assert.deepEqual(left.sort(), [...records.SNAPSHOT_LEFT].sort());

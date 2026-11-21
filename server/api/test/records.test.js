@@ -28,7 +28,7 @@ const cabinet = () => ({
     // Стопка активного склада рядом с ним самим — документом.
     wh_1: { requests: [{ id: "r1", qty: 5 }] },
   },
-  chats: [{ id: "c1" }],
+  misc: [{ id: "c1" }],
 });
 
 test("кабинет раскладывается по строкам и собирается обратно тем же", () => {
@@ -41,7 +41,7 @@ test("кабинет раскладывается по строкам и соб�
   assert.deepEqual(doc.warehouseData.wh_2.requests, { $rows: 1 });
   assert.deepEqual(doc.warehouseData.wh_1, { requests: [{ id: "r1", qty: 5 }] });
   // Не работа склада — не трогается.
-  assert.deepEqual(doc.chats, [{ id: "c1" }]);
+  assert.deepEqual(doc.misc, [{ id: "c1" }]);
   // Номер тары — значение справочника: строкой, а не в документе.
   assert.equal(doc.boxSeq, undefined);
   assert.deepEqual(doc.companySettings, { $rows: 1 });
@@ -55,6 +55,7 @@ test("кабинет раскладывается по строкам и соб�
       "wh_1/requests/r1",
       "wh_1/requests/r2",
       "wh_2/requests/r1",
+      "wh_2/warehouseSettings/receiving",
     ].sort(),
   );
   assert.deepEqual(assembleRecords(doc, asRows(items)), data);
@@ -81,10 +82,8 @@ test("справочники — строками, на своих ключах 
   assert.deepEqual(doc.warehouseData.wh_2, { warehouseSettings: { $rows: 2 } });
   assert.deepEqual(assembleRecords(doc, asRows(items)), data);
   // Чужой ключ в справочнике на кабинет не попадает.
-  const odd = [
-    { w: "", d: "companySettings", data: { id: "subscription", value: { plan: "max" } } },
-  ];
-  assert.equal(assembleRecords({ companySettings: { $rows: 1 } }, odd).subscription, undefined);
+  const odd = [{ w: "", d: "companySettings", data: { id: "floors", value: [{ id: "f1" }] } }];
+  assert.equal(assembleRecords({ companySettings: { $rows: 1 } }, odd).floors, undefined);
   // Старый документ со значениями на месте читается как есть.
   assert.deepEqual(assembleRecords({ boxSeq: 4 }, []), { boxSeq: 4 });
 });

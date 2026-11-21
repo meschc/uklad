@@ -48,7 +48,21 @@ const WAREHOUSE_LISTS = [
  */
 const NEWEST_FIRST = new Set(["expectedShipments", "requests", "shipments", "tasks", "disputes"]);
 /** Списки всей компании, без склада. */
-const COMPANY_LISTS = ["staffEvents", "payAdjustments", "companySettings", "placements"];
+const COMPANY_LISTS = [
+  "staffEvents",
+  "payAdjustments",
+  "companySettings",
+  "placements",
+  "addressing",
+  "categories",
+  "categoryFields",
+  "fieldValues",
+  "templates",
+  "layoutTemplates",
+  "labelTemplates",
+  "integrations",
+  "chats",
+];
 /**
  * Справочники строками (миграции не нужно, план переноса снимка 21.11):
  * реквизиты, перерывы и номера тары компании, услуги с ценами и устройства
@@ -59,35 +73,32 @@ const COMPANY_LISTS = ["staffEvents", "payAdjustments", "companySettings", "plac
  * JSON. Чужой ключ в справочнике не разворачивается.
  */
 const VALUES = {
-  companySettings: ["account", "breakPolicy", "boxSeq", "palletSeq"],
-  warehouseSettings: ["serviceSettings", "devices"],
+  companySettings: [
+    "account",
+    "breakPolicy",
+    "boxSeq",
+    "palletSeq",
+    "subscription",
+    "activeFloorId",
+  ],
+  warehouseSettings: ["serviceSettings", "devices", "receiving"],
+  // Своим списком, а не в справочнике компании: право «План: запись» пишет
+  // адресацию строкой своего ключа (`writeScope.js`).
+  addressing: ["addressing"],
 };
 /**
  * Словари «id → значение», которые лежат строками по записи на ключ:
  * размещения «товар → ячейка» (`placements`, план переноса 21.11). Каждая
  * пара — запись `{ id, value }` своего списка; при сборке — снова словарь.
  */
-const MAPS = new Set(["placements"]);
+const MAPS = new Set(["placements", "fieldValues", "integrations", "chats"]);
 /**
  * Что из кабинета ещё лежит в самом документе снимка (план «убрать снимок до
  * конца», Кирилл 21.11). Список только сокращается: перенесли ключ в строки
  * или таблицу — убрали отсюда. Новое сохраняемое поле сюда не добавляют —
  * тест `snapshotKeys.test.js` требует для него строки или таблицу.
  */
-const SNAPSHOT_LEFT = [
-  "activeFloorId",
-  "addressing",
-  "categories",
-  "categoryFields",
-  "chats",
-  "fieldValues",
-  "integrations",
-  "labelTemplates",
-  "layoutTemplates",
-  "receiving",
-  "subscription",
-  "templates",
-];
+const SNAPSHOT_LEFT = [];
 /** Склад для списков компании. */
 const COMPANY = "";
 const MARK = "$rows";
@@ -125,10 +136,13 @@ function fold(holder, key) {
     }
     return;
   }
+  // Список своего же ключа (адресация) уже свёрнут — метка или строки.
+  if (VALUES[key]?.includes(key) && (isMark(holder[key]) || Array.isArray(holder[key]))) return;
   const keys = VALUES[key]?.filter((k) => holder[k] !== undefined) ?? [];
   if (keys.length === 0) return;
-  holder[key] = keys.map((k) => ({ id: k, value: holder[k] }));
+  const list = keys.map((k) => ({ id: k, value: holder[k] }));
   for (const k of keys) delete holder[k];
+  holder[key] = list;
 }
 
 /** Справочник-список → значения на своих ключах. Метку не трогаем. */
