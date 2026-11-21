@@ -762,7 +762,11 @@ test(
     const pushed = () => HITS.filter((h) => h.u.endsWith("/offers/stocks/update"));
     await again();
     assert.equal(pushed().length, 0, "выключено по умолчанию");
-    const on = await post("/api/connectors/stock", { ...c, body: { id, enabled: true } });
+    // Склад не этой кампании (ключ Маркета — на весь бизнес) не берётся.
+    const on = await post("/api/connectors/stock", {
+      ...c,
+      body: { id, enabled: true, warehouseId: 999 },
+    });
     assert.equal(on.status, 200, JSON.stringify(on.json));
     await again();
     assert.equal(pushed().length, 1);

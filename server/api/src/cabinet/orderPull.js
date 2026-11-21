@@ -612,9 +612,13 @@ function createOrderPull({
       }
     }
     if (ym.mode === "group") return { ym, warehouseId: "group" };
-    const picked = Number.isSafeInteger(params.platformWarehouseId)
-      ? params.platformWarehouseId
-      : null;
+    // Ключ Маркета — на весь бизнес: выбранный склад берём, только если он
+    // склад этой кампании, иначе остаток ушёл бы в чужой магазин бизнеса.
+    const picked =
+      Number.isSafeInteger(params.platformWarehouseId) &&
+      (ym.choices ?? []).some((w) => w.id === params.platformWarehouseId)
+        ? params.platformWarehouseId
+        : null;
     const warehouseId = picked ?? (ym.choices?.length === 1 ? ym.choices[0].id : null);
     if (!warehouseId) return { ym, error: "ym_warehouse", choices: ym.choices ?? [] };
     return { ym, warehouseId };
