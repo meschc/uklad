@@ -27,12 +27,13 @@ async function stored(org) {
     [org],
   );
   // Склады — строками (миграция 051).
+  // …и сотрудники в них (миграция 054): собирает та же функция, что сервер.
   const wh = await db.root.query(
-    `SELECT card || jsonb_build_object('id', ref) AS card FROM uklad.warehouses
-     WHERE org_id = $1 AND deleted_at IS NULL AND card IS NOT NULL ORDER BY position`,
+    `SELECT uklad.load_warehouses() AS cards
+     FROM (SELECT set_config('app.org_id', $1::text, false)) AS s`,
     [org],
   );
-  const cards = wh.rows.map((r) => r.card);
+  const cards = wh.rows[0].cards;
   const base = cards.length
     ? { ...doc.rows[0].data, warehouse: cards[0], otherWarehouses: cards.slice(1) }
     : doc.rows[0].data;
