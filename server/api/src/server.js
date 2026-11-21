@@ -598,7 +598,10 @@ function main() {
     account.purge();
     setInterval(account.purge, DAY_MS).unref();
     const { createSnapshot } = require("./cabinet/snapshot");
-    const snapshot = createSnapshot({ auth, send, log: console });
+    // Лимиты тарифа и неоплата (planLimits): склады, сотрудники, продавцы.
+    const { createPlanLimits } = require("./cabinet/planLimits");
+    const limits = db.raw ? createPlanLimits({ db: db.raw, auth, send }) : null;
+    const snapshot = createSnapshot({ auth, send, log: console, limits });
     // Журнал действий склада (миграция 039): операции столов и правки кабинета.
     const { createJournal } = require("./cabinet/journal");
     const journal = createJournal({ auth, send, log: console });
@@ -608,8 +611,6 @@ function main() {
     // Ответ продавца на акт расхождений приёмки (миграция 047).
     const { createReceivingAnswers } = require("./cabinet/receivingAnswers");
     const receivingAnswers = createReceivingAnswers({ auth, send, log: console });
-    const { createPlanLimits } = require("./cabinet/planLimits");
-    const limits = db.raw ? createPlanLimits({ db: db.raw, auth, send }) : null;
     const { createTeam } = require("./cabinet/team");
     const team = createTeam({ auth, cfg, send, log: console, limits });
     const { createDeskBadges } = require("./cabinet/deskBadges");

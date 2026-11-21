@@ -176,6 +176,8 @@ export interface Subscription {
    * по таблице тарифа (демо, сервер ещё не ответил). Читать через `featuresOf`.
    */
   features?: TariffFeatures;
+  /** Сколько складов позволяет тариф (сервер); `null` или нет — без ограничения. */
+  warehouseLimit?: number | null;
   manager?: Manager;
   backup: BackupSettings;
 }
