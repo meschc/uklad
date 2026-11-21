@@ -276,7 +276,7 @@ export const ROADMAP_ITEMS: readonly RoadmapItem[] = [
     version: "0.1.0",
   },
 
-  // ——— Готово, но ещё не выпущено: раздел «Не выпущено» в CHANGELOG.md ———
+  // ——— Готово, но ещё не выпущено: записи в changes/ после последнего релиза ———
   {
     id: "database",
     title: c("Данные на сервере в России", "Data on a server in Russia"),

@@ -29,6 +29,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Два коммита: у PR проверяется слияние, и его первый родитель — main,
+          # с которым сверяется «Версия и записи».
+          fetch-depth: 2
 
       - uses: actions/setup-node@v4
         with:
@@ -40,6 +44,13 @@ jobs:
       # `ci`, а не `install`: ставит ровно то, что записано в `package-lock`,
       # и падает, если файл разошёлся с `package.json`.
       - run: npm ci
+
+      # Версию и CHANGELOG.md в PR не правят — их считает сам GitHub после
+      # вливания (changes/README.md). Здесь ловится PR, который всё-таки поднял
+      # версию, дописал раздел в CHANGELOG или положил запись не по форме.
+      - name: Версия и записи
+        if: github.event_name == 'pull_request'
+        run: node scripts/release.mjs check HEAD^1
 
       # Порядок от дешёвого к дорогому: чем раньше падение, тем короче ожидание.
       - name: Формат

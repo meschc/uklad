@@ -1,8 +1,12 @@
-# Тег версии ставится сам. Версия продукта живёт в `package.json` (правило —
-# CLAUDE.md, «Версия продукта»). Когда в main приходит коммит с новой версией,
-# этот прогон создаёт тег `vX.Y.Z` и релиз на GitHub с разделом CHANGELOG этой
-# версии. Руками тег никто не ставит: сессии Claude пушат только в свою ветку,
-# а тег без релиза ломает ссылки сравнения внизу CHANGELOG.
+# Тег версии ставится сам. Версия продукта числом не хранится: это база из
+# `package.json` плюс число записей в `changes/` (правило — CLAUDE.md, «Версия
+# продукта»; счёт — `scripts/release.mjs`). PR кладёт свою запись файлом и не
+# трогает ни версию, ни CHANGELOG.md, поэтому PR не конфликтуют друг с другом.
+#
+# Когда в main приходит новая запись, этот прогон ставит тег `vX.Y.Z` на этот
+# коммит и выпускает релиз на GitHub с текстом записей, добавленных после
+# прошлого тега. Коммитов в main прогон не делает (правила ветки main этого и не
+# дали бы), поэтому staging и демо получают версию из того же счёта при сборке.
 #
 # Тег уже есть — ничего не делаем, повторный прогон безопасен. Секретов не
 # нужно: хватает прав самого прогона (`contents: write`).
@@ -11,13 +15,15 @@ name: Тег версии
 on:
   push:
     branches: [main]
-    paths: [package.json]
-  # Кнопка «поставить тег руками» — например, для версии, влитой до этого файла.
+    paths: [changes/**, package.json]
+  # Кнопка «поставить тег руками» — например, если прогон упал.
   workflow_dispatch:
 
 permissions:
   contents: write
 
+# Прогоны идут по одному. Ожидающий заменяется более новым — не беда: новый
+# соберёт записи от прошлого тега, в том числе и те, что ждали.
 concurrency:
   group: release-tag
   cancel-in-progress: false
@@ -31,10 +37,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Версия из package.json
+      - name: Версия по записям
         id: v
         run: |
-          version=$(node -p "require('./package.json').version")
+          version=$(node scripts/release.mjs version)
           echo "version=$version" >> "$GITHUB_OUTPUT"
           if git rev-parse -q --verify "refs/tags/v$version" >/dev/null; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
@@ -43,22 +49,18 @@ jobs:
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 
-      # Текст релиза — раздел «## [X.Y.Z]» из CHANGELOG до следующего «## ».
-      # Раздела нет (версию подняли, а строку не записали) — релиз всё равно
-      # выходит, с честной пометкой, а не молча.
+      # Текст релиза — записи, добавленные после прошлого тега. Записей нет
+      # (тег ставят руками на старую версию) — релиз выходит с честной пометкой.
       - name: Тег и релиз
         if: steps.v.outputs.exists == 'false'
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.v.outputs.version }}
         run: |
-          awk -v v="$VERSION" '
-            index($0, "## [" v "]") == 1 { on = 1; next }
-            on && /^## / { exit }
-            on { print }
-          ' CHANGELOG.md > notes.md
+          prev=$(git describe --tags --abbrev=0 --match 'v*' HEAD 2>/dev/null || git rev-list --max-parents=0 HEAD)
+          node scripts/release.mjs notes "$prev" "$GITHUB_SHA" > notes.md
           if [ ! -s notes.md ]; then
-            echo "В CHANGELOG нет раздела [$VERSION]." > notes.md
+            echo "Записей в changes/ с прошлого тега нет." > notes.md
           fi
           gh release create "v$VERSION" --target "$GITHUB_SHA" \
             --title "Уклад $VERSION" --notes-file notes.md
