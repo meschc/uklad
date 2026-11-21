@@ -42,7 +42,7 @@
  *   POST /api/desk/senior          — { code } → { staffRef, decide }: бейдж старшего
  *                                    снимает остановку, за стол он не встаёт
  */
-/* global require, module */
+/* global require, module, fetch */
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { createHash, randomBytes } = require("node:crypto");
 const { createRateLimit } = require("../rateLimit");
@@ -61,6 +61,7 @@ const { recordMoves, diffMoves } = require("./moves");
 const { recordStorage } = require("./storage");
 const { isOp, runDeskOps, MAX_OPS } = require("./deskOps");
 const { createSwitchRoutes } = require("./deskSwitch");
+const { createLabelRoutes } = require("./deskLabel");
 const { deskPlace } = require("./deskPlace");
 
 // Стол живёт, пока его не отвяжут; срок — страховка от забытого компьютера.
@@ -399,7 +400,7 @@ async function companyDoc(c) {
   return rows[0] ? withWarehouses(c, rows[0].data) : null;
 }
 
-function createDesks({ auth, cfg, send, log }) {
+function createDesks({ auth, cfg, send, log, secretKey = null, fetchImpl = fetch }) {
   const { withSession, readJson, tokenHash, clearCookie, cookieName } = auth;
   const local = !cfg.publicUrl.startsWith("https://");
   const COOKIE = local ? "uklad_desk" : "__Host-uklad_desk";
@@ -887,6 +888,17 @@ function createDesks({ auth, cfg, send, log }) {
     checks,
     companyDoc,
   });
+  const labels = createLabelRoutes({
+    withDesk,
+    deskHash,
+    readJson,
+    send,
+    gone,
+    limited,
+    log,
+    secretKey,
+    fetchImpl,
+  });
   const managerRoutes = {
     ...switches.manager,
     "POST /api/cabinet/desks": open,
@@ -901,6 +913,7 @@ function createDesks({ auth, cfg, send, log }) {
     "POST /api/desk/unbind": unbind,
     "POST /api/desk/senior": senior,
     ...switches.desk,
+    ...labels,
     "POST /api/desk/leave": leave,
     "GET /api/desk/version": snapshotVersion,
     "POST /api/desk/ops": saveOps,

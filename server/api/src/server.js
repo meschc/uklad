@@ -618,7 +618,11 @@ function main() {
     // Стол первым: со своей кукой он отвечает за вход и снимок сам, а в
     // остальной кабинет его не пускает.
     const { createDesks } = require("./cabinet/desks");
-    const desks = createDesks({ auth, cfg, send, log: console });
+    // Ключ шифрования подключений площадок: стол просит ярлык, сервер
+    // расшифровывает ключ (`deskLabel.js`); его же берёт подкачка ниже.
+    const { readSecretKey } = require("./cabinet/connectors");
+    const secretKey = readSecretKey(process.env.CONNECTOR_SECRET_KEY);
+    const desks = createDesks({ auth, cfg, send, log: console, secretKey });
     // Реквизиты по ИНН: без DADATA_API_KEY маршрут отвечает 503, профиль
     // сохраняет ИНН и пишет, что справочник не подключён.
     const { createOrgName } = require("./cabinet/orgName");
@@ -635,8 +639,7 @@ function main() {
     });
     // Площадки (WB, Ozon, Маркет): без CONNECTOR_SECRET_KEY сохранить ключ и
     // сходить к площадке нельзя — маршрут отвечает 503.
-    const { createConnectors, readSecretKey } = require("./cabinet/connectors");
-    const secretKey = readSecretKey(process.env.CONNECTOR_SECRET_KEY);
+    const { createConnectors } = require("./cabinet/connectors");
     // Заказы площадок сервер подкачивает сам, раз в полторы минуты на
     // подключение, без открытого кабинета (миграция 050).
     const { createOrderPull } = require("./cabinet/orderPull");

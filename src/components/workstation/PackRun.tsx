@@ -15,7 +15,11 @@ import {
   packedForCancelled,
   toteShortage,
   type ItemScan,
+  type ToteOrder,
 } from "@/lib/packing";
+
+/** Площадки, чей ярлык стол печатает сам (WB — после «собран» в поставке). */
+const PLATFORM_LABEL = new Set(["ozon", "yandex-market"]);
 import { findByCode } from "@/lib/barcode";
 import type { PackSession } from "@/lib/types";
 import { useT, type MsgKey } from "@/lib/i18n";
@@ -31,6 +35,8 @@ import { QrSvg } from "@/components/table/QrSvg";
 import { ScanField, type ScanStatus } from "@/components/fulfillment/ScanField";
 import { Modal } from "@/components/fulfillment/Modal";
 import { PrintableLabel } from "./PrintableLabel";
+import { PlatformLabel } from "./PlatformLabel";
+import { platformLabelRepository } from "@/lib/data/platformLabelRepository";
 import { shortId } from "./useNow";
 import { useDemoHints } from "./useDemoHints";
 import { DestinationChip } from "./DestinationChip";
@@ -180,6 +186,20 @@ export function PackRun({
     ? session.units.filter((u) => u.productId === unit.productId).length
     : 0;
   const order = unit?.orderId ? orders.find((o) => o.id === unit.orderId) : undefined;
+  // Заявка площадки, чей ярлык нужен посылке: у заказа из одной штуки
+  // посылка — эта штука, у большего — когда печатается этикетка заказа.
+  const parcelOf = (o: ToteOrder | undefined) => {
+    if (!o?.external || !platformLabelRepository.available()) return null;
+    const r = requests.find((x) => o.requestIds.includes(x.id) && x.source && x.externalId);
+    return r?.source && PLATFORM_LABEL.has(r.source) ? { requestId: r.id, source: r.source } : null;
+  };
+  const parcel = parcelOf(
+    order?.units === 1
+      ? order
+      : orderLabel
+        ? orders.find((o) => o.id === orderLabel.orderId)
+        : undefined,
+  );
 
   const idleText = closing ? t("ws.idle.close") : label ? t("ws.idle.label") : t("ws.idle.item");
   const missing = [...remaining].filter(([, n]) => n > 0);
@@ -311,6 +331,7 @@ export function PackRun({
                     ...(order ? [t("ws.run.forOrder", { id: shortId(order.id) })] : []),
                   ]}
                 />
+                {parcel && <PlatformLabel key={parcel.requestId} {...parcel} />}
                 {/* Брак — средняя по опасности: жёлтая, красная оставлена для необратимого. */}
                 <Button
                   className="bg-warning-fill text-warning-foreground shadow-sm hover:bg-warning-fill/90"
@@ -338,6 +359,7 @@ export function PackRun({
                 }),
               ]}
             />
+            {parcel && <PlatformLabel key={parcel.requestId} {...parcel} />}
           </div>
         ) : (
           <div className="flex min-h-40 flex-col items-center justify-center gap-2 text-center">
