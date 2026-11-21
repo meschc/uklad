@@ -186,7 +186,7 @@ function lostLists(prevDoc, next) {
  * станут пустыми списками.
  */
 async function loadRecords(c, doc, domains = null) {
-  // Склады — строками (миграция 052): без них не понять, чьи списки в корне.
+  // Склады — строками (миграция 051): без них не понять, чьи списки в корне.
   doc = await withWarehouses(c, doc);
   const { rows } = await c.query(
     `SELECT warehouse_ref AS w, domain AS d, data FROM uklad.cabinet_records

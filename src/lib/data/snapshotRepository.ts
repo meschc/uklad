@@ -59,6 +59,7 @@ type Reply = { status: number; body: Record<string, unknown> };
 function outcome({ status, body }: Reply): Result<SaveOutcome> {
   if (status === 200 && typeof body.version === "number") return ok({ saved: body.version });
   if (status === 409 && body.error === "diverged") return ok({ diverged: true });
+  if (status === 409 && body.error === "plan_limit") return fail("plan.err.warehouseLimit");
   if (status === 409)
     return ok({
       conflict: typeof body.version === "number" ? body.version : 0,

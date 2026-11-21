@@ -59,7 +59,10 @@ const COUNT_SELLERS = `
    WHERE m.org_id = uklad.current_org() AND m.deleted_at IS NULL AND m.partner_ref IS NOT NULL
      AND m.status IN ${LIVE}`;
 
-const COUNTS = { staff: COUNT_STAFF, sellers: COUNT_SELLERS };
+/** Склады кабинета без заготовки (миграция 051, `uklad.count_warehouses`). */
+const COUNT_WAREHOUSES = `SELECT uklad.count_warehouses() AS n`;
+
+const COUNTS = { staff: COUNT_STAFF, sellers: COUNT_SELLERS, warehouses: COUNT_WAREHOUSES };
 
 /** Отказ «тариф не позволяет»: бросается внутри транзакции, чтобы её откатить. */
 class PlanLimitError extends Error {

@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import {
   CalendarClock,
   Check,
+  ClipboardList,
   Download,
   MapPin,
   Package,
@@ -61,8 +62,8 @@ export function SellerScreen() {
           value={tab}
           onChange={setTab}
           options={[
-            { value: "stock" as Tab, label: t("seller.tab.stock") },
-            { value: "requests" as Tab, label: t("seller.tab.requests") },
+            { value: "stock" as Tab, label: t("seller.tab.stock"), icon: <Package /> },
+            { value: "requests" as Tab, label: t("seller.tab.requests"), icon: <ClipboardList /> },
           ]}
         />
       </header>

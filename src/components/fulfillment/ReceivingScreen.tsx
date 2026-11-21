@@ -1,5 +1,5 @@
 import { useLayoutEffect, useMemo, useState } from "react";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, PackageCheck, Truck } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { levelFor, signal } from "@/lib/scanSignal";
 import { fulfillmentRepository, type Result } from "@/lib/data";
@@ -471,8 +471,8 @@ export function ReceivingScreen({ staffId: badgeStaffId }: { staffId?: string } 
                 value={stage}
                 onChange={setStage}
                 options={[
-                  { value: "cargo", label: t("cargo.stage.cargo") },
-                  { value: "items", label: t("cargo.stage.items") },
+                  { value: "cargo", label: t("cargo.stage.cargo"), icon: <Truck /> },
+                  { value: "items", label: t("cargo.stage.items"), icon: <PackageCheck /> },
                 ]}
               />
             </div>

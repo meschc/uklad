@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Download, Plus, Upload, Users } from "lucide-react";
+import { CalendarClock, Download, KeyRound, Plus, TrendingUp, Upload, Users } from "lucide-react";
 import { selectRole, useEditor } from "@/lib/store";
 import { staffRepository } from "@/lib/data";
 import { useTeam } from "./useTeam";
@@ -143,10 +143,12 @@ export function StaffScreen() {
           value={tab}
           onChange={setTab}
           options={[
-            { value: "people", label: t("staff.tab.people") },
-            { value: "output", label: t("staff.tab.output") },
-            { value: "schedule", label: t("staff.tab.schedule") },
-            ...(onServer ? [{ value: "access" as const, label: t("staff.tab.access") }] : []),
+            { value: "people", label: t("staff.tab.people"), icon: <Users /> },
+            { value: "output", label: t("staff.tab.output"), icon: <TrendingUp /> },
+            { value: "schedule", label: t("staff.tab.schedule"), icon: <CalendarClock /> },
+            ...(onServer
+              ? [{ value: "access" as const, label: t("staff.tab.access"), icon: <KeyRound /> }]
+              : []),
           ]}
         />
       </div>

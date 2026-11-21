@@ -18,6 +18,7 @@ export const ru = {
   "nav.theme": "Переключить тему",
   "nav.collapse": "Свернуть меню",
   "nav.expand": "Развернуть меню",
+  "nav.version": "Уклад {v}",
 
   // Личный кабинет (§3.2)
   "dash.title": "Личный кабинет",
@@ -95,6 +96,18 @@ export const ru = {
   "profile.kpp": "КПП",
   "profile.ogrn": "ОГРН",
   "profile.legalAddress": "Юридический адрес",
+  "profile.bank": "Банк",
+  "profile.bankHint": "По БИК название банка и корсчёт заполнятся сами.",
+  "profile.bik": "БИК",
+  "profile.bankAccount": "Расчётный счёт",
+  "profile.correspondentAccount": "Корр. счёт",
+  "profile.bankFetching": "Ищем банк в справочнике…",
+  "profile.bankNotFound": "Справочник не знает такой БИК. Сверьте его с реквизитами банка.",
+  "profile.bankMock":
+    "Это демо: название банка придумано, справочник подключён только в кабинете на сервере.",
+  "profile.bankInactive": "Банк с этим БИК не работает: лицензия отозвана или банк ликвидирован.",
+  "bank.err.network": "Справочник банков не ответил. БИК сохранён — попробуйте ещё раз позже.",
+  "bank.err.notConfigured": "Справочник банков ещё не подключён на сервере. БИК сохранён.",
   "profile.emailConfirmTitle": "Подтвердите новый адрес: {email}",
   "profile.emailConfirmBody":
     "До подтверждения работает старая почта. Введите код из {n} цифр из письма.",
@@ -229,6 +242,9 @@ export const ru = {
   "valid.inn": "ИНН — 10 цифр у компании или 12 у ИП, контрольная сумма не сошлась",
   "valid.kpp": "КПП — 9 знаков, например 773601001",
   "valid.ogrn": "ОГРН — 13 цифр, ОГРНИП — 15, контрольная цифра не сошлась",
+  "valid.bik": "БИК — 9 цифр, начинается с 04",
+  "valid.bankAccount": "Расчётный счёт — 20 цифр",
+  "valid.bankAccountKey": "Счёт не сходится с БИК: сверьте оба с реквизитами банка",
   "valid.url": "Ссылка должна начинаться с https:// и вести на сайт",
   "valid.required": "Обязательное поле",
   "staff.saved": "Сотрудник «{name}» сохранён",
@@ -250,6 +266,8 @@ export const ru = {
   "edit.redo": "Повторить",
   "editor.rotate": "Повернуть на 90°",
   "dash.newWarehouse": "Новый склад",
+  "dash.warehouseLimit":
+    "Складов столько, сколько позволяет тариф. Чтобы добавить склад, попросите тариф выше в разделе «Тариф».",
   "dash.aboutWarehouse": "О складе и сотрудниках",
   "dash.editWarehouse": "Редактировать склад",
   "dash.deleteWarehouse": "Удалить склад",
@@ -346,6 +364,7 @@ export const en: Record<keyof typeof ru, string> = {
   "nav.theme": "Toggle theme",
   "nav.collapse": "Collapse menu",
   "nav.expand": "Expand menu",
+  "nav.version": "Uklad {v}",
 
   // Dashboard (§3.2)
   "dash.title": "Dashboard",
@@ -424,6 +443,20 @@ export const en: Record<keyof typeof ru, string> = {
   "profile.kpp": "KPP",
   "profile.ogrn": "Registration number",
   "profile.legalAddress": "Legal address",
+  "profile.bank": "Bank",
+  "profile.bankHint": "The bank name and correspondent account fill in from the BIC.",
+  "profile.bik": "BIC",
+  "profile.bankAccount": "Settlement account",
+  "profile.correspondentAccount": "Corr. account",
+  "profile.bankFetching": "Looking the bank up…",
+  "profile.bankNotFound":
+    "The registry does not know this BIC. Check it against your bank details.",
+  "profile.bankMock":
+    "This is the demo: the bank name is made up, the registry works only in the server cabinet.",
+  "profile.bankInactive": "The bank with this BIC is not operating: licence revoked or liquidated.",
+  "bank.err.network": "The bank registry did not answer. The BIC is saved — try again later.",
+  "bank.err.notConfigured":
+    "The bank registry is not connected on the server yet. The BIC is saved.",
   "profile.emailConfirmTitle": "Confirm the new address: {email}",
   "profile.emailConfirmBody":
     "The old address keeps working until you confirm. Enter the {n}-digit code from the email.",
@@ -558,6 +591,10 @@ export const en: Record<keyof typeof ru, string> = {
   "valid.inn": "INN is 10 digits for a company or 12 for a sole trader; checksum failed",
   "valid.kpp": "KPP is 9 characters, e.g. 773601001",
   "valid.ogrn": "OGRN is 13 digits, OGRNIP 15; check digit failed",
+  "valid.bik": "BIC is 9 digits starting with 04",
+  "valid.bankAccount": "The settlement account is 20 digits",
+  "valid.bankAccountKey":
+    "The account does not match the BIC: check both against your bank details",
   "valid.url": "The link must start with https:// and lead to a site",
   "valid.required": "Required field",
   "staff.saved": "Employee “{name}” saved",
@@ -579,6 +616,8 @@ export const en: Record<keyof typeof ru, string> = {
   "edit.redo": "Redo",
   "editor.rotate": "Rotate 90°",
   "dash.newWarehouse": "New warehouse",
+  "dash.warehouseLimit":
+    "You have as many warehouses as your plan allows. To add one, request a higher plan in the Plan section.",
   "dash.aboutWarehouse": "About the warehouse and staff",
   "dash.editWarehouse": "Edit warehouse",
   "dash.deleteWarehouse": "Delete warehouse",
