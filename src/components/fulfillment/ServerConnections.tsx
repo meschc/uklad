@@ -49,6 +49,7 @@ function lastPullText(r: OrderPullResult, t: TFunc): string {
   const lines = [t("integr.pull.last", { time, n: r.created ?? 0 })];
   if (r.unknown?.length) lines.push(t("integr.pull.unknown", { list: r.unknown.join(", ") }));
   if (r.assembled) lines.push(t("integr.pull.assembled", { n: r.assembled }));
+  if (r.cancelled) lines.push(t("integr.pull.cancelled", { n: r.cancelled }));
   if (r.assembleFailed?.length) {
     const text = t("integr.pull.assembleFailed", { list: r.assembleFailed.join(", ") });
     lines.push(withPlatformReply(text, r.assembleDetail ?? null));

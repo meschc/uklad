@@ -37,6 +37,7 @@ const { warehousesOf, focusWarehouse } = require("./viewerPlace");
 const { restore } = require("./deskPlace");
 const { loadCabinet, splitCabinet, MAX_SNAPSHOT_BYTES } = require("./snapshot");
 const { storeRecords } = require("./records");
+const { fetchCancelled, openOrders, cancelRequests } = require("./orderCancel");
 
 /** Как часто одно подключение спрашивает площадку. */
 const EVERY = "90 seconds";
@@ -155,7 +156,8 @@ const PAGES = {
     next: (req, data) => {
       const token = data?.paging?.nextPageToken;
       return typeof token === "string" && token
-        ? { ...req, query: { ...req.query, page_token: token } }
+        ? // Имя параметра — `pageToken` (справка Маркета, getOrders).
+          { ...req, query: { ...req.query, pageToken: token } }
         : null;
     },
   },
@@ -503,21 +505,99 @@ function createOrderPull({
         ...view,
         requests: [...newRequests(plan, source, at), ...list(view.requests)],
       };
-      const split = splitCabinet(restore(full, next, ref));
-      const payload = JSON.stringify(split.doc);
-      if (Buffer.byteLength(payload) > MAX_SNAPSHOT_BYTES) return { error: "too_large" };
-      await c.query(
-        `UPDATE uklad.cabinet_snapshots
-         SET previous = data, data = $1::jsonb, version = version + 1,
-             updated_at = now(), updated_by = NULL, updated_by_desk = NULL
-         WHERE org_id = uklad.current_org()`,
-        [payload],
-      );
-      if (split.items) await storeRecords(c, split.items, split.slots);
+      const bad = await writeView(c, full, next, ref);
+      if (bad) return bad;
     }
-    // Собранное на складе — площадке «собран» (после записи, вне транзакции).
+    // Собранное на складе — площадке «собран», открытое — спросить об отмене
+    // (после записи, вне транзакции).
     const picked = pickedOrders(view.requests, source);
-    return { created: plan.orders, unknown: plan.unknown, picked };
+    const open = openOrders(view.requests, source, partnerOfIn(full), partnerId);
+    return { created: plan.orders, unknown: plan.unknown, picked, open };
+  }
+
+  /** Партнёр товара по id (`null` — свой товар склада). */
+  const partnerOfIn = (full) => {
+    const by = new Map(
+      list(full.products)
+        .filter(isObject)
+        .map((p) => [p.id, typeof p.partnerId === "string" ? p.partnerId : null]),
+    );
+    return (productId) => by.get(productId) ?? null;
+  };
+
+  /** Записать склад `next` в снимок компании: версия +1, строки — как у стола. */
+  async function writeView(c, full, next, ref) {
+    const split = splitCabinet(restore(full, next, ref));
+    const payload = JSON.stringify(split.doc);
+    if (Buffer.byteLength(payload) > MAX_SNAPSHOT_BYTES) return { error: "too_large" };
+    await c.query(
+      `UPDATE uklad.cabinet_snapshots
+       SET previous = data, data = $1::jsonb, version = version + 1,
+           updated_at = now(), updated_by = NULL, updated_by_desk = NULL
+       WHERE org_id = uklad.current_org()`,
+      [payload],
+    );
+    if (split.items) await storeRecords(c, split.items, split.slots);
+    return null;
+  }
+
+  /**
+   * Отменённые площадкой заказы → заявки «отменена» (`orderCancel.js`).
+   * Снимок читается заново: пока спрашивали площадку, стол мог упаковать
+   * посылку — упакованное не трогаем.
+   */
+  async function storeCancels(c, account, ids, at) {
+    const { rows } = await c.query(
+      `SELECT data FROM uklad.cabinet_snapshots WHERE org_id = uklad.current_org() FOR UPDATE`,
+    );
+    if (!rows[0]) return 0;
+    const full = await loadCabinet(c, rows[0].data);
+    const ref = connectionWarehouse(full, isObject(account.params) ? account.params : {});
+    const view = ref ? focusWarehouse(full, ref) : null;
+    if (!view) return 0;
+    const params = isObject(account.params) ? account.params : {};
+    const partnerId = typeof params.partnerId === "string" ? params.partnerId : null;
+    const out = cancelRequests(
+      view.requests,
+      account.system,
+      ids,
+      at,
+      partnerOfIn(full),
+      partnerId,
+    );
+    if (!out.cancelled) return 0;
+    const bad = await writeView(c, full, { ...view, requests: out.requests }, ref);
+    return bad ? 0 : out.cancelled;
+  }
+
+  /**
+   * Спросить площадку об отменах открытых заявок и перевести их в «отменена».
+   * Отменённое не «собираем»: этот шаг — до «собран». Отказ площадки — в
+   * журнал: отмен не знаем, заявки не трогаем.
+   */
+  async function cancels(ctx, orgId, id, ticket, account, open, at) {
+    const system = account.system;
+    const ask = (req) =>
+      allowed(system, req.method, req.path, "server")
+        ? askPlatform(
+            { ...ctx, system },
+            { method: req.method, path: req.path, qs: queryString(req.query), body: req.body },
+          )
+        : Promise.resolve({ ok: false, error: "not_allowed" });
+    const got = await fetchCancelled(ask, system, at, open);
+    const none = { n: 0, ids: new Set() };
+    if (!got.ok) {
+      log.error("[uklad] подкачка: отмены не получены", id, got.error);
+      return none;
+    }
+    if (!got.ids.size) return none;
+    try {
+      const n = await inOrg(orgId, id, ticket, (c) => storeCancels(c, account, got.ids, at));
+      return { n: typeof n === "number" ? n : 0, ids: got.ids };
+    } catch (e) {
+      log.error("[uklad] подкачка: отмены не записаны", id, e.message);
+      return none;
+    }
   }
 
   /** «Собран» на площадке для собранных на складе заказов из ответа площадки. */
@@ -605,7 +685,14 @@ function createOrderPull({
         const stored = await inOrg(orgId, id, ticket, (c) => store(c, account, fetched.orders, at));
         if (stored.gone) result = { at, error: "no_connection" };
         else {
-          const { picked, ...rest } = stored;
+          const { picked, open, ...rest } = stored;
+          const ctx = { key, params, log, fetchImpl };
+          const gone = open?.size
+            ? await cancels(ctx, orgId, id, ticket, account, open, at)
+            : { n: 0, ids: new Set() };
+          // Отменённое площадкой «собран» не отмечаем.
+          for (const x of gone.ids) picked?.delete(x);
+          const cancelled = gone.n;
           const done = picked
             ? await assemble(
                 { key, params, log, fetchImpl },
@@ -616,7 +703,7 @@ function createOrderPull({
                 at,
               )
             : {};
-          result = { at, ...rest, ...keep, ...done };
+          result = { at, ...rest, ...keep, ...done, ...(cancelled ? { cancelled } : {}) };
         }
       } catch (e) {
         log.error("[uklad] подкачка: заявки не записаны", id, e.message);

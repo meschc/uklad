@@ -568,3 +568,49 @@ test(
     globalThis.REPLY = null;
   },
 );
+
+test(
+  "живой: заказ отменён на площадке — заявка «отменена», стол её не упакует",
+  { skip: SKIP },
+  async () => {
+    const c = await owner("cancel-ym@example.com", "10.4.0.5");
+    const data = {
+      warehouse: { id: WH, name: "Склад", staff: [], partners: [] },
+      products: [{ id: "p1", name: "Кружка", sku: "ART-X" }],
+      requests: [],
+    };
+    const w = await post("/api/cabinet/snapshot", { ...c, body: { version: 0, format: 8, data } });
+    assert.equal(w.status, 200, JSON.stringify(w.json));
+    const save = await post("/api/connectors/save", {
+      ...c,
+      body: { system: "yandex-market", label: "Свой", token: "YM-X", clientId: "778" },
+    });
+    assert.equal(save.status, 200, JSON.stringify(save.json));
+    let cancelledOnPlatform = false;
+    globalThis.REPLY = (u) =>
+      u.includes("status=CANCELLED")
+        ? { orders: cancelledOnPlatform ? [{ id: 556, status: "CANCELLED" }] : [] }
+        : { orders: [{ id: 556, items: [{ offerId: "ART-X", count: 1 }] }] };
+    const again = async () => {
+      await db.root.query(`UPDATE uklad.connector_accounts SET pulled_at = NULL`);
+      await pull.tick();
+    };
+    const request = async () =>
+      (await call("GET", "/api/cabinet/snapshot", c)).json.snapshot.data.requests.find(
+        (r) => r.externalId === "556",
+      );
+    await again();
+    assert.equal((await request()).status, "new");
+    const asked = HITS.filter((h) => h.u.includes("status=CANCELLED"));
+    assert.ok(asked.length > 0, "площадку спросили об отменах");
+    assert.match(asked[0].u, /updatedAtFrom=\d{4}-\d{2}-\d{2}T\d{2}%3A\d{2}%3A\d{2}%2B03%3A00/);
+
+    cancelledOnPlatform = true;
+    await again();
+    const r = await request();
+    assert.equal(r.status, "cancelled");
+    const listed = (await call("GET", "/api/connectors", c)).json.connections[0];
+    assert.equal(listed.lastPull.cancelled, 1);
+    globalThis.REPLY = null;
+  },
+);
