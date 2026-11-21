@@ -57,6 +57,8 @@ const SYSTEMS = {
     // «Собран» у WB — задание в поставке (статус `confirm`): создать поставку
     // и добавить в неё задания. Только серверу, как смена статуса у Ozon.
     serverAllow: [
+      // Отмены — статусы заданий по номерам (`orderCancel.js`).
+      ["POST", /^\/api\/v3\/orders\/status$/],
       ["POST", /^\/api\/v3\/supplies$/],
       ["PATCH", /^\/api\/marketplace\/v3\/supplies\/WB-GI-\d{1,20}\/orders$/],
     ],
@@ -71,7 +73,11 @@ const SYSTEMS = {
     ],
     // Меняет статус заказа на площадке — только из прохода сервера, кабинету
     // через прокси недоступно (`allowed(…, "server")`).
-    serverAllow: [["POST", /^\/v4\/posting\/fbs\/ship$/]],
+    serverAllow: [
+      ["POST", /^\/v4\/posting\/fbs\/ship$/],
+      // Отменённые отправления (`orderCancel.js`).
+      ["POST", /^\/v4\/posting\/fbs\/list$/],
+    ],
     headers: (key, params) => ({ "Client-Id": params.clientId, "Api-Key": key.token }),
     needsClientId: true,
   },

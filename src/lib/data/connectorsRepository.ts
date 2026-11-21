@@ -36,6 +36,8 @@ export interface OrderPullResult {
   /** Номера, которые площадка не приняла как «собран», и её ответ. */
   assembleFailed?: string[];
   assembleDetail?: string;
+  /** Сколько заявок площадка отменила за проход: сняты со сборки (`orderCancel.js`). */
+  cancelled?: number;
   error?: string;
   detail?: string;
 }
@@ -59,6 +61,7 @@ function pullResult(v: unknown): OrderPullResult | null {
       ? { assembleFailed: x.assembleFailed.map(String) }
       : {}),
     ...(typeof x.assembleDetail === "string" ? { assembleDetail: x.assembleDetail } : {}),
+    ...(typeof x.cancelled === "number" ? { cancelled: x.cancelled } : {}),
     ...(typeof x.error === "string" ? { error: x.error } : {}),
     ...(typeof x.detail === "string" ? { detail: x.detail } : {}),
   };
