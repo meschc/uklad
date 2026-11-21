@@ -28,7 +28,7 @@
  *     (`orderPull.js`; сам сервер делает это раз в полторы минуты и без кнопки)
  *   POST /api/connectors/delete          — { id }
  *   POST /api/connectors/rename          — { id, label }
- *   POST /api/connectors/platform-warehouse — { id, warehouseId } (склад Ozon для остатков)
+ *   POST /api/connectors/stock           — { id, enabled?, warehouseId? } (остатки на Ozon)
  *   POST /api/connectors/<system>/proxy  — `ConnectorRequest` → { ok, data } (JSON площадки)
  */
 /* global require, module, fetch, AbortSignal, Buffer, URLSearchParams */
@@ -254,6 +254,8 @@ function createConnectors({ auth, send, log, secretKey, fetchImpl = fetch, pull 
         clientId: x.params?.clientId ?? null,
         partnerId: x.params?.partnerId ?? null,
         warehouseId: x.params?.warehouseId ?? null,
+        // Выгрузка остатков включена руководителем (`stockSettings`).
+        stockPush: x.params?.stockPush === true,
         // Итог последней подкачки заказов (`orderPull.js`): когда, сколько, отказ.
         lastPull: x.pull_result ?? null,
         createdAt: x.created_at,
@@ -321,26 +323,35 @@ function createConnectors({ auth, send, log, secretKey, fetchImpl = fetch, pull 
   }
 
   /**
-   * Склад магазина на Ozon, куда сервер выгружает остатки (`stockPush.js`):
-   * нужен, когда складов FBS у магазина несколько. Номер — из списка, который
-   * подкачка показала в подключении (`stockChoices`).
+   * Выгрузка остатков на Ozon (`stockPush.js`): включает её руководитель —
+   * по умолчанию выключена, потому что товар, которого ещё нет в таре и
+   * коробах, ушёл бы на Ozon с нулём и пропал бы с продажи. `warehouseId` —
+   * склад магазина на Ozon, когда складов FBS несколько (`stockChoices`).
    */
-  async function platformWarehouse(req, res) {
+  async function stockSettings(req, res) {
     const b = await readJson(req, res, 1024);
     if (!b) return;
+    const okWarehouse =
+      b.warehouseId === undefined || (Number.isSafeInteger(b.warehouseId) && b.warehouseId > 0);
+    const okEnabled = b.enabled === undefined || typeof b.enabled === "boolean";
     if (
       typeof b.id !== "string" ||
       !ID_RE.test(b.id) ||
-      !Number.isSafeInteger(b.warehouseId) ||
-      b.warehouseId <= 0
+      !okWarehouse ||
+      !okEnabled ||
+      (b.enabled === undefined && b.warehouseId === undefined)
     )
       return send(res, 400, { ok: false, error: "bad_input" });
+    const patch = {
+      ...(b.enabled !== undefined ? { stockPush: b.enabled } : {}),
+      ...(b.warehouseId !== undefined ? { platformWarehouseId: b.warehouseId } : {}),
+    };
     const out = await session(req, res, async (c) => {
       const r = await c.query(
         `UPDATE uklad.connector_accounts
-         SET params = coalesce(params, '{}'::jsonb) || jsonb_build_object('platformWarehouseId', $2::bigint)
+         SET params = coalesce(params, '{}'::jsonb) || $2::jsonb
          WHERE id = $1 AND system = 'ozon' AND deleted_at IS NULL`,
-        [b.id, b.warehouseId],
+        [b.id, JSON.stringify(patch)],
       );
       return r.rowCount;
     });
@@ -454,8 +465,7 @@ function createConnectors({ auth, send, log, secretKey, fetchImpl = fetch, pull 
     else if (p === "/api/connectors/save" && req.method === "POST") await save(req, res);
     else if (p === "/api/connectors/delete" && req.method === "POST") await remove(req, res);
     else if (p === "/api/connectors/rename" && req.method === "POST") await rename(req, res);
-    else if (p === "/api/connectors/platform-warehouse" && req.method === "POST")
-      await platformWarehouse(req, res);
+    else if (p === "/api/connectors/stock" && req.method === "POST") await stockSettings(req, res);
     else if (p === "/api/connectors/pull" && req.method === "POST") await pullNow(req, res);
     else {
       const m = /^\/api\/connectors\/([a-z-]{1,30})\/proxy$/.exec(p);

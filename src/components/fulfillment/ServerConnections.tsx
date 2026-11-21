@@ -156,12 +156,14 @@ export function ServerConnections({ spec, t }: { spec: IntegrationSpec; t: TFunc
 
   // Складов FBS у магазина Ozon несколько — руководитель выбирает, куда
   // сервер выгружает остатки. Пока не выбрал, остатки не уходят никуда.
-  const pickWarehouse = useCommand(connectorsRepository.platformWarehouse);
-  const onPickWarehouse = async (id: string, warehouseId: number) => {
-    if ((await pickWarehouse.run({ id, warehouseId })).ok) reload();
+  // Выгрузка остатков выключена, пока руководитель её не включит: товар,
+  // которого ещё нет в таре и коробах, ушёл бы на Ozon с нулём.
+  const stock = useCommand(connectorsRepository.stock);
+  const onStock = async (input: { id: string; enabled?: boolean; warehouseId?: number }) => {
+    if ((await stock.run(input)).ok) reload();
   };
 
-  const error = loadError ?? save.error ?? remove.error ?? rename.error ?? pickWarehouse.error;
+  const error = loadError ?? save.error ?? remove.error ?? rename.error ?? stock.error;
   const canSave = !!token.trim() && (!clientLabel || !!clientId.trim());
 
   return (
@@ -218,24 +220,47 @@ export function ServerConnections({ spec, t }: { spec: IntegrationSpec; t: TFunc
               >
                 {t("integr.remove")}
               </Button>
-              {r.system === "ozon" && (r.lastPull?.stockChoices?.length ?? 0) > 1 && (
-                <Select
-                  aria-label={t("integr.stock.warehouse")}
-                  value={String(r.lastPull?.stockWarehouseId ?? "")}
-                  disabled={pickWarehouse.pending}
-                  onChange={(e) => void onPickWarehouse(r.id, Number(e.target.value))}
-                  className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm sm:w-64"
+              {r.system === "ozon" && (
+                <label
+                  className="flex w-full items-center gap-2 text-xs text-muted-foreground"
+                  title={t("integr.stock.hint")}
                 >
-                  <option value="" disabled>
-                    {t("integr.stock.warehouse")}
-                  </option>
-                  {r.lastPull?.stockChoices?.map((w) => (
-                    <option key={w.id} value={w.id}>
-                      {w.name}
-                    </option>
-                  ))}
-                </Select>
+                  <input
+                    type="checkbox"
+                    checked={r.stockPush}
+                    disabled={stock.pending}
+                    onChange={(e) => void onStock({ id: r.id, enabled: e.target.checked })}
+                    className="size-4 accent-[hsl(var(--primary))]"
+                  />
+                  <span>
+                    <span className="text-foreground">{t("integr.stock.enable")}</span>
+                    {" · "}
+                    {t("integr.stock.hint")}
+                  </span>
+                </label>
               )}
+              {r.system === "ozon" &&
+                r.stockPush &&
+                (r.lastPull?.stockChoices?.length ?? 0) > 1 && (
+                  <Select
+                    aria-label={t("integr.stock.warehouse")}
+                    value={String(r.lastPull?.stockWarehouseId ?? "")}
+                    disabled={stock.pending}
+                    onChange={(e) =>
+                      void onStock({ id: r.id, warehouseId: Number(e.target.value) })
+                    }
+                    className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm sm:w-64"
+                  >
+                    <option value="" disabled>
+                      {t("integr.stock.warehouse")}
+                    </option>
+                    {r.lastPull?.stockChoices?.map((w) => (
+                      <option key={w.id} value={w.id}>
+                        {w.name}
+                      </option>
+                    ))}
+                  </Select>
+                )}
             </li>
           ))}
         </ul>

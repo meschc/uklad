@@ -667,6 +667,17 @@ test(
     };
     const pushed = () => HITS.filter((h) => h.u.endsWith("/v2/products/stocks"));
 
+    // По умолчанию выгрузка выключена — остатки не уходят вовсе.
+    await again();
+    assert.equal(pushed().length, 0);
+    assert.equal(HITS.filter((h) => h.u.endsWith("/v2/warehouse/list")).length, 0);
+    const on = await post("/api/connectors/stock", { ...c, body: { id, enabled: true } });
+    assert.equal(on.status, 200, JSON.stringify(on.json));
+    const conn = (await call("GET", "/api/connectors", c)).json.connections.find(
+      (x) => x.id === id,
+    );
+    assert.equal(conn.stockPush, true);
+
     // Два склада FBS — без выбора остатки не уходят, руководитель видит почему.
     await again();
     assert.equal(pushed().length, 0);
@@ -676,12 +687,12 @@ test(
     assert.equal(listed.lastPull.stockError, "ozon_warehouse");
     assert.equal(listed.lastPull.stockChoices.length, 2);
 
-    const pick = await post("/api/connectors/platform-warehouse", {
+    const pick = await post("/api/connectors/stock", {
       ...c,
       body: { id, warehouseId: 22 },
     });
     assert.equal(pick.status, 200, JSON.stringify(pick.json));
-    const bad = await post("/api/connectors/platform-warehouse", {
+    const bad = await post("/api/connectors/stock", {
       ...c,
       body: { id, warehouseId: "22" },
     });

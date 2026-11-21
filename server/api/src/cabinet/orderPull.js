@@ -776,9 +776,11 @@ function createOrderPull({
                 at,
               )
             : {};
-          const stocks = stockNow
-            ? await pushStocks(ctx, system, params, stockNow, prevStocks, at)
-            : {};
+          // Остатки — только если руководитель включил выгрузку.
+          const stocks =
+            stockNow && params.stockPush === true
+              ? await pushStocks(ctx, system, params, stockNow, prevStocks, at)
+              : {};
           result = {
             at,
             ...rest,

@@ -17,6 +17,8 @@ export interface ServerConnection {
   partnerId: string | null;
   /** Склад, на который заказы приходят заявками; null — склад в компании один. */
   warehouseId: string | null;
+  /** Сервер выгружает остатки на площадку (включает руководитель). */
+  stockPush: boolean;
   /** Итог последней подкачки заказов на сервере; null — ещё не было. */
   lastPull: OrderPullResult | null;
 }
@@ -128,6 +130,7 @@ export const connectorsRepository = {
             clientId: typeof x.clientId === "string" ? x.clientId : null,
             partnerId: typeof x.partnerId === "string" ? x.partnerId : null,
             warehouseId: typeof x.warehouseId === "string" ? x.warehouseId : null,
+            stockPush: x.stockPush === true,
             lastPull: pullResult(x.lastPull),
           },
         ];
@@ -189,10 +192,14 @@ export const connectorsRepository = {
     return status === 200 ? ok(undefined) : fail(statusError(status, body.error));
   },
 
-  /** Склад магазина на Ozon, куда сервер выгружает остатки. */
-  platformWarehouse: async (input: { id: string; warehouseId: number }): Promise<Result<void>> => {
+  /** Выгрузка остатков на Ozon: включить/выключить и склад магазина на Ozon. */
+  stock: async (input: {
+    id: string;
+    enabled?: boolean;
+    warehouseId?: number;
+  }): Promise<Result<void>> => {
     const res = await attempt(
-      () => apiRequest("POST", "/connectors/platform-warehouse", { ...input }),
+      () => apiRequest("POST", "/connectors/stock", { ...input }),
       "integr.error.noServer",
     );
     if (!res.ok) return res;
