@@ -40,3 +40,6 @@ docs/drafts/
 deploy/data
 deploy/.deploy-tags
 deploy/.watchdog-state
+
+# Выгрузка текстов для правки (`npm run texts:export`) — живёт в общей папке проекта, не в репо
+/texts/

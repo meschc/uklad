@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Тексты Уклада</title>
+    <style>
+      :root {
+        --bg: #fafafa;
+        --card: #fff;
+        --line: #e5e7eb;
+        --text: #111827;
+        --muted: #6b7280;
+        --primary: #2563eb;
+        --changed: #fffbeb;
+        --changed-line: #f59e0b;
+        --bad: #dc2626;
+        --ok: #16a34a;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font:
+          14px/1.45 -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+      }
+      header {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: var(--card);
+        border-bottom: 1px solid var(--line);
+        padding: 12px 16px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+      }
+      h1 {
+        font-size: 16px;
+        margin: 0 12px 0 0;
+      }
+      input,
+      select,
+      button,
+      textarea {
+        font: inherit;
+        color: inherit;
+      }
+      input[type="search"],
+      select {
+        height: 36px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 0 10px;
+        background: #fff;
+      }
+      input[type="search"] {
+        flex: 1 1 260px;
+      }
+      button {
+        height: 36px;
+        padding: 0 14px;
+        border-radius: 8px;
+        border: 1px solid var(--line);
+        background: #fff;
+        cursor: pointer;
+      }
+      button.primary {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: #fff;
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+      label.check {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        color: var(--muted);
+      }
+      #status {
+        width: 100%;
+        color: var(--muted);
+        font-size: 13px;
+        white-space: pre-wrap;
+      }
+      #status.bad {
+        color: var(--bad);
+      }
+      #status.ok {
+        color: var(--ok);
+      }
+      main {
+        padding: 12px 16px 80px;
+        max-width: 1400px;
+        margin: 0 auto;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 220px 1fr 1fr;
+        gap: 10px;
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 10px;
+        margin-bottom: 8px;
+      }
+      .row.changed {
+        background: var(--changed);
+        border-color: var(--changed-line);
+      }
+      .meta {
+        font-size: 12px;
+        color: var(--muted);
+        word-break: break-all;
+      }
+      .meta b {
+        display: block;
+        color: var(--text);
+        font-weight: 600;
+        word-break: normal;
+      }
+      .meta code {
+        user-select: all;
+      }
+      textarea {
+        width: 100%;
+        min-height: 36px;
+        resize: vertical;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 7px 9px;
+        background: #fff;
+      }
+      textarea:focus {
+        outline: 2px solid var(--primary);
+        outline-offset: -1px;
+      }
+      .lang {
+        font-size: 11px;
+        color: var(--muted);
+        margin-bottom: 2px;
+      }
+      .was {
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 4px;
+      }
+      .more {
+        display: block;
+        margin: 12px auto;
+      }
+      @media (max-width: 800px) {
+        .row {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Тексты Уклада</h1>
+      <input id="q" type="search" placeholder="Поиск: текст, раздел или ключ" />
+      <select id="sheet">
+        <option value="">Кабинет и сайт</option>
+        <option>Кабинет</option>
+        <option>Сайт</option>
+      </select>
+      <select id="section">
+        <option value="">Все разделы</option>
+      </select>
+      <label class="check"><input id="onlyChanged" type="checkbox" /> только изменённые</label>
+      <button id="save" class="primary" disabled>Сохранить</button>
+      <button id="publish">Отправить на GitHub</button>
+      <div id="status">Загружаю…</div>
+    </header>
+    <main id="list"></main>
+    <script>
+      const DRAFT = "uklad-texts-draft";
+      const PAGE = 100;
+      let rows = [];
+      let shown = PAGE;
+      /** id → { ru, en } — несохранённые правки; переживают перезагрузку страницы. */
+      let draft = {};
+      try {
+        draft = JSON.parse(localStorage.getItem(DRAFT) || "{}");
+      } catch {
+        draft = {};
+      }
+      const $ = (id) => document.getElementById(id);
+      const keepDraft = () => {
+        try {
+          localStorage.setItem(DRAFT, JSON.stringify(draft));
+        } catch {
+          /* без черновика тоже работает */
+        }
+      };
+      const status = (text, cls = "") => {
+        $("status").textContent = text;
+        $("status").className = cls;
+      };
+      const changedCount = () => Object.keys(draft).length;
+      const refreshSave = () => {
+        $("save").disabled = !changedCount();
+        $("save").textContent = changedCount() ? `Сохранить (${changedCount()})` : "Сохранить";
+      };
+      const esc = (s) =>
+        String(s ?? "").replace(
+          /[&<>"]/g,
+          (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c],
+        );
+      const post = (url, data) =>
+        fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Texts": "1" },
+          body: JSON.stringify(data ?? {}),
+        }).then((r) => r.json());
+
+      async function load() {
+        const data = await fetch("/api/texts").then((r) => r.json());
+        setRows(data.rows);
+        status(
+          `${rows.length} строк. Правьте прямо в полях и нажмите «Сохранить» — текст сразу меняется в коде. ` +
+            "{n}, {name}, ${…} — места для чисел и названий, их оставьте.",
+        );
+      }
+
+      function setRows(next) {
+        rows = next;
+        const sections = [...new Set(rows.map((r) => r.section))].sort((a, b) =>
+          a.localeCompare(b, "ru"),
+        );
+        const cur = $("section").value;
+        $("section").innerHTML =
+          '<option value="">Все разделы</option>' +
+          sections.map((s) => `<option${s === cur ? " selected" : ""}>${esc(s)}</option>`).join("");
+        // Черновик строк, которых в коде больше нет или которые уже совпали, — выбрасываем.
+        const byId = new Map(rows.map((r) => [r.id, r]));
+        for (const [id, d] of Object.entries(draft)) {
+          const r = byId.get(id);
+          if (!r || ((d.ru ?? r.ru) === r.ru && (d.en ?? r.en) === r.en)) delete draft[id];
+        }
+        keepDraft();
+        render();
+      }
+
+      function filtered() {
+        const q = $("q").value.trim().toLowerCase();
+        const sheet = $("sheet").value;
+        const section = $("section").value;
+        const only = $("onlyChanged").checked;
+        const has = (s) => (s || "").toLowerCase().includes(q);
+        return rows.filter(
+          (r) =>
+            (!sheet || r.sheet === sheet) &&
+            (!section || r.section === section) &&
+            (!only || draft[r.id]) &&
+            (!q || has(r.ru) || has(r.en) || has(r.section) || has(r.code)),
+        );
+      }
+
+      function rowHtml(r) {
+        const d = draft[r.id] || {};
+        const id = esc(r.id);
+        const en = r.ruOnly
+          ? '<div class="was">только по-русски</div>'
+          : r.en == null
+            ? '<div class="was">английского нет</div>'
+            : `<div class="lang">English</div><textarea data-id="${id}" data-lang="en" rows="1">${esc(d.en ?? r.en)}</textarea>`;
+        const was =
+          d.ru != null && d.ru !== r.ru ? `<div class="was">было: ${esc(r.ru)}</div>` : "";
+        return `<div class="row${draft[r.id] ? " changed" : ""}">
+          <div class="meta"><b>${esc(r.section)}</b>${esc(r.sheet)} · <code>${esc(r.code)}</code></div>
+          <div><div class="lang">Русский</div><textarea data-id="${id}" data-lang="ru" rows="1">${esc(d.ru ?? r.ru)}</textarea>${was}</div>
+          <div>${en}</div>
+        </div>`;
+      }
+
+      function render() {
+        const list = filtered();
+        const more =
+          list.length > shown
+            ? `<button class="more" id="more">Показать ещё (осталось ${list.length - shown})</button>`
+            : "";
+        const html = list.slice(0, shown).map(rowHtml).join("") + more;
+        $("list").innerHTML = html || '<p class="meta">Ничего не нашлось.</p>';
+        $("list").querySelectorAll("textarea").forEach(fit);
+        if (more) $("more").onclick = () => ((shown += PAGE), render());
+        refreshSave();
+      }
+
+      function fit(t) {
+        t.style.height = "auto";
+        t.style.height = t.scrollHeight + 2 + "px";
+      }
+
+      $("list").addEventListener("input", (e) => {
+        const t = e.target;
+        if (t.tagName !== "TEXTAREA") return;
+        fit(t);
+        const r = rows.find((x) => x.id === t.dataset.id);
+        const d = { ...(draft[r.id] || {}), [t.dataset.lang]: t.value };
+        if ((d.ru ?? r.ru) === r.ru && (d.en ?? r.en) === r.en) delete draft[r.id];
+        else draft[r.id] = d;
+        keepDraft();
+        t.closest(".row").classList.toggle("changed", !!draft[r.id]);
+        refreshSave();
+      });
+
+      for (const id of ["q", "sheet", "section", "onlyChanged"]) {
+        $(id).addEventListener("input", () => ((shown = PAGE), render()));
+      }
+
+      $("save").onclick = async () => {
+        const byId = new Map(rows.map((r) => [r.id, r]));
+        const items = Object.entries(draft).map(([id, d]) => {
+          const r = byId.get(id);
+          return { id, now: r.ru, en: r.en, nextRu: d.ru ?? "", nextEn: d.en ?? "" };
+        });
+        $("save").disabled = true;
+        status("Сохраняю…");
+        const data = await post("/api/save", { items });
+        if (data.error) return status(data.error, "bad");
+        // Не взятые правки остаются в черновике — их видно и можно поправить.
+        const failed = new Set(data.problems.map((p) => p.split(": ")[0]));
+        for (const id of Object.keys(draft)) if (!failed.has(id)) delete draft[id];
+        keepDraft();
+        setRows(data.rows);
+        const lines = [
+          `Сохранено правок: ${data.applied}. Закончите — нажмите «Отправить на GitHub».`,
+        ];
+        if (data.problems.length) {
+          lines.push(`Не сохранено (${data.problems.length}):\n` + data.problems.join("\n"));
+        }
+        if (data.enStale.length) {
+          lines.push(
+            `Английский не меняли в ${data.enStale.length} стр. — переведём при вливании.`,
+          );
+        }
+        status(lines.join("\n"), data.problems.length ? "bad" : "ok");
+      };
+
+      $("publish").onclick = async () => {
+        if (
+          changedCount() &&
+          !confirm("Есть несохранённые правки — они не уйдут. Отправить сохранённое?")
+        ) {
+          return;
+        }
+        $("publish").disabled = true;
+        status("Отправляю на GitHub…");
+        const data = await post("/api/publish");
+        $("publish").disabled = false;
+        if (data.error) return status(data.error, "bad");
+        status(
+          `Отправлено в ветку ${data.branch}. Нажмите на GitHub «Create pull request»: ${data.url}`,
+          "ok",
+        );
+        window.open(data.url, "_blank");
+        load();
+      };
+
+      load().catch((e) => status("Не загрузилось: " + e.message, "bad"));
+    </script>
+  </body>
+</html>

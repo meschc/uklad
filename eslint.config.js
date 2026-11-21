@@ -91,6 +91,7 @@ export default tseslint.config(
   {
     // Скрипты сборки и конфиги живут в Node и печатают в консоль по делу.
     files: ["scripts/**/*.mjs", "*.config.{js,ts}", "e2e/**/*.ts"],
+    languageOptions: { globals: globals.node },
     rules: { "no-console": "off" },
   },
 
