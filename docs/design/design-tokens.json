@@ -199,7 +199,7 @@
       },
       "shell": {
         "$type": "color",
-        "$value": "#EBECF0",
+        "$value": "#F3F4F6",
         "$description": "CSS: hsl(var(--shell))"
       },
       "grid-minor": {

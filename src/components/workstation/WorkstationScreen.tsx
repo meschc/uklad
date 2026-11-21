@@ -118,10 +118,12 @@ export function WorkstationScreen() {
   return (
     // Шапка на тёмном внешнем фоне, рабочая область — светлым окном со
     // скруглёнными углами, и на компьютере, и на телефоне (Кирилл 13.11):
-    // рамка-сигнал опоясывает окно снаружи, по тёмному полю.
+    // рамка-сигнал опоясывает окно снаружи. Поле и отступ окна — те же, что у
+    // кабинета (`bg-shell`, 8 px): стол и меню руководителя выглядят одинаково
+    // (Кирилл 21.11).
     <div
       className={cn(
-        "flex h-full flex-col bg-muted transition-colors duration-150",
+        "flex h-full flex-col bg-shell transition-colors duration-150",
         // Сигнал скана заливает всё поле вокруг окна (Кирилл 13.11): цвет
         // читается краем глаза с любого места у стола.
         signalLevel === "ok" && "bg-success",
@@ -258,7 +260,7 @@ export function WorkstationScreen() {
           скана: цветом заливается поле вокруг окна (см. корень экрана). */}
       <main
         className={cn(
-          "mx-3 mb-3 min-h-0 flex-1 overflow-y-auto rounded-2xl border border-border bg-background",
+          "mx-2 mb-2 min-h-0 flex-1 overflow-y-auto rounded-2xl border border-border bg-background",
         )}
       >
         {!member && unbinding ? (
@@ -316,7 +318,7 @@ export function WorkstationScreen() {
           <button
             type="button"
             onClick={() => setPanel("process")}
-            className="flex min-h-12 min-w-0 flex-1 basis-0 flex-col items-center justify-center rounded-md px-1 text-xs font-medium text-muted-foreground hover:bg-muted"
+            className="flex min-h-12 min-w-0 flex-1 basis-0 flex-col items-center justify-center rounded-md px-1 text-xs font-medium text-muted-foreground hover:bg-wash"
           >
             <ArrowLeftRight className="size-5" />
             {/* Подпись — «Процесс», а не имя процесса: «Инвентаризация» не
@@ -326,7 +328,7 @@ export function WorkstationScreen() {
           <button
             type="button"
             onClick={() => setPanel("log")}
-            className="flex min-h-12 min-w-0 flex-1 basis-0 flex-col items-center justify-center rounded-md px-1 text-xs font-medium text-muted-foreground hover:bg-muted"
+            className="flex min-h-12 min-w-0 flex-1 basis-0 flex-col items-center justify-center rounded-md px-1 text-xs font-medium text-muted-foreground hover:bg-wash"
           >
             <History className="size-5" />
             <span className="flex items-center gap-1">
