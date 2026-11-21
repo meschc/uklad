@@ -68,6 +68,26 @@ const VALUES = {
  * пара — запись `{ id, value }` своего списка; при сборке — снова словарь.
  */
 const MAPS = new Set(["placements"]);
+/**
+ * Что из кабинета ещё лежит в самом документе снимка (план «убрать снимок до
+ * конца», Кирилл 21.11). Список только сокращается: перенесли ключ в строки
+ * или таблицу — убрали отсюда. Новое сохраняемое поле сюда не добавляют —
+ * тест `snapshotKeys.test.js` требует для него строки или таблицу.
+ */
+const SNAPSHOT_LEFT = [
+  "activeFloorId",
+  "addressing",
+  "categories",
+  "categoryFields",
+  "chats",
+  "fieldValues",
+  "integrations",
+  "labelTemplates",
+  "layoutTemplates",
+  "receiving",
+  "subscription",
+  "templates",
+];
 /** Склад для списков компании. */
 const COMPANY = "";
 const MARK = "$rows";
@@ -518,6 +538,9 @@ module.exports = {
   loadArchive,
   WAREHOUSE_LISTS,
   COMPANY_LISTS,
+  VALUES,
+  MAPS,
+  SNAPSHOT_LEFT,
   splitRecords,
   assembleRecords,
   hasMarks,
