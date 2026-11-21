@@ -28,7 +28,7 @@
  *     (`orderPull.js`; сам сервер делает это раз в полторы минуты и без кнопки)
  *   POST /api/connectors/delete          — { id }
  *   POST /api/connectors/rename          — { id, label }
- *   POST /api/connectors/stock           — { id, enabled?, warehouseId? } (остатки на Ozon)
+ *   POST /api/connectors/stock           — { id, enabled?, warehouseId? } (остатки Ozon, Маркет)
  *   POST /api/connectors/<system>/proxy  — `ConnectorRequest` → { ok, data } (JSON площадки)
  */
 /* global require, module, fetch, AbortSignal, Buffer, URLSearchParams */
@@ -91,7 +91,14 @@ const SYSTEMS = {
       ["GET", new RegExp(`^/v2/campaigns/\\{campaignId\\}/orders/${SEG}/delivery/labels$`)],
       ["PUT", /^\/v2\/campaigns\/\{campaignId\}\/offers\/stocks$/],
     ],
-    serverAllow: [["PUT", /^\/v2\/campaigns\/\{campaignId\}\/orders\/\d{1,20}\/status$/]],
+    serverAllow: [
+      ["PUT", /^\/v2\/campaigns\/\{campaignId\}\/orders\/\d{1,20}\/status$/],
+      // Остатки (`stockPush.js`): бизнес кампании, склады, выгрузка без групп.
+      ["GET", /^\/v2\/campaigns\/\{campaignId\}$/],
+      ["POST", /^\/v2\/businesses\/\d{1,20}\/warehouses$/],
+      ["POST", /^\/v3\/businesses\/\d{1,20}\/warehouses$/],
+      ["POST", /^\/v3\/businesses\/\d{1,20}\/offers\/stocks\/update$/],
+    ],
     headers: (key) => ({ "Api-Key": key.token }),
     needsClientId: true, // campaignId
     path: (p, params) => p.replace("{campaignId}", encodeURIComponent(params.clientId)),
@@ -323,10 +330,10 @@ function createConnectors({ auth, send, log, secretKey, fetchImpl = fetch, pull 
   }
 
   /**
-   * Выгрузка остатков на Ozon (`stockPush.js`): включает её руководитель —
+   * Выгрузка остатков на Ozon и Маркет (`stockPush.js`): включает её руководитель —
    * по умолчанию выключена, потому что товар, которого ещё нет в таре и
-   * коробах, ушёл бы на Ozon с нулём и пропал бы с продажи. `warehouseId` —
-   * склад магазина на Ozon, когда складов FBS несколько (`stockChoices`).
+   * коробах, ушёл бы на площадку с нулём и пропал бы с продажи. `warehouseId` —
+   * склад магазина на площадке, когда складов несколько (`stockChoices`).
    */
   async function stockSettings(req, res) {
     const b = await readJson(req, res, 1024);
@@ -350,7 +357,7 @@ function createConnectors({ auth, send, log, secretKey, fetchImpl = fetch, pull 
       const r = await c.query(
         `UPDATE uklad.connector_accounts
          SET params = coalesce(params, '{}'::jsonb) || $2::jsonb
-         WHERE id = $1 AND system = 'ozon' AND deleted_at IS NULL`,
+         WHERE id = $1 AND system IN ('ozon', 'yandex-market') AND deleted_at IS NULL`,
         [b.id, JSON.stringify(patch)],
       );
       return r.rowCount;

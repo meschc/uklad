@@ -720,3 +720,68 @@ test(
     globalThis.REPLY = null;
   },
 );
+
+test(
+  "живой: остатки Маркета — кабинет без групп, единственный склад кампании",
+  { skip: SKIP },
+  async () => {
+    const c = await owner("stock-ym@example.com", "10.4.0.7");
+    const data = {
+      warehouse: { id: WH, name: "Склад", staff: [], partners: [] },
+      products: [{ id: "p1", name: "Кружка", sku: "MUG-Y" }],
+      boxes: [{ id: "b1", lines: [{ productId: "p1", qty: 4 }] }],
+      requests: [],
+    };
+    const w = await post("/api/cabinet/snapshot", { ...c, body: { version: 0, format: 8, data } });
+    assert.equal(w.status, 200, JSON.stringify(w.json));
+    const save = await post("/api/connectors/save", {
+      ...c,
+      body: { system: "yandex-market", label: "Свой", token: "YM-S", clientId: "779" },
+    });
+    assert.equal(save.status, 200, JSON.stringify(save.json));
+    const id = save.json.id;
+    globalThis.REPLY = (u) => {
+      if (u.endsWith("/v2/campaigns/779")) return { campaign: { business: { id: 55 } } };
+      if (u.endsWith("/v2/businesses/55/warehouses"))
+        return { result: { warehouses: [{ id: 7 }] } };
+      if (u.endsWith("/v3/businesses/55/warehouses"))
+        return {
+          result: {
+            warehouses: [
+              { id: 7, name: "Наш", models: [{ placementType: "FBS", campaignId: 779 }] },
+            ],
+          },
+        };
+      if (u.endsWith("/v3/businesses/55/offers/stocks/update")) return { status: "OK" };
+      return { orders: [] };
+    };
+    const again = async () => {
+      await db.root.query(`UPDATE uklad.connector_accounts SET pulled_at = NULL`);
+      await pull.tick();
+    };
+    const pushed = () => HITS.filter((h) => h.u.endsWith("/offers/stocks/update"));
+    await again();
+    assert.equal(pushed().length, 0, "выключено по умолчанию");
+    // Склад не этой кампании (ключ Маркета — на весь бизнес) не берётся.
+    const on = await post("/api/connectors/stock", {
+      ...c,
+      body: { id, enabled: true, warehouseId: 999 },
+    });
+    assert.equal(on.status, 200, JSON.stringify(on.json));
+    await again();
+    assert.equal(pushed().length, 1);
+    assert.deepEqual(JSON.parse(pushed()[0].body), {
+      skuItems: [{ sku: "MUG-Y", partnerWarehouseId: 7, count: 4 }],
+    });
+    const listed = (await call("GET", "/api/connectors", c)).json.connections.find(
+      (x) => x.id === id,
+    );
+    assert.equal(listed.lastPull.stocked, 1);
+    // Бизнес и склады спросили один раз за день, второй проход — без них.
+    const asked = HITS.filter((h) => h.u.endsWith("/v2/campaigns/779")).length;
+    await again();
+    assert.equal(HITS.filter((h) => h.u.endsWith("/v2/campaigns/779")).length, asked);
+    assert.equal(pushed().length, 1, "ничего не изменилось — не шлём");
+    globalThis.REPLY = null;
+  },
+);

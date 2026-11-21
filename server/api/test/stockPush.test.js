@@ -11,6 +11,10 @@ const {
   ozonStockRequests,
   ozonWarehouses,
   ozonRejected,
+  ymBusinessId,
+  ymGrouped,
+  ymWarehouses,
+  ymStockRequests,
 } = require("../src/cabinet/stockPush");
 const { allowed } = require("../src/cabinet/connectors");
 
@@ -112,4 +116,40 @@ test("ответ Ozon: непринятые артикулы и причина",
   });
   assert.deepEqual(bad, { skus: ["B"], detail: "SKU_STOCK_NOT_CHANGE" });
   assert.deepEqual(ozonRejected({}), { skus: [], detail: "" });
+});
+
+test("Маркет: бизнес кампании, группы складов, склады кампании", () => {
+  assert.equal(ymBusinessId({ campaign: { business: { id: 5 } } }), 5);
+  assert.equal(ymBusinessId({ campaign: {} }), null);
+  assert.equal(ymGrouped({ result: { warehouses: [{ id: 1, groupInfo: { id: 9 } }] } }), true);
+  assert.equal(ymGrouped({ result: { warehouses: [{ id: 1 }] } }), false);
+  const ws = ymWarehouses(
+    {
+      result: {
+        warehouses: [
+          { id: 1, name: "Наш", models: [{ placementType: "FBS", campaignId: 778 }] },
+          { id: 2, name: "Чужая кампания", models: [{ placementType: "FBS", campaignId: 1 }] },
+        ],
+      },
+    },
+    "778",
+  );
+  assert.deepEqual(ws, [{ id: 1, name: "Наш" }]);
+});
+
+test("Маркет: с группой — по кампании, без групп — по складу бизнеса", () => {
+  const [g] = ymStockRequests({ A: 3 }, "group", {});
+  assert.equal(g.method, "PUT");
+  assert.equal(g.path, "/v2/campaigns/{campaignId}/offers/stocks");
+  assert.deepEqual(g.body, { skus: [{ sku: "A", items: [{ count: 3 }] }] });
+  const [w] = ymStockRequests({ A: 3 }, "warehouse", { businessId: 5, warehouseId: 7 });
+  assert.equal(w.path, "/v3/businesses/5/offers/stocks/update");
+  assert.deepEqual(w.body, { skuItems: [{ sku: "A", partnerWarehouseId: 7, count: 3 }] });
+  for (const r of [g, w]) assert.ok(allowed("yandex-market", r.method, r.path, "server"));
+  assert.ok(allowed("yandex-market", "GET", "/v2/campaigns/{campaignId}", "server"));
+  assert.ok(allowed("yandex-market", "POST", "/v2/businesses/5/warehouses", "server"));
+  assert.ok(allowed("yandex-market", "POST", "/v3/businesses/5/warehouses", "server"));
+  assert.ok(!allowed("yandex-market", "POST", "/v3/businesses/5/warehouses", "proxy"));
+  const many = Object.fromEntries(Array.from({ length: 1200 }, (_, i) => [`S${i}`, 1]));
+  assert.equal(ymStockRequests(many, "group", {}).length, 3);
 });

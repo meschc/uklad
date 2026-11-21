@@ -45,11 +45,11 @@ export interface OrderPullResult {
   /** Артикулы, остаток которых площадка не приняла, и её ответ. */
   stockFailed?: string[];
   stockDetail?: string;
-  /** Остатки не отправлены совсем: `ozon_warehouse` — не выбран склад Ozon. */
+  /** Остатки не отправлены совсем: `ozon_warehouse` / `ym_warehouse` — не выбран склад площадки. */
   stockError?: string;
   /** Склады FBS магазина на выбор, когда их несколько. */
   stockChoices?: { id: number; name: string }[];
-  /** Склад Ozon, куда ушли остатки. */
+  /** Склад площадки, куда ушли остатки (`group` — группа складов Маркета). */
   stockWarehouseId?: number;
   error?: string;
   detail?: string;
@@ -192,7 +192,7 @@ export const connectorsRepository = {
     return status === 200 ? ok(undefined) : fail(statusError(status, body.error));
   },
 
-  /** Выгрузка остатков на Ozon: включить/выключить и склад магазина на Ozon. */
+  /** Выгрузка остатков (Ozon, Маркет): включить/выключить и склад магазина на площадке. */
   stock: async (input: {
     id: string;
     enabled?: boolean;

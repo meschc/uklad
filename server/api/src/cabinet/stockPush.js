@@ -120,7 +120,77 @@ function ozonRejected(data) {
   return { skus: bad.map((r) => String(r.offer_id ?? "")), detail: why ? String(why) : "" };
 }
 
+// --- Маркет -------------------------------------------------------------------
+//
+// Кабинет Маркета бывает с группами складов и без. С группами остаток шлют
+// по кампании (`PUT /v2/campaigns/{id}/offers/stocks`, склад не указывают —
+// группа обновится сама), без групп — по складу бизнеса
+// (`POST /v3/businesses/{id}/offers/stocks/update`, `partnerWarehouseId`).
+// Справка Маркета, 21.11: updateStocks, updateStocksOnPartnerWarehouses,
+// getPagedWarehouses, getPartnerWarehouses.
+
+/** Не больше 2000 строк за запрос (справка); берём с запасом. */
+const YM_CHUNK = 500;
+
+/** Бизнес кампании из `GET /v2/campaigns/{id}`: `campaign.business.id`. */
+function ymBusinessId(data) {
+  const id = data?.campaign?.business?.id;
+  return Number.isSafeInteger(id) && id > 0 ? id : null;
+}
+
+/** Склады кампании в группах (`POST /v2/businesses/{id}/warehouses`): есть ли группа. */
+function ymGrouped(data) {
+  return list(data?.result?.warehouses).some((w) => isObject(w) && isObject(w.groupInfo));
+}
+
+/** Склады бизнеса без групп (`POST /v3/businesses/{id}/warehouses`) этой кампании. */
+function ymWarehouses(data, campaignId) {
+  return list(data?.result?.warehouses)
+    .filter(
+      (w) =>
+        isObject(w) &&
+        Number.isSafeInteger(w.id) &&
+        list(w.models).some((m) => String(m?.campaignId) === String(campaignId)),
+    )
+    .map((w) => ({ id: w.id, name: String(w.name ?? "").slice(0, 100) }));
+}
+
+/** Запросы выгрузки Маркета: `mode` — "group" (v2, по кампании) или "warehouse" (v3). */
+function ymStockRequests(items, mode, { businessId, warehouseId }) {
+  const rows = Object.entries(items);
+  const out = [];
+  for (let i = 0; i < rows.length; i += YM_CHUNK) {
+    const part = rows.slice(i, i + YM_CHUNK);
+    out.push(
+      mode === "group"
+        ? {
+            method: "PUT",
+            path: "/v2/campaigns/{campaignId}/offers/stocks",
+            body: { skus: part.map(([sku, count]) => ({ sku, items: [{ count }] })) },
+            skus: part.map(([sku]) => sku),
+          }
+        : {
+            method: "POST",
+            path: `/v3/businesses/${businessId}/offers/stocks/update`,
+            body: {
+              skuItems: part.map(([sku, count]) => ({
+                sku,
+                partnerWarehouseId: warehouseId,
+                count,
+              })),
+            },
+            skus: part.map(([sku]) => sku),
+          },
+    );
+  }
+  return out;
+}
+
 module.exports = {
+  ymBusinessId,
+  ymGrouped,
+  ymWarehouses,
+  ymStockRequests,
   freeStock,
   stockBySku,
   changed,

@@ -221,8 +221,8 @@ const MAX_ASSEMBLE = 20;
 
 const SUPPLY_RE = /^WB-GI-\d{1,20}$/;
 const MAX_SUPPLIES_A_DAY = 3;
-/** Куда сервер сам выгружает остатки (`stockPush.js`). Маркет и WB — следом. */
-const STOCK_SYSTEMS = new Set(["ozon"]);
+/** Куда сервер сам выгружает остатки (`stockPush.js`). WB — после запуска. */
+const STOCK_SYSTEMS = new Set(["ozon", "yandex-market"]);
 
 /** День по Москве `ГГГГ-ММ-ДД`: поставка WB — одна на день, склад и габарит. */
 const moscowDay = (at) => new Date(at + 3 * 36e5).toISOString().slice(0, 10);
@@ -581,6 +581,91 @@ function createOrderPull({
   }
 
   /**
+   * Маркет: бизнес кампании и вид кабинета (с группами складов или без) —
+   * раз в день (склады Маркет отдаёт не чаще 100 раз в час), в `stocks.ym`.
+   * Без групп склад — единственный склад кампании или выбранный руководителем
+   * (`params.platformWarehouseId`); несколько и не выбран — `ym_warehouse`.
+   */
+  async function ymTarget(ask, params, prev, day) {
+    const cached = isObject(prev?.ym) && prev.ym.day === day ? prev.ym : null;
+    let ym = cached;
+    if (!ym) {
+      const camp = await ask({ method: "GET", path: "/v2/campaigns/{campaignId}" });
+      if (!camp.ok) return { error: camp.error, detail: camp.detail };
+      const businessId = stock.ymBusinessId(camp.data);
+      if (!businessId) return { error: "upstream" };
+      const grouped = await ask({
+        method: "POST",
+        path: `/v2/businesses/${businessId}/warehouses`,
+        body: { campaignIds: [Number(params.clientId)] },
+      });
+      if (!grouped.ok) return { error: grouped.error, detail: grouped.detail };
+      ym = { day, businessId, mode: stock.ymGrouped(grouped.data) ? "group" : "warehouse" };
+      if (ym.mode === "warehouse") {
+        const all = await ask({
+          method: "POST",
+          path: `/v3/businesses/${businessId}/warehouses`,
+          body: {},
+        });
+        if (!all.ok) return { error: all.error, detail: all.detail };
+        ym.choices = stock.ymWarehouses(all.data, params.clientId).slice(0, 20);
+      }
+    }
+    if (ym.mode === "group") return { ym, warehouseId: "group" };
+    // Ключ Маркета — на весь бизнес: выбранный склад берём, только если он
+    // склад этой кампании, иначе остаток ушёл бы в чужой магазин бизнеса.
+    const picked =
+      Number.isSafeInteger(params.platformWarehouseId) &&
+      (ym.choices ?? []).some((w) => w.id === params.platformWarehouseId)
+        ? params.platformWarehouseId
+        : null;
+    const warehouseId = picked ?? (ym.choices?.length === 1 ? ym.choices[0].id : null);
+    if (!warehouseId) return { ym, error: "ym_warehouse", choices: ym.choices ?? [] };
+    return { ym, warehouseId };
+  }
+
+  async function pushStocksYm(ask, params, now, prev, at) {
+    const day = new Date(at + 3 * 36e5).toISOString().slice(0, 10);
+    const target = await ymTarget(ask, params, prev, day);
+    if (target.error) {
+      // Прошлые числа и найденный бизнес сохраняем: завтра спросим заново.
+      const kept = { ...(prev ?? {}), ...(target.ym ? { ym: target.ym } : {}) };
+      return {
+        stockError: target.error,
+        ...(target.detail ? { stockDetail: target.detail } : {}),
+        ...(target.choices ? { stockChoices: target.choices } : {}),
+        ...(Object.keys(kept).length ? { stocks: kept } : {}),
+      };
+    }
+    const { warehouseId, ym } = target;
+    const base = prev?.warehouseId === warehouseId ? prev : undefined;
+    const todo = stock.changed(now, base, day);
+    const sent = base?.day === day ? { ...base.sent } : {};
+    const out = { stocked: 0 };
+    for (const req of stock.ymStockRequests(todo, ym.mode, {
+      businessId: ym.businessId,
+      warehouseId,
+    })) {
+      const { skus, ...call } = req;
+      const res = await ask(call);
+      if (!res.ok) {
+        // Маркет отвечает на запрос целиком: строки, которую не принял, не называет.
+        out.stockFailed = [...(out.stockFailed ?? []), ...skus];
+        out.stockDetail ??= res.detail || res.error;
+        continue;
+      }
+      for (const sku of skus) sent[sku] = todo[sku];
+      out.stocked += skus.length;
+    }
+    if (out.stockFailed) out.stockFailed = out.stockFailed.slice(0, 20);
+    return {
+      ...out,
+      ...(ym.choices?.length > 1 ? { stockChoices: ym.choices } : {}),
+      stocks: { day, warehouseId, sent, ym },
+    };
+  }
+
+  /**
    * Остатки товаров подключения — площадке, только изменившиеся (раз в день
    * все). Ozon: склад магазина — выбранный в подключении или единственный
    * склад FBS; складов несколько, а склад не выбран — не шлём и говорим
@@ -591,6 +676,7 @@ function createOrderPull({
       allowed(system, req.method, req.path, "server")
         ? askPlatform({ ...ctx, system }, { ...req, qs: "" })
         : Promise.resolve({ ok: false, error: "not_allowed" });
+    if (system === "yandex-market") return pushStocksYm(ask, params, now, prev, at);
     let warehouseId = Number.isSafeInteger(params.platformWarehouseId)
       ? params.platformWarehouseId
       : null;
