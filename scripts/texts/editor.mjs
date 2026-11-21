@@ -66,7 +66,8 @@ function publish() {
     git("reset", "--soft", from); // правки остаются в файлах, как были до нажатия
     git("switch", from);
     git("branch", "-D", branch);
-    return { error: `Не получилось отправить: ${String(e.stderr || e.message).slice(0, 400)}` };
+    console.error(e.stderr || e);
+    return { error: "Не получилось отправить на GitHub. Подробности — в окне Терминала." };
   }
   git("switch", from);
   saved.clear();
@@ -110,7 +111,9 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "POST" && req.url === "/api/publish") return send(res, 200, publish());
     send(res, 404, {});
   } catch (e) {
-    send(res, 500, { error: String(e.message ?? e) });
+    // Подробности — в Терминал, а не в ответ: так их не увидит чужая вкладка.
+    console.error(e);
+    send(res, 500, { error: "Что-то пошло не так. Подробности — в окне Терминала." });
   }
 });
 
