@@ -35,7 +35,7 @@ describe("PlatformLabel", () => {
       detail: "POSTING_NOT_AWAITING_DELIVER",
     });
     render(<PlatformLabel requestId="r2" source="ozon" />);
-    await screen.findByText(/ещё не готов.*POSTING_NOT_AWAITING_DELIVER/);
+    await screen.findByText(/ещё не выдал ярлык.*POSTING_NOT_AWAITING_DELIVER/);
     expect(printPdf).not.toHaveBeenCalled();
     fetchLabel.mockResolvedValueOnce({ ok: true, file: "QQ" });
     await userEvent.click(screen.getByRole("button", { name: /Ярлык Ozon ещё раз/ }));
