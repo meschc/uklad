@@ -1184,6 +1184,100 @@ test(
   },
 );
 
+test(
+  "сотрудники строками: в карточке склада их нет, кабинет получает тот же JSON",
+  { skip: SKIP },
+  async () => {
+    const a = await owner("snap-staff@sklad.ru", "10.0.1.42");
+    const ivan = { id: "st1", name: "Иван", role: "Упаковщик", hourlyRate: 300, phone: "+7 900" };
+    const olga = { id: "st2", name: "Ольга", role: "Кладовщик" };
+    const put = async (version, staff, other = []) =>
+      call("/api/cabinet/snapshot", {
+        ...a,
+        body: {
+          version,
+          format: 8,
+          data: { warehouse: { id: "wh_p", name: "Склад", staff }, otherWarehouses: other },
+        },
+      });
+    assert.equal((await put(0, [ivan, olga])).status, 200);
+    const card = await db.root.query(
+      `SELECT card ? 'staff' AS inline, staff_rows FROM uklad.warehouses
+       WHERE org_id = $1 AND ref = 'wh_p'`,
+      [a.org],
+    );
+    assert.deepEqual(card.rows[0], { inline: false, staff_rows: true });
+    const rows = async () =>
+      (
+        await db.root.query(
+          `SELECT ref, name, role, position, deleted_at IS NOT NULL AS gone
+           FROM uklad.staff WHERE org_id = $1 ORDER BY ref`,
+          [a.org],
+        )
+      ).rows;
+    assert.deepEqual(await rows(), [
+      { ref: "st1", name: "Иван", role: "Упаковщик", position: 0, gone: false },
+      { ref: "st2", name: "Ольга", role: "Кладовщик", position: 1, gone: false },
+    ]);
+    const read = async () => (await call("/api/cabinet/snapshot", a)).json.snapshot.data;
+    assert.deepEqual((await read()).warehouse.staff, [ivan, olga]);
+
+    // Ольгу убрали, Ивана поставили вторым, пустой склад — с пустым списком.
+    const empty = { id: "wh_e", name: "Пустой", staff: [] };
+    assert.equal((await put(1, [{ ...ivan, hourlyRate: 350 }], [empty])).status, 200);
+    assert.deepEqual(
+      (await rows()).map((r) => [r.ref, r.gone]),
+      [
+        ["st1", false],
+        ["st2", true],
+      ],
+    );
+    const after = await read();
+    assert.deepEqual(after.warehouse.staff, [{ ...ivan, hourlyRate: 350 }]);
+    assert.deepEqual(after.otherWarehouses, [empty]);
+
+    // Склад без ключа staff так и читается — без него.
+    assert.equal((await put(2, undefined)).status, 200);
+    assert.equal("staff" in (await read()).warehouse, false);
+
+    // Повтор id — список остаётся в карточке склада как был.
+    assert.equal((await put(3, [olga, olga])).status, 200);
+    assert.deepEqual((await read()).warehouse.staff, [olga, olga]);
+  },
+);
+
+test(
+  "миграция 054: сотрудники из карточек складов переезжают в строки",
+  { skip: SKIP },
+  async () => {
+    const a = await owner("snap-staff-mig@sklad.ru", "10.0.1.43");
+    const data = { warehouse: { id: "wh_q", name: "Склад" }, otherWarehouses: [] };
+    assert.equal(
+      (await call("/api/cabinet/snapshot", { ...a, body: { version: 0, format: 8, data } })).status,
+      200,
+    );
+    // Карточка до 054: сотрудники в ней самой.
+    await db.root.query(
+      `UPDATE uklad.warehouses SET card = card || '{"staff": [{"id": "s9", "name": "Пётр"}]}',
+       staff_rows = false
+     WHERE org_id = $1 AND ref = 'wh_q'`,
+      [a.org],
+    );
+    const sql = readFileSync(
+      new URL("../../db/migrations/054_staff_rows.sql", import.meta.url),
+      "utf8",
+    );
+    await db.root.query(sql.slice(sql.indexOf("ALTER TABLE uklad.warehouses NO FORCE")));
+    const card = await db.root.query(
+      `SELECT card ? 'staff' AS inline FROM uklad.warehouses WHERE org_id = $1 AND ref = 'wh_q'`,
+      [a.org],
+    );
+    assert.equal(card.rows[0].inline, false);
+    const read = (await call("/api/cabinet/snapshot", a)).json.snapshot.data;
+    assert.deepEqual(read.warehouse.staff, [{ id: "s9", name: "Пётр" }]);
+  },
+);
+
 test("миграция 051: склады старого снимка переезжают в строки", { skip: SKIP }, async () => {
   const a = await owner("snap-wh-mig@sklad.ru", "10.0.1.41");
   assert.equal(
