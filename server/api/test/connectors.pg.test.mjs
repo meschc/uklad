@@ -13,7 +13,7 @@ const SKIP = !process.env.PG_ADMIN_URL && "нет PG_ADMIN_URL";
 
 const ORIGIN = "https://u-klad.ru";
 const PW = "очень-длинный-пароль";
-let db, server, base, cookieName, pull;
+let db, server, base, cookieName, pull, unpaidPull, UNPAID;
 const sent = [];
 
 before(async () => {
@@ -49,6 +49,8 @@ before(async () => {
   };
   const { createOrderPull } = require("../src/cabinet/orderPull.js");
   pull = createOrderPull(deps);
+  // Неоплаченный кабинет («только чтение») — компании из `UNPAID`.
+  unpaidPull = createOrderPull({ ...deps, unpaid: (org) => UNPAID?.has(org) ?? false });
   const conn = createConnectors({ ...deps, send, pull });
   cookieName = auth.cookieName;
   const cabinet = {
@@ -423,6 +425,20 @@ test("живой: сервер сам заводит заказы площадк
   await post("/api/connectors/pull", { ...a, body: {} });
   const last = (await call("GET", "/api/cabinet/snapshot", a)).json.snapshot;
   assert.equal(last.data.requests.filter((r) => r.externalId === "111").length, 1);
+
+  // Не оплачен — площадку не спрашиваем, в строке подключения причина.
+  UNPAID = new Set([a.org]);
+  await db.root.query(`UPDATE uklad.connector_accounts SET pulled_at = NULL`);
+  const paidHits = HITS.length;
+  await unpaidPull.tick();
+  const unpaidAsked = HITS.slice(paidHits).map((h) => h.h.Authorization);
+  assert.ok(
+    unpaidAsked.includes("WB-B") && !unpaidAsked.includes("WB-A"),
+    JSON.stringify(unpaidAsked),
+  );
+  const unpaidRow = (await call("GET", "/api/connectors", a)).json.connections[0];
+  assert.equal(unpaidRow.lastPull.error, "unpaid");
+  UNPAID = null;
 
   // Удалённая компания площадку больше не спрашивает.
   await db.root.query(`UPDATE uklad.orgs SET deleted_at = now() WHERE id = $1`, [a.org]);

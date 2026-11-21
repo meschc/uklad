@@ -640,7 +640,12 @@ function main() {
     // Заказы площадок сервер подкачивает сам, раз в полторы минуты на
     // подключение, без открытого кабинета (миграция 050).
     const { createOrderPull } = require("./cabinet/orderPull");
-    const pull = createOrderPull({ auth, log: console, secretKey });
+    const pull = createOrderPull({
+      auth,
+      log: console,
+      secretKey,
+      unpaid: (orgId) => !!limits?.paymentFor(orgId).readOnly,
+    });
     pull?.start();
     const connectors = createConnectors({ auth, send, log: console, secretKey, pull });
     cabinet = {

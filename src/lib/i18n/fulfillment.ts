@@ -76,6 +76,7 @@ export const ru = {
   "integr.pull.error.warehouse":
     "непонятно, на какой склад их заводить. Удалите подключение и сохраните заново на нужном складе",
   "integr.pull.error.partner": "этого партнёра больше нет на складе",
+  "integr.pull.error.unpaid": "кабинет не оплачен. После оплаты заказы загрузятся сами",
   "integr.pull.unknown": "Не нашли товар в номенклатуре, заказы: {list}",
   "integr.remove": "Удалить",
   "integr.saveToServer": "Сохранить подключение",
@@ -507,6 +508,8 @@ export const en: Record<keyof typeof ru, string> = {
   "integr.pull.error.warehouse":
     "it is unclear which warehouse they belong to. Remove the connection and save it again on the right warehouse",
   "integr.pull.error.partner": "this partner is no longer on the warehouse",
+  "integr.pull.error.unpaid":
+    "the cabinet is not paid. Orders will load by themselves after payment",
   "integr.pull.unknown": "Product not found in the catalog, orders: {list}",
   "integr.remove": "Remove",
   "integr.saveToServer": "Save connection",

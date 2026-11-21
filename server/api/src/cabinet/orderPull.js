@@ -295,7 +295,17 @@ function connectionWarehouse(full, params) {
 
 // ---- Проход ----
 
-function createOrderPull({ auth, log, secretKey, fetchImpl = fetch, now = () => Date.now() }) {
+function createOrderPull({
+  auth,
+  log,
+  secretKey,
+  fetchImpl = fetch,
+  now = () => Date.now(),
+  // Кабинет не оплачен и закрыт на правку (`planLimits.paymentFor`) — площадку
+  // не спрашиваем и заявок не заводим (Кирилл 20.11): склад не работает
+  // бесплатно, а оплатили — следующий обход подхватит заказы.
+  unpaid = () => false,
+}) {
   const sealer = createSealer(secretKey);
   if (!sealer) return null;
 
@@ -377,6 +387,11 @@ function createOrderPull({ auth, log, secretKey, fetchImpl = fetch, now = () => 
    */
   async function pullAccount({ orgId, id, system, ticket }) {
     const at = now();
+    if (unpaid(orgId)) {
+      const result = { at, error: "unpaid" };
+      await remember(orgId, id, ticket, result);
+      return result;
+    }
     let account;
     try {
       account = await inOrg(orgId, id, ticket, async (c) => {

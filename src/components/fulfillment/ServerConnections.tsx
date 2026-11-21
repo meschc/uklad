@@ -31,6 +31,7 @@ const PULL_ERROR: Record<string, MsgKey> = {
   rate_limit: "integr.error.rateLimit",
   warehouse: "integr.pull.error.warehouse",
   partner: "integr.pull.error.partner",
+  unpaid: "integr.pull.error.unpaid",
 };
 
 /** Итог последней подкачки подключения одной строкой. */
