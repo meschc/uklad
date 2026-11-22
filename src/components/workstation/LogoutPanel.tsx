@@ -19,8 +19,8 @@ import { FormError } from "@/components/ui/field";
 export function LogoutPanel({ member }: { member: StaffMember }) {
   const t = useT();
   const start = useEditor((s) => shiftStartedAt(s.staffEvents, member.id));
-  const mark = useCommand(workstationRepository.mark);
-  const logout = useCommand(workstationRepository.logout);
+  const mark = useCommand(workstationRepository.mark, { exclusive: true });
+  const logout = useCommand(workstationRepository.logout, { exclusive: true });
   const pending = mark.pending || logout.pending;
   return (
     <div className="flex flex-col gap-4">

@@ -27,7 +27,7 @@ export function ToteStart() {
   const [source, setSource] = useState<string | null>(null);
   const [status, setStatus] = useState<ScanStatus>("idle");
   const [hint, setHint] = useState<string | null>(null);
-  const start = useCommand(workstationRepository.packStart);
+  const start = useCommand(workstationRepository.packStart, { exclusive: true });
   // Демо-тара собирается из собранных заявок «из воздуха»: на сервере это
   // товар, которого не было в таре, и сервер такую запись не примет.
   const demoHints = useDemoHints();

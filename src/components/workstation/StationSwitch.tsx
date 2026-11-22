@@ -27,8 +27,8 @@ export function StationSwitch({ onDone }: { onDone: () => void }) {
   const t = useT();
   const session = useEditor((s) => s.stationSession);
   const pending = useEditor((s) => s.pendingSwitch);
-  const ask = useCommand(switchRepository.request);
-  const drop = useCommand(switchRepository.cancel);
+  const ask = useCommand(switchRepository.request, { exclusive: true });
+  const drop = useCommand(switchRepository.cancel, { exclusive: true });
   if (!session) return null;
   const options = stationsFor(session.permissions);
   const current = session.station;

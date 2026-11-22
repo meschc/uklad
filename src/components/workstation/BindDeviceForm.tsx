@@ -33,7 +33,7 @@ export function BindDeviceForm({
   const t = useT();
   const [name, setName] = useState("");
   const [station, setStation] = useState<WorkstationKind>("pack");
-  const add = useCommand(workstationRepository.addDevice);
+  const add = useCommand(workstationRepository.addDevice, { exclusive: true });
   // Привязать стол сервер даёт только с правом менять персонал: без него
   // форма лишь упёрлась бы в «не получилось». Прав нет (демо) — решает сервер.
   const canBind = useEditor(

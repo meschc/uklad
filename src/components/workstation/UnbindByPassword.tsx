@@ -17,7 +17,7 @@ export function UnbindByPassword({ onDone }: { onDone: () => void }) {
   const t = useT();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const unbind = useCommand(workstationRepository.unbindDeviceByPassword);
+  const unbind = useCommand(workstationRepository.unbindDeviceByPassword, { exclusive: true });
 
   return (
     <form
