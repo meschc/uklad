@@ -8,6 +8,7 @@ import {
   matchesProductCode,
   normalizeCode,
   parseVehicle,
+  toteByCode,
   vehicleCode,
 } from "../barcode";
 
@@ -186,5 +187,18 @@ describe("номер тары без нулей слева", () => {
 
   it("не путает 12 и 120", () => {
     expect(findByCode([box("UK-BOX-120")], "UK-BOX-12")).toBeUndefined();
+  });
+});
+
+// Обход столов 15.11: скан другой тары на приёмке предлагал завести товар.
+describe("toteByCode", () => {
+  const boxes = [{ barcode: "UK-BOX-000029" }];
+  const pallets = [{ barcode: "UK-PLT-000004" }];
+  it("код тары и паллеты узнаётся, регистр не важен", () => {
+    expect(toteByCode(boxes, pallets, "uk-box-000029")).toBe(boxes[0]);
+    expect(toteByCode(boxes, pallets, "UK-PLT-000004")).toBe(pallets[0]);
+  });
+  it("код товара — не тара", () => {
+    expect(toteByCode(boxes, pallets, "4600000000017")).toBeNull();
   });
 });

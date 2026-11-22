@@ -414,3 +414,15 @@ export function parseHonestSignMock(raw: string): HonestSignScan {
 export function honestSignToEan13(scan: HonestSignScan): string {
   return toEan13(scan.gtin.slice(-12));
 }
+
+/**
+ * Код тары или паллеты склада, отсканированный там, где ждут товар: стол
+ * говорит «это тара», а не заводит карточку товара с кодом тары.
+ */
+export function toteByCode<B extends { barcode: string }, P extends { barcode: string }>(
+  boxes: readonly B[],
+  pallets: readonly P[],
+  raw: string,
+): B | P | null {
+  return findByCode(boxes, raw) ?? findByCode(pallets, raw) ?? null;
+}
