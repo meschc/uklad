@@ -87,6 +87,9 @@ export const ru = {
     "Остатки не отправлены: у магазина на площадке несколько складов — выберите ниже, куда их выгружать",
   "integr.stock.error.other": "Остатки не отправлены: {text}",
   "integr.stock.warehouse": "Склад площадки для остатков",
+  "integr.noWarehouse":
+    "Подключение без склада: заказы не приходят. Владелец выбирает, на какой склад их заводить.",
+  "integr.pickWarehouse": "Выбрать склад",
   "integr.stock.enable": "Выгружать остатки на площадку",
   "integr.stock.hint":
     "Включайте, когда приёмка разложена по таре и коробам: товар, которого там нет, уйдёт на площадку с нулём и снимется с продажи",
@@ -535,6 +538,9 @@ export const en: Record<keyof typeof ru, string> = {
     "Stock not sent: the store has several warehouses on the platform — pick below where to send it",
   "integr.stock.error.other": "Stock not sent: {text}",
   "integr.stock.warehouse": "Platform warehouse for stock",
+  "integr.noWarehouse":
+    "Connection has no warehouse: orders do not arrive. The owner picks which warehouse gets them.",
+  "integr.pickWarehouse": "Choose warehouse",
   "integr.stock.enable": "Send stock to the platform",
   "integr.stock.hint":
     "Turn on once intake is put into totes and boxes: a product that is not there goes to the platform as zero and stops selling",

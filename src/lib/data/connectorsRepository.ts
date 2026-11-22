@@ -207,6 +207,17 @@ export const connectorsRepository = {
     return status === 200 ? ok(undefined) : fail(statusError(status, body.error));
   },
 
+  /** Склад подключения без склада — выбирает владелец (`POST /connectors/place`). */
+  place: async (input: { id: string; warehouseId: string }): Promise<Result<void>> => {
+    const res = await attempt(
+      () => apiRequest("POST", "/connectors/place", { ...input }),
+      "integr.error.noServer",
+    );
+    if (!res.ok) return res;
+    const { status, body } = res.data;
+    return status === 200 ? ok(undefined) : fail(statusError(status, body.error));
+  },
+
   remove: async (id: string): Promise<Result<void>> => {
     const res = await attempt(
       () => apiRequest("POST", "/connectors/delete", { id }),

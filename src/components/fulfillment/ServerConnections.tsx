@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useEditor } from "@/lib/store";
+import { OWNER_PERM } from "@/lib/permModules";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { FormError } from "@/components/ui/field";
 import { PartnerCard } from "@/components/account/PartnerCard";
@@ -169,7 +170,21 @@ export function ServerConnections({ spec, t }: { spec: IntegrationSpec; t: TFunc
     if ((await stock.run(input)).ok) reload();
   };
 
-  const error = loadError ?? save.error ?? remove.error ?? rename.error ?? stock.error;
+  // Подключение без склада при нескольких складах: заказы не приходят, пока
+  // владелец не выберет склад (склады связывает только он, Кирилл 22.11).
+  const owner = useEditor(
+    (s) => !s.session.permissions || s.session.permissions.includes(OWNER_PERM),
+  );
+  const current = useEditor((s) => s.warehouse);
+  const others = useEditor((s) => s.otherWarehouses);
+  const stores = [current, ...others].filter((w) => !w.placeholder);
+  const place = useCommand(connectorsRepository.place);
+  const onPlace = async (id: string, target: string) => {
+    if ((await place.run({ id, warehouseId: target })).ok) reload();
+  };
+
+  const error =
+    loadError ?? save.error ?? remove.error ?? rename.error ?? stock.error ?? place.error;
   const canSave = !!token.trim() && (!clientLabel || !!clientId.trim());
 
   return (
@@ -226,6 +241,29 @@ export function ServerConnections({ spec, t }: { spec: IntegrationSpec; t: TFunc
               >
                 {t("integr.remove")}
               </Button>
+              {!r.warehouseId && stores.length > 1 && (
+                <span className="flex w-full flex-wrap items-center gap-2 text-xs">
+                  <span className="text-warning">{t("integr.noWarehouse")}</span>
+                  {owner && (
+                    <Select
+                      aria-label={t("integr.pickWarehouse")}
+                      value=""
+                      disabled={place.pending}
+                      onChange={(e) => void onPlace(r.id, e.target.value)}
+                      className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm sm:w-64"
+                    >
+                      <option value="" disabled>
+                        {t("integr.pickWarehouse")}
+                      </option>
+                      {stores.map((w) => (
+                        <option key={w.id} value={w.id}>
+                          {w.name}
+                        </option>
+                      ))}
+                    </Select>
+                  )}
+                </span>
+              )}
               {STOCK_SYSTEMS.has(r.system) && (
                 <label
                   className="flex w-full items-center gap-2 text-xs text-muted-foreground"
