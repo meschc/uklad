@@ -7,7 +7,9 @@
  *     отметка смены, отказ сервера — с сотрудником, устройством, типом скана
  *     (`step`) и признаком «пик за единицу работы» (`counted`);
  *   · правки руководителя в кабинете (`uklad.stock_moves` с `member_id`):
- *     одна запись снимка — одно действие со списком движений товара.
+ *     одна запись снимка — одно действие со списком движений товара;
+ *   · действия руководителей помимо товара (`uklad.audit_events`, 062):
+ *     роли, люди, подключения, удаление товаров — процесс `admin`.
  *
  * Смотреть — право «Персонал: смотреть» (`staff.view`) или «Персонал»
  * (`staff.manage`): по журналу видно, кто когда и как работал. Склад — только
@@ -19,6 +21,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { warehousesOf, placeRef } = require("./viewerPlace");
 const { withWarehouses } = require("./warehouses");
+const { auditRows } = require("./audit");
 
 const REF_RE = /^[A-Za-z0-9_.:#/-]{1,200}$/;
 const STEPS = new Set([
@@ -33,6 +36,9 @@ const STEPS = new Set([
   "dispute",
   "shift",
   "cabinet",
+  // Действия руководителей (`audit.js`, миграция 062): только по прямому
+  // запросу, пока экран журнала их не показывает.
+  "admin",
 ]);
 const PAGE = 100;
 /** Движений в одной правке наружу: первое создание кабинета их тысячи. */
@@ -167,6 +173,18 @@ async function cabinetRows(c, wh, f, limit) {
   }));
 }
 
+/**
+ * Действия руководителей склада. Действия компании без склада (реквизиты,
+ * роли компании) — только владельцу. Фильтры по товару, месту и сотруднику
+ * у стола к ним не относятся: с ними — пусто, как у правок кабинета с ошибкой.
+ */
+async function adminRows(c, ctx, wh, f, limit) {
+  if (!f.steps?.includes("admin")) return [];
+  if (f.errors || f.product || f.place || f.staff) return [];
+  const company = ctx.can("org.manage");
+  return auditRows(c, wh.id, { before: f.before, since: f.since, company, limit });
+}
+
 // Владелец держит все права, в том числе продавца, — поэтому «Персонал»
 // открывает журнал сам, а продавцу без него журнал склада не положен.
 const mayRead = (ctx) =>
@@ -185,11 +203,12 @@ function createJournal({ auth, send, log }) {
       if (!wh) return { status: 403, error: "no_warehouse" };
       const desk = await deskRows(c, wh, f, PAGE);
       const cabinet = await cabinetRows(c, wh, f, PAGE);
-      // Две ленты по `PAGE` новых сверху — слить и отрезать `PAGE`: всё, что
+      const admin = await adminRows(c, ctx, wh, f, PAGE);
+      // Ленты по `PAGE` новых сверху — слить и отрезать `PAGE`: всё, что
       // старше последней отданной, придёт следующей страницей.
-      const merged = [...desk, ...cabinet].sort((a, b) => b.at - a.at);
+      const merged = [...desk, ...cabinet, ...admin].sort((a, b) => b.at - a.at);
       const entries = merged.slice(0, PAGE);
-      const more = desk.length === PAGE || cabinet.length === PAGE || merged.length > PAGE;
+      const more = [desk, cabinet, admin].some((x) => x.length === PAGE) || merged.length > PAGE;
       return { status: 200, entries, warehouse: wh.id, more };
     });
     if (out === null) return send(res, 401, { ok: false });

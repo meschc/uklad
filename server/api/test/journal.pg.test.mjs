@@ -401,6 +401,161 @@ test("тип скана и «пик за товар» — правило баз�
 });
 
 /** Путь одной штуки по складу А, строками операций, как их пишут столы. */
+test(
+  "действия руководителей: свой склад, компания — владельцу, член из сессии",
+  { skip: SKIP },
+  async () => {
+    const { asOrg } = await import("../../db/test/helpers.js");
+    const { logAction } = require("../src/cabinet/audit.js");
+    const c = await company("journal-audit@sklad.ru", "10.0.7.20");
+    const lead = await invited(c.boss, "lead-audit@sklad.ru", "Старший смены", "wh_b", "stf-l");
+    const lines = [];
+    const log = { info: (m) => lines.push(m) };
+    const put = (warehouse, action, target) =>
+      asOrg(db.pool, c.org, (x) =>
+        logAction(x, log, { action, warehouse, target, details: { n: 1 }, source: "system" }),
+      );
+    await put("wh_a", "role.save", "role-a");
+    await put("wh_b", "connector.delete", "conn-b");
+    await put(null, "company.account", null);
+    // Строка лога поддержки — с id, без имён.
+    assert.equal(lines.length, 3);
+    assert.match(lines[1], /действие connector\.delete .*"warehouse":"wh_b".*"target":"conn-b"/);
+
+    const kinds = (r) => r.json.entries.filter((e) => e.source === "audit").map((e) => e.kind);
+    // Без процесса «admin» экран журнала их пока не получает.
+    assert.deepEqual(kinds(await journal(c.boss, "?warehouse=wh_a")), []);
+    // Владелец: склад А и действия компании.
+    const boss = await journal(c.boss, "?warehouse=wh_a&steps=admin");
+    assert.equal(boss.status, 200, JSON.stringify(boss.json));
+    assert.deepEqual(kinds(boss).sort(), ["company.account", "role.save"]);
+    // Старший склада Б: только склад Б, без действий компании и склада А.
+    const own = await journal(lead, "?steps=admin");
+    assert.equal(own.status, 200, JSON.stringify(own.json));
+    assert.deepEqual(kinds(own), ["connector.delete"]);
+    assert.equal((await journal(lead, "?warehouse=wh_a&steps=admin")).status, 403);
+
+    // Подписать действие чужим участником нельзя: RLS сверяет с сессией.
+    const someone = "00000000-0000-7000-8000-000000000001";
+    await assert.rejects(
+      asOrg(db.pool, c.org, (x) =>
+        x.query(
+          `INSERT INTO uklad.audit_events (org_id, action, member_id) VALUES ($1, 'role.save', $2)`,
+          [c.org, someone],
+        ),
+      ),
+    );
+    // Чужой компании строку не записать.
+    const other = await company("journal-audit2@sklad.ru", "10.0.7.21");
+    await assert.rejects(
+      asOrg(db.pool, other.org, (x) =>
+        x.query(`INSERT INTO uklad.audit_events (org_id, action) VALUES ($1, 'role.save')`, [
+          c.org,
+        ]),
+      ),
+    );
+    // Журнал не правят и не чистят.
+    await assert.rejects(asOrg(db.pool, c.org, (x) => x.query(`DELETE FROM uklad.audit_events`)));
+    // Из кабинета без участника — «кто-то» — нельзя; стол без сессии — можно, со
+    // своим сотрудником.
+    await assert.rejects(
+      asOrg(db.pool, c.org, (x) =>
+        x.query(`INSERT INTO uklad.audit_events (org_id, action) VALUES ($1, 'role.save')`, [
+          c.org,
+        ]),
+      ),
+    );
+    await asOrg(db.pool, c.org, (x) =>
+      logAction(x, log, {
+        action: "badge.issue",
+        warehouse: "wh_a",
+        source: "desk",
+        staffRef: "stf-a",
+      }),
+    );
+    const desk = (await journal(c.boss, "?warehouse=wh_a&steps=admin")).json.entries.find(
+      (e) => e.kind === "badge.issue",
+    );
+    assert.equal(desk.by, "desk");
+    assert.equal(desk.staffRef, "stf-a");
+    // Из кабинета с участником сессии — пишется, участник подставляется сам.
+    await asOrg(
+      db.pool,
+      c.org,
+      (x) => logAction(x, log, { action: "role.delete", warehouse: "wh_a" }),
+      someone,
+    );
+    const { rows } = await db.root.query(
+      `SELECT member_id, source FROM uklad.audit_events WHERE action = 'role.delete'`,
+    );
+    assert.deepEqual(rows, [{ member_id: someone, source: "cabinet" }]);
+    // Что если нажать 1000 раз или прислать двадцать раз одновременно: одна строка.
+    const rowsOf = async (action) =>
+      (
+        await db.root.query(`SELECT count(*)::int AS n FROM uklad.audit_events WHERE action = $1`, [
+          action,
+        ])
+      ).rows[0].n;
+    const tap = (target) =>
+      asOrg(
+        db.pool,
+        c.org,
+        (x) => logAction(x, log, { action: "member.disable", warehouse: "wh_a", target }),
+        someone,
+      );
+    for (let i = 0; i < 1000; i++) await tap("m-1");
+    await Promise.all(Array.from({ length: 20 }, () => tap("m-1")));
+    assert.equal(await rowsOf("member.disable"), 1);
+    // Другой человек (target) — своя строка: схлопываются только одинаковые.
+    await tap("m-2");
+    assert.equal(await rowsOf("member.disable"), 2);
+    // X → Y → X за окно — три строки: последней в журнале должна быть X.
+    const set = (to) =>
+      asOrg(
+        db.pool,
+        c.org,
+        (x) =>
+          logAction(x, log, {
+            action: "role.rename",
+            warehouse: "wh_b",
+            target: "r",
+            details: { to },
+          }),
+        someone,
+      );
+    await set("X");
+    await set("Y");
+    await set("X");
+    assert.equal(await rowsOf("role.rename"), 3);
+    // Ключи, токены, почты и телефоны в подробности не попадают, на любой глубине.
+    for (const details of [{ token: "x" }, { a: [{ apiKey: "x" }] }, { email: "a@b.c" }]) {
+      await assert.rejects(
+        asOrg(db.pool, c.org, (x) => logAction(x, log, { action: "connector.save", details })),
+      );
+    }
+    // Огромные подробности — отказ, а не забитая база.
+    await assert.rejects(
+      asOrg(db.pool, c.org, (x) =>
+        logAction(x, log, {
+          action: "role.save",
+          details: { s: "x".repeat(2001) },
+          source: "system",
+        }),
+      ),
+    );
+    // Действие откатилось (обрыв, ошибка после записи) — строки нет.
+    await assert.rejects(
+      asOrg(db.pool, c.org, async (x) => {
+        await logAction(x, log, { action: "role.move", warehouse: "wh_a", source: "system" });
+        throw new Error("обрыв");
+      }),
+    );
+    assert.equal(await rowsOf("role.move"), 0);
+    // Неверный вид действия — ошибка, а не тихий пропуск.
+    await assert.rejects(asOrg(db.pool, c.org, (x) => logAction(x, log, { action: "Bad Action" })));
+  },
+);
+
 async function seedPath(c, prefix) {
   const desk = (
     await db.root.query(`SELECT id FROM auth.desk_sessions WHERE org_id = $1 LIMIT 1`, [c.org])
