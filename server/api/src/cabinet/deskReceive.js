@@ -15,6 +15,7 @@
  */
 
 /* global module, require */
+"use strict";
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { INVENTORY_KINDS } = require("./deskInventory");
 const { overReceived } = require("./overageHold");

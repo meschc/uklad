@@ -550,6 +550,35 @@ test("стол чужой компании бейдж не узнаёт", { skip
   assert.equal((await call("/api/auth/me", { desk: deskB })).status, 401);
 });
 
+test(
+  "скан пишет только свою строку: остальная работа склада не переписывается",
+  { skip: SKIP },
+  async () => {
+    const { a, ivan } = await company("desk-rows@sklad.ru", "10.0.3.41");
+    const desk = await makeDesk(a);
+    await call("/api/cabinet/badges/check", { desk, body: { code: ivan } });
+    const stamp = async () =>
+      (
+        await db.root.query(
+          `SELECT domain || '/' || ref AS k, updated_at FROM uklad.cabinet_records
+         WHERE org_id = $1 AND deleted_at IS NULL ORDER BY 1`,
+          [a.org],
+        )
+      ).rows.map((r) => [r.k, r.updated_at.getTime()]);
+    const was = new Map(await stamp());
+    const mark = { eventId: "ev-rows-1", staffId: "stf-ivan", type: "shift_start", at: Date.now() };
+    const r = await ops(desk, [{ key: "key-rows-0001", kind: "shift_mark", body: mark }]);
+    assert.deepEqual(r.json.results, [{ key: "key-rows-0001", status: "applied" }]);
+    const now = await stamp();
+    // Новая отметка добавилась, прежние строки (заявки, тара, спорное, e1) — как были.
+    assert.deepEqual(
+      now.filter(([k, t]) => was.get(k) !== t).map(([k]) => k),
+      ["staffEvents/ev-rows-1"],
+    );
+    assert.equal(now.length, was.size + 1);
+  },
+);
+
 test("смена стола: отметки только за тем, кто за столом, уход", { skip: SKIP }, async () => {
   const { a, ivan } = await company("desk-g@sklad.ru", "10.0.3.7");
   const desk = await makeDesk(a);

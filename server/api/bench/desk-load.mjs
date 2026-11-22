@@ -150,7 +150,8 @@ function cabinetData(n) {
 /** Компания, кабинет на `n` заявок, столы с отмеченным сотрудником. */
 async function company(k, n) {
   const email = `load-${n}-${k}@sklad.ru`;
-  const ip = `10.9.${k}.1`;
+  // Свой адрес на размер и компанию: лимиты входа считают по адресу.
+  const ip = `10.${9 + sizes.indexOf(n)}.${k}.1`;
   const a = await owner(email, ip);
   const data = cabinetData(n);
   const bytes = Buffer.byteLength(JSON.stringify(data));

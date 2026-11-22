@@ -13,6 +13,7 @@
  */
 
 /* global module */
+"use strict";
 
 const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 const list = (v) => (Array.isArray(v) ? v.filter(isObject) : []);

@@ -46,16 +46,10 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { createHash, randomBytes } = require("node:crypto");
 const { createRateLimit } = require("../rateLimit");
-const {
-  MAX_SNAPSHOT_BYTES,
-  warnNearLimit,
-  loadCabinet,
-  splitCabinet,
-  storeRecords,
-} = require("./snapshot");
+const { MAX_SNAPSHOT_BYTES, warnNearLimit, loadCabinet, splitCabinet } = require("./snapshot");
 const { whoseBadge, badgeAnswer, answerCheck, CHECKS_PER_MINUTE } = require("./deskBadges");
 const { storeWarehouses } = require("./warehouses");
-const { withSettings } = require("./records");
+const { withSettings, storeChanges } = require("./records");
 const { GOODS_DECIDE, GOODS_WRITEOFF, STAFF_MANAGE, may, loadDeskPerms } = require("./deskPerms");
 const { mergeDeskStock, STOCK_KEYS } = require("./deskStock");
 const { recordMoves, diffMoves } = require("./moves");
@@ -764,7 +758,7 @@ function createDesks({ auth, cfg, send, log, secretKey = null, fetchImpl = fetch
         place: (full) => deskPlace(full, d.deviceRef),
         load: loadCabinet,
         split: splitCabinet,
-        storeRecords,
+        storeChanges,
         storeWarehouses,
         recordMoves,
         recordStorage,
