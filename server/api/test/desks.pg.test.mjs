@@ -34,9 +34,19 @@ async function stored(org) {
     [org],
   );
   const cards = wh.rows[0].cards;
+  // Оглавление — строками (миграция 056): метки в документ ставим сами.
+  const slots = await db.root.query(
+    `SELECT place, domain, n FROM uklad.cabinet_slots WHERE org_id = $1`,
+    [org],
+  );
+  const raw = JSON.parse(JSON.stringify(doc.rows[0].data));
+  for (const { place, domain, n } of slots.rows) {
+    const holder = place === "" ? raw : raw.warehouseData[place];
+    holder[domain] = { $rows: n };
+  }
   const base = cards.length
-    ? { ...doc.rows[0].data, warehouse: cards[0], otherWarehouses: cards.slice(1) }
-    : doc.rows[0].data;
+    ? { ...raw, warehouse: cards[0], otherWarehouses: cards.slice(1) }
+    : raw;
   return { version: doc.rows[0].version, data: assembleRecords(base, rows.rows) };
 }
 const sent = [];

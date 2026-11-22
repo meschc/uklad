@@ -48,6 +48,7 @@ const {
   splitRecords,
   assembleRecords,
   loadRecords,
+  storedDoc,
   storeRecords,
   hasMarks,
   massGone,
@@ -381,8 +382,11 @@ function createSnapshot({ auth, send, log, limits = null }) {
         const prev = await c.query(
           `SELECT data FROM uklad.cabinet_snapshots WHERE org_id = uklad.current_org() FOR UPDATE`,
         );
-        if (prev.rows[0]) {
-          const lost = lostLists(await withWarehouses(c, prev.rows[0].data), split.withStores);
+        // Прежний документ — с оглавлением (миграция 056): после записи
+        // оглавление уже новое, поэтому «до» берём здесь, а не из `previous`.
+        const prevDoc = prev.rows[0] ? await storedDoc(c, prev.rows[0].data) : null;
+        if (prevDoc) {
+          const lost = lostLists(prevDoc, split.withStores);
           if (lost.missing.length > 0 || (await inlineDrops(c, lost.inline))) {
             return { conflict: true, error: "records_mass_delete" };
           }
@@ -410,14 +414,14 @@ function createSnapshot({ auth, send, log, limits = null }) {
          SET previous = data, data = $1::jsonb, format = $2, version = version + 1,
              updated_at = now(), updated_by = $3, updated_by_desk = NULL
          WHERE org_id = uklad.current_org() AND version = $4
-         RETURNING version, previous`,
+         RETURNING version`,
           [data, format, ctx.memberId, version],
         );
         // Версия не сошлась — товары тоже не трогаем: запись целиком не прошла.
         if (!rows[0]) return { conflict: true };
         // Прежний кабинет целиком — пока строки ещё старые: по нему журнал
         // движений считает, что прибыло и убыло.
-        const before = await loadRecords(c, rows[0].previous);
+        const before = await loadRecords(c, prevDoc ?? {});
         await storeProducts(c, b.data);
         await storeWarehousesLimited(c, ctx, split.warehouses);
         await storeRecords(c, split.items, split.slots);
@@ -477,7 +481,7 @@ function createSnapshot({ auth, send, log, limits = null }) {
           `SELECT version, data FROM uklad.cabinet_snapshots
          WHERE org_id = uklad.current_org() FOR UPDATE`,
         );
-        const cur = rows[0] && { ...rows[0], data: await withWarehouses(c, rows[0].data) };
+        const cur = rows[0] && { ...rows[0], data: await storedDoc(c, rows[0].data) };
         if (!cur || cur.version !== b.version) return { conflict: true };
         // Документ без складов — склады не менялись: берём их из таблицы, иначе
         // проверки ниже не знали бы, чьи списки в корне.

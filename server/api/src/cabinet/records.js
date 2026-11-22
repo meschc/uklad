@@ -278,13 +278,44 @@ function lostLists(prevDoc, next) {
 }
 
 /**
+ * Оглавление из базы (миграция 056) → метки в документе: «список лежит
+ * строками, в нём n записей». Метки в документе больше не хранятся — их
+ * снимает триггер при записи. Ставится только туда, где ключа нет: свой
+ * список в документе (повтор id) и метки присланного кабинета главнее.
+ */
+async function withSlots(c, doc) {
+  if (!isObject(doc)) return doc;
+  const { rows } = await c.query(
+    `SELECT place, domain, n FROM uklad.cabinet_slots WHERE org_id = uklad.current_org()`,
+  );
+  if (rows.length === 0) return doc;
+  const out = { ...doc };
+  if (isObject(doc.warehouseData)) out.warehouseData = { ...doc.warehouseData };
+  for (const { place, domain, n } of rows) {
+    if (place === "") {
+      if (!(domain in out)) out[domain] = { [MARK]: n };
+      continue;
+    }
+    const work = out.warehouseData?.[place];
+    if (!isObject(work) || domain in work) continue;
+    out.warehouseData[place] = { ...work, [domain]: { [MARK]: n } };
+  }
+  return out;
+}
+
+/** Документ снимка из базы: склады и оглавление на месте, работа — метками. */
+async function storedDoc(c, doc) {
+  return withWarehouses(c, await withSlots(c, doc));
+}
+
+/**
  * Документ из базы → кабинет целиком: списки со строк. `domains` — собрать
  * только эти списки (журналу движений нужна одна тара), остальные метки
  * станут пустыми списками.
  */
 async function loadRecords(c, doc, domains = null) {
   // Склады — строками (миграция 051): без них не понять, чьи списки в корне.
-  doc = await withWarehouses(c, doc);
+  doc = await storedDoc(c, doc);
   const { rows } = await c.query(
     `SELECT warehouse_ref AS w, domain AS d, data FROM uklad.cabinet_records
      WHERE org_id = uklad.current_org() AND deleted_at IS NULL AND archived_at IS NULL
@@ -301,7 +332,7 @@ async function loadRecords(c, doc, domains = null) {
  * читает документ компании, не собирая работу (стол ищет своё устройство).
  */
 async function withSettings(c, doc) {
-  doc = await withWarehouses(c, doc);
+  doc = await storedDoc(c, doc);
   if (!isObject(doc)) return doc;
   const domains = Object.keys(VALUES);
   const { rows } = await c.query(
@@ -561,6 +592,7 @@ module.exports = {
   isMark,
   loadRecords,
   withSettings,
+  storedDoc,
   storeRecords,
   massGone,
   massRemoved,
