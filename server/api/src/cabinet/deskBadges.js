@@ -40,8 +40,6 @@ const sha256 = (s) => createHash("sha256").update(s).digest();
 const mayBadge = async (c, staffRef) =>
   (await c.query(`SELECT auth.may_badge($1) AS ok`, [staffRef])).rows[0].ok === true;
 const NO_ROLE = Symbol("no_role");
-/** Роль у стола по умолчанию для бейджа без роли. */
-const DEFAULT_DESK_ROLE = "Кладовщик / оператор";
 
 /**
  * Есть ли у сотрудника роль у стола; нет — назначить роль по умолчанию той же
@@ -53,10 +51,15 @@ async function ensureDeskRole(c, ctx, staffRef) {
     staffRef,
   ]);
   if (has.rows.length > 0) return true;
+  // Роль по умолчанию склада этого сотрудника (058: роли у склада свои,
+  // ищется по отметке, а не по имени — имя теперь можно поменять).
   const role = await c.query(
     `SELECT id, permissions FROM uklad.roles
-     WHERE org_id = uklad.current_org() AND is_default AND name = $1 AND deleted_at IS NULL`,
-    [DEFAULT_DESK_ROLE],
+     WHERE org_id = uklad.current_org() AND desk_default AND deleted_at IS NULL
+       AND warehouse_ref IS NOT DISTINCT FROM coalesce(
+         uklad.staff_warehouse(uklad.current_org(), $1), uklad.only_warehouse(uklad.current_org()))
+     LIMIT 1`,
+    [staffRef],
   );
   const r = role.rows[0];
   // Роль шире прав выпускающего база не даст: роль назначит тот, кто вправе.

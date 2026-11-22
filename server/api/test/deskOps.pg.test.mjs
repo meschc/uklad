@@ -164,7 +164,9 @@ async function company(email, ip) {
   // Права у стола — по роли (миграция 024): Игорь и Ольга — начальники склада,
   // у Ивана роли нет. Должность в снимке на права не влияет.
   const team = (await call("/api/team", a)).json;
-  const chief = team.roles.find((r) => r.name === "Начальник склада").id;
+  const chief = team.roles.find(
+    (r) => r.name === "Начальник склада" && r.warehouseRef === "wh_1",
+  ).id;
   for (const staffRef of ["stf-boss", "stf-olga"]) {
     const set = await call("/api/team/desk-role", { ...a, body: { staffRef, roleId: chief } });
     assert.equal(set.status, 200);
@@ -626,11 +628,17 @@ test(
     // Вход руководителя в этом браузере погас со столом — входит заново.
     const office = { cookie: await login("ops-g@sklad.ru"), org: a.org };
     const team = (await call("/api/team", office)).json;
-    const roles = Object.fromEntries(team.roles.map((x) => [x.name, x.id]));
+    // Роли у каждого склада свои (058): стол — на складе wh_1.
+    const here = team.roles.filter((x) => x.warehouseRef === "wh_1");
+    const roles = Object.fromEntries(here.map((x) => [x.name, x.id]));
     roles["Упаковка"] = (
       await call("/api/team/roles/save", {
         ...office,
-        body: { name: "Упаковка", permissions: ["packing.view", "packing.do"] },
+        body: {
+          name: "Упаковка",
+          permissions: ["packing.view", "packing.do"],
+          warehouseRef: "wh_1",
+        },
       })
     ).json.roleId;
     const role = (name) =>
@@ -644,7 +652,8 @@ test(
       packer.json.results.map((x) => [x.status, x.reason]),
       [["flagged", "not_yours"]],
     );
-    assert.equal((await role("Старший участка")).status, 200);
+    const lead = await role("Старший участка");
+    assert.equal(lead.status, 200, JSON.stringify(lead.json));
     const r = await ops(desk, [unit(1), unit(2), unit(3), done]);
     assert.deepEqual(
       r.json.results.map((x) => [x.key, x.status, x.reason ?? null]),
@@ -1077,7 +1086,11 @@ test(
     const receiver = (
       await call("/api/team/roles/save", {
         ...office,
-        body: { name: "Приёмка", permissions: ["receiving.view", "receiving.do"] },
+        body: {
+          name: "Приёмка",
+          permissions: ["receiving.view", "receiving.do"],
+          warehouseRef: "wh_1",
+        },
       })
     ).json.roleId;
     const set = await call("/api/team/desk-role", {

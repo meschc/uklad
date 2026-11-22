@@ -33,6 +33,7 @@ export function TeamAccess() {
   const notify = useEditor((s) => s.notify);
   const { state, failed, reload } = useTeam();
   const warehouseId = useEditor((s) => s.warehouse.id);
+  const staff = useEditor((s) => s.warehouse.staff);
   const [inviting, setInviting] = useState(false);
 
   // Правка на месте: роль и отключение — команды строки, отказ — тостом.
@@ -47,10 +48,15 @@ export function TeamAccess() {
   }
   if (!state) return <p className="text-sm text-muted-foreground">{t("common.loading")}</p>;
 
-  // Сколько людей с ролью — в кабинете и у стола.
-  const usage: Record<string, number> = {};
-  for (const id of [...state.members.map((m) => m.roleId), ...Object.values(state.deskRoles)])
-    usage[id] = (usage[id] ?? 0) + 1;
+  // Кто держит роль — в кабинете и у стола этого склада: «занята кем», а не
+  // число по всей компании (Кирилл 22.11).
+  const holders: Record<string, string[]> = {};
+  const hold = (roleId: string, who: string) => (holders[roleId] ??= []).push(who);
+  for (const m of state.members) hold(m.roleId, m.name || m.email || "—");
+  for (const s of staff ?? []) {
+    const roleId = state.deskRoles[s.id];
+    if (roleId) hold(roleId, s.name || s.id);
+  }
   const myPerms = new Set(state.myPermissions);
   // Люди открытого склада и владелец; кто ни к одному складу не закреплён —
   // отдельно, чтобы его не принимали за человека этого склада (Кирилл 22.11).
@@ -65,7 +71,7 @@ export function TeamAccess() {
       onRevoke={() => run(() => teamRepository.revokeInvite(m.id))}
     />
   );
-  const owner = (m: TeamMember) => !m.partnerRef && !state.roles.some((r) => r.id === m.roleId);
+  const owner = (m: TeamMember) => state.ownerRoles.includes(m.roleId);
   const here = state.members.filter((m) => m.warehouseRef === warehouseId || owner(m));
   const unplaced = state.members.filter((m) => !m.warehouseRef && !owner(m));
 
@@ -99,7 +105,8 @@ export function TeamAccess() {
         roles={state.roles}
         permissions={state.permissions.map((p) => p.code)}
         mine={myPerms}
-        usage={usage}
+        holders={holders}
+        warehouseRef={warehouseId}
         onChanged={reload}
       />
 

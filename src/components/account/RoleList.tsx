@@ -22,8 +22,8 @@ import { FieldError } from "@/components/ui/field";
  * Роли во вкладке «Доступ» — списком, как у GitHub (Кирилл 13.11): строка
  * роли раскрывается на месте, без панели сбоку. Внутри — разделы прав с
  * уровнем «нет / чтение / чтение и запись» (Кирилл 14.11), раздел раскрывается до
- * объяснения, что даёт чтение и что добавляет запись. Стандартные роли только
- * показываются, своя правится тут же.
+ * объяснения, что даёт чтение и что добавляет запись. Роли у каждого склада
+ * свои (058); стандартные правятся и удаляются, как свои.
  *
  * Права выдаёт сервер (`teamRepository`): больше своих не дать, владельца не
  * тронуть. Экран заранее не предлагает уровней, которых у человека нет, а отказ
@@ -33,7 +33,8 @@ export function RoleList({
   roles,
   permissions,
   mine,
-  usage,
+  holders,
+  warehouseRef,
   onChanged,
 }: {
   roles: TeamRole[];
@@ -41,8 +42,10 @@ export function RoleList({
   permissions: string[];
   /** Права самого человека: чужих, которых у него нет, он выдать не может. */
   mine: Set<string>;
-  /** Сколько людей с ролью: в кабинете и у стола. */
-  usage: Record<string, number>;
+  /** Кто держит роль: люди с входом и сотрудники у стола этого склада. */
+  holders: Record<string, string[]>;
+  /** Склад, чьи это роли (058): новая роль — на нём. */
+  warehouseRef: string;
   onChanged: () => void;
 }) {
   const t = useT();
@@ -74,6 +77,8 @@ export function RoleList({
               item={null}
               permissions={permissions}
               mine={mine}
+              holders={[]}
+              warehouseRef={warehouseRef}
               onClose={() => setCreating(false)}
               onDone={() => {
                 setCreating(false);
@@ -108,7 +113,7 @@ export function RoleList({
                 <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
                   {t("team.roleSummary", {
                     perms: r.permissions.length,
-                    people: usage[r.id] ?? 0,
+                    people: holders[r.id]?.length ?? 0,
                   })}
                 </span>
               </button>
@@ -118,6 +123,8 @@ export function RoleList({
                     item={r}
                     permissions={permissions}
                     mine={mine}
+                    holders={holders[r.id] ?? []}
+                    warehouseRef={warehouseRef}
                     onClose={() => setOpen(null)}
                     onDone={() => {
                       setOpen(null);
@@ -138,32 +145,41 @@ function RoleEditor({
   item: role,
   permissions,
   mine,
+  holders,
+  warehouseRef,
   onClose,
   onDone,
 }: {
   item: TeamRole | null;
   permissions: string[];
   mine: Set<string>;
+  holders: string[];
+  warehouseRef: string;
   onClose: () => void;
   onDone: () => void;
 }) {
   const t = useT();
-  const locked = role?.builtIn ?? false;
+  // Стандартные роли склада правятся и удаляются, как свои (Кирилл 22.11).
+  const locked = false;
   const [name, setName] = useState(role?.name ?? "");
   // Роль из старой версии приводится к уровням сразу: у «делать» есть «смотреть».
   const [perms, setPerms] = useState<Set<string>>(normalizePerms(new Set(role?.permissions ?? [])));
   const save = useCommand(() =>
-    teamRepository.saveRole({ id: role?.id, name: name.trim(), permissions: [...perms] }),
+    teamRepository.saveRole({
+      id: role?.id,
+      name: name.trim(),
+      permissions: [...perms],
+      warehouseRef,
+    }),
   );
   const del = useCommand(() => teamRepository.deleteRole(role?.id ?? ""));
   const groups = groupPermissions(permissions);
   const err = save.error ?? del.error;
   return (
     <div className="flex flex-col gap-5">
-      {locked ? (
-        <p className="text-xs text-muted-foreground">{t("team.err.defaultRole")}</p>
-      ) : (
-        <label className="flex max-w-sm flex-col gap-1.5">
+      {/* Кнопки — рядом с названием роли, а не под списком прав (Кирилл 22.11). */}
+      <div className="flex flex-wrap items-end gap-2">
+        <label className="flex min-w-0 max-w-sm flex-1 flex-col gap-1.5">
           <span className="text-xs font-medium">{t("team.roleName")}</span>
           <Input
             value={name}
@@ -172,7 +188,30 @@ function RoleEditor({
             onChange={(e) => setName(e.target.value)}
           />
         </label>
-      )}
+        <Button
+          disabled={!name.trim() || save.pending}
+          onClick={async () => {
+            if ((await save.run()).ok) onDone();
+          }}
+        >
+          {save.pending ? t("data.busy") : t("common.save")}
+        </Button>
+        <Button variant="ghost" onClick={onClose}>
+          {t("common.cancel")}
+        </Button>
+        {role && (
+          <Button
+            variant="ghost"
+            className="text-destructive hover:text-destructive"
+            disabled={del.pending}
+            onClick={async () => {
+              if ((await del.run()).ok) onDone();
+            }}
+          >
+            {t("team.deleteRole")}
+          </Button>
+        )}
+      </div>
       <div className="flex flex-col divide-y divide-border">
         {groups.areas.map((a) => (
           <PermRow
@@ -193,35 +232,12 @@ function RoleEditor({
           </div>
         )}
       </div>
-      {err && <FieldError>{t(err)}</FieldError>}
-      {!locked && (
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            size="sm"
-            disabled={!name.trim() || save.pending}
-            onClick={async () => {
-              if ((await save.run()).ok) onDone();
-            }}
-          >
-            {save.pending ? t("data.busy") : t("common.save")}
-          </Button>
-          <Button size="sm" variant="ghost" onClick={onClose}>
-            {t("common.cancel")}
-          </Button>
-          {role && (
-            <Button
-              size="sm"
-              variant="ghost"
-              className="ml-auto text-destructive hover:text-destructive"
-              disabled={del.pending}
-              onClick={async () => {
-                if ((await del.run()).ok) onDone();
-              }}
-            >
-              {t("team.deleteRole")}
-            </Button>
-          )}
-        </div>
+      {err && (
+        <FieldError>
+          {err === "team.err.roleInUse" && holders.length > 0
+            ? t("team.err.roleInUseBy", { names: holders.join(", ") })
+            : t(err)}
+        </FieldError>
       )}
     </div>
   );

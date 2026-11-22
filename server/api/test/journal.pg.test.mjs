@@ -126,7 +126,8 @@ async function login(email) {
 /** Приглашённый на склад с ролью — его вход. */
 async function invited(boss, email, role, warehouseRef, staffRef) {
   const roles = (await call("/api/team", boss)).json.roles;
-  const roleId = roles.find((r) => r.name === role).id;
+  // Роли у каждого склада свои (058).
+  const roleId = roles.find((r) => r.name === role && r.warehouseRef === warehouseRef).id;
   const inv = await call("/api/team/invite", {
     ...boss,
     body: { email, roleId, warehouseRef, staffRef },
