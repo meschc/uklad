@@ -199,26 +199,43 @@ function splitCabinet(data) {
 }
 
 /**
- * Убирает ли запись больше половины живого каталога. Так выглядит сбой
- * (пустой стор после ошибки), а не работа человека: из корзины в кабинете
- * пока не восстановить, поэтому такую запись сервер не принимает. Большой
- * каталог удаляется частями, и весь сразу — только из одного-двух товаров.
+ * Убирает ли запись вместе с уже убранным за сутки больше половины каталога.
+ * Так выглядит сбой (пустой стор после ошибки) или злой умысел, а не работа
+ * человека: из корзины в кабинете пока не восстановить, поэтому такую запись
+ * сервер не принимает. Счёт — за сутки, а не за одну запись: иначе каталог
+ * стирался бы частями по девять. Большой каталог чистится за несколько
+ * дней, маленький (один-два товара) — как обычно.
  */
 async function massDelete(c, data) {
   if (!Array.isArray(data.products)) return false;
   const refs = data.products.map((p) => p?.id).filter((id) => typeof id === "string");
   const { rows } = await c.query(
-    `SELECT count(*)::int AS live,
-            count(*) FILTER (WHERE NOT (ref = ANY($1::text[])))::int AS gone
-     FROM uklad.products WHERE org_id = uklad.current_org() AND deleted_at IS NULL`,
+    `SELECT count(*) FILTER (WHERE deleted_at IS NULL)::int AS live,
+            count(*) FILTER (WHERE deleted_at IS NULL AND NOT (ref = ANY($1::text[])))::int AS gone,
+            count(*) FILTER (WHERE deleted_at > now() - interval '1 day'
+                             AND NOT (ref = ANY($1::text[])))::int AS day
+     FROM uklad.products WHERE org_id = uklad.current_org()
+       AND (deleted_at IS NULL OR deleted_at > now() - interval '1 day')`,
     [refs],
   );
-  const { live, gone } = rows[0];
-  if (gone * 2 <= live) return false;
-  // Разом можно убрать до девяти, но не весь каталог: «ноль из пяти» — тоже
-  // похоже на сбой. Последние один-два товара удаляются как обычно, иначе их
-  // нельзя было бы удалить вовсе.
-  return gone >= 10 || (gone === live && live >= 3);
+  const { live, gone, day } = rows[0];
+  if (gone === 0) return false;
+  const base = live + day;
+  const out = gone + day;
+  if (out * 2 <= base) return false;
+  return out >= 10 || (out === base && base >= 3);
+}
+
+/** Сколько живых товаров запись уводит в корзину. */
+async function productsGone(c, data) {
+  if (!Array.isArray(data.products)) return 0;
+  const refs = data.products.map((p) => p?.id).filter((id) => typeof id === "string");
+  const { rows } = await c.query(
+    `SELECT count(*)::int AS n FROM uklad.products
+     WHERE org_id = uklad.current_org() AND deleted_at IS NULL AND NOT (ref = ANY($1::text[]))`,
+    [refs],
+  );
+  return rows[0].n;
 }
 
 const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
@@ -494,6 +511,9 @@ function createSnapshot({ auth, send, log, limits = null }) {
           b.doc = mergeScoped(cur.data, b.doc, ctx.can, ref);
           doc = JSON.stringify(b.doc);
         }
+        // Удалять товары может только руководитель (`staff.manage`): роль с
+        // «Товары: запись» правит и добавляет, но каталог не чистит.
+        if (scoped && "products" in b && (await productsGone(c, b)) > 0) return FORBIDDEN;
         if ("products" in b && (await massDelete(c, b))) {
           return { conflict: true, error: "products_mass_delete" };
         }

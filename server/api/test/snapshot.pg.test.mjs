@@ -61,6 +61,18 @@ async function slot(org, place, domain) {
   return rows[0]?.n ?? null;
 }
 
+/** Удалённые товары компании — «вчера»: журнал каталога пишется под её RLS. */
+async function backdateDeleted(org) {
+  assert.match(org, /^[0-9a-f-]{36}$/);
+  await db.root.query(
+    `BEGIN;
+     SELECT set_config('app.org_id', '${org}', true);
+     UPDATE uklad.products SET deleted_at = deleted_at - interval '2 days'
+     WHERE org_id = '${org}' AND deleted_at IS NOT NULL;
+     COMMIT;`,
+  );
+}
+
 async function call(path, { body, raw, cookie, org, ip = "10.0.1.1" } = {}) {
   const res = await fetch(base + path, {
     method: body || raw ? "POST" : "GET",
@@ -383,15 +395,25 @@ test(
     assert.equal((await call("/api/cabinet/snapshot", a)).json.snapshot.data.products.length, 20);
     // Половина — можно: человек удаляет частями.
     assert.equal((await save(1, cards.slice(10))).status, 200);
-    // Девять из десяти разом — можно, а последний — как обычно.
-    assert.equal((await save(2, cards.slice(19))).status, 200);
-    assert.equal((await save(3, [])).status, 200);
+    // Ещё девять в тот же день — нет: за сутки ушла бы почти весь каталог
+    // (так его стирали бы по девять за запись).
+    const parts = await save(2, cards.slice(19));
+    assert.equal(parts.status, 409);
+    assert.equal(parts.json.error, "products_mass_delete");
+    // Назавтра — можно, а последний — как обычно.
+    const dayLater = () => backdateDeleted(a.org);
+    await dayLater();
+    assert.equal((await save(2, cards.slice(15))).status, 200);
+    await dayLater();
+    assert.equal((await save(3, cards.slice(19))).status, 200);
+    await dayLater();
+    assert.equal((await save(4, [])).status, 200);
     assert.deepEqual((await call("/api/cabinet/snapshot", a)).json.snapshot.data.products, []);
   },
 );
 
 test(
-  "каталог не стирается целиком и маленьким: пять товаров разом — 409",
+  "каталог не стирается целиком и маленьким: пять товаров разом или за сутки — 409",
   { skip: SKIP },
   async () => {
     const a = await owner("snap-s@sklad.ru", "10.0.1.13");
@@ -410,6 +432,9 @@ test(
     assert.equal(wiped.status, 409);
     assert.equal(wiped.json.error, "products_mass_delete");
     assert.equal((await save(1, cards.slice(3))).status, 200);
+    // Остаток в тот же день — нет, назавтра — да.
+    assert.equal((await save(2, [])).status, 409);
+    await backdateDeleted(a.org);
     assert.equal((await save(2, [])).status, 200);
   },
 );

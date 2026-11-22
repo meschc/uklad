@@ -196,7 +196,7 @@ export const ru = {
   "sync.stockRejected":
     "Сервер не принял движение товара: оно не сошлось с приёмкой, сборкой и упаковкой. Открыли данные с сервера, ваши правки отложены в копию на этом устройстве. Покажите это старшему смены.",
   "sync.productsRejected":
-    "Сервер не удалил больше половины товаров одной записью: так выглядит сбой, а не работа. Открыли каталог с сервера, ваши правки отложены в копию на этом устройстве. Удалите товары частями.",
+    "Сервер не удалил товары: за сутки ушла бы больше половины каталога, так выглядит сбой, а не работа. Открыли каталог с сервера, ваши правки отложены в копию на этом устройстве. Удаляйте не больше половины каталога в сутки или напишите в поддержку.",
   "sync.recordsRejected":
     "Сервер не стёр больше половины заявок, приёмки или журнала смен одной записью: так выглядит сбой, а не работа. Открыли данные с сервера, ваши правки отложены в копию на этом устройстве.",
   "profile.logoutUnsynced":
@@ -545,7 +545,7 @@ export const en: Record<keyof typeof ru, string> = {
   "sync.stockRejected":
     "The server didn't accept the stock movement: it doesn't match receiving, picking and packing. We opened the server data, and your changes were set aside in a copy on this device. Show this to the shift lead.",
   "sync.productsRejected":
-    "The server didn't remove more than half of the products in one save: that looks like a failure, not work. We opened the catalog from the server, and your changes were set aside in a copy on this device. Delete the products in parts.",
+    "The server didn't remove the products: more than half of the catalog would go within a day, and that looks like a failure, not work. We opened the catalog from the server, and your changes were set aside in a copy on this device. Delete no more than half of the catalog per day or contact support.",
   "sync.recordsRejected":
     "The server didn't erase more than half of the requests, receiving or shift log in one save: that looks like a failure, not work. We opened the server data, and your changes were set aside in a copy on this device.",
   "profile.logoutUnsynced":

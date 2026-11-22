@@ -737,6 +737,18 @@ test(
     assert.equal(full.serviceSettings.prices.pack, 25);
     assert.equal(full.warehouse.staff[0].name, "Иван");
     assert.equal(full.warehouse.staff[0].hourlyRate, 300);
+    // Товары он добавляет и правит, но не удаляет: каталог чистит только
+    // руководитель.
+    const v1 = (await call("GET", "/api/cabinet/snapshot", editor)).json.snapshot.version;
+    const card = { id: "pr-1", sku: "A1", name: "Кружка" };
+    assert.equal((await changes(editor, v1, { doc, products: [card] })).status, 200);
+    const v2 = (await call("GET", "/api/cabinet/snapshot", editor)).json.snapshot.version;
+    assert.equal((await changes(editor, v2, { doc, products: [] })).status, 403);
+    const kept = (await call("GET", "/api/cabinet/snapshot", boss)).json.snapshot.data;
+    assert.deepEqual(
+      kept.products.map((x) => x.id),
+      ["pr-1"],
+    );
     // Кладовщик работу склада делает у стола операциями: итог (тару,
     // ячейки, заявки) снимком не правит вовсе.
     const keeper = await join(boss, "keeper-scope@example.com", r["Кладовщик"]);
