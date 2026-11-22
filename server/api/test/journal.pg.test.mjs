@@ -413,7 +413,7 @@ test(
     const log = { info: (m) => lines.push(m) };
     const put = (warehouse, action, target) =>
       asOrg(db.pool, c.org, (x) =>
-        logAction(x, log, { action, warehouse, target, details: { n: 1 } }),
+        logAction(x, log, { action, warehouse, target, details: { n: 1 }, source: "system" }),
       );
     await put("wh_a", "role.save", "role-a");
     await put("wh_b", "connector.delete", "conn-b");
@@ -456,6 +456,45 @@ test(
     );
     // Журнал не правят и не чистят.
     await assert.rejects(asOrg(db.pool, c.org, (x) => x.query(`DELETE FROM uklad.audit_events`)));
+    // Из кабинета без участника — «кто-то» — нельзя; стол без сессии — можно, со
+    // своим сотрудником.
+    await assert.rejects(
+      asOrg(db.pool, c.org, (x) =>
+        x.query(`INSERT INTO uklad.audit_events (org_id, action) VALUES ($1, 'role.save')`, [
+          c.org,
+        ]),
+      ),
+    );
+    await asOrg(db.pool, c.org, (x) =>
+      logAction(x, log, {
+        action: "badge.issue",
+        warehouse: "wh_a",
+        source: "desk",
+        staffRef: "stf-a",
+      }),
+    );
+    const desk = (await journal(c.boss, "?warehouse=wh_a&steps=admin")).json.entries.find(
+      (e) => e.kind === "badge.issue",
+    );
+    assert.equal(desk.by, "desk");
+    assert.equal(desk.staffRef, "stf-a");
+    // Из кабинета с участником сессии — пишется, участник подставляется сам.
+    await asOrg(
+      db.pool,
+      c.org,
+      (x) => logAction(x, log, { action: "role.delete", warehouse: "wh_a" }),
+      someone,
+    );
+    const { rows } = await db.root.query(
+      `SELECT member_id, source FROM uklad.audit_events WHERE action = 'role.delete'`,
+    );
+    assert.deepEqual(rows, [{ member_id: someone, source: "cabinet" }]);
+    // Ключи, токены, почты и телефоны в подробности не попадают, на любой глубине.
+    for (const details of [{ token: "x" }, { a: [{ apiKey: "x" }] }, { email: "a@b.c" }]) {
+      await assert.rejects(
+        asOrg(db.pool, c.org, (x) => logAction(x, log, { action: "connector.save", details })),
+      );
+    }
     // Неверный вид действия — ошибка, а не тихий пропуск.
     await assert.rejects(asOrg(db.pool, c.org, (x) => logAction(x, log, { action: "Bad Action" })));
   },

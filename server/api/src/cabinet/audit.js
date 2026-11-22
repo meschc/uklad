@@ -15,7 +15,18 @@ const ACTION_RE = /^[a-z]{2,30}\.[a-z_]{2,30}$/;
 const MAX_REF = 200;
 const MAX_DETAILS = 2000;
 
+const SOURCES = new Set(["cabinet", "desk", "pull", "system"]);
+/** Ключи, которых в подробностях быть не может: журнал видят и старшие. */
+const SECRET_KEY = /token|secret|password|key|phone|email/i;
+
 const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
+
+/** Есть ли где-то в подробностях ключ, похожий на секрет или личные данные. */
+function hasSecretKey(v) {
+  if (Array.isArray(v)) return v.some(hasSecretKey);
+  if (!isObject(v)) return false;
+  return Object.entries(v).some(([k, x]) => SECRET_KEY.test(k) || hasSecretKey(x));
+}
 const refOrNull = (v) => (typeof v === "string" && v.length > 0 && v.length <= MAX_REF ? v : null);
 
 /**
@@ -24,15 +35,23 @@ const refOrNull = (v) => (typeof v === "string" && v.length > 0 && v.length <= M
  * `details` — коды и id. Неверный вид действия — ошибка программы, а не
  * молчаливый пропуск: журнал «всех действий» не должен терять строки.
  */
-async function logAction(c, log, { action, warehouse = null, target = null, details = {} }) {
+async function logAction(
+  c,
+  log,
+  { action, warehouse = null, target = null, details = {}, source = "cabinet", staffRef = null },
+) {
   if (!ACTION_RE.test(action)) throw new Error(`audit: неверное действие ${action}`);
+  if (!SOURCES.has(source)) throw new Error(`audit: неверный источник ${source}`);
+  // Токен, пароль, ключ площадки, почта, телефон — не в журнал (только id).
+  if (hasSecretKey(details)) throw new Error(`audit: в подробностях ${action} лишнее поле`);
   const text = JSON.stringify(isObject(details) ? details : {});
   if (text.length > MAX_DETAILS) throw new Error(`audit: подробности ${action} длиннее лимита`);
   const { rows } = await c.query(
-    `INSERT INTO uklad.audit_events (org_id, warehouse_ref, action, target, details)
-     VALUES (uklad.current_org(), $1, $2, $3, $4::jsonb)
+    `INSERT INTO uklad.audit_events
+       (org_id, warehouse_ref, action, target, details, source, staff_ref)
+     VALUES (uklad.current_org(), $1, $2, $3, $4::jsonb, $5, $6)
      RETURNING id, org_id, member_id`,
-    [refOrNull(warehouse), action, refOrNull(target), text],
+    [refOrNull(warehouse), action, refOrNull(target), text, source, refOrNull(staffRef)],
   );
   const r = rows[0];
   // Лог поддержки: те же id, по ним строку находят в журнале.
@@ -41,6 +60,7 @@ async function logAction(c, log, { action, warehouse = null, target = null, deta
       id: r.id,
       org: r.org_id,
       member: r.member_id,
+      source,
       warehouse: refOrNull(warehouse),
       target: refOrNull(target),
     })}`,
@@ -55,7 +75,8 @@ async function logAction(c, log, { action, warehouse = null, target = null, deta
 async function auditRows(c, ref, { before = null, since = null, company = false, limit }) {
   const { rows } = await c.query(
     `SELECT a.id, a.at, a.warehouse_ref, a.member_id, a.action, a.target, a.details,
-            mem.display_name AS name, mem.staff_ref
+            a.source, coalesce(a.staff_ref, mem.staff_ref) AS staff_ref,
+            mem.display_name AS name
      FROM uklad.audit_events a
      LEFT JOIN uklad.members mem ON mem.org_id = a.org_id AND mem.id = a.member_id
      WHERE a.org_id = uklad.current_org()
@@ -71,6 +92,7 @@ async function auditRows(c, ref, { before = null, since = null, company = false,
     at: new Date(r.at).getTime(),
     receivedAt: new Date(r.at).getTime(),
     source: "audit",
+    by: r.source,
     staffRef: r.staff_ref ?? null,
     member: r.member_id ? { id: r.member_id, name: r.name ?? null } : null,
     kind: r.action,
