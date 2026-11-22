@@ -81,18 +81,19 @@ function toEntry(row) {
 }
 
 /** Принятые пересчёты компании за сутки периода (по Москве), по времени. */
-async function loadInventoryLog(c, { from, to }) {
+async function loadInventoryLog(c, { from, to, warehouse = null }) {
   const { rows } = await c.query(
     `SELECT kind, staff_ref, body, coalesce(happened_at, received_at) AS at
      FROM uklad.desk_ops
      WHERE org_id = uklad.current_org()
        AND status = 'applied'
        AND kind IN ('inv_count', 'inv_cell')
+       AND ($3::text IS NULL OR warehouse_ref = $3)
        AND coalesce(happened_at, received_at) >= ($1::date::timestamp AT TIME ZONE 'Europe/Moscow')
        AND coalesce(happened_at, received_at) < (($2::date + 1)::timestamp AT TIME ZONE 'Europe/Moscow')
      ORDER BY 4, id
      LIMIT ${MAX_ROWS}`,
-    [from, to],
+    [from, to, warehouse],
   );
   return rows.map(toEntry).filter(Boolean);
 }

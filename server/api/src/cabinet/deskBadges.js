@@ -22,6 +22,7 @@ const { createHash, randomBytes } = require("node:crypto");
 const { PlanLimitError } = require("./planLimits");
 const { createRateLimit } = require("../rateLimit");
 const { loadDeskPerms } = require("./deskPerms");
+const { staffHere } = require("./managerScope");
 
 const BADGE_PREFIX = "UK-STF-";
 // 16 байт в base64url — ровно 22 знака без «=».
@@ -130,6 +131,8 @@ function createDeskBadges({ auth, send, log, limits = null }) {
       if (!mayUse(ctx)) return FORBIDDEN;
       // Бейдж на строку с ролью выше своей не выпустить и не погасить (024).
       if (!(await mayBadge(c, staffRef))) return FORBIDDEN;
+      // Сотрудник чужого склада — его бейджи не трогать (Кирилл 22.11).
+      if (!(await staffHere(c, ctx, staffRef))) return FORBIDDEN;
       // Без роли стол не примет ни одной операции (Кирилл 13.11): бейдж без
       // роли выдаёт её сам — «Кладовщик / оператор», вся работа без решений по товару.
       if (!(await ensureDeskRole(c, ctx, staffRef))) return NO_ROLE;
@@ -170,6 +173,8 @@ function createDeskBadges({ auth, send, log, limits = null }) {
       if (!mayUse(ctx)) return FORBIDDEN;
       // Бейдж на строку с ролью выше своей не выпустить и не погасить (024).
       if (!(await mayBadge(c, staffRef))) return FORBIDDEN;
+      // Сотрудник чужого склада — его бейджи не трогать (Кирилл 22.11).
+      if (!(await staffHere(c, ctx, staffRef))) return FORBIDDEN;
       const { rowCount } = await c.query(
         `UPDATE uklad.desk_badges SET revoked_at = now(), revoked_by = $2
          WHERE org_id = uklad.current_org() AND staff_ref = $1 AND revoked_at IS NULL`,
@@ -186,7 +191,10 @@ function createDeskBadges({ auth, send, log, limits = null }) {
     const out = await withSession(req, async (c, ctx) => {
       if (!mayUse(ctx)) return FORBIDDEN;
       if (!checks.take(ctx.orgId)) return LIMITED;
-      return badgeAnswer(c, await whoseBadge(c, b.code));
+      const staffRef = await whoseBadge(c, b.code);
+      // Бейдж чужого склада — как чужой: не наш.
+      if (staffRef && !(await staffHere(c, ctx, staffRef))) return badgeAnswer(c, null);
+      return badgeAnswer(c, staffRef);
     });
     return reply(res, out, (r) => answerCheck(res, send, r));
   }

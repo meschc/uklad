@@ -42,6 +42,38 @@ async function managerWarehouse(c, ctx) {
   return managerRef(ctx, place, await withWarehouses(c, rows[0]?.data ?? {}));
 }
 
+/**
+ * Сотрудник у стола (`staffRef`) не с чужого склада: владелец — любой,
+ * руководитель — своего склада или ни на одном складе никогда не бывавший
+ * (кабинет выпускает бейдж новичку до того, как запись снимка дойдёт до
+ * сервера). Сотрудник другого склада — отказ (бейджи, роли у стола), и
+ * удалённый оттуда тоже: иначе склад Б выдал бы свой бейдж и роль человеку,
+ * которого владелец вернёт из корзины на склад А.
+ */
+async function staffHere(c, ctx, staffRef) {
+  const ref = await managerWarehouse(c, ctx);
+  if (ref === null) return true;
+  if (!ref) return false;
+  const { rows } = await c.query(
+    `SELECT NOT EXISTS (
+       SELECT 1 FROM uklad.staff s
+       WHERE s.org_id = uklad.current_org() AND s.ref = $2 AND s.warehouse_ref = $1
+         AND s.deleted_at IS NULL
+     ) AND (EXISTS (
+       SELECT 1 FROM uklad.staff s
+       WHERE s.org_id = uklad.current_org() AND s.ref = $2 AND s.warehouse_ref <> $1
+     ) OR EXISTS (
+       SELECT 1 FROM uklad.warehouses w,
+         jsonb_array_elements(CASE jsonb_typeof(w.card->'staff')
+           WHEN 'array' THEN w.card->'staff' ELSE '[]' END) e
+       WHERE w.org_id = uklad.current_org() AND w.ref <> $1
+         AND NOT w.staff_rows AND e->>'id' = $2
+     )) AS foreign`,
+    [ref, staffRef],
+  );
+  return !rows[0].foreign;
+}
+
 /** Человек команды — со склада `ref` (руководитель трогает только своих). */
 async function memberHere(c, memberId, ref) {
   const { rows } = await c.query(
@@ -139,9 +171,20 @@ function scopeRoot(data, scope) {
   return out;
 }
 
+/**
+ * Настройки компании, которые меняет только владелец: реквизиты (`account`) и
+ * тариф (`subscription`). Счётчики тары и коробов, правила перерывов в том же
+ * справочнике пишет и руководитель — без них склад не работает.
+ */
+const OWNER_VALUES = ["account", "subscription"];
+
 /** Запись руководителя: своё — из присланного, чужое — из базы. */
 function mergeRoot(full, after, scope) {
   const out = { ...after };
+  for (const key of OWNER_VALUES) {
+    if (full && key in full) out[key] = full[key];
+    else delete out[key];
+  }
   for (const key of PEOPLE) {
     const base = Array.isArray(full?.[key]) ? full[key] : [];
     const sent = Array.isArray(after?.[key]) ? after[key] : null;
@@ -175,6 +218,9 @@ function mergeRoot(full, after, scope) {
 async function rowsAllowed(c, ref, scope, upsert, remove) {
   const all = [...upsert, ...remove];
   if (!all.every((r) => isObject(r) && (r.w === ref || r.w === ""))) return false;
+  if (all.some((r) => r.w === "" && r.d === "companySettings" && OWNER_VALUES.includes(r.ref))) {
+    return false;
+  }
   if (!upsert.every((r) => r.w !== "" || !SCOPED.has(r.d) || owns(scope, r.d, r.data))) {
     return false;
   }
@@ -188,6 +234,16 @@ async function rowsAllowed(c, ref, scope, upsert, remove) {
     [JSON.stringify(touched.map(({ d, ref: k }) => ({ d, ref: k })))],
   );
   return rows.every((r) => owns(scope, r.d, r.data));
+}
+
+/**
+ * Архив для руководителя склада `ref`: строки своего склада и общих списков
+ * компании, а из журнала смен, корректировок и размещений — только свои.
+ */
+function archiveFor(ref, scope, rows) {
+  return rows.filter(
+    (r) => r.w === ref || (r.w === "" && (!SCOPED.has(r.d) || owns(scope, r.d, r.data))),
+  );
 }
 
 /**
@@ -215,11 +271,13 @@ module.exports = {
   managerRef,
   managerWarehouse,
   memberHere,
+  staffHere,
   restoreManager,
   foreignWarehouses,
   ownScope,
   scopeRoot,
   mergeRoot,
   rowsAllowed,
+  archiveFor,
   foreignCounts,
 };
