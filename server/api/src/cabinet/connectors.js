@@ -35,8 +35,57 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { createCipheriv, createDecipheriv, randomBytes } = require("node:crypto");
 const { createRateLimit } = require("../rateLimit");
+const { managerWarehouse } = require("./managerScope");
 
 const PERM = "integrations.manage";
+
+/**
+ * Подключения у каждого склада свои (Кирилл 22.11): владелец видит и трогает
+ * все, руководитель склада — только подключения своего склада. Подключение
+ * без склада (до миграции 050) — склада, если он у компании один, как
+ * `connectionWarehouse` подкачки; иначе — только владельцу.
+ * `null` — владелец, `false` — склад не назначен.
+ */
+async function connectorScope(c, ctx) {
+  const ref = await managerWarehouse(c, ctx);
+  if (!ref) return ref;
+  const { rows } = await c.query(
+    `SELECT count(*)::int AS n FROM uklad.warehouses
+     WHERE card IS NOT NULL AND deleted_at IS NULL AND NOT placeholder`,
+  );
+  return { ref, single: rows[0].n === 1 };
+}
+
+/** Подключения склада: параметр `$n` — склад (пусто — все), `$n+1` — склад у компании один. */
+function ownRows(n) {
+  const wh = "$" + n;
+  const single = "$" + (n + 1);
+  return `(${wh}::text IS NULL OR params->>'warehouseId' = ${wh}
+    OR (params->>'warehouseId' IS NULL AND ${single}::boolean))`;
+}
+const scopeArgs = (scope) => [scope?.ref ?? null, scope?.single ?? false];
+
+/** Единственный склад компании или `null`, если их несколько или нет. */
+async function onlyWarehouse(c) {
+  const { rows } = await c.query(
+    `SELECT ref FROM uklad.warehouses
+     WHERE card IS NOT NULL AND deleted_at IS NULL AND NOT placeholder`,
+  );
+  return rows.length === 1 ? rows[0].ref : null;
+}
+
+/** Партнёр `ref` — живой партнёр склада `wh`. */
+async function partnerHere(c, wh, ref) {
+  const { rowCount } = await c.query(
+    `SELECT 1 FROM uklad.partners
+     WHERE org_id = uklad.current_org() AND warehouse_ref = $1 AND ref = $2 AND deleted_at IS NULL`,
+    [wh, ref],
+  );
+  return rowCount > 0;
+}
+
+/** Ответ «склад чужой» из сессии. */
+const FOREIGN = Symbol("foreign");
 const TIMEOUT_MS = 20_000;
 const MAX_RESPONSE = 20 * 1024 * 1024;
 const ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -240,19 +289,24 @@ function createConnectors({ auth, send, log, secretKey, fetchImpl = fetch, pull 
 
   /** Сессия с правом на интеграции; иначе ответ уже отправлен и `null`. */
   async function session(req, res, fn) {
-    const out = await withSession(req, async (c, ctx) =>
-      ctx.can(PERM) ? { value: await fn(c, ctx) } : { denied: true },
-    );
+    const out = await withSession(req, async (c, ctx) => {
+      if (!ctx.can(PERM)) return { denied: true };
+      // Руководитель без склада при нескольких складах — ни одного подключения.
+      const scope = await connectorScope(c, ctx);
+      if (scope === false) return { denied: true };
+      return { value: await fn(c, ctx, scope) };
+    });
     if (!out) return (send(res, 401, { ok: false }), null);
     if (out.denied) return (send(res, 403, { ok: false, error: "forbidden" }), null);
     return out;
   }
 
   async function list(req, res) {
-    const out = await session(req, res, async (c) => {
+    const out = await session(req, res, async (c, ctx, scope) => {
       const r = await c.query(
         `SELECT id, system, label, params, created_at, pull_result FROM uklad.connector_accounts
-         WHERE deleted_at IS NULL ORDER BY created_at`,
+         WHERE deleted_at IS NULL AND ${ownRows(1)} ORDER BY created_at`,
+        scopeArgs(scope),
       );
       return r.rows.map((x) => ({
         id: x.id,
@@ -288,7 +342,14 @@ function createConnectors({ auth, send, log, secretKey, fetchImpl = fetch, pull 
       return send(res, 400, { ok: false, error: "bad_input" });
     if (warehouseId && !/^[A-Za-z0-9_-]{1,100}$/.test(warehouseId))
       return send(res, 400, { ok: false, error: "bad_input" });
-    const out = await session(req, res, async (c, ctx) => {
+    const out = await session(req, res, async (c, ctx, scope) => {
+      // Руководитель подключает только свой склад: не назван — его склад.
+      if (scope && warehouseId && warehouseId !== scope.ref) return FOREIGN;
+      // Склад не назван, а он у компании один — он: подключение без склада
+      // молча перестало бы работать, когда появится второй склад.
+      const place = scope ? scope.ref : warehouseId || (await onlyWarehouse(c));
+      // Партнёр — со склада руководителя: ключ магазина чужого склада ему не положен.
+      if (scope && partnerId && !(await partnerHere(c, scope.ref, partnerId))) return FOREIGN;
       const id = (await c.query("SELECT gen_random_uuid() AS id")).rows[0].id;
       await c.query(
         `INSERT INTO uklad.connector_accounts (id, org_id, system, label, params, secret, created_by)
@@ -301,7 +362,7 @@ function createConnectors({ auth, send, log, secretKey, fetchImpl = fetch, pull 
           {
             ...(clientId ? { clientId } : {}),
             ...(partnerId ? { partnerId } : {}),
-            ...(warehouseId ? { warehouseId } : {}),
+            ...(place ? { warehouseId: place } : {}),
           },
           sealer.seal({ token }, aad(ctx.orgId, id)),
           ctx.accountId,
@@ -309,6 +370,7 @@ function createConnectors({ auth, send, log, secretKey, fetchImpl = fetch, pull 
       );
       return id;
     });
+    if (out?.value === FOREIGN) return send(res, 403, { ok: false, error: "forbidden" });
     if (out) send(res, 200, { ok: true, id: out.value });
   }
 
@@ -319,10 +381,11 @@ function createConnectors({ auth, send, log, secretKey, fetchImpl = fetch, pull 
     const label = str(b.label, 100);
     if (typeof b.id !== "string" || !ID_RE.test(b.id) || !label)
       return send(res, 400, { ok: false, error: "bad_input" });
-    const out = await session(req, res, async (c) => {
+    const out = await session(req, res, async (c, ctx, scope) => {
       const r = await c.query(
-        `UPDATE uklad.connector_accounts SET label = $2 WHERE id = $1 AND deleted_at IS NULL`,
-        [b.id, label],
+        `UPDATE uklad.connector_accounts SET label = $2
+         WHERE id = $1 AND deleted_at IS NULL AND ${ownRows(3)}`,
+        [b.id, label, ...scopeArgs(scope)],
       );
       return r.rowCount;
     });
@@ -353,12 +416,13 @@ function createConnectors({ auth, send, log, secretKey, fetchImpl = fetch, pull 
       ...(b.enabled !== undefined ? { stockPush: b.enabled } : {}),
       ...(b.warehouseId !== undefined ? { platformWarehouseId: b.warehouseId } : {}),
     };
-    const out = await session(req, res, async (c) => {
+    const out = await session(req, res, async (c, ctx, scope) => {
       const r = await c.query(
         `UPDATE uklad.connector_accounts
          SET params = coalesce(params, '{}'::jsonb) || $2::jsonb
-         WHERE id = $1 AND system IN ('ozon', 'yandex-market') AND deleted_at IS NULL`,
-        [b.id, JSON.stringify(patch)],
+         WHERE id = $1 AND system IN ('ozon', 'yandex-market') AND deleted_at IS NULL
+           AND ${ownRows(3)}`,
+        [b.id, JSON.stringify(patch), ...scopeArgs(scope)],
       );
       return r.rowCount;
     });
@@ -369,12 +433,12 @@ function createConnectors({ auth, send, log, secretKey, fetchImpl = fetch, pull 
     const b = await readJson(req, res, 1024);
     if (!b) return;
     if (typeof b.id !== "string" || !ID_RE.test(b.id)) return send(res, 400, { ok: false });
-    const out = await session(req, res, async (c) => {
+    const out = await session(req, res, async (c, ctx, scope) => {
       // В корзину, а ключ затираем сразу: удалённое подключение к площадке не ходит.
       const r = await c.query(
         `UPDATE uklad.connector_accounts SET deleted_at = now(), secret = $2
-         WHERE id = $1 AND deleted_at IS NULL`,
-        [b.id, randomBytes(29)],
+         WHERE id = $1 AND deleted_at IS NULL AND ${ownRows(3)}`,
+        [b.id, randomBytes(29), ...scopeArgs(scope)],
       );
       return r.rowCount;
     });
@@ -391,11 +455,11 @@ function createConnectors({ auth, send, log, secretKey, fetchImpl = fetch, pull 
       return send(res, 400, { ok: false });
     const qs = queryString(b.query);
     if (qs === null) return send(res, 400, { ok: false });
-    const out = await session(req, res, async (c, ctx) => {
+    const out = await session(req, res, async (c, ctx, scope) => {
       const r = await c.query(
         `SELECT id, params, secret FROM uklad.connector_accounts
-         WHERE id = $1 AND system = $2 AND deleted_at IS NULL`,
-        [b.account, system],
+         WHERE id = $1 AND system = $2 AND deleted_at IS NULL AND ${ownRows(3)}`,
+        [b.account, system, ...scopeArgs(scope)],
       );
       return r.rows[0] ? { row: r.rows[0], orgId: ctx.orgId } : null;
     });
@@ -436,12 +500,12 @@ function createConnectors({ auth, send, log, secretKey, fetchImpl = fetch, pull 
     if (b.id !== undefined && (typeof b.id !== "string" || !ID_RE.test(b.id)))
       return send(res, 400, { ok: false });
     const one = typeof b.id === "string" ? b.id : null;
-    const out = await session(req, res, async (c, ctx) => {
+    const out = await session(req, res, async (c, ctx, scope) => {
       const r = await c.query(
         `SELECT id, system FROM uklad.connector_accounts
-         WHERE deleted_at IS NULL AND ($1::uuid IS NULL OR id = $1)
+         WHERE deleted_at IS NULL AND ($1::uuid IS NULL OR id = $1) AND ${ownRows(2)}
          ORDER BY created_at`,
-        [one],
+        [one, ...scopeArgs(scope)],
       );
       // Билет прохода — под сессией и только своей компании (миграция 050).
       const rows = [];

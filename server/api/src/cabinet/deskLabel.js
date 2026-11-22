@@ -20,6 +20,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { allowed, askPlatform, createSealer } = require("./connectors");
 const { deskPlace } = require("./deskPlace");
+const { warehousesOf } = require("./viewerPlace");
 const { may, loadDeskPerms } = require("./deskPerms");
 const { loadCabinet } = require("./snapshot");
 const { createRateLimit } = require("../rateLimit");
@@ -61,12 +62,17 @@ const LABEL = {
       : null,
 };
 
-/** Подключение заявки: та же площадка, тот же партнёр, склад стола или любой. */
-function connectionFor(rows, partnerId, warehouseRef) {
+/**
+ * Подключение заявки: та же площадка, тот же партнёр, склад стола. Без склада
+ * (до миграции 050) — только когда склад у компании один: ключ другого склада
+ * столу не положен (Кирилл 22.11).
+ */
+function connectionFor(rows, partnerId, warehouseRef, single = false) {
   const fit = rows.filter((r) => {
     const p = isObject(r.params) ? r.params : {};
     return (
-      (p.partnerId ?? null) === partnerId && (!p.warehouseId || p.warehouseId === warehouseRef)
+      (p.partnerId ?? null) === partnerId &&
+      (p.warehouseId ? p.warehouseId === warehouseRef : single)
     );
   });
   return fit.length === 1 ? fit[0] : null;
@@ -109,7 +115,8 @@ function createLabelRoutes({
       const { rows: snap } = await c.query(
         `SELECT data FROM uklad.cabinet_snapshots WHERE org_id = uklad.current_org()`,
       );
-      const place = snap[0] ? deskPlace(await loadCabinet(c, snap[0].data), d.deviceRef) : null;
+      const full = snap[0] ? await loadCabinet(c, snap[0].data) : null;
+      const place = full ? deskPlace(full, d.deviceRef) : null;
       if (!place) return { error: "desk_warehouse", status: 409 };
       const r = list(place.data.requests).find((x) => isObject(x) && x.id === b.requestId);
       const make = r && LABEL[r.source];
@@ -123,7 +130,7 @@ function createLabelRoutes({
          WHERE system = $1 AND deleted_at IS NULL`,
         [r.source],
       );
-      const account = connectionFor(rows, partnerId, place.ref);
+      const account = connectionFor(rows, partnerId, place.ref, warehousesOf(full).length === 1);
       if (!account) return { error: "no_connection", status: 404 };
       return { orgId: d.orgId, system: r.source, externalId: String(r.externalId), account };
     });
