@@ -168,7 +168,7 @@ describe("workstationRepository: стол с пропуском на серве�
     vi.mocked(desks.checkBind).mockResolvedValue(ok(undefined));
     const confirm = { code: "UK-STF-BBBBBBBBBBBBBBBBBBBBBB" };
     expect((await repo.addDevice("Стол 1", "pack", confirm)).ok).toBe(true);
-    expect(desks.checkBind).toHaveBeenLastCalledWith(confirm);
+    expect(desks.checkBind).toHaveBeenLastCalledWith(confirm, expect.any(String));
     expect(desks.open).toHaveBeenLastCalledWith("dev-1", "Стол 1", confirm);
   });
 

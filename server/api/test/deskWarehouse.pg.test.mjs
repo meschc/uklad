@@ -316,3 +316,30 @@ test("стол склада Б открывают, пока у руководи�
   const boss = (await call("/api/cabinet/snapshot", c.boss)).json.snapshot.data;
   assert.deepEqual(boss.boxes[0].lines, [{ productId: "pr1", qty: 3 }]);
 });
+
+// Кирилл 22.11: склады одной компании связывает только владелец. Начальник
+// склада Б не заводит и не отвязывает стол склада А своим бейджем.
+test("стол склада А не подтвердить руководителем склада Б", { skip: SKIP }, async () => {
+  const c = await company("wh-desk-bind@sklad.ru", "10.0.9.6");
+  await db.root.query(
+    `INSERT INTO uklad.desk_staff_roles (org_id, staff_ref, role_id)
+     SELECT $1, 'stf-b', id FROM uklad.roles WHERE org_id = $1 AND name = 'Начальник склада'
+     ON CONFLICT (org_id, staff_ref) DO UPDATE SET role_id = EXCLUDED.role_id`,
+    [c.org],
+  );
+  const check = (warehouseRef) =>
+    call("/api/cabinet/desks/check", { ...c.boss, body: { code: c.petr, warehouseRef } });
+  const there = await check("wh_a");
+  assert.deepEqual([there.status, there.json.error], [422, "other_warehouse"]);
+  assert.equal((await check("wh_b")).status, 200);
+  // Без склада проверка не проходит: неизвестно, чей это стол.
+  assert.equal((await check(undefined)).status, 409);
+  const bind = await call("/api/cabinet/desks", {
+    ...c.boss,
+    body: { deviceRef: "dev-a", name: "Стол А", code: c.petr },
+  });
+  assert.deepEqual([bind.status, bind.json.error], [422, "other_warehouse"]);
+  // Отвязать стол А бейджем Петра — тоже нет.
+  const off = await call("/api/desk/unbind", { desk: c.desk, body: { code: c.petr } });
+  assert.deepEqual([off.status, off.json.error], [404, "not_manager"]);
+});

@@ -229,6 +229,8 @@ export const ru = {
   "ws.panel.close": "Закрыть",
   "ws.device.nameEmpty": "Назовите устройство — по имени столы и различают",
   "ws.device.notManager": "Это не бейдж руководителя",
+  "ws.device.otherWarehouse":
+    "Это руководитель другого склада. Подтвердите руководителем этого склада или владельцем компании.",
   "ws.kiosk.unbind": "Отвязать устройство",
   "ws.kiosk.unbindHint": "Отсканируйте бейдж руководителя",
   "ws.kiosk.unbindHintServer": "Отсканируйте бейдж старшего или войдите паролем руководителя",
@@ -879,6 +881,8 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.panel.close": "Close",
   "ws.device.nameEmpty": "Name the device — that is how desks are told apart",
   "ws.device.notManager": "This is not a manager's badge",
+  "ws.device.otherWarehouse":
+    "This is a manager of another warehouse. Confirm with a manager of this warehouse or the company owner.",
   "ws.kiosk.unbind": "Unbind device",
   "ws.kiosk.unbindHint": "Scan a manager's badge",
   "ws.kiosk.unbindHintServer": "Scan a senior's badge or use a manager's password",

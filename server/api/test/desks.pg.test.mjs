@@ -326,7 +326,8 @@ test("привязать стол может только руководител
   const bare = await bind();
   assert.deepEqual([bare.status, bare.json.error], [428, "confirm"]);
   // Проверка до привязки отвечает так же и ничего не меняет.
-  const check = (body) => call("/api/cabinet/desks/check", { ...a, body });
+  const check = (body) =>
+    call("/api/cabinet/desks/check", { ...a, body: { warehouseRef: "wh_1", ...body } });
   assert.equal((await check({})).status, 428);
   assert.equal((await check({ code: ivan })).status, 422);
   assert.equal((await check({ code: boss })).status, 200);
