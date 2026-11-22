@@ -14,6 +14,8 @@
 const ACTION_RE = /^[a-z]{2,30}\.[a-z_]{2,30}$/;
 const MAX_REF = 200;
 const MAX_DETAILS = 2000;
+/** Одинаковое действие того же человека чаще — повтор, а не новая строка. */
+const REPEAT_SECONDS = 10;
 
 const SOURCES = new Set(["cabinet", "desk", "pull", "system"]);
 /** Ключи, которых в подробностях быть не может: журнал видят и старшие. */
@@ -46,12 +48,33 @@ async function logAction(
   if (hasSecretKey(details)) throw new Error(`audit: в подробностях ${action} лишнее поле`);
   const text = JSON.stringify(isObject(details) ? details : {});
   if (text.length > MAX_DETAILS) throw new Error(`audit: подробности ${action} длиннее лимита`);
+  const args = [refOrNull(warehouse), action, refOrNull(target), text, source, refOrNull(staffRef)];
+  // Повтор того же действия тем же человеком за `REPEAT_SECONDS` (двойной
+  // клик, 1000 нажатий, повтор запроса после обрыва) — одна строка, а не
+  // тысяча. Одновременные повторы ждут друг друга на блокировке ключа.
+  await c.query(
+    `SELECT pg_advisory_xact_lock(hashtextextended(
+       concat_ws('|', uklad.current_org(), uklad.current_member(), $1::text, $2::text,
+                 $3::text, $4::text, $5::text, $6::text), 62))`,
+    args,
+  );
+  const same = await c.query(
+    `SELECT id, org_id, member_id FROM uklad.audit_events
+     WHERE org_id = uklad.current_org() AND warehouse_ref IS NOT DISTINCT FROM $1
+       AND action = $2 AND target IS NOT DISTINCT FROM $3 AND details = $4::jsonb
+       AND source = $5 AND staff_ref IS NOT DISTINCT FROM $6
+       AND member_id IS NOT DISTINCT FROM uklad.current_member()
+       AND at > clock_timestamp() - make_interval(secs => $7)
+     ORDER BY at DESC LIMIT 1`,
+    [...args, REPEAT_SECONDS],
+  );
+  if (same.rows[0]) return same.rows[0].id;
   const { rows } = await c.query(
     `INSERT INTO uklad.audit_events
-       (org_id, warehouse_ref, action, target, details, source, staff_ref)
-     VALUES (uklad.current_org(), $1, $2, $3, $4::jsonb, $5, $6)
+       (org_id, warehouse_ref, action, target, details, source, staff_ref, at)
+     VALUES (uklad.current_org(), $1, $2, $3, $4::jsonb, $5, $6, clock_timestamp())
      RETURNING id, org_id, member_id`,
-    [refOrNull(warehouse), action, refOrNull(target), text, source, refOrNull(staffRef)],
+    args,
   );
   const r = rows[0];
   // Лог поддержки: те же id, по ним строку находят в журнале.

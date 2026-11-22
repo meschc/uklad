@@ -489,6 +489,26 @@ test(
       `SELECT member_id, source FROM uklad.audit_events WHERE action = 'role.delete'`,
     );
     assert.deepEqual(rows, [{ member_id: someone, source: "cabinet" }]);
+    // Что если нажать 1000 раз или прислать двадцать раз одновременно: одна строка.
+    const rowsOf = async (action) =>
+      (
+        await db.root.query(`SELECT count(*)::int AS n FROM uklad.audit_events WHERE action = $1`, [
+          action,
+        ])
+      ).rows[0].n;
+    const tap = (target) =>
+      asOrg(
+        db.pool,
+        c.org,
+        (x) => logAction(x, log, { action: "member.disable", warehouse: "wh_a", target }),
+        someone,
+      );
+    for (let i = 0; i < 1000; i++) await tap("m-1");
+    await Promise.all(Array.from({ length: 20 }, () => tap("m-1")));
+    assert.equal(await rowsOf("member.disable"), 1);
+    // Другой человек (target) — своя строка: схлопываются только одинаковые.
+    await tap("m-2");
+    assert.equal(await rowsOf("member.disable"), 2);
     // Ключи, токены, почты и телефоны в подробности не попадают, на любой глубине.
     for (const details of [{ token: "x" }, { a: [{ apiKey: "x" }] }, { email: "a@b.c" }]) {
       await assert.rejects(
