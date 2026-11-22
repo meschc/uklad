@@ -401,6 +401,66 @@ test("тип скана и «пик за товар» — правило баз�
 });
 
 /** Путь одной штуки по складу А, строками операций, как их пишут столы. */
+test(
+  "действия руководителей: свой склад, компания — владельцу, член из сессии",
+  { skip: SKIP },
+  async () => {
+    const { asOrg } = await import("../../db/test/helpers.js");
+    const { logAction } = require("../src/cabinet/audit.js");
+    const c = await company("journal-audit@sklad.ru", "10.0.7.20");
+    const lead = await invited(c.boss, "lead-audit@sklad.ru", "Старший смены", "wh_b", "stf-l");
+    const lines = [];
+    const log = { info: (m) => lines.push(m) };
+    const put = (warehouse, action, target) =>
+      asOrg(db.pool, c.org, (x) =>
+        logAction(x, log, { action, warehouse, target, details: { n: 1 } }),
+      );
+    await put("wh_a", "role.save", "role-a");
+    await put("wh_b", "connector.delete", "conn-b");
+    await put(null, "company.account", null);
+    // Строка лога поддержки — с id, без имён.
+    assert.equal(lines.length, 3);
+    assert.match(lines[1], /действие connector\.delete .*"warehouse":"wh_b".*"target":"conn-b"/);
+
+    const kinds = (r) => r.json.entries.filter((e) => e.source === "audit").map((e) => e.kind);
+    // Без процесса «admin» экран журнала их пока не получает.
+    assert.deepEqual(kinds(await journal(c.boss, "?warehouse=wh_a")), []);
+    // Владелец: склад А и действия компании.
+    const boss = await journal(c.boss, "?warehouse=wh_a&steps=admin");
+    assert.equal(boss.status, 200, JSON.stringify(boss.json));
+    assert.deepEqual(kinds(boss).sort(), ["company.account", "role.save"]);
+    // Старший склада Б: только склад Б, без действий компании и склада А.
+    const own = await journal(lead, "?steps=admin");
+    assert.equal(own.status, 200, JSON.stringify(own.json));
+    assert.deepEqual(kinds(own), ["connector.delete"]);
+    assert.equal((await journal(lead, "?warehouse=wh_a&steps=admin")).status, 403);
+
+    // Подписать действие чужим участником нельзя: RLS сверяет с сессией.
+    const someone = "00000000-0000-7000-8000-000000000001";
+    await assert.rejects(
+      asOrg(db.pool, c.org, (x) =>
+        x.query(
+          `INSERT INTO uklad.audit_events (org_id, action, member_id) VALUES ($1, 'role.save', $2)`,
+          [c.org, someone],
+        ),
+      ),
+    );
+    // Чужой компании строку не записать.
+    const other = await company("journal-audit2@sklad.ru", "10.0.7.21");
+    await assert.rejects(
+      asOrg(db.pool, other.org, (x) =>
+        x.query(`INSERT INTO uklad.audit_events (org_id, action) VALUES ($1, 'role.save')`, [
+          c.org,
+        ]),
+      ),
+    );
+    // Журнал не правят и не чистят.
+    await assert.rejects(asOrg(db.pool, c.org, (x) => x.query(`DELETE FROM uklad.audit_events`)));
+    // Неверный вид действия — ошибка, а не тихий пропуск.
+    await assert.rejects(asOrg(db.pool, c.org, (x) => logAction(x, log, { action: "Bad Action" })));
+  },
+);
+
 async function seedPath(c, prefix) {
   const desk = (
     await db.root.query(`SELECT id FROM auth.desk_sessions WHERE org_id = $1 LIMIT 1`, [c.org])
