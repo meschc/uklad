@@ -235,7 +235,7 @@ export function createWorkstationRepository(
       if (onServer(port)) {
         // Сначала — что руководитель подтверждён: иначе каждый отказ оставлял
         // бы у себя заведённое и тут же погашенное устройство.
-        const allowed = await desks.checkBind(confirm);
+        const allowed = await desks.checkBind(confirm, port.get().warehouse?.id ?? "");
         if (!allowed.ok) return allowed;
       }
       const made = await attempt(() => port.get().addDevice(name, station));

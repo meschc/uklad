@@ -63,7 +63,7 @@ const { recordStorage } = require("./storage");
 const { isOp, runDeskOps, MAX_OPS } = require("./deskOps");
 const { createSwitchRoutes } = require("./deskSwitch");
 const { createLabelRoutes } = require("./deskLabel");
-const { deskPlace } = require("./deskPlace");
+const { deskPlace, deskWarehouse } = require("./deskPlace");
 
 // Стол живёт, пока его не отвяжут; срок — страховка от забытого компьютера.
 const DESK_TTL_MS = 180 * 86_400_000;
@@ -448,6 +448,32 @@ function createDesks({ auth, cfg, send, log, secretKey = null, fetchImpl = fetch
     });
   }
 
+  const isRef = (v) => typeof v === "string" && v.length >= 1 && v.length <= 100;
+
+  /** Сотрудник на этом складе: строкой (054) или в карточке склада до неё. */
+  async function staffOf(c, warehouseRef, staffRef) {
+    const { rows } = await c.query(
+      `SELECT EXISTS (
+         SELECT 1 FROM uklad.staff s
+         WHERE s.org_id = uklad.current_org() AND s.warehouse_ref = $1 AND s.ref = $2
+           AND s.deleted_at IS NULL)
+       OR EXISTS (
+         SELECT 1 FROM uklad.warehouses w
+         WHERE w.org_id = uklad.current_org() AND w.ref = $1 AND w.deleted_at IS NULL
+           AND NOT w.staff_rows
+           AND w.card->'staff' @> jsonb_build_array(jsonb_build_object('id', $2::text))) AS ok`,
+      [warehouseRef, staffRef],
+    );
+    return rows[0].ok === true;
+  }
+
+  /** Вошедший руководит этим складом: владелец — любым, остальные — своим. */
+  async function actorHere(c, ctx, warehouseRef) {
+    if (ctx.can("org.manage")) return true;
+    const place = (await c.query(`SELECT warehouse_ref FROM auth.actor_place()`)).rows[0];
+    return place?.warehouse_ref === warehouseRef;
+  }
+
   // ---- Руководитель ----
 
   async function open(req, res) {
@@ -464,11 +490,12 @@ function createDesks({ auth, cfg, send, log, secretKey = null, fetchImpl = fetch
     if (byPassword === undefined) return;
     const out = await withSession(req, async (c, ctx) => {
       if (!ctx.accountId || !ctx.can("staff.manage")) return 403;
-      const confirmed = await bindConfirmed(c, ctx, hash, b, byPassword);
-      if (confirmed !== true) return confirmed;
       // Стол — устройство склада: без него стол не знал бы, чью работу вести.
       // Кабинет дописывает устройство на сервер до этого запроса (`deskServer.ts`).
-      if (!deskPlace(await companyDoc(c), deviceRef)) return 409;
+      const place = deskPlace(await companyDoc(c), deviceRef);
+      if (!place) return 409;
+      const confirmed = await bindConfirmed(c, ctx, hash, b, byPassword, place.ref);
+      if (confirmed !== true) return confirmed;
       await c.query(`SELECT auth.open_desk($1, $2, $3, $4::interval)`, [
         deviceRef,
         name,
@@ -493,17 +520,24 @@ function createDesks({ auth, cfg, send, log, secretKey = null, fetchImpl = fetch
    * забытый открытым вход руководителя давал бы любому завести стол.
    * `true` — можно; иначе ответ отказа `{ status, error }`.
    */
-  async function bindConfirmed(c, ctx, hash, b, byPassword) {
-    if (byPassword) {
-      return byPassword === ctx.accountId ? true : { status: 422, error: "bad_credentials" };
-    }
-    if (typeof b.code === "string" && b.code) {
+  async function bindConfirmed(c, ctx, hash, b, byPassword, warehouseRef) {
+    // Склады одной компании связывает только владелец (Кирилл 22.11): стол
+    // склада А не заводит руководитель склада Б — ни своим входом, ни бейджем.
+    if (!isRef(warehouseRef)) return { status: 409, error: "desk_warehouse" };
+    if (typeof b.code === "string" && b.code && !byPassword) {
       if (!checks.take(ctx.orgId)) return { status: 429, error: "too_many" };
       const staffRef = await whoseBadge(c, b.code);
       const perms = staffRef ? await loadDeskPerms(c, [staffRef]) : {};
-      return staffRef && may({ perms }, staffRef, STAFF_MANAGE)
+      if (!staffRef || !may({ perms }, staffRef, STAFF_MANAGE)) {
+        return { status: 422, error: "not_manager" };
+      }
+      return (await staffOf(c, warehouseRef, staffRef))
         ? true
-        : { status: 422, error: "not_manager" };
+        : { status: 422, error: "other_warehouse" };
+    }
+    if (!(await actorHere(c, ctx, warehouseRef))) return { status: 422, error: "other_warehouse" };
+    if (byPassword) {
+      return byPassword === ctx.accountId ? true : { status: 422, error: "bad_credentials" };
     }
     const { rows } = await c.query(`SELECT auth.session_fresh($1, $2::interval) AS fresh`, [
       hash,
@@ -524,7 +558,7 @@ function createDesks({ auth, cfg, send, log, secretKey = null, fetchImpl = fetch
     if (pw === undefined) return;
     const out = await withSession(req, async (c, ctx) => {
       if (!ctx.accountId || !ctx.can("staff.manage")) return 403;
-      const confirmed = await bindConfirmed(c, ctx, tokenHash(req), b, pw);
+      const confirmed = await bindConfirmed(c, ctx, tokenHash(req), b, pw, b.warehouseRef);
       return confirmed === true ? 200 : confirmed;
     });
     if (out === null) return send(res, 401, { ok: false });
@@ -847,6 +881,9 @@ function createDesks({ auth, cfg, send, log, secretKey = null, fetchImpl = fetch
       // Отвязать стол — право роли на персонал, а не должность в снимке.
       const perms = await loadDeskPerms(c, [staffRef]);
       if (!may({ perms }, staffRef, STAFF_MANAGE)) return { manager: false };
+      // Руководитель другого склада стол этого не отвязывает (Кирилл 22.11).
+      const here = deskWarehouse(await companyDoc(c), d.deviceRef);
+      if (!here || !(await staffOf(c, here, staffRef))) return { manager: false };
       await c.query(`SELECT auth.close_desk($1, $2)`, [deskHash(req), staffRef]);
       return { manager: true };
     });
