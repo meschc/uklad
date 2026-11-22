@@ -204,17 +204,22 @@ function splitCabinet(data) {
  * человека: из корзины в кабинете пока не восстановить, поэтому такую запись
  * сервер не принимает. Счёт — за сутки, а не за одну запись: иначе каталог
  * стирался бы частями по девять. Большой каталог чистится за несколько
- * дней, маленький (один-два товара) — как обычно.
+ * дней, маленький (один-два товара) — как обычно. Заведённое за последние
+ * сутки в счёт не идёт (ревью безопасности #238).
  */
 async function massDelete(c, data) {
   if (!Array.isArray(data.products)) return false;
   const refs = data.products.map((p) => p?.id).filter((id) => typeof id === "string");
+  // Считаем только товары, жившие сутки назад: заведённые сегодня (опечатки
+  // импорта) удаляются свободно и не раздувают базу — иначе тысяча пустышек
+  // первой записью позволила бы второй стереть настоящий каталог.
   const { rows } = await c.query(
     `SELECT count(*) FILTER (WHERE deleted_at IS NULL)::int AS live,
             count(*) FILTER (WHERE deleted_at IS NULL AND NOT (ref = ANY($1::text[])))::int AS gone,
             count(*) FILTER (WHERE deleted_at > now() - interval '1 day'
                              AND NOT (ref = ANY($1::text[])))::int AS day
      FROM uklad.products WHERE org_id = uklad.current_org()
+       AND created_at <= now() - interval '1 day'
        AND (deleted_at IS NULL OR deleted_at > now() - interval '1 day')`,
     [refs],
   );

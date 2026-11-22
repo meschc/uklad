@@ -73,6 +73,18 @@ async function backdateDeleted(org) {
   );
 }
 
+/** Товары компании заведены «позавчера»: свежие защита каталога не считает. */
+async function backdateCreated(org) {
+  assert.match(org, /^[0-9a-f-]{36}$/);
+  await db.root.query(
+    `BEGIN;
+     SELECT set_config('app.org_id', '${org}', true);
+     UPDATE uklad.products SET created_at = created_at - interval '3 days'
+     WHERE org_id = '${org}';
+     COMMIT;`,
+  );
+}
+
 async function call(path, { body, raw, cookie, org, ip = "10.0.1.1" } = {}) {
   const res = await fetch(base + path, {
     method: body || raw ? "POST" : "GET",
@@ -387,6 +399,7 @@ test(
         body: { version, format: 8, data: { ...data("склад"), products } },
       });
     assert.equal((await save(0, cards)).status, 200);
+    await backdateCreated(a.org);
     // Сбой клиента: стор пустой — сервер не принимает и снимок не двигает.
     const wiped = await save(1, []);
     assert.equal(wiped.status, 409);
@@ -428,6 +441,7 @@ test(
         body: { version, format: 8, data: { ...data("склад"), products } },
       });
     assert.equal((await save(0, cards)).status, 200);
+    await backdateCreated(a.org);
     const wiped = await save(1, []);
     assert.equal(wiped.status, 409);
     assert.equal(wiped.json.error, "products_mass_delete");
@@ -436,6 +450,30 @@ test(
     assert.equal((await save(2, [])).status, 409);
     await backdateDeleted(a.org);
     assert.equal((await save(2, [])).status, 200);
+  },
+);
+
+test(
+  "свежие товары базу не раздувают: завёл 1000 пустышек — 100 старых всё равно не стереть",
+  { skip: SKIP },
+  async () => {
+    const a = await owner("snap-pad@sklad.ru", "10.0.1.31");
+    const card = (p, i) => ({ id: `${p}${i}`, sku: `${p.toUpperCase()}${i}`, name: `${p}${i}` });
+    const real = Array.from({ length: 100 }, (_, i) => card("p", i));
+    const junk = Array.from({ length: 1000 }, (_, i) => card("j", i));
+    const save = (version, products) =>
+      call("/api/cabinet/snapshot", {
+        ...a,
+        body: { version, format: 8, data: { ...data("склад"), products } },
+      });
+    assert.equal((await save(0, real)).status, 200);
+    await backdateCreated(a.org);
+    assert.equal((await save(1, [...real, ...junk])).status, 200);
+    const wipe = await save(2, junk);
+    assert.equal(wipe.status, 409);
+    assert.equal(wipe.json.error, "products_mass_delete");
+    // Свежезаведённое (ошибка импорта) удаляется свободно.
+    assert.equal((await save(2, real)).status, 200);
   },
 );
 
