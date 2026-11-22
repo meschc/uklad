@@ -3,8 +3,8 @@ import { ensureArchive, useArchiveStatus } from "@/lib/store/archive";
 import { Button } from "@/components/ui/button";
 
 /**
- * Строка над отчётом, пока он считает не всю историю: архив старше 45 дней
- * ещё едет с сервера или не доехал (`store/archive.ts`). Когда всё на месте
+ * Строка над отчётом, пока он считает не всю историю: архив старше 7 дней
+ * ещё едет с сервера, не доехал или закрыт этому входу (`store/archive.ts`). Когда всё на месте
  * (и в демо, где архива нет), её нет вовсе.
  */
 export function ArchiveNote() {
@@ -14,6 +14,14 @@ export function ArchiveNote() {
     return (
       <p role="status" className="text-xs text-muted-foreground">
         {t("archive.loading")}
+      </p>
+    );
+  }
+  // Архив открыт только руководителю: честно говорим, что здесь неделя.
+  if (status === "closed") {
+    return (
+      <p role="status" className="text-xs text-muted-foreground">
+        {t("archive.closed")}
       </p>
     );
   }

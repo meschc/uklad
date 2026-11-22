@@ -8,7 +8,7 @@ import { useEditor } from "./index";
 
 /**
  * Окно истории (ADR 0010, потолок данных, шаг 3). Сервер отдаёт кабинету
- * живую работу и последние 45 дней, законченное старше — в архиве. Отчёты за
+ * живую работу и последние 7 дней, законченное старше — в архиве. Отчёты за
  * долгий период (аналитика, услуги, документы, персонал) подмешивают архив
  * к тому, что в сторе: `useWithArchive("requests")` вместо
  * `useEditor((s) => s.requests)`.
@@ -20,7 +20,8 @@ import { useEditor } from "./index";
  * него нет.
  */
 
-export type ArchiveStatus = "idle" | "loading" | "ready" | "failed";
+/** `closed` — этому входу архив не положен (не руководитель): отчёт за неделю. */
+export type ArchiveStatus = "idle" | "loading" | "ready" | "failed" | "closed";
 
 interface ArchiveState {
   status: ArchiveStatus;
@@ -42,7 +43,7 @@ export function ensureArchive(): Promise<void> {
   const cur = useArchive.getState();
   if (!hasCabinetServer || !serverSession || !org) return Promise.resolve();
   // Уже есть или едет — второй раз не берём; не доехал — пробуем снова.
-  if (cur.org === org && (cur.status === "ready" || cur.status === "loading")) {
+  if (cur.org === org && cur.status !== "idle" && cur.status !== "failed") {
     return inflight ?? Promise.resolve();
   }
   useArchive.setState({ status: "loading", org, lists: {} });
@@ -50,8 +51,8 @@ export function ensureArchive(): Promise<void> {
     inflight = null;
     if (useArchive.getState().org !== org) return;
     if (!res.ok) return useArchive.setState({ status: "failed" });
-    const lists = res.data === "forbidden" ? {} : groupArchive(res.data);
-    useArchive.setState({ status: "ready", lists });
+    if (res.data === "forbidden") return useArchive.setState({ status: "closed", lists: {} });
+    useArchive.setState({ status: "ready", lists: groupArchive(res.data) });
   });
   return inflight;
 }
