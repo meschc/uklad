@@ -900,7 +900,17 @@ function createDesks({ auth, cfg, send, log, secretKey = null, fetchImpl = fetch
     // 422, а не 401: стол принял бы 401 за потерю своего пропуска.
     if (who.status === 429) return send(res, 429, { ok: false, error: who.error }, who.headers);
     if (!who.accountId) return send(res, 422, { ok: false, error: "bad_credentials" });
-    const out = await withDesk(req, async (c) => {
+    const out = await withDesk(req, async (c, d) => {
+      // Руководитель другого склада стол этого не отвязывает (Кирилл 22.11).
+      const here = deskWarehouse(await companyDoc(c), d.deviceRef);
+      const who2 = await c.query(
+        `SELECT m.warehouse_ref, 'org.manage' = ANY (r.permissions) AS owner
+         FROM uklad.members m JOIN uklad.roles r ON r.org_id = m.org_id AND r.id = m.role_id
+         WHERE m.org_id = uklad.current_org() AND m.account_id = $1 AND m.deleted_at IS NULL`,
+        [who.accountId],
+      );
+      const m = who2.rows[0];
+      if (!m || !(m.owner || (here && m.warehouse_ref === here))) return { manager: false };
       const { rows } = await c.query(`SELECT auth.close_desk_by_account($1, $2) AS ok`, [
         deskHash(req),
         who.accountId,

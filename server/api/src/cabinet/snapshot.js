@@ -37,6 +37,7 @@ const { writableKeys, foreignRows, mergeScoped } = require("./writeScope");
 const { forViewer, VIEW_PERMS } = require("./viewer");
 const { forSeller } = require("./seller");
 const { placeRef, focusWarehouse } = require("./viewerPlace");
+const { managerRef, restoreManager, foreignWarehouses } = require("./managerScope");
 const { recordMoves, invalidWork } = require("./moves");
 const { recordStorage, loadStorage, parsePeriod } = require("./storage");
 const { loadInventoryLog, parseLogPeriod } = require("./inventoryLog");
@@ -360,7 +361,11 @@ function createSnapshot({ auth, send, log, limits = null }) {
         };
       }
       await archiveDaily(c);
-      return { ...rows[0], data: await loadCabinet(c, rows[0].data) };
+      // Весь кабинет — владельцу; руководитель склада — свой склад (managerScope.js).
+      const full = await loadCabinet(c, rows[0].data);
+      const ref = managerRef(ctx, place, full);
+      if (ref === false) return NO_WAREHOUSE;
+      return { ...rows[0], data: ref ? focusWarehouse(full, ref) : full };
     });
     if (out === null) return send(res, 401, { ok: false });
     if (out === FORBIDDEN) return send(res, 403, { ok: false });
@@ -398,12 +403,29 @@ function createSnapshot({ auth, send, log, limits = null }) {
     ) {
       return send(res, 400, { ok: false, error: "bad_request" });
     }
-    const split = splitCabinet(b.data);
-    const data = JSON.stringify(split.doc);
+    let split = splitCabinet(b.data);
+    let data = JSON.stringify(split.doc);
     const out = await overLimit(
       withSession(req, async (c, ctx) => {
-        if (!mayUse(ctx) || sellerOf(await actorPlace(c))) return FORBIDDEN;
+        const place = await actorPlace(c);
+        if (!mayUse(ctx) || sellerOf(place)) return FORBIDDEN;
         if (!writes.take(ctx.orgId)) return LIMITED;
+        // Руководитель склада пишет только свой склад: присланное — на место
+        // его склада в кабинете компании из базы (managerScope.js).
+        if (!ctx.can("org.manage")) {
+          const cur = await c.query(
+            `SELECT data FROM uklad.cabinet_snapshots WHERE org_id = uklad.current_org() FOR UPDATE`,
+          );
+          // Первый склад компании заводит владелец.
+          if (!cur.rows[0]) return FORBIDDEN;
+          const full = await loadCabinet(c, cur.rows[0].data);
+          const ref = managerRef(ctx, place, full);
+          if (ref === false) return FORBIDDEN;
+          if (foreignWarehouses(b.data, ref)) return { conflict: true, error: "warehouse_owner" };
+          b.data = restoreManager(full, b.data, ref);
+          split = splitCabinet(b.data);
+          data = JSON.stringify(split.doc);
+        }
         if (await massDelete(c, b.data)) return { conflict: true, error: "products_mass_delete" };
         if (await massGone(c, split.items, split.slots)) {
           return { conflict: true, error: "records_mass_delete" };
@@ -503,8 +525,11 @@ function createSnapshot({ auth, send, log, limits = null }) {
     const out = await overLimit(
       withSession(req, async (c, ctx) => {
         // Без «Персонала» — только то, на что есть право роли (`writeScope.js`).
-        if (sellerOf(await actorPlace(c))) return FORBIDDEN;
+        const place = await actorPlace(c);
+        if (sellerOf(place)) return FORBIDDEN;
         const scoped = !mayUse(ctx);
+        // Руководитель склада: строки — только своего склада (managerScope.js).
+        const manager = !scoped && !ctx.can("org.manage");
         if (scoped && !(mayView(ctx) && writableKeys(ctx.can).length > 0)) return FORBIDDEN;
         if (scoped && (foreignRows(b.upsert, ctx.can) || foreignRows(b.remove, ctx.can))) {
           return FORBIDDEN;
@@ -517,6 +542,20 @@ function createSnapshot({ auth, send, log, limits = null }) {
         );
         const cur = rows[0] && { ...rows[0], data: await storedDoc(c, rows[0].data) };
         if (!cur || cur.version !== b.version) return { conflict: true };
+        if (manager) {
+          const ref = managerRef(ctx, place, cur.data);
+          if (ref === false) return FORBIDDEN;
+          const own = (r) => r && typeof r === "object" && r.w === ref;
+          if (![...(b.upsert ?? []), ...(b.remove ?? [])].every(own)) return FORBIDDEN;
+          if (!(b.slots ?? []).every(own)) return FORBIDDEN;
+          if (foreignWarehouses(b.doc, ref)) return { conflict: true, error: "warehouse_owner" };
+          // Склад не менялся — его карточка из базы, чтобы встать на своё место.
+          if (!("warehouse" in b.doc)) {
+            b.doc = { ...b.doc, warehouse: focusWarehouse(cur.data, ref).warehouse };
+          }
+          b.doc = restoreManager(cur.data, b.doc, ref);
+          doc = JSON.stringify(b.doc);
+        }
         // Документ без складов — склады не менялись: берём их из таблицы, иначе
         // проверки ниже не знали бы, чьи списки в корне.
         if (!("warehouse" in b.doc)) b.doc = await withWarehouses(c, b.doc);

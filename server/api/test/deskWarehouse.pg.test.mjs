@@ -343,3 +343,29 @@ test("стол склада А не подтвердить руководите�
   const off = await call("/api/desk/unbind", { desk: c.desk, body: { code: c.petr } });
   assert.deepEqual([off.status, off.json.error], [404, "not_manager"]);
 });
+
+test("стол склада А не отвязать паролем руководителя склада Б", { skip: SKIP }, async () => {
+  const c = await company("wh-desk-unbind@sklad.ru", "10.0.9.7");
+  // Второй человек компании: начальник склада Б со своей почтой.
+  const chief = "wh-desk-unbind-b@sklad.ru";
+  await db.root.query(
+    `WITH acc AS (
+       INSERT INTO auth.accounts (email, password_hash, email_verified_at)
+       SELECT $2, password_hash, now() FROM auth.accounts WHERE email = $3 RETURNING id)
+     INSERT INTO uklad.members (org_id, account_id, role_id, status, warehouse_ref)
+     SELECT $1, acc.id, r.id, 'active', 'wh_b' FROM acc, uklad.roles r
+     WHERE r.org_id = $1 AND r.name = 'Начальник склада'`,
+    [c.org, chief, "wh-desk-unbind@sklad.ru"],
+  );
+  const off = await call("/api/desk/unbind", {
+    desk: c.desk,
+    body: { email: chief, password: PW },
+  });
+  assert.deepEqual([off.status, off.json.error], [404, "not_manager"]);
+  // Владелец — отвязывает.
+  const own = await call("/api/desk/unbind", {
+    desk: c.desk,
+    body: { email: "wh-desk-unbind@sklad.ru", password: PW },
+  });
+  assert.equal(own.status, 200);
+});
