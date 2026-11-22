@@ -963,30 +963,24 @@ test("склад удаляет только владелец, роль влад
   });
   assert.equal(put.status, 200, JSON.stringify(put.json));
   const chief = await join(boss, "chief-own@example.com", r["Начальник склада"]);
-  // Начальник: правка склада проходит, удаление — нет, запись откатывается.
-  const rename = await post("/api/cabinet/snapshot", {
+  // Начальник склада w1 видит только свой склад (Кирилл 22.11: склады
+  // связывает только владелец).
+  const seen = (await call("GET", "/api/cabinet/snapshot", chief)).json.snapshot.data;
+  assert.equal(seen.warehouse.id, WH);
+  assert.deepEqual(seen.otherWarehouses, []);
+  assert.ok(!JSON.stringify(seen).includes("Склад 2"));
+  // Свой склад правит; чужой склад в записи — отказ, кабинет не меняется.
+  const v = await version(chief);
+  const foreign = await post("/api/cabinet/snapshot", {
     ...chief,
     body: {
-      version: await version(chief),
+      version: v,
       format: 8,
       data: { ...two, otherWarehouses: [{ id: "w2", name: "Склад Б", staff: [] }] },
     },
   });
-  assert.equal(rename.status, 200, JSON.stringify(rename.json));
-  const v = await version(chief);
-  const drop = await post("/api/cabinet/snapshot", {
-    ...chief,
-    body: { version: v, format: 8, data: { warehouse: two.warehouse, otherWarehouses: [] } },
-  });
-  assert.equal(drop.status, 409);
-  assert.equal(drop.json.error, "warehouse_delete_owner");
-  assert.equal(await version(chief), v);
-  const kept = (await call("GET", "/api/cabinet/snapshot", boss)).json.snapshot.data;
-  assert.deepEqual(
-    kept.otherWarehouses.map((w) => w.name),
-    ["Склад Б"],
-  );
-  // Спрятать склад заготовкой — то же удаление.
+  assert.equal(foreign.status, 409);
+  assert.equal(foreign.json.error, "warehouse_owner");
   const hide = await post("/api/cabinet/snapshot", {
     ...chief,
     body: {
@@ -994,16 +988,44 @@ test("склад удаляет только владелец, роль влад
       format: 8,
       data: {
         ...two,
-        otherWarehouses: [{ id: "w2", name: "Склад Б", staff: [], placeholder: true }],
+        otherWarehouses: [{ id: "w2", name: "Склад 2", staff: [], placeholder: true }],
       },
     },
   });
   assert.equal(hide.status, 409);
-  assert.equal(hide.json.error, "warehouse_delete_owner");
+  const fresh = await post("/api/cabinet/snapshot", {
+    ...chief,
+    body: {
+      version: v,
+      format: 8,
+      data: { ...two, otherWarehouses: [{ id: "w-new", name: "Н" }] },
+    },
+  });
+  assert.equal(fresh.status, 409);
+  assert.equal(await version(chief), v);
+  // Запись своего склада без чужого — чужой склад остаётся как был.
+  const own = await post("/api/cabinet/snapshot", {
+    ...chief,
+    body: {
+      version: v,
+      format: 8,
+      data: { ...seen, warehouse: { ...seen.warehouse, name: "Склад А" } },
+    },
+  });
+  assert.equal(own.status, 200, JSON.stringify(own.json));
+  const kept = (await call("GET", "/api/cabinet/snapshot", boss)).json.snapshot.data;
+  assert.deepEqual(
+    [kept.warehouse.name, ...kept.otherWarehouses.map((w) => w.name)],
+    ["Склад А", "Склад 2"],
+  );
   // Владелец удаляет.
   const gone = await post("/api/cabinet/snapshot", {
     ...boss,
-    body: { version: v, format: 8, data: { warehouse: two.warehouse, otherWarehouses: [] } },
+    body: {
+      version: await version(boss),
+      format: 8,
+      data: { warehouse: two.warehouse, otherWarehouses: [] },
+    },
   });
   assert.equal(gone.status, 200, JSON.stringify(gone.json));
 
@@ -1026,4 +1048,124 @@ test("склад удаляет только владелец, роль влад
     body: { staffRef: "stf-any", roleId: r["Владелец"] },
   });
   assert.equal(desk.status, 403);
+});
+
+test("журнал смен, корректировки и размещения — только своего склада", { skip: SKIP }, async () => {
+  const { splitRecords } = require("../src/cabinet/records.js");
+  const boss = await owner("boss-root@example.com", "10.1.0.60");
+  const r = await roles(boss);
+  const cell = (floorId) => ({ floorId, moduleId: "m", shelfIndex: 0, cellIndex: 0 });
+  const ev = (id, staffId) => ({ id, staffId, type: "error", at: 1 });
+  const pay = (id, staffId) => ({
+    id,
+    staffId,
+    kind: "bonus",
+    amount: 100,
+    reason: "р",
+    at: 1,
+    createdAt: 1,
+  });
+  const data = {
+    warehouse: {
+      id: WH,
+      name: "Склад",
+      staff: [{ id: "s1", name: "Иван" }],
+      floors: [{ id: "f1" }],
+    },
+    otherWarehouses: [
+      { id: "w2", name: "Склад 2", staff: [{ id: "s2", name: "Пётр" }], floors: [{ id: "f2" }] },
+    ],
+    staffEvents: [ev("e1", "s1"), ev("e2", "s2")],
+    payAdjustments: [pay("a1", "s1"), pay("a2", "s2")],
+    placements: { p1: cell("f1"), p2: cell("f2") },
+    categories: [{ id: "c1", name: "Обувь" }],
+  };
+  const put = await post("/api/cabinet/snapshot", {
+    ...boss,
+    body: { version: await version(boss), format: 8, data },
+  });
+  assert.equal(put.status, 200, JSON.stringify(put.json));
+  const chief = await join(boss, "chief-root@example.com", r["Начальник склада"]);
+  const seen = (await call("GET", "/api/cabinet/snapshot", chief)).json.snapshot.data;
+  assert.deepEqual(
+    seen.staffEvents.map((x) => x.id),
+    ["e1"],
+  );
+  assert.deepEqual(
+    seen.payAdjustments.map((x) => x.id),
+    ["a1"],
+  );
+  assert.deepEqual(Object.keys(seen.placements), ["p1"]);
+  assert.ok(!JSON.stringify(seen).includes("Пётр"));
+  // Запись целиком: своё меняется, чужое из базы, даже если прислано пустым.
+  const whole = await post("/api/cabinet/snapshot", {
+    ...chief,
+    body: {
+      version: await version(chief),
+      format: 8,
+      data: {
+        ...seen,
+        staffEvents: [ev("e3", "s1"), ev("e4", "s2")],
+        payAdjustments: [],
+        placements: {},
+      },
+    },
+  });
+  assert.equal(whole.status, 200, JSON.stringify(whole.json));
+  const full = (await call("GET", "/api/cabinet/snapshot", boss)).json.snapshot.data;
+  assert.deepEqual(full.staffEvents.map((x) => x.id).sort(), ["e2", "e3"]);
+  assert.deepEqual(
+    full.payAdjustments.map((x) => x.id),
+    ["a2"],
+  );
+  assert.deepEqual(Object.keys(full.placements), ["p2"]);
+
+  // «Только изменённое»: удержание своему и правка общей категории — можно.
+  const mine = (await call("GET", "/api/cabinet/snapshot", chief)).json.snapshot.data;
+  const diff = (after) => {
+    const was = new Map(splitRecords(mine).items.map((x) => [`${x.w}/${x.d}/${x.ref}`, x]));
+    const now = splitRecords(after);
+    const upsert = now.items.filter(
+      (x) => JSON.stringify(was.get(`${x.w}/${x.d}/${x.ref}`)?.data) !== JSON.stringify(x.data),
+    );
+    const left = new Set(now.items.map((x) => `${x.w}/${x.d}/${x.ref}`));
+    const remove = [...was.values()]
+      .filter((x) => !left.has(`${x.w}/${x.d}/${x.ref}`))
+      .map(({ w, d, ref }) => ({ w, d, ref }));
+    const doc = { ...now.doc };
+    delete doc.products;
+    return { doc, slots: now.slots, upsert, remove };
+  };
+  const v = await version(chief);
+  const ok = await post("/api/cabinet/snapshot/changes", {
+    ...chief,
+    body: {
+      version: v,
+      format: 8,
+      ...diff({
+        ...mine,
+        payAdjustments: [pay("a3", "s1")],
+        categories: [{ id: "c1", name: "Одежда" }],
+      }),
+    },
+  });
+  assert.equal(ok.status, 200, JSON.stringify(ok.json));
+  const after1 = (await call("GET", "/api/cabinet/snapshot", boss)).json.snapshot.data;
+  assert.deepEqual(after1.payAdjustments.map((x) => x.id).sort(), ["a2", "a3"]);
+  assert.equal(after1.categories[0].name, "Одежда");
+  // Удержание человеку чужого склада — отказ.
+  const mine2 = (await call("GET", "/api/cabinet/snapshot", chief)).json.snapshot.data;
+  const bad = await post("/api/cabinet/snapshot/changes", {
+    ...chief,
+    body: {
+      version: await version(chief),
+      format: 8,
+      ...(() => {
+        const d = diff({ ...mine2, payAdjustments: [...mine2.payAdjustments, pay("a4", "s2")] });
+        d.upsert = d.upsert.filter((x) => x.ref === "a4");
+        return d;
+      })(),
+    },
+  });
+  assert.equal(bad.status, 403);
 });

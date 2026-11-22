@@ -200,7 +200,7 @@ export const ru = {
   "sync.recordsRejected":
     "Сервер не стёр больше половины заявок, приёмки или журнала смен одной записью: так выглядит сбой, а не работа. Открыли данные с сервера, ваши правки отложены в копию на этом устройстве.",
   "sync.warehouseRejected":
-    "Склад удаляет только владелец компании. Склад вернули, правки отложены в копию на этом устройстве. Попросите владельца удалить склад.",
+    "Склады заводит и удаляет только владелец компании, а руководитель видит только свой склад. Открыли данные с сервера, правки отложены в копию на этом устройстве. Попросите владельца.",
   "profile.logoutUnsynced":
     "Часть правок ещё не дошла до сервера и при выходе пропадёт. Скачайте копию, если она нужна.",
   "login.switch.body":
@@ -552,7 +552,7 @@ export const en: Record<keyof typeof ru, string> = {
   "sync.recordsRejected":
     "The server didn't erase more than half of the requests, receiving or shift log in one save: that looks like a failure, not work. We opened the server data, and your changes were set aside in a copy on this device.",
   "sync.warehouseRejected":
-    "Only the company owner can delete a warehouse. We restored it, and your changes were set aside in a copy on this device. Ask the owner to delete it.",
+    "Only the company owner creates and deletes warehouses; a manager sees only their own warehouse. We opened the server data, and your changes were set aside in a copy on this device. Ask the owner.",
   "profile.logoutUnsynced":
     "Some changes haven't reached the server yet and will be lost when you sign out. Download a copy if you need it.",
   "login.switch.body":
