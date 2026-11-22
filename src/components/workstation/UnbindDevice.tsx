@@ -10,6 +10,7 @@ import { eyebrow } from "@/components/ui/eyebrow";
 import { ScanField, type ScanStatus } from "@/components/fulfillment/ScanField";
 import { useDemoHints } from "./useDemoHints";
 import { UnbindByPassword } from "./UnbindByPassword";
+import { PasswordSwitch } from "./PasswordSwitch";
 
 /**
  * Отвязка стола на самом столе — бейджем старшего или, с сервером, паролем
@@ -53,7 +54,10 @@ export function UnbindDevice({ onDone }: { onDone: () => void }) {
       </div>
 
       {server && byPassword ? (
-        <UnbindByPassword onDone={onDone} />
+        <div className="mx-auto flex w-full max-w-sm flex-col gap-1">
+          <UnbindByPassword onDone={onDone} />
+          <PasswordSwitch byPassword onChange={setByPassword} />
+        </div>
       ) : server ? (
         <>
           <ScanField
@@ -64,9 +68,7 @@ export function UnbindDevice({ onDone }: { onDone: () => void }) {
             actionLabel={t("ws.kiosk.unbind")}
             onSubmit={(code) => void submit(code)}
           />
-          <Button variant="outline" className="self-center" onClick={() => setByPassword(true)}>
-            {t("ws.kiosk.byPassword")}
-          </Button>
+          <PasswordSwitch byPassword={false} onChange={setByPassword} />
         </>
       ) : managers.length === 0 ? (
         // Руководителя в персонале нет — бейджа, которым отвязать, тоже нет.

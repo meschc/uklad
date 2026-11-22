@@ -7,12 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field, FormError } from "@/components/ui/field";
 import { ScanField } from "@/components/fulfillment/ScanField";
+import { PasswordSwitch } from "./PasswordSwitch";
 
 /**
  * Шаг «подтвердите, что привязывает руководитель» (миграция 052). Сервер
  * просит его, когда вход паролем давний: руководитель мог уйти, не выйдя.
- * Бейдж — основной путь, как на отвязке; пароль — когда бейджа нет. Почта —
- * того, кто вошёл: подтверждает он сам, а не любой руководитель компании.
+ * Бейдж — основной путь, как на отвязке; пароль — когда бейджа нет, тем же
+ * полем по ссылке под ним. Почта — того, кто вошёл: подтверждает он сам, а не
+ * любой руководитель компании, поэтому её не вводят, а видят в подписи.
  */
 export function BindConfirmStep({
   pending,
@@ -39,10 +41,7 @@ export function BindConfirmStep({
             if (password) onConfirm({ email, password });
           }}
         >
-          <Field label={t("login.email")}>
-            <Input className="h-10" value={email} readOnly />
-          </Field>
-          <Field label={t("login.password")}>
+          <Field label={t("devices.managerPassword", { email })}>
             <Input
               className="h-10"
               type="password"
@@ -52,6 +51,7 @@ export function BindConfirmStep({
               onChange={(e) => setPassword(e.target.value)}
             />
           </Field>
+          <PasswordSwitch byPassword onChange={setByPassword} />
           <Button type="submit" size="lg" disabled={pending || !password}>
             <MonitorSmartphone />
             {t("devices.confirmBind")}
@@ -67,9 +67,7 @@ export function BindConfirmStep({
             actionLabel={t("devices.confirmBind")}
             onSubmit={(code) => onConfirm({ code })}
           />
-          <Button variant="outline" className="self-center" onClick={() => setByPassword(true)}>
-            {t("devices.byPassword")}
-          </Button>
+          <PasswordSwitch byPassword={false} onChange={setByPassword} />
         </>
       )}
       {error && <FormError>{t(error)}</FormError>}

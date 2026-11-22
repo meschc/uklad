@@ -632,13 +632,14 @@ export const ru = {
   "ws.breakFirst": "Идёт перерыв. Закончите его, чтобы взять тару.",
   "ws.kiosk.noManager":
     "В персонале нет руководителя, поэтому стол можно отвязать отсюда. Добавьте руководителя, чтобы отвязывать только его бейджем.",
-  "ws.kiosk.byPassword": "Нет бейджа — войти паролем руководителя",
   "ws.device.notManagerAccount": "Эта учётная запись не управляет персоналом компании",
   "devices.bindNeedsManager":
     "Сделать компьютер столом может руководитель с правом менять персонал. Войдите его паролем.",
   "devices.confirmNeeded": "Подтвердите, что привязывает руководитель: бейдж или пароль",
   "devices.managerBadge": "Бейдж руководителя",
-  "devices.byPassword": "Нет бейджа — ввести пароль",
+  "devices.byPassword": "Нет бейджа? Ввести пароль",
+  "devices.byBadge": "Есть бейдж? Отсканировать",
+  "devices.managerPassword": "Пароль руководителя {email}",
   "devices.confirmBind": "Подтвердить и привязать",
   "ws.equip.title": "Устройства",
   "ws.equip.docPrinter": "Принтер",
@@ -1287,13 +1288,14 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.breakFirst": "You are on a break. End it to take a tote.",
   "ws.kiosk.noManager":
     "There is no manager among staff, so the desk can be unbound here. Add a manager to require their badge.",
-  "ws.kiosk.byPassword": "No badge? Use a manager's password",
   "ws.device.notManagerAccount": "This account does not manage the company's staff",
   "devices.bindNeedsManager":
     "Only a manager who can edit staff can make this computer a desk. Sign in with their password.",
   "devices.confirmNeeded": "Confirm a manager is binding it: badge or password",
   "devices.managerBadge": "Manager's badge",
   "devices.byPassword": "No badge? Enter the password",
+  "devices.byBadge": "Have a badge? Scan it",
+  "devices.managerPassword": "Manager password for {email}",
   "devices.confirmBind": "Confirm and bind",
   "ws.equip.title": "Devices",
   "ws.equip.docPrinter": "Printer",
