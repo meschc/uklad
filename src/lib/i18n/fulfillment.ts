@@ -447,6 +447,8 @@ export const ru = {
   "archive.loading": "Догружаем историю старше 7 дней. Пока числа только за последнюю неделю.",
   "archive.failed": "История старше 7 дней не загрузилась: числа только за последнюю неделю.",
   "archive.retry": "Повторить",
+  "archive.closed":
+    "Здесь последние 7 дней. История старше — у руководителя склада: попросите его открыть отчёт или документ.",
 };
 
 export const en: Record<keyof typeof ru, string> = {
@@ -893,4 +895,6 @@ export const en: Record<keyof typeof ru, string> = {
     "Loading history older than 7 days. For now the numbers cover the last week only.",
   "archive.failed": "History older than 7 days didn't load: the numbers cover the last week only.",
   "archive.retry": "Try again",
+  "archive.closed":
+    "This shows the last 7 days. Older history is with the warehouse manager: ask them to open the report or document.",
 };
