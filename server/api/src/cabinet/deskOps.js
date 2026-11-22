@@ -17,7 +17,8 @@
  * приёмка (`deskReceive.js`) и инвентаризация (`deskInventory.js`).
  */
 
-/* global module, require, Buffer */
+/* global module, require, Buffer, process */
+"use strict";
 /* eslint-disable @typescript-eslint/no-require-imports */
 
 const { applyPackEvent, applyPackDone } = require("./deskPack");
@@ -135,6 +136,14 @@ const KINDS = new Set([
   ...TASK_KINDS,
   ...SENIOR_KINDS,
 ]);
+/** Заморозить объект со всем вложенным (только под тестами, см. `runDeskOps`). */
+function deepFreeze(x) {
+  if (x === null || typeof x !== "object" || Object.isFrozen(x)) return x;
+  Object.freeze(x);
+  for (const v of Object.values(x)) deepFreeze(v);
+  return x;
+}
+
 /**
  * Окно отмены по часам сервера: как в кабинете (`MARK_UNDO_MS`) плюс запас
  * на сеть. Отмена, застрявшая в очереди дольше, помечается.
@@ -463,6 +472,11 @@ async function runDeskOps(c, deskId, ops, who, now, deps = {}) {
   // склада и журнал смен — со строк (миграция 021). Товары стол не пишет.
   const packing = fresh.some((op) => WORK.has(op.kind));
   const base = deps.load ? await deps.load(c, cur.data) : cur.data;
+  // Под тестами кабинет «до» заморожен: строки пишутся разницей по ссылке
+  // (`recordChanges`), и правило, поправившее запись на месте, молча потеряло
+  // бы правку. Замороженная запись роняет такое правило в CI. В бою не
+  // замораживаем — это лишний проход по всему кабинету на каждый скан.
+  if (process.env.NODE_TEST_CONTEXT) deepFreeze(base);
   // Склад стола (`deskPlace.js`): операции видят только его, а не склад,
   // открытый сейчас у руководителя. Нет склада — каждая операция помечена.
   const place = deps.place ? deps.place(base) : { data: base, back: (x) => x };
