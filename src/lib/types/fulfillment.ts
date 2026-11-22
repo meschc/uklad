@@ -416,8 +416,12 @@ interface PackedUnit {
   confirmedAt?: number;
 }
 
-/** Что пошло не так со штукой: брак, её нет в таре, она лишняя. */
-type PackRejectReason = "defect" | "not_in_tote" | "extra" | "cancelled" | "held";
+/**
+ * Что пошло не так со штукой: брак, её нет в таре, она лишняя. `label` —
+ * отсканировали не ту этикетку (чужую, уже использованную, другой штуки):
+ * штука на месте, но ошибка упаковщика идёт в счётчик (обход столов 15.11).
+ */
+type PackRejectReason = "defect" | "not_in_tote" | "extra" | "cancelled" | "held" | "label";
 
 interface PackReject {
   productId: string;

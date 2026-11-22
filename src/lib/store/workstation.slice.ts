@@ -468,6 +468,17 @@ export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get)
     });
   },
 
+  packLabelMistake: (code) => {
+    const ps = get().packSession;
+    if (!ps) return;
+    set({
+      packSession: {
+        ...ps,
+        rejects: [...ps.rejects, { productId: "", reason: "label", at: nowMs(), code }],
+      },
+    });
+  },
+
   packRejectPending: () => {
     const s = get();
     const ps = s.packSession;
