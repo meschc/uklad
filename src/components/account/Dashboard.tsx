@@ -67,6 +67,7 @@ export function Dashboard() {
   // а кнопка „Выйти“ должна быть»). Писать он всё равно ничего не может.
   const viewer = useEditor((s) => s.session.readOnly === true);
   const readOnly = seller || viewer;
+  const onServer = useEditor((s) => s.session.source === "server");
   const t = useT();
   const logout = async () => {
     const res = await authRepository.logout();
@@ -147,8 +148,9 @@ export function Dashboard() {
         <DeletionBanner />
         <IntroCard />
 
-        {/* Пока складов нет, копировать нечего. */}
-        {!readOnly && warehouses.length > 0 && <BackupReminder />}
+        {/* Пока складов нет, копировать нечего. С сервером копии делает он сам
+            каждую ночь — «скачайте копию» там только пугает (ревизия 14.11). */}
+        {!readOnly && !onServer && warehouses.length > 0 && <BackupReminder />}
 
         {/* Список складов — карточки в стиле проектов Figma */}
         <section>

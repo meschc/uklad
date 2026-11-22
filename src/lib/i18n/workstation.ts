@@ -146,7 +146,7 @@ export const ru = {
   "ws.sort.pointClosed": "Отгрузка {point} уже закрыта. Кладите в {next} и распечатайте его QR",
   "ws.sort.locked":
     "{code} уже лежит в месте сортировки. Проверьте, не ушла ли похожая посылка не туда, и позовите старшего — продолжить можно его бейджем",
-  "ws.sort.unlocked": "{name} разрешил продолжить сортировку",
+  "ws.sort.unlocked": "Сортировку можно продолжать. Разрешение: {name}",
   "ws.sort.unlabeled": "Это товар, а не посылка: {name}. Ниже — чью этикетку он потерял",
   "ws.sort.unlabeledTitle": "Без этикетки: {name}",
   "ws.sort.unlabeledHint":
@@ -209,7 +209,7 @@ export const ru = {
   "ws.offline.limitBody": "Задания откроются, когда связь вернётся.",
   "ws.ship.locked":
     "{code} уже загружено. Повторный скан: погрузка остановлена, позовите старшего — он сканирует свой бейдж",
-  "ws.ship.unlocked": "{name} разрешил продолжить погрузку",
+  "ws.ship.unlocked": "Погрузку можно продолжать. Разрешение: {name}",
   "ws.ship.loaded": "Загружено: {n}",
   "ws.ship.change": "Другая машина",
   "ws.ship.newVehicle": "Новая машина",
@@ -391,9 +391,9 @@ export const ru = {
     "Старший увидит заявку в кабинете на странице «Подтверждения». Как только разрешит, процесс сменится сам.",
   "ws.switch.cancel": "Отменить заявку",
   "ws.switch.done": "Теперь вы на процессе «{name}»",
-  "ws.switch.doneBy": "Теперь вы на процессе «{name}», разрешил {who}",
+  "ws.switch.doneBy": "Теперь вы на процессе «{name}». Разрешение: {who}",
   "ws.switch.declined": "Старший не разрешил переход на «{name}»",
-  "devices.journal.approvedBy": "разрешил {name}",
+  "devices.journal.approvedBy": "разрешение: {name}",
   "devices.revoke": "Отключить",
   "devices.forget": "Убрать из списка",
   "devices.forgetHint":

@@ -35,8 +35,12 @@ export function IntroCard() {
   // Смотрящему (сотрудник по приглашению) имя и компанию задаёт склад: его
   // имя — из карточки, компания — не его, чтобы её переименовывать.
   const viewer = useEditor((s) => Boolean(s.session.readOnly));
-  if (name.trim() || later || viewer) return null;
   const company = account.type === "company";
+  // Компания уже названа (её название живёт в снимке компании, а имя профиля —
+  // в этом браузере): на новом компьютере знакомиться заново не зовём
+  // (обход столов 15.11).
+  const known = name.trim() || (company && account.org?.trim());
+  if (known || later || viewer) return null;
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
