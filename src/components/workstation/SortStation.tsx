@@ -332,7 +332,7 @@ function ClosePoint({
   onDone: (places: { code: string; place?: "pallet" | "box" }[]) => void;
 }) {
   const t = useT();
-  const close = useCommand(workstationRepository.sortClose);
+  const close = useCommand(workstationRepository.sortClose, { exclusive: true });
   const [pallets, setPallets] = useState("1");
   const [boxes, setBoxes] = useState("0");
   const p = Math.max(0, Math.floor(Number(pallets) || 0));

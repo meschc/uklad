@@ -22,7 +22,7 @@ export function RevokeDevice({
   onClose: () => void;
 }) {
   const t = useT();
-  const revoke = useCommand(workstationRepository.revokeDevice);
+  const revoke = useCommand(workstationRepository.revokeDevice, { exclusive: true });
   return (
     <Modal
       title={t("devices.revokeTitle", { name: device.name })}

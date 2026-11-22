@@ -43,7 +43,7 @@ const IDLE_REASONS: IdleReason[] = ["no_work", "other"];
 export function ShiftMenu({ member, now }: { member: StaffMember; now: number }) {
   const t = useT();
   const events = useEditor((s) => s.staffEvents);
-  const mark = useCommand(workstationRepository.mark);
+  const mark = useCommand(workstationRepository.mark, { exclusive: true });
   const policy = useEditor((s) => s.breakPolicy);
   const autoIdle = autoIdleSince(events, member.id, policy, now);
 

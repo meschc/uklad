@@ -32,7 +32,7 @@ export function UnbindDevice({ onDone }: { onDone: () => void }) {
   // бейджа есть всегда, а рядом — пароль руководителя.
   const server = useEditor((s) => s.session.source === "server");
   const [byPassword, setByPassword] = useState(false);
-  const unbind = useCommand(workstationRepository.unbindDevice);
+  const unbind = useCommand(workstationRepository.unbindDevice, { exclusive: true });
   const [status, setStatus] = useState<ScanStatus>("idle");
 
   const submit = async (code: string) => {

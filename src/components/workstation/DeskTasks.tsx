@@ -77,8 +77,8 @@ function DeskTaskRow({ task, staffId }: { task: WarehouseTask; staffId: string }
   const svcName = useServiceName();
   const partners = useEditor((s) => s.warehouse.partners);
   const [qty, setQty] = useState(task.qty);
-  const take = useCommand(workTasksRepository.take);
-  const done = useCommand(workTasksRepository.done);
+  const take = useCommand(workTasksRepository.take, { exclusive: true });
+  const done = useCommand(workTasksRepository.done, { exclusive: true });
   const partner = partners?.find((p) => p.id === task.partnerId)?.name;
   const active = task.status === "in_progress";
   const error = take.error ?? done.error;

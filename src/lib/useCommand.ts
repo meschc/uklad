@@ -22,10 +22,23 @@ export interface Command<A extends unknown[], T> {
   reset: () => void;
 }
 
+export interface CommandOptions {
+  /**
+   * Пока команда идёт, повторный запуск не шлёт второй запрос, а ждёт первый.
+   * Для действий, где второй раз — вред, а не повтор: выпуск бейджа гасит
+   * предыдущий, и двойной клик раньше, чем кнопка успела стать неактивной,
+   * отправлял два выпуска — на экране мог остаться уже погашенный код.
+   * Не для сканов: там каждый вызов — своя штука.
+   */
+  exclusive?: boolean;
+}
+
 export function useCommand<A extends unknown[], T>(
   action: (...args: A) => Promise<Result<T>>,
+  { exclusive = false }: CommandOptions = {},
 ): Command<A, T> {
   const [pending, setPending] = useState(false);
+  const inFlight = useRef<Promise<Result<T>> | null>(null);
   const [error, setError] = useState<MsgKey | null>(null);
 
   // Ответ может прийти после того, как диалог закрыли: запись состояния в
@@ -40,15 +53,26 @@ export function useCommand<A extends unknown[], T>(
     };
   }, []);
 
-  const run = async (...args: A): Promise<Result<T>> => {
+  const start = async (...args: A): Promise<Result<T>> => {
     setPending(true);
     setError(null);
-    const res = await action(...args);
-    if (alive.current) {
-      setPending(false);
-      setError(res.ok ? null : res.error);
+    try {
+      const res = await action(...args);
+      if (alive.current) {
+        setPending(false);
+        setError(res.ok ? null : res.error);
+      }
+      return res;
+    } finally {
+      inFlight.current = null;
     }
-    return res;
+  };
+
+  const run = (...args: A): Promise<Result<T>> => {
+    if (exclusive && inFlight.current) return inFlight.current;
+    const p = start(...args);
+    if (exclusive) inFlight.current = p;
+    return p;
   };
 
   return { run, pending, error, reset: () => setError(null) };

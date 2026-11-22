@@ -59,7 +59,7 @@ function ToteMove() {
   const boxes = useEditor((s) => s.boxes);
   const products = useEditor((s) => s.products);
   const requests = useEditor((s) => s.requests);
-  const move = useCommand(workstationRepository.seniorMove);
+  const move = useCommand(workstationRepository.seniorMove, { exclusive: true });
   const [fromId, setFromId] = useState<string | null>(null);
   const [note, setNote] = useState<{ status: ScanStatus; key: MsgKey; box?: string } | null>(null);
   const from = fromId ? boxes.find((b) => b.id === fromId) : undefined;

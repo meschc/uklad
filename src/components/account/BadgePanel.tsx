@@ -29,8 +29,9 @@ export function BadgePanel({
 }) {
   const revocable = badgeRepository.revocable();
   const [code, setCode] = useState<string | null>(() => badgeRepository.shown(member.id));
-  const issue = useCommand(() => badgeRepository.issue(member.id));
-  const revoke = useCommand(() => badgeRepository.revoke(member.id));
+  // Двойной клик не должен выпустить два бейджа: второй погасил бы первый.
+  const issue = useCommand(() => badgeRepository.issue(member.id), { exclusive: true });
+  const revoke = useCommand(() => badgeRepository.revoke(member.id), { exclusive: true });
   const [revoked, setRevoked] = useState(false);
 
   return (
