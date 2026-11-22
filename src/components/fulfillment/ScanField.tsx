@@ -39,6 +39,7 @@ export function ScanField({
   status = "idle",
   minLength,
   disabled,
+  keepLayout = false,
   autoFocus = true,
   actionLabel,
   onSubmit,
@@ -49,6 +50,11 @@ export function ScanField({
   status?: ScanStatus;
   minLength?: number;
   disabled?: boolean;
+  /**
+   * Не переводить раскладку при наборе: номер машины пишут кириллицей, и
+   * «А123ВВ777» не должен стать «F123DD777» (обход столов 15.11).
+   */
+  keepLayout?: boolean;
   autoFocus?: boolean;
   /** Подпись кнопки: по умолчанию «Принять», у упаковки — своё действие. */
   actionLabel?: string;
@@ -124,7 +130,7 @@ export function ScanField({
             onChange={(e) => {
               // Браузер не переключает раскладку системы, поэтому русские
               // буквы сразу меняются на латинские с тех же клавиш.
-              setValue(fixKeyboardLayout(e.target.value));
+              setValue(keepLayout ? e.target.value : fixKeyboardLayout(e.target.value));
               setTyping(true);
             }}
             onFocus={() => setFocused(true)}

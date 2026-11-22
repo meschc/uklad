@@ -233,8 +233,30 @@ export function parseVehicle(raw: string): string | null {
     /\d/.test(plain) &&
     /[A-ZА-ЯЁ]/.test(plain) &&
     !/^UK/.test(plain)
-    ? plain
+    ? toCyrillicPlate(plain)
     : null;
+}
+
+// Буквы госномера — только 12, у каждой латинский двойник. «A123BB777»,
+// набранный в английской раскладке, — тот же номер, что «А123ВВ777»:
+// в рейс пишем кириллицей, чтобы один номер не стал двумя.
+const PLATE_TWINS: Record<string, string> = {
+  A: "А",
+  B: "В",
+  E: "Е",
+  K: "К",
+  M: "М",
+  H: "Н",
+  O: "О",
+  P: "Р",
+  C: "С",
+  T: "Т",
+  Y: "У",
+  X: "Х",
+};
+function toCyrillicPlate(plain: string): string {
+  const all = [...plain].every((ch) => /[\dА-ЯЁ]/.test(ch) || ch in PLATE_TWINS);
+  return all ? plain.replace(/[A-Z]/g, (ch) => PLATE_TWINS[ch]) : plain;
 }
 
 /** Паллета или короб, который грузят в машину: код тары, а не товара. */
