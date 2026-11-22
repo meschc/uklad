@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BadgeCheck, Printer, X } from "lucide-react";
+import { BadgeCheck, IdCard, Printer, X } from "lucide-react";
 import type { StaffMember } from "@/lib/types";
 import { badgeRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
@@ -11,22 +11,25 @@ import { FieldError } from "@/components/ui/field";
 
 /**
  * Бейдж сотрудника — боковой панелью справа, а не окном поверх (правило
- * кабинета). Код приходит уже выпущенным: на сервере он случайный и
- * показывается один раз, поэтому печатать его надо сразу. На бумагу уходит
- * только сам бейдж (`.print-root`), панель и таблица остаются на экране.
+ * кабинета). На сервере код случайный и показывается один раз, а выпуск
+ * нового гасит прежний. Поэтому открытие панели бейдж не выпускает: раньше
+ * каждое нажатие на значок молча гасило уже напечатанный бейдж, и человека
+ * не пускало за стол (разбор staging, 22.11). Выпуск — отдельной кнопкой с
+ * предупреждением. В демо код вечный — показываем сразу.
+ * На бумагу уходит только сам бейдж (`.print-root`).
  */
 export function BadgePanel({
   member,
-  code,
   onClose,
   t,
 }: {
   member: StaffMember;
-  code: string;
   onClose: () => void;
   t: TFunc;
 }) {
   const revocable = badgeRepository.revocable();
+  const [code, setCode] = useState<string | null>(() => badgeRepository.shown(member.id));
+  const issue = useCommand(() => badgeRepository.issue(member.id));
   const revoke = useCommand(() => badgeRepository.revoke(member.id));
   const [revoked, setRevoked] = useState(false);
 
@@ -41,6 +44,35 @@ export function BadgePanel({
       <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-5">
         {revoked ? (
           <p className="text-sm">{t("staff.badge.revoked")}</p>
+        ) : code === null ? (
+          <>
+            <p className="text-sm">{t("staff.badge.intro")}</p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                disabled={issue.pending}
+                onClick={async () => {
+                  const res = await issue.run();
+                  if (res.ok) setCode(res.data);
+                }}
+              >
+                <IdCard />
+                {t(issue.error ? "data.retry" : "staff.badge.issue")}
+              </Button>
+              <Button
+                variant="outline"
+                disabled={revoke.pending}
+                onClick={async () => {
+                  const res = await revoke.run();
+                  if (res.ok) setRevoked(true);
+                }}
+              >
+                <BadgeCheck />
+                {t(revoke.error ? "data.retry" : "staff.badge.revoke")}
+              </Button>
+            </div>
+            {issue.error && <FieldError>{t(issue.error)}</FieldError>}
+            {revoke.error && <FieldError>{t(revoke.error)}</FieldError>}
+          </>
         ) : (
           <>
             {/* Сам бейдж: то, что уйдёт на бумагу. */}
