@@ -509,6 +509,24 @@ test(
     // Другой человек (target) — своя строка: схлопываются только одинаковые.
     await tap("m-2");
     assert.equal(await rowsOf("member.disable"), 2);
+    // X → Y → X за окно — три строки: последней в журнале должна быть X.
+    const set = (to) =>
+      asOrg(
+        db.pool,
+        c.org,
+        (x) =>
+          logAction(x, log, {
+            action: "role.rename",
+            warehouse: "wh_b",
+            target: "r",
+            details: { to },
+          }),
+        someone,
+      );
+    await set("X");
+    await set("Y");
+    await set("X");
+    assert.equal(await rowsOf("role.rename"), 3);
     // Ключи, токены, почты и телефоны в подробности не попадают, на любой глубине.
     for (const details of [{ token: "x" }, { a: [{ apiKey: "x" }] }, { email: "a@b.c" }]) {
       await assert.rejects(
@@ -528,11 +546,11 @@ test(
     // Действие откатилось (обрыв, ошибка после записи) — строки нет.
     await assert.rejects(
       asOrg(db.pool, c.org, async (x) => {
-        await logAction(x, log, { action: "role.rename", warehouse: "wh_a", source: "system" });
+        await logAction(x, log, { action: "role.move", warehouse: "wh_a", source: "system" });
         throw new Error("обрыв");
       }),
     );
-    assert.equal(await rowsOf("role.rename"), 0);
+    assert.equal(await rowsOf("role.move"), 0);
     // Неверный вид действия — ошибка, а не тихий пропуск.
     await assert.rejects(asOrg(db.pool, c.org, (x) => logAction(x, log, { action: "Bad Action" })));
   },

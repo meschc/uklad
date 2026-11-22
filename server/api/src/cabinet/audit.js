@@ -55,20 +55,22 @@ async function logAction(
   await c.query(
     `SELECT pg_advisory_xact_lock(hashtextextended(
        concat_ws('|', uklad.current_org(), uklad.current_member(), $1::text, $2::text,
-                 $3::text, $4::text, $5::text, $6::text), 62))`,
-    args,
+                 $3::text, $4::text, $5::text), 62))`,
+    [args[0], args[1], args[2], args[4], args[5]],
   );
+  // Склеиваем только с самой последней строкой по этой цели: X → Y → X за
+  // окно — три строки, иначе журнал показал бы последним Y.
   const same = await c.query(
-    `SELECT id, org_id, member_id FROM uklad.audit_events
+    `SELECT id, details = $4::jsonb AS same FROM uklad.audit_events
      WHERE org_id = uklad.current_org() AND warehouse_ref IS NOT DISTINCT FROM $1
-       AND action = $2 AND target IS NOT DISTINCT FROM $3 AND details = $4::jsonb
+       AND action = $2 AND target IS NOT DISTINCT FROM $3
        AND source = $5 AND staff_ref IS NOT DISTINCT FROM $6
        AND member_id IS NOT DISTINCT FROM uklad.current_member()
        AND at > clock_timestamp() - make_interval(secs => $7)
      ORDER BY at DESC LIMIT 1`,
     [...args, REPEAT_SECONDS],
   );
-  if (same.rows[0]) return same.rows[0].id;
+  if (same.rows[0]?.same) return same.rows[0].id;
   const { rows } = await c.query(
     `INSERT INTO uklad.audit_events
        (org_id, warehouse_ref, action, target, details, source, staff_ref, at)
