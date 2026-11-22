@@ -47,6 +47,11 @@ export interface WorkstationRepository {
     confirm?: BindConfirm,
   ) => Promise<Result<Device>>;
   revokeDevice: (id: string) => Promise<Result<void>>;
+  /**
+   * Убрать отключённое устройство из списка. Пропуск стола на сервере уже
+   * погашен отключением, журнал операций остаётся на сервере.
+   */
+  forgetDevice: (id: string) => Promise<Result<void>>;
   /** Журнал устройства: кто и что делал за ним, новые сверху. */
   deviceJournal: (id: string) => Promise<Result<DeviceJournalData>>;
   /** Отвязать этот браузер бейджем руководителя. Чужой бейдж — `ws.device.notManager`. */
@@ -255,6 +260,12 @@ export function createWorkstationRepository(
         if (!off.ok) return off;
       }
       return attempt(() => port.get().revokeDevice(id));
+    },
+    forgetDevice: async (id) => {
+      const d = port.get().devices.find((x) => x.id === id);
+      if (!d) return ok(undefined);
+      if (!d.revokedAt) return fail("devices.forgetLive");
+      return attempt(() => port.get().forgetDevice(id));
     },
     deviceJournal: async (id) => {
       if (onServer(port)) return desks.journal(id);

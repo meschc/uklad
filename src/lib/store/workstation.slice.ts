@@ -90,6 +90,11 @@ export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get)
       ...(s.thisDeviceId === id ? { thisDeviceId: null, stationSession: null } : {}),
     })),
 
+  // Только отключённое (Кирилл 22.11: «удаление старого устройства»): живой
+  // стол из списка не пропадает, иначе его нельзя было бы отключить.
+  forgetDevice: (id) =>
+    set((s) => ({ devices: s.devices.filter((d) => d.id !== id || !d.revokedAt) })),
+
   unbindThisDevice: (managerBadge) => {
     const staffId = parseBadge(managerBadge);
     return staffId ? get().unbindAs(staffId) : false;

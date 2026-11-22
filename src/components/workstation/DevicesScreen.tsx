@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { History, Power } from "lucide-react";
+import { History, Power, Trash2 } from "lucide-react";
+import { workstationRepository } from "@/lib/data";
 import { useEditor } from "@/lib/store";
 import { isSessionLive } from "@/lib/workstation";
 import type { Device } from "@/lib/types";
@@ -34,6 +35,11 @@ export function DevicesScreen() {
   const staff = useEditor((s) => s.warehouse.staff) ?? [];
   const [revoking, setRevoking] = useState<Device | null>(null);
   const [journalOf, setJournalOf] = useState<Device | null>(null);
+  const notify = useEditor((s) => s.notify);
+  const forget = async (id: string) => {
+    const res = await workstationRepository.forgetDevice(id);
+    if (!res.ok) notify("error", res.error);
+  };
 
   const devTable = useDataTable(devices, [
     { id: "name", value: (d) => d.name },
@@ -134,7 +140,17 @@ export function DevicesScreen() {
                         <History />
                         {t("devices.journal")}
                       </Button>
-                      {!d.revokedAt && (
+                      {d.revokedAt ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          title={t("devices.forgetHint")}
+                          onClick={() => void forget(d.id)}
+                        >
+                          <Trash2 />
+                          {t("devices.forget")}
+                        </Button>
+                      ) : (
                         <Button variant="ghost" size="sm" onClick={() => setRevoking(d)}>
                           <Power />
                           {t("devices.revoke")}
