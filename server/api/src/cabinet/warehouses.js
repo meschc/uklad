@@ -69,11 +69,14 @@ class WarehouseDeleteError extends Error {
 
 async function guardWarehouseDelete(c, ctx, cards) {
   if (!cards || ctx.can("org.manage")) return;
+  // Склад, ставший заготовкой (`placeholder`), из кабинета пропадает так же,
+  // как удалённый: и это — удаление.
+  const hidden = cards.filter((w) => w.placeholder === true).map((w) => w.id);
   const { rows } = await c.query(
     `SELECT ref FROM uklad.warehouses
      WHERE org_id = uklad.current_org() AND deleted_at IS NULL AND card IS NOT NULL
-       AND NOT (ref = ANY ($1::text[]))`,
-    [cards.map((w) => w.id)],
+       AND (NOT (ref = ANY ($1::text[])) OR (NOT placeholder AND ref = ANY ($2::text[])))`,
+    [cards.map((w) => w.id), hidden],
   );
   if (rows.length > 0) throw new WarehouseDeleteError(rows.map((r) => r.ref));
 }

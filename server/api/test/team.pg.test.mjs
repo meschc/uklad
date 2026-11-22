@@ -974,6 +974,20 @@ test("склад удаляет только владелец, роль влад
     kept.otherWarehouses.map((w) => w.name),
     ["Склад Б"],
   );
+  // Спрятать склад заготовкой — то же удаление.
+  const hide = await post("/api/cabinet/snapshot", {
+    ...chief,
+    body: {
+      version: v,
+      format: 8,
+      data: {
+        ...two,
+        otherWarehouses: [{ id: "w2", name: "Склад Б", staff: [], placeholder: true }],
+      },
+    },
+  });
+  assert.equal(hide.status, 409);
+  assert.equal(hide.json.error, "warehouse_delete_owner");
   // Владелец удаляет.
   const gone = await post("/api/cabinet/snapshot", {
     ...boss,

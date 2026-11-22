@@ -62,7 +62,18 @@ test("057: роли к запуску и замок на роли владель
       `INSERT INTO uklad.desk_staff_roles (org_id, staff_ref, role_id) VALUES ($1, 'stf-1', $2)`,
       [org, await roleId(org, "Сборщик")],
     );
+    // Ждущее приглашение на роль владельца, заведённое до 057.
+    await root.query(
+      `INSERT INTO uklad.members (org_id, role_id, display_name, status)
+       VALUES ($1, $2, 'Второй владелец', 'invited')`,
+      [org, await roleId(org, "Владелец")],
+    );
     for (const f of files.filter((f) => f >= "057_")) await apply(f);
+    const second = await root.query(
+      `SELECT status, deleted_at FROM uklad.members WHERE display_name = 'Второй владелец'`,
+    );
+    assert.equal(second.rows[0].status, "expired");
+    assert.ok(second.rows[0].deleted_at);
 
     const names = async (orgName) =>
       (

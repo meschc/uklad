@@ -61,6 +61,17 @@ WHERE r.is_default AND r.deleted_at IS NULL AND r.name IN ('Приёмщик', '
     SELECT 1 FROM uklad.desk_staff_roles d WHERE d.org_id = r.org_id AND d.role_id = r.id
   );
 
+-- Приглашения на роль владельца, заведённые до 057, гаснут: принятие роль не
+-- меняет, и триггер ниже такого человека уже не остановил бы.
+UPDATE auth.invitations i SET revoked_at = now()
+FROM uklad.members m JOIN uklad.roles r ON r.org_id = m.org_id AND r.id = m.role_id
+WHERE i.member_id = m.id AND i.accepted_at IS NULL AND i.revoked_at IS NULL
+  AND m.status = 'invited' AND m.account_id IS NULL AND 'org.manage' = ANY (r.permissions);
+UPDATE uklad.members m SET status = 'expired', deleted_at = now()
+FROM uklad.roles r
+WHERE r.org_id = m.org_id AND r.id = m.role_id AND m.deleted_at IS NULL
+  AND m.status = 'invited' AND m.account_id IS NULL AND 'org.manage' = ANY (r.permissions);
+
 ALTER TABLE uklad.desk_staff_roles FORCE ROW LEVEL SECURITY;
 ALTER TABLE uklad.members FORCE ROW LEVEL SECURITY;
 ALTER TABLE uklad.roles FORCE ROW LEVEL SECURITY;
