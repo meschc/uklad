@@ -37,7 +37,16 @@ const { writableKeys, foreignRows, mergeScoped } = require("./writeScope");
 const { forViewer, VIEW_PERMS } = require("./viewer");
 const { forSeller } = require("./seller");
 const { placeRef, focusWarehouse } = require("./viewerPlace");
-const { managerRef, restoreManager, foreignWarehouses } = require("./managerScope");
+const {
+  managerRef,
+  restoreManager,
+  foreignWarehouses,
+  ownScope,
+  scopeRoot,
+  mergeRoot,
+  rowsAllowed,
+  foreignCounts,
+} = require("./managerScope");
 const { recordMoves, invalidWork } = require("./moves");
 const { recordStorage, loadStorage, parsePeriod } = require("./storage");
 const { loadInventoryLog, parseLogPeriod } = require("./inventoryLog");
@@ -365,7 +374,9 @@ function createSnapshot({ auth, send, log, limits = null }) {
       const full = await loadCabinet(c, rows[0].data);
       const ref = managerRef(ctx, place, full);
       if (ref === false) return NO_WAREHOUSE;
-      return { ...rows[0], data: ref ? focusWarehouse(full, ref) : full };
+      if (!ref) return { ...rows[0], data: full };
+      // Журнал смен, корректировки и размещения — только своего склада.
+      return { ...rows[0], data: scopeRoot(focusWarehouse(full, ref), await ownScope(c, ref)) };
     });
     if (out === null) return send(res, 401, { ok: false });
     if (out === FORBIDDEN) return send(res, 403, { ok: false });
@@ -422,7 +433,7 @@ function createSnapshot({ auth, send, log, limits = null }) {
           const ref = managerRef(ctx, place, full);
           if (ref === false) return FORBIDDEN;
           if (foreignWarehouses(b.data, ref)) return { conflict: true, error: "warehouse_owner" };
-          b.data = restoreManager(full, b.data, ref);
+          b.data = mergeRoot(full, restoreManager(full, b.data, ref), await ownScope(c, ref));
           split = splitCabinet(b.data);
           data = JSON.stringify(split.doc);
         }
@@ -545,15 +556,17 @@ function createSnapshot({ auth, send, log, limits = null }) {
         if (manager) {
           const ref = managerRef(ctx, place, cur.data);
           if (ref === false) return FORBIDDEN;
-          const own = (r) => r && typeof r === "object" && r.w === ref;
-          if (![...(b.upsert ?? []), ...(b.remove ?? [])].every(own)) return FORBIDDEN;
-          if (!(b.slots ?? []).every(own)) return FORBIDDEN;
+          // Свой склад или общие списки компании (`w = ""`); из журнала смен,
+          // корректировок и размещений — только записи своего склада.
+          const scope = await ownScope(c, ref);
+          if (!(await rowsAllowed(c, ref, scope, b.upsert, b.remove))) return FORBIDDEN;
+          if (!b.slots.every((r) => r.w === ref || r.w === "")) return FORBIDDEN;
           if (foreignWarehouses(b.doc, ref)) return { conflict: true, error: "warehouse_owner" };
           // Склад не менялся — его карточка из базы, чтобы встать на своё место.
           if (!("warehouse" in b.doc)) {
             b.doc = { ...b.doc, warehouse: focusWarehouse(cur.data, ref).warehouse };
           }
-          b.doc = restoreManager(cur.data, b.doc, ref);
+          b.doc = await foreignCounts(c, restoreManager(cur.data, b.doc, ref), scope);
           doc = JSON.stringify(b.doc);
         }
         // Документ без складов — склады не менялись: берём их из таблицы, иначе
