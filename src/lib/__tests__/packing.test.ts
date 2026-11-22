@@ -4,7 +4,7 @@ import { createWorkstationSlice } from "../store/workstation.slice";
 import { createDisputesSlice } from "../store/disputes.slice";
 import type { DisputesSlice, EditorState, WorkstationSlice } from "../store/state";
 import { badgeCode } from "../workstation";
-import { boxesHolding, explainScan, pickToteProblem, toteOrders } from "../packing";
+import { boxesHolding, explainScan, packSummary, pickToteProblem, toteOrders } from "../packing";
 import type { Box, FulfillmentRequest, Product } from "../types";
 
 const slice = createWorkstationSlice as unknown as StateCreator<
@@ -314,6 +314,16 @@ describe("товар не из этой тары", () => {
 });
 
 describe("защита от ошибок упаковщика", () => {
+  // Обход столов 15.11: «Этикетка не из этой тары» ловилась, но в «Ошибки» не шла.
+  it("не та этикетка — в счётчике ошибок, а товар в таре не тронут", () => {
+    const { s } = stand([{ productId: "p1", qty: 2 }]);
+    s().packScanItem("4600000000017");
+    s().packLabelMistake("UK-LBL-CHUZHAYA");
+    const sum = packSummary(s().packSession!, s().boxes[0]);
+    expect(sum.errors).toBe(1);
+    expect(sum.shortage).toBe(1);
+  });
+
   it("называет, что именно перепутано вместо напечатанной этикетки", () => {
     const { s, packOne } = stand([{ productId: "p1", qty: 3 }]);
     packOne("4600000000017");

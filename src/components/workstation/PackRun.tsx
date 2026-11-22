@@ -135,7 +135,11 @@ export function PackRun({
       return flashOk(t("ws.merge.done", { box: other.barcode }));
     }
     const mistake = explainScan(session, box, products, code);
-    if (mistake) return flashError({ status: "error", key: `ws.chk.${mistake}` });
+    if (mistake) {
+      // Не та этикетка — ошибка упаковщика: в счётчик «Ошибки».
+      if (mistake.startsWith("label_")) void workstationRepository.packLabelMistake(code);
+      return flashError({ status: "error", key: `ws.chk.${mistake}` });
+    }
     if (label) {
       const res = await workstationRepository.packLabel(code);
       if (res.ok) {
