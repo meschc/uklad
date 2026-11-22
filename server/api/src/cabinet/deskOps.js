@@ -531,7 +531,13 @@ async function runDeskOps(c, deskId, ops, who, now, deps = {}) {
       [payload, deskId],
     );
     version = upd.rows[0].version;
-    if (split.items && deps.storeRecords) await deps.storeRecords(c, split.items, split.slots);
+    // Строки — только разница с кабинетом до операций: скан меняет одну-две
+    // записи, а не весь склад (`recordChanges`). Без `storeChanges` — всё целиком.
+    if (split.items && deps.storeChanges) {
+      await deps.storeChanges(c, deps.split(base).items, split.items);
+    } else if (split.items && deps.storeRecords) {
+      await deps.storeRecords(c, split.items, split.slots);
+    }
     // Склады — строками (миграция 051): `split` вынул их из документа.
     if (split.warehouses && deps.storeWarehouses) await deps.storeWarehouses(c, split.warehouses);
     // Тару разместили, сняли или пересчитали — занятость на сегодня (037).

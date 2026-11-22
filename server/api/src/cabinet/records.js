@@ -502,6 +502,43 @@ async function storeRecords(c, items, slots) {
 }
 
 /**
+ * Строки «до» и «после» одной правки → только разница: новые и изменённые
+ * (`upsert`) и пропавшие (`remove`). Стол меняет одну-две записи, а кабинет
+ * держит тысячи: писать все строки на каждый скан — главная цена операции
+ * (прогон `bench/desk-load.mjs`). Неизменная запись — тот же объект, что
+ * пришёл из базы, поэтому сначала сравнивается ссылка, текст — только у
+ * пересобранных. Строки «до» — ровно то, что лежит в базе живым и не в
+ * архиве (`loadRecords`), так что разница равна тому, что сделал бы
+ * `storeRecords` целиком.
+ */
+function recordChanges(before, after) {
+  const key = (r) => `${r.w}\u0000${r.d}\u0000${r.ref}`;
+  const prev = new Map(before.map((r) => [key(r), r]));
+  const upsert = [];
+  for (const r of after) {
+    const k = key(r);
+    const was = prev.get(k);
+    prev.delete(k);
+    if (
+      !was ||
+      was.pos !== r.pos ||
+      (was.data !== r.data && JSON.stringify(was.data) !== JSON.stringify(r.data))
+    ) {
+      upsert.push(r);
+    }
+  }
+  return { upsert, remove: [...prev.values()] };
+}
+
+/** Записать только разницу между строками «до» и «после» (`recordChanges`). */
+async function storeChanges(c, before, after) {
+  const { upsert, remove } = recordChanges(before, after);
+  if (upsert.length > 0) await upsertRecords(c, upsert);
+  await removeRecords(c, remove);
+  return { upserted: upsert.length, removed: remove.length };
+}
+
+/**
  * Законченная работа старше `days` дней → в архив. Законченная — значит,
  * склад к ней больше не вернётся: заявка уехала или отменена, поставка
  * закрыта, задание сделано, спорное решено, короб уехал, документ
@@ -594,6 +631,8 @@ module.exports = {
   withSettings,
   storedDoc,
   storeRecords,
+  recordChanges,
+  storeChanges,
   massGone,
   massRemoved,
   lostLists,

@@ -3,7 +3,12 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const { splitRecords, assembleRecords, hasMarks } = require("../src/cabinet/records");
+const {
+  splitRecords,
+  assembleRecords,
+  hasMarks,
+  recordChanges,
+} = require("../src/cabinet/records");
 
 /** Строки, как их отдаёт база: по складу, списку и месту. */
 const asRows = (items) =>
@@ -123,5 +128,37 @@ test("без склада работа склада не раскладывае�
   assert.deepEqual(
     items.map((i) => i.d),
     ["staffEvents"],
+  );
+});
+
+test("разница строк: пишется только новое, изменённое и сдвинутое, пропавшее — в корзину", () => {
+  const same = { id: "r1", qty: 1 };
+  const before = [
+    { w: "wh_1", d: "requests", ref: "r1", pos: 0, data: same },
+    { w: "wh_1", d: "requests", ref: "r2", pos: 1, data: { id: "r2", qty: 2 } },
+    { w: "wh_1", d: "requests", ref: "r3", pos: 2, data: { id: "r3", qty: 3 } },
+    { w: "wh_1", d: "boxes", ref: "b1", pos: 0, data: { id: "b1" } },
+    { w: "wh_1", d: "boxes", ref: "b2", pos: 1, data: { id: "b2" } },
+  ];
+  const after = [
+    // Тот же объект — не трогаем.
+    { w: "wh_1", d: "requests", ref: "r1", pos: 0, data: same },
+    // Пересобран, но тот же по содержанию — тоже не трогаем.
+    { w: "wh_1", d: "requests", ref: "r2", pos: 1, data: { id: "r2", qty: 2 } },
+    // Изменён.
+    { w: "wh_1", d: "requests", ref: "r3", pos: 2, data: { id: "r3", qty: 4 } },
+    // Сдвинулся в списке.
+    { w: "wh_1", d: "boxes", ref: "b2", pos: 0, data: { id: "b2" } },
+    // Новый; тот же id в другом списке — другая строка.
+    { w: "wh_1", d: "requests", ref: "b1", pos: 3, data: { id: "b1" } },
+  ];
+  const { upsert, remove } = recordChanges(before, after);
+  assert.deepEqual(
+    upsert.map((r) => `${r.d}/${r.ref}`),
+    ["requests/r3", "boxes/b2", "requests/b1"],
+  );
+  assert.deepEqual(
+    remove.map((r) => `${r.d}/${r.ref}`),
+    ["boxes/b1"],
   );
 });
