@@ -1,4 +1,5 @@
 import type { ItemScan } from "../packing";
+import { deviceNameError } from "../deviceName";
 import type { CountLine } from "../inventory";
 import type {
   CellAddress,
@@ -231,7 +232,8 @@ export function createWorkstationRepository(
       return ok(undefined);
     },
     addDevice: async (name, station, confirm) => {
-      if (!name.trim()) return fail("ws.device.nameEmpty");
+      const bad = deviceNameError(name);
+      if (bad) return fail(bad);
       if (onServer(port)) {
         // Сначала — что руководитель подтверждён: иначе каждый отказ оставлял
         // бы у себя заведённое и тут же погашенное устройство.

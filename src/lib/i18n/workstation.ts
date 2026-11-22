@@ -229,6 +229,9 @@ export const ru = {
   "ws.ship.stored": "{code} стоит на хранении — в машину не грузят",
   "ws.panel.close": "Закрыть",
   "ws.device.nameEmpty": "Назовите устройство — по имени столы и различают",
+  "ws.device.nameShort": "Назовите устройство словом: хотя бы две буквы, например «Упаковка 2»",
+  "ws.device.nameDigits": "Цифр в имени не больше четырёх: «ТСД 1001», а не серийный номер",
+  "ws.device.nameChars": "В имени только буквы, цифры, пробел, запятая и дефис",
   "ws.device.notManager": "Это не бейдж руководителя",
   "ws.device.otherWarehouse":
     "Это руководитель другого склада. Подтвердите руководителем этого склада или владельцем компании.",
@@ -883,6 +886,9 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.ship.stored": "{code} is in storage — it does not go on the truck",
   "ws.panel.close": "Close",
   "ws.device.nameEmpty": "Name the device — that is how desks are told apart",
+  "ws.device.nameShort": "Name the device with a word: at least two letters, e.g. “Packing 2”",
+  "ws.device.nameDigits": "Up to four digits in the name: “PDA 1001”, not a serial number",
+  "ws.device.nameChars": "Use only letters, digits, spaces, commas and hyphens",
   "ws.device.notManager": "This is not a manager's badge",
   "ws.device.otherWarehouse":
     "This is a manager of another warehouse. Confirm with a manager of this warehouse or the company owner.",
