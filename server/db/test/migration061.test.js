@@ -84,7 +84,17 @@ test("061: товары без склада — первому складу, с�
       ["p2", null],
       ["p3", "wb"],
     ]);
+    // p2 уже работает на втором складе (wb): миграция называет такой товар.
+    await root.query(
+      `INSERT INTO uklad.cabinet_records (org_id, warehouse_ref, domain, ref, position, data)
+       VALUES ($1, 'wb', 'requests', 'r1', 0, '{"items":[{"productId":"p2"}]}')`,
+      [two],
+    );
+    const notices = [];
+    c.on("notice", (n) => notices.push(n.message));
     await apply("061_shared_products_first_warehouse.sql");
+    assert.equal(notices.length, 1, notices.join("; "));
+    assert.match(notices[0], /1 товаров работают не на первом складе wc/);
     const rows = async (sql) => (await root.query(sql)).rows;
     assert.deepEqual(await rows(`SELECT ref, warehouse_ref FROM uklad.products ORDER BY ref`), [
       { ref: "p1", warehouse_ref: "wa" },

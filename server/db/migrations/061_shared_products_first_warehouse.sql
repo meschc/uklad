@@ -5,11 +5,17 @@
 -- склада забирает первый склад компании — по `position`, потом по времени,
 -- как роли в 058. Копий другим складам нет. Затем склады, где товаров без
 -- склада не осталось, получают свой каталог (`ownCatalog`).
+--
+-- Товар, который уже работает на другом складе (остаток в `uklad.stock` или
+-- запись работы склада в `cabinet_records`), после переноса тот склад не
+-- увидит: стол не узнает скан. Миграция его не трогает молча, а называет:
+-- NOTICE со счётом по компаниям — такие решаем вручную до выкладки.
 ALTER TABLE uklad.warehouses NO FORCE ROW LEVEL SECURITY;
 ALTER TABLE uklad.products NO FORCE ROW LEVEL SECURITY;
 DO $$
 DECLARE
   o record;
+  busy integer;
 BEGIN
   FOR o IN
     SELECT DISTINCT ON (w.org_id) w.org_id, w.ref FROM uklad.warehouses w
@@ -20,6 +26,20 @@ BEGIN
   LOOP
     -- Журнал правок карточек (`products_log`) пишет под компанией строки.
     PERFORM set_config('app.org_id', o.org_id::text, true);
+    SELECT count(*) INTO busy FROM uklad.products p
+    WHERE p.org_id = o.org_id AND p.warehouse_ref IS NULL AND p.deleted_at IS NULL
+      AND (EXISTS (SELECT 1 FROM uklad.stock s JOIN uklad.warehouses w
+                     ON w.org_id = s.org_id AND w.id = s.warehouse_id
+                   WHERE s.org_id = o.org_id AND s.product_id = p.id AND s.qty > 0
+                     AND w.ref IS DISTINCT FROM o.ref)
+        OR EXISTS (SELECT 1 FROM uklad.cabinet_records r
+                   WHERE r.org_id = o.org_id AND r.warehouse_ref NOT IN ('', o.ref)
+                     AND r.deleted_at IS NULL
+                     AND strpos(r.data::text, to_jsonb(p.ref)::text) > 0));
+    IF busy > 0 THEN
+      RAISE NOTICE 'Компания %: % товаров работают не на первом складе %',
+        o.org_id, busy, o.ref;
+    END IF;
     UPDATE uklad.products SET warehouse_ref = o.ref
     WHERE org_id = o.org_id AND warehouse_ref IS NULL;
   END LOOP;
