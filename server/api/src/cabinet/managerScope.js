@@ -14,6 +14,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { placeRef, focusWarehouse } = require("./viewerPlace");
 const { restore } = require("./deskPlace");
+const { withWarehouses } = require("./warehouses");
 
 const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 
@@ -26,6 +27,32 @@ function managerRef(ctx, place, data) {
   if (ctx.can("org.manage")) return null;
   const ref = placeRef(data, place?.warehouse_ref);
   return ref && focusWarehouse(data, ref) ? ref : false;
+}
+
+/**
+ * Склад руководителя для любого маршрута (`null` — владелец, `false` — склад
+ * не назначен при нескольких складах). Склады — из таблицы, место — из сессии.
+ */
+async function managerWarehouse(c, ctx) {
+  if (ctx.can("org.manage")) return null;
+  const place = (await c.query(`SELECT warehouse_ref FROM auth.actor_place()`)).rows[0];
+  const { rows } = await c.query(
+    `SELECT data FROM uklad.cabinet_snapshots WHERE org_id = uklad.current_org()`,
+  );
+  return managerRef(ctx, place, await withWarehouses(c, rows[0]?.data ?? {}));
+}
+
+/** Человек команды — со склада `ref` (руководитель трогает только своих). */
+async function memberHere(c, memberId, ref) {
+  const { rows } = await c.query(
+    `SELECT m.warehouse_ref, 'org.manage' = ANY (r.permissions) AS owner
+     FROM uklad.members m JOIN uklad.roles r ON r.org_id = m.org_id AND r.id = m.role_id
+     WHERE m.org_id = uklad.current_org() AND m.id = $1 AND m.deleted_at IS NULL`,
+    [memberId],
+  );
+  // Владелец — на всех складах. Тронуть его не даёт `auth.assert_may_touch`
+  // (прав владельца нет у руководителя → `role_not_allowed`), а не триггер 057.
+  return Boolean(rows[0] && (rows[0].owner || rows[0].warehouse_ref === ref));
 }
 
 /**
@@ -186,6 +213,8 @@ async function foreignCounts(c, doc, scope) {
 
 module.exports = {
   managerRef,
+  managerWarehouse,
+  memberHere,
   restoreManager,
   foreignWarehouses,
   ownScope,

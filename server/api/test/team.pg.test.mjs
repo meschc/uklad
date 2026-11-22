@@ -520,6 +520,17 @@ test(
   async () => {
     const boss = await owner("boss-desk@example.com", "10.1.0.9");
     const r = await roles(boss);
+    // Сотрудники стола — люди склада: начальник ставит роль только своим.
+    const staff = ["stf-olga", "stf-ivan", "stf-petr", "stf-anna"].map((id) => ({ id, name: id }));
+    const card = await post("/api/cabinet/snapshot", {
+      ...boss,
+      body: {
+        version: await version(boss),
+        format: 8,
+        data: { warehouse: { id: WH, name: "Склад", staff } },
+      },
+    });
+    assert.equal(card.status, 200, JSON.stringify(card.json));
     const top = await topRole(boss);
     const set = (who, staffRef, roleId) =>
       post("/api/team/desk-role", { ...who, body: { staffRef, roleId } });
@@ -1169,3 +1180,61 @@ test("журнал смен, корректировки и размещения 
   });
   assert.equal(bad.status, 403);
 });
+
+test(
+  "команда — люди своего склада: начальник видит и трогает только своих",
+  { skip: SKIP },
+  async () => {
+    const boss = await owner("boss-team@example.com", "10.1.0.70");
+    const r = await roles(boss);
+    const two = {
+      warehouse: { id: WH, name: "Склад", staff: [{ id: "s1", name: "Иван" }] },
+      otherWarehouses: [{ id: "w2", name: "Склад 2", staff: [{ id: "s2", name: "Пётр" }] }],
+    };
+    const put = await post("/api/cabinet/snapshot", {
+      ...boss,
+      body: { version: await version(boss), format: 8, data: two },
+    });
+    assert.equal(put.status, 200, JSON.stringify(put.json));
+    const chief = await join(boss, "chief-team@example.com", r["Начальник склада"]);
+    await join(boss, "other-team@example.com", r["Кладовщик / оператор"], { warehouseRef: "w2" });
+    const all = (await call("GET", "/api/team", boss)).json;
+    const other = all.members.find((m) => m.email === "other-team@example.com");
+    assert.equal(other.warehouseRef, "w2");
+    // Начальник склада w1: свои и владелец, без людей склада w2.
+    const seen = (await call("GET", "/api/team", chief)).json;
+    const emails = seen.members.map((m) => m.email).sort();
+    assert.deepEqual(emails, ["boss-team@example.com", "chief-team@example.com"]);
+    // Человека склада w2 не трогает ни ролью, ни отключением, ни переводом.
+    const role = await post("/api/team/role", {
+      ...chief,
+      body: { memberId: other.id, roleId: r["Старший смены"] },
+    });
+    assert.equal(role.status, 404);
+    const off = await post("/api/team/disable", { ...chief, body: { memberId: other.id } });
+    assert.equal(off.status, 404);
+    const move = await post("/api/team/place", {
+      ...chief,
+      body: { memberId: other.id, warehouseRef: WH },
+    });
+    assert.equal(move.status, 404);
+    // Позвать на чужой склад и дать роль сотруднику чужого стола — нельзя.
+    const inv = await post("/api/team/invite", {
+      ...chief,
+      body: { email: "x-team@example.com", roleId: r["Кладовщик / оператор"], warehouseRef: "w2" },
+    });
+    assert.equal(inv.status, 404);
+    const desk = await post("/api/team/desk-role", {
+      ...chief,
+      body: { staffRef: "s2", roleId: r["Старший смены"] },
+    });
+    assert.equal(desk.status, 404);
+    const mine = await post("/api/team/desk-role", {
+      ...chief,
+      body: { staffRef: "s1", roleId: r["Старший смены"] },
+    });
+    assert.equal(mine.status, 200, JSON.stringify(mine.json));
+    // Владелец видит всех.
+    assert.equal(all.members.length, 3);
+  },
+);
