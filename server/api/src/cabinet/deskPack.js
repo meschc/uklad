@@ -11,6 +11,7 @@
  */
 
 /* global module, require */
+"use strict";
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { orderSplit } = require("./deskMerge");
 

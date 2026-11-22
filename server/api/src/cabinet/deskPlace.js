@@ -22,6 +22,7 @@
  * `warehouseData[id]`. Чужие склады и их работа операции стола не видят.
  */
 /* global require, module */
+"use strict";
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { WAREHOUSE_DOMAINS, warehousesOf, focusWarehouse } = require("./viewerPlace");
 
