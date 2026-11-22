@@ -242,7 +242,8 @@ BEGIN
   IF length(trim(p_name)) NOT BETWEEN 1 AND 100 THEN RAISE EXCEPTION 'team:bad_name'; END IF;
   -- Название — слова: буквы, пробел, дефис, косая черта, скобки, точка,
   -- запятая. Цифр в названии роли нет (Кирилл 22.11).
-  IF trim(p_name) !~ '^[[:alpha:] /().,-]+$' OR trim(p_name) !~ '[[:alpha:]]' THEN
+  -- Набор букв явный: [[:alpha:]] зависит от локали базы, при «C» кириллицы в нём нет.
+  IF trim(p_name) !~ '^[A-Za-zА-Яа-яЁё /().,-]+$' OR trim(p_name) !~ '[A-Za-zА-Яа-яЁё]' THEN
     RAISE EXCEPTION 'team:role_name';
   END IF;
   IF 'org.manage' = ANY (p_perms) THEN RAISE EXCEPTION 'team:role_not_allowed'; END IF;

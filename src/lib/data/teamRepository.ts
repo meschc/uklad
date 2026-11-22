@@ -137,8 +137,9 @@ async function act(path: string, body: Record<string, unknown>): Promise<Result<
  * Название роли — слова, без цифр (Кирилл 22.11): буквы, пробел, дефис, косая
  * черта, скобки, точка, запятая. То же правило держит база (058).
  */
-const ROLE_NAME_RE = /^[\p{L} /().,-]+$/u;
-export const roleNameOk = (name: string) => ROLE_NAME_RE.test(name.trim()) && /\p{L}/u.test(name);
+const ROLE_NAME_RE = /^[A-Za-zА-Яа-яЁё /().,-]+$/;
+export const roleNameOk = (name: string) =>
+  ROLE_NAME_RE.test(name.trim()) && /[A-Za-zА-Яа-яЁё]/.test(name);
 
 export const teamRepository = {
   list: async (): Promise<Result<TeamState>> => {
