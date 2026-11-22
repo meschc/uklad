@@ -97,6 +97,7 @@ function pullResult(v: unknown): OrderPullResult | null {
 
 function statusError(status: number, error: unknown): MsgKey {
   if (status === 403) return "integr.error.forbidden";
+  if (error === "no_partner") return "integr.error.noPartner";
   if (status === 503 || error === "not_configured") return "integr.error.serverKey";
   if (status === 400) return "integr.error.badInput";
   if (status === 429) return "integr.error.rateLimit";
@@ -200,6 +201,17 @@ export const connectorsRepository = {
   }): Promise<Result<void>> => {
     const res = await attempt(
       () => apiRequest("POST", "/connectors/stock", { ...input }),
+      "integr.error.noServer",
+    );
+    if (!res.ok) return res;
+    const { status, body } = res.data;
+    return status === 200 ? ok(undefined) : fail(statusError(status, body.error));
+  },
+
+  /** Склад подключения без склада — выбирает владелец (`POST /connectors/place`). */
+  place: async (input: { id: string; warehouseId: string }): Promise<Result<void>> => {
+    const res = await attempt(
+      () => apiRequest("POST", "/connectors/place", { ...input }),
       "integr.error.noServer",
     );
     if (!res.ok) return res;

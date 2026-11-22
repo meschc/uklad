@@ -74,18 +74,31 @@ async function onlyWarehouse(c) {
   return rows.length === 1 ? rows[0].ref : null;
 }
 
-/** Партнёр `ref` — живой партнёр склада `wh`. */
+/**
+ * Партнёр `ref` — живой партнёр склада `wh`: строкой (миграция 055) или, у
+ * склада, чьи партнёры ещё в карточке, — в ней.
+ */
 async function partnerHere(c, wh, ref) {
-  const { rowCount } = await c.query(
-    `SELECT 1 FROM uklad.partners
-     WHERE org_id = uklad.current_org() AND warehouse_ref = $1 AND ref = $2 AND deleted_at IS NULL`,
+  const { rows } = await c.query(
+    `SELECT EXISTS (
+       SELECT 1 FROM uklad.partners
+       WHERE org_id = uklad.current_org() AND warehouse_ref = $1 AND ref = $2
+         AND deleted_at IS NULL
+     ) OR EXISTS (
+       SELECT 1 FROM uklad.warehouses w,
+         jsonb_array_elements(CASE WHEN jsonb_typeof(w.card->'partners') = 'array'
+                                   THEN w.card->'partners' ELSE '[]'::jsonb END) p
+       WHERE w.ref = $1 AND w.deleted_at IS NULL AND NOT w.partner_rows AND p->>'id' = $2
+     ) AS here`,
     [wh, ref],
   );
-  return rowCount > 0;
+  return rows[0].here;
 }
 
 /** Ответ «склад чужой» из сессии. */
 const FOREIGN = Symbol("foreign");
+/** У склада нет партнёра магазина подключения. */
+const NO_PARTNER = Symbol("no_partner");
 const TIMEOUT_MS = 20_000;
 const MAX_RESPONSE = 20 * 1024 * 1024;
 const ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -529,6 +542,47 @@ function createConnectors({ auth, send, log, secretKey, fetchImpl = fetch, pull 
     send(res, 200, { ok: true, ...total });
   }
 
+  /**
+   * Склад подключения выбирает владелец (Кирилл 22.11: склады связывает только
+   * он). Нужен подключению без склада у компании с несколькими складами: такое
+   * подкачка не заводит, руководители не видят, стол ярлык не берёт.
+   */
+  async function place(req, res) {
+    const b = await readJson(req, res, 1024);
+    if (!b) return;
+    const warehouseId = str(b.warehouseId, 100);
+    if (
+      typeof b.id !== "string" ||
+      !ID_RE.test(b.id) ||
+      !/^[A-Za-z0-9_-]{1,100}$/.test(warehouseId)
+    )
+      return send(res, 400, { ok: false, error: "bad_input" });
+    const out = await session(req, res, async (c, ctx, scope) => {
+      if (scope) return FOREIGN;
+      // Магазин партнёра — только на склад, где этот партнёр есть: иначе
+      // подкачка там не нашла бы его товаров и молча ничего не завела бы.
+      const cur = await c.query(
+        `SELECT params->>'partnerId' AS partner FROM uklad.connector_accounts
+         WHERE id = $1 AND deleted_at IS NULL`,
+        [b.id],
+      );
+      const partner = cur.rows[0]?.partner;
+      if (partner && !(await partnerHere(c, warehouseId, partner))) return NO_PARTNER;
+      const r = await c.query(
+        `UPDATE uklad.connector_accounts
+         SET params = coalesce(params, '{}'::jsonb) || jsonb_build_object('warehouseId', $2::text)
+         WHERE id = $1 AND deleted_at IS NULL
+           AND EXISTS (SELECT 1 FROM uklad.warehouses WHERE ref = $2
+                       AND card IS NOT NULL AND deleted_at IS NULL AND NOT placeholder)`,
+        [b.id, warehouseId],
+      );
+      return r.rowCount;
+    });
+    if (out?.value === FOREIGN) return send(res, 403, { ok: false, error: "forbidden" });
+    if (out?.value === NO_PARTNER) return send(res, 409, { ok: false, error: "no_partner" });
+    if (out) send(res, out.value ? 200 : 404, { ok: out.value > 0 });
+  }
+
   async function handle(req, res, url) {
     const p = url.pathname;
     if (p !== "/api/connectors" && !p.startsWith("/api/connectors/")) return false;
@@ -538,6 +592,7 @@ function createConnectors({ auth, send, log, secretKey, fetchImpl = fetch, pull 
     else if (p === "/api/connectors/rename" && req.method === "POST") await rename(req, res);
     else if (p === "/api/connectors/stock" && req.method === "POST") await stockSettings(req, res);
     else if (p === "/api/connectors/pull" && req.method === "POST") await pullNow(req, res);
+    else if (p === "/api/connectors/place" && req.method === "POST") await place(req, res);
     else {
       const m = /^\/api\/connectors\/([a-z-]{1,30})\/proxy$/.exec(p);
       if (!m || req.method !== "POST" || !SYSTEMS[m[1]]) send(res, 404, { ok: false });
