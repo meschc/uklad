@@ -88,7 +88,7 @@ async function partnerHere(c, wh, ref) {
        SELECT 1 FROM uklad.warehouses w,
          jsonb_array_elements(CASE WHEN jsonb_typeof(w.card->'partners') = 'array'
                                    THEN w.card->'partners' ELSE '[]'::jsonb END) p
-       WHERE w.ref = $1 AND w.deleted_at IS NULL AND p->>'id' = $2
+       WHERE w.ref = $1 AND w.deleted_at IS NULL AND NOT w.partner_rows AND p->>'id' = $2
      ) AS here`,
     [wh, ref],
   );
@@ -97,6 +97,8 @@ async function partnerHere(c, wh, ref) {
 
 /** Ответ «склад чужой» из сессии. */
 const FOREIGN = Symbol("foreign");
+/** У склада нет партнёра магазина подключения. */
+const NO_PARTNER = Symbol("no_partner");
 const TIMEOUT_MS = 20_000;
 const MAX_RESPONSE = 20 * 1024 * 1024;
 const ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -557,6 +559,15 @@ function createConnectors({ auth, send, log, secretKey, fetchImpl = fetch, pull 
       return send(res, 400, { ok: false, error: "bad_input" });
     const out = await session(req, res, async (c, ctx, scope) => {
       if (scope) return FOREIGN;
+      // Магазин партнёра — только на склад, где этот партнёр есть: иначе
+      // подкачка там не нашла бы его товаров и молча ничего не завела бы.
+      const cur = await c.query(
+        `SELECT params->>'partnerId' AS partner FROM uklad.connector_accounts
+         WHERE id = $1 AND deleted_at IS NULL`,
+        [b.id],
+      );
+      const partner = cur.rows[0]?.partner;
+      if (partner && !(await partnerHere(c, warehouseId, partner))) return NO_PARTNER;
       const r = await c.query(
         `UPDATE uklad.connector_accounts
          SET params = coalesce(params, '{}'::jsonb) || jsonb_build_object('warehouseId', $2::text)
@@ -568,6 +579,7 @@ function createConnectors({ auth, send, log, secretKey, fetchImpl = fetch, pull 
       return r.rowCount;
     });
     if (out?.value === FOREIGN) return send(res, 403, { ok: false, error: "forbidden" });
+    if (out?.value === NO_PARTNER) return send(res, 409, { ok: false, error: "no_partner" });
     if (out) send(res, out.value ? 200 : 404, { ok: out.value > 0 });
   }
 

@@ -90,6 +90,8 @@ export const ru = {
   "integr.noWarehouse":
     "Подключение без склада: заказы не приходят. Владелец выбирает, на какой склад их заводить.",
   "integr.pickWarehouse": "Выбрать склад",
+  "integr.error.noPartner":
+    "У этого склада нет продавца этого магазина. Добавьте продавца на склад или выберите другой склад.",
   "integr.stock.enable": "Выгружать остатки на площадку",
   "integr.stock.hint":
     "Включайте, когда приёмка разложена по таре и коробам: товар, которого там нет, уйдёт на площадку с нулём и снимется с продажи",
@@ -541,6 +543,8 @@ export const en: Record<keyof typeof ru, string> = {
   "integr.noWarehouse":
     "Connection has no warehouse: orders do not arrive. The owner picks which warehouse gets them.",
   "integr.pickWarehouse": "Choose warehouse",
+  "integr.error.noPartner":
+    "This warehouse has no seller for this shop. Add the seller to the warehouse or choose another warehouse.",
   "integr.stock.enable": "Send stock to the platform",
   "integr.stock.hint":
     "Turn on once intake is put into totes and boxes: a product that is not there goes to the platform as zero and stops selling",

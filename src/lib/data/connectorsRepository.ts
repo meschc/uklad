@@ -97,6 +97,7 @@ function pullResult(v: unknown): OrderPullResult | null {
 
 function statusError(status: number, error: unknown): MsgKey {
   if (status === 403) return "integr.error.forbidden";
+  if (error === "no_partner") return "integr.error.noPartner";
   if (status === 503 || error === "not_configured") return "integr.error.serverKey";
   if (status === 400) return "integr.error.badInput";
   if (status === 429) return "integr.error.rateLimit";

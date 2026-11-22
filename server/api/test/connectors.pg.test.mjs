@@ -858,5 +858,14 @@ test(
     assert.equal((await placeIt(boss, "nope")).status, 404);
     assert.equal((await placeIt(boss, WH)).status, 200);
     assert.ok((await labels(chief)).includes("Старое"));
+    // Магазин продавца склада Б — не на склад, где этого продавца нет.
+    const shop = await add(boss, { label: "Магазин Б", warehouseId: "w2", partnerId: "pB" });
+    assert.equal(shop.status, 200, JSON.stringify(shop.json));
+    const moved = await post("/api/connectors/place", {
+      ...boss,
+      body: { id: shop.json.id, warehouseId: WH },
+    });
+    assert.equal(moved.status, 409);
+    assert.equal(moved.json.error, "no_partner");
   },
 );
