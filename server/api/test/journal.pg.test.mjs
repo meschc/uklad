@@ -515,6 +515,24 @@ test(
         asOrg(db.pool, c.org, (x) => logAction(x, log, { action: "connector.save", details })),
       );
     }
+    // Огромные подробности — отказ, а не забитая база.
+    await assert.rejects(
+      asOrg(db.pool, c.org, (x) =>
+        logAction(x, log, {
+          action: "role.save",
+          details: { s: "x".repeat(2001) },
+          source: "system",
+        }),
+      ),
+    );
+    // Действие откатилось (обрыв, ошибка после записи) — строки нет.
+    await assert.rejects(
+      asOrg(db.pool, c.org, async (x) => {
+        await logAction(x, log, { action: "role.rename", warehouse: "wh_a", source: "system" });
+        throw new Error("обрыв");
+      }),
+    );
+    assert.equal(await rowsOf("role.rename"), 0);
     // Неверный вид действия — ошибка, а не тихий пропуск.
     await assert.rejects(asOrg(db.pool, c.org, (x) => logAction(x, log, { action: "Bad Action" })));
   },
