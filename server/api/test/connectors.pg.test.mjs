@@ -792,13 +792,24 @@ test(
   async () => {
     const boss = await owner("conn-wh@example.com", "10.3.0.40");
     const r = await roles(boss);
+    // Склад у компании один — подключение без склада получает его сразу.
+    const first = await post("/api/connectors/save", {
+      ...boss,
+      body: { system: "ozon", label: "Один", token: "T-1234567890", clientId: "77" },
+    });
+    assert.equal(first.status, 200, JSON.stringify(first.json));
     const full = (await call("GET", "/api/cabinet/snapshot", boss)).json.snapshot;
     const grow = await post("/api/cabinet/snapshot", {
       ...boss,
       body: {
         version: full.version,
         format: 8,
-        data: { ...full.data, otherWarehouses: [{ id: "w2", name: "Склад 2", staff: [] }] },
+        data: {
+          ...full.data,
+          otherWarehouses: [
+            { id: "w2", name: "Склад 2", staff: [], partners: [{ id: "pB", name: "Магазин Б" }] },
+          ],
+        },
       },
     });
     assert.equal(grow.status, 200, JSON.stringify(grow.json));
@@ -813,11 +824,13 @@ test(
     const chief = await join(boss, "conn-chief@example.com", r["Начальник склада"]);
     const labels = async (who) =>
       (await call("GET", "/api/connectors", who)).json.connections.map((x) => x.label).sort();
-    assert.deepEqual(await labels(boss), ["А", "Б", "Старое"]);
+    assert.deepEqual(await labels(boss), ["Один", "А", "Б", "Старое"].sort());
     // Чужого склада и без склада при двух складах — не видно.
-    assert.deepEqual(await labels(chief), ["А"]);
+    assert.deepEqual(await labels(chief), ["А", "Один"]);
     // Новое — на свой склад; чужой склад назвать нельзя.
     assert.equal((await add(chief, { label: "Чужое", warehouseId: "w2" })).status, 403);
+    // Магазин партнёра чужого склада — тоже чужой.
+    assert.equal((await add(chief, { label: "Чужой магазин", partnerId: "pB" })).status, 403);
     const own = await add(chief, { label: "Своё" });
     assert.equal(own.status, 200, JSON.stringify(own.json));
     const list = (await call("GET", "/api/connectors", boss)).json.connections;
@@ -834,7 +847,7 @@ test(
       ];
       for (const x of await Promise.all(touch)) assert.equal(x.status, 404);
     }
-    assert.deepEqual(await labels(boss), ["А", "Б", "Своё", "Старое"]);
+    assert.deepEqual(await labels(boss), ["Один", "А", "Б", "Своё", "Старое"].sort());
     const rn = await post("/api/connectors/rename", { ...chief, body: { id: mine, label: "А2" } });
     assert.equal(rn.status, 200);
   },

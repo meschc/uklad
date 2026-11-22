@@ -65,6 +65,25 @@ function ownRows(n) {
 }
 const scopeArgs = (scope) => [scope?.ref ?? null, scope?.single ?? false];
 
+/** Единственный склад компании или `null`, если их несколько или нет. */
+async function onlyWarehouse(c) {
+  const { rows } = await c.query(
+    `SELECT ref FROM uklad.warehouses
+     WHERE card IS NOT NULL AND deleted_at IS NULL AND NOT placeholder`,
+  );
+  return rows.length === 1 ? rows[0].ref : null;
+}
+
+/** Партнёр `ref` — живой партнёр склада `wh`. */
+async function partnerHere(c, wh, ref) {
+  const { rowCount } = await c.query(
+    `SELECT 1 FROM uklad.partners
+     WHERE org_id = uklad.current_org() AND warehouse_ref = $1 AND ref = $2 AND deleted_at IS NULL`,
+    [wh, ref],
+  );
+  return rowCount > 0;
+}
+
 /** Ответ «склад чужой» из сессии. */
 const FOREIGN = Symbol("foreign");
 const TIMEOUT_MS = 20_000;
@@ -326,7 +345,11 @@ function createConnectors({ auth, send, log, secretKey, fetchImpl = fetch, pull 
     const out = await session(req, res, async (c, ctx, scope) => {
       // Руководитель подключает только свой склад: не назван — его склад.
       if (scope && warehouseId && warehouseId !== scope.ref) return FOREIGN;
-      const place = scope ? scope.ref : warehouseId;
+      // Склад не назван, а он у компании один — он: подключение без склада
+      // молча перестало бы работать, когда появится второй склад.
+      const place = scope ? scope.ref : warehouseId || (await onlyWarehouse(c));
+      // Партнёр — со склада руководителя: ключ магазина чужого склада ему не положен.
+      if (scope && partnerId && !(await partnerHere(c, scope.ref, partnerId))) return FOREIGN;
       const id = (await c.query("SELECT gen_random_uuid() AS id")).rows[0].id;
       await c.query(
         `INSERT INTO uklad.connector_accounts (id, org_id, system, label, params, secret, created_by)
