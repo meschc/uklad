@@ -220,12 +220,21 @@ function splitCabinet(data) {
 }
 
 /**
- * Каталог, который пишет не владелец: товары его склада `ref`, а если у склада
- * нет своего каталога (`ownCatalog`) — и общие, без склада. `null` — склада нет.
+ * Каталог, который пишет не владелец: товары его склада `ref`. Общий каталог
+ * (товары без склада) — только у склада без своего каталога (`ownCatalog`) и
+ * только пока такие товары у компании есть (до 17.11, миграция 059): иначе
+ * товар без склада ложится на его склад, а не становится общим.
+ * `null` — склада нет.
  */
-function productScope(data, ref) {
+async function productScope(c, data, ref) {
   const wh = warehousesOf(data).find((w) => w.id === ref);
-  return wh ? { ref, shared: !wh.ownCatalog } : null;
+  if (!wh) return null;
+  if (wh.ownCatalog) return { ref, shared: false };
+  const { rows } = await c.query(
+    `SELECT EXISTS (SELECT 1 FROM uklad.products WHERE org_id = uklad.current_org()
+       AND warehouse_ref IS NULL AND deleted_at IS NULL) AS shared`,
+  );
+  return { ref, shared: rows[0].shared };
 }
 
 /** Строки каталога в счёт: всей компании (`$2` пуст) или одного склада. */
@@ -334,7 +343,7 @@ function createSnapshot({ auth, send, log, limits = null }) {
   async function storeWarehousesLimited(c, ctx, cards) {
     await guardWarehouseDelete(c, ctx, cards);
     const room = cards && limits ? await limits.guard(c, ctx.orgId, "warehouses") : null;
-    await storeWarehouses(c, cards);
+    await storeWarehouses(c, cards, { owner: ctx.can("org.manage") });
     await room?.check();
   }
 
@@ -460,7 +469,7 @@ function createSnapshot({ auth, send, log, limits = null }) {
           const ref = managerRef(ctx, place, full);
           if (ref === false) return FORBIDDEN;
           if (foreignWarehouses(b.data, ref)) return { conflict: true, error: "warehouse_owner" };
-          catalog = productScope(full, ref);
+          catalog = await productScope(c, full, ref);
           if (!catalog) return FORBIDDEN;
           b.data = mergeRoot(full, restoreManager(full, b.data, ref), await ownScope(c, ref));
           split = splitCabinet(b.data);
@@ -590,7 +599,7 @@ function createSnapshot({ auth, send, log, limits = null }) {
         if (manager) {
           const ref = managerRef(ctx, place, cur.data);
           if (ref === false) return FORBIDDEN;
-          catalog = productScope(cur.data, ref);
+          catalog = await productScope(c, cur.data, ref);
           if (!catalog) return FORBIDDEN;
           // Свой склад или общие списки компании (`w = ""`); из журнала смен,
           // корректировок и размещений — только записи своего склада.
@@ -613,7 +622,7 @@ function createSnapshot({ auth, send, log, limits = null }) {
           const place = await actorPlace(c);
           const ref = placeRef(cur.data, place?.warehouse_ref);
           if (!ref || !focusWarehouse(cur.data, ref)) return FORBIDDEN;
-          catalog = productScope(cur.data, ref);
+          catalog = await productScope(c, cur.data, ref);
           if (!catalog) return FORBIDDEN;
           b.doc = mergeScoped(cur.data, b.doc, ctx.can, ref);
           doc = JSON.stringify(b.doc);

@@ -1268,6 +1268,42 @@ test(
     assert.deepEqual(after1.map((p) => p.id).sort(), ["p0", "p2", "p3", "p4"]);
     assert.equal(after1.find((p) => p.id === "p4").warehouseId, WH);
     assert.equal((await changes(chief, [card("p3", WH), card("p4", WH), card("p0")])).status, 403);
+
+    // Свой каталог снимает только владелец: руководитель, сняв флаг, открыл бы
+    // себе общий.
+    const last = (await call("GET", "/api/cabinet/snapshot", chief)).json.snapshot.data;
+    const plain = { ...last.warehouse };
+    delete plain.ownCatalog;
+    const flip = await post("/api/cabinet/snapshot", {
+      ...chief,
+      body: { version: await version(chief), format: 8, data: { ...last, warehouse: plain } },
+    });
+    assert.equal(flip.status, 200, JSON.stringify(flip.json));
+    const cards = async () => {
+      const d = (await call("GET", "/api/cabinet/snapshot", boss)).json.snapshot.data;
+      return [d.warehouse, ...d.otherWarehouses];
+    };
+    assert.ok((await cards()).every((w) => w.ownCatalog === true));
+
+    // Склад без флага (до 17.11), а товаров без склада у компании нет:
+    // общего каталога нет, товар без склада ложится на склад руководителя.
+    const own = (await call("GET", "/api/cabinet/snapshot", boss)).json.snapshot.data;
+    const bare = { ...own.warehouse };
+    delete bare.ownCatalog;
+    const reset = await post("/api/cabinet/snapshot", {
+      ...boss,
+      body: {
+        version: await version(boss),
+        format: 8,
+        data: { ...own, warehouse: bare, products: own.products.filter((p) => p.id !== "p0") },
+      },
+    });
+    assert.equal(reset.status, 200, JSON.stringify(reset.json));
+    assert.equal((await cards()).find((w) => w.id === WH).ownCatalog, undefined);
+    const p5 = await changes(chief, [card("p3", WH), card("p4", WH), card("p5")]);
+    assert.equal(p5.status, 200, JSON.stringify(p5.json));
+    const after2 = (await call("GET", "/api/cabinet/snapshot", boss)).json.snapshot.data.products;
+    assert.equal(after2.find((p) => p.id === "p5").warehouseId, WH);
   },
 );
 

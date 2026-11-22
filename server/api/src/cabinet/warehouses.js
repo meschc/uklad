@@ -49,9 +49,32 @@ async function withWarehouses(c, doc) {
 }
 
 /** Склады — в таблицу. `null` — не трогать (их не прислали). */
-async function storeWarehouses(c, cards) {
+async function storeWarehouses(c, cards, { owner = false } = {}) {
   if (!cards) return;
-  await c.query(`SELECT uklad.save_warehouses($1::jsonb)`, [JSON.stringify(cards)]);
+  const out = await catalogFlags(c, cards, owner);
+  await c.query(`SELECT uklad.save_warehouses($1::jsonb)`, [JSON.stringify(out)]);
+}
+
+/**
+ * Свой каталог склада (`ownCatalog`, миграция 059) у существующего склада
+ * меняет только владелец: руководитель или стол, сняв флаг, открыли бы себе
+ * общий каталог. Новый склад заводит владелец — как прислал.
+ */
+async function catalogFlags(c, cards, owner) {
+  const { rows } = await c.query(
+    `SELECT ref, card->'ownCatalog' AS flag FROM uklad.warehouses
+     WHERE org_id = uklad.current_org() AND card IS NOT NULL AND ref = ANY ($1::text[])`,
+    [cards.map((w) => w.id)],
+  );
+  const prev = new Map(rows.map((r) => [r.ref, r.flag]));
+  return cards.map((w) => {
+    if (owner || !prev.has(w.id)) return w;
+    const out = { ...w };
+    const was = prev.get(w.id);
+    if (was === null || was === undefined) delete out.ownCatalog;
+    else out.ownCatalog = was;
+    return out;
+  });
 }
 
 /**

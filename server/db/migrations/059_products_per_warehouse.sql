@@ -108,3 +108,44 @@ END $$;
 
 REVOKE EXECUTE ON FUNCTION uklad.save_products(jsonb, text, boolean) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION uklad.save_products(jsonb, text, boolean) TO uklad_app;
+
+-- Склады, заведённые до 17.11, своего каталога не знали (`ownCatalog` нет), а
+-- их товары — склада (`warehouse_ref` пуст): весь каталог компании был общим.
+-- Демо на сервер не попадает, поэтому общий каталог серверу не нужен вовсе.
+-- У компании с одним складом его товары без склада — этого склада. Затем
+-- каждый склад компании, где товаров без склада не осталось, получает свой
+-- каталог. Компания с несколькими складами и общим каталогом остаётся как
+-- была: чей товар — решает владелец (такие компании миграция называет).
+ALTER TABLE uklad.warehouses NO FORCE ROW LEVEL SECURITY;
+ALTER TABLE uklad.products NO FORCE ROW LEVEL SECURITY;
+DO $$
+DECLARE
+  o record;
+  left_shared text[];
+BEGIN
+  FOR o IN
+    SELECT org_id, min(ref) AS ref FROM uklad.warehouses
+    WHERE card IS NOT NULL AND deleted_at IS NULL AND NOT placeholder
+    GROUP BY org_id HAVING count(*) = 1
+  LOOP
+    -- Журнал правок карточек (`products_log`) пишет под компанией строки.
+    PERFORM set_config('app.org_id', o.org_id::text, true);
+    UPDATE uklad.products SET warehouse_ref = o.ref
+    WHERE org_id = o.org_id AND warehouse_ref IS NULL;
+  END LOOP;
+  PERFORM set_config('app.org_id', '', true);
+
+  UPDATE uklad.warehouses w SET card = w.card || '{"ownCatalog": true}'::jsonb
+  WHERE w.card IS NOT NULL AND NOT (w.card ? 'ownCatalog')
+    AND NOT EXISTS (SELECT 1 FROM uklad.products p
+                    WHERE p.org_id = w.org_id AND p.warehouse_ref IS NULL
+                      AND p.deleted_at IS NULL);
+
+  SELECT array_agg(DISTINCT org_id::text) INTO left_shared FROM uklad.warehouses
+  WHERE card IS NOT NULL AND NOT (card ? 'ownCatalog') AND deleted_at IS NULL;
+  IF left_shared IS NOT NULL THEN
+    RAISE NOTICE 'Общий каталог на нескольких складах остался у компаний: %', left_shared;
+  END IF;
+END $$;
+ALTER TABLE uklad.products FORCE ROW LEVEL SECURITY;
+ALTER TABLE uklad.warehouses FORCE ROW LEVEL SECURITY;
