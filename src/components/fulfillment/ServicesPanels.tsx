@@ -234,7 +234,7 @@ export function ReportPanel() {
   const t = useT();
   const svcName = useServiceName();
   const settings = useEditor((s) => s.serviceSettings);
-  // Счёт за всё время — с архивом старше 45 дней (`store/archive.ts`).
+  // Счёт за всё время — с архивом старше 7 дней (`store/archive.ts`).
   const tasks = useWithArchive("tasks");
   const pallets = useEditor((s) => s.pallets);
   const boxes = useEditor((s) => s.boxes);

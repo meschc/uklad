@@ -32,7 +32,7 @@ export function AnalyticsScreen() {
   const warehouse = useEditor((s) => s.warehouse);
   const placements = useEditor((s) => s.placements);
   const boxes = useEditor((s) => s.boxes);
-  // Отчёт за всё время: живое из стора и архив старше 45 дней с сервера.
+  // Отчёт за всё время: живое из стора и архив старше 7 дней с сервера.
   const events = useWithArchive("receivingEvents");
   const requests = useWithArchive("requests");
   const shipments = useEditor((s) => s.expectedShipments);

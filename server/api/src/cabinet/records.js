@@ -104,7 +104,7 @@ const COMPANY = "";
 const MARK = "$rows";
 const MAX_REF = 200;
 /** Сколько дней законченная работа остаётся в кабинете, прежде чем уйти в архив. */
-const ARCHIVE_DAYS = 45;
+const ARCHIVE_DAYS = 7;
 /** Строк архива за один ответ. */
 const ARCHIVE_PAGE = 2000;
 

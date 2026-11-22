@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Trash2, X } from "lucide-react";
 import { useEditor } from "@/lib/store";
+import { useWithArchive } from "@/lib/store/archive";
 import { payRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
 import { signOf } from "@/lib/payExtras";
@@ -45,7 +46,8 @@ export function PayPanel({
 }) {
   const t = useT();
   const all = useEditor((s) => s.payAdjustments);
-  const events = useEditor((s) => s.staffEvents);
+  // Период зарплаты длиннее окна кабинета (7 дней): ошибки — с архивом.
+  const events = useWithArchive("staffEvents");
   const list = all
     .filter((a) => a.staffId === row.staffId && a.at >= from && a.at < to)
     .sort((a, b) => b.at - a.at);

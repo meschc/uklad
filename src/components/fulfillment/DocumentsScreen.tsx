@@ -85,7 +85,7 @@ export function DocumentsScreen() {
   const t = useT();
   const warehouse = useEditor((s) => s.warehouse);
   const products = useEditor((s) => s.products);
-  // Документы прошлых операций — с архивом старше 45 дней (`store/archive.ts`).
+  // Документы прошлых операций — с архивом старше 7 дней (`store/archive.ts`).
   const requests = useWithArchive("requests");
   const shipments = useWithArchive("shipments");
   const expected = useWithArchive("expectedShipments");

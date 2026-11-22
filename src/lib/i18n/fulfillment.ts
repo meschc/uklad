@@ -444,8 +444,8 @@ export const ru = {
   "insp.pickPriority": "Приоритет отбора",
   "insp.notPickable": "не отбирать отсюда",
   "insp.palletPlace": "паллетное место",
-  "archive.loading": "Догружаем историю старше 45 дней. Пока числа только за последние недели.",
-  "archive.failed": "История старше 45 дней не загрузилась: числа только за последние недели.",
+  "archive.loading": "Догружаем историю старше 7 дней. Пока числа только за последнюю неделю.",
+  "archive.failed": "История старше 7 дней не загрузилась: числа только за последнюю неделю.",
   "archive.retry": "Повторить",
 };
 
@@ -890,8 +890,7 @@ export const en: Record<keyof typeof ru, string> = {
   "insp.notPickable": "do not pick from here",
   "insp.palletPlace": "pallet place",
   "archive.loading":
-    "Loading history older than 45 days. For now the numbers cover the last weeks only.",
-  "archive.failed":
-    "History older than 45 days didn't load: the numbers cover the last weeks only.",
+    "Loading history older than 7 days. For now the numbers cover the last week only.",
+  "archive.failed": "History older than 7 days didn't load: the numbers cover the last week only.",
   "archive.retry": "Try again",
 };
