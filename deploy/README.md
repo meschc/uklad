@@ -388,6 +388,18 @@ docker compose exec -T db pg_dump -U uklad_owner -Fc uklad > ~/uklad-$(date +%F)
 Том `pgdata` переживает пересборку и `docker compose down`. Стирает его
 только `docker compose down -v` — эту команду не выполнять.
 
+**Правка строк руками.** Столы держат строки работы склада компании в
+памяти `api` между сканами (`server/api/src/cabinet/deskCache.js`) и
+сверяют их с базой только по версии снимка. После ручного SQL по
+`uklad.cabinet_records` (поддержка, разбор случая) поднимите версию этой
+компании, иначе стол продолжит считать по старой памяти:
+
+```sql
+UPDATE uklad.cabinet_snapshots SET version = version + 1 WHERE org_id = '<id компании>';
+```
+
+Или перезапустите `api`: `docker compose restart api`.
+
 ## Дальше: проверочный сервер и Postgres
 
 До первых клиентов добавить:

@@ -190,8 +190,10 @@ const mayView = (ctx) =>
  * Документ компании из базы → кабинет целиком, как его видит браузер:
  * товары — из таблицы, работа склада — со строк.
  */
-async function loadCabinet(c, doc) {
-  return { ...(await loadRecords(c, doc)), products: await allProducts(c) };
+async function loadCabinet(c, doc, rows = null) {
+  // `rows` — строки работы склада, уже известные стол (`deskCache.js`).
+  const records = rows ? assembleRecords(await storedDoc(c, doc), rows) : await loadRecords(c, doc);
+  return { ...records, products: await allProducts(c) };
 }
 
 /** Товары компании из таблицы — все склады. */

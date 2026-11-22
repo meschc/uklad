@@ -315,7 +315,11 @@ async function storedDoc(c, doc) {
  */
 async function loadRecords(c, doc, domains = null) {
   // Склады — строками (миграция 051): без них не понять, чьи списки в корне.
-  doc = await storedDoc(c, doc);
+  return assembleRecords(await storedDoc(c, doc), await loadRows(c, domains));
+}
+
+/** Живые строки работы склада `{ w, d, data }` по складу, списку и месту. */
+async function loadRows(c, domains = null) {
   const { rows } = await c.query(
     `SELECT warehouse_ref AS w, domain AS d, data FROM uklad.cabinet_records
      WHERE org_id = uklad.current_org() AND deleted_at IS NULL AND archived_at IS NULL
@@ -323,7 +327,7 @@ async function loadRecords(c, doc, domains = null) {
      ORDER BY warehouse_ref, domain, position`,
     [domains],
   );
-  return assembleRecords(doc, rows);
+  return rows;
 }
 
 /**
@@ -628,6 +632,7 @@ module.exports = {
   hasMarks,
   isMark,
   loadRecords,
+  loadRows,
   withSettings,
   storedDoc,
   storeRecords,

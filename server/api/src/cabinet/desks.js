@@ -50,6 +50,7 @@ const { MAX_SNAPSHOT_BYTES, warnNearLimit, loadCabinet, splitCabinet } = require
 const { whoseBadge, badgeAnswer, answerCheck, CHECKS_PER_MINUTE } = require("./deskBadges");
 const { storeWarehouses } = require("./warehouses");
 const { withSettings, storeChanges } = require("./records");
+const { createDeskCache, cacheKey } = require("./deskCache");
 const { GOODS_DECIDE, GOODS_WRITEOFF, STAFF_MANAGE, may, loadDeskPerms } = require("./deskPerms");
 const { mergeDeskStock, STOCK_KEYS } = require("./deskStock");
 const { recordMoves, diffMoves } = require("./moves");
@@ -406,6 +407,8 @@ function createDesks({ auth, cfg, send, log, secretKey = null, fetchImpl = fetch
   // Стол раз в 20 секунд спрашивает версию снимка: запас на несколько вкладок.
   const versionLimit = createRateLimit({ capacity: 12, refillPerMinute: 12 });
   const opsLimit = createRateLimit({ capacity: OPS_PER_MINUTE, refillPerMinute: OPS_PER_MINUTE });
+  // Строки работы склада после прошлого скана компании (`deskCache.js`).
+  const deskCache = createDeskCache();
   const checks = createRateLimit({
     capacity: CHECKS_PER_MINUTE,
     refillPerMinute: CHECKS_PER_MINUTE,
@@ -756,7 +759,7 @@ function createDesks({ auth, cfg, send, log, secretKey = null, fetchImpl = fetch
       return runDeskOps(c, d.deskId, ops, who, Date.now(), {
         verify,
         place: (full) => deskPlace(full, d.deviceRef),
-        load: loadCabinet,
+        load: (cc, doc, cur) => loadCabinet(cc, doc, deskCache.get(d.orgId, cacheKey(cur))),
         split: splitCabinet,
         storeChanges,
         storeWarehouses,
@@ -776,9 +779,12 @@ function createDesks({ auth, cfg, send, log, secretKey = null, fetchImpl = fetch
     // Снимка ещё нет: класть отметки некуда, его заводит руководитель.
     if (out.conflict !== undefined) return send(res, 409, { ok: false, error: "no_snapshot" });
     if (out.bytes) warnNearLimit(log, out.orgId, out.bytes);
+    // Транзакция уже зафиксирована: строки после неё — в память.
+    if (out.cache) deskCache.put(out.orgId, out.cache.key, out.cache.rows);
     const answer = { ...out };
     delete answer.bytes;
     delete answer.orgId;
+    delete answer.cache;
     return send(res, 200, { ok: true, ...answer });
   }
 
