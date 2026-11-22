@@ -190,7 +190,7 @@ test("договор закрыт — товар скрыт от обеих ст
 
 test("роль чужой компании сотруднику не назначить", async () => {
   const { rows } = await db.root.query(
-    `SELECT id FROM uklad.roles WHERE org_id = $1 AND name = 'Кладовщик'`,
+    `SELECT id FROM uklad.roles WHERE org_id = $1 AND name = 'Кладовщик / оператор'`,
     [w.B],
   );
   await assert.rejects(
@@ -207,8 +207,18 @@ test("роль чужой компании сотруднику не назна�
 test("новая компания получает роли по умолчанию, права сверяются", async () => {
   await asOrg(db.pool, w.A, async (c) => {
     const { rows } = await c.query(`SELECT name FROM uklad.roles ORDER BY name`);
-    assert.ok(rows.some((r) => r.name === "Начальник склада"));
-    assert.ok(!rows.some((r) => r.name === "Менеджер селлера"));
+    // Набор к запуску (057): без приёмщика, сборщика и упаковщика.
+    assert.deepEqual(
+      rows.map((r) => r.name),
+      [
+        "Владелец",
+        "Кладовщик / оператор",
+        "Начальник склада",
+        "Продавец",
+        "Старший смены",
+        "Старший участка",
+      ],
+    );
     await assert.rejects(
       c.query(
         `INSERT INTO uklad.roles (org_id, name, permissions) VALUES ($1, 'Старший смены', '{plan.edti}')`,

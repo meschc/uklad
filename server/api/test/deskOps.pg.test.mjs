@@ -621,23 +621,30 @@ test(
       kind: "pick_done",
       body: { eventId: "ev-pick-done", staffId: "stf-ivan", at: Date.now() - 400, requestId: "r1" },
     };
-    // Роль решает, что можно у стола: упаковщик не собирает, сборщик — да.
+    // Роль решает, что можно у стола: своя роль «Упаковка» не собирает,
+    // старший участка — да.
     // Вход руководителя в этом браузере погас со столом — входит заново.
     const office = { cookie: await login("ops-g@sklad.ru"), org: a.org };
     const team = (await call("/api/team", office)).json;
     const roles = Object.fromEntries(team.roles.map((x) => [x.name, x.id]));
+    roles["Упаковка"] = (
+      await call("/api/team/roles/save", {
+        ...office,
+        body: { name: "Упаковка", permissions: ["packing.view", "packing.do"] },
+      })
+    ).json.roleId;
     const role = (name) =>
       call("/api/team/desk-role", {
         ...office,
         body: { staffRef: "stf-ivan", roleId: roles[name] },
       });
-    assert.equal((await role("Упаковщик")).status, 200);
+    assert.equal((await role("Упаковка")).status, 200);
     const packer = await ops(desk, [{ ...unit(0), key: "key-pick-pack" }]);
     assert.deepEqual(
       packer.json.results.map((x) => [x.status, x.reason]),
       [["flagged", "not_yours"]],
     );
-    assert.equal((await role("Сборщик")).status, 200);
+    assert.equal((await role("Старший участка")).status, 200);
     const r = await ops(desk, [unit(1), unit(2), unit(3), done]);
     assert.deepEqual(
       r.json.results.map((x) => [x.key, x.status, x.reason ?? null]),
@@ -1064,11 +1071,15 @@ test(
       },
     });
 
-    // Приёмщику пересчитывать нельзя: права `inventory.count` у роли нет.
+    // Своей роли «Приёмка» пересчитывать нельзя: права `inventory.count` у неё нет.
     // Вход руководителя в этом браузере погас со столом — входит заново.
     const office = { cookie: await login("ops-inv@sklad.ru"), org: a.org };
-    const team = (await call("/api/team", office)).json;
-    const receiver = team.roles.find((x) => x.name === "Приёмщик").id;
+    const receiver = (
+      await call("/api/team/roles/save", {
+        ...office,
+        body: { name: "Приёмка", permissions: ["receiving.view", "receiving.do"] },
+      })
+    ).json.roleId;
     const set = await call("/api/team/desk-role", {
       ...office,
       body: { staffRef: "stf-ivan", roleId: receiver },

@@ -47,6 +47,8 @@ const TEAM_STATUS = {
   role_not_allowed: 403,
   self: 403,
   default_role: 403,
+  // Роль владельца из кабинета не дать (057): передача владения — через поддержку.
+  owner_role: 403,
   already_member: 409,
   role_in_use: 409,
   too_many_invites: 429,

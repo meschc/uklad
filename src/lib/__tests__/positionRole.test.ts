@@ -7,9 +7,11 @@ describe("роль по должности", () => {
     expect(roleForPosition("старший кладовщик")).toBe("Старший смены");
     expect(roleForPosition("Начальник смены")).toBe("Старший смены");
     expect(roleForPosition("Управляющий складом")).toBe("Начальник склада");
-    expect(roleForPosition("Оператор приёмки")).toBe("Приёмщик");
-    expect(roleForPosition("Комплектовщик")).toBe("Сборщик");
-    expect(roleForPosition("Кладовщик")).toBe("Кладовщик");
+    expect(roleForPosition("Старший участка")).toBe("Старший участка");
+    expect(roleForPosition("Оператор приёмки")).toBe("Кладовщик / оператор");
+    expect(roleForPosition("Комплектовщик")).toBe("Кладовщик / оператор");
+    expect(roleForPosition("Упаковщик")).toBe("Кладовщик / оператор");
+    expect(roleForPosition("Кладовщик")).toBe("Кладовщик / оператор");
     expect(roleForPosition("Бухгалтер")).toBeNull();
     expect(roleForPosition("")).toBeNull();
   });

@@ -103,6 +103,19 @@ async function roles(who) {
   return Object.fromEntries(r.json.roles.map((x) => [x.name, x.id]));
 }
 
+/**
+ * Роль выше начальника склада: своя, с правом, которого у начальника нет.
+ * Роль владельца для этого не годится — её не дать никому (057).
+ */
+async function topRole(who) {
+  const r = await post("/api/team/roles/save", {
+    ...who,
+    body: { name: "Выше начальника", permissions: ["stock.view", "billing.view"] },
+  });
+  assert.equal(r.status, 200, JSON.stringify(r.json));
+  return r.json.roleId;
+}
+
 /** Склад, на который зовут в этих тестах (миграция 034: без склада смотрящего не зовут). */
 const WH = "w1";
 
@@ -206,7 +219,7 @@ test("начальник не может выше себя и не может с
   // Владельца не переназначить и не отключить.
   const demote = await post("/api/team/role", {
     ...chief,
-    body: { memberId: bossId, roleId: r["Кладовщик"] },
+    body: { memberId: bossId, roleId: r["Кладовщик / оператор"] },
   });
   assert.equal(demote.status, 403);
   const off = await post("/api/team/disable", { ...chief, body: { memberId: bossId } });
@@ -214,7 +227,7 @@ test("начальник не может выше себя и не может с
   // Себя тоже.
   const self = await post("/api/team/role", {
     ...chief,
-    body: { memberId: chiefId, roleId: r["Кладовщик"] },
+    body: { memberId: chiefId, roleId: r["Кладовщик / оператор"] },
   });
   assert.equal(self.status, 403);
   assert.equal(
@@ -249,7 +262,11 @@ test("начальник не может выше себя и не может с
   // Роли по умолчанию не правятся.
   const builtIn = await post("/api/team/roles/save", {
     ...chief,
-    body: { roleId: r["Кладовщик"], name: "Кладовщик", permissions: ["stock.view"] },
+    body: {
+      roleId: r["Кладовщик / оператор"],
+      name: "Кладовщик / оператор",
+      permissions: ["stock.view"],
+    },
   });
   assert.equal(builtIn.status, 403);
 });
@@ -274,8 +291,12 @@ test("отключение гасит вход, возврат восстана�
   assert.equal((await call("GET", "/api/team", chief)).status, 200);
   // Смена роли действует сразу: кладовщику список команды уже закрыт.
   assert.equal(
-    (await post("/api/team/role", { ...boss, body: { memberId: chiefId, roleId: r["Кладовщик"] } }))
-      .status,
+    (
+      await post("/api/team/role", {
+        ...boss,
+        body: { memberId: chiefId, roleId: r["Кладовщик / оператор"] },
+      })
+    ).status,
     200,
   );
   assert.equal((await call("GET", "/api/team", chief)).status, 403);
@@ -288,13 +309,13 @@ test(
     const boss = await owner("boss4@example.com", "10.1.0.4");
     const other = await owner("other4@example.com", "10.1.0.5");
     const r = await roles(boss);
-    const clerk = await join(boss, "clerk4@example.com", r["Кладовщик"]);
+    const clerk = await join(boss, "clerk4@example.com", r["Кладовщик / оператор"]);
     assert.equal((await call("GET", "/api/team", clerk)).status, 403);
     assert.equal(
       (
         await post("/api/team/invite", {
           ...clerk,
-          body: { warehouseRef: WH, email: "z@example.com", roleId: r["Приёмщик"] },
+          body: { warehouseRef: WH, email: "z@example.com", roleId: r["Кладовщик / оператор"] },
         })
       ).status,
       403,
@@ -311,7 +332,7 @@ test(
     // И роль чужой компании не назначить своему.
     const foreignRole = await post("/api/team/invite", {
       ...other,
-      body: { warehouseRef: WH, email: "n@example.com", roleId: r["Приёмщик"] },
+      body: { warehouseRef: WH, email: "n@example.com", roleId: r["Кладовщик / оператор"] },
     });
     assert.equal(foreignRole.status, 404);
   },
@@ -325,7 +346,7 @@ test(
     const r = await roles(boss);
     const first = await post("/api/team/invite", {
       ...boss,
-      body: { warehouseRef: WH, email: "p5@example.com", roleId: r["Приёмщик"] },
+      body: { warehouseRef: WH, email: "p5@example.com", roleId: r["Кладовщик / оператор"] },
     });
     assert.equal(first.status, 200);
     const old = tokenIn(await lastMail("p5@example.com"));
@@ -333,14 +354,17 @@ test(
     sent.length = 0;
     await post("/api/team/invite", {
       ...boss,
-      body: { warehouseRef: WH, email: "p5@example.com", roleId: r["Сборщик"] },
+      body: { warehouseRef: WH, email: "p5@example.com", roleId: r["Кладовщик / оператор"] },
     });
     const fresh = tokenIn(await lastMail("p5@example.com"));
     assert.notEqual(fresh, old);
     assert.equal((await post("/api/auth/invite/info", { body: { token: old } })).status, 404);
     const team = (await call("GET", "/api/team", boss)).json;
     assert.equal(team.members.filter((m) => m.email === "p5@example.com").length, 1);
-    assert.equal(team.members.find((m) => m.email === "p5@example.com").roleName, "Сборщик");
+    assert.equal(
+      team.members.find((m) => m.email === "p5@example.com").roleName,
+      "Кладовщик / оператор",
+    );
     // Отзыв: карточка пропадает, ссылка мертва.
     const memberId = team.members.find((m) => m.email === "p5@example.com").id;
     assert.equal(
@@ -354,7 +378,7 @@ test(
     const guest = await owner("guest5@example.com", "10.1.0.7");
     await post("/api/team/invite", {
       ...boss,
-      body: { warehouseRef: WH, email: "guest5@example.com", roleId: r["Кладовщик"] },
+      body: { warehouseRef: WH, email: "guest5@example.com", roleId: r["Кладовщик / оператор"] },
     });
     const token = tokenIn(await lastMail("guest5@example.com"));
     const info = await post("/api/auth/invite/info", { body: { token } });
@@ -377,13 +401,17 @@ test(
     // Тот же человек не принимает второй раз.
     await post("/api/team/invite", {
       ...boss,
-      body: { warehouseRef: WH, email: "guest5@example.com", roleId: r["Приёмщик"] },
+      body: { warehouseRef: WH, email: "guest5@example.com", roleId: r["Кладовщик / оператор"] },
     });
     assert.equal(
       (
         await post("/api/team/invite", {
           ...boss,
-          body: { warehouseRef: WH, email: "guest5@example.com", roleId: r["Приёмщик"] },
+          body: {
+            warehouseRef: WH,
+            email: "guest5@example.com",
+            roleId: r["Кладовщик / оператор"],
+          },
         })
       ).status,
       409,
@@ -418,7 +446,8 @@ test("свои роли: правка, занятая роль не удаляе
   );
   assert.equal((await post("/api/team/roles/delete", { ...boss, body: { roleId } })).status, 409);
   assert.equal(
-    (await post("/api/team/roles/delete", { ...boss, body: { roleId: r["Кладовщик"] } })).status,
+    (await post("/api/team/roles/delete", { ...boss, body: { roleId: r["Кладовщик / оператор"] } }))
+      .status,
     403,
   );
   const memberId = (await call("GET", "/api/team", boss)).json.me;
@@ -431,6 +460,7 @@ test(
   async () => {
     const boss = await owner("boss7@example.com", "10.1.0.9");
     const r = await roles(boss);
+    const top = await topRole(boss);
     const chief = await join(boss, "chief7@example.com", r["Начальник склада"]);
     const chiefId = (await call("GET", "/api/team", chief)).json.me;
     // Начальник перед увольнением зовёт свою вторую почту.
@@ -453,7 +483,10 @@ test(
       body: { warehouseRef: WH, email: "second7@example.com", roleId: r["Начальник склада"] },
     });
     const t2 = tokenIn(await lastMail("second7@example.com"));
-    await post("/api/team/role", { ...boss, body: { memberId: chiefId, roleId: r["Кладовщик"] } });
+    await post("/api/team/role", {
+      ...boss,
+      body: { memberId: chiefId, roleId: r["Кладовщик / оператор"] },
+    });
     assert.equal((await post("/api/auth/invite/info", { body: { token: t2 } })).status, 404);
     // Приглашение владельцу начальник отозвать не может.
     await post("/api/team/role", {
@@ -462,7 +495,7 @@ test(
     });
     await post("/api/team/invite", {
       ...boss,
-      body: { warehouseRef: WH, email: "own7@example.com", roleId: r["Владелец"] },
+      body: { warehouseRef: WH, email: "own7@example.com", roleId: top },
     });
     const ownerId = (await call("GET", "/api/team", boss)).json.members.find(
       (m) => m.email === "own7@example.com",
@@ -487,14 +520,15 @@ test(
   async () => {
     const boss = await owner("boss-desk@example.com", "10.1.0.9");
     const r = await roles(boss);
+    const top = await topRole(boss);
     const set = (who, staffRef, roleId) =>
       post("/api/team/desk-role", { ...who, body: { staffRef, roleId } });
     assert.equal((await set(boss, "stf-olga", r["Начальник склада"])).status, 200);
-    assert.equal((await set(boss, "stf-ivan", r["Кладовщик"])).status, 200);
+    assert.equal((await set(boss, "stf-ivan", r["Кладовщик / оператор"])).status, 200);
     let list = (await call("GET", "/api/team", boss)).json;
     assert.deepEqual(list.deskRoles, {
       "stf-olga": r["Начальник склада"],
-      "stf-ivan": r["Кладовщик"],
+      "stf-ivan": r["Кладовщик / оператор"],
     });
     assert.ok(list.permissions.some((p) => p.code === "goods.decide"));
     // Начальник склада получил решения по товару и в старой, и в новой компании.
@@ -503,17 +537,17 @@ test(
 
     // Начальник не даёт роль выше своей и не снимает её с того, у кого она выше.
     const chief = await join(boss, "chief-desk@example.com", r["Начальник склада"]);
-    assert.equal((await set(chief, "stf-petr", r["Владелец"])).status, 403);
-    assert.equal((await set(boss, "stf-petr", r["Владелец"])).status, 200);
+    assert.equal((await set(chief, "stf-petr", top)).status, 403);
+    assert.equal((await set(boss, "stf-petr", top)).status, 200);
     assert.equal((await set(chief, "stf-petr", null)).status, 403);
-    assert.equal((await set(chief, "stf-ivan", r["Сборщик"])).status, 200);
+    assert.equal((await set(chief, "stf-ivan", r["Кладовщик / оператор"])).status, 200);
     // Кладовщик с почтой роли у стола не трогает.
-    const keeper = await join(boss, "keeper-desk@example.com", r["Кладовщик"]);
-    assert.equal((await set(keeper, "stf-ivan", r["Кладовщик"])).status, 403);
+    const keeper = await join(boss, "keeper-desk@example.com", r["Кладовщик / оператор"]);
+    assert.equal((await set(keeper, "stf-ivan", r["Кладовщик / оператор"])).status, 403);
     // Битый id и чужая роль — 404.
-    assert.equal((await set(boss, "../x", r["Кладовщик"])).status, 404);
+    assert.equal((await set(boss, "../x", r["Кладовщик / оператор"])).status, 404);
     const other = await owner("boss-desk2@example.com", "10.1.0.10");
-    assert.equal((await set(other, "stf-ivan", r["Кладовщик"])).status, 404);
+    assert.equal((await set(other, "stf-ivan", r["Кладовщик / оператор"])).status, 404);
 
     // Свою роль, которую носит сотрудник стола, не удалить; снял — удаляется.
     const saved = await post("/api/team/roles/save", {
@@ -540,10 +574,11 @@ test(
 test("бейдж на строку с ролью выше своей не выпустить и не погасить", { skip: SKIP }, async () => {
   const boss = await owner("boss-badge@example.com", "10.1.0.11");
   const r = await roles(boss);
+  const top = await topRole(boss);
   const set = (staffRef, roleId) =>
     post("/api/team/desk-role", { ...boss, body: { staffRef, roleId } });
-  assert.equal((await set("stf-top", r["Владелец"])).status, 200);
-  assert.equal((await set("stf-low", r["Кладовщик"])).status, 200);
+  assert.equal((await set("stf-top", top)).status, 200);
+  assert.equal((await set("stf-low", r["Кладовщик / оператор"])).status, 200);
   // Своя роль начальника без goods.decide: бейдж на владельца ему не выпустить.
   const saved = await post("/api/team/roles/save", {
     ...boss,
@@ -566,7 +601,7 @@ test("бейдж на строку с ролью выше своей не вып
   assert.equal(none.json.error, "no_role");
   assert.equal((await issue(boss, "stf-new")).status, 200);
   const list = (await call("GET", "/api/team", boss)).json;
-  assert.equal(list.deskRoles["stf-new"], r["Кладовщик"]);
+  assert.equal(list.deskRoles["stf-new"], r["Кладовщик / оператор"]);
 });
 
 test(
@@ -577,6 +612,7 @@ test(
   async () => {
     const boss = await owner("boss-raise@example.com", "10.1.0.12");
     const r = await roles(boss);
+    const top = await topRole(boss);
     const chief = await join(boss, "chief-raise@example.com", r["Начальник склада"]);
     const issue = (who, staffRef) =>
       post("/api/cabinet/badges/issue", { ...who, body: { staffRef } });
@@ -594,13 +630,13 @@ test(
     assert.equal((await issue(chief, "stf-a")).status, 200);
     assert.equal((await issue(boss, "stf-b")).status, 200);
     // Владелец даёт обоим свою роль: копия у начальника не должна её получить.
-    assert.equal((await set("stf-a", r["Владелец"])).status, 200);
-    assert.equal((await set("stf-b", r["Владелец"])).status, 200);
+    assert.equal((await set("stf-a", top)).status, 200);
+    assert.equal((await set("stf-b", top)).status, 200);
     assert.equal(await live("stf-a"), 0);
     assert.equal(await live("stf-b"), 1);
     // Роль в пределах прав начальника бейдж не гасит.
     assert.equal((await issue(chief, "stf-c")).status, 200);
-    assert.equal((await set("stf-c", r["Кладовщик"])).status, 200);
+    assert.equal((await set("stf-c", r["Кладовщик / оператор"])).status, 200);
     assert.equal(await live("stf-c"), 1);
   },
 );
@@ -627,7 +663,7 @@ test("кладовщик с почтой смотрит кабинет без с
     body: { version: await version(boss), format: 8, data },
   });
   assert.equal(first.status, 200);
-  const keeper = await join(boss, "keeper-view@example.com", r["Кладовщик"]);
+  const keeper = await join(boss, "keeper-view@example.com", r["Кладовщик / оператор"]);
   const seen = await call("GET", "/api/cabinet/snapshot", keeper);
   assert.equal(seen.status, 200);
   assert.equal(seen.json.snapshot.viewer, true);
@@ -751,7 +787,7 @@ test(
     );
     // Кладовщик работу склада делает у стола операциями: итог (тару,
     // ячейки, заявки) снимком не правит вовсе.
-    const keeper = await join(boss, "keeper-scope@example.com", r["Кладовщик"]);
+    const keeper = await join(boss, "keeper-scope@example.com", r["Кладовщик / оператор"]);
     const v = (await call("GET", "/api/cabinet/snapshot", keeper)).json.snapshot;
     assert.deepEqual(v.writable, []);
     const tried = await changes(keeper, v.version, { doc: { ...doc, boxSeq: 9 } });
@@ -791,10 +827,8 @@ const AREAS = [
 const MATRIX = {
   "Начальник склада": null,
   "Старший смены": AREAS,
-  Кладовщик: AREAS,
-  Приёмщик: ["expectedShipments", "receivingEvents"],
-  Сборщик: ["requests"],
-  Упаковщик: ["requests", "outboundBoxes"],
+  "Старший участка": AREAS,
+  "Кладовщик / оператор": AREAS,
 };
 
 test("матрица ролей: свой склад, запись и чужая компания", { skip: SKIP }, async () => {
@@ -912,4 +946,84 @@ test("матрица ролей: второй склад компании и с�
     full.otherWarehouses.map((w) => w.id),
     ["w1"],
   );
+});
+
+// Кирилл 22.11: удалить склад, компанию и владельца может только владелец, а
+// роль владельца из кабинета не дать никому — передача владения через поддержку.
+test("склад удаляет только владелец, роль владельца не дать", { skip: SKIP }, async () => {
+  const boss = await owner("boss-own@example.com", "10.1.0.50");
+  const r = await roles(boss);
+  const two = {
+    warehouse: { id: WH, name: "Склад", staff: [] },
+    otherWarehouses: [{ id: "w2", name: "Склад 2", staff: [] }],
+  };
+  const put = await post("/api/cabinet/snapshot", {
+    ...boss,
+    body: { version: await version(boss), format: 8, data: two },
+  });
+  assert.equal(put.status, 200, JSON.stringify(put.json));
+  const chief = await join(boss, "chief-own@example.com", r["Начальник склада"]);
+  // Начальник: правка склада проходит, удаление — нет, запись откатывается.
+  const rename = await post("/api/cabinet/snapshot", {
+    ...chief,
+    body: {
+      version: await version(chief),
+      format: 8,
+      data: { ...two, otherWarehouses: [{ id: "w2", name: "Склад Б", staff: [] }] },
+    },
+  });
+  assert.equal(rename.status, 200, JSON.stringify(rename.json));
+  const v = await version(chief);
+  const drop = await post("/api/cabinet/snapshot", {
+    ...chief,
+    body: { version: v, format: 8, data: { warehouse: two.warehouse, otherWarehouses: [] } },
+  });
+  assert.equal(drop.status, 409);
+  assert.equal(drop.json.error, "warehouse_delete_owner");
+  assert.equal(await version(chief), v);
+  const kept = (await call("GET", "/api/cabinet/snapshot", boss)).json.snapshot.data;
+  assert.deepEqual(
+    kept.otherWarehouses.map((w) => w.name),
+    ["Склад Б"],
+  );
+  // Спрятать склад заготовкой — то же удаление.
+  const hide = await post("/api/cabinet/snapshot", {
+    ...chief,
+    body: {
+      version: v,
+      format: 8,
+      data: {
+        ...two,
+        otherWarehouses: [{ id: "w2", name: "Склад Б", staff: [], placeholder: true }],
+      },
+    },
+  });
+  assert.equal(hide.status, 409);
+  assert.equal(hide.json.error, "warehouse_delete_owner");
+  // Владелец удаляет.
+  const gone = await post("/api/cabinet/snapshot", {
+    ...boss,
+    body: { version: v, format: 8, data: { warehouse: two.warehouse, otherWarehouses: [] } },
+  });
+  assert.equal(gone.status, 200, JSON.stringify(gone.json));
+
+  // Владелец не делает владельцем другого: ни приглашением, ни сменой роли, ни у стола.
+  const invite = await post("/api/team/invite", {
+    ...boss,
+    body: { warehouseRef: WH, email: "owner2@example.com", roleId: r["Владелец"] },
+  });
+  assert.equal(invite.status, 403);
+  assert.equal(invite.json.error, "owner_role");
+  const chiefId = (await call("GET", "/api/team", chief)).json.me;
+  const promote = await post("/api/team/role", {
+    ...boss,
+    body: { memberId: chiefId, roleId: r["Владелец"] },
+  });
+  assert.equal(promote.status, 403);
+  assert.equal(promote.json.error, "owner_role");
+  const desk = await post("/api/team/desk-role", {
+    ...boss,
+    body: { staffRef: "stf-any", roleId: r["Владелец"] },
+  });
+  assert.equal(desk.status, 403);
 });

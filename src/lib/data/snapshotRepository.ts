@@ -36,7 +36,8 @@ export interface Snapshot {
  */
 /**
  * `rejected` — сервер отказал не из-за версии: `stock` — движение товара со
- * стола не сошлось, `products` — запись убрала бы больше половины каталога.
+ * стола не сошлось, `products` — запись убрала бы больше половины каталога,
+ * `warehouse` — склад удалял не владелец.
  */
 /**
  * `diverged` — правка «только изменённое» не сошлась с тем, что на сервере
@@ -49,10 +50,11 @@ export interface DeskVersion {
   taken?: { staffRef: string; at: number; by: string | null };
 }
 
+/** Почему сервер не принял запись (кроме версии): тост после перезагрузки копии. */
+export type Rejected = "stock" | "products" | "records" | "warehouse";
+
 export type SaveOutcome =
-  | { saved: number }
-  | { conflict: number; rejected?: "stock" | "products" | "records" }
-  | { diverged: true };
+  { saved: number } | { conflict: number; rejected?: Rejected } | { diverged: true };
 
 type Reply = { status: number; body: Record<string, unknown> };
 
@@ -66,6 +68,8 @@ function outcome({ status, body }: Reply): Result<SaveOutcome> {
       ...(body.error === "stock_mismatch" ? { rejected: "stock" as const } : {}),
       ...(body.error === "products_mass_delete" ? { rejected: "products" as const } : {}),
       ...(body.error === "records_mass_delete" ? { rejected: "records" as const } : {}),
+      // Склад удаляет только владелец (миграция 057, `warehouses.js`).
+      ...(body.error === "warehouse_delete_owner" ? { rejected: "warehouse" as const } : {}),
     });
   if (status === 413) return fail("sync.err.tooBig");
   if (status === 402) return fail("plan.err.unpaid");

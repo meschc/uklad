@@ -50,10 +50,7 @@ export function TeamAccess() {
   const usage: Record<string, number> = {};
   for (const id of [...state.members.map((m) => m.roleId), ...Object.values(state.deskRoles)])
     usage[id] = (usage[id] ?? 0) + 1;
-  const myPerms = new Set(
-    state.roles.find((r) => r.id === state.members.find((m) => m.id === state.me)?.roleId)
-      ?.permissions,
-  );
+  const myPerms = new Set(state.myPermissions);
 
   return (
     <div className="flex flex-col gap-8">
@@ -124,6 +121,8 @@ function MemberRow({
   const t = useT();
   const mine = m.id === me;
   const pending = m.status === "invited" && !m.hasLogin;
+  // Роли владельца в списке нет (её не дать): у него — подпись, а не выбор.
+  const fixed = !roles.some((r) => r.id === m.roleId);
   const until = m.inviteExpiresAt
     ? new Date(m.inviteExpiresAt).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })
     : null;
@@ -148,25 +147,30 @@ function MemberRow({
         </p>
       </div>
       <div className="flex items-center gap-2">
-        <Select
-          aria-label={t("team.role")}
-          className={`${selectClass} w-44`}
-          value={m.roleId}
-          disabled={mine || pending}
-          onChange={(e) => onRole(e.target.value)}
-        >
-          {roles.map((r) => (
-            <option key={r.id} value={r.id}>
-              {r.name}
-            </option>
-          ))}
-        </Select>
+        {fixed ? (
+          <span className="w-44 truncate text-sm text-muted-foreground">{m.roleName}</span>
+        ) : (
+          <Select
+            aria-label={t("team.role")}
+            className={`${selectClass} w-44`}
+            value={m.roleId}
+            disabled={mine || pending}
+            onChange={(e) => onRole(e.target.value)}
+          >
+            {roles.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.name}
+              </option>
+            ))}
+          </Select>
+        )}
         {pending ? (
           <Button size="sm" variant="ghost" onClick={onRevoke}>
             {t("team.revoke")}
           </Button>
         ) : (
-          !mine && (
+          !mine &&
+          !fixed && (
             <Button size="sm" variant="ghost" onClick={() => onDisable(m.status !== "disabled")}>
               {m.status === "disabled" ? t("team.enable") : t("team.disable")}
             </Button>
@@ -190,7 +194,7 @@ function InvitePanel({
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [roleId, setRoleId] = useState(
-    roles.find((r) => r.name === "Кладовщик")?.id ?? roles[0]?.id ?? "",
+    roles.find((r) => r.builtIn && r.name === "Кладовщик / оператор")?.id ?? roles[0]?.id ?? "",
   );
   // Без карточки — на склад, открытый сейчас: кабинет человеку покажется
   // только по нему (миграция 034).

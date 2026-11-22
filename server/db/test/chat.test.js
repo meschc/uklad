@@ -46,9 +46,9 @@ before(async () => {
   people = {
     boss: await member(w.A, "Начальник склада", "Начальник А"),
     shift: await member(w.A, "Начальник склада", "Старший смены А"),
-    picker: await member(w.A, "Сборщик", "Сборщик А"),
-    s1: await member(w.S1, "Менеджер селлера", "Менеджер С1"),
-    s2: await member(w.S2, "Менеджер селлера", "Менеджер С2"),
+    picker: await member(w.A, "Кладовщик / оператор", "Сборщик А"),
+    s1: await member(w.S1, "Продавец", "Менеджер С1"),
+    s2: await member(w.S2, "Продавец", "Менеджер С2"),
     b: await member(w.B, "Начальник склада", "Начальник Б"),
   };
 });
@@ -163,7 +163,7 @@ test("склад не может добавить в диалог человек
 
 test("без права chat.use писать нельзя, даже будучи участником", async () => {
   const conv = await contractChat();
-  // Сборщика добавляет начальник; у роли «Сборщик» права на чат нет.
+  // Сборщика добавляет начальник; у роли «Кладовщик / оператор» права на чат нет.
   await as(w.A, people.boss, (c) => join(c, w.A, conv, people.picker));
   await assert.rejects(
     as(w.A, people.picker, (c) => say(c, w.A, conv, people.picker, "тест")),

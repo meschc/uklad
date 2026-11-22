@@ -107,7 +107,7 @@ async function warehouseWithWorker(email, ip) {
   const r = await signup(owner(email), ip);
   const ids = await helpers.asOrg(db.pool, r.json.orgId, async (c) => {
     const one = async (sql, args) => (await c.query(sql, args)).rows[0].id;
-    const role = await one(`SELECT id FROM uklad.roles WHERE name = 'Кладовщик'`);
+    const role = await one(`SELECT id FROM uklad.roles WHERE name = 'Кладовщик / оператор'`);
     return {
       memberId: await one(
         `INSERT INTO uklad.members (org_id, role_id, display_name) VALUES ($1, $2, 'Иван') RETURNING id`,
@@ -306,7 +306,7 @@ test("селлер получает свои роли, а не складски�
   );
   assert.deepEqual(
     rows.map((x) => x.name),
-    ["Владелец", "Менеджер селлера"],
+    ["Владелец", "Продавец"],
   );
 });
 

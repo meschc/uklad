@@ -54,10 +54,44 @@ async function storeWarehouses(c, cards) {
   await c.query(`SELECT uklad.save_warehouses($1::jsonb)`, [JSON.stringify(cards)]);
 }
 
+/**
+ * Удалить склад может только владелец (`org.manage`, Кирилл 22.11): со складом
+ * уходят его план, работа и люди. Кабинет удаляет склад записью без него в
+ * списке, поэтому сервер сверяет список с живыми строками. Отказ откатывает
+ * запись целиком — `WarehouseDeleteError`.
+ */
+class WarehouseDeleteError extends Error {
+  constructor(refs) {
+    super("warehouse_delete_owner");
+    this.refs = refs;
+  }
+}
+
+async function guardWarehouseDelete(c, ctx, cards) {
+  if (!cards || ctx.can("org.manage")) return;
+  // Склад, ставший заготовкой (`placeholder`), из кабинета пропадает так же,
+  // как удалённый: и это — удаление.
+  const hidden = cards.filter((w) => w.placeholder === true).map((w) => w.id);
+  const { rows } = await c.query(
+    `SELECT ref FROM uklad.warehouses
+     WHERE org_id = uklad.current_org() AND deleted_at IS NULL AND card IS NOT NULL
+       AND (NOT (ref = ANY ($1::text[])) OR (NOT placeholder AND ref = ANY ($2::text[])))`,
+    [cards.map((w) => w.id), hidden],
+  );
+  if (rows.length > 0) throw new WarehouseDeleteError(rows.map((r) => r.ref));
+}
+
 /** Сколько складов у компании для лимита тарифа: без заготовки. */
 async function countWarehouses(c) {
   const { rows } = await c.query(`SELECT uklad.count_warehouses() AS n`);
   return rows[0].n;
 }
 
-module.exports = { splitWarehouses, withWarehouses, storeWarehouses, countWarehouses };
+module.exports = {
+  splitWarehouses,
+  withWarehouses,
+  storeWarehouses,
+  countWarehouses,
+  guardWarehouseDelete,
+  WarehouseDeleteError,
+};
