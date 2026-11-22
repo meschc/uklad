@@ -50,7 +50,8 @@ async function memberHere(c, memberId, ref) {
      WHERE m.org_id = uklad.current_org() AND m.id = $1 AND m.deleted_at IS NULL`,
     [memberId],
   );
-  // Владелец — на всех складах; тронуть его не даст база (`team:owner_role`).
+  // Владелец — на всех складах. Тронуть его не даёт `auth.assert_may_touch`
+  // (прав владельца нет у руководителя → `role_not_allowed`), а не триггер 057.
   return Boolean(rows[0] && (rows[0].owner || rows[0].warehouse_ref === ref));
 }
 
