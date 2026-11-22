@@ -788,6 +788,8 @@ export interface WorkstationSlice {
   addDevice: (name: string, station: WorkstationKind) => Device;
   /** Отключить устройство: на нём больше никто не войдёт. */
   revokeDevice: (id: string) => void;
+  /** Убрать из списка уже отключённое устройство; живое не трогает. */
+  forgetDevice: (id: string) => void;
   /** Отвязать этот браузер — только по бейджу руководителя, иначе null. */
   unbindThisDevice: (managerBadge: string) => boolean;
   /** То же по сотруднику, которого назвал сервер по бейджу. */

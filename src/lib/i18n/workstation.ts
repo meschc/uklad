@@ -395,6 +395,10 @@ export const ru = {
   "ws.switch.declined": "Старший не разрешил переход на «{name}»",
   "devices.journal.approvedBy": "разрешил {name}",
   "devices.revoke": "Отключить",
+  "devices.forget": "Убрать из списка",
+  "devices.forgetHint":
+    "Устройство уже отключено. Журнал его работы останется в журнале сотрудников",
+  "devices.forgetLive": "Сначала отключите устройство, потом его можно убрать из списка",
   "devices.nobody": "никого",
   "devices.open": "Открыть рабочее место",
 
@@ -1052,6 +1056,9 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.switch.declined": "The senior did not approve the switch to “{name}”",
   "devices.journal.approvedBy": "approved by {name}",
   "devices.revoke": "Disable",
+  "devices.forget": "Remove from list",
+  "devices.forgetHint": "The device is already disabled. Its work stays in the staff journal",
+  "devices.forgetLive": "Disable the device first, then it can be removed from the list",
   "devices.nobody": "nobody",
   "devices.open": "Open workstation",
 
