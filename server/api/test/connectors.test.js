@@ -39,7 +39,8 @@ const send = (res, status, payload) => {
 };
 
 /** Стенд: таблица подключений в памяти, сессия с правом или без. */
-function make({ perms = ["integrations.manage"], key = KEY, reply } = {}) {
+// Владелец: подключения всех складов (руководитель — `connectors.pg`).
+function make({ perms = ["integrations.manage", "org.manage"], key = KEY, reply } = {}) {
   const rows = [];
   const calls = [];
   const client = {
@@ -208,4 +209,15 @@ test("прокси: PDF площадки — в поле file, отказ пло
   const r3 = await bad.call("POST", "/api/connectors/ozon/proxy", req);
   assert.equal(r3.body.error, "upstream");
   assert.equal(r3.body.detail, "invalid filter");
+});
+
+test("ярлык стола: ключ своего склада, без склада — только при одном складе", () => {
+  const { connectionFor } = require("../src/cabinet/deskLabel");
+  const a = { id: "a", params: { warehouseId: "w1" } };
+  const b = { id: "b", params: { warehouseId: "w2" } };
+  const old = { id: "old", params: {} };
+  assert.equal(connectionFor([a, b], null, "w2")?.id, "b");
+  // Ключ без склада при двух складах — не столу склада w2.
+  assert.equal(connectionFor([old], null, "w2", false), null);
+  assert.equal(connectionFor([old], null, "w1", true)?.id, "old");
 });

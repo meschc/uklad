@@ -109,12 +109,14 @@ export function ServerConnections({ spec, t }: { spec: IntegrationSpec; t: TFunc
     void connectorsRepository.list().then((res) => {
       if (!alive) return;
       setLoadError(res.ok ? null : res.error);
-      if (res.ok) setRows(res.data.filter((r) => r.system === system));
+      // Подключения открытого склада; без склада — старые, до привязки к складу.
+      const here = (r: ServerConnection) => !r.warehouseId || r.warehouseId === warehouseId;
+      if (res.ok) setRows(res.data.filter((r) => r.system === system && here(r)));
     });
     return () => {
       alive = false;
     };
-  }, [system, version]);
+  }, [system, version, warehouseId]);
 
   const onSave = async () => {
     const label = partners.find((p) => p.id === partnerId)?.name ?? t("integr.ownGoods");
