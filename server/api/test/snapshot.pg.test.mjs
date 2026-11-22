@@ -52,6 +52,15 @@ after(async () => {
   await db.teardown();
 });
 
+/** Сколько записей в списке по оглавлению (миграция 056); `null` — не строками. */
+async function slot(org, place, domain) {
+  const { rows } = await db.root.query(
+    `SELECT n FROM uklad.cabinet_slots WHERE org_id = $1 AND place = $2 AND domain = $3`,
+    [org, place, domain],
+  );
+  return rows[0]?.n ?? null;
+}
+
 async function call(path, { body, raw, cookie, org, ip = "10.0.1.1" } = {}) {
   const res = await fetch(base + path, {
     method: body || raw ? "POST" : "GET",
@@ -505,13 +514,17 @@ test(
     const s1 = { id: "s1", type: "shift_start", at: 1 };
     assert.equal((await call("/api/cabinet/snapshot", work([r2, r1], [s1], 0))).status, 200);
 
-    // В документе — метки, записи — строками.
+    // Записи — строками, оглавление — строками (миграция 056): в документе
+    // ни списков, ни меток: у второго склада — пустая стопка.
     const stored = await db.root.query(
       `SELECT data FROM uklad.cabinet_snapshots WHERE org_id = $1`,
       [a.org],
     );
-    assert.deepEqual(stored.rows[0].data.requests, { $rows: 2 });
-    assert.deepEqual(stored.rows[0].data.warehouseData.wh_2.requests, { $rows: 1 });
+    assert.ok(!JSON.stringify(stored.rows[0].data).includes("$rows"));
+    assert.ok(!("requests" in stored.rows[0].data));
+    assert.deepEqual(stored.rows[0].data.warehouseData, { wh_2: {} });
+    assert.equal(await slot(a.org, "", "requests"), 2);
+    assert.equal(await slot(a.org, "wh_2", "requests"), 1);
     const rows = async () =>
       (
         await db.root.query(
@@ -614,7 +627,8 @@ test(
       `SELECT data->'requests' AS r FROM uklad.cabinet_snapshots WHERE org_id = $1`,
       [a.org],
     );
-    assert.deepEqual(stored.rows[0].r, { $rows: 1 });
+    assert.equal(stored.rows[0].r, null);
+    assert.equal(await slot(a.org, "", "requests"), 1);
     assert.deepEqual((await call("/api/cabinet/snapshot", a)).json.snapshot.data.requests, [
       { id: "old" },
     ]);
@@ -694,6 +708,13 @@ test(
     const read = (await call("/api/cabinet/snapshot", a)).json.snapshot.data;
     assert.deepEqual(read.requests, [r3, r2, r1]);
     assert.deepEqual(read.boxes, [box]);
+    // Метки правки — в оглавление, документ без них (миграция 056).
+    const doc = await db.root.query(`SELECT data FROM uklad.cabinet_snapshots WHERE org_id = $1`, [
+      a.org,
+    ]);
+    assert.ok(!JSON.stringify(doc.rows[0].data).includes("$rows"));
+    assert.equal(await slot(a.org, "", "requests"), 3);
+    assert.equal(await slot(a.org, "", "boxes"), 1);
     const touched = await db.root.query(
       `SELECT ref FROM uklad.cabinet_records WHERE org_id = $1 AND updated_at > $2 ORDER BY ref`,
       [a.org, since],
@@ -1322,7 +1343,8 @@ test(
       `SELECT data->'placements' AS p FROM uklad.cabinet_snapshots WHERE org_id = $1`,
       [a.org],
     );
-    assert.deepEqual(raw.rows[0].p, { $rows: 3 });
+    assert.equal(raw.rows[0].p, null);
+    assert.equal(await slot(a.org, "", "placements"), 3);
     const read = async () => (await call("/api/cabinet/snapshot", a)).json.snapshot.data;
     assert.deepEqual((await read()).placements, before);
 
@@ -1442,3 +1464,45 @@ test("миграция 051: склады старого снимка перее�
   assert.deepEqual(read.otherWarehouses, [{ id: "old_2", name: "Ещё" }]);
   assert.equal(read.mark, "x");
 });
+
+test(
+  "оглавление — строками: метки старого документа уходят в таблицу, чтение то же",
+  { skip: SKIP },
+  async () => {
+    const a = await owner("snap-slots@sklad.ru", "10.0.1.29");
+    const r1 = { id: "r1", qty: 1 };
+    const body = { version: 0, format: 8, data: { ...data("x"), requests: [r1] } };
+    assert.equal((await call("/api/cabinet/snapshot", { ...a, body })).status, 200);
+    const before = (await call("/api/cabinet/snapshot", a)).json.snapshot.data;
+    // Документ как до миграции 056: метки на месте, оглавления нет. Запись
+    // документа (миграция делает ту же `SET data = data`) разбирает его снова.
+    await db.root.query(`DELETE FROM uklad.cabinet_slots WHERE org_id = $1`, [a.org]);
+    await db.root.query(
+      `UPDATE uklad.cabinet_snapshots
+       SET data = data || '{"requests": {"$rows": 1}, "warehouseData": {"wh_9": {"tasks": {"$rows": 0}, "x": 1}}}'
+       WHERE org_id = $1`,
+      [a.org],
+    );
+    const raw = await db.root.query(`SELECT data FROM uklad.cabinet_snapshots WHERE org_id = $1`, [
+      a.org,
+    ]);
+    assert.ok(!JSON.stringify(raw.rows[0].data).includes("$rows"));
+    assert.deepEqual(raw.rows[0].data.warehouseData.wh_9, { x: 1 });
+    assert.equal(await slot(a.org, "", "requests"), 1);
+    assert.equal(await slot(a.org, "wh_9", "tasks"), 0);
+    const after = (await call("/api/cabinet/snapshot", a)).json.snapshot.data;
+    assert.deepEqual(after.requests, before.requests);
+    assert.deepEqual(after.warehouseData.wh_9, { tasks: [], x: 1 });
+    // Похожее на метку, но не метка, остаётся в документе как было.
+    await db.root.query(
+      `UPDATE uklad.cabinet_snapshots SET data = data || '{"odd": {"$rows": 1.5}}'
+       WHERE org_id = $1`,
+      [a.org],
+    );
+    const odd = await db.root.query(
+      `SELECT data->'odd' AS o FROM uklad.cabinet_snapshots WHERE org_id = $1`,
+      [a.org],
+    );
+    assert.deepEqual(odd.rows[0].o, { $rows: 1.5 });
+  },
+);
