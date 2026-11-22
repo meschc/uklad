@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect } from "react";
+import { fixKeyboardLayout } from "@/lib/emailTyping";
 import { Printer, Truck } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { workstationRepository } from "@/lib/data";
@@ -175,7 +176,9 @@ function ShipGroup({
       return flash("ok", t("ws.ship.unlocked", { name: senior.name }));
     }
     if (!vehicle) {
-      const plate = parseVehicle(raw);
+      // Поле машины раскладку не переводит (номер кириллицей), но QR машины
+      // со сканера в русской раскладке приходит «ГЛ-…» — его переводим.
+      const plate = parseVehicle(raw) ?? parseVehicle(fixKeyboardLayout(raw));
       if (!plate)
         return flash("error", t("ws.ship.notVehicle", { code: raw }), "ws.ship.notVehicle");
       setVehicle(plate);
@@ -280,6 +283,7 @@ function ShipGroup({
         label={t(vehicle ? "ws.ship.scanUnit" : "ws.ship.scanVehicle")}
         status={banner.tone}
         actionLabel={t("ws.act.accept")}
+        keepLayout={!vehicle}
         onSubmit={onScan}
       />
       <ScanBanner tone={banner.tone}>
