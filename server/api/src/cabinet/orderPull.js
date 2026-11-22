@@ -33,7 +33,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { randomUUID } = require("node:crypto");
 const { allowed, askPlatform, createSealer, queryString } = require("./connectors");
-const { warehousesOf, focusWarehouse } = require("./viewerPlace");
+const { warehousesOf, focusWarehouse, ofWarehouse } = require("./viewerPlace");
 const { restore } = require("./deskPlace");
 const { loadCabinet, splitCabinet, MAX_SNAPSHOT_BYTES } = require("./snapshot");
 const { storeRecords } = require("./records");
@@ -324,10 +324,7 @@ function pickedOrders(requests, source) {
  */
 function productsFor(products, warehouse, partnerId) {
   return list(products).filter(
-    (p) =>
-      isObject(p) &&
-      (p.warehouseId ? p.warehouseId === warehouse.id : !warehouse.ownCatalog) &&
-      (partnerId ? p.partnerId === partnerId : !p.partnerId),
+    (p) => ofWarehouse(p, warehouse) && (partnerId ? p.partnerId === partnerId : !p.partnerId),
   );
 }
 
