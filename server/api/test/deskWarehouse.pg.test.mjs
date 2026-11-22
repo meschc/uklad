@@ -323,7 +323,8 @@ test("стол склада А не подтвердить руководите�
   const c = await company("wh-desk-bind@sklad.ru", "10.0.9.6");
   await db.root.query(
     `INSERT INTO uklad.desk_staff_roles (org_id, staff_ref, role_id)
-     SELECT $1, 'stf-b', id FROM uklad.roles WHERE org_id = $1 AND name = 'Начальник склада'
+     SELECT $1, 'stf-b', id FROM uklad.roles
+     WHERE org_id = $1 AND name = 'Начальник склада' AND warehouse_ref = 'wh_b'
      ON CONFLICT (org_id, staff_ref) DO UPDATE SET role_id = EXCLUDED.role_id`,
     [c.org],
   );
@@ -354,7 +355,7 @@ test("стол склада А не отвязать паролем руково
        SELECT $2, password_hash, now() FROM auth.accounts WHERE email = $3 RETURNING id)
      INSERT INTO uklad.members (org_id, account_id, role_id, status, warehouse_ref)
      SELECT $1, acc.id, r.id, 'active', 'wh_b' FROM acc, uklad.roles r
-     WHERE r.org_id = $1 AND r.name = 'Начальник склада'`,
+     WHERE r.org_id = $1 AND r.name = 'Начальник склада' AND r.warehouse_ref = 'wh_b'`,
     [c.org, chief, "wh-desk-unbind@sklad.ru"],
   );
   const off = await call("/api/desk/unbind", {

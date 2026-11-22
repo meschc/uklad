@@ -45,6 +45,8 @@ const sha256 = (s) => createHash("sha256").update(s).digest();
 /** Отказ базы `team:*` → код ответа. Остальное — настоящий сбой. */
 const TEAM_STATUS = {
   not_found: 404,
+  role_warehouse: 409,
+  role_name: 422,
   role_not_allowed: 403,
   self: 403,
   default_role: 403,
@@ -105,8 +107,11 @@ function createTeam({ auth, cfg, send, log, limits = null }) {
         let members = (await c.query(`SELECT * FROM auth.team_list()`)).rows;
         const roles = (
           await c.query(
-            `SELECT id, name, permissions, is_default FROM uklad.roles
-             WHERE org_id = uklad.current_org() AND deleted_at IS NULL ORDER BY created_at`,
+            `SELECT id, name, permissions, is_default, warehouse_ref FROM uklad.roles
+             WHERE org_id = uklad.current_org() AND deleted_at IS NULL
+               AND ($1::text IS NULL OR warehouse_ref IS NULL OR warehouse_ref = $1)
+             ORDER BY created_at`,
+            [ref ?? null],
           )
         ).rows;
         const permissions = (
@@ -137,6 +142,8 @@ function createTeam({ auth, cfg, send, log, limits = null }) {
           name: r.name,
           permissions: r.permissions,
           builtIn: r.is_default,
+          // Склад роли; `null` — роль компании (владелец, продавец).
+          warehouseRef: r.warehouse_ref,
         })),
         members: v.members.map((m) => ({
           id: m.member_id,
@@ -336,18 +343,27 @@ function createTeam({ auth, cfg, send, log, limits = null }) {
     guarded(
       req,
       res,
-      async (c, _ctx, b) => {
+      async (c, _ctx, b, ref) => {
         const perms = Array.isArray(b.permissions) ? b.permissions : null;
         if (!perms || perms.some((p) => typeof p !== "string" || p.length > 64)) {
           throw new Error("team:bad_name");
         }
         const roleId = b.roleId == null ? null : uuid(b.roleId);
         if (b.roleId != null && !roleId) throw new Error("team:not_found");
+        // Роли у каждого склада свои (058): руководитель — только своего.
+        let warehouse = ref ?? refOrNull(b.warehouseRef);
+        if (!roleId && !warehouse) {
+          // Владелец не назвал склад, а склад один — роль этого склада.
+          const one = await c.query(`SELECT uklad.only_warehouse(uklad.current_org()) AS ref`);
+          warehouse = one.rows[0].ref;
+        }
+        if (roleId && ref && !(await roleHere(c, roleId, ref))) throw new Error("team:not_found");
+        if (!roleId && !warehouse) throw new Error("team:no_warehouse");
         // «Делать» без «смотреть» не бывает (033): чтение к каждому «делать»
         // добавляет база, а не экран — старый браузер не сохранит роль криво.
         const { rows } = await c.query(
-          `SELECT auth.save_role($1, $2, uklad.with_view_perms($3::text[])) AS id`,
-          [roleId, String(b.name ?? ""), [...new Set(perms)]],
+          `SELECT auth.save_role($1, $2, uklad.with_view_perms($3::text[]), $4) AS id`,
+          [roleId, String(b.name ?? ""), [...new Set(perms)], warehouse || null],
         );
         return rows[0].id;
       },
@@ -367,11 +383,21 @@ function createTeam({ auth, cfg, send, log, limits = null }) {
     });
 
   const deleteRole = (req, res) =>
-    guarded(req, res, async (c, _ctx, b) => {
+    guarded(req, res, async (c, _ctx, b, ref) => {
       const r = uuid(b.roleId);
-      if (!r) throw new Error("team:not_found");
+      if (!r || (ref && !(await roleHere(c, r, ref)))) throw new Error("team:not_found");
       await c.query(`SELECT auth.delete_role($1)`, [r]);
     });
+
+  /** Роль — склада `ref` (роли компании руководитель склада не правит). */
+  async function roleHere(c, roleId, ref) {
+    const { rows } = await c.query(
+      `SELECT warehouse_ref FROM uklad.roles
+       WHERE org_id = uklad.current_org() AND id = $1 AND deleted_at IS NULL`,
+      [roleId],
+    );
+    return rows[0]?.warehouse_ref === ref;
+  }
 
   // ---- Принятие по ссылке из письма ----
 

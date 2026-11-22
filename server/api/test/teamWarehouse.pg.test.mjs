@@ -96,9 +96,11 @@ async function owner(email, ip) {
   return { cookie: cookieOf(r.res), org: r.json.orgId, ip };
 }
 
-async function roles(who) {
+/** Роли склада `wh` (058: у каждого склада свои); без `wh` — все. */
+async function roles(who, wh) {
   const r = await call("GET", "/api/team", who);
-  return Object.fromEntries(r.json.roles.map((x) => [x.name, x.id]));
+  const here = wh ? r.json.roles.filter((x) => x.warehouseRef === wh) : r.json.roles;
+  return Object.fromEntries(here.map((x) => [x.name, x.id]));
 }
 
 async function accept(email, ip) {
@@ -284,8 +286,8 @@ test(
   { skip: SKIP },
   async () => {
     const boss = await owner("boss-legacy@example.com", "10.3.0.4");
-    const r = await roles(boss);
     await writeCabinet(boss, cabinet("wh-b"));
+    const r = await roles(boss, "wh-a");
     await post("/api/team/invite", {
       ...boss,
       body: {
@@ -343,7 +345,7 @@ test(
     await writeCabinet(boss, cabinet("wh-b"));
     const planner = await post("/api/team/roles/save", {
       ...boss,
-      body: { name: "Планировщик", permissions: ["stock.view", "plan.edit"] },
+      body: { name: "Планировщик", permissions: ["stock.view", "plan.edit"], warehouseRef: "wh-a" },
     });
     await post("/api/team/invite", {
       ...boss,

@@ -40,8 +40,10 @@ export interface TeamRole {
   id: string;
   name: string;
   permissions: string[];
-  /** Роль по умолчанию: переименовать нельзя, права не правятся. */
+  /** Роль из набора по умолчанию (её можно править и удалять, 058). */
   builtIn: boolean;
+  /** Склад роли: у каждого склада свои (058); `null` — роль компании. */
+  warehouseRef: string | null;
 }
 
 interface TeamPermission {
@@ -57,6 +59,8 @@ export interface TeamState {
   sellers: TeamMember[];
   /** Роли, которые можно дать. Владельца и продавца здесь нет. */
   roles: TeamRole[];
+  /** Роли владельца: по ним узнаём владельца в списке людей. */
+  ownerRoles: string[];
   /** Права того, кто смотрит (у владельца — все, хоть его роли и нет в `roles`). */
   myPermissions: string[];
   permissions: TeamPermission[];
@@ -109,6 +113,10 @@ function teamError(res: ApiResponse): MsgKey {
       return "team.err.notFound";
     case "no_warehouse":
       return "team.err.noWarehouse";
+    case "role_name":
+      return "team.err.roleName";
+    case "role_warehouse":
+      return "team.err.roleWarehouse";
     case "card_taken":
       return "team.err.cardTaken";
     case "bad_name":
@@ -125,6 +133,14 @@ async function act(path: string, body: Record<string, unknown>): Promise<Result<
   return res.data.status === 200 ? ok(undefined) : fail(teamError(res.data));
 }
 
+/**
+ * Название роли — слова, без цифр (Кирилл 22.11): буквы, пробел, дефис, косая
+ * черта, скобки, точка, запятая. То же правило держит база (058).
+ */
+const ROLE_NAME_RE = /^[A-Za-zА-Яа-яЁё /().,-]+$/;
+export const roleNameOk = (name: string) =>
+  ROLE_NAME_RE.test(name.trim()) && /[A-Za-zА-Яа-яЁё]/.test(name);
+
 export const teamRepository = {
   list: async (): Promise<Result<TeamState>> => {
     const res = await attempt(() => apiRequest("GET", "/team"));
@@ -140,6 +156,7 @@ export const teamRepository = {
       // Роль «Продавец» склад сотруднику не назначает: её ставит приглашение
       // продавца, а в списках ролей её нет.
       roles: state.roles.filter((r) => !isSellerRole(r) && !isOwnerRole(r)),
+      ownerRoles: state.roles.filter(isOwnerRole).map((r) => r.id),
       members: all.filter((m) => !m.partnerRef),
       sellers: all.filter((m) => Boolean(m.partnerRef)),
       deskRoles: state.deskRoles ?? {},
@@ -160,11 +177,12 @@ export const teamRepository = {
   changeRole: (memberId: string, roleId: string) => act("/team/role", { memberId, roleId }),
   setDisabled: (memberId: string, disabled: boolean) =>
     act("/team/disable", { memberId, disabled }),
-  saveRole: (role: { id?: string; name: string; permissions: string[] }) =>
+  saveRole: (role: { id?: string; name: string; permissions: string[]; warehouseRef: string }) =>
     act("/team/roles/save", {
       ...(role.id ? { roleId: role.id } : {}),
       name: role.name,
       permissions: role.permissions,
+      warehouseRef: role.warehouseRef,
     }),
   deleteRole: (roleId: string) => act("/team/roles/delete", { roleId }),
   /** Роль сотрудника стола; `null` — снять. */

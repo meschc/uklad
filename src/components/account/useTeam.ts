@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { decidersOf, teamRepository, type TeamState } from "@/lib/data/teamRepository";
 import { useEditor } from "@/lib/store";
 import type { MsgKey } from "@/lib/i18n";
@@ -14,6 +14,7 @@ export function useTeam(): {
   reload: () => void;
 } {
   const setDeskDeciders = useEditor((s) => s.setDeskDeciders);
+  const warehouseId = useEditor((s) => s.warehouse.id);
   const [state, setState] = useState<TeamState | null>(null);
   const [failed, setFailed] = useState<MsgKey | null>(null);
   // Перечитать список: счётчик будит эффект, а ответ ложится в состояние из
@@ -34,5 +35,14 @@ export function useTeam(): {
       alive = false;
     };
   }, [tick, setDeskDeciders]);
-  return { state, failed, reload };
+  // Роли у каждого склада свои (058): на экране — роли открытого склада.
+  const here = useMemo(
+    () =>
+      state && {
+        ...state,
+        roles: state.roles.filter((r) => !r.warehouseRef || r.warehouseRef === warehouseId),
+      },
+    [state, warehouseId],
+  );
+  return { state: here, failed, reload };
 }

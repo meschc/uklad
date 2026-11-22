@@ -259,16 +259,21 @@ test("начальник не может выше себя и не может с
     body: { name: "Опечатка", permissions: ["stock.vieww"] },
   });
   assert.ok(typo.status >= 400);
-  // Роли по умолчанию не правятся.
+  // Стандартные роли склада правятся (Кирилл 22.11), роль владельца — нет.
   const builtIn = await post("/api/team/roles/save", {
     ...chief,
     body: {
       roleId: r["Кладовщик / оператор"],
-      name: "Кладовщик / оператор",
+      name: "Кладовщик",
       permissions: ["stock.view"],
     },
   });
-  assert.equal(builtIn.status, 403);
+  assert.equal(builtIn.status, 200, JSON.stringify(builtIn.json));
+  const ownerRole = await post("/api/team/roles/save", {
+    ...chief,
+    body: { roleId: r["Владелец"], name: "Владелец", permissions: ["stock.view"] },
+  });
+  assert.equal(ownerRole.status, 404);
 });
 
 test("отключение гасит вход, возврат восстанавливает", { skip: SKIP }, async () => {
@@ -445,9 +450,14 @@ test("свои роли: правка, занятая роль не удаляе
     ),
   );
   assert.equal((await post("/api/team/roles/delete", { ...boss, body: { roleId } })).status, 409);
+  // Стандартную роль склада, которую никто не носит, удалить можно; владельца — нет.
   assert.equal(
-    (await post("/api/team/roles/delete", { ...boss, body: { roleId: r["Кладовщик / оператор"] } }))
+    (await post("/api/team/roles/delete", { ...boss, body: { roleId: r["Старший участка"] } }))
       .status,
+    200,
+  );
+  assert.equal(
+    (await post("/api/team/roles/delete", { ...boss, body: { roleId: r["Владелец"] } })).status,
     403,
   );
   const memberId = (await call("GET", "/api/team", boss)).json.me;
@@ -1197,7 +1207,20 @@ test(
     });
     assert.equal(put.status, 200, JSON.stringify(put.json));
     const chief = await join(boss, "chief-team@example.com", r["Начальник склада"]);
-    await join(boss, "other-team@example.com", r["Кладовщик / оператор"], { warehouseRef: "w2" });
+    // У склада w2 свои роли (058): роль склада w1 туда не дать.
+    const w2keeper = (await call("GET", "/api/team", boss)).json.roles.find(
+      (x) => x.warehouseRef === "w2" && x.name === "Кладовщик / оператор",
+    ).id;
+    const wrong = await post("/api/team/invite", {
+      ...boss,
+      body: {
+        email: "wrong-team@example.com",
+        roleId: r["Кладовщик / оператор"],
+        warehouseRef: "w2",
+      },
+    });
+    assert.equal(wrong.status, 409);
+    await join(boss, "other-team@example.com", w2keeper, { warehouseRef: "w2" });
     const all = (await call("GET", "/api/team", boss)).json;
     const other = all.members.find((m) => m.email === "other-team@example.com");
     assert.equal(other.warehouseRef, "w2");
@@ -1236,5 +1259,70 @@ test(
     assert.equal(mine.status, 200, JSON.stringify(mine.json));
     // Владелец видит всех.
     assert.equal(all.members.length, 3);
+  },
+);
+
+test(
+  "роли у каждого склада свои: начальник правит только роли своего",
+  { skip: SKIP },
+  async () => {
+    const boss = await owner("boss-roles-wh@example.com", "10.1.0.80");
+    const r = await roles(boss);
+    const two = {
+      warehouse: { id: WH, name: "Склад", staff: [] },
+      otherWarehouses: [{ id: "w2", name: "Склад 2", staff: [] }],
+    };
+    const put = await post("/api/cabinet/snapshot", {
+      ...boss,
+      body: { version: await version(boss), format: 8, data: two },
+    });
+    assert.equal(put.status, 200, JSON.stringify(put.json));
+    const all = (await call("GET", "/api/team", boss)).json.roles;
+    const w2 = Object.fromEntries(
+      all.filter((x) => x.warehouseRef === "w2").map((x) => [x.name, x.id]),
+    );
+    assert.ok(
+      w2["Кладовщик / оператор"] && w2["Кладовщик / оператор"] !== r["Кладовщик / оператор"],
+    );
+    // Своя роль склада w2 владельцем — только на w2.
+    const test2 = await post("/api/team/roles/save", {
+      ...boss,
+      body: { name: "Тест", permissions: ["stock.view"], warehouseRef: "w2" },
+    });
+    assert.equal(test2.status, 200);
+    const chief = await join(boss, "chief-roles-wh@example.com", r["Начальник склада"]);
+    // Начальник w1 видит роли своего склада и не видит «Тест» склада w2.
+    const seen = (await call("GET", "/api/team", chief)).json.roles;
+    assert.ok(seen.every((x) => x.warehouseRef === WH || x.warehouseRef === null));
+    assert.ok(!seen.some((x) => x.id === test2.json.roleId));
+    // Роль склада w2 не правит и не удаляет.
+    const edit = await post("/api/team/roles/save", {
+      ...chief,
+      body: { roleId: w2["Кладовщик / оператор"], name: "Х", permissions: ["stock.view"] },
+    });
+    assert.equal(edit.status, 404);
+    const del = await post("/api/team/roles/delete", {
+      ...chief,
+      body: { roleId: test2.json.roleId },
+    });
+    assert.equal(del.status, 404);
+    // В названии роли цифр нет (Кирилл 22.11).
+    for (const name of ["Роль 1", "123", "Склад№"]) {
+      const digits = await post("/api/team/roles/save", {
+        ...chief,
+        body: { name, permissions: ["stock.view"] },
+      });
+      assert.deepEqual([digits.status, digits.json.error], [422, "role_name"], name);
+    }
+    // Новая роль начальника — на его складе, даже если просил другой.
+    const mine = await post("/api/team/roles/save", {
+      ...chief,
+      body: { name: "Моя", permissions: ["stock.view"], warehouseRef: "w2" },
+    });
+    assert.equal(mine.status, 200);
+    const made = (await call("GET", "/api/team", boss)).json.roles.find(
+      (x) => x.id === mine.json.roleId,
+    );
+    assert.equal(made.warehouseRef, WH);
   },
 );
