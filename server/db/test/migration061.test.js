@@ -84,22 +84,33 @@ test("061: товары без склада — первому складу, с�
       ["p2", null],
       ["p3", "wb"],
     ]);
-    // p2 уже работает на втором складе (wb): миграция называет такой товар.
-    await root.query(
-      `INSERT INTO uklad.cabinet_records (org_id, warehouse_ref, domain, ref, position, data)
-       VALUES ($1, 'wb', 'requests', 'r1', 0, '{"items":[{"productId":"p2"}]}')`,
-      [two],
-    );
+    // p4 работает только на втором складе (wb) — ему; p5 на обоих — первому
+    // складу, миграция его называет.
+    await goods(two, [
+      ["p4", null],
+      ["p5", null],
+    ]);
+    const rec = (w, ref, product) =>
+      root.query(
+        `INSERT INTO uklad.cabinet_records (org_id, warehouse_ref, domain, ref, position, data)
+         VALUES ($1, $2, 'requests', $3, 0, jsonb_build_object('productId', $4::text))`,
+        [two, w, ref, product],
+      );
+    await rec("wb", "r1", "p4");
+    await rec("wb", "r2", "p5");
+    await rec("wc", "r3", "p5");
     const notices = [];
     c.on("notice", (n) => notices.push(n.message));
     await apply("061_shared_products_first_warehouse.sql");
     assert.equal(notices.length, 1, notices.join("; "));
-    assert.match(notices[0], /1 товаров работают не на первом складе wc/);
+    assert.match(notices[0], /1 товаров работают на нескольких складах, отданы первому wc/);
     const rows = async (sql) => (await root.query(sql)).rows;
     assert.deepEqual(await rows(`SELECT ref, warehouse_ref FROM uklad.products ORDER BY ref`), [
       { ref: "p1", warehouse_ref: "wa" },
       { ref: "p2", warehouse_ref: "wc" },
       { ref: "p3", warehouse_ref: "wb" },
+      { ref: "p4", warehouse_ref: "wb" },
+      { ref: "p5", warehouse_ref: "wc" },
     ]);
     assert.deepEqual(
       await rows(`SELECT ref, card->'ownCatalog' AS flag FROM uklad.warehouses ORDER BY ref`),
