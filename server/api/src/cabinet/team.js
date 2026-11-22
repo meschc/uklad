@@ -46,6 +46,7 @@ const sha256 = (s) => createHash("sha256").update(s).digest();
 const TEAM_STATUS = {
   not_found: 404,
   role_warehouse: 409,
+  role_name: 422,
   role_not_allowed: 403,
   self: 403,
   default_role: 403,

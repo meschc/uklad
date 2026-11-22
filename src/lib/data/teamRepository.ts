@@ -113,6 +113,8 @@ function teamError(res: ApiResponse): MsgKey {
       return "team.err.notFound";
     case "no_warehouse":
       return "team.err.noWarehouse";
+    case "role_name":
+      return "team.err.roleName";
     case "role_warehouse":
       return "team.err.roleWarehouse";
     case "card_taken":
@@ -130,6 +132,13 @@ async function act(path: string, body: Record<string, unknown>): Promise<Result<
   if (!res.ok) return res;
   return res.data.status === 200 ? ok(undefined) : fail(teamError(res.data));
 }
+
+/**
+ * Название роли — слова, без цифр (Кирилл 22.11): буквы, пробел, дефис, косая
+ * черта, скобки, точка, запятая. То же правило держит база (058).
+ */
+const ROLE_NAME_RE = /^[\p{L} /().,-]+$/u;
+export const roleNameOk = (name: string) => ROLE_NAME_RE.test(name.trim()) && /\p{L}/u.test(name);
 
 export const teamRepository = {
   list: async (): Promise<Result<TeamState>> => {

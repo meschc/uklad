@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ChevronRight, Plus } from "lucide-react";
-import { teamRepository, type TeamRole } from "@/lib/data/teamRepository";
+import { roleNameOk, teamRepository, type TeamRole } from "@/lib/data/teamRepository";
 import { useCommand } from "@/lib/useCommand";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -174,6 +174,8 @@ function RoleEditor({
   );
   const del = useCommand(() => teamRepository.deleteRole(role?.id ?? ""));
   const groups = groupPermissions(permissions);
+  // Цифры и значки в названии сразу подсвечиваются: почему и как исправить.
+  const badName = name.trim() !== "" && !roleNameOk(name);
   const err = save.error ?? del.error;
   return (
     <div className="flex flex-col gap-5">
@@ -185,11 +187,12 @@ function RoleEditor({
             value={name}
             // eslint-disable-next-line jsx-a11y/no-autofocus -- строку раскрыли действием человека
             autoFocus={!role}
+            aria-invalid={badName || undefined}
             onChange={(e) => setName(e.target.value)}
           />
         </label>
         <Button
-          disabled={!name.trim() || save.pending}
+          disabled={!name.trim() || badName || save.pending}
           onClick={async () => {
             if ((await save.run()).ok) onDone();
           }}
@@ -212,6 +215,7 @@ function RoleEditor({
           </Button>
         )}
       </div>
+      {badName && <FieldError>{t("team.err.roleName")}</FieldError>}
       <div className="flex flex-col divide-y divide-border">
         {groups.areas.map((a) => (
           <PermRow

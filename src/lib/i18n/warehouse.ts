@@ -298,6 +298,8 @@ export const ru = {
   "team.err.alreadyMember": "Этот человек уже в команде.",
   "team.err.roleInUse": "Роль занята: сначала переведите людей на другую.",
   "team.err.roleInUseBy": "Роль занята: {names}. Переведите их на другую роль и удалите снова.",
+  "team.err.roleName":
+    "В названии роли только слова: буквы, пробел, дефис или косая черта. Уберите цифры и значки.",
   "team.err.roleWarehouse":
     "Это роль другого склада. Выберите роль склада, на котором работает человек.",
   "team.err.tooManyInvites": "Слишком много неоткрытых приглашений. Отзовите лишние.",
@@ -790,6 +792,8 @@ export const en: Record<keyof typeof ru, string> = {
   "team.err.roleInUse": "The role is in use: move people to another role first.",
   "team.err.roleInUseBy":
     "The role is in use: {names}. Move them to another role and delete again.",
+  "team.err.roleName":
+    "A role name is words only: letters, spaces, hyphens or slashes. Remove digits and symbols.",
   "team.err.roleWarehouse":
     "This role belongs to another warehouse. Pick a role of the person's warehouse.",
   "team.err.tooManyInvites": "Too many unopened invitations. Revoke some.",

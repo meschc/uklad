@@ -138,6 +138,33 @@ test("058: роли у каждого склада свои", async () => {
       root.query(`UPDATE uklad.members SET role_id = $1 WHERE display_name = 'Анна'`, [chief]),
       /team:role_warehouse/,
     );
+    // База сама держит склад роли (правило 023): начальник склада Б напрямую
+    // функцией не правит и не удаляет роль склада А и не заводит её там.
+    const anna = (await root.query(`SELECT id FROM uklad.members WHERE display_name = 'Анна'`))
+      .rows[0].id;
+    const keeperA = (
+      await root.query(
+        `SELECT id FROM uklad.roles WHERE org_id = $1 AND warehouse_ref = 'wa'
+           AND name = 'Кладовщик / оператор'`,
+        [org],
+      )
+    ).rows[0].id;
+    await root.query(`SELECT set_config('app.member_id', $1, false)`, [anna]);
+    await assert.rejects(
+      root.query(`SELECT auth.save_role($1, 'Х', '{stock.view}', NULL)`, [keeperA]),
+      /team:not_found/,
+    );
+    await assert.rejects(root.query(`SELECT auth.delete_role($1)`, [keeperA]), /team:not_found/);
+    await assert.rejects(
+      root.query(`SELECT auth.save_role(NULL, 'Новая', '{stock.view}', 'wa')`),
+      /team:not_found/,
+    );
+    await assert.rejects(
+      root.query(`SELECT auth.save_role(NULL, 'Роль 1', '{stock.view}', 'wb')`),
+      /team:role_name/,
+    );
+    await root.query(`SELECT auth.save_role(NULL, 'Своя', '{stock.view}', 'wb')`);
+    await root.query(`SELECT set_config('app.member_id', '', false)`);
     await root.query(`UPDATE uklad.members SET warehouse_ref = 'wc' WHERE display_name = 'Анна'`);
     assert.equal(await whOf(`SELECT role_id FROM uklad.members WHERE display_name = 'Анна'`), "wc");
     await assert.rejects(

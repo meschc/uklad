@@ -215,6 +215,17 @@ CREATE TRIGGER desk_staff_roles_role_warehouse
   BEFORE INSERT OR UPDATE OF role_id ON uklad.desk_staff_roles
   FOR EACH ROW EXECUTE FUNCTION uklad.desk_role_warehouse();
 
+-- Склад роли — склад вошедшего: руководитель склада трогает только роли своего
+-- (как и сервер, база на него не полагается — правило 023). Владельцу и тому,
+-- у кого склада нет, — любой.
+CREATE FUNCTION auth.assert_role_place(p_warehouse text) RETURNS void
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = auth, uklad, pg_temp AS $$
+DECLARE v_place text := (SELECT warehouse_ref FROM auth.actor_place());
+BEGIN
+  IF 'org.manage' = ANY (auth.actor_permissions()) OR v_place IS NULL THEN RETURN; END IF;
+  IF p_warehouse IS DISTINCT FROM v_place THEN RAISE EXCEPTION 'team:not_found'; END IF;
+END $$;
+
 -- Своя роль склада: новая — на складе `p_warehouse`. Стандартные роли склада
 -- теперь правятся; роли компании (владелец, продавец) — нет.
 CREATE FUNCTION auth.save_role(p_role uuid, p_name text, p_perms text[], p_warehouse text)
@@ -225,12 +236,19 @@ DECLARE
   v_old text[];
   v_default boolean;
   v_name text;
+  v_wh text;
 BEGIN
   PERFORM auth.assert_staff();
   IF length(trim(p_name)) NOT BETWEEN 1 AND 100 THEN RAISE EXCEPTION 'team:bad_name'; END IF;
+  -- Название — слова: буквы, пробел, дефис, косая черта, скобки, точка,
+  -- запятая. Цифр в названии роли нет (Кирилл 22.11).
+  IF trim(p_name) !~ '^[[:alpha:] /().,-]+$' OR trim(p_name) !~ '[[:alpha:]]' THEN
+    RAISE EXCEPTION 'team:role_name';
+  END IF;
   IF 'org.manage' = ANY (p_perms) THEN RAISE EXCEPTION 'team:role_not_allowed'; END IF;
   IF NOT (p_perms <@ auth.actor_permissions()) THEN RAISE EXCEPTION 'team:role_not_allowed'; END IF;
   IF v_id IS NULL THEN
+    PERFORM auth.assert_role_place(p_warehouse);
     IF NOT EXISTS (SELECT 1 FROM uklad.warehouses w
                    WHERE w.org_id = uklad.current_org() AND w.ref = p_warehouse
                      AND w.deleted_at IS NULL) THEN
@@ -241,9 +259,11 @@ BEGIN
     RETURNING id INTO v_id;
     RETURN v_id;
   END IF;
-  SELECT r.permissions, r.is_default, r.name INTO v_old, v_default, v_name FROM uklad.roles r
+  SELECT r.permissions, r.is_default, r.name, r.warehouse_ref INTO v_old, v_default, v_name, v_wh
+  FROM uklad.roles r
   WHERE r.id = v_id AND r.org_id = uklad.current_org() AND r.deleted_at IS NULL;
   IF NOT FOUND THEN RAISE EXCEPTION 'team:not_found'; END IF;
+  IF v_wh IS NOT NULL THEN PERFORM auth.assert_role_place(v_wh); END IF;
   IF uklad.company_role(v_old, v_default, v_name) THEN RAISE EXCEPTION 'team:default_role'; END IF;
   IF NOT (v_old <@ auth.actor_permissions()) THEN RAISE EXCEPTION 'team:role_not_allowed'; END IF;
   IF EXISTS (SELECT 1 FROM uklad.members m WHERE m.id = auth.actor_member() AND m.role_id = v_id) THEN
@@ -265,12 +285,14 @@ END $$;
 -- держит — скажет сервер (`team.js`).
 CREATE OR REPLACE FUNCTION auth.delete_role(p_role uuid) RETURNS void
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = auth, uklad, pg_temp AS $$
-DECLARE v_perms text[]; v_default boolean; v_name text;
+DECLARE v_perms text[]; v_default boolean; v_name text; v_wh text;
 BEGIN
   PERFORM auth.assert_staff();
-  SELECT r.permissions, r.is_default, r.name INTO v_perms, v_default, v_name FROM uklad.roles r
+  SELECT r.permissions, r.is_default, r.name, r.warehouse_ref INTO v_perms, v_default, v_name, v_wh
+  FROM uklad.roles r
   WHERE r.id = p_role AND r.org_id = uklad.current_org() AND r.deleted_at IS NULL;
   IF NOT FOUND THEN RAISE EXCEPTION 'team:not_found'; END IF;
+  IF v_wh IS NOT NULL THEN PERFORM auth.assert_role_place(v_wh); END IF;
   IF uklad.company_role(v_perms, v_default, v_name) THEN RAISE EXCEPTION 'team:default_role'; END IF;
   IF NOT (v_perms <@ auth.actor_permissions()) THEN RAISE EXCEPTION 'team:role_not_allowed'; END IF;
   DELETE FROM uklad.desk_staff_roles d
@@ -285,6 +307,7 @@ BEGIN
   UPDATE uklad.roles SET deleted_at = now() WHERE id = p_role;
 END $$;
 
+REVOKE EXECUTE ON FUNCTION auth.assert_role_place(text) FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION auth.save_role(uuid, text, text[], text),
   uklad.staff_warehouse(uuid, text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION auth.save_role(uuid, text, text[], text),

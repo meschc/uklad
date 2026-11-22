@@ -1306,6 +1306,14 @@ test(
       body: { roleId: test2.json.roleId },
     });
     assert.equal(del.status, 404);
+    // В названии роли цифр нет (Кирилл 22.11).
+    for (const name of ["Роль 1", "123", "Склад№"]) {
+      const digits = await post("/api/team/roles/save", {
+        ...chief,
+        body: { name, permissions: ["stock.view"] },
+      });
+      assert.deepEqual([digits.status, digits.json.error], [422, "role_name"], name);
+    }
     // Новая роль начальника — на его складе, даже если просил другой.
     const mine = await post("/api/team/roles/save", {
       ...chief,
