@@ -551,6 +551,72 @@ test("стол чужой компании бейдж не узнаёт", { skip
 });
 
 test(
+  "строки в памяти стола: правка руководителя между сканами не теряется",
+  { skip: SKIP },
+  async () => {
+    const { a, ivan } = await company("desk-cache@sklad.ru", "10.0.3.42");
+    const desk = await makeDesk(a, "dev-pick");
+    await call("/api/cabinet/badges/check", { desk, body: { code: ivan } });
+    const boss = await login("desk-cache@sklad.ru");
+    const cell = { floorId: "f1", moduleId: "m1", shelfIndex: 0, cellIndex: 0 };
+    const start = await stored(a.org);
+    const setup = await call("/api/cabinet/snapshot", {
+      cookie: boss,
+      org: a.org,
+      body: {
+        version: start.version,
+        format: 8,
+        data: {
+          ...start.data,
+          boxes: [
+            { id: "b1", barcode: "UK-BOX-1", address: cell, lines: [{ productId: "pr1", qty: 5 }] },
+            { id: "t1", barcode: "UK-BOX-7", lines: [] },
+          ],
+          requests: [{ id: "r1", productId: "pr1", qty: 3, status: "new", note: "Тула" }],
+        },
+      },
+    });
+    assert.equal(setup.status, 200);
+    const pick = (n) =>
+      ops(desk, [
+        {
+          key: `key-cache-pick-${n}`,
+          kind: "pick_unit",
+          body: {
+            eventId: `ev-cache-pick-${n}`,
+            staffId: "stf-ivan",
+            at: Date.now() - 500 + n,
+            requestId: "r1",
+            productId: "pr1",
+            toteId: "t1",
+            cell,
+          },
+        },
+      ]);
+    // Первый скан кладёт строки компании в память.
+    assert.equal((await pick(1)).json.results[0].status, "applied");
+    // Руководитель меняет ту же заявку: версия снимка растёт.
+    const mid = await stored(a.org);
+    const r1 = mid.data.requests.find((x) => x.id === "r1");
+    const edit = await call("/api/cabinet/snapshot", {
+      cookie: boss,
+      org: a.org,
+      body: {
+        version: mid.version,
+        format: 8,
+        data: { ...mid.data, requests: [{ ...r1, note: "Курск" }] },
+      },
+    });
+    assert.equal(edit.status, 200);
+    // Второй скан той же заявки видит правку руководителя, а не память.
+    assert.equal((await pick(2)).json.results[0].status, "applied");
+    const end = (await stored(a.org)).data.requests.find((x) => x.id === "r1");
+    assert.equal(end.note, "Курск");
+    assert.equal(end.pickedQty, 2);
+  },
+);
+
+test(
   "скан пишет только свою строку: остальная работа склада не переписывается",
   { skip: SKIP },
   async () => {
