@@ -412,7 +412,9 @@ export const ru = {
   "staff.edit": "Изменить",
   "staff.removed": "Сотрудник «{name}» удалён, бейдж погашен",
   "staff.badge": "Бейдж",
-  "staff.badge.issue": "Выпустить бейдж",
+  "staff.badge.issue": "Выпустить новый бейдж",
+  "staff.badge.intro":
+    "Напечатанный бейдж показать ещё раз нельзя: его код есть только на самом бейдже. Новый бейдж погасит прежний, и за стол сотрудник войдёт только по новому. Выпускайте, если бейджа ещё нет или он потерян.",
   "staff.badge.forbidden":
     "Выпустить бейдж нельзя: у этого сотрудника роль выше вашей или у вас нет права «Персонал»",
   "staff.badge.title": "Бейдж сотрудника",
@@ -906,7 +908,9 @@ export const en: Record<keyof typeof ru, string> = {
   "staff.edit": "Edit",
   "staff.removed": "“{name}” removed, badge revoked",
   "staff.badge": "Badge",
-  "staff.badge.issue": "Issue badge",
+  "staff.badge.issue": "Issue a new badge",
+  "staff.badge.intro":
+    "A printed badge can't be shown again: its code exists only on the badge itself. A new badge revokes the previous one, and the person will open a workstation only with the new one. Issue it if there's no badge yet or it was lost.",
   "staff.badge.forbidden":
     "You can't issue this badge: the employee's role is above yours or you lack the Staff permission",
   "staff.badge.title": "Staff badge",

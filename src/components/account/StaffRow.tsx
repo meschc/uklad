@@ -37,8 +37,7 @@ export function StaffRow({
     const off = await badgeRepository.revoke(m.id);
     return off.ok ? staffRepository.remove(m.id) : off;
   });
-  const issue = useCommand(() => badgeRepository.issue(m.id));
-  const [badge, setBadge] = useState<string | null>(null);
+  const [badgeOpen, setBadgeOpen] = useState(false);
 
   return (
     <tr className="group border-t border-border/60">
@@ -94,19 +93,14 @@ export function StaffRow({
       <td className="stack-head px-3 py-2">
         <div className="flex items-center gap-1">
           <button
-            onClick={async () => {
-              const res = await issue.run();
-              if (res.ok) setBadge(res.data);
-              else notify("error", res.error);
-            }}
-            disabled={issue.pending}
-            title={t("staff.badge.issue")}
-            aria-label={t("staff.badge.issue")}
+            onClick={() => setBadgeOpen(true)}
+            title={t("staff.badge")}
+            aria-label={t("staff.badge")}
             className="flex size-11 items-center md:size-7 justify-center rounded text-muted-foreground transition hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
           >
             <IdCard className="size-3.5" />
           </button>
-          {badge && <BadgePanel member={m} code={badge} onClose={() => setBadge(null)} t={t} />}
+          {badgeOpen && <BadgePanel member={m} onClose={() => setBadgeOpen(false)} t={t} />}
           {/* Правка — отдельной кнопкой: нажатие на имя неочевидно (Кирилл 13.11). */}
           <button
             onClick={onEdit}

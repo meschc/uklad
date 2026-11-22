@@ -46,7 +46,8 @@ export const ru = {
   "ws.login.demo": "Бейджи для демо",
   "ws.login.demoHint": "Демо: нажмите на бейдж вместо скана.",
   "ws.login.noStaff": "В персонале склада никого нет. Добавьте сотрудников на экране «Персонал».",
-  "ws.badgeUnknown": "Бейдж не найден среди сотрудников склада",
+  "ws.badgeUnknown":
+    "Бейдж не найден: его погасили или выпустили новый. Новый бейдж печатает руководитель в «Персонале»",
   "ws.badgeOtherWarehouse":
     "Этот бейдж выдан на другом складе компании. За этим столом работают сотрудники только его склада",
   "ws.deskNoWarehouse":
@@ -699,7 +700,8 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.login.demo": "Demo badges",
   "ws.login.demoHint": "Demo: click a badge instead of scanning.",
   "ws.login.noStaff": "No staff on this warehouse yet. Add people on the Staff screen.",
-  "ws.badgeUnknown": "This badge doesn't belong to anyone on the warehouse staff",
+  "ws.badgeUnknown":
+    "Badge not found: it was revoked or replaced by a new one. A manager prints a new badge in Staff",
   "ws.badgeOtherWarehouse":
     "This badge was issued at another warehouse of the company. Only that warehouse's staff work at this desk",
   "ws.deskNoWarehouse":

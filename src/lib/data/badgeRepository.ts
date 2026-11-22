@@ -85,6 +85,11 @@ export interface BadgeRepository {
   /** Можно ли бейдж погасить: демо-бейдж из id не гаснет, его код вечен. */
   revocable: () => boolean;
   /**
+   * Код, который можно показать без выпуска: в демо он вечный (из id), на
+   * сервере — `null`: код знает только напечатанный бейдж, а новый гасит его.
+   */
+  shown: (staffId: string) => string | null;
+  /**
    * Выпустить бейдж и получить код для печати. На сервере старый бейдж
    * сотрудника гаснет, а новый код показывается только сейчас.
    */
@@ -98,6 +103,7 @@ export function createBadgeRepository(
 ): BadgeRepository {
   return {
     revocable: () => onServer(port),
+    shown: (staffId) => (onServer(port) ? null : badgeCode(staffId)),
     issue: async (staffId) => (onServer(port) ? server.issue(staffId) : ok(badgeCode(staffId))),
     revoke: async (staffId) => (onServer(port) ? server.revoke(staffId) : ok(undefined)),
   };
