@@ -5,7 +5,13 @@ import { levelFor, signal } from "@/lib/scanSignal";
 import { fulfillmentRepository, type Result } from "@/lib/data";
 import { addressKey, formatAddress, parseAddress } from "@/lib/address";
 import { buildOccupancy, occupantsAt } from "@/lib/placement";
-import { findByCode, findProduct, honestSignToEan13, parseHonestSignMock } from "@/lib/barcode";
+import {
+  findByCode,
+  findProduct,
+  honestSignToEan13,
+  parseHonestSignMock,
+  toteByCode,
+} from "@/lib/barcode";
 import type { CellAddress, Discrepancy, ExpectedShipment, ReceivingProgress } from "@/lib/types";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { sealedUnits } from "@/lib/cargo";
@@ -176,6 +182,14 @@ export function ReceivingScreen({ staffId: badgeStaffId }: { staffId?: string } 
 
   const onScanProduct = (raw: string) => {
     const product = findProduct(products, raw);
+
+    // Код другой тары или паллеты при открытой таре — не новый товар: раньше
+    // стол предлагал завести карточку «UK-BOX-29» (обход столов 15.11).
+    const tote = product ? null : toteByCode(boxes, pallets, raw);
+    if (tote) {
+      fail("recv.scan.isTote", { code: tote.barcode });
+      return;
+    }
 
     if (!product) {
       // Код не опознан ни в каталоге, ни в поставке — это неучтённый товар.

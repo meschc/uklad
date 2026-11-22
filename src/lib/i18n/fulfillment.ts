@@ -297,6 +297,8 @@ export const ru = {
   "recv.scan.hint": "Достаточно одной единицы — она нужна, чтобы опознать артикул.",
   "recv.scan.found": "Опознан: {name}",
   "recv.scan.offPlan": "{name} — этой позиции нет в поставке, принимаем вне сверки",
+  "recv.scan.isTote":
+    "{code} — это тара, а не товар. Сканируйте товар в открытую тару или закройте её, чтобы взять другую",
   "recv.scan.unknown":
     "Код не найден ни в каталоге, ни в поставке — заводим карточку по коду маркировки",
   "recv.qty.label": "Фактическое количество",
@@ -748,6 +750,8 @@ export const en: Record<keyof typeof ru, string> = {
   "recv.scan.hint": "One unit is enough — it only identifies the SKU.",
   "recv.scan.found": "Identified: {name}",
   "recv.scan.offPlan": "{name} is not in this shipment — receiving it off-plan",
+  "recv.scan.isTote":
+    "{code} is a tote, not an item. Scan items into the open tote or close it to take another",
   "recv.scan.unknown":
     "Code not found in the catalogue or the shipment — creating a card from the marking code",
   "recv.qty.label": "Actual quantity",
