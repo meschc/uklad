@@ -34,6 +34,7 @@ const { FAIL_WINDOW_MS, FAIL_PAIR, FAIL_EMAIL } = require("./auth");
 const { findPlace } = require("./viewerPlace");
 const { PlanLimitError } = require("./planLimits");
 const { withWarehouses } = require("./warehouses");
+const { managerWarehouse, memberHere, ownScope } = require("./managerScope");
 
 const INVITE_TTL_MS = 7 * 86_400_000;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -75,8 +76,11 @@ function createTeam({ auth, cfg, send, log, limits = null }) {
     const out = await overLimit(
       withSession(req, async (c, ctx) => {
         if (!mayUse(ctx)) return { status: 403, error: "forbidden" };
+        // Руководитель склада — только люди своего склада (Кирилл 22.11).
+        const ref = await managerWarehouse(c, ctx);
+        if (ref === false) return { status: 403, error: "no_warehouse" };
         try {
-          return { value: await act(c, ctx, b) };
+          return { value: await act(c, ctx, b, ref) };
         } catch (err) {
           if (err instanceof PlanLimitError) throw err;
           const known = teamError(err);
@@ -97,8 +101,8 @@ function createTeam({ auth, cfg, send, log, limits = null }) {
     return guarded(
       req,
       res,
-      async (c, ctx) => {
-        const members = (await c.query(`SELECT * FROM auth.team_list()`)).rows;
+      async (c, ctx, _b, ref) => {
+        let members = (await c.query(`SELECT * FROM auth.team_list()`)).rows;
         const roles = (
           await c.query(
             `SELECT id, name, permissions, is_default FROM uklad.roles
@@ -108,12 +112,21 @@ function createTeam({ auth, cfg, send, log, limits = null }) {
         const permissions = (
           await c.query(`SELECT code, title FROM uklad.permissions ORDER BY code`)
         ).rows;
-        const deskRoles = (
+        let deskRoles = (
           await c.query(
             `SELECT staff_ref, role_id FROM uklad.desk_staff_roles
              WHERE org_id = uklad.current_org() AND role_id IS NOT NULL`,
           )
         ).rows;
+        if (ref) {
+          // Руководитель видит людей своего склада и владельца, а не всю компанию.
+          const owner = new Set(
+            roles.filter((r) => r.permissions.includes("org.manage")).map((r) => r.id),
+          );
+          members = members.filter((m) => m.warehouse_ref === ref || owner.has(m.role_id));
+          const scope = await ownScope(c, ref);
+          deskRoles = deskRoles.filter((d) => scope.staff.has(d.staff_ref));
+        }
         return { members, roles, permissions, deskRoles, me: ctx.memberId };
       },
       (v) => ({
@@ -177,6 +190,10 @@ function createTeam({ auth, cfg, send, log, limits = null }) {
       withSession(req, async (c, ctx) => {
         if (!mayUse(ctx)) return { status: 403, error: "forbidden" };
         if (!inviteLimiter.take(ctx.orgId)) return { status: 429, error: "too_often" };
+        // Руководитель зовёт только на свой склад.
+        const ref = await managerWarehouse(c, ctx);
+        if (ref === false) return { status: 403, error: "no_warehouse" };
+        if (ref && place.warehouseRef !== ref) return { status: 404, error: "not_found" };
         // Лимит тарифа из админки: сотрудники или кабинеты продавцов (planLimits).
         const room = limits ? await limits.guard(c, ctx.orgId, seller ? "sellers" : "staff") : null;
         try {
@@ -263,10 +280,14 @@ function createTeam({ auth, cfg, send, log, limits = null }) {
   // Перевод на другую карточку может добавить человека в лимите: старая
   // карточка с живым бейджем остаётся посчитанной (ревью безопасности #201).
   const setPlace = (req, res) =>
-    guarded(req, res, async (c, ctx, b) => {
+    guarded(req, res, async (c, ctx, b, ref) => {
       const m = uuid(b.memberId);
       const place = placeOf(b);
       if (!m || !place?.warehouseRef) throw new Error("team:not_found");
+      // Руководитель склада: своего человека и только на свой склад.
+      if (ref && (place.warehouseRef !== ref || !(await memberHere(c, m, ref)))) {
+        throw new Error("team:not_found");
+      }
       await assertPlace(c, place);
       const room = limits ? await limits.guard(c, ctx.orgId, "staff") : null;
       await c.query(`SELECT auth.set_member_place($1, $2, $3)`, [
@@ -278,25 +299,25 @@ function createTeam({ auth, cfg, send, log, limits = null }) {
     });
 
   const revokeInvite = (req, res) =>
-    guarded(req, res, async (c, _ctx, b) => {
+    guarded(req, res, async (c, _ctx, b, ref) => {
       const id = uuid(b.memberId);
-      if (!id) throw new Error("team:not_found");
+      if (!id || (ref && !(await memberHere(c, id, ref)))) throw new Error("team:not_found");
       await c.query(`SELECT auth.revoke_invite($1)`, [id]);
     });
 
   const changeRole = (req, res) =>
-    guarded(req, res, async (c, _ctx, b) => {
+    guarded(req, res, async (c, _ctx, b, ref) => {
       const [m, r] = [uuid(b.memberId), uuid(b.roleId)];
-      if (!m || !r) throw new Error("team:not_found");
+      if (!m || !r || (ref && !(await memberHere(c, m, ref)))) throw new Error("team:not_found");
       await c.query(`SELECT auth.change_role($1, $2)`, [m, r]);
     });
 
   // Выключить можно всегда — это гасит доступ, в том числе в неоплате.
   // Включить — это вернуть человека: лимит тарифа и неоплата как у приглашения.
   const disable = (req, res) =>
-    guarded(req, res, async (c, ctx, b) => {
+    guarded(req, res, async (c, ctx, b, ref) => {
       const m = uuid(b.memberId);
-      if (!m) throw new Error("team:not_found");
+      if (!m || (ref && !(await memberHere(c, m, ref)))) throw new Error("team:not_found");
       const off = b.disabled !== false;
       let room = null;
       if (!off && limits) {
@@ -336,10 +357,12 @@ function createTeam({ auth, cfg, send, log, limits = null }) {
   // Роль сотрудника стола (миграция 024); `roleId: null` — снять.
   const STAFF_REF_RE = /^[A-Za-z0-9_-]{1,100}$/;
   const deskRole = (req, res) =>
-    guarded(req, res, async (c, _ctx, b) => {
+    guarded(req, res, async (c, _ctx, b, here) => {
       const ref = STAFF_REF_RE.test(String(b.staffRef ?? "")) ? String(b.staffRef) : null;
       const r = b.roleId == null ? null : uuid(b.roleId);
       if (!ref || (b.roleId != null && !r)) throw new Error("team:not_found");
+      // Руководитель склада — роль только своему сотруднику стола.
+      if (here && !(await ownScope(c, here)).staff.has(ref)) throw new Error("team:not_found");
       await c.query(`SELECT auth.set_desk_staff_role($1, $2)`, [ref, r]);
     });
 

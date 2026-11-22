@@ -32,6 +32,7 @@ export function TeamAccess() {
   const t = useT();
   const notify = useEditor((s) => s.notify);
   const { state, failed, reload } = useTeam();
+  const warehouseId = useEditor((s) => s.warehouse.id);
   const [inviting, setInviting] = useState(false);
 
   // Правка на месте: роль и отключение — команды строки, отказ — тостом.
@@ -51,6 +52,22 @@ export function TeamAccess() {
   for (const id of [...state.members.map((m) => m.roleId), ...Object.values(state.deskRoles)])
     usage[id] = (usage[id] ?? 0) + 1;
   const myPerms = new Set(state.myPermissions);
+  // Люди открытого склада и владелец; кто ни к одному складу не закреплён —
+  // отдельно, чтобы его не принимали за человека этого склада (Кирилл 22.11).
+  const row = (m: TeamMember) => (
+    <MemberRow
+      key={m.id}
+      m={m}
+      me={state.me}
+      roles={state.roles}
+      onRole={(roleId) => run(() => teamRepository.changeRole(m.id, roleId))}
+      onDisable={(off) => run(() => teamRepository.setDisabled(m.id, off))}
+      onRevoke={() => run(() => teamRepository.revokeInvite(m.id))}
+    />
+  );
+  const owner = (m: TeamMember) => !m.partnerRef && !state.roles.some((r) => r.id === m.roleId);
+  const here = state.members.filter((m) => m.warehouseRef === warehouseId || owner(m));
+  const unplaced = state.members.filter((m) => !m.warehouseRef && !owner(m));
 
   return (
     <div className="flex flex-col gap-8">
@@ -65,20 +82,18 @@ export function TeamAccess() {
             {t("team.invite")}
           </Button>
         </div>
-        <ul className="flex flex-col divide-y divide-border">
-          {state.members.map((m) => (
-            <MemberRow
-              key={m.id}
-              m={m}
-              me={state.me}
-              roles={state.roles}
-              onRole={(roleId) => run(() => teamRepository.changeRole(m.id, roleId))}
-              onDisable={(off) => run(() => teamRepository.setDisabled(m.id, off))}
-              onRevoke={() => run(() => teamRepository.revokeInvite(m.id))}
-            />
-          ))}
-        </ul>
+        <ul className="flex flex-col divide-y divide-border">{here.map(row)}</ul>
       </section>
+
+      {unplaced.length > 0 && (
+        <section className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1">
+            <h2 className="text-sm font-semibold">{t("team.unplaced")}</h2>
+            <p className="max-w-xl text-xs text-muted-foreground">{t("team.unplacedLead")}</p>
+          </div>
+          <ul className="flex flex-col divide-y divide-border">{unplaced.map(row)}</ul>
+        </section>
+      )}
 
       <RoleList
         roles={state.roles}
