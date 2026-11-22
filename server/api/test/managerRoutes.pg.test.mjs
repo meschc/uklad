@@ -259,3 +259,26 @@ test("реквизиты и тариф компании меняет тольк�
   });
   assert.equal(ok.status, 200, JSON.stringify(ok.json));
 });
+
+test(
+  "бейдж сотруднику, удалённому с чужого склада, начальнику не выпустить",
+  { skip: SKIP },
+  async () => {
+    const { chief, boss } = await world("gone", "10.1.0.73");
+    const row = (w, ref, deleted) =>
+      db.root.query(
+        `INSERT INTO uklad.staff (org_id, warehouse_ref, ref, name, card, position, deleted_at)
+       VALUES ($1, $2, $3, 'Пётр', '{}', 0, $4)`,
+        [boss.org, w, ref, deleted ? new Date() : null],
+      );
+    await row("w2", "gone", true);
+    const issue = (staffRef) => post("/api/cabinet/badges/issue", { ...chief, body: { staffRef } });
+    assert.equal((await issue("gone")).status, 403);
+    // Перешёл со склада 2 на свой склад — свой.
+    await row("w2", "moved", true);
+    await row(WH, "moved", false);
+    assert.notEqual((await issue("moved")).status, 403);
+    // Никогда не бывавший в компании — новичок, можно.
+    assert.notEqual((await issue("fresh")).status, 403);
+  },
+);

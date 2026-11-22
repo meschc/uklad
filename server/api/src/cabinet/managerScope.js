@@ -44,26 +44,31 @@ async function managerWarehouse(c, ctx) {
 
 /**
  * Сотрудник у стола (`staffRef`) не с чужого склада: владелец — любой,
- * руководитель — своего склада или ещё ни на одном складе (кабинет выпускает
- * бейдж новичку до того, как запись снимка дойдёт до сервера). Сотрудник
- * другого склада — отказ (бейджи, роли у стола).
+ * руководитель — своего склада или ни на одном складе никогда не бывавший
+ * (кабинет выпускает бейдж новичку до того, как запись снимка дойдёт до
+ * сервера). Сотрудник другого склада — отказ (бейджи, роли у стола), и
+ * удалённый оттуда тоже: иначе склад Б выдал бы свой бейдж и роль человеку,
+ * которого владелец вернёт из корзины на склад А.
  */
 async function staffHere(c, ctx, staffRef) {
   const ref = await managerWarehouse(c, ctx);
   if (ref === null) return true;
   if (!ref) return false;
   const { rows } = await c.query(
-    `SELECT EXISTS (
+    `SELECT NOT EXISTS (
        SELECT 1 FROM uklad.staff s
-       WHERE s.org_id = uklad.current_org() AND s.ref = $2 AND s.deleted_at IS NULL
-         AND s.warehouse_ref <> $1
+       WHERE s.org_id = uklad.current_org() AND s.ref = $2 AND s.warehouse_ref = $1
+         AND s.deleted_at IS NULL
+     ) AND (EXISTS (
+       SELECT 1 FROM uklad.staff s
+       WHERE s.org_id = uklad.current_org() AND s.ref = $2 AND s.warehouse_ref <> $1
      ) OR EXISTS (
        SELECT 1 FROM uklad.warehouses w,
          jsonb_array_elements(CASE jsonb_typeof(w.card->'staff')
            WHEN 'array' THEN w.card->'staff' ELSE '[]' END) e
-       WHERE w.org_id = uklad.current_org() AND w.ref <> $1 AND w.deleted_at IS NULL
+       WHERE w.org_id = uklad.current_org() AND w.ref <> $1
          AND NOT w.staff_rows AND e->>'id' = $2
-     ) AS foreign`,
+     )) AS foreign`,
     [ref, staffRef],
   );
   return !rows[0].foreign;
