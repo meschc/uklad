@@ -189,7 +189,7 @@ test(
     });
     const ids = await helpers.asOrg(db.pool, a.org, async (c) => {
       const one = async (sql, args) => (await c.query(sql, args)).rows[0].id;
-      const role = await one(`SELECT id FROM uklad.roles WHERE name = 'Упаковщик'`);
+      const role = await one(`SELECT id FROM uklad.roles WHERE name = 'Кладовщик / оператор'`);
       return {
         memberId: await one(
           `INSERT INTO uklad.members (org_id, role_id, display_name) VALUES ($1, $2, 'Иван') RETURNING id`,

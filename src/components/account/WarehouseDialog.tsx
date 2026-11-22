@@ -8,6 +8,7 @@ import {
   X,
 } from "lucide-react";
 import { useEditor } from "@/lib/store";
+import { OWNER_PERM } from "@/lib/permModules";
 import { warehouseWorkCount } from "@/lib/store/warehouseData";
 import type { Warehouse, WarehouseKind } from "@/lib/types";
 import { useT } from "@/lib/i18n";
@@ -39,6 +40,10 @@ export function WarehouseDialog({
   const update = useEditor((s) => s.updateWarehouse);
   const remove = useEditor((s) => s.deleteWarehouse);
   const canDelete = useEditor((s) => s.otherWarehouses.length >= 1);
+  // Склад удаляет только владелец (сервер, миграция 057); в демо прав нет — можно.
+  const owner = useEditor(
+    (s) => !s.session.permissions || s.session.permissions.includes(OWNER_PERM),
+  );
   const t = useT();
 
   const editing = !!warehouse;
@@ -374,7 +379,9 @@ export function WarehouseDialog({
 
       {/* Действия */}
       <DialogFooter spread>
-        {editing && canDelete && !confirmDelete ? (
+        {editing && canDelete && !owner ? (
+          <p className="max-w-56 text-xs text-muted-foreground">{t("dash.deleteWarehouseOwner")}</p>
+        ) : editing && canDelete && !confirmDelete ? (
           <Button
             variant="ghost"
             size="sm"

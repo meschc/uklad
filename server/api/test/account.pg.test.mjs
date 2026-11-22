@@ -226,7 +226,7 @@ test(
     const { rows } = await db.root.query(
       `INSERT INTO uklad.members (org_id, role_id, display_name, status)
      VALUES ($1, $2, 'Иван', 'active') RETURNING id`,
-      [a.org, await role(a.org, "Кладовщик")],
+      [a.org, await role(a.org, "Кладовщик / оператор")],
     );
     await call("/api/auth/account/delete", { ...a, body: { password: PW } });
     await expire("del-d@sklad.ru");

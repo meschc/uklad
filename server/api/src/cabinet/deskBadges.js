@@ -41,7 +41,7 @@ const mayBadge = async (c, staffRef) =>
   (await c.query(`SELECT auth.may_badge($1) AS ok`, [staffRef])).rows[0].ok === true;
 const NO_ROLE = Symbol("no_role");
 /** Роль у стола по умолчанию для бейджа без роли. */
-const DEFAULT_DESK_ROLE = "Кладовщик";
+const DEFAULT_DESK_ROLE = "Кладовщик / оператор";
 
 /**
  * Есть ли у сотрудника роль у стола; нет — назначить роль по умолчанию той же
@@ -128,7 +128,7 @@ function createDeskBadges({ auth, send, log, limits = null }) {
       // Бейдж на строку с ролью выше своей не выпустить и не погасить (024).
       if (!(await mayBadge(c, staffRef))) return FORBIDDEN;
       // Без роли стол не примет ни одной операции (Кирилл 13.11): бейдж без
-      // роли выдаёт её сам — «Кладовщик», вся работа без решений по товару.
+      // роли выдаёт её сам — «Кладовщик / оператор», вся работа без решений по товару.
       if (!(await ensureDeskRole(c, ctx, staffRef))) return NO_ROLE;
       // Лимит сотрудников тарифа (planLimits): новый человек сверх лимита — отказ,
       // перевыпуск бейджа тому же сотруднику — нет.

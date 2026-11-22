@@ -303,7 +303,13 @@ test(
     assert.equal((await journal(lead, "?warehouse=wh_a")).status, 403);
 
     // Кладовщику без «Персонал: смотреть» журнал закрыт.
-    const keeper = await invited(c.boss, "keeper-a@sklad.ru", "Кладовщик", "wh_a", "stf-k");
+    const keeper = await invited(
+      c.boss,
+      "keeper-a@sklad.ru",
+      "Кладовщик / оператор",
+      "wh_a",
+      "stf-k",
+    );
     assert.equal((await journal(keeper, "?warehouse=wh_a")).status, 403);
   },
 );
@@ -502,7 +508,13 @@ test("путь товара: поиск по хвосту кода и лента
   assert.deepEqual((await find(c.boss, "warehouse=wh_b&q=cdef")).json.matches, []);
   const lead = await invited(c.boss, "path-lead@sklad.ru", "Старший смены", "wh_b", "stf-l");
   assert.equal((await find(lead, "warehouse=wh_a&q=cdef")).status, 403);
-  const keeper = await invited(c.boss, "path-keeper@sklad.ru", "Кладовщик", "wh_a", "stf-k");
+  const keeper = await invited(
+    c.boss,
+    "path-keeper@sklad.ru",
+    "Кладовщик / оператор",
+    "wh_a",
+    "stf-k",
+  );
   assert.equal((await find(keeper, "warehouse=wh_a&q=cdef")).status, 403);
   const other = await company("path-b@sklad.ru", "10.0.7.8");
   assert.deepEqual((await find(other.boss, "warehouse=wh_a&q=cdef")).json.matches, []);

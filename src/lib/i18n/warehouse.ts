@@ -290,6 +290,8 @@ export const ru = {
   "team.err.roleNotAllowed": "Нельзя дать больше прав, чем есть у вас, и тронуть владельца.",
   "team.err.self": "Свою роль и свой доступ менять нельзя.",
   "team.err.defaultRole": "Стандартную роль менять нельзя. Создайте свою.",
+  "team.err.ownerRole":
+    "Роль владельца другому не дать. Передать владение компанией можно через поддержку Уклада.",
   "team.err.alreadyMember": "Этот человек уже в команде.",
   "team.err.roleInUse": "Роль занята: сначала переведите людей на другую.",
   "team.err.tooManyInvites": "Слишком много неоткрытых приглашений. Отзовите лишние.",
@@ -772,6 +774,8 @@ export const en: Record<keyof typeof ru, string> = {
   "team.err.roleNotAllowed": "You can't grant more rights than you have, or touch the owner.",
   "team.err.self": "You can't change your own role or access.",
   "team.err.defaultRole": "A standard role can't be changed. Create your own.",
+  "team.err.ownerRole":
+    "The owner role can't be given to someone else. Ownership is transferred through Uklad support.",
   "team.err.alreadyMember": "This person is already on the team.",
   "team.err.roleInUse": "The role is in use: move people to another role first.",
   "team.err.tooManyInvites": "Too many unopened invitations. Revoke some.",

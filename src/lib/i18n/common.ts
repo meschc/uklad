@@ -199,6 +199,8 @@ export const ru = {
     "Сервер не удалил больше половины товаров одной записью: так выглядит сбой, а не работа. Открыли каталог с сервера, ваши правки отложены в копию на этом устройстве. Удалите товары частями.",
   "sync.recordsRejected":
     "Сервер не стёр больше половины заявок, приёмки или журнала смен одной записью: так выглядит сбой, а не работа. Открыли данные с сервера, ваши правки отложены в копию на этом устройстве.",
+  "sync.warehouseRejected":
+    "Склад удаляет только владелец компании. Склад вернули, правки отложены в копию на этом устройстве. Попросите владельца удалить склад.",
   "profile.logoutUnsynced":
     "Часть правок ещё не дошла до сервера и при выходе пропадёт. Скачайте копию, если она нужна.",
   "login.switch.body":
@@ -271,6 +273,7 @@ export const ru = {
   "dash.aboutWarehouse": "О складе и сотрудниках",
   "dash.editWarehouse": "Редактировать склад",
   "dash.deleteWarehouse": "Удалить склад",
+  "dash.deleteWarehouseOwner": "Удалить склад может только владелец компании — попросите его.",
   "wh.create.title": "Новый склад",
   "wh.edit.title": "Редактирование склада",
   "wh.name": "Название",
@@ -548,6 +551,8 @@ export const en: Record<keyof typeof ru, string> = {
     "The server didn't remove more than half of the products in one save: that looks like a failure, not work. We opened the catalog from the server, and your changes were set aside in a copy on this device. Delete the products in parts.",
   "sync.recordsRejected":
     "The server didn't erase more than half of the requests, receiving or shift log in one save: that looks like a failure, not work. We opened the server data, and your changes were set aside in a copy on this device.",
+  "sync.warehouseRejected":
+    "Only the company owner can delete a warehouse. We restored it, and your changes were set aside in a copy on this device. Ask the owner to delete it.",
   "profile.logoutUnsynced":
     "Some changes haven't reached the server yet and will be lost when you sign out. Download a copy if you need it.",
   "login.switch.body":
@@ -621,6 +626,7 @@ export const en: Record<keyof typeof ru, string> = {
   "dash.aboutWarehouse": "About the warehouse and staff",
   "dash.editWarehouse": "Edit warehouse",
   "dash.deleteWarehouse": "Delete warehouse",
+  "dash.deleteWarehouseOwner": "Only the company owner can delete a warehouse — ask them.",
   "wh.create.title": "New warehouse",
   "wh.edit.title": "Edit warehouse",
   "wh.name": "Name",

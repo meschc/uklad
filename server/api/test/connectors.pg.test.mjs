@@ -254,7 +254,7 @@ test("живой: подключения площадок", { skip: SKIP }, asyn
   );
   assert.equal((await post("/api/connectors/delete", { ...b, body: { id } })).status, 404);
   // роли без права: 403 на всё
-  for (const name of ["Старший смены", "Кладовщик", "Приёмщик"]) {
+  for (const name of ["Старший смены", "Старший участка", "Кладовщик / оператор"]) {
     const w = await join(
       a,
       `conn-${name.length}-${Math.random().toString(36).slice(2, 7)}@example.com`,

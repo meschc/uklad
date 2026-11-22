@@ -3,7 +3,12 @@ import { makeBackup } from "../backup";
 import { SECRET_INTEGRATION_FIELDS } from "../integrations";
 import { diffCabinet, splitCabinet, type Split } from "../data/cabinetRows";
 import { deskOps } from "../data/opQueue";
-import { snapshotRepository, type DeskVersion, type Snapshot } from "../data/snapshotRepository";
+import {
+  snapshotRepository,
+  type DeskVersion,
+  type Rejected,
+  type Snapshot,
+} from "../data/snapshotRepository";
 import { planRepository } from "../data/planRepository";
 import { readLocal, writeLocal } from "../safeStorage";
 import { readSaved, writeSaved } from "./persistStorage";
@@ -305,7 +310,7 @@ export function startServerSync(orgId: string): () => void {
   // До сверки с сервером писать нечего и сравнивать не с чем: шум стора на
   // старте (тосты, выбор этажа) иначе поднял бы версию без единой правки.
   let booted = false;
-  let rejected: "stock" | "products" | "records" | null = null;
+  let rejected: Rejected | null = null;
   // Сервер отдал снимок столу: писать его не нужно и нельзя.
   let desk = false;
   // Копия стола разошлась с сервером: забрать серверную, как только очередь пуста.
@@ -581,13 +586,20 @@ export function startServerSync(orgId: string): () => void {
 
   try {
     const note = sessionStorage.getItem(NOTE_KEY);
-    if (note === "conflict" || note === "stock" || note === "products" || note === "records") {
+    if (
+      note === "conflict" ||
+      note === "stock" ||
+      note === "products" ||
+      note === "records" ||
+      note === "warehouse"
+    ) {
       sessionStorage.removeItem(NOTE_KEY);
       const toast = {
         conflict: "sync.conflict",
         stock: "sync.stockRejected",
         products: "sync.productsRejected",
         records: "sync.recordsRejected",
+        warehouse: "sync.warehouseRejected",
       } as const;
       useEditor.getState().notify(note === "conflict" ? "warning" : "error", toast[note]);
     }

@@ -1,6 +1,7 @@
 import type { MsgKey } from "../i18n";
 import { apiRequest, type ApiResponse } from "./api";
 import { attempt, fail, ok, type Result } from "./result";
+import { OWNER_PERM } from "../permModules";
 
 /**
  * Команда компании на сервере (`server/api/src/cabinet/team.js`): люди,
@@ -54,7 +55,10 @@ export interface TeamState {
   members: TeamMember[];
   /** Позванные продавцы: их видно на карточке продавца, а не в «Доступе». */
   sellers: TeamMember[];
+  /** Роли, которые можно дать. Владельца и продавца здесь нет. */
   roles: TeamRole[];
+  /** Права того, кто смотрит (у владельца — все, хоть его роли и нет в `roles`). */
+  myPermissions: string[];
   permissions: TeamPermission[];
   /** Роли сотрудников стола (вход по бейджу): `staffRef → roleId`. */
   deskRoles: Record<string, string>;
@@ -63,6 +67,12 @@ export interface TeamState {
 /** Роль «Продавец» (миграция 039): по умолчанию и без прав. */
 const isSellerRole = (r: TeamRole) =>
   r.builtIn && r.name === "Продавец" && r.permissions.length === 0;
+
+/**
+ * Роль владельца (`org.manage`): одна, у того, кто завёл компанию. В общей
+ * таблице ролей её нет — дать её другому нельзя (057), передача — через поддержку.
+ */
+const isOwnerRole = (r: TeamRole) => r.permissions.includes(OWNER_PERM);
 
 /** Кто из персонала стола решает по товару: роль с `goods.decide`. */
 export function decidersOf(state: Pick<TeamState, "roles" | "deskRoles">): string[] {
@@ -87,6 +97,8 @@ function teamError(res: ApiResponse): MsgKey {
       return "team.err.self";
     case "default_role":
       return "team.err.defaultRole";
+    case "owner_role":
+      return "team.err.ownerRole";
     case "already_member":
       return "team.err.alreadyMember";
     case "role_in_use":
@@ -121,11 +133,13 @@ export const teamRepository = {
     if (status !== 200 || !Array.isArray(body.members)) return fail(teamError(res.data));
     const state = body as unknown as TeamState;
     const all = state.members;
+    const myRole = all.find((m) => m.id === state.me)?.roleId;
     return ok({
       ...state,
+      myPermissions: state.roles.find((r) => r.id === myRole)?.permissions ?? [],
       // Роль «Продавец» склад сотруднику не назначает: её ставит приглашение
       // продавца, а в списках ролей её нет.
-      roles: state.roles.filter((r) => !isSellerRole(r)),
+      roles: state.roles.filter((r) => !isSellerRole(r) && !isOwnerRole(r)),
       members: all.filter((m) => !m.partnerRef),
       sellers: all.filter((m) => Boolean(m.partnerRef)),
       deskRoles: state.deskRoles ?? {},

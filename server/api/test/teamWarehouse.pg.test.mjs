@@ -230,7 +230,7 @@ test("приглашение только на склад и карточку э
   const invite = (body) =>
     post("/api/team/invite", {
       ...boss,
-      body: { email: "x-check@example.com", roleId: r["Кладовщик"], ...body },
+      body: { email: "x-check@example.com", roleId: r["Кладовщик / оператор"], ...body },
     });
   // Без склада смотрящего не зовут: иначе он увидел бы «какой открыт».
   assert.equal((await invite({})).status, 400);
@@ -258,7 +258,7 @@ test(
     const send = (email) =>
       post("/api/team/invite", {
         ...boss,
-        body: { email, roleId: r["Кладовщик"], ...place },
+        body: { email, roleId: r["Кладовщик / оператор"], ...place },
       });
     assert.equal((await send("old-mail@example.com")).status, 200);
     const oldToken = tokenIn(await lastMail("old-mail@example.com"));
@@ -288,7 +288,11 @@ test(
     await writeCabinet(boss, cabinet("wh-b"));
     await post("/api/team/invite", {
       ...boss,
-      body: { email: "legacy@example.com", roleId: r["Кладовщик"], warehouseRef: "wh-a" },
+      body: {
+        email: "legacy@example.com",
+        roleId: r["Кладовщик / оператор"],
+        warehouseRef: "wh-a",
+      },
     });
     const keeper = await accept("legacy@example.com", boss.ip);
     const team = (await call("GET", "/api/team", boss)).json;
@@ -313,7 +317,11 @@ test(
     // Та же карточка второму человеку не достанется.
     await post("/api/team/invite", {
       ...boss,
-      body: { email: "second@example.com", roleId: r["Кладовщик"], warehouseRef: "wh-a" },
+      body: {
+        email: "second@example.com",
+        roleId: r["Кладовщик / оператор"],
+        warehouseRef: "wh-a",
+      },
     });
     await accept("second@example.com", boss.ip);
     const second = (await call("GET", "/api/team", boss)).json.members.find(
@@ -398,12 +406,16 @@ test("чужая компания: ни склада, ни карточки, н�
   // Склад компании Б в приглашении компании А — нет такого склада.
   const foreign = await post("/api/team/invite", {
     ...bossA,
-    body: { email: "iso@example.com", roleId: ra["Кладовщик"], warehouseRef: "wh-b-only" },
+    body: {
+      email: "iso@example.com",
+      roleId: ra["Кладовщик / оператор"],
+      warehouseRef: "wh-b-only",
+    },
   });
   assert.equal(foreign.status, 404);
   await post("/api/team/invite", {
     ...bossA,
-    body: { email: "iso@example.com", roleId: ra["Кладовщик"], warehouseRef: "wh-a" },
+    body: { email: "iso@example.com", roleId: ra["Кладовщик / оператор"], warehouseRef: "wh-a" },
   });
   const keeper = await accept("iso@example.com", bossA.ip);
   // Попросить компанию Б заголовком — входа туда нет.

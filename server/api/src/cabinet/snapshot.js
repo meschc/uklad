@@ -40,7 +40,13 @@ const { placeRef, focusWarehouse } = require("./viewerPlace");
 const { recordMoves, invalidWork } = require("./moves");
 const { recordStorage, loadStorage, parsePeriod } = require("./storage");
 const { loadInventoryLog, parseLogPeriod } = require("./inventoryLog");
-const { splitWarehouses, withWarehouses, storeWarehouses } = require("./warehouses");
+const {
+  splitWarehouses,
+  withWarehouses,
+  storeWarehouses,
+  guardWarehouseDelete,
+  WarehouseDeleteError,
+} = require("./warehouses");
 const { PlanLimitError } = require("./planLimits");
 const {
   WAREHOUSE_LISTS,
@@ -268,18 +274,24 @@ function createSnapshot({ auth, send, log, limits = null }) {
   /**
    * Склады — в таблицу, под лимитом тарифа (`planLimits`, ключ `warehouses`):
    * новый склад сверх тарифа — `PlanLimitError`, запись откатывается.
-   * Правка, переименование и удаление склада лимит не трогают.
+   * Правка, переименование и удаление склада лимит не трогают. Удаление —
+   * только владельцу (`guardWarehouseDelete`).
    */
   async function storeWarehousesLimited(c, ctx, cards) {
+    await guardWarehouseDelete(c, ctx, cards);
     const room = cards && limits ? await limits.guard(c, ctx.orgId, "warehouses") : null;
     await storeWarehouses(c, cards);
     await room?.check();
   }
 
-  /** Отказ лимита тарифа из записи — ответ 409 `plan_limit`, а не 500. */
+  /**
+   * Отказ лимита тарифа из записи — ответ 409 `plan_limit`, а не 500; удаление
+   * склада не владельцем — 409 `warehouse_delete_owner`, кабинет забирает копию.
+   */
   const overLimit = (pending) =>
     pending.catch((err) => {
       if (err instanceof PlanLimitError) return { planLimit: err };
+      if (err instanceof WarehouseDeleteError) return { conflict: true, error: err.message };
       throw err;
     });
   const sendLimit = (res, err) =>

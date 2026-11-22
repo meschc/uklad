@@ -259,13 +259,13 @@ test("позвали сотрудником на почту продавца —
   });
   const again = await post("/api/team/invite", {
     ...boss,
-    body: { email, roleId: roles["Кладовщик"], warehouseRef: "wh-a" },
+    body: { email, roleId: roles["Кладовщик / оператор"], warehouseRef: "wh-a" },
   });
   assert.equal(again.status, 200, JSON.stringify(again.json));
   const list = (await call("GET", "/api/team", boss)).json.members.filter((x) => x.email === email);
   assert.equal(list.length, 1);
   assert.equal(list[0].partnerRef, null);
-  assert.equal(list[0].roleName, "Кладовщик");
+  assert.equal(list[0].roleName, "Кладовщик / оператор");
 });
 
 test(
@@ -327,7 +327,11 @@ test(
       (
         await post("/api/team/invite", {
           ...seller,
-          body: { email: "x4@example.com", roleId: roles["Кладовщик"], warehouseRef: "wh-a" },
+          body: {
+            email: "x4@example.com",
+            roleId: roles["Кладовщик / оператор"],
+            warehouseRef: "wh-a",
+          },
         })
       ).status,
       403,
