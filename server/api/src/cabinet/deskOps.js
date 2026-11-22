@@ -38,6 +38,7 @@ const { applyInvCount, applyInvCell } = require("./deskInventory");
 const { applySortClose, applySortPlace } = require("./deskSort");
 const { applyTaskTake, applyTaskDone } = require("./deskTasks");
 const { GOODS_DECIDE, may } = require("./deskPerms");
+const { cacheKey, rowsOf } = require("./deskCache");
 
 const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 
@@ -437,7 +438,7 @@ function applyAtPlace(place, base, fresh, who, now, received, verify) {
  */
 async function runDeskOps(c, deskId, ops, who, now, deps = {}) {
   const { rows } = await c.query(
-    `SELECT version, data FROM uklad.cabinet_snapshots
+    `SELECT version, data, archive_checked_at FROM uklad.cabinet_snapshots
      WHERE org_id = uklad.current_org() FOR UPDATE`,
   );
   const cur = rows[0];
@@ -471,7 +472,7 @@ async function runDeskOps(c, deskId, ops, who, now, deps = {}) {
   // Кабинет целиком: каталог — из таблицы товаров (миграция 013), работа
   // склада и журнал смен — со строк (миграция 021). Товары стол не пишет.
   const packing = fresh.some((op) => WORK.has(op.kind));
-  const base = deps.load ? await deps.load(c, cur.data) : cur.data;
+  const base = deps.load ? await deps.load(c, cur.data, cur) : cur.data;
   // Под тестами кабинет «до» заморожен: строки пишутся разницей по ссылке
   // (`recordChanges`), и правило, поправившее запись на месте, молча потеряло
   // бы правку. Замороженная запись роняет такое правило в CI. В бою не
@@ -535,6 +536,7 @@ async function runDeskOps(c, deskId, ops, who, now, deps = {}) {
     );
   }
   let version = cur.version;
+  let cache = null;
   if (applied.changed) {
     const upd = await c.query(
       `UPDATE uklad.cabinet_snapshots
@@ -549,6 +551,12 @@ async function runDeskOps(c, deskId, ops, who, now, deps = {}) {
     // записи, а не весь склад (`recordChanges`). Без `storeChanges` — всё целиком.
     if (split.items && deps.storeChanges) {
       await deps.storeChanges(c, deps.split(base).items, split.items);
+      // Строки после записи — следующему скану этой компании (`deskCache.js`):
+      // в память их кладёт `saveOps` уже после COMMIT.
+      cache = {
+        key: cacheKey({ version, archive_checked_at: cur.archive_checked_at }),
+        rows: rowsOf(split.items),
+      };
     } else if (split.items && deps.storeRecords) {
       await deps.storeRecords(c, split.items, split.slots);
     }
@@ -591,6 +599,7 @@ async function runDeskOps(c, deskId, ops, who, now, deps = {}) {
     before: cur.version,
     version,
     ...(payload ? { bytes: Buffer.byteLength(payload) } : {}),
+    ...(cache ? { cache } : {}),
   };
 }
 
