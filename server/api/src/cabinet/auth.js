@@ -33,6 +33,23 @@ const { randomBytes, randomInt, createHash } = require("node:crypto");
 const { hashPassword, checkPassword, isAcceptable } = require("./password");
 const { createRateLimit, clientIp } = require("../rateLimit");
 const { codeLetter, alreadyLetter } = require("./letters");
+const { managerWarehouse, memberHere } = require("./managerScope");
+
+/**
+ * Бейдж человеку команды (старый путь): руководитель — только своим людям и на
+ * свой склад (Кирилл 22.11: склады связывает только владелец).
+ */
+async function badgeHere(c, ctx, memberId, warehouseId) {
+  const ref = await managerWarehouse(c, ctx);
+  if (ref === null) return true;
+  if (!ref || !(await memberHere(c, memberId, ref))) return false;
+  if (warehouseId === undefined) return true;
+  const { rows } = await c.query(
+    `SELECT ref FROM uklad.warehouses WHERE org_id = uklad.current_org() AND id = $1`,
+    [warehouseId],
+  );
+  return rows[0]?.ref === ref;
+}
 
 // По паролю — 30 дней, но 7 дней без входа закрывают сессию. По бейджу —
 // одна смена: 12 часов.
@@ -509,6 +526,8 @@ function createAuth({ pool, cfg, send, readBody, log, mail, onRegister = null })
     const secret = newSecret(16);
     const result = await withSession(req, async (c, ctx) => {
       if (!ctx.can("staff.manage")) return 403;
+      // Чужой склад — как чужой сотрудник: 404 (5а, правило 7).
+      if (!(await badgeHere(c, ctx, b.memberId, b.warehouseId))) return 404;
       try {
         await c.query(`SELECT auth.issue_badge($1, $2, $3)`, [
           b.memberId,
@@ -534,6 +553,7 @@ function createAuth({ pool, cfg, send, readBody, log, mail, onRegister = null })
     if (!UUID_RE.test(String(b.memberId ?? ""))) return send(res, 404, { ok: false });
     const result = await withSession(req, async (c, ctx) => {
       if (!ctx.can("staff.manage")) return 403;
+      if (!(await badgeHere(c, ctx, b.memberId))) return 404;
       try {
         await c.query(`SELECT auth.revoke_badge($1)`, [b.memberId]);
       } catch (err) {

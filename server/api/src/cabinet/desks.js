@@ -64,6 +64,7 @@ const { isOp, runDeskOps, MAX_OPS } = require("./deskOps");
 const { createSwitchRoutes } = require("./deskSwitch");
 const { createLabelRoutes } = require("./deskLabel");
 const { deskPlace, deskWarehouse } = require("./deskPlace");
+const { managerWarehouse } = require("./managerScope");
 
 // Стол живёт, пока его не отвяжут; срок — страховка от забытого компьютера.
 const DESK_TTL_MS = 180 * 86_400_000;
@@ -474,6 +475,18 @@ function createDesks({ auth, cfg, send, log, secretKey = null, fetchImpl = fetch
     return place?.warehouse_ref === warehouseRef;
   }
 
+  /**
+   * Стол — устройство склада вошедшего: владелец — любой, руководитель —
+   * только своего склада (Кирилл 22.11). Устройства нет в кабинете — его склад
+   * не узнать, такое гасит владелец.
+   */
+  async function deviceHere(c, ctx, deviceRef) {
+    if (ctx.can("org.manage")) return true;
+    const place = deskPlace(await companyDoc(c), deviceRef);
+    const ref = await managerWarehouse(c, ctx);
+    return Boolean(place && ref && place.ref === ref);
+  }
+
   // ---- Руководитель ----
 
   async function open(req, res) {
@@ -592,6 +605,7 @@ function createDesks({ auth, cfg, send, log, secretKey = null, fetchImpl = fetch
     if (!DEVICE_RE.test(deviceRef)) return send(res, 400, { ok: false, error: "bad_request" });
     const out = await withSession(req, async (c, ctx) => {
       if (!ctx.accountId || !ctx.can("staff.manage")) return { status: 403 };
+      if (!(await deviceHere(c, ctx, deviceRef))) return { status: 404 };
       const { rows } = await c.query(`SELECT auth.revoke_desk($1) AS n`, [deviceRef]);
       return { status: 200, revoked: rows[0].n };
     });
@@ -610,6 +624,7 @@ function createDesks({ auth, cfg, send, log, secretKey = null, fetchImpl = fetch
     if (!DEVICE_RE.test(deviceRef)) return send(res, 400, { ok: false, error: "bad_request" });
     const out = await withSession(req, async (c, ctx) => {
       if (!ctx.accountId || !ctx.can("staff.manage")) return { status: 403 };
+      if (!(await deviceHere(c, ctx, deviceRef))) return { status: 404 };
       const { rows } = await c.query(
         `SELECT at, staff_ref, kind, status, refs FROM auth.desk_journal($1, 200)`,
         [deviceRef],

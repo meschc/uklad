@@ -39,6 +39,8 @@ const { forSeller } = require("./seller");
 const { placeRef, focusWarehouse, warehousesOf } = require("./viewerPlace");
 const {
   managerRef,
+  managerWarehouse,
+  archiveFor,
   restoreManager,
   foreignWarehouses,
   ownScope,
@@ -725,7 +727,12 @@ function createSnapshot({ auth, send, log, limits = null }) {
     }
     const out = await withSession(req, async (c, ctx) => {
       if (!mayUse(ctx)) return FORBIDDEN;
-      return loadArchive(c, after);
+      // Руководитель склада — только архив своего склада (managerScope.js).
+      const ref = await managerWarehouse(c, ctx);
+      if (ref === false) return FORBIDDEN;
+      const page = await loadArchive(c, after);
+      if (!ref) return page;
+      return { ...page, rows: archiveFor(ref, await ownScope(c, ref), page.rows) };
     });
     if (out === null) return send(res, 401, { ok: false });
     if (out === FORBIDDEN) return send(res, 403, { ok: false });
@@ -742,6 +749,9 @@ function createSnapshot({ auth, send, log, limits = null }) {
     if (!period) return send(res, 400, { ok: false, error: "bad_request" });
     const out = await withSession(req, async (c, ctx) => {
       if (!mayUse(ctx)) return FORBIDDEN;
+      // Занятость чужого склада руководителю не нужна: это деньги того склада.
+      const ref = await managerWarehouse(c, ctx);
+      if (ref === false || (ref && ref !== period.warehouse)) return FORBIDDEN;
       return loadStorage(c, period);
     });
     if (out === null) return send(res, 401, { ok: false });
@@ -758,7 +768,10 @@ function createSnapshot({ auth, send, log, limits = null }) {
     if (!period) return send(res, 400, { ok: false, error: "bad_request" });
     const out = await withSession(req, async (c, ctx) => {
       if (!mayUse(ctx)) return FORBIDDEN;
-      return loadInventoryLog(c, period);
+      // Руководитель — пересчёты своего склада, владелец — всей компании.
+      const ref = await managerWarehouse(c, ctx);
+      if (ref === false) return FORBIDDEN;
+      return loadInventoryLog(c, { ...period, warehouse: ref });
     });
     if (out === null) return send(res, 401, { ok: false });
     if (out === FORBIDDEN) return send(res, 403, { ok: false });

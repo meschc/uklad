@@ -82,7 +82,9 @@ async function journalPlace(c, ctx, asked) {
   const full = await withWarehouses(c, rows[0].data);
   const doc = { warehouse: full.warehouse, otherWarehouses: list(full.otherWarehouses) };
   const all = warehousesOf(doc);
-  if (ctx.can("staff.manage")) {
+  // Весь журнал компании — владельцу; остальные, и руководитель тоже, —
+  // только свой склад (Кирилл 22.11).
+  if (ctx.can("org.manage")) {
     const ref = asked ?? (all.length === 1 ? all[0].id : null);
     return all.find((w) => w.id === ref) ?? null;
   }
