@@ -36,7 +36,7 @@ const { createRateLimit } = require("../rateLimit");
 const { writableKeys, foreignRows, mergeScoped } = require("./writeScope");
 const { forViewer, VIEW_PERMS } = require("./viewer");
 const { forSeller } = require("./seller");
-const { placeRef, focusWarehouse } = require("./viewerPlace");
+const { placeRef, focusWarehouse, warehousesOf } = require("./viewerPlace");
 const {
   managerRef,
   restoreManager,
@@ -189,8 +189,13 @@ const mayView = (ctx) =>
  * товары — из таблицы, работа склада — со строк.
  */
 async function loadCabinet(c, doc) {
+  return { ...(await loadRecords(c, doc)), products: await allProducts(c) };
+}
+
+/** Товары компании из таблицы — все склады. */
+async function allProducts(c) {
   const { rows } = await c.query(`SELECT uklad.load_products() AS products`);
-  return { ...(await loadRecords(c, doc)), products: rows[0].products };
+  return rows[0].products;
 }
 
 /** Снимок без товаров. */
@@ -215,6 +220,19 @@ function splitCabinet(data) {
 }
 
 /**
+ * Каталог, который пишет не владелец: товары его склада `ref`, а если у склада
+ * нет своего каталога (`ownCatalog`) — и общие, без склада. `null` — склада нет.
+ */
+function productScope(data, ref) {
+  const wh = warehousesOf(data).find((w) => w.id === ref);
+  return wh ? { ref, shared: !wh.ownCatalog } : null;
+}
+
+/** Строки каталога в счёт: всей компании (`$2` пуст) или одного склада. */
+const IN_SCOPE = `($2::text IS NULL OR warehouse_ref = $2 OR ($3 AND warehouse_ref IS NULL))`;
+const scopeArgs = (scope) => [scope?.ref ?? null, scope?.shared ?? false];
+
+/**
  * Убирает ли запись вместе с уже убранным за сутки больше половины каталога.
  * Так выглядит сбой (пустой стор после ошибки) или злой умысел, а не работа
  * человека: из корзины в кабинете пока не восстановить, поэтому такую запись
@@ -223,7 +241,7 @@ function splitCabinet(data) {
  * дней, маленький (один-два товара) — как обычно. Заведённое за последние
  * сутки в счёт не идёт (ревью безопасности #238).
  */
-async function massDelete(c, data) {
+async function massDelete(c, data, scope = null) {
   if (!Array.isArray(data.products)) return false;
   const refs = data.products.map((p) => p?.id).filter((id) => typeof id === "string");
   // Считаем только товары, жившие сутки назад: заведённые сегодня (опечатки
@@ -234,10 +252,10 @@ async function massDelete(c, data) {
             count(*) FILTER (WHERE deleted_at IS NULL AND NOT (ref = ANY($1::text[])))::int AS gone,
             count(*) FILTER (WHERE deleted_at > now() - interval '1 day'
                              AND NOT (ref = ANY($1::text[])))::int AS day
-     FROM uklad.products WHERE org_id = uklad.current_org()
+     FROM uklad.products WHERE org_id = uklad.current_org() AND ${IN_SCOPE}
        AND created_at <= now() - interval '1 day'
        AND (deleted_at IS NULL OR deleted_at > now() - interval '1 day')`,
-    [refs],
+    [refs, ...scopeArgs(scope)],
   );
   const { live, gone, day } = rows[0];
   if (gone === 0) return false;
@@ -248,13 +266,14 @@ async function massDelete(c, data) {
 }
 
 /** Сколько живых товаров запись уводит в корзину. */
-async function productsGone(c, data) {
+async function productsGone(c, data, scope) {
   if (!Array.isArray(data.products)) return 0;
   const refs = data.products.map((p) => p?.id).filter((id) => typeof id === "string");
   const { rows } = await c.query(
     `SELECT count(*)::int AS n FROM uklad.products
-     WHERE org_id = uklad.current_org() AND deleted_at IS NULL AND NOT (ref = ANY($1::text[]))`,
-    [refs],
+     WHERE org_id = uklad.current_org() AND ${IN_SCOPE}
+       AND deleted_at IS NULL AND NOT (ref = ANY($1::text[]))`,
+    [refs, ...scopeArgs(scope)],
   );
   return rows[0].n;
 }
@@ -295,9 +314,12 @@ function badChanges(b) {
 }
 
 /** Товары из присланного снимка — в таблицу. Нет поля — товары не трогаем. */
-async function storeProducts(c, data) {
+async function storeProducts(c, data, scope = null) {
   if (!("products" in data)) return;
-  await c.query(`SELECT uklad.save_products($1::jsonb)`, [JSON.stringify(data.products)]);
+  const cards = JSON.stringify(data.products);
+  if (!scope) return void (await c.query(`SELECT uklad.save_products($1::jsonb)`, [cards]));
+  // Не владелец пишет каталог своего склада (миграция 059): чужой не трогается.
+  await c.query(`SELECT uklad.save_products($1::jsonb, $2, $3)`, [cards, scope.ref, scope.shared]);
 }
 
 function createSnapshot({ auth, send, log, limits = null }) {
@@ -318,12 +340,15 @@ function createSnapshot({ auth, send, log, limits = null }) {
 
   /**
    * Отказ лимита тарифа из записи — ответ 409 `plan_limit`, а не 500; удаление
-   * склада не владельцем — 409 `warehouse_delete_owner`, кабинет забирает копию.
+   * склада не владельцем — 409 `warehouse_delete_owner`, кабинет забирает копию;
+   * товар чужого склада — 403.
    */
   const overLimit = (pending) =>
     pending.catch((err) => {
       if (err instanceof PlanLimitError) return { planLimit: err };
       if (err instanceof WarehouseDeleteError) return { conflict: true, error: err.message };
+      // Карточка чужого склада (миграция 059) — отказ, а не сбой.
+      if (err?.code === "42501" && err.message === "products:foreign") return FORBIDDEN;
       throw err;
     });
   const sendLimit = (res, err) =>
@@ -421,6 +446,8 @@ function createSnapshot({ auth, send, log, limits = null }) {
         const place = await actorPlace(c);
         if (!mayUse(ctx) || sellerOf(place)) return FORBIDDEN;
         if (!writes.take(ctx.orgId)) return LIMITED;
+        // Каталог, который пишет не владелец, — только его склада.
+        let catalog = null;
         // Руководитель склада пишет только свой склад: присланное — на место
         // его склада в кабинете компании из базы (managerScope.js).
         if (!ctx.can("org.manage")) {
@@ -433,11 +460,15 @@ function createSnapshot({ auth, send, log, limits = null }) {
           const ref = managerRef(ctx, place, full);
           if (ref === false) return FORBIDDEN;
           if (foreignWarehouses(b.data, ref)) return { conflict: true, error: "warehouse_owner" };
+          catalog = productScope(full, ref);
+          if (!catalog) return FORBIDDEN;
           b.data = mergeRoot(full, restoreManager(full, b.data, ref), await ownScope(c, ref));
           split = splitCabinet(b.data);
           data = JSON.stringify(split.doc);
         }
-        if (await massDelete(c, b.data)) return { conflict: true, error: "products_mass_delete" };
+        if (await massDelete(c, b.data, catalog)) {
+          return { conflict: true, error: "products_mass_delete" };
+        }
         if (await massGone(c, split.items, split.slots)) {
           return { conflict: true, error: "records_mass_delete" };
         }
@@ -489,7 +520,9 @@ function createSnapshot({ auth, send, log, limits = null }) {
         // Прежний кабинет целиком — пока строки ещё старые: по нему журнал
         // движений считает, что прибыло и убыло.
         const before = await loadRecords(c, prevDoc ?? {});
-        await storeProducts(c, b.data);
+        await storeProducts(c, b.data, catalog);
+        // Дальше — кабинет целиком: занятости нужны товары и чужих складов.
+        if (catalog) b.data = { ...b.data, products: await allProducts(c) };
         await storeWarehousesLimited(c, ctx, split.warehouses);
         await storeRecords(c, split.items, split.slots);
         // Что где прибыло и убыло — в журнал движений, с тем, кто записал.
@@ -553,9 +586,12 @@ function createSnapshot({ auth, send, log, limits = null }) {
         );
         const cur = rows[0] && { ...rows[0], data: await storedDoc(c, rows[0].data) };
         if (!cur || cur.version !== b.version) return { conflict: true };
+        let catalog = null;
         if (manager) {
           const ref = managerRef(ctx, place, cur.data);
           if (ref === false) return FORBIDDEN;
+          catalog = productScope(cur.data, ref);
+          if (!catalog) return FORBIDDEN;
           // Свой склад или общие списки компании (`w = ""`); из журнала смен,
           // корректировок и размещений — только записи своего склада.
           const scope = await ownScope(c, ref);
@@ -577,13 +613,15 @@ function createSnapshot({ auth, send, log, limits = null }) {
           const place = await actorPlace(c);
           const ref = placeRef(cur.data, place?.warehouse_ref);
           if (!ref || !focusWarehouse(cur.data, ref)) return FORBIDDEN;
+          catalog = productScope(cur.data, ref);
+          if (!catalog) return FORBIDDEN;
           b.doc = mergeScoped(cur.data, b.doc, ctx.can, ref);
           doc = JSON.stringify(b.doc);
         }
         // Удалять товары может только руководитель (`staff.manage`): роль с
         // «Товары: запись» правит и добавляет, но каталог не чистит.
-        if (scoped && "products" in b && (await productsGone(c, b)) > 0) return FORBIDDEN;
-        if ("products" in b && (await massDelete(c, b))) {
+        if (scoped && "products" in b && (await productsGone(c, b, catalog)) > 0) return FORBIDDEN;
+        if ("products" in b && (await massDelete(c, b, catalog))) {
           return { conflict: true, error: "products_mass_delete" };
         }
         // Список, лежавший строками, обязан остаться меткой: иначе кабинет
@@ -626,7 +664,7 @@ function createSnapshot({ auth, send, log, limits = null }) {
           [doc, b.format, ctx.memberId],
         );
         const version = upd.rows[0].version;
-        if ("products" in b) await storeProducts(c, b);
+        if ("products" in b) await storeProducts(c, b, catalog);
         const after = await loadRecords(c, b.doc, MOVE_LISTS);
         await recordMoves(c, before, after, version, { memberId: ctx.memberId });
         // Правка могла сдвинуть тару, отметить паллетное место или сменить

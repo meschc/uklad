@@ -1192,6 +1192,86 @@ test("журнал смен, корректировки и размещения 
 });
 
 test(
+  "товары у каждого склада свои: не владелец видит и пишет только свой каталог",
+  { skip: SKIP },
+  async () => {
+    const { splitRecords } = require("../src/cabinet/records.js");
+    const boss = await owner("boss-goods@example.com", "10.1.0.61");
+    const r = await roles(boss);
+    const card = (id, warehouseId) => ({
+      id,
+      sku: id,
+      name: id,
+      ...(warehouseId && { warehouseId }),
+    });
+    const wh = (id, name) => ({ id, name, staff: [], ownCatalog: true });
+    const data = {
+      warehouse: wh(WH, "Склад"),
+      otherWarehouses: [wh("w2", "Склад 2")],
+      products: [card("p1", WH), card("p2", "w2"), card("p0")],
+    };
+    const put = await post("/api/cabinet/snapshot", {
+      ...boss,
+      body: { version: await version(boss), format: 8, data },
+    });
+    assert.equal(put.status, 200, JSON.stringify(put.json));
+    const ids = async (who) =>
+      (await call("GET", "/api/cabinet/snapshot", who)).json.snapshot.data.products
+        .map((p) => p.id)
+        .sort();
+    const chief = await join(boss, "chief-goods@example.com", r["Начальник склада"]);
+    const clerk = await join(boss, "clerk-goods@example.com", r["Кладовщик / оператор"]);
+    // Чужого склада и общего демо-каталога (у склада свой каталог) не видно.
+    assert.deepEqual(await ids(chief), ["p1"]);
+    assert.deepEqual(await ids(clerk), ["p1"]);
+    assert.deepEqual(await ids(boss), ["p0", "p1", "p2"]);
+
+    // Запись целиком: свой каталог меняется, чужие товары не уходят в корзину.
+    const seen = (await call("GET", "/api/cabinet/snapshot", chief)).json.snapshot.data;
+    const save = async (products) => {
+      const v = await version(chief);
+      return post("/api/cabinet/snapshot", {
+        ...chief,
+        body: { version: v, format: 8, data: { ...seen, products } },
+      });
+    };
+    const ok = await save([card("p3", WH)]);
+    assert.equal(ok.status, 200, JSON.stringify(ok.json));
+    assert.deepEqual(await ids(boss), ["p0", "p2", "p3"]);
+    // Чужой товар — ни своим списком, ни под своим складом: отказ, ничего не тронуто.
+    assert.equal((await save([card("p3", WH), card("p2", "w2")])).status, 403);
+    assert.equal((await save([card("p3", WH), card("p2", WH)])).status, 403);
+    assert.equal((await save([card("p3", WH), card("p9", "w2")])).status, 403);
+    const all = (await call("GET", "/api/cabinet/snapshot", boss)).json.snapshot.data.products;
+    assert.equal(all.find((p) => p.id === "p2").warehouseId, "w2");
+
+    // «Только изменённое»: товар без склада ложится на свой склад.
+    const mine = (await call("GET", "/api/cabinet/snapshot", chief)).json.snapshot.data;
+    const doc = { ...splitRecords(mine).doc };
+    delete doc.products;
+    const changes = async (who, products) =>
+      post("/api/cabinet/snapshot/changes", {
+        ...who,
+        body: {
+          version: await version(who),
+          format: 8,
+          doc,
+          slots: [],
+          upsert: [],
+          remove: [],
+          products,
+        },
+      });
+    const ch = await changes(chief, [card("p3", WH), card("p4")]);
+    assert.equal(ch.status, 200, JSON.stringify(ch.json));
+    const after1 = (await call("GET", "/api/cabinet/snapshot", boss)).json.snapshot.data.products;
+    assert.deepEqual(after1.map((p) => p.id).sort(), ["p0", "p2", "p3", "p4"]);
+    assert.equal(after1.find((p) => p.id === "p4").warehouseId, WH);
+    assert.equal((await changes(chief, [card("p3", WH), card("p4", WH), card("p0")])).status, 403);
+  },
+);
+
+test(
   "команда — люди своего склада: начальник видит и трогает только своих",
   { skip: SKIP },
   async () => {

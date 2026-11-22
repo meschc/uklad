@@ -60,15 +60,29 @@ function placeRef(data, warehouseRef) {
   return all.length === 1 ? all[0].id : null;
 }
 
+/**
+ * Товар склада: со своим `warehouseId` — только на нём, без поля — общий
+ * демо-каталог для складов без своего каталога (`ownCatalog`). То же правило,
+ * что `productsOfWarehouse` кабинета.
+ */
+function ofWarehouse(product, warehouse) {
+  if (!isObject(product)) return false;
+  return product.warehouseId ? product.warehouseId === warehouse.id : !warehouse.ownCatalog;
+}
+
 /** Пустая работа склада, у которого своей ещё нет. */
 const EMPTY = { serviceSettings: () => ({ enabled: {}, prices: {} }) };
 
-/** Снимок, где склад `ref` — активный, а других складов нет. `null` — склада нет. */
+/**
+ * Снимок, где склад `ref` — активный, а других складов нет: и товары — только
+ * его (Кирилл 22.11: у каждого склада всё своё). `null` — склада нет.
+ */
 function focusWarehouse(data, ref) {
   if (!isObject(data) || !ref) return null;
   const wh = warehousesOf(data).find((w) => w.id === ref);
   if (!wh) return null;
   const out = { ...data, otherWarehouses: [], warehouseData: {} };
+  if (Array.isArray(data.products)) out.products = data.products.filter((p) => ofWarehouse(p, wh));
   if (isObject(data.warehouse) && data.warehouse.id === ref) return out;
   const saved = isObject(data.warehouseData) ? data.warehouseData[ref] : undefined;
   for (const key of WAREHOUSE_DOMAINS) {
@@ -83,4 +97,11 @@ function focusWarehouse(data, ref) {
   return out;
 }
 
-module.exports = { WAREHOUSE_DOMAINS, warehousesOf, findPlace, placeRef, focusWarehouse };
+module.exports = {
+  WAREHOUSE_DOMAINS,
+  warehousesOf,
+  findPlace,
+  placeRef,
+  focusWarehouse,
+  ofWarehouse,
+};
