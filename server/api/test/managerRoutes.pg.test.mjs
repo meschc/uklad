@@ -330,3 +330,35 @@ test(
     assert.equal((await kinds(boss, "w2")).length, before);
   },
 );
+
+test(
+  "журнал: товары — завёл, изменил, удалил; повтор без изменений не пишется",
+  { skip: SKIP },
+  async () => {
+    const { boss } = await world("goods", "10.1.0.75");
+    const save = async (products) => {
+      const cur = (await call("GET", "/api/cabinet/snapshot", boss)).json.snapshot;
+      const r = await post("/api/cabinet/snapshot", {
+        ...boss,
+        body: { version: cur.version, format: 8, data: { ...cur.data, products } },
+      });
+      assert.equal(r.status, 200, JSON.stringify(r.json));
+    };
+    const card = (id, name) => ({ id, sku: id, name, warehouseId: "w2" });
+    await save([card("g1", "Кружка"), card("g2", "Ложка")]);
+    await save([card("g1", "Кружка большая"), card("g2", "Ложка")]);
+    await save([card("g1", "Кружка большая")]);
+    // Та же запись ещё раз — ничего не изменилось, строк не прибавилось.
+    await save([card("g1", "Кружка большая")]);
+    const { rows } = await db.root.query(
+      `SELECT action, warehouse_ref AS w, details->'ids' AS ids FROM uklad.audit_events
+     WHERE org_id = $1 AND action LIKE 'product.%' ORDER BY at`,
+      [boss.org],
+    );
+    assert.deepEqual(rows, [
+      { action: "product.create", w: "w2", ids: ["g1", "g2"] },
+      { action: "product.update", w: "w2", ids: ["g1"] },
+      { action: "product.delete", w: "w2", ids: ["g2"] },
+    ]);
+  },
+);

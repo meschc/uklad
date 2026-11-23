@@ -433,6 +433,7 @@ test(
       "badge.issue",
       "company.account",
       "desk.bind",
+      "product.create",
       "role.save",
     ]);
     // Старший склада Б: только склад Б, без действий компании и склада А.
