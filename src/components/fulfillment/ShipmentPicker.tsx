@@ -268,8 +268,10 @@ function ShipmentForm({
   // Создание идёт через репозиторий (п.3.2.1). Разобранный файл при отказе
   // остаётся на экране: он и есть работа человека — заново подбирать таблицу
   // из-за обрыва связи было бы издевательством.
-  const create = useCommand((lines: { productId: string; expectedQty: number }[]) =>
-    fulfillmentRepository.createShipment(source, lines, title, { crossDock }),
+  const create = useCommand(
+    (lines: { productId: string; expectedQty: number }[]) =>
+      fulfillmentRepository.createShipment(source, lines, title, { crossDock }),
+    { exclusive: true },
   );
 
   const submit = async () => {

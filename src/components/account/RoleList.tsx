@@ -164,15 +164,17 @@ function RoleEditor({
   const [name, setName] = useState(role?.name ?? "");
   // Роль из старой версии приводится к уровням сразу: у «делать» есть «смотреть».
   const [perms, setPerms] = useState<Set<string>>(normalizePerms(new Set(role?.permissions ?? [])));
-  const save = useCommand(() =>
-    teamRepository.saveRole({
-      id: role?.id,
-      name: name.trim(),
-      permissions: [...perms],
-      warehouseRef,
-    }),
+  const save = useCommand(
+    () =>
+      teamRepository.saveRole({
+        id: role?.id,
+        name: name.trim(),
+        permissions: [...perms],
+        warehouseRef,
+      }),
+    { exclusive: true },
   );
-  const del = useCommand(() => teamRepository.deleteRole(role?.id ?? ""));
+  const del = useCommand(() => teamRepository.deleteRole(role?.id ?? ""), { exclusive: true });
   const groups = groupPermissions(permissions);
   // Цифры и значки в названии сразу подсвечиваются: почему и как исправить.
   const badName = name.trim() !== "" && !roleNameOk(name);

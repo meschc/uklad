@@ -221,8 +221,9 @@ function InvitePanel({
   // Без карточки — на склад, открытый сейчас: кабинет человеку покажется
   // только по нему (миграция 034).
   const warehouseRef = useEditor((s) => s.warehouse.id);
-  const send = useCommand(() =>
-    teamRepository.invite(email.trim(), roleId, name.trim(), { warehouseRef }),
+  const send = useCommand(
+    () => teamRepository.invite(email.trim(), roleId, name.trim(), { warehouseRef }),
+    { exclusive: true },
   );
   const valid = isEmail(email) && roleId;
   const submit = async () => {

@@ -63,7 +63,7 @@ export function DocPanel({
   const senior = seniors.some((m) => m.id === picked) ? picked : (seniors[0]?.id ?? "");
   const setSenior = setPicked;
   const save = useCommand(documentsRepository.saveDraft);
-  const confirm = useCommand(documentsRepository.confirm);
+  const confirm = useCommand(documentsRepository.confirm, { exclusive: true });
 
   const set = (patch: DocEdits) => setEdits((e) => ({ ...e, ...patch }));
   // Пустое поле — «не задано», а не пустая строка на бумаге.

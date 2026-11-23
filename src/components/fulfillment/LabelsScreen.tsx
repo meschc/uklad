@@ -185,20 +185,23 @@ export function LabelsScreen() {
    * номерами существует, и отменять её значило бы потерять их из виду. Пачка
    * показывается неполной — человек допечатает недостающие.
    */
-  const create = useCommand(async (n: number, k: TareKind) => {
-    const codes: string[] = [];
-    for (let i = 0; i < n; i++) {
-      const res = await (k === "box"
-        ? fulfillmentRepository.createBox()
-        : fulfillmentRepository.createPallet());
-      if (!res.ok) {
-        setBatch(codes);
-        return res;
+  const create = useCommand(
+    async (n: number, k: TareKind) => {
+      const codes: string[] = [];
+      for (let i = 0; i < n; i++) {
+        const res = await (k === "box"
+          ? fulfillmentRepository.createBox()
+          : fulfillmentRepository.createPallet());
+        if (!res.ok) {
+          setBatch(codes);
+          return res;
+        }
+        codes.push(res.data.barcode);
       }
-      codes.push(res.data.barcode);
-    }
-    return { ok: true as const, data: codes };
-  });
+      return { ok: true as const, data: codes };
+    },
+    { exclusive: true },
+  );
 
   const generate = async () => {
     const res = await create.run(n, kind);
