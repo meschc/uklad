@@ -885,5 +885,22 @@ test(
     });
     assert.equal(moved.status, 409);
     assert.equal(moved.json.error, "no_partner");
+    // Перенос со склада Б на склад А виден в журнале обоих складов.
+    const solo = await add(boss, { label: "Свой Б", warehouseId: "w2" });
+    assert.equal(solo.status, 200, JSON.stringify(solo.json));
+    const go = await post("/api/connectors/place", {
+      ...boss,
+      body: { id: solo.json.id, warehouseId: WH },
+    });
+    assert.equal(go.status, 200);
+    const { rows } = await db.root.query(
+      `SELECT warehouse_ref AS w, details FROM uklad.audit_events
+       WHERE action = 'connector.place' AND target = $1 ORDER BY warehouse_ref`,
+      [solo.json.id],
+    );
+    assert.deepEqual(rows, [
+      { w: WH, details: { from: "w2" } },
+      { w: "w2", details: { to: WH } },
+    ]);
   },
 );

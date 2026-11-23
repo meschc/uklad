@@ -317,6 +317,7 @@ function createTeam({ auth, cfg, send, log, limits = null }) {
         throw new Error("team:not_found");
       }
       await assertPlace(c, place);
+      const from = await whereIs(c, "member", m);
       const room = limits ? await limits.guard(c, ctx.orgId, "staff") : null;
       await c.query(`SELECT auth.set_member_place($1, $2, $3)`, [
         m,
@@ -324,9 +325,14 @@ function createTeam({ auth, cfg, send, log, limits = null }) {
         place.staffRef,
       ]);
       await room?.check();
+      // Перевод виден обоим складам: новому — кто пришёл, прежнему — кто ушёл.
       await note(c, "member.place", place.warehouseRef, m, {
         ...(place.staffRef ? { staff: place.staffRef } : {}),
+        ...(from ? { from } : {}),
       });
+      if (from && from !== place.warehouseRef) {
+        await note(c, "member.place", from, m, { to: place.warehouseRef });
+      }
     });
 
   const revokeInvite = (req, res) =>

@@ -601,6 +601,7 @@ function createConnectors({ auth, send, log, secretKey, fetchImpl = fetch, pull 
         [b.id],
       );
       const partner = cur.rows[0]?.partner;
+      const from = await connectorPlace(c, b.id);
       if (partner && !(await partnerHere(c, warehouseId, partner))) return NO_PARTNER;
       const r = await c.query(
         `UPDATE uklad.connector_accounts
@@ -611,11 +612,21 @@ function createConnectors({ auth, send, log, secretKey, fetchImpl = fetch, pull 
         [b.id, warehouseId],
       );
       if (r.rowCount) {
+        // Перенос виден обоим складам: новому — что пришло, прежнему — что ушло.
         await logAction(c, log, {
           action: "connector.place",
           warehouse: warehouseId,
           target: b.id,
+          details: from ? { from } : {},
         });
+        if (from && from !== warehouseId) {
+          await logAction(c, log, {
+            action: "connector.place",
+            warehouse: from,
+            target: b.id,
+            details: { to: warehouseId },
+          });
+        }
       }
       return r.rowCount;
     });
