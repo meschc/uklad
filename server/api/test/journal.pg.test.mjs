@@ -423,8 +423,9 @@ test(
     assert.match(lines[1], /действие connector\.delete .*"warehouse":"wh_b".*"target":"conn-b"/);
 
     const kinds = (r) => r.json.entries.filter((e) => e.source === "audit").map((e) => e.kind);
-    // Без процесса «admin» экран журнала их пока не получает.
-    assert.deepEqual(kinds(await journal(c.boss, "?warehouse=wh_a")), []);
+    // Без фильтра процессов они в общей ленте, с другим процессом — нет.
+    assert.equal(kinds(await journal(c.boss, "?warehouse=wh_a")).length, 5);
+    assert.deepEqual(kinds(await journal(c.boss, "?warehouse=wh_a&steps=pick")), []);
     // Владелец: склад А и действия компании.
     const boss = await journal(c.boss, "?warehouse=wh_a&steps=admin");
     assert.equal(boss.status, 200, JSON.stringify(boss.json));
@@ -440,6 +441,15 @@ test(
     const own = await journal(lead, "?steps=admin");
     assert.equal(own.status, 200, JSON.stringify(own.json));
     assert.deepEqual(kinds(own).sort(), ["connector.delete", "member.invite"]);
+    // Имя приглашённого и роль — подставлены при чтении, в строке журнала их нет.
+    const invite = own.json.entries.find((e) => e.kind === "member.invite");
+    assert.equal(invite.roleName, "Старший смены");
+    assert.ok(!JSON.stringify(invite.details ?? {}).includes("Старший"));
+    const stored = await db.root.query(
+      `SELECT details::text AS d FROM uklad.audit_events WHERE action = 'member.invite' AND org_id = $1`,
+      [c.org],
+    );
+    assert.ok(stored.rows.every((r) => !/@|Старший/.test(r.d)));
     assert.equal((await journal(lead, "?warehouse=wh_a&steps=admin")).status, 403);
 
     // Подписать действие чужим участником нельзя: RLS сверяет с сессией.

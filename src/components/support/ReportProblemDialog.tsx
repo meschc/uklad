@@ -1,11 +1,14 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, LifeBuoy, X } from "lucide-react";
 import { PERSIST_KEY, useEditor } from "@/lib/store";
 import { readSaved } from "@/lib/store/persistStorage";
 import { useT } from "@/lib/i18n";
 import { useCommand } from "@/lib/useCommand";
+import { journalRepository } from "@/lib/data/journalRepository";
 import {
+  actionLines,
   buildReport,
+  type ActionLine,
   readEnv,
   reportSize,
   sendReport,
@@ -75,6 +78,18 @@ export function ReportProblemDialog({
   // Журнал и копия читаются один раз на открытие окна: пока человек пишет,
   // они не меняются, а пересобирать снимок склада на каждую букву дорого.
   const entries = useMemo(() => journal.read(), []);
+  // Последние действия руководителей склада — по разу на открытие. Нет права
+  // на журнал, нет сети или демо — обращение уходит без них, а не не уходит.
+  const [actions, setActions] = useState<ActionLine[]>([]);
+  useEffect(() => {
+    let live = true;
+    void journalRepository.page({ steps: ["admin"] }).then((res) => {
+      if (live && res.ok) setActions(actionLines(res.data.entries));
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
   const state = useMemo(() => savedState(), []);
   const snapshotReport = useMemo(
     () => buildReport({ message: "", env: readEnv(view), state, entries }),
@@ -82,6 +97,7 @@ export function ReportProblemDialog({
   );
   const report = {
     ...snapshotReport,
+    ...(actions.length ? { actions } : {}),
     message: buildReport({ message, env: snapshotReport.env, state: null, entries }).message,
     snapshot: withSnapshot ? snapshotReport.snapshot : undefined,
   };
@@ -206,6 +222,11 @@ export function ReportProblemDialog({
                   </>
                 ) : (
                   <p className="text-muted-foreground">{t("support.preview.noSnapshot")}</p>
+                )}
+                {actions.length > 0 && (
+                  <p className="text-muted-foreground">
+                    {t("support.preview.actions", { n: actions.length })}
+                  </p>
                 )}
                 <button
                   type="button"

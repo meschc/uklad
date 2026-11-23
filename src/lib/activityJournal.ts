@@ -23,7 +23,8 @@ export type JournalStep =
   | "inventory"
   | "dispute"
   | "shift"
-  | "cabinet";
+  | "cabinet"
+  | "admin";
 
 /** Виды операций стола на сервере (`desk_ops.kind`) — подписи `devices.op.*`. */
 export const DESK_KINDS: ReadonlySet<string> = new Set([
@@ -66,7 +67,42 @@ export const JOURNAL_STEPS: readonly JournalStep[] = [
   "dispute",
   "shift",
   "cabinet",
+  "admin",
 ];
+
+/**
+ * Действия руководителей (`uklad.audit_events`, `server/api/src/cabinet/audit.js`):
+ * подпись — `journal.audit.<вид>`. Вида нет в списке (сервер новее кабинета) —
+ * общая подпись «Действие в кабинете», а не пустая строка.
+ */
+export const AUDIT_KINDS: ReadonlySet<string> = new Set([
+  "badge.issue",
+  "badge.revoke",
+  "badge.member_issue",
+  "badge.member_revoke",
+  "connector.create",
+  "connector.rename",
+  "connector.stock",
+  "connector.place",
+  "connector.delete",
+  "desk.bind",
+  "desk.revoke",
+  "member.invite",
+  "member.place",
+  "member.uninvite",
+  "member.role",
+  "member.disable",
+  "member.enable",
+  "role.create",
+  "role.save",
+  "role.delete",
+  "staff.role",
+  "product.create",
+  "product.update",
+  "product.delete",
+  "product.move_in",
+  "product.move_out",
+]);
 
 export interface JournalMove {
   kind: "box" | "outbound" | "cell" | "box_at";
@@ -81,8 +117,23 @@ export interface ActivityEntry {
   at: number;
   /** Когда дошло до сервера, мс: часы ТСД могут врать. */
   receivedAt: number;
-  /** Стол склада, правка в кабинете или (демо) журнал смен браузера. */
-  source: "desk" | "cabinet" | "local";
+  /**
+   * Стол склада, правка в кабинете, действие руководителя (`audit`) или
+   * (демо) журнал смен браузера.
+   */
+  source: "desk" | "cabinet" | "audit" | "local";
+  /** Действие руководителя: откуда пришло — кабинет, стол, площадка, сервер. */
+  by?: "cabinet" | "desk" | "pull" | "system";
+  /** С чем действие: id роли, человека, сотрудника, подключения, устройства. */
+  target?: string;
+  /** Имя того, с чем действие (человек, роль), — сервер подставляет при чтении. */
+  targetName?: string | null;
+  /** Название роли из подробностей (`details.role`). */
+  roleName?: string | null;
+  /** Подробности действия: только коды и id. */
+  details?: Record<string, unknown>;
+  /** Действие компании без склада — видит только владелец. */
+  company?: boolean;
   /** Сотрудник склада (`warehouse.staff[].id`); нет — за столом никого. */
   staffRef: string | null;
   device?: { ref: string; name: string };
