@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { AlertTriangle, Check, Download, FileSpreadsheet, Loader2, Upload, X } from "lucide-react";
 import { useEditor } from "@/lib/store";
+import { useWarehouseProducts } from "@/lib/warehouseProducts";
 import { catalogRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
 import type { Product } from "@/lib/types";
@@ -8,7 +9,10 @@ import { downloadSheet } from "@/lib/sheets";
 import {
   EXAMPLE_ROWS,
   IMPORT_EXAMPLE,
+  MAX_IMPORT_BYTES,
   TEMPLATE_HEADERS,
+  barcodeSet,
+  decodeImportText,
   parseImportFile,
   parseImportText,
   rowsToProducts,
@@ -26,7 +30,8 @@ import { FormError } from "@/components/ui/field";
  * колонок; плюс построчная валидация в предпросмотре.
  */
 export function ImportDialog({ onClose }: { onClose: () => void }) {
-  const products = useEditor((s) => s.products);
+  // Дубли ищем среди товаров этого склада: тот же артикул на соседнем складе — не дубль.
+  const products = useWarehouseProducts();
   const notify = useEditor((s) => s.notify);
   const t = useT();
 
@@ -36,26 +41,31 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
   const fileInput = useRef<HTMLInputElement>(null);
 
   const existingSkus = useMemo(() => new Set(products.map((p) => p.sku)), [products]);
+  const existingBarcodes = useMemo(() => barcodeSet(products), [products]);
 
   // Файл имеет приоритет; иначе разбираем вставленный текст.
   const result: ParseResult = useMemo(() => {
     if (fileResult) return fileResult;
-    return parseImportText(text, existingSkus);
-  }, [fileResult, text, existingSkus]);
+    return parseImportText(text, existingSkus, existingBarcodes);
+  }, [fileResult, text, existingSkus, existingBarcodes]);
 
   const onFile = async (file: File) => {
     setFileName(file.name);
     setText("");
+    if (file.size > MAX_IMPORT_BYTES) {
+      setFileResult({ ok: false, kind: "format", reasonKey: "import.msg.tooBig" });
+      return;
+    }
     const buf = await file.arrayBuffer();
     // .csv/.txt/.tsv — как текст; остальное (в т.ч. .xlsx) — через SheetJS.
     const isText = /\.(csv|tsv|txt)$/i.test(file.name);
     setFileResult(
       isText
-        ? parseImportText(new TextDecoder().decode(buf), existingSkus)
+        ? parseImportText(decodeImportText(buf), existingSkus, existingBarcodes)
         : // Книгу читает библиотека, которая грузится по требованию: разбор
           // ждёт её и потому асинхронный. Ошибки разбора приходят результатом,
           // а не исключением, — ловить здесь нечего.
-          await parseImportFile(buf, existingSkus),
+          await parseImportFile(buf, existingSkus, existingBarcodes),
     );
   };
 
@@ -86,7 +96,10 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
    * закрывается — разобранный файл остаётся на экране вместе с предпросмотром,
    * и повтор не требует выбирать файл заново.
    */
-  const load = useCommand((items: Omit<Product, "id">[]) => catalogRepository.importMany(items));
+  const load = useCommand((items: Omit<Product, "id">[]) => catalogRepository.importMany(items), {
+    // Двойной щелчок раньше, чем кнопка погасла, не должен завести товары дважды.
+    exclusive: true,
+  });
 
   const doImport = async () => {
     if (!result.ok) return;
@@ -208,6 +221,9 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
   );
 }
 
+/** Строк в предпросмотре: остальные тоже грузятся, просто не рисуются. */
+const PREVIEW_ROWS = 200;
+
 function ResultView({
   result,
   rows,
@@ -256,7 +272,7 @@ function ResultView({
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => (
+            {rows.slice(0, PREVIEW_ROWS).map((r) => (
               <tr key={r.index} className="border-t border-border/60">
                 <td className="px-2 py-1.5">
                   {r.ok ? (
@@ -285,6 +301,16 @@ function ResultView({
           </tbody>
         </table>
       </div>
+      {rows.length > PREVIEW_ROWS && (
+        <p className="mt-2 text-xs text-muted-foreground">
+          {t("import.previewCut", { shown: PREVIEW_ROWS, total: rows.length })}
+        </p>
+      )}
+      {result.ok && result.ignored.length > 0 && (
+        <p className="mt-2 text-xs text-muted-foreground">
+          {t("import.ignored", { cols: result.ignored.join(", ") })}
+        </p>
+      )}
       {validCount < rows.length && (
         <p className="mt-2 text-xs text-muted-foreground">
           {t("import.onlyOk", { valid: validCount, total: rows.length })}
