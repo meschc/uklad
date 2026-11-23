@@ -6,6 +6,7 @@
 /* global require, module, Buffer */
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { scrypt, randomBytes, timingSafeEqual } = require("node:crypto");
+const { isCommonPassword } = require("./commonPasswords");
 
 const N = 2 ** 15;
 const R = 8;
@@ -27,9 +28,13 @@ function derive(password, salt, len, opts) {
   );
 }
 
+/** От 10 символов и не из тех, что подбирают первыми (`commonPasswords.js`). */
 function isAcceptable(password) {
   return (
-    typeof password === "string" && password.length >= MIN_LENGTH && password.length <= MAX_LENGTH
+    typeof password === "string" &&
+    password.length >= MIN_LENGTH &&
+    password.length <= MAX_LENGTH &&
+    !isCommonPassword(password)
   );
 }
 

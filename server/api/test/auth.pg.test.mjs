@@ -169,7 +169,11 @@ test("без согласия, с чужого сайта и формой — о
   const noConsent = { ...owner("b@sklad.ru"), consent: false };
   assert.equal((await call("/api/auth/register", { body: noConsent, ip })).status, 400);
   const short = { ...owner("b@sklad.ru"), password: "123" };
-  assert.equal((await call("/api/auth/register", { body: short, ip })).status, 400);
+  const weak = await call("/api/auth/register", { body: short, ip });
+  assert.deepEqual([weak.status, weak.json.error], [400, "weak_password"]);
+  const common = { ...owner("b@sklad.ru"), password: "Qwerty12345" };
+  const known = await call("/api/auth/register", { body: common, ip });
+  assert.deepEqual([known.status, known.json.error], [400, "weak_password"]);
   const foreign = await call("/api/auth/register", {
     body: owner("b@sklad.ru"),
     headers: { Origin: "https://evil.example" },

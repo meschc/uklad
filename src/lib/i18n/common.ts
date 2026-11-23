@@ -173,7 +173,8 @@ export const ru = {
     "Слишком много неудачных попыток. Попробуйте через 15 минут или сбросьте пароль.",
   "login.err.tooOften": "Слишком часто. Подождите минуту и попробуйте снова.",
   "login.err.badCode": "Код не подходит или устарел. Проверьте письмо или запросите новый код.",
-  "login.err.weakPassword": "Пароль слишком короткий",
+  "login.err.weakPassword":
+    "Такой пароль подбирают первым. Возьмите от 10 символов, не ряд клавиш и не счёт подряд, например три случайных слова",
   "login.err.network": "Нет связи с сервером. Проверьте интернет и попробуйте ещё раз.",
   "login.err.noOrg": "У этой почты нет действующей компании. Напишите в поддержку.",
   "login.err.codeFormat": "Код из письма — шесть цифр",
@@ -526,7 +527,8 @@ export const en: Record<keyof typeof ru, string> = {
   "login.err.locked": "Too many failed attempts. Try again in 15 minutes or reset your password.",
   "login.err.tooOften": "Too many requests. Wait a minute and try again.",
   "login.err.badCode": "The code is wrong or expired. Check the email or request a new code.",
-  "login.err.weakPassword": "The password is too short",
+  "login.err.weakPassword":
+    "This password is among the first to be guessed. Use 10+ characters, not a keyboard row or a counting run, e.g. three random words",
   "login.err.network": "Can't reach the server. Check your connection and try again.",
   "login.err.noOrg": "This email has no active company. Please contact support.",
   "login.err.codeFormat": "The code from the email is six digits",

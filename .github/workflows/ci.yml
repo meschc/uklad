@@ -28,13 +28,13 @@ jobs:
     name: Формат, линтер, типы, тесты, сборка
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           # Два коммита: у PR проверяется слияние, и его первый родитель — main,
           # с которым сверяется «Версия и записи».
           fetch-depth: 2
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           # Версия берётся из `.nvmrc` — одна запись на проект, а не вторая
           # копия числа, которую забудут поднять.
@@ -109,9 +109,9 @@ jobs:
         options: >-
           --health-cmd pg_isready --health-interval 2s --health-timeout 5s --health-retries 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -147,7 +147,7 @@ jobs:
     name: Образы сервера
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Конфиг compose
         working-directory: deploy
@@ -184,9 +184,9 @@ jobs:
     name: Сквозные тесты
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -208,7 +208,7 @@ jobs:
       # никто не открывает, а место он занимает.
       - name: Отчёт о падении
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: playwright-report
           path: playwright-report/
