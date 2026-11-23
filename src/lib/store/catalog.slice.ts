@@ -155,11 +155,21 @@ export const createCatalogSlice: SliceCreator<CatalogSlice> = (set, get) => ({
     }));
   },
 
+  // Артикул, который на этом складе уже есть, второй раз не заводим: вторая
+  // вкладка или повторная загрузка того же файла иначе дали бы двойники.
   importProducts: (items) =>
-    set((s) => ({
-      products: [
-        ...s.products,
-        ...items.map((p) => ({ ...p, id: uid("prod"), warehouseId: s.warehouse.id })),
-      ],
-    })),
+    set((s) => {
+      const taken = new Set(
+        s.products
+          .filter((p) => !p.warehouseId || p.warehouseId === s.warehouse.id)
+          .map((p) => p.sku),
+      );
+      const fresh = items.filter((p) => !taken.has(p.sku) && taken.add(p.sku));
+      return {
+        products: [
+          ...s.products,
+          ...fresh.map((p) => ({ ...p, id: uid("prod"), warehouseId: s.warehouse.id })),
+        ],
+      };
+    }),
 });

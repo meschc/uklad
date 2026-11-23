@@ -193,6 +193,12 @@ export const ru = {
   // Ошибки строк импорта
   "import.row.noSku": "нет артикула",
   "import.row.dupSku": "артикул уже есть",
+  "import.row.dupBarcode": "штрихкод уже есть",
+  "import.msg.tooMany":
+    "В файле больше 10 000 строк. Разбейте его на части и загрузите по очереди.",
+  "import.msg.tooBig": "Файл больше 8 МБ. Разбейте его на части и загрузите по очереди.",
+  "import.previewCut": "Показаны первые {shown} из {total} строк. Загрузятся все годные.",
+  "import.ignored": "Колонки не распознаны и пропущены: {cols}.",
   "import.row.noName": "нет названия",
   "import.row.badCategory": "категория «{cat}» не из списка",
   "import.row.noCategory": "нет категории",
@@ -402,6 +408,13 @@ export const en: Record<keyof typeof ru, string> = {
   // Import row errors
   "import.row.noSku": "no SKU",
   "import.row.dupSku": "SKU already exists",
+  "import.row.dupBarcode": "barcode already exists",
+  "import.msg.tooMany":
+    "The file has more than 10,000 rows. Split it into parts and upload them one by one.",
+  "import.msg.tooBig":
+    "The file is larger than 8 MB. Split it into parts and upload them one by one.",
+  "import.previewCut": "Showing the first {shown} of {total} rows. All valid rows will be loaded.",
+  "import.ignored": "Columns not recognised and skipped: {cols}.",
   "import.row.noName": "no name",
   "import.row.badCategory": "category “{cat}” not in the list",
   "import.row.noCategory": "no category",

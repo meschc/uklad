@@ -16,6 +16,11 @@ import type { MsgKey } from "./i18n";
  * файла асинхронный, а разбор текста — нет.
  */
 
+/** Строк в одном файле: больше — предпросмотр и один запрос к серверу не потянут. */
+export const MAX_IMPORT_ROWS = 10_000;
+/** Размер файла, байт: книга на 50 000 строк весит больше и до разбора не доходит. */
+export const MAX_IMPORT_BYTES = 8 * 1024 * 1024;
+
 type FieldKey =
   "sku" | "barcode" | "name" | "category" | "widthCm" | "heightCm" | "depthCm" | "weightKg";
 
@@ -70,6 +75,8 @@ export type ParseResult =
       headers: string[];
       rows: ImportRow[];
       validCount: number;
+      /** Колонки файла, которых Уклад не знает: они пропущены, а не потеряны молча. */
+      ignored: string[];
     };
 
 function norm(h: string): string {
@@ -162,8 +169,25 @@ function looksBinary(s: string): boolean {
   return false;
 }
 
+/**
+ * Байты CSV → текст. Выгрузка 1С и старого Excel — windows-1251: прочитанная
+ * как UTF-8, она превращается в «����» и все колонки не узнаются. Строгий
+ * UTF-8 не прошёл — читаем как 1251.
+ */
+export function decodeImportText(buf: ArrayBuffer): string {
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(buf);
+  } catch {
+    return new TextDecoder("windows-1251").decode(buf);
+  }
+}
+
 /** CSV/TSV-текст (вставка / выгрузка 1С) → матрица → общее ядро. */
-export function parseImportText(text: string, existingSkus: Set<string>): ParseResult {
+export function parseImportText(
+  text: string,
+  existingSkus: Set<string>,
+  existingBarcodes: Set<string> = new Set(),
+): ParseResult {
   // Выгрузка из 1С и Excel начинается с BOM — срезаем, иначе первая колонка
   // заголовка не совпадёт ни с одним ожидаемым именем.
   const clean = (text.startsWith(BOM) ? text.slice(BOM.length) : text).trim();
@@ -184,13 +208,14 @@ export function parseImportText(text: string, existingSkus: Set<string>): ParseR
   }
 
   const matrix = lines.map((l) => splitLine(l, delim));
-  return parseRows(matrix, existingSkus);
+  return parseRows(matrix, existingSkus, existingBarcodes);
 }
 
 /** Бинарная книга .xlsx/.xls через SheetJS → матрица → общее ядро. */
 export async function parseImportFile(
   buf: ArrayBuffer,
   existingSkus: Set<string>,
+  existingBarcodes: Set<string> = new Set(),
 ): Promise<ParseResult> {
   let matrix: string[][] | null;
   try {
@@ -208,11 +233,20 @@ export async function parseImportFile(
   if (matrix.length < 2) {
     return { ok: false, kind: "format", reasonKey: "import.msg.needTwoLines" };
   }
-  return parseRows(matrix, existingSkus);
+  return parseRows(matrix, existingSkus, existingBarcodes);
+}
+
+/** Штрихкод для сверки: цифры без пробелов — «4600 0510 70012» и «4600051070012» один код. */
+function barcodeKey(s: string): string {
+  return s.replace(/\s+/g, "");
 }
 
 /** Ядро: матрица (заголовок + строки) → маппинг колонок + валидация строк. */
-function parseRows(matrix: string[][], existingSkus: Set<string>): ParseResult {
+function parseRows(
+  matrix: string[][],
+  existingSkus: Set<string>,
+  existingBarcodes: Set<string>,
+): ParseResult {
   const headers = (matrix[0] ?? []).map((h) => (h ?? "").trim());
   const colField = headers.map(matchField);
   const present = new Set(colField.filter((f): f is FieldKey => f !== null));
@@ -222,7 +256,13 @@ function parseRows(matrix: string[][], existingSkus: Set<string>): ParseResult {
     return { ok: false, kind: "columns", missing, headers };
   }
 
+  if (matrix.length - 1 > MAX_IMPORT_ROWS) {
+    return { ok: false, kind: "format", reasonKey: "import.msg.tooMany" };
+  }
+
+  const ignored = headers.filter((h, i) => h !== "" && colField[i] === null);
   const seen = new Set<string>();
+  const seenBarcodes = new Set<string>();
   const rows: ImportRow[] = [];
 
   for (let r = 1; r < matrix.length; r++) {
@@ -246,6 +286,10 @@ function parseRows(matrix: string[][], existingSkus: Set<string>): ParseResult {
 
     if (!sku) errors.push({ key: "import.row.noSku" });
     else if (existingSkus.has(sku) || seen.has(sku)) errors.push({ key: "import.row.dupSku" });
+    const barcode = get("barcode");
+    const bc = barcodeKey(barcode);
+    if (bc && (existingBarcodes.has(bc) || seenBarcodes.has(bc)))
+      errors.push({ key: "import.row.dupBarcode" });
     if (!name) errors.push({ key: "import.row.noName" });
     if (!category)
       errors.push(
@@ -264,11 +308,12 @@ function parseRows(matrix: string[][], existingSkus: Set<string>): ParseResult {
       errors.push({ key: "import.row.badWeight" });
 
     if (sku) seen.add(sku);
+    if (bc) seenBarcodes.add(bc);
 
     rows.push({
       index: r,
       sku,
-      barcode: get("barcode"),
+      barcode,
       name,
       category: category ?? undefined,
       widthCm: Number.isFinite(widthCm) ? widthCm : undefined,
@@ -289,7 +334,13 @@ function parseRows(matrix: string[][], existingSkus: Set<string>): ParseResult {
     headers,
     rows,
     validCount: rows.filter((r) => r.ok).length,
+    ignored,
   };
+}
+
+/** Штрихкоды склада для сверки дублей в `parseImport*`. */
+export function barcodeSet(products: readonly { barcode: string }[]): Set<string> {
+  return new Set(products.map((p) => barcodeKey(p.barcode)).filter(Boolean));
 }
 
 /** Годные строки → черновики товаров для добавления в номенклатуру. */

@@ -101,7 +101,9 @@ export function TableToolbar({
           </div>
           {!readOnly && (
             <>
-              <Button variant="outline" size="sm" onClick={onImport}>
+              {/* Главное действие экрана — загрузка товаров файлом (Кирилл 22.11):
+                  склад заводит номенклатуру импортом, а не по одному. */}
+              <Button size="sm" onClick={onImport}>
                 <Upload className="size-3.5" />
                 {t("table.import")}
               </Button>
@@ -109,7 +111,7 @@ export function TableToolbar({
                 <Columns3 className="size-3.5" />
                 {t("table.fields")}
               </Button>
-              <Button size="sm" onClick={onAdd}>
+              <Button variant="outline" size="sm" onClick={onAdd}>
                 <Plus className="size-3.5" />
                 {t("table.addProduct")}
               </Button>
