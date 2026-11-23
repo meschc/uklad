@@ -121,8 +121,8 @@ export const PLANS: Plan[] = [
       ),
       c("Импорт остатков и поставок из XLSX", "Stock and delivery import from XLSX"),
       c(
-        "Счёт селлерам за услуги склада и отгрузку местами",
-        "Seller invoices for warehouse services and shipped parcels, boxes and pallets",
+        "Отчёт по услугам склада для каждого селлера: услуги, хранение, отгрузка местами",
+        "A per-seller report of warehouse services, storage and shipped parcels, boxes and pallets",
       ),
     ],
   },

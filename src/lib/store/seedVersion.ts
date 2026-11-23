@@ -19,6 +19,18 @@ export const DEMO_SEED_VERSION = 3;
 /** Где у посетителя записан номер посева, под которым собрано его демо. */
 export const DEMO_SEED_KEY = "uklad-demo-seed";
 
+/** Где записан момент посева: даты демо считаются от него (сегодня минус N дней). */
+const DEMO_SEEDED_AT_KEY = "uklad-demo-seeded-at";
+
+/**
+ * Через сколько дней демо считается «несвежим»: даты в нём относительные
+ * (заказ «вчера», рейс «через 3 дня»), а считаются они от дня посева. Вернулся
+ * через месяц — «вчера» стало месяц назад, рейсы позади, отгрузки просрочены.
+ * Неделя: проходит рабочий цикл склада, правки посетителя в демо за это время
+ * — не то, ради чего возвращаются.
+ */
+export const DEMO_MAX_AGE_DAYS = 7;
+
 /**
  * Пора ли собрать демо заново. Только для демо без сервера: кабинет с сервером
  * хранит настоящие данные компании, их не заменяет никакой посев. Посетителя
@@ -28,9 +40,16 @@ export function isDemoStale(
   hadSaved: boolean,
   storedVersion: string | null,
   server: boolean = hasCabinetServer,
+  seededAt: string | null = null,
+  now: number = Date.now(),
 ): boolean {
   if (server || !hadSaved) return false;
-  return Number(storedVersion) !== DEMO_SEED_VERSION;
+  if (Number(storedVersion) !== DEMO_SEED_VERSION) return true;
+  // Момент посева неизвестен (демо собрано до появления ключа) — не трогаем:
+  // ключ запишется на этом запуске, и отсчёт пойдёт с него.
+  const at = Number(seededAt);
+  if (!seededAt || !Number.isFinite(at)) return false;
+  return now - at > DEMO_MAX_AGE_DAYS * 86_400_000;
 }
 
 /**
@@ -42,8 +61,14 @@ export function isDemoStale(
  * стора до перезагрузки, а нам нужно, чтобы свежее демо сохранилось.
  */
 export function refreshStaleDemo(hadSaved: boolean): boolean {
-  const stale = isDemoStale(hadSaved, readLocal(DEMO_SEED_KEY));
+  const seededAt = readLocal(DEMO_SEEDED_AT_KEY);
+  const stale = isDemoStale(hadSaved, readLocal(DEMO_SEED_KEY), hasCabinetServer, seededAt);
   if (stale) removeLocal(PERSIST_KEY);
-  if (!hasCabinetServer) writeLocal(DEMO_SEED_KEY, String(DEMO_SEED_VERSION));
+  if (!hasCabinetServer) {
+    writeLocal(DEMO_SEED_KEY, String(DEMO_SEED_VERSION));
+    // Новый посев (первый запуск или пересборка) — отсчёт с сегодняшнего дня;
+    // у уже собранного демо без метки — тоже с этого запуска.
+    if (stale || !hadSaved || !seededAt) writeLocal(DEMO_SEEDED_AT_KEY, String(Date.now()));
+  }
   return stale;
 }
