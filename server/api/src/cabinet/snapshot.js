@@ -362,7 +362,11 @@ async function noteProducts(c, log, before, after) {
   for (const [ref, r] of after) {
     const was = before.get(ref);
     if (!was) add(r.w, "create", ref);
-    else if (was.t !== r.t) add(r.w, "update", ref);
+    else if (was.w !== r.w) {
+      // Перенос на другой склад виден обоим: новому — пришёл, прежнему — ушёл.
+      add(r.w, "move_in", ref);
+      add(was.w, "move_out", ref);
+    } else if (was.t !== r.t) add(r.w, "update", ref);
   }
   for (const [ref, r] of before) if (!after.has(ref)) add(r.w, "delete", ref);
   for (const { w, kind, refs } of by.values()) {

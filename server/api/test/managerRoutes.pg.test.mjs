@@ -350,15 +350,19 @@ test(
     await save([card("g1", "Кружка большая")]);
     // Та же запись ещё раз — ничего не изменилось, строк не прибавилось.
     await save([card("g1", "Кружка большая")]);
+    // Перенос на склад 1 — в журнале обоих складов.
+    await save([{ ...card("g1", "Кружка большая"), warehouseId: WH }]);
     const { rows } = await db.root.query(
       `SELECT action, warehouse_ref AS w, details->'ids' AS ids FROM uklad.audit_events
-     WHERE org_id = $1 AND action LIKE 'product.%' ORDER BY at`,
+     WHERE org_id = $1 AND action LIKE 'product.%' ORDER BY at, action`,
       [boss.org],
     );
     assert.deepEqual(rows, [
       { action: "product.create", w: "w2", ids: ["g1", "g2"] },
       { action: "product.update", w: "w2", ids: ["g1"] },
       { action: "product.delete", w: "w2", ids: ["g2"] },
+      { action: "product.move_in", w: WH, ids: ["g1"] },
+      { action: "product.move_out", w: "w2", ids: ["g1"] },
     ]);
   },
 );
