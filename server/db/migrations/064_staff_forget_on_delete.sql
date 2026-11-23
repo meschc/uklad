@@ -60,3 +60,44 @@ END $$;
 
 CREATE TRIGGER warehouse_staff_gone AFTER UPDATE OF deleted_at ON uklad.warehouses
   FOR EACH ROW EXECUTE FUNCTION uklad.warehouse_staff_gone();
+
+-- Удаление сотрудника — это его отсутствие в присланном списке, а теперь оно
+-- необратимо. Пустой или урезанный список после сбоя кабинета (пустой стор,
+-- старая вкладка) стёр бы всех людей склада разом. Как у товаров и записей
+-- работы (`products_mass_delete`, `massGone`): убрать за раз 3 и больше и
+-- больше половины живых сотрудников склада нельзя — ошибка `UK001`, сервер
+-- отвечает 409 `staff_mass_delete`. Удаление склада целиком идёт мимо
+-- (`warehouse_staff_gone`): оно и так только у владельца.
+CREATE OR REPLACE FUNCTION uklad.save_staff(p_wh text, p_staff jsonb) RETURNS void
+LANGUAGE plpgsql SET search_path = pg_catalog, uklad, pg_temp AS $$
+DECLARE
+  live integer;
+  gone integer;
+BEGIN
+  SELECT count(*),
+    count(*) FILTER (WHERE NOT EXISTS (
+      SELECT 1 FROM jsonb_array_elements(p_staff) c WHERE c->>'id' = s.ref))
+  INTO live, gone
+  FROM uklad.staff s
+  WHERE s.org_id = uklad.current_org() AND s.warehouse_ref = p_wh AND s.deleted_at IS NULL;
+  IF gone >= 3 AND gone * 2 > live THEN
+    RAISE EXCEPTION 'staff mass delete: % of % on %', gone, live, p_wh
+      USING ERRCODE = 'UK001';
+  END IF;
+
+  INSERT INTO uklad.staff AS s (org_id, warehouse_ref, ref, name, role, card, position)
+  SELECT uklad.current_org(), p_wh, c->>'id',
+    CASE WHEN jsonb_typeof(c->'name') = 'string' THEN left(c->>'name', 500) END,
+    CASE WHEN jsonb_typeof(c->'role') = 'string' THEN left(c->>'role', 200) END,
+    c, (n - 1)::integer
+  FROM jsonb_array_elements(p_staff) WITH ORDINALITY AS t(c, n)
+  ON CONFLICT (org_id, warehouse_ref, ref) DO UPDATE SET
+    name = excluded.name, role = excluded.role, card = excluded.card,
+    position = excluded.position, deleted_at = NULL, updated_at = now()
+  WHERE s.deleted_at IS NOT NULL
+    OR (s.card, s.position) IS DISTINCT FROM (excluded.card, excluded.position);
+
+  UPDATE uklad.staff s SET deleted_at = now(), updated_at = now()
+  WHERE s.org_id = uklad.current_org() AND s.warehouse_ref = p_wh AND s.deleted_at IS NULL
+    AND NOT EXISTS (SELECT 1 FROM jsonb_array_elements(p_staff) c WHERE c->>'id' = s.ref);
+END $$;

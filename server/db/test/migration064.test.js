@@ -84,8 +84,35 @@ test("064: удалённый сотрудник обезличен сразу, 
         { warehouse_ref: "wb", action: "staff.delete", target: "s3", source: "system" },
       ],
     );
+    // Урезанный список после сбоя: убрать 3 из 4 живых разом нельзя — люди и
+    // имена на месте.
+    await save([
+      {
+        id: "wa",
+        name: "А",
+        staff: [man("s2", "Пётр"), man("s4", "Ольга"), man("s5", "Олег"), man("s6", "Юрий")],
+      },
+    ]);
+    await assert.rejects(
+      save([{ id: "wa", name: "А", staff: [man("s2", "Пётр")] }]),
+      (err) => err.code === "UK001",
+    );
+    await root.query("ROLLBACK");
+    assert.deepEqual(
+      await rows(`SELECT ref, name FROM uklad.staff WHERE deleted_at IS NULL ORDER BY ref`),
+      [
+        { ref: "s2", name: "Пётр" },
+        { ref: "s4", name: "Ольга" },
+        { ref: "s5", name: "Олег" },
+        { ref: "s6", name: "Юрий" },
+      ],
+    );
+    // Двоих из четырёх — можно: это работа, а не сбой.
+    await save([{ id: "wa", name: "А", staff: [man("s2", "Пётр"), man("s4", "Ольга")] }]);
     // Вернули — кабинет прислал карточку заново, строка поднялась целиком.
-    await save([{ id: "wa", name: "А", staff: [man("s1", "Иван"), man("s2", "Пётр")] }]);
+    await save([
+      { id: "wa", name: "А", staff: [man("s1", "Иван"), man("s2", "Пётр"), man("s4", "Ольга")] },
+    ]);
     const back = await rows(`SELECT name, card, deleted_at FROM uklad.staff WHERE ref = 's1'`);
     assert.deepEqual(back, [{ name: "Иван", card: man("s1", "Иван"), deleted_at: null }]);
   } finally {

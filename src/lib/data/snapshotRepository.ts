@@ -67,7 +67,9 @@ function outcome({ status, body }: Reply): Result<SaveOutcome> {
       conflict: typeof body.version === "number" ? body.version : 0,
       ...(body.error === "stock_mismatch" ? { rejected: "stock" as const } : {}),
       ...(body.error === "products_mass_delete" ? { rejected: "products" as const } : {}),
-      ...(body.error === "records_mass_delete" ? { rejected: "records" as const } : {}),
+      ...(body.error === "records_mass_delete" || body.error === "staff_mass_delete"
+        ? { rejected: "records" as const }
+        : {}),
       // Склад удаляет только владелец (миграция 057, `warehouses.js`).
       ...(body.error === "warehouse_delete_owner" || body.error === "warehouse_owner"
         ? { rejected: "warehouse" as const }

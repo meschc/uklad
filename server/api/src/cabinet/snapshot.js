@@ -851,6 +851,13 @@ function createSnapshot({ auth, send, log, limits = null }) {
     try {
       await route(req, res, url);
     } catch (err) {
+      // Урезанный список сотрудников стёр бы людей склада безвозвратно
+      // (миграция 064): та же защита, что у товаров и записей работы.
+      if (err?.code === "UK001") {
+        log.warn("[uklad] снимок: отказ, массовое удаление сотрудников:", err.message);
+        if (!res.headersSent) send(res, 409, { ok: false, error: "staff_mass_delete" });
+        return true;
+      }
       log.error("[uklad] сбой снимка кабинета:", err.message);
       if (!res.headersSent) send(res, err?.httpStatus === 403 ? 403 : 500, { ok: false });
     }
