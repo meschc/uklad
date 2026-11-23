@@ -560,3 +560,68 @@ test("ошибки пользователей: «разобрано», повт�
   const audit = await (await app.get("/audit", cookie)).text();
   assert.ok(audit.includes("Ошибка разобрана"));
 });
+
+test("просьба о тарифе: подтверждение меняет тариф, разница уходит в следующий счёт", async (t) => {
+  const app = await start();
+  t.after(app.stop);
+  const { cookie } = await app.login();
+  const csrf = await app.csrf(cookie);
+  const made = await app.post(
+    "/accounts",
+    { kind: "warehouse", name: "Склад", email: "w@example.ru", tariff: "start", csrf },
+    cookie,
+  );
+  const id = Number(made.headers.get("location").split("/").pop());
+  // Оплачено на 30 дней вперёд (часы теста — 21.10.2026 10:00 UTC).
+  app.store.updateAccount(
+    id,
+    { paid_until: "2026-11-20T10:00:00.000Z", tariff_request: "warehouse", tariff_request_at: "x" },
+    new Date("2026-10-21T10:00:00Z"),
+  );
+
+  // Решение без CSRF не проходит.
+  const noCsrf = await app.post(`/accounts/${id}/tariffrequest`, { decision: "approve" }, cookie);
+  assert.notEqual(noCsrf.status, 303);
+  assert.equal(app.store.account(id).tariff, "start");
+
+  const ok = await app.post(`/accounts/${id}/tariffrequest`, { decision: "approve", csrf }, cookie);
+  assert.equal(ok.status, 303);
+  const a = app.store.account(id);
+  assert.equal(a.tariff, "warehouse");
+  assert.equal(a.price, 12900);
+  assert.equal(a.tariff_request, null);
+  assert.equal(a.tariff_adjust, 7000, "(12 900 − 5 900) × 30 дн. / 30");
+  assert.ok(app.store.auditOf(`account:${id}`).some((r) => r.action === "account_tariff_approve"));
+
+  // Повторное «подтвердить» той же просьбы — отказ, разница не удваивается.
+  const again = await app.post(
+    `/accounts/${id}/tariffrequest`,
+    { decision: "approve", csrf },
+    cookie,
+  );
+  assert.equal(again.status, 400);
+  assert.equal(app.store.account(id).tariff_adjust, 7000);
+});
+
+test("просьба о тарифе: отклонить — тариф и разница не трогаются", async (t) => {
+  const app = await start();
+  t.after(app.stop);
+  const { cookie } = await app.login();
+  const csrf = await app.csrf(cookie);
+  const made = await app.post(
+    "/accounts",
+    { kind: "warehouse", name: "Склад", email: "w@example.ru", tariff: "start", csrf },
+    cookie,
+  );
+  const id = Number(made.headers.get("location").split("/").pop());
+  app.store.updateAccount(
+    id,
+    { tariff_request: "operator", tariff_request_at: "x" },
+    new Date("2026-10-21T10:00:00Z"),
+  );
+  await app.post(`/accounts/${id}/tariffrequest`, { decision: "reject", csrf }, cookie);
+  const a = app.store.account(id);
+  assert.equal(a.tariff, "start");
+  assert.equal(a.tariff_request, null);
+  assert.equal(a.tariff_adjust, 0);
+});

@@ -23,7 +23,15 @@ describe("readPlan", () => {
       paidUntil: null,
       invoice: { number: "UK-2026-0001", amount: 6900, dueAt: "2027-01-18T10:00:00.000Z" },
       request: { tariff: "operator", at: "2026-11-18T10:00:00.000Z" },
+      adjust: 0,
     });
+  });
+
+  it("разница за смену тарифа: число округляется, не число — ноль", () => {
+    const base = { tariff: "warehouse", state: "paid" };
+    expect(readPlan({ ...base, adjust: -1200.4 })?.adjust).toBe(-1200);
+    expect(readPlan({ ...base, adjust: "9999" })?.adjust).toBe(0);
+    expect(readPlan({ ...base })?.adjust).toBe(0);
   });
 
   it("чужая форма — null, а не выдуманный тариф", () => {

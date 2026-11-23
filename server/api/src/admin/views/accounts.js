@@ -10,6 +10,8 @@ const audit = require("./audit");
 const { invoicesCard } = require("./invoices");
 
 const { esc, when, day, money, hidden, errorBox, opt, head, stat, icon } = b;
+/** «+1 200 ₽» / «−300 ₽» / «0 ₽»: доплата или зачёт за смену тарифа. */
+const rubSigned = (n) => `${n > 0 ? "+" : n < 0 ? "−" : ""}${money(Math.abs(n))}`;
 const KIND = { warehouse: "Склад", seller: "Селлер" };
 const SOURCE = { admin: "Админка", lead: "Заявка", cabinet: "Сам в кабинете" };
 const badge = (state) => `<span class="badge ${state}">${plans.STATE_TITLES[state]}</span>`;
@@ -213,7 +215,18 @@ function tariffForm(session, a, managers) {
       a.tariff_request
         ? `<div class="note warn"><strong>Склад просит тариф «${esc(
             plans.PLANS[a.tariff_request]?.title ?? a.tariff_request,
-          )}»</strong><p>Из кабинета, ${day(a.tariff_request_at)}. Сохраните тариф — просьба погаснет.</p></div>`
+          )}»</strong><p>Из кабинета, ${day(a.tariff_request_at)}. Подтвердите — тариф сменится, разница за оставшиеся оплаченные дни (${rubSigned(
+            plans.switchAdjustment(a, a.tariff_request, new Date().toISOString()),
+          )}) войдёт в следующий счёт. Сохранение формы ниже тоже гасит просьбу, но разницу не считает.</p>
+          <div class="actions">
+            <button class="soft" formaction="/accounts/${a.id}/tariffrequest" name="decision" value="approve">Подтвердить</button>
+            <button class="soft" formaction="/accounts/${a.id}/tariffrequest" name="decision" value="reject">Отклонить</button>
+          </div></div>`
+        : ""
+    }
+    ${
+      a.tariff_adjust
+        ? `<div class="note"><strong>Разница за смену тарифа: ${rubSigned(a.tariff_adjust)}</strong><p>Войдёт в следующий счёт одной строкой.</p></div>`
         : ""
     }
     <div class="row">

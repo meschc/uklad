@@ -69,6 +69,13 @@ function letter(inv, a, payee) {
       `Здравствуйте!`,
       ``,
       `Выставили счёт № ${inv.number} от ${day(inv.issued_at)} на ${rub(inv.amount)}.`,
+      ...(inv.adjustment
+        ? [
+            `В сумму входит ${inv.adjustment > 0 ? "доплата" : "зачёт"} за смену тарифа: ${
+              inv.adjustment > 0 ? "+" : "−"
+            }${rub(Math.abs(inv.adjustment))}.`,
+          ]
+        : []),
       `Оплатите до ${day(inv.due_at)}, чтобы кабинет работал без перерыва.`,
       ``,
       `Получатель: ${payee.name}, плательщик НПД`,
@@ -117,11 +124,22 @@ function createInvoices({ db, payee = null, send = null, log = console }) {
       sent_at     TEXT,
       paid_at     TEXT,
       closed_by   INTEGER,
-      period_from TEXT
+      period_from TEXT,
+      adjustment  INTEGER NOT NULL DEFAULT 0
     );
     CREATE UNIQUE INDEX IF NOT EXISTS invoices_one_open
       ON invoices(account_id) WHERE status = 'issued';
   `);
+
+  // Счета, созданные до разницы за смену тарифа, колонки не имеют.
+  if (
+    !db
+      .prepare(`PRAGMA table_info(invoices)`)
+      .all()
+      .some((c) => c.name === "adjustment")
+  ) {
+    db.exec(`ALTER TABLE invoices ADD COLUMN adjustment INTEGER NOT NULL DEFAULT 0`);
+  }
 
   const q = {
     open: db.prepare(
@@ -133,8 +151,8 @@ function createInvoices({ db, payee = null, send = null, log = console }) {
     openOf: db.prepare(`SELECT * FROM invoices WHERE account_id = ? AND status = 'issued'`),
     countYear: db.prepare(`SELECT COUNT(*) AS n FROM invoices WHERE number LIKE ?`),
     insert: db.prepare(
-      `INSERT INTO invoices (number, account_id, issued_at, due_at, months, amount, period_from)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO invoices (number, account_id, issued_at, due_at, months, amount, period_from, adjustment)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     ),
     forPeriod: db.prepare(`SELECT 1 FROM invoices WHERE account_id = ? AND period_from = ?`),
     unsent: db.prepare(`SELECT * FROM invoices WHERE status = 'issued' AND sent_at IS NULL`),
@@ -146,6 +164,7 @@ function createInvoices({ db, payee = null, send = null, log = console }) {
       `SELECT * FROM accounts WHERE kind = 'warehouse' AND status = 'active' AND archived_at IS NULL`,
     ),
     account: db.prepare(`SELECT * FROM accounts WHERE id = ?`),
+    setAdjust: db.prepare(`UPDATE accounts SET tariff_adjust = ? WHERE id = ?`),
     setPaid: db.prepare(`UPDATE accounts SET paid_until = ?, updated_at = ? WHERE id = ?`),
     payment: db.prepare(
       `INSERT INTO payments (account_id, at, months, amount, paid_until, note) VALUES (?, ?, ?, ?, ?, ?)`,
@@ -164,9 +183,16 @@ function createInvoices({ db, payee = null, send = null, log = console }) {
     const number = `UK-${year}-${String(seq).padStart(4, "0")}`;
     const end = coveredUntil(a);
     const due = end && end > nowIso ? end : new Date(Date.parse(nowIso) + 3 * DAY).toISOString();
+    // Разница за смену тарифа входит в этот счёт один раз. Счёт не бывает
+    // нулевым и отрицательным: зачёт больше счёта доедет до следующего.
+    const base = price * months;
+    const owed = q.account.get(a.id)?.tariff_adjust ?? 0;
+    const adjustment = Math.max(owed, 1 - base);
     const id = Number(
-      q.insert.run(number, a.id, nowIso, due, months, price * months, end).lastInsertRowid,
+      q.insert.run(number, a.id, nowIso, due, months, base + adjustment, end, adjustment)
+        .lastInsertRowid,
     );
+    if (adjustment) q.setAdjust.run(owed - adjustment, a.id);
     return { invoice: q.byId.get(id) };
   });
 
@@ -224,12 +250,17 @@ function createInvoices({ db, payee = null, send = null, log = console }) {
     return { invoice: q.byId.get(id), account: a, paidUntil };
   });
 
-  function cancel(id, adminId) {
+  // Отменённый счёт возвращает разницу аккаунту: она уйдёт в следующий.
+  const cancel = inTx(db, (id, adminId) => {
     const changed = q.close.run("cancelled", null, adminId ?? null, id).changes;
-    return changed
-      ? { invoice: q.byId.get(id) }
-      : { error: "Отменить можно только неоплаченный счёт." };
-  }
+    if (!changed) return { error: "Отменить можно только неоплаченный счёт." };
+    const inv = q.byId.get(id);
+    if (inv.adjustment) {
+      const a = q.account.get(inv.account_id);
+      q.setAdjust.run((a.tariff_adjust ?? 0) + inv.adjustment, a.id);
+    }
+    return { invoice: inv };
+  });
 
   /** Поиск по строке выписки: номер счёта, сумма или название склада. */
   function find(needle) {
@@ -246,6 +277,7 @@ function createInvoices({ db, payee = null, send = null, log = console }) {
   return {
     ready: Boolean(payee),
     open: () => q.open.all(),
+    openOf: (accountId) => q.openOf.get(accountId) ?? null,
     of: (accountId) => q.of.all(accountId),
     byId: (id) => q.byId.get(id),
     issue: (a, nowIso) => issue(a, nowIso),
