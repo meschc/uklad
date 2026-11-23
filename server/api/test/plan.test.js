@@ -168,3 +168,65 @@ test("открытый счёт виден кабинету номером, су
     dueAt: r.invoice.due_at,
   });
 });
+
+test("просьбу можно снять; решённой (уже нет) или чужой отмены не бывает", async () => {
+  const s = setup({ account: { org_id: "org-1" } });
+  await s.call("POST", "plan/cancel");
+  assert.equal(s.sent[0].status, 409, "снимать нечего");
+  await s.call("POST", "plan/request", { tariff: "operator" });
+  await s.call("POST", "plan/cancel");
+  assert.equal(s.sent[2].status, 200);
+  assert.equal(s.sent[2].body.plan.request, null);
+  assert.equal(s.store.account(s.id).tariff_request, null);
+  // Админка подтвердила — просьбы нет, «отмена» тариф назад не вернёт.
+  s.store.updateAccount(s.id, { tariff: "operator" }, NOW);
+  await s.call("POST", "plan/cancel");
+  assert.equal(s.sent[3].status, 409);
+  assert.equal(s.store.account(s.id).tariff, "operator");
+});
+
+test("отмена просьбы — только владелец", async () => {
+  const s = setup({ account: { org_id: "org-1" }, perms: ["staff.manage"] });
+  await s.call("POST", "plan/cancel");
+  assert.equal(s.sent[0].status, 403);
+});
+
+test("разница за смену тарифа: в следующем счёте один раз, туда и обратно — ноль", () => {
+  const plans = require("../src/admin/plans");
+  const s = setup({
+    account: { org_id: "org-1", price: 5900, paid_until: "2026-12-18T10:00:00.000Z" },
+  });
+  const nowIso = NOW.toISOString();
+  const up = plans.switchAdjustment(s.store.account(s.id), "warehouse", nowIso);
+  assert.equal(up, 7000);
+  const back = plans.switchAdjustment(
+    { ...s.store.account(s.id), tariff: "warehouse", price: 12900 },
+    "start",
+    nowIso,
+  );
+  assert.equal(up + back, 0, "смена туда и обратно в один момент сходится");
+  // Пробный период не оплачен — разницы нет; договорная цена — тоже.
+  assert.equal(
+    plans.switchAdjustment({ tariff: "start", price: 5900, paid_until: null }, "operator", nowIso),
+    0,
+  );
+  assert.equal(plans.switchAdjustment(s.store.account(s.id), "custom", nowIso), 0);
+
+  // Счёт: разница входит одной строкой, аккаунт обнуляется, отмена возвращает.
+  s.store.updateAccount(s.id, { tariff_adjust: 7000, tariff: "warehouse", price: 12900 }, NOW);
+  const bills = createInvoices({ db: s.db, log: { error() {} } });
+  const r = bills.issue(s.store.account(s.id), nowIso);
+  assert.equal(r.invoice.amount, 12900 + 7000);
+  assert.equal(r.invoice.adjustment, 7000);
+  assert.equal(s.store.account(s.id).tariff_adjust, 0);
+  bills.cancel(r.invoice.id, null);
+  assert.equal(s.store.account(s.id).tariff_adjust, 7000, "отменённый счёт вернул разницу");
+  const again = bills.issue(s.store.account(s.id), nowIso);
+  assert.equal(again.invoice.amount, 19900);
+  // Зачёт больше счёта: счёт не нулевой, остаток едет дальше.
+  bills.cancel(again.invoice.id, null);
+  s.store.updateAccount(s.id, { tariff_adjust: -50000 }, NOW);
+  const credit = bills.issue(s.store.account(s.id), nowIso);
+  assert.equal(credit.invoice.amount, 1);
+  assert.equal(s.store.account(s.id).tariff_adjust, -50000 + 12899);
+});

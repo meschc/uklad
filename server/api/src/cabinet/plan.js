@@ -15,6 +15,7 @@
  * Маршруты (право `org.manage` — «Компания: настройки, оплата, удаление»):
  *   GET  /api/company/plan          — { ok, plan } или { ok, plan: null }
  *   POST /api/company/plan/request  — { tariff } → { ok, plan }
+ *   POST /api/company/plan/cancel   — снять свою нерешённую просьбу → { ok, plan }
  *
  * Любому вошедшему сотруднику компании (стол и экраны решают, что показать):
  *   GET  /api/company/features      — { ok, tariff, features, limits, payment } или
@@ -49,6 +50,8 @@ function planView(a, invoice, nowIso) {
       ? { number: invoice.number, amount: invoice.amount, dueAt: invoice.due_at }
       : null,
     request: a.tariff_request ? { tariff: a.tariff_request, at: a.tariff_request_at } : null,
+    // Разница за уже решённую смену тарифа: войдёт в следующий счёт.
+    adjust: a.tariff_adjust ?? 0,
   };
 }
 
@@ -165,6 +168,26 @@ function createPlan({
   }
 
   /**
+   * Склад передумал, пока просьбу не решили. Решённой просьбы уже нет — тариф
+   * назад меняет новая просьба, а не отмена (иначе «отмена» молча вернула бы
+   * тариф без счёта и без разницы).
+   */
+  async function cancel(req, res) {
+    const out = await asOwner(req, async (a) => {
+      if (!a) return { status: 404 };
+      if (!a.tariff_request) return { status: 409 };
+      const t = now();
+      store.updateAccount(a.id, { tariff_request: null, tariff_request_at: null }, t);
+      store.log(t, null, "account_tariff_request_cancel", `account:${a.id}`, {
+        просил: a.tariff_request,
+      });
+      return { plan: view(store.account(a.id)) };
+    });
+    if (out.status) return send(res, out.status, { ok: false });
+    return send(res, 200, { ok: true, plan: out.plan });
+  }
+
+  /**
    * Функции и лимиты тарифа с ручными правками из карточки админки и
    * состояние оплаты. Только «да/нет» и числа: цены и счёт — владельцу (`get`).
    */
@@ -188,6 +211,7 @@ function createPlan({
     "GET /api/company/features": features,
     "GET /api/company/plan": get,
     "POST /api/company/plan/request": request,
+    "POST /api/company/plan/cancel": cancel,
   };
 
   /** Обработчик маршрутов. `false` — маршрут не наш. */

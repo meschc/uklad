@@ -62,6 +62,7 @@ const ACCOUNT_FIELDS = [
   "org_id",
   "tariff_request",
   "tariff_request_at",
+  "tariff_adjust",
 ];
 
 function adminStore(db) {
@@ -156,6 +157,9 @@ function adminStore(db) {
     // Склад попросил другой тариф из кабинета; гасится сохранением тарифа.
     tariff_request: "TEXT",
     tariff_request_at: "TEXT",
+    // Разница за смену тарифа, ₽ (плюс — доплата, минус — зачёт): уходит в
+    // следующий счёт одной строкой и обнуляется (`invoices.issue`).
+    tariff_adjust: "INTEGER NOT NULL DEFAULT 0",
   });
   // Таблицы заявок создаёт db.js; в тестах админки их может не быть.
   const hasLeads = db.prepare(`SELECT 1 FROM sqlite_master WHERE name = 'leads'`).get();

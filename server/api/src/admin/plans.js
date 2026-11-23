@@ -78,6 +78,25 @@ function addMonths(iso, months) {
   return d.toISOString();
 }
 
+const DAY = 86_400_000;
+
+/**
+ * Разница за смену тарифа посреди оплаченного периода, целых ₽: плюс —
+ * доплата, минус — зачёт. Считается за оставшиеся оплаченные дни по суточной
+ * ставке (цена в месяц / 30), поэтому смена «туда и обратно» в один момент
+ * сходится к нулю. Пробный период не оплачен — разницы нет. Нет цены у любого
+ * из тарифов (договорная) — тоже ноль: разницу тогда ставит человек.
+ */
+function switchAdjustment(account, toTariff, nowIso) {
+  const until = account.paid_until;
+  if (!until || until <= nowIso) return 0;
+  const from = account.price ?? PLANS[account.tariff]?.price ?? null;
+  const to = PLANS[toTariff]?.price ?? null;
+  if (!from || !to) return 0;
+  const days = Math.ceil((Date.parse(until) - Date.parse(nowIso)) / DAY);
+  return Math.round(((to - from) * days) / 30);
+}
+
 function parseJson(text) {
   try {
     const v = text ? JSON.parse(text) : {};
@@ -142,6 +161,7 @@ module.exports = {
   TRIAL_MONTHS,
   STATE_TITLES,
   addMonths,
+  switchAdjustment,
   parseJson,
   effectiveFeatures,
   effectiveLimits,

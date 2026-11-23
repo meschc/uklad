@@ -51,6 +51,13 @@ export const ru = {
   "plan.err.network": "Не удалось узнать тариф. Обновите страницу.",
   "plan.err.forbidden": "Тариф и оплату видит владелец компании.",
   "plan.err.noAccount": "Тариф ещё не назначен. Напишите нам в чат.",
+  "plan.err.decided":
+    "Просьбу уже решили: тариф посмотрите выше. Чтобы вернуть прежний, попросите его заново.",
+  "plan.terms":
+    "Тариф меняется после подтверждения Уклада, не сразу. Разница за оставшиеся оплаченные дни войдёт в следующий счёт: доплата или зачёт. Пробный период бесплатный — разницы за него нет.",
+  "plan.withdraw": "Отозвать просьбу",
+  "plan.adjust.more": "За смену тарифа в следующий счёт войдёт доплата {sum}.",
+  "plan.adjust.less": "За смену тарифа следующий счёт уменьшится на {sum}.",
   "plan.readOnly":
     "Кабинет только для просмотра, пока счёт не оплачен. Столы работают, сотрудники отгружают как обычно.",
   "plan.readOnlySoon":
@@ -156,6 +163,13 @@ export const en: Record<keyof typeof ru, string> = {
   "plan.err.network": "Could not load the plan. Refresh the page.",
   "plan.err.forbidden": "The plan and billing are visible to the company owner.",
   "plan.err.noAccount": "No plan assigned yet. Message us in chat.",
+  "plan.err.decided":
+    "The request has already been decided: see the plan above. To go back, ask for the previous one again.",
+  "plan.terms":
+    "The plan changes after Uklad confirms it, not instantly. The difference for the remaining paid days goes into your next invoice: a surcharge or a credit. The free trial is not charged, so it has no difference.",
+  "plan.withdraw": "Withdraw request",
+  "plan.adjust.more": "The next invoice will include a surcharge of {sum} for the plan change.",
+  "plan.adjust.less": "The next invoice will be {sum} lower because of the plan change.",
   "plan.readOnly":
     "The cabinet is view-only until the invoice is paid. Workstations keep working, staff ship as usual.",
   "plan.readOnlySoon":

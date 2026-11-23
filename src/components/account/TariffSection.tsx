@@ -52,6 +52,7 @@ export function TariffSection() {
   const [plan, setPlan] = useState<CompanyPlan | null>(null);
   const load = useCommand(planRepository.get);
   const ask = useCommand(planRepository.request, { exclusive: true });
+  const cancel = useCommand(planRepository.cancelRequest, { exclusive: true });
 
   useEffect(() => {
     if (!hasCabinetServer) return;
@@ -85,6 +86,18 @@ export function TariffSection() {
       setPlan(r.data);
       setPick(null);
     }
+  };
+
+  // Снять просьбу: если её уже решили, сервер ответит отказом, а план
+  // перечитаем — кабинет покажет то, что есть на самом деле.
+  const withdraw = async () => {
+    const r = await cancel.run();
+    if (r.ok) {
+      setPlan(r.data);
+      return;
+    }
+    const fresh = await load.run();
+    if (fresh.ok) setPlan(fresh.data);
   };
 
   return (
@@ -137,6 +150,9 @@ export function TariffSection() {
         })}
       </div>
 
+      {pick && pick !== current && hasCabinetServer && (
+        <p className="px-1 text-xs text-muted-foreground">{t("plan.terms")}</p>
+      )}
       {pick && pick !== current && (
         <div className="flex flex-wrap items-center gap-2">
           <Button size="sm" onClick={() => void confirm()} disabled={ask.pending}>
@@ -151,12 +167,23 @@ export function TariffSection() {
         </div>
       )}
       {plan?.request && (
-        <p className="px-1 text-xs text-muted-foreground">
-          {t("plan.asked", {
-            plan: t(`tariff.${plan.request.tariff}`),
-            date: day(plan.request.at),
-          })}
-        </p>
+        <div className="flex flex-wrap items-center gap-2 px-1">
+          <p className="text-xs text-muted-foreground">
+            {t("plan.asked", {
+              plan: t(`tariff.${plan.request.tariff}`),
+              date: day(plan.request.at),
+            })}
+          </p>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => void withdraw()}
+            disabled={cancel.pending}
+          >
+            {t("plan.withdraw")}
+          </Button>
+          {cancel.error && <FormError>{t(cancel.error)}</FormError>}
+        </div>
       )}
 
       <div>
@@ -233,6 +260,13 @@ function PlanStatus({
             {t("plan.readOnlySoon", { date: day(plan.readOnlyAt) })}
           </p>
         )
+      )}
+      {plan.adjust !== 0 && (
+        <p className="text-muted-foreground">
+          {t(plan.adjust > 0 ? "plan.adjust.more" : "plan.adjust.less", {
+            sum: rub(Math.abs(plan.adjust)),
+          })}
+        </p>
       )}
       {plan.invoice && (
         <p className="text-muted-foreground">

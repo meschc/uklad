@@ -20,6 +20,8 @@ export interface CompanyPlan {
   paidUntil: string | null;
   invoice: { number: string; amount: number; dueAt: string } | null;
   request: { tariff: TariffId; at: string } | null;
+  /** Разница за уже решённую смену тарифа, ₽: плюс — доплата, минус — зачёт; войдёт в следующий счёт. */
+  adjust: number;
 }
 
 const TARIFFS: TariffId[] = ["start", "warehouse", "operator"];
@@ -48,6 +50,7 @@ export function readPlan(raw: unknown): CompanyPlan | null {
         ? { number: inv.number, amount: inv.amount, dueAt: str(inv.dueAt) ?? "" }
         : null,
     request: req && isTariffId(req.tariff) ? { tariff: req.tariff, at: str(req.at) ?? "" } : null,
+    adjust: typeof p.adjust === "number" && Number.isFinite(p.adjust) ? Math.round(p.adjust) : 0,
   };
 }
 
@@ -121,6 +124,18 @@ export const planRepository = {
     const { status, body } = res.data;
     if (status === 403) return fail("plan.err.forbidden");
     if (status === 404) return fail("plan.err.noAccount");
+    if (status !== 200) return fail("plan.err.network");
+    return ok(readPlan(body.plan));
+  },
+
+  /** Снять свою просьбу, пока её не решили. Решённой уже нет — тогда 409. */
+  cancelRequest: async (): Promise<Result<CompanyPlan | null>> => {
+    if (!hasCabinetServer) return ok(null);
+    const res = await attempt(() => apiRequest("POST", "/company/plan/cancel"), "plan.err.network");
+    if (!res.ok) return res;
+    const { status, body } = res.data;
+    if (status === 403) return fail("plan.err.forbidden");
+    if (status === 409) return fail("plan.err.decided");
     if (status !== 200) return fail("plan.err.network");
     return ok(readPlan(body.plan));
   },

@@ -402,6 +402,46 @@ function createRoutes({ store, cfg, invoices }) {
           if (Object.keys(changed).length) store.log(t, by, "account_tariff", target, changed);
           return back();
         }
+        case "tariffrequest": {
+          // Решение по просьбе склада из кабинета (`cabinet/plan.js`): тариф
+          // меняется только здесь, человеком. Разница за оставшиеся оплаченные
+          // дни уходит в следующий счёт (`invoices.issue`), а не в этот же.
+          const want = a.tariff_request;
+          if (!want) return fail("Просьбы уже нет: склад отменил её или её решили.");
+          const decision = form.get("decision");
+          if (decision === "reject") {
+            store.updateAccount(a.id, { tariff_request: null, tariff_request_at: null }, t);
+            store.log(t, by, "account_tariff_reject", target, { просил: want });
+            return back();
+          }
+          if (decision !== "approve" || !plans.PLANS[want]) return fail("Неизвестное решение.");
+          // Открытый счёт выставлен по старому тарифу: пока он висит, менять
+          // тариф нельзя — иначе склад заплатит по одной цене, а получит другую.
+          const open = invoices.openOf(a.id);
+          if (open) {
+            return fail(
+              `Есть неоплаченный счёт № ${open.number}: оплатите или отмените его, потом подтверждайте.`,
+            );
+          }
+          const adjust = plans.switchAdjustment(a, want, nowIso);
+          store.updateAccount(
+            a.id,
+            {
+              tariff: want,
+              price: plans.PLANS[want].price,
+              tariff_adjust: (a.tariff_adjust ?? 0) + adjust,
+              tariff_request: null,
+              tariff_request_at: null,
+            },
+            t,
+          );
+          store.log(t, by, "account_tariff_approve", target, {
+            было: a.tariff,
+            стало: want,
+            "разница, ₽": adjust,
+          });
+          return back();
+        }
         case "extend": {
           const months = Number(form.get("months"));
           const amount = intOrNull(form.get("amount"));
