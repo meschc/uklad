@@ -3,13 +3,17 @@ import { generateBoxBarcode, generatePalletBarcode } from "../barcode";
 import { addressKey } from "../address";
 import { allCells } from "../placement";
 import { overageDisputeId } from "../disputes";
+import { isDecider, resolveDoc } from "../docFlow";
+import { targetCode } from "../packing";
 import type {
   Box,
   CellAddress,
   Dispute,
   ExpectedShipment,
   ExpectedShipmentLine,
+  DocRecord,
   FulfillmentRequest,
+  OutboundBox,
   Pallet,
   Product,
   ReceivingEvent,
@@ -83,6 +87,10 @@ export interface SeededHistory {
   palletSeq: number;
   requests: FulfillmentRequest[];
   shipments: Shipment[];
+  /** Короба отгрузки: два уехавших и один открытый — сортировка и погрузка не пусты. */
+  outboundBoxes: OutboundBox[];
+  /** Тронутые и подтверждённые документы: лист приёмки и накладные. */
+  docRecords: DocRecord[];
 }
 
 /**
@@ -359,6 +367,13 @@ export function seedHistory(
     }
   }
 
+  const outboundBoxes = seedOutbound(requests, shipments, boxes, staffId(pickers));
+  const docRecords = seedDocRecords(
+    { warehouse, products, requests, shipments, expectedShipments, receivingEvents, boxes },
+    staff,
+    now,
+  );
+
   return {
     expectedShipments,
     disputes,
@@ -369,7 +384,115 @@ export function seedHistory(
     palletSeq,
     requests,
     shipments,
+    outboundBoxes,
+    docRecords,
   };
+}
+
+/**
+ * Короба отгрузки: товар в коробе — тот же, что собран по заявкам, поэтому
+ * заявки получают `toteId` и `packedAt` (книга `ledger.ts` считает собранное
+ * один раз — по коробу). Два последних рейса уже уехали, собранное по
+ * сегодняшнему назначению упаковано и ждёт погрузки. Генератор случайных
+ * чисел не трогаем: остальная история не сдвигается.
+ */
+function seedOutbound(
+  requests: FulfillmentRequest[],
+  shipments: Shipment[],
+  boxes: Box[],
+  packer: string | undefined,
+): OutboundBox[] {
+  const tote = boxes[0]?.id;
+  if (!tote) return [];
+  const by = packer ? [packer] : [];
+  const pack = (
+    rs: FulfillmentRequest[],
+    destination: string,
+    at: number,
+    shipment?: Shipment,
+  ): OutboundBox | null => {
+    const lines = new Map<string, number>();
+    for (const r of rs) {
+      if (!r.pickedQty) continue;
+      lines.set(r.productId, (lines.get(r.productId) ?? 0) + r.pickedQty);
+      r.toteId = tote;
+      r.packedAt = at;
+    }
+    if (!lines.size) return null;
+    return {
+      id: uid("out"),
+      code: targetCode(destination),
+      lines: [...lines].map(([productId, qty]) => ({ productId, qty })),
+      requestIds: rs.map((r) => r.id),
+      packedBy: by,
+      createdAt: at,
+      updatedAt: at,
+      shipmentId: shipment?.id,
+      shippedAt: shipment?.shippedAt,
+    };
+  };
+  const out: OutboundBox[] = [];
+  for (const shp of shipments.slice(-2)) {
+    const rs = requests.filter((r) => shp.requestIds.includes(r.id));
+    const box = pack(rs, shp.destination, shp.shippedAt - 3 * 3_600_000, shp);
+    if (box) out.push(box);
+  }
+  const ready = requests.filter((r) => r.status === "done" && r.pickedQty && !r.packedAt);
+  const dest = ready[0]?.note;
+  if (dest) {
+    const box = pack(
+      ready.filter((r) => r.note === dest),
+      dest,
+      Math.max(...ready.map((r) => r.updatedAt)),
+    );
+    if (box) out.push(box);
+  }
+  return out;
+}
+
+/**
+ * Документы, которых уже коснулись: накладная последнего рейса подтверждена
+ * старшим (бумага — снимок), у предпоследнего правили машину и пломбу, лист
+ * приёмки закрытой поставки подтверждён. Остальное — черновики «на лету».
+ */
+function seedDocRecords(
+  src: Parameters<typeof resolveDoc>[2],
+  staff: StaffMember[],
+  now: number,
+): DocRecord[] {
+  const senior = staff.find((m) => isDecider(m, null, false));
+  const records: DocRecord[] = [];
+  const confirm = (kind: DocRecord["kind"], sourceId: string, at: number) => {
+    const snapshot = resolveDoc(kind, sourceId, src);
+    if (!snapshot || !senior) return;
+    records.push({
+      id: uid("doc"),
+      kind,
+      sourceId,
+      status: "confirmed",
+      edits: {},
+      updatedAt: at,
+      confirmedAt: at,
+      confirmedBy: senior.id,
+      snapshot,
+    });
+  };
+  const last = src.shipments.at(-1);
+  const prev = src.shipments.at(-2);
+  if (last) confirm("shipment", last.id, last.shippedAt + 3_600_000);
+  if (prev && resolveDoc("shipment", prev.id, src)) {
+    records.push({
+      id: uid("doc"),
+      kind: "shipment",
+      sourceId: prev.id,
+      status: "draft",
+      edits: { seals: "№ 04817", comment: "Сверено при погрузке" },
+      updatedAt: prev.shippedAt + 1_800_000,
+    });
+  }
+  const closed = src.expectedShipments.filter((x) => x.status === "closed").at(-1);
+  if (closed) confirm("receiving", closed.id, now - 2 * 86_400_000);
+  return records;
 }
 
 /**
@@ -437,6 +560,8 @@ function empty(): SeededHistory {
     palletSeq: 0,
     requests: [],
     shipments: [],
+    outboundBoxes: [],
+    docRecords: [],
   };
 }
 

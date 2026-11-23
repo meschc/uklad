@@ -36,10 +36,7 @@ const EMPTY_BY_DESIGN: Record<string, string> = {
  * споры входят в книгу товара (`ledger.ts`), поэтому сеять их надо вместе с
  * остатками и проверкой `stock.invariant`, а не «для вида».
  */
-const GAPS: Record<string, string> = {
-  docRecords: "нет тронутых и подтверждённых документов: накладные только черновики",
-  outboundBoxes: "нет коробов отгрузки: сортировка и погрузка пусты",
-};
+const GAPS: Record<string, string> = {};
 const KNOWN_EMPTY = { ...EMPTY_BY_DESIGN, ...GAPS };
 
 function filled(value: unknown): boolean {
@@ -90,10 +87,42 @@ describe("покрытие посева", () => {
       tasks: s.tasks,
       devices: s.devices,
       staffEvents: s.staffEvents,
+      outboundBoxes: s.outboundBoxes,
+      docRecords: s.docRecords,
     };
-    // Документы и короба отгрузки — в `GAPS` выше.
     const blank = Object.keys(domains).filter((k) => !filled(domains[k]));
     expect(blank, `в демо пусто: ${blank.join(", ")}`).toEqual([]);
+  });
+});
+
+describe("короба отгрузки и документы в посеве", () => {
+  it("товар в коробе — тот же, что собран по заявкам, и считается один раз", async () => {
+    const { useEditor } = await freshStore();
+    const s = useEditor.getState();
+    expect(s.outboundBoxes.some((b) => b.shipmentId)).toBe(true);
+    expect(s.outboundBoxes.some((b) => !b.shipmentId)).toBe(true);
+    for (const b of s.outboundBoxes) {
+      const reqs = s.requests.filter((r) => b.requestIds.includes(r.id));
+      expect(reqs.length).toBe(b.requestIds.length);
+      // Заявка в коробе помнит тару: иначе книга посчитает собранное дважды.
+      for (const r of reqs) expect(r.toteId && r.packedAt).toBeTruthy();
+      const want = new Map<string, number>();
+      for (const r of reqs)
+        want.set(r.productId, (want.get(r.productId) ?? 0) + (r.pickedQty ?? 0));
+      for (const l of b.lines) expect(l.qty).toBe(want.get(l.productId));
+    }
+  });
+
+  it("подтверждённый документ хранит снимок и подписавшего", async () => {
+    const { useEditor } = await freshStore();
+    const s = useEditor.getState();
+    const confirmed = s.docRecords.filter((r) => r.status === "confirmed");
+    expect(confirmed.length).toBeGreaterThan(0);
+    expect(s.docRecords.some((r) => r.status === "draft")).toBe(true);
+    for (const r of confirmed) {
+      expect(r.snapshot).toBeTruthy();
+      expect(r.confirmedBy).toBeTruthy();
+    }
   });
 });
 
