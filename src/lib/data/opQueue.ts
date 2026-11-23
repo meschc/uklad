@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from "react";
 import { apiRequest } from "./api";
 import { readLocal, writeLocal } from "../safeStorage";
+import type { MsgKey } from "../i18n";
 
 /**
  * Очередь операций стола (миграция 015, `server/api/src/cabinet/deskOps.js`).
@@ -142,7 +143,63 @@ type OpFlag =
   // только по бейджу старшего, `POST /desk/switch`).
   | "station"
   // Устройства стола нет ни на одном складе: работу вести негде.
-  | "warehouse";
+  | "warehouse"
+  // Работа не сошлась с тем, что уже записано (двое на одном, чужой продавец,
+  // занятое место): сервер знает причину, человеку нужно её сказать.
+  | "stock"
+  | "tote"
+  | "mixed"
+  | "busy"
+  | "taken"
+  | "closed";
+
+/**
+ * Причина отказа и что делать — вместо общего «позовите старшего». Ключ — вид
+ * работы и причина сервера; чего здесь нет, говорится общей фразой по виду.
+ */
+const REASON_KEYS: Record<string, MsgKey> = {
+  "pick:stock": "ws.opPickStock",
+  "pick:tote": "ws.opPickTote",
+  "pick:mixed": "ws.opPickMixed",
+  "pack:stock": "ws.opPackStock",
+  "pack:mixed": "ws.opPackMixed",
+  "recv:tote": "ws.opRecvTote",
+  "recv:stock": "ws.opRecvStock",
+  "recv:mixed": "ws.opRecvMixed",
+  "recv:busy": "ws.opRecvBusy",
+  "ship:stock": "ws.opShipStock",
+  "ship:mixed": "ws.opShipMixed",
+  "task:taken": "ws.opTaskTaken",
+  "task:closed": "ws.opTaskClosed",
+};
+
+const areaOf = (kind: DeskOpKind): string | null =>
+  kind.startsWith("pick_")
+    ? "pick"
+    : kind === "pack_move"
+      ? null
+      : kind.startsWith("pack_")
+        ? "pack"
+        : kind.startsWith("recv_")
+          ? "recv"
+          : kind === "ship_run" || kind === "sort_place" || kind === "sort_close"
+            ? "ship"
+            : kind === "task_take" || kind === "task_done"
+              ? "task"
+              : null;
+
+/**
+ * Сообщение с причиной для первой помеченной операции, у которой она известна.
+ * `reasons[i]` — причина операции `kinds[i]`.
+ */
+export function flagReasonKey(kinds: DeskOpKind[], reasons: string[]): MsgKey | undefined {
+  for (let i = 0; i < kinds.length; i++) {
+    const area = areaOf(kinds[i]);
+    const key = area ? REASON_KEYS[`${area}:${reasons[i]}`] : undefined;
+    if (key) return key;
+  }
+  return undefined;
+}
 
 /** Места, которые завёл сервер, с номерами ярлыков (`recv_cargo`). */
 interface CargoMade {
@@ -279,12 +336,15 @@ export function createOpQueue(deps: QueueDeps): OpQueue {
         save({ ops: rest, since: rest.length > 0 ? s.since : null });
         if (out.kind === "drop" && out.lost) deps.onLost(batch.length);
         if (out.kind === "ok") {
-          const flagged = out.results.filter((r) => r.status === "flagged" && !r.duplicate);
           const kindOf = new Map(batch.map((op) => [op.key, op.kind]));
+          // Причина и вид — парой: по ним выбирается, что сказать человеку.
+          const flagged = out.results.filter(
+            (r) => r.status === "flagged" && !r.duplicate && kindOf.has(r.key),
+          );
           if (flagged.length > 0) {
             deps.onFlagged(
               flagged.map((r) => r.reason as OpFlag),
-              flagged.flatMap((r) => kindOf.get(r.key) ?? []),
+              flagged.map((r) => kindOf.get(r.key)!),
             );
           }
         }
@@ -364,8 +424,13 @@ const randomKey = () => {
  * дошёл или сотрудник сменился). Здесь отметка уже стоит, поэтому человеку
  * нужно сказать, что на сервере её нет.
  */
-async function sayFlagged(kinds: DeskOpKind[]) {
+async function sayFlagged(kinds: DeskOpKind[], reasons: OpFlag[]) {
   const { useEditor } = await import("../store");
+  const why = flagReasonKey(kinds, reasons);
+  if (why) {
+    useEditor.getState().notify("error", why);
+    return;
+  }
   const moving = kinds.includes("pack_move");
   const packing = kinds.some((k) => k.startsWith("pack_"));
   const picking = kinds.some((k) => k.startsWith("pick_"));
@@ -424,7 +489,7 @@ export const deskOps: OpQueue = createOpQueue({
   write: (text) => writeLocal(OPS_KEY, text),
   onFlagged: (reasons, kinds) => {
     if (reasons.includes("warehouse")) void sayNoWarehouse();
-    else void sayFlagged(kinds);
+    else void sayFlagged(kinds, reasons);
     void resync();
   },
   onLost: (n) => {
