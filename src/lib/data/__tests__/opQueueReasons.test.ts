@@ -13,6 +13,9 @@ describe("flagReasonKey", () => {
     expect(flagReasonKey(["recv_unit"], ["tote"])).toBe("ws.opRecvTote");
     expect(flagReasonKey(["recv_place"], ["busy"])).toBe("ws.opRecvBusy");
     expect(flagReasonKey(["ship_run"], ["mixed"])).toBe("ws.opShipMixed");
+    // Отмену заказа после упаковки сервер называет и на сортировке, и на погрузке.
+    expect(flagReasonKey(["sort_place"], ["cancelled"])).toBe("ws.opShipCancelled");
+    expect(flagReasonKey(["ship_run"], ["cancelled"])).toBe("ws.opShipCancelled");
     expect(flagReasonKey(["task_take"], ["taken"])).toBe("ws.opTaskTaken");
   });
 
@@ -39,6 +42,7 @@ describe("flagReasonKey", () => {
       "ws.opRecvBusy",
       "ws.opShipStock",
       "ws.opShipMixed",
+      "ws.opShipCancelled",
       "ws.opTaskTaken",
       "ws.opTaskClosed",
     ] as const) {

@@ -199,3 +199,14 @@ test("списание без права начальника — только �
   assert.equal(ok.disputes[0].resolvedBy, "stf-olga");
   assert.equal(ok.disputes[0].note, "разбили");
 });
+
+test("короб с отменённым после упаковки заказом в машину не кладут (23.11)", () => {
+  const d = data();
+  d.requests[1].status = "cancelled";
+  assert.equal(applyShipRun(d, run(), "stf-ivan").flag, "cancelled");
+  // Короб без отменённого уезжает.
+  assert.equal(
+    applyShipRun(d, run({ requestIds: ["r9"], units: ["UK-OUT-9"] }), "stf-ivan").flag,
+    undefined,
+  );
+});

@@ -110,6 +110,10 @@ export function SortStation() {
         setLost(item);
         return show("warn", t("ws.sort.unlabeled", { name: item.product.name }));
       }
+      case "cancelled":
+        // Посылка в руках отменена — место её не ждёт.
+        if (pending) drop();
+        return show("error", t("ws.sort.cancelled", { code: res.code }));
       case "no_destination":
         return show("error", t("ws.sort.noDestination", { code: res.code }));
       case "dup":

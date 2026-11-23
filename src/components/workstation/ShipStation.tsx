@@ -6,6 +6,7 @@ import { workstationRepository } from "@/lib/data";
 import { groupRequestsByTarget } from "@/lib/fulfillment";
 import { parseVehicle, vehicleCode } from "@/lib/barcode";
 import {
+  cancelledIds,
   classifyLoadScan,
   expectedOutbound,
   missingOutbound,
@@ -30,6 +31,7 @@ import { ScanBanner, type BannerTone } from "./ScanBanner";
 import { useDemoHints } from "./useDemoHints";
 import { DestinationChip } from "./DestinationChip";
 import { shipmentOfPlace } from "@/lib/sorting";
+import { useNetwork } from "@/lib/useNetwork";
 import { FieldError, FormError } from "@/components/ui/field";
 import { CodeTail, CodeText } from "@/components/fulfillment/CodeTail";
 
@@ -123,6 +125,9 @@ function ShipGroup({
   const t = useT();
   const products = useEditor((s) => s.products);
   const allRequests = useEditor((s) => s.requests);
+  const cancelled = cancelledIds(allRequests);
+  // Без связи отмены с площадки не приходят: машину не отправляем вслепую.
+  const offline = useNetwork() === "offline";
   // Снять остановку вправе тот, кто решает по товару: на сервере — по роли.
   const seniorOf = useSeniorBadge();
   const outbound = useEditor((s) => s.outboundBoxes);
@@ -200,10 +205,12 @@ function ShipGroup({
     const group = units.includes(code) ? [] : shipmentOfPlace(outbound ?? [], code);
     if (group.length > 0) {
       const parcels = group.filter((b) => !b.place);
+      const gone = parcels.find((b) => b.requestIds.some((r) => cancelled.has(r)));
+      if (gone) return flash("error", t("ws.ship.placeCancelled", { code, parcel: gone.code }));
       const fit = parcels.every(
         (b) =>
           units.includes(b.code.toUpperCase()) ||
-          classifyLoadScan(outbound ?? [], ids, units, b.code).kind !== "foreign",
+          classifyLoadScan(outbound ?? [], ids, units, b.code, cancelled).kind !== "foreign",
       );
       if (!fit) return flash("error", t("ws.ship.placeForeign", { code }));
       const places = group.filter((b) => b.place).map((b) => b.code.toUpperCase());
@@ -216,7 +223,7 @@ function ShipGroup({
       signal("ok", { quiet: true });
       return show("ok", t("ws.ship.placeOk", { code, i: got, n: places.length }));
     }
-    const res = classifyLoadScan(outbound ?? [], ids, units, raw);
+    const res = classifyLoadScan(outbound ?? [], ids, units, raw, cancelled);
     switch (res.kind) {
       case "not_unit":
         return flash("error", t("ws.ship.notUnit", { code: raw }), "ws.ship.notUnit");
@@ -225,6 +232,8 @@ function ShipGroup({
         return flash("error", t("ws.ship.locked", { code: res.code }));
       case "shipped":
         return flash("error", t("ws.ship.unitShipped", { code: res.code }));
+      case "cancelled":
+        return flash("error", t("ws.ship.cancelled", { code: res.code }));
       case "foreign": {
         const dest = allRequests.find((r) => res.box.requestIds.includes(r.id))?.note?.trim();
         return flash(
@@ -397,7 +406,9 @@ function ShipGroup({
       <div>
         <Button
           size="lg"
-          disabled={!vehicle || units.length === 0 || plan.split || plan.going.length === 0}
+          disabled={
+            offline || !vehicle || units.length === 0 || plan.split || plan.going.length === 0
+          }
           className={cn(
             (short > 0 || missing.length > 0) &&
               "border-0 bg-warning-fill text-warning-foreground hover:bg-warning-fill/90",
@@ -409,6 +420,7 @@ function ShipGroup({
             ? t("ws.ship.confirmMissing", { n: staying })
             : t(short > 0 ? "ws.ship.confirmShort" : "ws.ship.finish")}
         </Button>
+        {offline && <p className="mt-2 text-sm text-muted-foreground">{t("ws.ship.offline")}</p>}
       </div>
     </section>
   );

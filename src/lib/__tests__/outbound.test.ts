@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   addToOutbound,
+  cancelledIds,
   classifyLoadScan,
   expectedOutbound,
   missingOutbound,
@@ -271,5 +272,25 @@ describe("один короб — один продавец и одно назн
     const mixed = box({ code: "UK-OUT-MIX001", requestIds: ["rT", "rS"] });
     expect(classifyLoadScan([mixed], ["rT"], [], "UK-OUT-MIX001").kind).toBe("mixed");
     expect(classifyLoadScan([mixed], ["rS"], [], "UK-OUT-MIX001").kind).toBe("mixed");
+  });
+});
+
+describe("погрузка: заказ отменили после упаковки (23.11)", () => {
+  const b = {
+    id: "o1",
+    code: "UK-OUT-TULA01",
+    requestIds: ["r1", "r2"],
+    lines: [],
+  } as unknown as OutboundBox;
+  const reqs = [
+    { id: "r1", status: "done" },
+    { id: "r2", status: "cancelled" },
+  ] as unknown as FulfillmentRequest[];
+
+  it("короб с отменённым заказом не грузят, без отмен — как обычно", () => {
+    const cancelled = cancelledIds(reqs);
+    expect([...cancelled]).toEqual(["r2"]);
+    expect(classifyLoadScan([b], ["r1"], [], "UK-OUT-TULA01", cancelled).kind).toBe("cancelled");
+    expect(classifyLoadScan([b], ["r1", "r2"], [], "UK-OUT-TULA01").kind).toBe("ok");
   });
 });

@@ -44,6 +44,12 @@ function destinationOf(box, requests) {
   return dests.size === 1 ? [...dests][0] : null;
 }
 
+/** В посылке отменённая заявка. */
+function hasCancelled(box, requests) {
+  const ids = new Set(Array.isArray(box.requestIds) ? box.requestIds : []);
+  return requests.some((r) => ids.has(r.id) && r.status === "cancelled");
+}
+
 const isClosed = (outbound, sortCode) =>
   outbound.some((b) => b.place && code(b.sortCode) === sortCode);
 
@@ -58,6 +64,8 @@ function applySortPlace(data, body) {
   // Повтор той же операции (ключ другой, суть та же) — ничего не меняем.
   if (box.sortCode && code(box.sortCode) === sortCode) return { data };
   if (box.sortCode) return { flag: "mixed" };
+  // Заказ отменили после упаковки: площадка посылку не примет (`orderCancel.js`).
+  if (hasCancelled(box, list(data.requests))) return { flag: "cancelled" };
   const dest = destinationOf(box, list(data.requests));
   if (!dest) return { flag: "bad" };
   if (destKey(dest) !== m[1] || isClosed(outbound, sortCode)) return { flag: "mixed" };
@@ -108,4 +116,8 @@ function applySortClose(data, body) {
   return { data: { ...data, outboundBoxes: [...outbound, ...places] } };
 }
 
-module.exports = { applySortClose, applySortPlace };
+module.exports = {
+  hasCancelled,
+  applySortClose,
+  applySortPlace,
+};

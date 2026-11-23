@@ -17,6 +17,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 
 const { GOODS_DECIDE, GOODS_WRITEOFF, may } = require("./deskPerms");
+const { hasCancelled } = require("./deskSort");
 
 const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 const list = (v) => (Array.isArray(v) ? v.filter(isObject) : []);
@@ -68,6 +69,11 @@ function applyShipRun(data, body, staffRef) {
     if (!isOpen && outbound.some((b) => b.shipmentId && code(b.code) === u)) {
       return { flag: "mixed" };
     }
+  }
+  // Короб с отменённым заказом не грузят: площадка его не примет, посылку
+  // несут старшему. Отдельная причина — чтобы стол сказал именно это.
+  for (const b of open) {
+    if (loaded.has(code(b.code)) && hasCancelled(b, requests)) return { flag: "cancelled" };
   }
   // Короб другого назначения или с несобранным заказом в машину не кладут.
   const readyIds = new Set(ready.map((r) => r.id));

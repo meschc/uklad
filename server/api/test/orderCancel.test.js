@@ -16,7 +16,7 @@ const { allowed } = require("../src/cabinet/connectors");
 const NOW = Date.parse("2026-11-21T10:00:00Z");
 const req = (id, over) => ({ id, source: "ozon", externalId: "1-1", status: "new", ...over });
 
-test("открытые заявки: не отменённые, не упакованные, не уехавшие", () => {
+test("открытые заявки: не отменённые и не уехавшие; упакованная — тоже открыта (23.11)", () => {
   const rs = [
     req("a", { externalId: "1-1" }),
     req("b", { externalId: "1-2", status: "done" }),
@@ -26,7 +26,7 @@ test("открытые заявки: не отменённые, не упако�
     req("f", { externalId: "9", source: "wildberries" }),
     req("g", { externalId: undefined }),
   ];
-  assert.deepEqual([...openOrders(rs, "ozon")], ["1-1", "1-2"]);
+  assert.deepEqual([...openOrders(rs, "ozon")], ["1-1", "1-2", "1-3"]);
 });
 
 test("отмены — только заявки партнёра этого подключения", () => {
@@ -45,7 +45,7 @@ test("отмены — только заявки партнёра этого п�
   );
 });
 
-test("отмена: открытые заявки заказа — «отменена», упакованную не трогаем", () => {
+test("отмена: заявки заказа — «отменена», упакованная тоже (её не пропустят сортировка и погрузка)", () => {
   const rs = [
     req("a", { externalId: "1-1", status: "in_progress" }),
     req("b", { externalId: "1-1", packedAt: 5 }),
@@ -53,12 +53,12 @@ test("отмена: открытые заявки заказа — «отмен�
     req("d", { externalId: "1-1", source: "wildberries" }),
   ];
   const out = cancelRequests(rs, "ozon", new Set(["1-1"]), NOW);
-  assert.equal(out.cancelled, 1);
+  assert.equal(out.cancelled, 2);
   assert.deepEqual(
     out.requests.map((r) => [r.id, r.status]),
     [
       ["a", "cancelled"],
-      ["b", "new"],
+      ["b", "cancelled"],
       ["c", "new"],
       ["d", "new"],
     ],

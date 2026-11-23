@@ -95,6 +95,8 @@ export const ru = {
     "В рейс нечего грузить: упакованное уже ушло или не готово. Экран обновлён: проверьте список рейса",
   "ws.opShipMixed":
     "В один рейс нельзя разные назначения или неполные заказы. Разделите рейс и повторите",
+  "ws.opShipCancelled":
+    "Заказ отменили, пока посылка была у вас. Не грузите и не сортируйте её, отдайте старшему",
   "ws.opTaskTaken": "Эту работу уже взял другой сотрудник. Выберите другую в списке",
   "ws.opTaskClosed": "Работа уже закрыта или снята. Обновите список",
   "ws.task.nobody": "Работа записывается за вошедшим по бейджу — войдите заново",
@@ -165,6 +167,7 @@ export const ru = {
   "ws.sort.parcelOk": "{code}: в место этого направления",
   "ws.sort.placed": "{code} лежит в {point}",
   "ws.sort.unknown": "Это не посылка к отгрузке: {code}",
+  "ws.sort.cancelled": "{code}: заказ отменён. Не сортируйте, отдайте посылку старшему",
   "ws.sort.noDestination": "У {code} нет одного направления. Отнесите её старшему",
   "ws.sort.pointFirst": "Сначала сканируйте посылку, потом QR места",
   "ws.sort.parcelPending": "Сначала положите {code} в место",
@@ -246,6 +249,10 @@ export const ru = {
   "ws.ship.boxOk": "Загружен {code}: {n} шт.",
   "ws.ship.boxUnits": "{n} шт.",
   "ws.ship.unitShipped": "{code} уже уехал другим рейсом",
+  "ws.ship.cancelled": "{code}: заказ отменён. Не грузите, отдайте посылку старшему",
+  "ws.ship.placeCancelled":
+    "В месте {code} отменённый заказ {parcel}. Достаньте посылку и отдайте старшему",
+  "ws.ship.offline": "Нет связи: отмены заказов не сверены. Отправьте машину, когда связь вернётся",
   "ws.ship.foreign": "{code} едет не сюда: в нём заявки на «{target}»",
   "ws.ship.waiting": "Ждут погрузки: {n}",
   "ws.ship.allLoaded": "Все короба этого назначения в машине.",
@@ -781,6 +788,8 @@ export const en: Record<keyof typeof ru, string> = {
     "Nothing to load: the packed goods have already left or are not ready. The screen is refreshed: check the run list",
   "ws.opShipMixed":
     "One run can't hold different destinations or incomplete orders. Split the run and try again",
+  "ws.opShipCancelled":
+    "The order was cancelled while you had the parcel. Do not load or sort it, hand it to the shift lead",
   "ws.opTaskTaken": "Another employee has already taken this task. Pick another one from the list",
   "ws.opTaskClosed": "The task is already closed or removed. Refresh the list",
   "ws.task.nobody": "The task is saved for whoever scanned a badge: sign in again",
@@ -850,6 +859,7 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.sort.parcelOk": "{code}: into this destination's sort point",
   "ws.sort.placed": "{code} is in {point}",
   "ws.sort.unknown": "Not a parcel to ship: {code}",
+  "ws.sort.cancelled": "{code}: order cancelled. Do not sort, hand the parcel to the shift lead",
   "ws.sort.noDestination": "{code} has no single destination. Take it to a senior",
   "ws.sort.pointFirst": "Scan the parcel first, then the sort point QR",
   "ws.sort.parcelPending": "Put {code} into a sort point first",
@@ -931,6 +941,11 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.ship.boxOk": "Loaded {code}: {n} pcs",
   "ws.ship.boxUnits": "{n} pcs",
   "ws.ship.unitShipped": "{code} already left on another trip",
+  "ws.ship.cancelled": "{code}: order cancelled. Do not load, hand the parcel to the shift lead",
+  "ws.ship.placeCancelled":
+    "Place {code} holds cancelled order {parcel}. Take the parcel out and hand it to the shift lead",
+  "ws.ship.offline":
+    "No connection: order cancellations are not checked. Send the vehicle once the connection is back",
   "ws.ship.foreign": "{code} doesn't go here: it holds requests for “{target}”",
   "ws.ship.waiting": "Still to load: {n}",
   "ws.ship.allLoaded": "Every box for this destination is on the truck.",

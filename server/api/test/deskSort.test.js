@@ -76,3 +76,11 @@ test("пустую отгрузку и кривое число мест не з�
   assert.equal(applySortClose(placed, { ...close, placeIds: [] }).flag, "bad");
   assert.equal(applySortClose(placed, { ...close, pallets: 0 }).flag, "bad");
 });
+
+test("отменённый после упаковки заказ на место сортировки не ложится (23.11)", () => {
+  const d = data();
+  d.requests[0].status = "cancelled";
+  assert.equal(applySortPlace(d, put("UK-ORD-1", KOL)).flag, "cancelled");
+  // Соседняя посылка того же направления ложится как обычно.
+  assert.ok(applySortPlace(d, put("UK-LBL-2", KOL)).data);
+});
