@@ -22,6 +22,7 @@ import { deskOps, type OpQueue } from "./opQueue";
 import { readList, storePort, type StorePort } from "./repository";
 import { attempt, fail, ok, type Result } from "./result";
 import { nowMs, uid } from "../utils";
+import { stationsFor } from "../stationSwitch";
 
 /**
  * Рабочее место и журнал сотрудника (п.0.4). Здесь появится сеть: вход по
@@ -208,6 +209,14 @@ export function createWorkstationRepository(
         // Без роли сервер не примет ни одной операции: не пускаем к работе,
         // а говорим, к кому идти.
         if (who.data && who.data.permissions === null) return fail("ws.badgeNoRole");
+        // Роль есть, но не на этот процесс: раньше стол пускал упаковщика на
+        // приёмку, а сервер потом отказывал на каждой операции (обход 15.11).
+        if (who.data) {
+          const s = port.get();
+          const dev = (s.devices ?? []).find((d) => d.id === s.thisDeviceId && !d.revokedAt);
+          const here = dev?.station ?? station;
+          if (!stationsFor(who.data.permissions).includes(here)) return fail("ws.badgeNoStation");
+        }
         const id =
           who.data && port.get().openStation(who.data.staffId, station, who.data.permissions);
         return id ? ok(id) : fail("ws.badgeUnknown");

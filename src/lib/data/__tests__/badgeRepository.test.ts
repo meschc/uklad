@@ -108,6 +108,25 @@ describe("workstationRepository: вход по бейджу на сервере"
     expect(port.get().openStation).not.toHaveBeenCalled();
   });
 
+  // Обход столов 15.11: упаковщика пускало на приёмку и сборку.
+  it("роль без права на этот процесс — не пускает на него", async () => {
+    const port = fakePort(true);
+    const repo = createWorkstationRepository(port, fakeServer());
+    expect(await repo.login("UK-STF-AAAAAAAAAAAAAAAAAAAAAA", "receiving")).toEqual({
+      ok: false,
+      error: "ws.badgeNoStation",
+    });
+    expect(port.get().openStation).not.toHaveBeenCalled();
+  });
+
+  it("на привязанном столе решает процесс стола, а не выбор на экране", async () => {
+    const port = fakePort(true, {
+      devices: [{ id: "dev-1", name: "Приёмка 1", station: "receiving", createdAt: 1 }],
+    } as never);
+    const repo = createWorkstationRepository(port, fakeServer());
+    expect((await repo.login("UK-STF-AAAAAAAAAAAAAAAAAAAAAA", "pack")).ok).toBe(false);
+  });
+
   it("бейдж из номера сотрудника на сервере не пускает", async () => {
     const port = fakePort(true);
     const repo = createWorkstationRepository(port, fakeServer());
