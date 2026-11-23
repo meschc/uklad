@@ -51,7 +51,7 @@ export function TariffSection() {
   const [pick, setPick] = useState<TariffId | null>(null);
   const [plan, setPlan] = useState<CompanyPlan | null>(null);
   const load = useCommand(planRepository.get);
-  const ask = useCommand(planRepository.request);
+  const ask = useCommand(planRepository.request, { exclusive: true });
 
   useEffect(() => {
     if (!hasCabinetServer) return;

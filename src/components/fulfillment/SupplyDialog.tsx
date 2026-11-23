@@ -49,16 +49,19 @@ export function SupplyDialog({ onClose }: { onClose: () => void }) {
 
   // Через репозиторий, а не действием стора: это шов, за которым появится
   // сервер (п.3.2.1). Ожидание и отказ рисует само окно.
-  const create = useCommand(() => {
-    const payload = lines
-      .filter((l) => l.productId && Number(l.qty) > 0)
-      .map((l) => ({
-        productId: l.productId,
-        expectedQty: Math.round(Number(l.qty)),
-      }));
-    // Источник «вручную»: поставку завёл человек, а не интеграция.
-    return fulfillmentRepository.createShipment("manual", payload, title.trim() || undefined);
-  });
+  const create = useCommand(
+    () => {
+      const payload = lines
+        .filter((l) => l.productId && Number(l.qty) > 0)
+        .map((l) => ({
+          productId: l.productId,
+          expectedQty: Math.round(Number(l.qty)),
+        }));
+      // Источник «вручную»: поставку завёл человек, а не интеграция.
+      return fulfillmentRepository.createShipment("manual", payload, title.trim() || undefined);
+    },
+    { exclusive: true },
+  );
 
   const submit = async () => {
     if (!valid) return;

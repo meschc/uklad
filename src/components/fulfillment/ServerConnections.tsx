@@ -99,7 +99,7 @@ export function ServerConnections({ spec, t }: { spec: IntegrationSpec; t: TFunc
   const [token, setToken] = useState("");
   const [checks, setChecks] = useState<Record<string, string>>({});
 
-  const save = useCommand(connectorsRepository.save);
+  const save = useCommand(connectorsRepository.save, { exclusive: true });
   const remove = useCommand(connectorsRepository.remove);
 
   const [loadError, setLoadError] = useState<MsgKey | null>(null);

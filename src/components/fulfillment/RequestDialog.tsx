@@ -75,30 +75,33 @@ export function RequestDialog({
   // Создание идёт через репозиторий, а не через действие стора напрямую: это и
   // есть шов, за которым появится сервер (п.3.2.1). Хук держит «идёт» и
   // «не вышло», окно рисует их само.
-  const create = useCommand(async () => {
-    const created = await requestsRepository.create(
-      lines.map((l) => ({
-        productId: l.productId,
-        qty: qtyOf(l.qty),
-        note: note.trim() || undefined,
-        vehicle: vehicle.trim() || undefined,
-        source,
-        externalId: source === "manual" ? undefined : externalId.trim() || undefined,
-      })),
-      truck ? new Date(truck).getTime() : undefined,
-    );
-    if (!created.ok) return created;
+  const create = useCommand(
+    async () => {
+      const created = await requestsRepository.create(
+        lines.map((l) => ({
+          productId: l.productId,
+          qty: qtyOf(l.qty),
+          note: note.trim() || undefined,
+          vehicle: vehicle.trim() || undefined,
+          source,
+          externalId: source === "manual" ? undefined : externalId.trim() || undefined,
+        })),
+        truck ? new Date(truck).getTime() : undefined,
+      );
+      if (!created.ok) return created;
 
-    // Дропшиппинг (п.10.1): бронируем те строки, под которые есть ожидаемая
-    // поставка. Провал брони не проваливает создание — заявки уже созданы, и
-    // сообщить «не получилось» значило бы позвать нажать кнопку ещё раз и
-    // завести их второй раз. Не забронированная заявка просто ждёт обычным
-    // порядком, ровно как та, которой не хватило количества.
-    if (reserve) {
-      for (const id of created.data) await requestsRepository.reserve(id);
-    }
-    return created;
-  });
+      // Дропшиппинг (п.10.1): бронируем те строки, под которые есть ожидаемая
+      // поставка. Провал брони не проваливает создание — заявки уже созданы, и
+      // сообщить «не получилось» значило бы позвать нажать кнопку ещё раз и
+      // завести их второй раз. Не забронированная заявка просто ждёт обычным
+      // порядком, ровно как та, которой не хватило количества.
+      if (reserve) {
+        for (const id of created.data) await requestsRepository.reserve(id);
+      }
+      return created;
+    },
+    { exclusive: true },
+  );
 
   const submit = async () => {
     if (!lines.length) return;

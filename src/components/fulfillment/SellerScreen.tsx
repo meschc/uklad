@@ -311,15 +311,17 @@ function BulkRequestDialog({ onClose, t }: { onClose: () => void; t: TFunc }) {
 
   // Тот же шов, что и в одиночной заявке (п.3.2.1): пакет уходит через
   // репозиторий, окно само показывает «идёт» и «не вышло».
-  const create = useCommand(() =>
-    requestsRepository.create(
-      valid.map((r) => ({
-        productId: r.product!.id,
-        qty: r.qty,
-        note: r.note,
-      })),
-      truck ? new Date(truck).getTime() : undefined,
-    ),
+  const create = useCommand(
+    () =>
+      requestsRepository.create(
+        valid.map((r) => ({
+          productId: r.product!.id,
+          qty: r.qty,
+          note: r.note,
+        })),
+        truck ? new Date(truck).getTime() : undefined,
+      ),
+    { exclusive: true },
   );
 
   const submit = async () => {
