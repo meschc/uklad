@@ -8,7 +8,8 @@ import { ToastCard } from "@/components/ui/toast";
 const LEAVE_MS = 200;
 
 /**
- * Стопка уведомлений: справа внизу на компьютере, на телефоне — во всю ширину
+ * Стопка уведомлений: слева внизу на компьютере (справа — панели, и тост
+ * закрывал их «Сохранить», обход 15.11), на телефоне — во всю ширину
  * над нижней панелью рабочего места (иначе закрывает смену). Самое свежее —
  * снизу, не больше трёх (`lib/notice`). Сама область кликов не ловит, только
  * карточки.
@@ -19,7 +20,7 @@ export function Toaster() {
   return (
     <section
       aria-label={t("notice.region")}
-      className="pointer-events-none fixed bottom-24 left-4 right-4 z-50 flex flex-col items-stretch gap-2 md:bottom-6 md:left-auto md:right-6 md:w-[26rem]"
+      className="pointer-events-none fixed bottom-24 left-4 right-4 z-50 flex flex-col items-stretch gap-2 md:bottom-6 md:left-6 md:right-auto md:w-[26rem]"
     >
       {toasts.map((n) => (
         <ToastItem key={n.id} notice={n} />
