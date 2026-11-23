@@ -2,7 +2,7 @@ import { useEditor } from "@/lib/store";
 import type { BreakPolicy } from "@/lib/types";
 import { useT } from "@/lib/i18n";
 import { Input } from "@/components/ui/input";
-import { TimeSelect } from "./TimeSelect";
+import { TimeInput } from "@/components/ui/time-input";
 import { LIMITS } from "@/lib/numberLimits";
 import { unpaidMinOf } from "@/lib/paidHours";
 import { holidayPctOf, nightPctOf } from "@/lib/payExtras";
@@ -30,7 +30,7 @@ export function BreakPolicyCard() {
       min={0}
       defaultValue={value}
       onBlur={(e) => set({ [key]: Math.max(0, Number(e.target.value) || 0) })}
-      className="h-8 w-16 text-center"
+      className="w-16 text-center"
     />
   );
 
@@ -43,11 +43,11 @@ export function BreakPolicyCard() {
       min={0}
       defaultValue={policy[key]}
       onBlur={(e) => set({ [key]: Math.max(0, Number(e.target.value) || 0) })}
-      className="h-8 w-16 text-center"
+      className="w-16 text-center"
     />
   );
   const time = (value: number, onSet: (min: number) => void) => (
-    <TimeSelect value={value} onChange={onSet} />
+    <TimeInput value={value} onChange={onSet} />
   );
   const row = "flex flex-wrap items-center gap-2 text-sm";
 

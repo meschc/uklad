@@ -28,6 +28,7 @@ export function RevokeDevice({
       title={t("devices.revokeTitle", { name: device.name })}
       icon={<Power className="size-4 text-muted-foreground" />}
       submitLabel={t("devices.revoke")}
+      tone="destructive"
       pending={revoke.pending}
       error={revoke.error}
       onClose={onClose}

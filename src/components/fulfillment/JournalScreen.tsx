@@ -17,11 +17,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Segmented } from "@/components/ui/segmented";
-import { card } from "@/components/ui/card";
 import { FormError } from "@/components/ui/field";
 import { EmptyState, ScreenShell } from "./ScreenShell";
 import { actionKey, useEntryText } from "./journalText";
 import { GoodsPath } from "./GoodsPath";
+import { TableScroll, TABLE_HEAD, TABLE_HEAD_ROW, TABLE_ROW } from "@/components/ui/table-scroll";
 
 /** Свежие действия подтягиваются сами, пока экран открыт и смотрят «сейчас». */
 const LIVE_MS = 5000;
@@ -252,15 +252,15 @@ function JournalFeed({ tabs }: { tabs: ReactNode }) {
           body={filtered ? undefined : t("journal.empty.body")}
         />
       ) : (
-        <div className={cn(card(), "overflow-x-auto")}>
-          <table className="table-stack w-full text-sm">
-            <thead className="text-left text-xs text-muted-foreground">
-              <tr className="border-b border-border">
-                <th className="px-4 py-2 font-medium">{t("journal.col.time")}</th>
-                <th className="px-4 py-2 font-medium">{t("journal.col.staff")}</th>
-                <th className="px-4 py-2 font-medium">{t("journal.col.action")}</th>
-                <th className="px-4 py-2 font-medium">{t("journal.col.what")}</th>
-                <th className="px-4 py-2 font-medium">{t("journal.col.where")}</th>
+        <TableScroll>
+          <table className="table-stack w-full border-collapse text-sm">
+            <thead className={TABLE_HEAD}>
+              <tr className={TABLE_HEAD_ROW}>
+                <th className="px-3 py-2 font-medium">{t("journal.col.time")}</th>
+                <th className="px-3 py-2 font-medium">{t("journal.col.staff")}</th>
+                <th className="px-3 py-2 font-medium">{t("journal.col.action")}</th>
+                <th className="px-3 py-2 font-medium">{t("journal.col.what")}</th>
+                <th className="px-3 py-2 font-medium">{t("journal.col.where")}</th>
               </tr>
             </thead>
             <tbody>
@@ -269,7 +269,7 @@ function JournalFeed({ tabs }: { tabs: ReactNode }) {
               ))}
             </tbody>
           </table>
-        </div>
+        </TableScroll>
       )}
       {next !== null && entries && entries.length > 0 && (
         <Button
@@ -297,7 +297,7 @@ function Row({ e, text }: { e: ActivityEntry; text: ReturnType<typeof useEntryTe
       second: "2-digit",
     });
   return (
-    <tr className="border-b border-border align-top last:border-0">
+    <tr className={`${TABLE_ROW} align-top`}>
       <td
         className="whitespace-nowrap px-4 py-2 tabular-nums text-muted-foreground"
         title={t("journal.timeHint", { device: stamp(e.at), server: stamp(e.receivedAt) })}

@@ -22,6 +22,7 @@ import { useCommand } from "@/lib/useCommand";
 import { formatAddress } from "@/lib/address";
 import { targetCode } from "@/lib/packing";
 import { useLabelPrinter } from "@/lib/labelPrinter";
+import { TableScroll, TABLE_HEAD, TABLE_HEAD_ROW, TABLE_ROW } from "@/components/ui/table-scroll";
 import { SortTh, TableFilters, TableSearch, useDataTable } from "@/components/ui/data-table";
 import { groupRequestsByTarget, stockByProduct } from "@/lib/fulfillment";
 import type { FulfillmentRequest, LabelTemplate, RequestStatus } from "@/lib/types";
@@ -337,10 +338,10 @@ function RequestsTasks({ sections }: { sections: React.ReactNode }) {
                   );
                 })()}
               </div>
-              <div className="overflow-hidden rounded-xl border border-border">
+              <TableScroll>
                 <table className="table-stack w-full border-collapse text-sm">
-                  <thead className="bg-muted/50 text-xs">
-                    <tr className="text-left">
+                  <thead className={TABLE_HEAD}>
+                    <tr className={TABLE_HEAD_ROW}>
                       <SortTh table={reqTable.table} id="name">
                         {t("table.col.name")}
                       </SortTh>
@@ -359,7 +360,7 @@ function RequestsTasks({ sections }: { sections: React.ReactNode }) {
                       const p = products.find((x) => x.id === r.productId);
                       const have = stock.get(r.productId)?.qty ?? 0;
                       return (
-                        <tr key={r.id} className="border-t border-border/60">
+                        <tr key={r.id} className={TABLE_ROW}>
                           <td className="px-3 py-2">
                             <div className="font-medium">{p?.name ?? "—"}</div>
                             <div className="font-mono text-2xs text-muted-foreground">{p?.sku}</div>
@@ -453,7 +454,7 @@ function RequestsTasks({ sections }: { sections: React.ReactNode }) {
                     })}
                   </tbody>
                 </table>
-              </div>
+              </TableScroll>
             </section>
           ))}
         </div>

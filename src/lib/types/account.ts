@@ -9,7 +9,8 @@ import type { TariffFeatures } from "../tariff";
 export type Lang = "ru" | "en";
 
 /** Тема оформления (ТЗ, разд. 3.3). */
-export type Theme = "light" | "dark";
+/** `system` — «авто»: тема следует за системой, в том числе днём и вечером. */
+export type Theme = "light" | "dark" | "system";
 
 /**
  * Верхний экран приложения. Первые четыре — исходный контур (вход → кабинет →

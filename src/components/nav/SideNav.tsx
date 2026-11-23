@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useIsDark } from "@/lib/useIsDark";
 import { readLocal, writeLocal } from "@/lib/safeStorage";
 import {
   ChevronDown,
@@ -106,11 +107,10 @@ export function SideNav({
   const role = useEditor(selectRole);
   // Экраны, закрытые правами роли, в меню не показываются (разделы прав, 033).
   const perms = useEditor((s) => s.session.permissions);
-  const theme = useEditor((s) => s.profile.theme);
   const updateProfile = useEditor((s) => s.updateProfile);
   const badgeFor = useNavBadge();
   const t = useT();
-  const dark = theme === "dark";
+  const dark = useIsDark();
   const [order, setOrder] = useState<NavOrder>(readOrder);
   const [drag, setDrag] = useState<Drag | null>(null);
   const [reporting, setReporting] = useState(false);
@@ -213,7 +213,7 @@ export function SideNav({
       ref={flipRef}
       aria-label={t("nav.side.title")}
       className={cn(
-        "flex-col gap-0.5 overflow-y-auto bg-shell px-2 py-3",
+        "flex-col gap-0.5 overflow-y-auto bg-menu px-2 py-3 text-menu-foreground",
         sheet
           ? // Палец, а не мышь: строки меню на телефоне — 44 px.
             "flex h-full w-full [&_[data-nav-row]]:h-11"
@@ -233,7 +233,7 @@ export function SideNav({
         className={cn(
           // Отступ вокруг знака одинаковый со всех сторон.
           // Скругление снаружи = скругление знака (10) + отступ (6).
-          "mb-2 flex min-h-12 cursor-pointer items-center rounded-2xl p-1.5 text-left hover:bg-wash",
+          "mb-2 flex min-h-12 cursor-pointer items-center rounded-2xl p-1.5 text-left hover:bg-menu-hover",
         )}
       >
         <UkladLockup
@@ -243,6 +243,7 @@ export function SideNav({
           label={warehouseName || "Уклад"}
           image={orgLogo}
           fit
+          onMenu
         />
       </button>
 
@@ -284,7 +285,7 @@ export function SideNav({
                 <ul
                   className={cn(
                     "flex animate-fade-in flex-col gap-0.5",
-                    !collapsed && "ml-[1.15rem] border-l border-border pl-2",
+                    !collapsed && "ml-[1.15rem] border-l border-menu-border pl-2",
                   )}
                 >
                   {preview(
@@ -358,7 +359,7 @@ export function SideNav({
           />
         )}
         {!collapsed && (
-          <p className="px-3 pt-1 text-xs text-muted-foreground">
+          <p className="px-3 pt-1 text-xs text-menu-muted">
             {t("nav.version", { v: APP_VERSION })}
           </p>
         )}
@@ -406,8 +407,8 @@ function NavRow({
         nested ? "h-8" : "h-9",
         collapsed && "justify-center px-0",
         active
-          ? "bg-primary/10 text-primary"
-          : "text-muted-foreground hover:bg-wash hover:text-foreground",
+          ? "bg-primary text-primary-foreground"
+          : "text-menu-muted hover:bg-menu-hover hover:text-menu-foreground",
       )}
     >
       <Icon className={cn("shrink-0", nested ? "size-4" : "size-[1.15rem]")} />

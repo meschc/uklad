@@ -72,7 +72,7 @@ export function MobileNav() {
       {open && (
         <div
           className={cn(
-            "fixed inset-0 z-40 flex flex-col bg-shell md:hidden",
+            "fixed inset-0 z-40 flex flex-col bg-menu md:hidden",
             closing ? "animate-sheet-down" : "animate-sheet-up",
           )}
           onAnimationEnd={(e) => {
@@ -85,7 +85,7 @@ export function MobileNav() {
             type="button"
             onClick={() => setClosing(true)}
             aria-label={t("nav.side.close")}
-            className="absolute right-3 top-3 z-10 flex size-11 items-center justify-center rounded-full text-muted-foreground hover:bg-wash hover:text-foreground"
+            className="absolute right-3 top-3 z-10 flex size-11 items-center justify-center rounded-full text-menu-muted hover:bg-menu-hover hover:text-menu-foreground"
           >
             <X className="size-5" />
           </button>

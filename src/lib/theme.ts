@@ -5,10 +5,10 @@ import type { Theme } from "./types";
  *
  * Дальше тему выбирает человек — переключатель есть и в рельсе, и в кабинете,
  * и в профиле, а выбор переживает перезагрузку вместе с остальным состоянием.
- * Система спрашивается ровно один раз, при первом запуске, и потом молчит: за
- * экраном склада сидят смену целиком, и подмена темы в середине смены, потому
- * что у ноутбука сработало расписание «тёмная после заката», — это не забота,
- * а сюрприз. На витрине наоборот: там человек проводит минуту, своего выбора у
+ * Режим «Авто» (`system`) идёт за системой постоянно и включается только по
+ * выбору человека или у нового профиля: за экраном склада сидят смену целиком,
+ * и подмена темы в середине смены у того, кто выбрал «Светлую» или «Тёмную»,
+ * — не забота, а сюрприз. На витрине наоборот: там человек проводит минуту, своего выбора у
  * него нет и быть не должно, поэтому она идёт за системой всегда — см.
  * `src/site/lib/theme.ts`.
  *
@@ -16,7 +16,7 @@ import type { Theme } from "./types";
  * вариантом — на случай, когда спросить некого: тесты идут в node без `window`,
  * а `matchMedia` нет в совсем старых браузерах.
  */
-export function systemTheme(): Theme {
+export function systemTheme(): "light" | "dark" {
   if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
     return "light";
   }
@@ -28,7 +28,7 @@ export function systemTheme(): Theme {
  * Нужен подложке браузера: `theme-color` не понимает переменные и читает
  * только готовый цвет.
  */
-const BACKGROUND: Record<Theme, string> = {
+const BACKGROUND: Record<"light" | "dark", string> = {
   light: "#FFFFFF",
   dark: "#14151A",
 };
@@ -42,12 +42,16 @@ const BACKGROUND: Record<Theme, string> = {
  * Если меняете здесь класс или цвет — поправьте и там, рассинхрон проявится
  * вспышкой чужого цвета при перезагрузке.
  */
+export function resolveTheme(theme: Theme): "light" | "dark" {
+  return theme === "system" ? systemTheme() : theme;
+}
+
 export function applyTheme(theme: Theme): void {
   const root = document.documentElement;
-  const isDark = theme === "dark";
+  const isDark = resolveTheme(theme) === "dark";
   root.classList.toggle("dark", isDark);
   root.classList.toggle("light", !isDark);
 
   const meta = document.getElementById("theme-color");
-  if (meta instanceof HTMLMetaElement) meta.content = BACKGROUND[theme];
+  if (meta instanceof HTMLMetaElement) meta.content = BACKGROUND[isDark ? "dark" : "light"];
 }

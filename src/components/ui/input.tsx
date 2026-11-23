@@ -23,7 +23,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           onBlur?.(e);
         }}
         className={cn(
-          "flex h-8 w-full rounded-md border border-input bg-background px-2.5 py-1 text-sm shadow-sm transition-colors",
+          "flex h-9 w-full rounded-md border border-input bg-background px-2.5 py-1 text-sm shadow-sm transition-colors",
           // Телефон: 44 px под палец и 16 px текста — иначе iPhone при фокусе
           // увеличивает страницу (шрифт поля меньше 16 px).
           "max-md:min-h-11 max-md:text-base",

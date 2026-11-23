@@ -259,6 +259,8 @@ export function ServerLoginForm() {
           ) : (
             <Field label={t("login.email")} error={shown(emailErr)}>
               <EmailInput
+                name="email"
+                autoComplete="username"
                 value={email}
                 onValueChange={setEmail}
                 placeholder={t("profile.emailPlaceholder")}
@@ -287,6 +289,7 @@ export function ServerLoginForm() {
             >
               <Input
                 type="password"
+                name="password"
                 autoComplete={step === "signIn" ? "current-password" : "new-password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}

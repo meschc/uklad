@@ -162,6 +162,8 @@ export function LoginScreen() {
                   >
                     <Input
                       type="email"
+                      name="email"
+                      autoComplete="username"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder={t("profile.emailPlaceholder")}
@@ -177,6 +179,8 @@ export function LoginScreen() {
                     >
                       <Input
                         type="password"
+                        name="password"
+                        autoComplete={mode === "signUp" ? "new-password" : "current-password"}
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder={t("login.passwordPlaceholder")}

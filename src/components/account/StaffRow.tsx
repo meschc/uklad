@@ -7,6 +7,7 @@ import { useCommand } from "@/lib/useCommand";
 import type { TFunc } from "@/lib/i18n";
 import { Avatar } from "@/components/ui/avatar";
 import { BadgePanel } from "./BadgePanel";
+import { TABLE_ROW } from "@/components/ui/table-scroll";
 
 /**
  * Строка сотрудника: просмотр и удаление. Правка — панелью справа
@@ -43,7 +44,7 @@ export function StaffRow({
   const [badgeOpen, setBadgeOpen] = useState(false);
 
   return (
-    <tr className="group border-t border-border/60">
+    <tr className={`group ${TABLE_ROW}`}>
       <td className="px-3 py-2">
         <button onClick={onEdit} className="flex min-w-0 items-center gap-3 text-left">
           {/* shrink-0: фото не сжимается, когда соседний текст длинный
