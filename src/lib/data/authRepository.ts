@@ -63,7 +63,11 @@ export const authRepository = {
   register: (email: string, password: string, kind: "warehouse" | "seller") =>
     call(
       () => apiRequest("POST", "/auth/register", { email, password, kind, consent: true }),
-      (res): Result<void> => (res.status === 202 ? ok(undefined) : fail(common(res))),
+      (res): Result<void> => {
+        if (res.status === 202) return ok(undefined);
+        if (res.body.error === "weak_password") return fail("login.err.weakPassword");
+        return fail(common(res));
+      },
     ),
 
   /** Код из письма после регистрации — и сразу вход. */

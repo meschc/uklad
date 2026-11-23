@@ -245,6 +245,10 @@ function createAuth({ pool, cfg, send, readBody, log, mail, onRegister = null })
     // личную почту человек контрагентам не отдавал.
     const company = String(b.company ?? "").trim() || DEFAULT_COMPANY;
     // Без согласия на обработку данных регистрироваться нельзя (152-ФЗ).
+    // Слабый пароль — отдельным ответом: человеку нужно сказать, что исправить.
+    if (isEmail(email) && b.consent === true && !isAcceptable(b.password)) {
+      return send(res, 400, { ok: false, error: "weak_password" });
+    }
     if (
       !isEmail(email) ||
       !isAcceptable(b.password) ||
