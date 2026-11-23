@@ -33,12 +33,22 @@ const { randomBytes, randomInt, createHash } = require("node:crypto");
 const { hashPassword, checkPassword, isAcceptable } = require("./password");
 const { createRateLimit, clientIp } = require("../rateLimit");
 const { codeLetter, alreadyLetter } = require("./letters");
+const { logAction } = require("./audit");
 const { managerWarehouse, memberHere } = require("./managerScope");
 
 /**
  * Бейдж человеку команды (старый путь): руководитель — только своим людям и на
  * свой склад (Кирилл 22.11: склады связывает только владелец).
  */
+/** Склад человека — для журнала действий (`audit.js`). */
+async function memberPlace(c, memberId) {
+  const { rows } = await c.query(
+    `SELECT warehouse_ref AS ref FROM uklad.members WHERE org_id = uklad.current_org() AND id = $1`,
+    [memberId],
+  );
+  return rows[0]?.ref ?? null;
+}
+
 async function badgeHere(c, ctx, memberId, warehouseId) {
   const ref = await managerWarehouse(c, ctx);
   if (ref === null) return true;
@@ -534,6 +544,11 @@ function createAuth({ pool, cfg, send, readBody, log, mail, onRegister = null })
           b.warehouseId,
           sha256(secret),
         ]);
+        await logAction(c, log, {
+          action: "badge.member_issue",
+          warehouse: await memberPlace(c, b.memberId),
+          target: b.memberId,
+        });
       } catch (err) {
         // Чужой сотрудник или склад — 404, а не 403 (5а, правило 7).
         if (err.code === "P0002") return 404;
@@ -556,6 +571,11 @@ function createAuth({ pool, cfg, send, readBody, log, mail, onRegister = null })
       if (!(await badgeHere(c, ctx, b.memberId))) return 404;
       try {
         await c.query(`SELECT auth.revoke_badge($1)`, [b.memberId]);
+        await logAction(c, log, {
+          action: "badge.member_revoke",
+          warehouse: await memberPlace(c, b.memberId),
+          target: b.memberId,
+        });
       } catch (err) {
         if (err.code === "P0002") return 404;
         throw err;

@@ -182,6 +182,18 @@ test("живой: подключения площадок", { skip: SKIP }, asyn
     "SELECT encode(secret,'escape') s, params FROM uklad.connector_accounts",
   );
   assert.ok(raw.rows.every((x) => !x.s.includes(TOKEN)));
+  // Журнал действий: подключение записано, ключа и Client-Id в нём нет.
+  const audit = await db.root.query(
+    `SELECT action, target, details::text AS d FROM uklad.audit_events
+     WHERE org_id = $1 AND action LIKE 'connector.%' ORDER BY at`,
+    [a.org],
+  );
+  assert.deepEqual(
+    audit.rows.map((x) => x.action),
+    ["connector.create", "connector.create"],
+  );
+  assert.equal(audit.rows[0].target, id);
+  assert.ok(audit.rows.every((x) => !x.d.includes(TOKEN) && !x.d.includes("123")));
   // прокси: разрешённое
   const ok1 = await post("/api/connectors/wildberries/proxy", {
     ...a,
@@ -289,6 +301,12 @@ test("живой: подключения площадок", { skip: SKIP }, asyn
   assert.equal((await call("GET", "/api/connectors", {})).status, 401);
   // удаление: ключ затёрт, прокси не ходит
   assert.equal((await post("/api/connectors/delete", { ...a, body: { id } })).status, 200);
+  const gone = await db.root.query(
+    `SELECT count(*)::int AS n FROM uklad.audit_events
+     WHERE org_id = $1 AND action = 'connector.delete' AND target = $2`,
+    [a.org, id],
+  );
+  assert.equal(gone.rows[0].n, 1);
   assert.equal(
     (
       await post("/api/connectors/wildberries/proxy", {
@@ -867,5 +885,22 @@ test(
     });
     assert.equal(moved.status, 409);
     assert.equal(moved.json.error, "no_partner");
+    // Перенос со склада Б на склад А виден в журнале обоих складов.
+    const solo = await add(boss, { label: "Свой Б", warehouseId: "w2" });
+    assert.equal(solo.status, 200, JSON.stringify(solo.json));
+    const go = await post("/api/connectors/place", {
+      ...boss,
+      body: { id: solo.json.id, warehouseId: WH },
+    });
+    assert.equal(go.status, 200);
+    const { rows } = await db.root.query(
+      `SELECT warehouse_ref AS w, details FROM uklad.audit_events
+       WHERE action = 'connector.place' AND target = $1 ORDER BY warehouse_ref`,
+      [solo.json.id],
+    );
+    assert.deepEqual(rows, [
+      { w: WH, details: { from: "w2" } },
+      { w: "w2", details: { to: WH } },
+    ]);
   },
 );

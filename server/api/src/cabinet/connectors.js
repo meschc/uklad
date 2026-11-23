@@ -36,6 +36,17 @@
 const { createCipheriv, createDecipheriv, randomBytes } = require("node:crypto");
 const { createRateLimit } = require("../rateLimit");
 const { managerWarehouse } = require("./managerScope");
+const { logAction } = require("./audit");
+
+/** Склад подключения — для журнала действий; нет — действие компании. */
+async function connectorPlace(c, id) {
+  const { rows } = await c.query(
+    `SELECT params->>'warehouseId' AS ref FROM uklad.connector_accounts
+     WHERE org_id = uklad.current_org() AND id = $1`,
+    [id],
+  );
+  return rows[0]?.ref || null;
+}
 
 const PERM = "integrations.manage";
 
@@ -381,6 +392,13 @@ function createConnectors({ auth, send, log, secretKey, fetchImpl = fetch, pull 
           ctx.accountId,
         ],
       );
+      // В журнал — площадка и партнёр, ключа и Client-Id там нет.
+      await logAction(c, log, {
+        action: "connector.create",
+        warehouse: place || null,
+        target: id,
+        details: { system, ...(partnerId ? { partner: partnerId } : {}) },
+      });
       return id;
     });
     if (out?.value === FOREIGN) return send(res, 403, { ok: false, error: "forbidden" });
@@ -400,6 +418,10 @@ function createConnectors({ auth, send, log, secretKey, fetchImpl = fetch, pull 
          WHERE id = $1 AND deleted_at IS NULL AND ${ownRows(3)}`,
         [b.id, label, ...scopeArgs(scope)],
       );
+      if (r.rowCount) {
+        const warehouse = await connectorPlace(c, b.id);
+        await logAction(c, log, { action: "connector.rename", warehouse, target: b.id });
+      }
       return r.rowCount;
     });
     if (out) send(res, out.value ? 200 : 404, { ok: out.value > 0 });
@@ -437,6 +459,14 @@ function createConnectors({ auth, send, log, secretKey, fetchImpl = fetch, pull 
            AND ${ownRows(3)}`,
         [b.id, JSON.stringify(patch), ...scopeArgs(scope)],
       );
+      if (r.rowCount) {
+        await logAction(c, log, {
+          action: "connector.stock",
+          warehouse: await connectorPlace(c, b.id),
+          target: b.id,
+          details: patch,
+        });
+      }
       return r.rowCount;
     });
     if (out) send(res, out.value ? 200 : 404, { ok: out.value > 0 });
@@ -453,6 +483,10 @@ function createConnectors({ auth, send, log, secretKey, fetchImpl = fetch, pull 
          WHERE id = $1 AND deleted_at IS NULL AND ${ownRows(3)}`,
         [b.id, randomBytes(29), ...scopeArgs(scope)],
       );
+      if (r.rowCount) {
+        const warehouse = await connectorPlace(c, b.id);
+        await logAction(c, log, { action: "connector.delete", warehouse, target: b.id });
+      }
       return r.rowCount;
     });
     if (out) send(res, out.value ? 200 : 404, { ok: out.value > 0 });
@@ -567,6 +601,7 @@ function createConnectors({ auth, send, log, secretKey, fetchImpl = fetch, pull 
         [b.id],
       );
       const partner = cur.rows[0]?.partner;
+      const from = await connectorPlace(c, b.id);
       if (partner && !(await partnerHere(c, warehouseId, partner))) return NO_PARTNER;
       const r = await c.query(
         `UPDATE uklad.connector_accounts
@@ -576,6 +611,23 @@ function createConnectors({ auth, send, log, secretKey, fetchImpl = fetch, pull 
                        AND card IS NOT NULL AND deleted_at IS NULL AND NOT placeholder)`,
         [b.id, warehouseId],
       );
+      if (r.rowCount) {
+        // Перенос виден обоим складам: новому — что пришло, прежнему — что ушло.
+        await logAction(c, log, {
+          action: "connector.place",
+          warehouse: warehouseId,
+          target: b.id,
+          details: from ? { from } : {},
+        });
+        if (from && from !== warehouseId) {
+          await logAction(c, log, {
+            action: "connector.place",
+            warehouse: from,
+            target: b.id,
+            details: { to: warehouseId },
+          });
+        }
+      }
       return r.rowCount;
     });
     if (out?.value === FOREIGN) return send(res, 403, { ok: false, error: "forbidden" });

@@ -34,6 +34,7 @@ const { FAIL_WINDOW_MS, FAIL_PAIR, FAIL_EMAIL } = require("./auth");
 const { findPlace } = require("./viewerPlace");
 const { PlanLimitError } = require("./planLimits");
 const { withWarehouses } = require("./warehouses");
+const { logAction, staffPlace } = require("./audit");
 const { managerWarehouse, memberHere, ownScope } = require("./managerScope");
 
 const INVITE_TTL_MS = 7 * 86_400_000;
@@ -98,6 +99,21 @@ function createTeam({ auth, cfg, send, log, limits = null }) {
 
   const uuid = (v) => (UUID_RE.test(String(v ?? "")) ? String(v) : null);
   const bad = (res) => send(res, 400, { ok: false, error: "bad_request" });
+
+  /**
+   * Склад, чьё это действие, для журнала (`audit.js`): человека или роли. Нет склада — действие компании (видит только владелец).
+   */
+  async function whereIs(c, kind, id) {
+    const sql = {
+      member: `SELECT warehouse_ref AS ref FROM uklad.members
+               WHERE org_id = uklad.current_org() AND id = $1`,
+      role: `SELECT warehouse_ref AS ref FROM uklad.roles
+             WHERE org_id = uklad.current_org() AND id = $1`,
+    }[kind];
+    return (await c.query(sql, [id])).rows[0]?.ref ?? null;
+  }
+  const note = (c, action, warehouse, target, details) =>
+    logAction(c, log, { action, warehouse, target, details });
 
   async function list(req, res) {
     return guarded(
@@ -222,6 +238,11 @@ function createTeam({ auth, cfg, send, log, limits = null }) {
           // позванный сотрудником, перестаёт быть продавцом, и наоборот.
           await c.query(`SELECT auth.set_member_partner($1, $2)`, [made[0].id, partnerRef || null]);
           await room?.check();
+          await note(c, "member.invite", place.warehouseRef, made[0].id, {
+            role: roleId,
+            ...(place.staffRef ? { staff: place.staffRef } : {}),
+            ...(partnerRef ? { partner: partnerRef } : {}),
+          });
         } catch (err) {
           if (err instanceof PlanLimitError) throw err;
           const known = teamError(err);
@@ -296,6 +317,7 @@ function createTeam({ auth, cfg, send, log, limits = null }) {
         throw new Error("team:not_found");
       }
       await assertPlace(c, place);
+      const from = await whereIs(c, "member", m);
       const room = limits ? await limits.guard(c, ctx.orgId, "staff") : null;
       await c.query(`SELECT auth.set_member_place($1, $2, $3)`, [
         m,
@@ -303,13 +325,23 @@ function createTeam({ auth, cfg, send, log, limits = null }) {
         place.staffRef,
       ]);
       await room?.check();
+      // Перевод виден обоим складам: новому — кто пришёл, прежнему — кто ушёл.
+      await note(c, "member.place", place.warehouseRef, m, {
+        ...(place.staffRef ? { staff: place.staffRef } : {}),
+        ...(from ? { from } : {}),
+      });
+      if (from && from !== place.warehouseRef) {
+        await note(c, "member.place", from, m, { to: place.warehouseRef });
+      }
     });
 
   const revokeInvite = (req, res) =>
     guarded(req, res, async (c, _ctx, b, ref) => {
       const id = uuid(b.memberId);
       if (!id || (ref && !(await memberHere(c, id, ref)))) throw new Error("team:not_found");
+      const where = await whereIs(c, "member", id);
       await c.query(`SELECT auth.revoke_invite($1)`, [id]);
+      await note(c, "member.uninvite", where, id, {});
     });
 
   const changeRole = (req, res) =>
@@ -317,6 +349,7 @@ function createTeam({ auth, cfg, send, log, limits = null }) {
       const [m, r] = [uuid(b.memberId), uuid(b.roleId)];
       if (!m || !r || (ref && !(await memberHere(c, m, ref)))) throw new Error("team:not_found");
       await c.query(`SELECT auth.change_role($1, $2)`, [m, r]);
+      await note(c, "member.role", await whereIs(c, "member", m), m, { role: r });
     });
 
   // Выключить можно всегда — это гасит доступ, в том числе в неоплате.
@@ -337,6 +370,7 @@ function createTeam({ auth, cfg, send, log, limits = null }) {
       }
       await c.query(`SELECT auth.set_member_disabled($1, $2)`, [m, off]);
       await room?.check();
+      await note(c, off ? "member.disable" : "member.enable", await whereIs(c, "member", m), m, {});
     });
 
   const saveRole = (req, res) =>
@@ -365,7 +399,16 @@ function createTeam({ auth, cfg, send, log, limits = null }) {
           `SELECT auth.save_role($1, $2, uklad.with_view_perms($3::text[]), $4) AS id`,
           [roleId, String(b.name ?? ""), [...new Set(perms)], warehouse || null],
         );
-        return rows[0].id;
+        const id = rows[0].id;
+        // Права — кодами, до лимита подробностей журнала (обрезка — с пометкой).
+        const codes = [...new Set(perms)].sort();
+        const list = [];
+        for (const p of codes) if (JSON.stringify([...list, p]).length <= 1500) list.push(p);
+        await note(c, roleId ? "role.save" : "role.create", await whereIs(c, "role", id), id, {
+          perms: list,
+          ...(list.length < codes.length ? { more: codes.length - list.length } : {}),
+        });
+        return id;
       },
       (id) => ({ roleId: id }),
     );
@@ -380,13 +423,16 @@ function createTeam({ auth, cfg, send, log, limits = null }) {
       // Руководитель склада — роль только своему сотруднику стола.
       if (here && !(await ownScope(c, here)).staff.has(ref)) throw new Error("team:not_found");
       await c.query(`SELECT auth.set_desk_staff_role($1, $2)`, [ref, r]);
+      await note(c, "staff.role", here || (await staffPlace(c, ref)), ref, { role: r });
     });
 
   const deleteRole = (req, res) =>
     guarded(req, res, async (c, _ctx, b, ref) => {
       const r = uuid(b.roleId);
       if (!r || (ref && !(await roleHere(c, r, ref)))) throw new Error("team:not_found");
+      const where = await whereIs(c, "role", r);
       await c.query(`SELECT auth.delete_role($1)`, [r]);
+      await note(c, "role.delete", where, r, {});
     });
 
   /** Роль — склада `ref` (роли компании руководитель склада не правит). */

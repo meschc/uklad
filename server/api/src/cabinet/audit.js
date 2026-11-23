@@ -130,4 +130,15 @@ async function auditRows(c, ref, { before = null, since = null, company = false,
   }));
 }
 
-module.exports = { logAction, auditRows };
+/** Склад сотрудника стола — по таблице (054), в том числе удалённого. */
+async function staffPlace(c, staffRef) {
+  const { rows } = await c.query(
+    `SELECT warehouse_ref AS ref FROM uklad.staff
+     WHERE org_id = uklad.current_org() AND ref = $1
+     ORDER BY deleted_at NULLS FIRST LIMIT 1`,
+    [staffRef],
+  );
+  return rows[0]?.ref ?? null;
+}
+
+module.exports = { logAction, auditRows, staffPlace };
