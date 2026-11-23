@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { Printer, X } from "lucide-react";
-import { isValidEan13, toEan13 } from "@/lib/barcode";
 import { useEditor } from "@/lib/store";
 import { useT } from "@/lib/i18n";
 import { printLabels } from "@/lib/printLabels";
@@ -44,7 +43,10 @@ export function BarcodeModal({ product, onClose }: { product: Product; onClose: 
   const templates = useEditor((s) => s.labelTemplates);
   const warehouseName = useEditor((s) => s.warehouse.name);
   const [copies, setCopies] = useState(1);
-  const code = isValidEan13(product.barcode) ? product.barcode : toEan13(product.barcode);
+  // На ярлык — тот же код, что в карточке: по нему сканер и найдёт товар.
+  // Раньше код не из 13 цифр печатался «исправленным» EAN, и напечатанный
+  // ярлык товар не находил. Нет штрихкода — артикул.
+  const code = product.barcode.trim() || product.sku;
   const base = templates[0] ?? FALLBACK;
   const tpl: LabelTemplate = {
     ...base,

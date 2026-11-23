@@ -27,7 +27,14 @@ export type ProductCategory = string;
 export interface Product {
   id: string;
   sku: string;
+  /**
+   * Главный код товара — любой, что на нём наклеен: EAN-13, Code128, текст
+   * QR или DataMatrix, артикул продавца. Нет своего — внутренний `UK-P-…`
+   * (`generateProductCode`). Пустая строка — кода нет.
+   */
   barcode: string;
+  /** Другие коды того же товара (EAN производителя, баркод WB, код Ozon). */
+  codes?: string[];
   name: string;
   category: ProductCategory;
   widthCm: number;
