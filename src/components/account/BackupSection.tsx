@@ -17,6 +17,11 @@ import { FieldError } from "@/components/ui/field";
  * Резервная копия: скачать архив, восстановить из него, срок напоминания и
  * копия на почту. Восстановление стирает текущие данные, поэтому в два шага:
  * сначала файл разбирается и показывается его дата, потом подтверждение.
+ *
+ * С сервером — только «Скачать архив» (Кирилл 23.11): копию всех данных сервер
+ * делает сам каждую ночь, напоминать о ней незачем; письма с копией сервер не
+ * шлёт; а восстановление из файла заменило бы данные компании на сервере
+ * старым архивом с одного устройства. Остальное живёт в демо без сервера.
  */
 /** Предел размера архива: больше — не читаем. */
 const MAX_BACKUP_BYTES = 20 * 1024 * 1024;
@@ -28,6 +33,7 @@ export function BackupSection() {
   const email = useEditor((s) => s.profile.email);
   const update = useEditor((s) => s.updateBackupSettings);
   const fileRef = useRef<HTMLInputElement>(null);
+  const onServer = useEditor((s) => s.session.source === "server");
 
   const download = useCommand(downloadBackup);
   const restore = useCommand(backupRepository.restoreArchive, { exclusive: true });
@@ -91,84 +97,90 @@ export function BackupSection() {
         </div>
       </Row>
 
-      <Row icon={<Upload className="size-4" />} label={t("backup.restore")}>
-        <div className="flex flex-col items-end gap-2">
-          {restoreError && <FieldError>{t(restoreError)}</FieldError>}
-          {pending ? (
-            <>
-              {/* Предупреждение отдельной строкой над кнопками: в одну линию с
+      {onServer ? (
+        <p className="px-4 py-3 text-xs text-muted-foreground">{t("backup.serverNote")}</p>
+      ) : (
+        <>
+          <Row icon={<Upload className="size-4" />} label={t("backup.restore")}>
+            <div className="flex flex-col items-end gap-2">
+              {restoreError && <FieldError>{t(restoreError)}</FieldError>}
+              {pending ? (
+                <>
+                  {/* Предупреждение отдельной строкой над кнопками: в одну линию с
                   ними оно переносилось по слову и толкало кнопки. */}
-              <FieldError className="max-w-64 text-right">
-                {t("backup.restoreWarn", {
-                  date: pending.createdAt ? fmt(pending.createdAt) : "—",
-                })}
-              </FieldError>
-              <div className="flex items-center gap-2">
-                <Button size="sm" variant="outline" onClick={() => setPending(null)}>
-                  {t("common.cancel")}
+                  <FieldError className="max-w-64 text-right">
+                    {t("backup.restoreWarn", {
+                      date: pending.createdAt ? fmt(pending.createdAt) : "—",
+                    })}
+                  </FieldError>
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" variant="outline" onClick={() => setPending(null)}>
+                      {t("common.cancel")}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      disabled={restore.pending}
+                      onClick={confirmRestore}
+                    >
+                      {t("backup.restoreConfirm")}
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
+                  {t("backup.pick")}
                 </Button>
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  disabled={restore.pending}
-                  onClick={confirmRestore}
-                >
-                  {t("backup.restoreConfirm")}
-                </Button>
-              </div>
-            </>
-          ) : (
-            <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
-              {t("backup.pick")}
-            </Button>
-          )}
-          <input
-            ref={fileRef}
-            type="file"
-            accept="application/json,.json"
-            className="hidden"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              e.target.value = "";
-              if (f) void pick(f);
-            }}
-          />
-        </div>
-      </Row>
+              )}
+              <input
+                ref={fileRef}
+                type="file"
+                accept="application/json,.json"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  e.target.value = "";
+                  if (f) void pick(f);
+                }}
+              />
+            </div>
+          </Row>
 
-      <Row icon={<BellRing className="size-4" />} label={t("backup.remind")}>
-        <Segmented<string>
-          value={String(backup.remindEveryDays)}
-          onChange={(v) => update({ remindEveryDays: Number(v), snoozedUntil: undefined })}
-          options={REMIND_OPTIONS.map((d) => ({
-            value: String(d),
-            label: t(`backup.remind.${d}`),
-          }))}
-        />
-      </Row>
-
-      <div className="flex flex-col gap-1.5">
-        <Row icon={<Mail className="size-4" />} label={t("backup.email")}>
-          {canEmail ? (
-            <Segmented<"on" | "off">
-              value={backup.emailWeekly ? "on" : "off"}
-              onChange={(v) => void weekly.run(v === "on")}
-              options={[
-                { value: "off", label: t("backup.email.off") },
-                { value: "on", label: t("backup.email.on") },
-              ]}
+          <Row icon={<BellRing className="size-4" />} label={t("backup.remind")}>
+            <Segmented<string>
+              value={String(backup.remindEveryDays)}
+              onChange={(v) => update({ remindEveryDays: Number(v), snoozedUntil: undefined })}
+              options={REMIND_OPTIONS.map((d) => ({
+                value: String(d),
+                label: t(`backup.remind.${d}`),
+              }))}
             />
-          ) : (
-            <TariffLock feature="weeklyEmailBackup" />
-          )}
-        </Row>
-        {weekly.error && <FieldError className="px-4 pb-3">{t(weekly.error)}</FieldError>}
-        {canEmail && backup.emailWeekly && (
-          <p className="px-4 pb-3 text-xs text-muted-foreground">
-            {t("backup.emailNote", { email })}
-          </p>
-        )}
-      </div>
+          </Row>
+
+          <div className="flex flex-col gap-1.5">
+            <Row icon={<Mail className="size-4" />} label={t("backup.email")}>
+              {canEmail ? (
+                <Segmented<"on" | "off">
+                  value={backup.emailWeekly ? "on" : "off"}
+                  onChange={(v) => void weekly.run(v === "on")}
+                  options={[
+                    { value: "off", label: t("backup.email.off") },
+                    { value: "on", label: t("backup.email.on") },
+                  ]}
+                />
+              ) : (
+                <TariffLock feature="weeklyEmailBackup" />
+              )}
+            </Row>
+            {weekly.error && <FieldError className="px-4 pb-3">{t(weekly.error)}</FieldError>}
+            {canEmail && backup.emailWeekly && (
+              <p className="px-4 pb-3 text-xs text-muted-foreground">
+                {t("backup.emailNote", { email })}
+              </p>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }
