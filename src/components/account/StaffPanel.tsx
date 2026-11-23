@@ -108,19 +108,22 @@ export function StaffPanel({
     }
     return { ok: true as const, data: id };
   };
-  const save = useCommand(persist);
+  const save = useCommand(persist, { exclusive: true });
 
   // Приглашение — на этот склад и эту карточку. Карточку сначала записываем
   // и отправляем на сервер: он сверяет, что такая карточка на складе есть.
-  const invite = useCommand(async () => {
-    const saved = await persist();
-    if (!saved.ok) return saved;
-    await flushServerSync();
-    return teamRepository.invite(email, roleId ?? "", form.name.trim(), {
-      warehouseRef: warehouseId,
-      staffRef: saved.data,
-    });
-  });
+  const invite = useCommand(
+    async () => {
+      const saved = await persist();
+      if (!saved.ok) return saved;
+      await flushServerSync();
+      return teamRepository.invite(email, roleId ?? "", form.name.trim(), {
+        warehouseRef: warehouseId,
+        staffRef: saved.data,
+      });
+    },
+    { exclusive: true },
+  );
   const [sent, setSent] = useState(false);
 
   const submit = async () => {

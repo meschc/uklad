@@ -65,7 +65,7 @@ function TariffUpsell({ feature, onClose }: { feature: Feature; onClose: () => v
   const current = useEditor((s) => s.subscription.tariff);
   const setTariff = useEditor((s) => s.setTariff);
   const goToProfile = useEditor((s) => s.goToProfile);
-  const ask = useCommand(planRepository.request);
+  const ask = useCommand(planRepository.request, { exclusive: true });
   const [asked, setAsked] = useState(false);
 
   const plan = cheapestWith(feature);

@@ -69,7 +69,7 @@ export function PayPanel({
     return `${what} · ${when}${e.orderId ? ` · ${e.orderId}` : ""}`;
   };
 
-  const add = useCommand(payRepository.add);
+  const add = useCommand(payRepository.add, { exclusive: true });
   const remove = useCommand(payRepository.remove);
   // Конец периода: у текущего — «сейчас», у прошлого месяца — его последний день.
   const today = to - 1;

@@ -30,7 +30,7 @@ export function BackupSection() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const download = useCommand(downloadBackup);
-  const restore = useCommand(backupRepository.restoreArchive);
+  const restore = useCommand(backupRepository.restoreArchive, { exclusive: true });
   const weekly = useCommand(backupRepository.setWeeklyEmail);
 
   /** Разобранный, но ещё не подтверждённый архив. */

@@ -40,8 +40,8 @@ export function AccountDataSection() {
     });
   }, []);
 
-  const revoke = useCommand(accountRepository.revokeOthers);
-  const remove = useCommand(accountRepository.remove);
+  const revoke = useCommand(accountRepository.revokeOthers, { exclusive: true });
+  const remove = useCommand(accountRepository.remove, { exclusive: true });
 
   const onRevoke = async () => {
     const res = await revoke.run();

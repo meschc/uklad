@@ -159,7 +159,7 @@ function AnswerForm({
   date: (ms: number) => string;
 }) {
   const t = useT();
-  const send = useCommand(receivingAnswersRepository.answer);
+  const send = useCommand(receivingAnswersRepository.answer, { exclusive: true });
   const [disputing, setDisputing] = useState(false);
   const [comment, setComment] = useState("");
   return (

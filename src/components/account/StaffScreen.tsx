@@ -69,8 +69,9 @@ export function StaffScreen() {
 
   // Персонал правится через репозиторий (п.3.2.1). Загрузка из файла —
   // команда экрана, заведение и правка — панели, удаление — строки.
-  const load = useCommand((members: Omit<StaffMember, "id">[]) =>
-    staffRepository.importMany(members),
+  const load = useCommand(
+    (members: Omit<StaffMember, "id">[]) => staffRepository.importMany(members),
+    { exclusive: true },
   );
 
   const exportStaff = () => {

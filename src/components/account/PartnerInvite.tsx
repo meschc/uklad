@@ -33,15 +33,18 @@ function Invite({ partner }: { partner: Partner }) {
   const notify = useEditor((s) => s.notify);
   const { state, failed, reload } = useTeam();
   const [email, setEmail] = useState(isEmail(partner.contact ?? "") ? partner.contact! : "");
-  const send = useCommand(async () => {
-    // Новый партнёр мог ещё не доехать до сервера: сервер сверяет продавца
-    // со своим снимком склада.
-    await flushServerSync();
-    return teamRepository.inviteSeller(email.trim(), partner.person || partner.name, {
-      warehouseRef,
-      partnerRef: partner.id,
-    });
-  });
+  const send = useCommand(
+    async () => {
+      // Новый партнёр мог ещё не доехать до сервера: сервер сверяет продавца
+      // со своим снимком склада.
+      await flushServerSync();
+      return teamRepository.inviteSeller(email.trim(), partner.person || partner.name, {
+        warehouseRef,
+        partnerRef: partner.id,
+      });
+    },
+    { exclusive: true },
+  );
   // Нет права на персонал — блока нет: звать продавца ему не дано.
   if (failed || !state) return null;
   const invited = state.sellers.filter((m) => m.partnerRef === partner.id);

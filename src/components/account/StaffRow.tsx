@@ -33,10 +33,13 @@ export function StaffRow({
   const restore = useEditor((s) => s.restoreStaffMember);
   // Ушедший сотрудник не должен входить за стол старым бейджем: на сервере
   // бейдж гаснет до удаления, и если погасить не вышло, человек остаётся.
-  const remove = useCommand(async () => {
-    const off = await badgeRepository.revoke(m.id);
-    return off.ok ? staffRepository.remove(m.id) : off;
-  });
+  const remove = useCommand(
+    async () => {
+      const off = await badgeRepository.revoke(m.id);
+      return off.ok ? staffRepository.remove(m.id) : off;
+    },
+    { exclusive: true },
+  );
   const [badgeOpen, setBadgeOpen] = useState(false);
 
   return (
