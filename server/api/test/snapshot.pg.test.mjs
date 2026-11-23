@@ -188,6 +188,30 @@ test("чужая компания снимок не видит и не пише�
   assert.equal(read.json.snapshot.data.warehouse.name, "секрет");
 });
 
+test(
+  "номер версии для кабинета руководителя: своя компания, чужая — нет",
+  { skip: SKIP },
+  async () => {
+    const a = await owner("snap-v@sklad.ru", "10.0.1.90");
+    const none = await call("/api/cabinet/snapshot/version", a);
+    assert.equal(none.status, 200);
+    assert.equal(none.json.version, null);
+    await call("/api/cabinet/snapshot", {
+      ...a,
+      body: { version: 0, format: 8, data: data("А1") },
+    });
+    const one = await call("/api/cabinet/snapshot/version", a);
+    assert.equal(one.json.version, 1);
+    assert.equal(Object.keys(one.json).sort().join(), "ok,version");
+    assert.equal((await call("/api/cabinet/snapshot/version")).status, 401);
+    const peek = await call("/api/cabinet/snapshot/version", {
+      cookie: a.cookie,
+      org: "00000000-0000-7000-8000-000000000000",
+    });
+    assert.equal(peek.status, 401);
+  },
+);
+
 test("без сессии, без компании, не объект и слишком большой — отказ", { skip: SKIP }, async () => {
   const a = await owner("snap-e@sklad.ru", "10.0.1.5");
   assert.equal((await call("/api/cabinet/snapshot")).status, 401);

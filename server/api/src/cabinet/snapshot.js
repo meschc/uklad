@@ -426,6 +426,27 @@ function createSnapshot({ auth, send, log, limits = null }) {
     refillPerMinute: WRITES_PER_MINUTE,
   });
 
+  /**
+   * Номер версии кабинета — чтобы руководитель видел работу склада без
+   * перезагрузки (кабинет спрашивает раз в несколько секунд и забирает
+   * снимок, только когда номер ушёл вперёд). Только число: те же права, что
+   * на чтение кабинета, а данных в ответе нет.
+   */
+  async function liveVersion(req, res) {
+    const out = await withSession(req, async (c, ctx) => {
+      const place = ctx.accountId ? await actorPlace(c) : null;
+      const seller = sellerOf(place);
+      if (!seller && !mayUse(ctx) && !mayView(ctx)) return FORBIDDEN;
+      const { rows } = await c.query(
+        `SELECT version FROM uklad.cabinet_snapshots WHERE org_id = uklad.current_org()`,
+      );
+      return { version: rows[0]?.version ?? null };
+    });
+    if (out === null) return send(res, 401, { ok: false });
+    if (out === FORBIDDEN) return send(res, 403, { ok: false });
+    return send(res, 200, { ok: true, version: out.version });
+  }
+
   async function load(req, res) {
     const out = await withSession(req, async (c, ctx) => {
       const place = ctx.accountId ? await actorPlace(c) : null;
@@ -840,6 +861,7 @@ function createSnapshot({ auth, send, log, limits = null }) {
     "GET /api/cabinet/storage": storage,
     "GET /api/cabinet/inventory": inventory,
     "GET /api/cabinet/snapshot": load,
+    "GET /api/cabinet/snapshot/version": liveVersion,
     "POST /api/cabinet/snapshot": save,
     "POST /api/cabinet/snapshot/changes": saveChanges,
   };

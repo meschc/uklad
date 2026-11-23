@@ -110,6 +110,18 @@ export const snapshotRepository = {
     });
   },
 
+  /** Версия снимка для кабинета руководителя: забрать свежее, если ушла вперёд. */
+  liveVersion: async (): Promise<Result<number | null>> => {
+    const res = await attempt(
+      () => apiRequest("GET", "/cabinet/snapshot/version"),
+      "sync.err.network",
+    );
+    if (!res.ok) return res;
+    const { status, body } = res.data;
+    if (status !== 200) return fail("sync.err.network");
+    return ok(typeof body.version === "number" ? body.version : null);
+  },
+
   /**
    * Версия снимка на сервере (только стол). `null` — снимка ещё нет.
    * `taken` — сотрудника этого стола сняли входом за другим (миграция 049).
