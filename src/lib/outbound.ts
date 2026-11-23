@@ -160,6 +160,8 @@ export function packTargetProblem(input: {
 
 export type LoadScan =
   | { kind: "ok"; code: string; box?: OutboundBox }
+  /** В коробе отменённый заказ: не грузят, несут старшему. */
+  | { kind: "cancelled"; code: string; box: OutboundBox }
   | { kind: "dup"; code: string }
   | { kind: "not_unit"; code: string }
   /** Короб уже уехал другим рейсом. */
@@ -179,6 +181,7 @@ export function classifyLoadScan(
   requestIds: readonly string[],
   loaded: readonly string[],
   raw: string,
+  cancelled: ReadonlySet<string> = new Set(),
 ): LoadScan {
   const code = normalizeCode(raw);
   if (!isLoadUnit(code)) return { kind: "not_unit", code };
@@ -188,6 +191,8 @@ export function classifyLoadScan(
     const gone = list.some((b) => b.shipmentId && normalizeCode(b.code) === code);
     return gone ? { kind: "shipped", code } : { kind: "ok", code };
   }
+  // Отмена приходит и после упаковки: площадка такую посылку не примет.
+  if (box.requestIds.some((r) => cancelled.has(r))) return { kind: "cancelled", code, box };
   const ids = new Set(requestIds);
   // Короб без заявок — поставка без заказов (FBO): назначения у него нет,
   // проверить нечем, принимаем.
@@ -248,4 +253,13 @@ export function shipOutbound(
       ? { ...b, shipmentId, shippedAt: at, updatedAt: at }
       : b,
   );
+}
+
+/**
+ * Отменённые заявки — для проверки посылки перед сортировкой и погрузкой
+ * (шаг 7 `docs/domain/fbs.md`): площадка может отменить заказ и после
+ * упаковки, а принять отменённое не даст.
+ */
+export function cancelledIds(requests: readonly FulfillmentRequest[]): Set<string> {
+  return new Set(requests.filter((r) => r.status === "cancelled").map((r) => r.id));
 }

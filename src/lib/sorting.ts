@@ -83,6 +83,8 @@ export type SortScan =
   | { kind: "parcel"; box: OutboundBox; destination: string; point: string }
   /** Посылка легла на место сортировки. */
   | { kind: "placed"; box: OutboundBox; point: string; destination: string }
+  /** Заказ посылки отменили после упаковки: дальше не идёт, её несут старшему. */
+  | { kind: "cancelled"; code: string }
   /** Код не посылка и не место, или такой посылки нет среди открытых. */
   | { kind: "unknown"; code: string }
   /** У посылки нет одного направления (без заявок или в разные места). */
@@ -113,6 +115,8 @@ export function classifySortScan(
   if (point) {
     if (!pending) return { kind: "point_first", point: code };
     const box = openParcel(list, pending);
+    // Отмена пришла, пока посылка была в руках: место не принимает.
+    if (box && isCancelled(box, requests)) return { kind: "cancelled", code: pending };
     const destination = box && boxDestination(box, requests);
     if (!box || !destination) return { kind: "unknown", code: pending };
     if (point.key !== destKey(destination)) {
@@ -131,11 +135,17 @@ export function classifySortScan(
   }
   const box = openParcel(list, code);
   if (!box) return { kind: "unknown", code };
+  if (isCancelled(box, requests)) return { kind: "cancelled", code };
   if (box.sortCode) return { kind: "dup", code, point: box.sortCode };
   if (pending && normalizeCode(pending) !== code) return { kind: "parcel_pending", code };
   const destination = boxDestination(box, requests);
   if (!destination) return { kind: "no_destination", code };
   return { kind: "parcel", box, destination, point: currentSortPoint(list, destination) };
+}
+
+function isCancelled(box: OutboundBox, requests: readonly FulfillmentRequest[]): boolean {
+  const ids = new Set(box.requestIds);
+  return requests.some((r) => ids.has(r.id) && r.status === "cancelled");
 }
 
 function openParcel(list: readonly OutboundBox[], code: string): OutboundBox | undefined {

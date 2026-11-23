@@ -90,3 +90,20 @@ describe("грузовые места", () => {
     ]);
   });
 });
+
+describe("classifySortScan — заказ отменили после упаковки (23.11)", () => {
+  const gone = [{ ...req("r2", KOL), status: "cancelled" } as FulfillmentRequest, req("r1", KOL)];
+  const list = [box("UK-ORD-1", ["r1"]), box("UK-ORD-2", ["r2"])];
+
+  it("скан отменённой посылки — стоп, к старшему", () => {
+    expect(classifySortScan(list, gone, null, "UK-ORD-2")).toEqual({
+      kind: "cancelled",
+      code: "UK-ORD-2",
+    });
+    expect(classifySortScan(list, gone, null, "UK-ORD-1").kind).toBe("parcel");
+  });
+
+  it("отмена пришла, пока посылка в руках: место её не принимает", () => {
+    expect(classifySortScan(list, gone, "UK-ORD-2", P1).kind).toBe("cancelled");
+  });
+});
