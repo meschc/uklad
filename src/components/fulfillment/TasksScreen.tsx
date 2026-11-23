@@ -328,7 +328,7 @@ function Row({
       <td className="px-3 py-2">
         <button
           type="button"
-          className="text-left font-medium hover:text-primary hover:underline"
+          className="text-left font-medium hover:text-primary hover:underline max-md:min-h-11 max-md:min-w-11"
           onClick={onOpen}
         >
           {title}
