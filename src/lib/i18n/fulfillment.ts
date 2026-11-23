@@ -26,6 +26,8 @@ export const ru = {
   "parcel.open.submit": "Вскрыть в тару",
   "parcel.open.done": "Товар в таре {code}. Отсканируйте ячейку, куда ставите тару",
   "parcel.open.cell": "Ячейка для тары",
+  "parcel.open.repack":
+    "Тара {code}: в ней и живой заказ. Отнесите тару на упаковку, отменённое упаковка не возьмёт",
   "parcel.open.cabinetOnly":
     "Вскрыть посылку можно в кабинете: «Что это?». За столом — только посмотреть",
   "parcel.open.notCell": "Это не ячейка: {code}",
@@ -505,6 +507,8 @@ export const en: Record<keyof typeof ru, string> = {
   "parcel.open.submit": "Open into tote",
   "parcel.open.done": "Goods are in tote {code}. Scan the cell for the tote",
   "parcel.open.cell": "Cell for the tote",
+  "parcel.open.repack":
+    "Tote {code} also holds a live order. Take the tote to packing, it will not take the cancelled one",
   "parcel.open.cabinetOnly":
     "Open the parcel in the cabinet: «What is it?». At the desk you can only view it",
   "parcel.open.notCell": "Not a cell: {code}",

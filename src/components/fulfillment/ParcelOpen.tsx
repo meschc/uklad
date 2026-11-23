@@ -59,6 +59,10 @@ export function ParcelOpen({ card, t }: { card: ParcelCard; t: TFunc }) {
       </p>
     );
 
+  // В посылке был живой заказ: тару несут на упаковку, а не на полку.
+  if (tote && card.live > 0)
+    return <p className="text-sm font-medium">{t("parcel.open.repack", { code: tote.barcode })}</p>;
+
   return (
     <div className="flex flex-col gap-3">
       {tote ? (

@@ -28,6 +28,8 @@ export interface ParcelCard {
   sources: OrderSource[];
   sellers: string[];
   lines: { product: Product | null; productId: string; qty: number }[];
+  /** Живые (не отменённые) заказы в посылке: после вскрытия их пакуют заново. */
+  live: number;
   /** Где посылка должна быть: место сортировки; пусто — ещё не сортировали. */
   sortCode: string | null;
 }
@@ -79,6 +81,7 @@ export function parcelCard(raw: string, data: ParcelData): ParcelCard | null {
       productId: l.productId,
       qty: l.qty,
     })),
+    live: reqs.filter((r) => r.status !== "cancelled").length,
     sortCode: box.sortCode ?? null,
   };
 }

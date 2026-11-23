@@ -135,4 +135,28 @@ describe("Вскрыть отменённую посылку в тару", () =>
     });
     expect(store.getState().outboundBoxes).toHaveLength(3);
   });
+
+  it("в посылке и живой заказ: обе заявки снова в таре неупакованными, живую пакуют заново", async () => {
+    const mixed = parcel("o4", "UK-ORD-4", ["r1", "r2"], {
+      lines: [{ productId: "p1", qty: 4 }],
+    });
+    const { store, repo } = make({
+      outboundBoxes: [mixed],
+      requests: [
+        { ...req("r1", "cancelled"), packedAt: 5 },
+        { ...req("r2", "done"), packedAt: 5 },
+      ],
+    } as Partial<EditorState>);
+    expect(parcelCard("UK-ORD-4", { ...store.getState(), partners: [] })).toMatchObject({
+      state: "cancelled",
+      live: 1,
+    });
+    expect((await repo.openParcel("UK-ORD-4", "UK-BOX-t1")).ok).toBe(true);
+    const s = store.getState();
+    expect(s.outboundBoxes).toEqual([]);
+    for (const r of s.requests) {
+      expect(r.packedAt).toBeUndefined();
+      expect(r.toteId).toBe("t1");
+    }
+  });
 });

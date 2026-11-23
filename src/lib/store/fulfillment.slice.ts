@@ -163,6 +163,21 @@ export const createFulfillmentSlice: SliceCreator<FulfillmentSlice> = (set, get)
           b.id === toteId ? { ...b, lines: parcel.lines.map((l) => ({ ...l })) } : b,
         ),
         outboundBoxes: s.outboundBoxes.filter((b) => b.id !== outboundId),
+        // В посылке был и живой заказ: он не должен зависнуть упакованным без
+        // посылки. Заявки посылки возвращаются в тару неупакованными: живую
+        // пакуют заново, отменённую стол упаковки не даст упаковать
+        // (`cancelledInTote`). Целиком отменённую не трогаем — тару ставят на полку.
+        ...(parcel.requestIds.some((id) =>
+          s.requests.some((r) => r.id === id && r.status !== "cancelled"),
+        )
+          ? {
+              requests: s.requests.map((r) =>
+                parcel.requestIds.includes(r.id)
+                  ? { ...r, packedAt: undefined, packedBy: undefined, toteId, updatedAt: nowMs() }
+                  : r,
+              ),
+            }
+          : {}),
       };
     }),
 
