@@ -67,6 +67,7 @@ const DEVICE_KEYS = [
   "session",
   "thisDeviceId",
   "stationSession",
+  "stationLock",
   "packSession",
   "seenHints",
   "profile",
