@@ -910,8 +910,8 @@ export interface DocsSlice {
   deskDeciders: string[] | null;
   setDeskDeciders: (ids: string[] | null) => void;
   /** Какой документ открыть на экране «Документы» — переход из задания или приёмки. */
-  docFocus: { kind: DocRecord["kind"]; sourceId: string } | null;
-  openDoc: (kind: DocRecord["kind"], sourceId: string) => void;
+  docFocus: { kind: DocRecord["kind"] | "pick"; sourceId: string } | null;
+  openDoc: (kind: DocRecord["kind"] | "pick", sourceId: string) => void;
   clearDocFocus: () => void;
 }
 

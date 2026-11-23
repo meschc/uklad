@@ -31,7 +31,7 @@ import { Field } from "@/components/ui/field";
 import { SupplyDialog } from "./SupplyDialog";
 import { SellerSupplies } from "./SellerSupplies";
 import { RequestDialog } from "./RequestDialog";
-import { StatusBadge } from "./TasksScreen";
+import { StatusBadge } from "./RequestGroupCard";
 import { DatePicker } from "@/components/ui/date-picker";
 import { toIso } from "@/components/ui/dates";
 

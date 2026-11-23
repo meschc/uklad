@@ -39,7 +39,7 @@ export function ScreenShell({
       <div
         className={`mx-auto flex min-h-full ${wide ? "max-w-5xl" : "max-w-2xl"} flex-col gap-5 px-6 py-7`}
       >
-        <header className="flex items-start justify-between gap-4">
+        <header className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
           <div className="min-w-0">
             <h1 className="text-lg font-semibold tracking-tight">{title}</h1>
             {subtitle && <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>}
