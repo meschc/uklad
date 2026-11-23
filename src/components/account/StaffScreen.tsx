@@ -8,6 +8,7 @@ import { telHref } from "@/lib/phone";
 import { csvToStaff, staffToCsv } from "@/lib/staffIO";
 import { BOM } from "@/lib/utils";
 import type { StaffMember } from "@/lib/types";
+import { TableScroll, TABLE_HEAD, TABLE_HEAD_ROW } from "@/components/ui/table-scroll";
 import { SortTh, TableFilters, TableSearch, useDataTable } from "@/components/ui/data-table";
 import { useT, type TFunc } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
@@ -168,12 +169,9 @@ export function StaffScreen() {
                   variant="outline"
                   disabled={staff.length === 0}
                   onClick={exportStaff}
-                  // На телефоне подписи нет — остаётся значок с названием.
-                  title={t("staff.export")}
-                  aria-label={t("staff.export")}
                 >
                   <Download className="size-3.5" />
-                  <span className="hidden sm:inline">{t("staff.export")}</span>
+                  {t("staff.export")}
                 </Button>
                 {/* Формы у загрузки нет, терять нечего — отказ тостом, а кнопка на
                 время команды занята: второй тот же файл завёл бы список дважды. */}
@@ -182,13 +180,9 @@ export function StaffScreen() {
                   variant="outline"
                   disabled={load.pending}
                   onClick={() => fileRef.current?.click()}
-                  title={t("staff.import")}
-                  aria-label={t("staff.import")}
                 >
                   <Upload className="size-3.5" />
-                  <span className="hidden sm:inline">
-                    {load.pending ? t("data.busy") : t("staff.import")}
-                  </span>
+                  {load.pending ? t("data.busy") : t("staff.import")}
                 </Button>
                 <input
                   ref={fileRef}
@@ -237,10 +231,10 @@ export function StaffScreen() {
                     })}
                   </p>
                 )}
-                <div className="overflow-x-auto rounded-xl border border-border">
+                <TableScroll>
                   <table className="table-stack w-full border-collapse text-sm">
-                    <thead className="bg-muted/50 text-xs">
-                      <tr className="text-left">
+                    <thead className={TABLE_HEAD}>
+                      <tr className={TABLE_HEAD_ROW}>
                         <SortTh table={staffTable.table} id="name">
                           {t("staff.col.name")}
                         </SortTh>
@@ -270,7 +264,7 @@ export function StaffScreen() {
                       ))}
                     </tbody>
                   </table>
-                </div>
+                </TableScroll>
               </>
             )}
           </section>

@@ -17,6 +17,7 @@ import { requestsRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
 import { downloadSheet } from "@/lib/sheets";
 import { groupRequestsByTarget } from "@/lib/fulfillment";
+import { TableScroll, TABLE_HEAD, TABLE_HEAD_ROW, TABLE_ROW } from "@/components/ui/table-scroll";
 import { SortTh, TableFilters, TableSearch, useDataTable } from "@/components/ui/data-table";
 import { useT, type MsgKey, type TFunc } from "@/lib/i18n";
 import { isOrderSource, type RequestStatus } from "@/lib/types";
@@ -173,10 +174,10 @@ function RequestsTab({ t }: { t: TFunc }) {
                 </span>
               ))}
             </div>
-            <div className="overflow-hidden rounded-xl border border-border">
+            <TableScroll>
               <table className="table-stack w-full border-collapse text-sm">
-                <thead className="bg-muted/50 text-xs">
-                  <tr className="text-left">
+                <thead className={TABLE_HEAD}>
+                  <tr className={TABLE_HEAD_ROW}>
                     <SortTh table={reqTable.table} id="name">
                       {t("table.col.name")}
                     </SortTh>
@@ -195,7 +196,7 @@ function RequestsTab({ t }: { t: TFunc }) {
                   {g.items.map((r) => {
                     const p = products.find((x) => x.id === r.productId);
                     return (
-                      <tr key={r.id} className="border-t border-border/60">
+                      <tr key={r.id} className={TABLE_ROW}>
                         <td className="px-3 py-2">
                           <div className="font-medium">{p?.name ?? "—"}</div>
                           <div className="font-mono text-2xs text-muted-foreground">{p?.sku}</div>
@@ -241,7 +242,7 @@ function RequestsTab({ t }: { t: TFunc }) {
                   })}
                 </tbody>
               </table>
-            </div>
+            </TableScroll>
           </section>
         ))
       )}

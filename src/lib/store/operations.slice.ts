@@ -1,4 +1,5 @@
 import { nowMs, uid } from "../utils";
+import { LIMITS } from "@/lib/numberLimits";
 import type { WarehouseTask } from "../types";
 import type { OperationsSlice, SliceCreator } from "./state";
 
@@ -101,7 +102,7 @@ export const createOperationsSlice: SliceCreator<OperationsSlice> = (set) => ({
     set((s) => {
       const prices = { ...s.serviceSettings.prices };
       if (price == null || !Number.isFinite(price) || price < 0) delete prices[kind];
-      else prices[kind] = price;
+      else prices[kind] = Math.min(LIMITS.price.max, Math.round(price * 100) / 100);
       return { serviceSettings: { ...s.serviceSettings, prices } };
     }),
 });

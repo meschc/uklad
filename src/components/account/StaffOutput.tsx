@@ -13,6 +13,7 @@ import { BOM } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/segmented";
+import { TableScroll, TABLE_HEAD, TABLE_HEAD_ROW, TABLE_ROW } from "@/components/ui/table-scroll";
 import { SortTh, useDataTable } from "@/components/ui/data-table";
 
 /**
@@ -131,10 +132,10 @@ export function StaffOutput() {
         </Button>
       </div>
       <p className="max-w-2xl text-xs text-muted-foreground">{t("staff.out.lead")}</p>
-      <div className="overflow-x-auto">
+      <TableScroll>
         <table className="table-stack w-full border-collapse text-sm">
-          <thead className="text-xs text-muted-foreground">
-            <tr className="border-b border-border text-left">
+          <thead className={TABLE_HEAD}>
+            <tr className={TABLE_HEAD_ROW}>
               <SortTh table={table.table} id="name">
                 {t("staff.col.name")}
               </SortTh>
@@ -178,7 +179,7 @@ export function StaffOutput() {
           </thead>
           <tbody>
             {table.rows.map((r) => (
-              <tr key={r.staffId} className="border-b border-border last:border-0">
+              <tr key={r.staffId} className={TABLE_ROW}>
                 <td className="px-3 py-2">
                   <button
                     type="button"
@@ -285,7 +286,7 @@ export function StaffOutput() {
             ))}
           </tbody>
         </table>
-      </div>
+      </TableScroll>
       {panelRow && (
         <PayPanel
           row={panelRow}

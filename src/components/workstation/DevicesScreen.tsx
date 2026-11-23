@@ -15,6 +15,7 @@ import { useNow } from "./useNow";
 import { BindDeviceForm } from "./BindDeviceForm";
 import { RevokeDevice } from "./RevokeDevice";
 import { DeviceJournal } from "./DeviceJournal";
+import { TableScroll, TABLE_HEAD, TABLE_HEAD_ROW, TABLE_ROW } from "@/components/ui/table-scroll";
 
 /**
  * Устройства склада (вид `devices`, группа «О складе»). Руководитель заводит
@@ -80,35 +81,29 @@ export function DevicesScreen() {
               placeholder={t("common.search")}
             />
           </div>
-          <div className={cn(card(), "overflow-x-auto")}>
-            <table className="table-stack w-full text-sm">
-              <thead className="text-left text-xs text-muted-foreground">
-                <tr className="border-b border-border">
-                  <SortTh table={devTable.table} id="name" className="px-4">
+          <TableScroll>
+            <table className="table-stack w-full border-collapse text-sm">
+              <thead className={TABLE_HEAD}>
+                <tr className={TABLE_HEAD_ROW}>
+                  <SortTh table={devTable.table} id="name">
                     {t("devices.col.name")}
                   </SortTh>
-                  <SortTh table={devTable.table} id="station" className="px-4">
+                  <SortTh table={devTable.table} id="station">
                     {t("devices.col.station")}
                   </SortTh>
-                  <SortTh table={devTable.table} id="who" className="px-4">
+                  <SortTh table={devTable.table} id="who">
                     {t("devices.col.who")}
                   </SortTh>
-                  <SortTh table={devTable.table} id="since" className="px-4">
+                  <SortTh table={devTable.table} id="since">
                     {t("devices.col.since")}
                   </SortTh>
-                  <th className="px-4 py-2" />
+                  <th className="px-3 py-2" />
                 </tr>
               </thead>
               <tbody>
                 {devTable.rows.map((d) => (
-                  <tr
-                    key={d.id}
-                    className={cn(
-                      "border-b border-border last:border-0",
-                      d.revokedAt && "opacity-50",
-                    )}
-                  >
-                    <td className="px-4 py-2.5">
+                  <tr key={d.id} className={cn(TABLE_ROW, d.revokedAt && "opacity-50")}>
+                    <td className="px-3 py-2">
                       <span className="font-medium">{d.name}</span>
                       {d.id === thisId && !d.revokedAt && (
                         <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">
@@ -116,11 +111,11 @@ export function DevicesScreen() {
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-2.5" data-label={t("devices.col.station")}>
+                    <td className="px-3 py-2" data-label={t("devices.col.station")}>
                       {t(`ws.station.${d.station}` as MsgKey)}
                     </td>
                     <td
-                      className="px-4 py-2.5 text-muted-foreground"
+                      className="px-3 py-2 text-muted-foreground"
                       data-label={t("devices.col.who")}
                     >
                       {d.revokedAt
@@ -130,12 +125,12 @@ export function DevicesScreen() {
                         : (who(d.id) ?? t("devices.nobody"))}
                     </td>
                     <td
-                      className="px-4 py-2.5 tabular-nums text-muted-foreground"
+                      className="px-3 py-2 tabular-nums text-muted-foreground"
                       data-label={t("devices.col.since")}
                     >
                       {new Date(d.createdAt).toLocaleDateString(t.lang)}
                     </td>
-                    <td className="px-4 py-2.5 text-right">
+                    <td className="px-3 py-2 text-right">
                       <Button variant="ghost" size="sm" onClick={() => setJournalOf(d)}>
                         <History />
                         {t("devices.journal")}
@@ -151,7 +146,12 @@ export function DevicesScreen() {
                           {t("devices.forget")}
                         </Button>
                       ) : (
-                        <Button variant="ghost" size="sm" onClick={() => setRevoking(d)}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                          onClick={() => setRevoking(d)}
+                        >
                           <Power />
                           {t("devices.revoke")}
                         </Button>
@@ -161,7 +161,7 @@ export function DevicesScreen() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </TableScroll>
         </div>
       )}
       {journalOf && (

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Download, Plus, Search, Columns3, SlidersHorizontal, X } from "lucide-react";
+import { Upload, Plus, Search, Columns3, SlidersHorizontal, X } from "lucide-react";
 import { catLabel, useT, type MsgKey } from "@/lib/i18n";
 import type { Partner } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -101,23 +101,13 @@ export function TableToolbar({
           </div>
           {!readOnly && (
             <>
-              <Button
-                variant="outline"
-                size="icon-sm"
-                onClick={onImport}
-                title={t("table.import")}
-                aria-label={t("table.import")}
-              >
-                <Download className="size-4" />
+              <Button variant="outline" size="sm" onClick={onImport}>
+                <Upload className="size-3.5" />
+                {t("table.import")}
               </Button>
-              <Button
-                variant="outline"
-                size="icon-sm"
-                onClick={onFields}
-                title={t("table.fields")}
-                aria-label={t("table.fields")}
-              >
-                <Columns3 className="size-4" />
+              <Button variant="outline" size="sm" onClick={onFields}>
+                <Columns3 className="size-3.5" />
+                {t("table.fields")}
               </Button>
               <Button size="sm" onClick={onAdd}>
                 <Plus className="size-3.5" />

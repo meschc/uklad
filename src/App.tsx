@@ -151,7 +151,7 @@ export default function App() {
   // лендинге открывались тёмные экраны того, кто когда-то включил тёмную тему в
   // кабинете на этом же адресе. Профиль при этом не трогаем.
   useEffect(() => {
-    if (!isEmbed(window.location.search)) {
+    if (!isEmbed(window.location.search) && theme !== "system") {
       applyTheme(theme);
       return;
     }

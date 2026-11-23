@@ -56,6 +56,7 @@ export function UkladLockup({
   className,
   image,
   fit = false,
+  onMenu = false,
 }: {
   label?: string;
   tone?: "blue" | "white";
@@ -67,6 +68,8 @@ export function UkladLockup({
   fit?: boolean;
   className?: string;
   image?: string;
+  /** Подпись на чёрном меню кабинета — светлая. */
+  onMenu?: boolean;
 }) {
   return (
     <span className={cn("flex min-w-0 items-center gap-2.5", className)}>
@@ -80,7 +83,11 @@ export function UkladLockup({
               : label.length <= 10
                 ? "text-[21px] leading-none"
                 : "line-clamp-2 break-words text-[15px] leading-tight",
-            tone === "white" ? "text-white" : "text-foreground",
+            tone === "white" || onMenu
+              ? onMenu
+                ? "text-menu-foreground"
+                : "text-white"
+              : "text-foreground",
           )}
         >
           {label}

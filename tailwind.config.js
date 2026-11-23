@@ -46,6 +46,13 @@ export default {
           foreground: "hsl(var(--popover-foreground))",
         },
         shell: "hsl(var(--shell))",
+        menu: {
+          DEFAULT: "hsl(var(--menu))",
+          foreground: "hsl(var(--menu-foreground))",
+          muted: "hsl(var(--menu-muted))",
+          hover: "hsl(var(--menu-hover))",
+          border: "hsl(var(--menu-border))",
+        },
         card: {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",

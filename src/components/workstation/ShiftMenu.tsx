@@ -94,7 +94,7 @@ export function ShiftMenu({ member, now }: { member: StaffMember; now: number })
       </div>
 
       {autoIdle != null && (
-        <p className="rounded-lg bg-warning/10 px-3 py-2 text-sm text-warning">
+        <p className="rounded-lg bg-warning-fill px-3 py-2 text-sm text-warning-foreground">
           {t("ws.idle.auto", { t: formatTime(autoIdle, t.lang) })}
         </p>
       )}

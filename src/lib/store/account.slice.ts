@@ -1,5 +1,4 @@
 import type { Warehouse } from "../types";
-import { systemTheme } from "../theme";
 import type { AccountSlice, EditorState, SliceCreator } from "./state";
 import { swapWarehouseData } from "./warehouseData";
 import {
@@ -28,7 +27,7 @@ export const createAccountSlice: SliceCreator<AccountSlice> = (set, get) => ({
     // Первый запуск открывается в теме устройства, дальше решает переключатель
     // в профиле — выбор человека persist держит и системой больше не
     // перебивает (почему именно так — в `lib/theme.ts`).
-    theme: systemTheme(),
+    theme: "system",
     language: "ru",
     showShelves: true,
   },

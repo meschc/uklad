@@ -552,7 +552,13 @@ export function Profile() {
               {/* Вид — плитками, а не строками: тема видна сразу, её не надо
                 читать. */}
               <Section title={t("profile.section.look")}>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-3">
+                  <ThemeTile
+                    theme="system"
+                    active={profile.theme === "system"}
+                    label={t("profile.theme.system")}
+                    onClick={() => updateProfile({ theme: "system" })}
+                  />
                   <ThemeTile
                     theme="light"
                     active={profile.theme === "light"}

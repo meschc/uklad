@@ -87,7 +87,14 @@ export function ThemeTile({
     >
       {/* Превью рисуется фиксированными цветами, а не токенами: плитка тёмной
           темы должна быть тёмной и в светлом интерфейсе. */}
-      <div className={cn("flex h-20 gap-2 p-3", dark ? "bg-[#18181b]" : "bg-[#f4f4f5]")}>
+      <div
+        className={cn(
+          "flex h-20 gap-2 p-3",
+          dark ? "bg-[#18181b]" : "bg-[#f4f4f5]",
+          // «Авто» — пополам: слева светлая, справа тёмная.
+          theme === "system" && "bg-[linear-gradient(115deg,#f4f4f5_50%,#18181b_50%)]",
+        )}
+      >
         <div className={cn("w-6 rounded", dark ? "bg-[#27272a]" : "bg-white")} />
         <div className="flex flex-1 flex-col gap-1.5">
           <div className={cn("h-2 w-2/3 rounded", dark ? "bg-[#3f3f46]" : "bg-[#d4d4d8]")} />

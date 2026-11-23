@@ -1,4 +1,5 @@
 import { UkladAppTile } from "@/components/brand/UkladLockup";
+import { useIsDark } from "@/lib/useIsDark";
 import { useState } from "react";
 import { ArrowRight, Info, LogOut, MapPin, Moon, Pencil, Plus, Settings, Sun } from "lucide-react";
 import { selectRole, useEditor } from "@/lib/store";
@@ -50,7 +51,6 @@ function warehouseStats(w: Warehouse, placements: Record<string, CellAddress>, b
  */
 export function Dashboard() {
   const account = useEditor((s) => s.account);
-  const theme = useEditor((s) => s.profile.theme);
   const updateProfile = useEditor((s) => s.updateProfile);
   const goToProfile = useEditor((s) => s.goToProfile);
   const openWarehouse = useEditor((s) => s.openWarehouse);
@@ -73,7 +73,7 @@ export function Dashboard() {
     const res = await authRepository.logout();
     leaveServerSession(res.ok ? undefined : "offline");
   };
-  const dark = theme === "dark";
+  const dark = useIsDark();
   const [dialog, setDialog] = useState<DialogState>(null);
 
   const warehouses = allWarehouses();

@@ -193,7 +193,16 @@ function MemberRow({
         ) : (
           !mine &&
           !fixed && (
-            <Button size="sm" variant="ghost" onClick={() => onDisable(m.status !== "disabled")}>
+            <Button
+              size="sm"
+              variant="ghost"
+              className={
+                m.status === "disabled"
+                  ? undefined
+                  : "text-destructive hover:bg-destructive/10 hover:text-destructive"
+              }
+              onClick={() => onDisable(m.status !== "disabled")}
+            >
               {m.status === "disabled" ? t("team.enable") : t("team.disable")}
             </Button>
           )

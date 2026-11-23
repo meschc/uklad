@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { TableScroll, TABLE_HEAD, TABLE_HEAD_ROW, TABLE_ROW } from "@/components/ui/table-scroll";
 import { Plus, Receipt, Trash2, X } from "lucide-react";
 import { DialogFooter, DialogHeader, DialogShell } from "@/components/ui/dialog-shell";
 import { Label } from "@/components/ui/label";
@@ -106,12 +107,11 @@ export function ServicesPanel() {
                 )}
               </label>
               <Input
-                max={LIMITS.money.max}
+                max={LIMITS.price.max}
                 type="number"
                 min={0}
-                step="0.5"
+                step="0.01"
                 inputMode="decimal"
-                disabled={!on}
                 aria-label={t("ops.services.price", { unit })}
                 placeholder={t("ops.services.noPrice")}
                 // Ключ по цене: после стирания поле должно показать пустоту,
@@ -120,7 +120,11 @@ export function ServicesPanel() {
                 defaultValue={price ?? ""}
                 onBlur={(e) => {
                   const raw = e.target.value.trim().replace(",", ".");
-                  setPrice(s.kind, raw === "" ? null : Number(raw));
+                  const n = raw === "" ? null : Number(raw);
+                  setPrice(s.kind, n);
+                  // Ввод цены включает услугу: цена у выключенной — тупик,
+                  // человек не поймёт, почему услуга не идёт в счёт.
+                  if (n != null && Number.isFinite(n) && n >= 0 && !on) setEnabled(s.kind, true);
                 }}
                 className="ml-[26px] w-28 text-right tabular-nums sm:ml-0"
               />
@@ -362,40 +366,40 @@ export function ReportPanel() {
       {report.rows.length === 0 ? (
         <EmptyState icon={<Receipt className="size-5" />} title={t("ops.report.empty")} />
       ) : (
-        <div className={cn(card({ pad: "none" }), "overflow-x-auto")}>
-          <table className="w-full text-sm">
-            <thead className="text-xs text-muted-foreground">
-              <tr className="border-b border-border">
-                <SortTh table={repTable.table} id="service" className="px-4 font-normal">
+        <TableScroll>
+          <table className="w-full border-collapse text-sm">
+            <thead className={TABLE_HEAD}>
+              <tr className={TABLE_HEAD_ROW}>
+                <SortTh table={repTable.table} id="service" className="px-3 font-normal">
                   {t("ops.report.service")}
                 </SortTh>
-                <SortTh table={repTable.table} id="qty" align="right" className="px-4 font-normal">
+                <SortTh table={repTable.table} id="qty" align="right" className="px-3 font-normal">
                   {t("ops.report.qty")}
                 </SortTh>
                 <SortTh
                   table={repTable.table}
                   id="price"
                   align="right"
-                  className="hidden px-4 font-normal sm:table-cell"
+                  className="hidden px-3 font-normal sm:table-cell"
                 >
                   {t("ops.report.price")}
                 </SortTh>
-                <SortTh table={repTable.table} id="sum" align="right" className="px-4 font-normal">
+                <SortTh table={repTable.table} id="sum" align="right" className="px-3 font-normal">
                   {t("ops.report.sum")}
                 </SortTh>
               </tr>
             </thead>
             <tbody className="tabular-nums">
               {repTable.rows.map((r) => (
-                <tr key={r.kind} className="border-b border-border last:border-0">
-                  <td className="px-4 py-2">{svcName(r.kind)}</td>
-                  <td className="px-4 py-2 text-right">{money(r.qty, t.lang)}</td>
-                  <td className="hidden whitespace-nowrap px-4 py-2 text-right sm:table-cell">
+                <tr key={r.kind} className={TABLE_ROW}>
+                  <td className="px-3 py-2">{svcName(r.kind)}</td>
+                  <td className="px-3 py-2 text-right">{money(r.qty, t.lang)}</td>
+                  <td className="hidden whitespace-nowrap px-3 py-2 text-right sm:table-cell">
                     {r.price == null
                       ? "—"
                       : `${money(r.price, t.lang)} ₽ / ${t(`ops.unit.${r.unit}` as MsgKey)}`}
                   </td>
-                  <td className="px-4 py-2 text-right">
+                  <td className="px-3 py-2 text-right">
                     {r.sum == null ? "—" : `${money(r.sum, t.lang)} ₽`}
                   </td>
                 </tr>
@@ -403,17 +407,17 @@ export function ReportPanel() {
             </tbody>
             <tfoot>
               <tr className="border-t border-border font-medium">
-                <td className="px-4 py-2" colSpan={2}>
+                <td className="px-3 py-2" colSpan={2}>
                   {t("ops.report.total")}
                 </td>
                 <td className="hidden sm:table-cell" />
-                <td className="px-4 py-2 text-right tabular-nums">
+                <td className="px-3 py-2 text-right tabular-nums">
                   {money(report.total, t.lang)} ₽
                 </td>
               </tr>
             </tfoot>
           </table>
-        </div>
+        </TableScroll>
       )}
       {report.unpriced && (
         <p className="text-xs text-muted-foreground">{t("ops.report.unpriced")}</p>

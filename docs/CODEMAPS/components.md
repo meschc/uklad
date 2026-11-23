@@ -166,6 +166,7 @@ charts.tsx       BarChart / Donut / StatCard — ручной SVG, без биб
 HeatmapView      план этажа, секции окрашены по занятости (0→120° HSL)
 View3D, engine   three.js-сцена (скрыта флагом SHOW_3D в constants.ts)
 ui/              примитивы: button, input, label, separator, tooltip,
+                 table-scroll (обёртка всех таблиц), time-input («1300» → 13:00),
                  segmented — единственный вид «кнопок-табов» (см.
                  docs/design/DESIGN-SYSTEM.md)
 ```

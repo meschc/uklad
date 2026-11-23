@@ -44,4 +44,12 @@ describe("operations.slice", () => {
     store.getState().setServicePrice("packing", -1);
     expect("packing" in store.getState().serviceSettings.prices).toBe(false);
   });
+
+  it("цена — до 99 999,99 и с двумя знаками после запятой", () => {
+    const store = makeOperationsStore();
+    store.getState().setServicePrice("packing", 12.3456);
+    expect(store.getState().serviceSettings.prices.packing).toBe(12.35);
+    store.getState().setServicePrice("packing", 1_000_000);
+    expect(store.getState().serviceSettings.prices.packing).toBe(99_999.99);
+  });
 });

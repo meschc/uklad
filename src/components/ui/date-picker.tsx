@@ -122,7 +122,7 @@ function Calendar({
 }
 
 const TRIGGER =
-  "flex h-9 min-w-0 cursor-pointer items-center gap-2 rounded-md border border-input bg-background px-2.5 text-left text-sm shadow-sm transition-colors duration-fast hover:border-foreground/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  "flex h-9 min-w-0 cursor-pointer items-center gap-2 max-md:min-h-11 rounded-md border border-input bg-background px-2.5 text-left text-sm shadow-sm transition-colors duration-fast hover:border-foreground/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 function usePicker() {
   const trigger = useRef<HTMLButtonElement>(null);
