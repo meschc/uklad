@@ -83,6 +83,11 @@ const DESK_LOCAL_KEYS = [...DEVICE_KEYS, "receiving"] as const;
 const SAVE_DELAY_MS = 5000;
 /** Как часто стол спрашивает версию снимка. */
 const DESK_POLL_MS = 20_000;
+// Кабинет руководителя спрашивает номер версии так часто…
+const LIVE_POLL_MS = 3_000;
+// …а снимок целиком забирает не чаще этого: при сплошных сканах иначе
+// браузер качал бы весь кабинет каждые три секунды.
+const LIVE_LOAD_MS = 6_000;
 // Подряд наложить правку на свежий снимок — не больше стольких раз.
 const MAX_REBASES = 3;
 const RETRY_MS = 30_000;
@@ -623,6 +628,53 @@ export function startServerSync(orgId: string): () => void {
     if (document.visibilityState === "visible") void inLane(deskTick);
   }, DESK_POLL_MS);
 
+  /**
+   * Кабинет руководителя видит работу склада без перезагрузки: раз в три
+   * секунды спрашивает номер версии (одно число), ушёл вперёд — забирает
+   * снимок и кладёт его в стор, как копию стола. Своя незаписанная правка —
+   * сначала запись: на отказ она сама наложится на свежее (`rebase`).
+   * Тысяча сканов подряд — всё равно один снимок раз в шесть секунд. Нет
+   * сети — тихо ждём следующего захода. Скрытая вкладка не спрашивает.
+   */
+  let liveLoadedAt = 0;
+  const liveTick = async () => {
+    if (stopped || desk || !booted || inflight) return;
+    const meta = readMeta();
+    if (!meta || meta.orgId !== orgId) return;
+    const v = await snapshotRepository.liveVersion();
+    if (stopped || !v.ok || v.data === null || v.data === meta.version) return;
+    if (meta.dirty) {
+      schedule(0);
+      return;
+    }
+    if (Date.now() - liveLoadedAt < LIVE_LOAD_MS) return;
+    liveLoadedAt = Date.now();
+    const res = await snapshotRepository.load();
+    if (stopped || !res.ok || !res.data || res.data.desk) return;
+    const snap = res.data;
+    // Пока качали, человек начал править — его правка важнее, её запишет flush.
+    const now = readMeta();
+    if (!now || now.dirty || now.version !== meta.version || inflight) return;
+    if (snap.version === meta.version) return;
+    if (snap.format !== PERSIST_VERSION) return void boot();
+    const keep = persistMerge();
+    if (!keep) return;
+    const current = persistedState(useEditor.getState());
+    const persisted = {
+      ...snap.data,
+      integrations: withLocalSecrets(snap.data.integrations, current.integrations),
+      ...devicePart(current),
+    };
+    useEditor.setState(keep(persisted, useEditor.getState()), true);
+    markReadOnly(snap.viewer === true, snap.writable);
+    base = { version: snap.version, split: splitCabinet(snap.data), data: snap.data };
+    lastSent = JSON.stringify(companyPart(persistedState(useEditor.getState())));
+    writeMeta({ orgId, version: snap.version, dirty: false });
+  };
+  const liveTimer = setInterval(() => {
+    if (document.visibilityState === "visible") void inLane(liveTick);
+  }, LIVE_POLL_MS);
+
   // Правки — любые изменения стора; лишние (выделение, зум) отсекает
   // сравнение с последним отправленным в `flush`.
   const unsubscribe = useEditor.subscribe(() => {
@@ -670,8 +722,12 @@ export function startServerSync(orgId: string): () => void {
   // Вкладка снова на экране — сначала свежее с сервера: правка с другого
   // устройства придёт до того, как здесь начнут править устаревшее. С
   // незаписанным здесь не тянем: его сначала нужно отправить.
+  // Вернулись на вкладку: стол сверяется заново, руководитель забирает свежее
+  // без перезагрузки страницы (`liveTick`).
   const onVisible = () => {
-    if (document.visibilityState === "visible" && !hasUnsyncedChanges()) void inLane(boot);
+    if (document.visibilityState !== "visible" || hasUnsyncedChanges()) return;
+    liveLoadedAt = 0;
+    void inLane(desk ? boot : liveTick);
   };
   document.addEventListener("visibilitychange", onVisible);
 
@@ -685,6 +741,7 @@ export function startServerSync(orgId: string): () => void {
     stopped = true;
     clearTimeout(timer);
     clearInterval(deskTimer);
+    clearInterval(liveTimer);
     activeResync = null;
     document.removeEventListener("visibilitychange", onVisible);
     unsubscribe();
