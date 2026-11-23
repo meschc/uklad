@@ -2,7 +2,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { packText } from "../../storeCodec";
 import { PERSIST_KEY } from "../persistStorage";
-import { DEMO_SEED_KEY, DEMO_SEED_VERSION, isDemoStale } from "../seedVersion";
+import { DEMO_MAX_AGE_DAYS, DEMO_SEED_KEY, DEMO_SEED_VERSION, isDemoStale } from "../seedVersion";
 
 /**
  * Демо должно быть полным: что склад умеет, то посетитель и видит. Тест
@@ -106,6 +106,22 @@ describe("версия посева", () => {
     expect(isDemoStale(false, null, false)).toBe(false);
     // Сервер: данные компании никакой посев не заменяет.
     expect(isDemoStale(true, null, true)).toBe(false);
+  });
+
+  it("даты демо относительные: через неделю демо собирается заново, раньше — нет", () => {
+    const day = 86_400_000;
+    const now = 100 * day;
+    const v = String(DEMO_SEED_VERSION);
+    expect(isDemoStale(true, v, false, String(now - (DEMO_MAX_AGE_DAYS - 1) * day), now)).toBe(
+      false,
+    );
+    expect(isDemoStale(true, v, false, String(now - (DEMO_MAX_AGE_DAYS + 1) * day), now)).toBe(
+      true,
+    );
+    // Метки нет — не гадаем, ключ запишется на этом запуске.
+    expect(isDemoStale(true, v, false, null, now)).toBe(false);
+    // Кабинет с сервером никакой посев не заменяет.
+    expect(isDemoStale(true, v, true, String(now - 90 * day), now)).toBe(false);
   });
 
   /** Возвращает стор посетителя, у которого сохранено демо под номером `seedKey`. */

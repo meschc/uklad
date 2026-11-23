@@ -616,23 +616,30 @@ export function Profile() {
               Но тогда обновлённую демо-историю невозможно увидеть, не почистив
               хранилище руками, поэтому здесь — явная кнопка. Она стирает ВСЁ,
               поэтому в два шага и с прямым предупреждением. */}
-                  <Row icon={<DatabaseBackup className="size-4" />} label={t("profile.demoData")}>
-                    {confirmReset ? (
-                      <div className="flex flex-wrap items-center justify-end gap-2">
-                        <FieldError>{t("profile.demoWarn")}</FieldError>
-                        <Button size="sm" variant="outline" onClick={() => setConfirmReset(false)}>
-                          {t("common.cancel")}
+                  {/* Настоящий склад (кабинет с сервером): стирать нечего и незачем. */}
+                  {!serverSession && (
+                    <Row icon={<DatabaseBackup className="size-4" />} label={t("profile.demoData")}>
+                      {confirmReset ? (
+                        <div className="flex flex-wrap items-center justify-end gap-2">
+                          <FieldError>{t("profile.demoWarn")}</FieldError>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setConfirmReset(false)}
+                          >
+                            {t("common.cancel")}
+                          </Button>
+                          <Button size="sm" variant="destructive" onClick={resetDemoData}>
+                            {t("profile.demoConfirm")}
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button size="sm" variant="outline" onClick={() => setConfirmReset(true)}>
+                          {t("profile.demoReload")}
                         </Button>
-                        <Button size="sm" variant="destructive" onClick={resetDemoData}>
-                          {t("profile.demoConfirm")}
-                        </Button>
-                      </div>
-                    ) : (
-                      <Button size="sm" variant="outline" onClick={() => setConfirmReset(true)}>
-                        {t("profile.demoReload")}
-                      </Button>
-                    )}
-                  </Row>
+                      )}
+                    </Row>
+                  )}
                 </div>
               </Section>
             </>
