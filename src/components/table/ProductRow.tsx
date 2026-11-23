@@ -9,6 +9,7 @@ import type { TableRow } from "./tableRows";
 import type { ColId } from "./columns";
 import { cloneElement, Fragment, type ReactElement } from "react";
 import { COLS } from "./TableHead";
+import { formatBarcode } from "@/lib/barcodeFormat";
 
 /** URL только с безопасной схемой (http/https), иначе ссылку не рисуем. */
 function safeUrl(url?: string): string | undefined {
@@ -124,7 +125,7 @@ export function ProductRow({
           title={t("table.showBarcode")}
           className="group/bc inline-flex items-center gap-1.5 rounded transition-colors hover:text-foreground"
         >
-          {p.barcode}
+          {formatBarcode(p.barcode)}
           <Barcode className="size-3.5 opacity-0 transition-opacity group-hover/row:opacity-50 group-hover/bc:opacity-100" />
         </button>
       </td>
