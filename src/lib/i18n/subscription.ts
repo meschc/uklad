@@ -92,6 +92,8 @@ export const ru = {
   "backup.email.on": "Каждую неделю",
   "backup.email.off": "Выключена",
   "backup.emailNote": "Будет приходить на {email}. Письма начнут уходить, когда подключим сервер.",
+  "backup.serverNote":
+    "Копию всех данных кабинета сервер сохраняет сам каждую ночь. Архив выше — для своей копии на компьютере.",
   "backup.done": "Архив скачан",
 
   "backup.due.title": "Пора сделать резервную копию",
@@ -204,6 +206,8 @@ export const en: Record<keyof typeof ru, string> = {
   "backup.email.on": "Weekly",
   "backup.email.off": "Off",
   "backup.emailNote": "Will be sent to {email}. Emails start once the server is connected.",
+  "backup.serverNote":
+    "The server saves a copy of all cabinet data every night by itself. The archive above is for your own copy on a computer.",
   "backup.done": "Archive downloaded",
 
   "backup.due.title": "Time to make a backup",

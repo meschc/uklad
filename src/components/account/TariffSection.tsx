@@ -46,6 +46,11 @@ export function TariffSection() {
   const sub = useEditor((s) => s.subscription);
   const setTariff = useEditor((s) => s.setTariff);
   const hasManager = featuresOf(sub).personalManager;
+  // Копию на почту сервер не шлёт: с сервером эту строку не обещаем.
+  const onServer = useEditor((s) => s.session.source === "server");
+  const featureLabels = onServer
+    ? FEATURE_LABELS.filter((f) => f.key !== "weeklyEmailBackup")
+    : FEATURE_LABELS;
   // Смена тарифа — в два шага: выбрать плитку и подтвердить. Один клик по
   // плитке тариф больше не переключает.
   const [pick, setPick] = useState<TariffId | null>(null);
@@ -125,7 +130,7 @@ export function TariffSection() {
                 {active && <Check className="size-4 text-primary" />}
               </span>
               <ul className="flex flex-col gap-1">
-                {FEATURE_LABELS.map((f) => {
+                {featureLabels.map((f) => {
                   const on = TARIFF_FEATURES[id][f.key];
                   return (
                     <li
