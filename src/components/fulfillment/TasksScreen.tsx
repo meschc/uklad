@@ -1,213 +1,184 @@
-import { hasCabinetServer } from "@/lib/data/api";
-import { useEffect, useMemo, useState } from "react";
-import {
-  FileText,
-  CalendarClock,
-  CalendarDays,
-  ClipboardList,
-  List,
-  ListTodo,
-  MapPin,
-  Play,
-  Plus,
-  Printer,
-  ScanLine,
-  Truck,
-  Wrench,
-  X,
-} from "lucide-react";
+import { useMemo, useState } from "react";
+import { CalendarDays, ClipboardList, List, Plus, Wrench } from "lucide-react";
 import { useEditor } from "@/lib/store";
-import { requestsRepository } from "@/lib/data";
-import { useCommand } from "@/lib/useCommand";
-import { formatAddress } from "@/lib/address";
-import { targetCode } from "@/lib/packing";
-import { useLabelPrinter } from "@/lib/labelPrinter";
-import { TableScroll, TABLE_HEAD, TABLE_HEAD_ROW, TABLE_ROW } from "@/components/ui/table-scroll";
-import { SortTh, TableFilters, TableSearch, useDataTable } from "@/components/ui/data-table";
-import { groupRequestsByTarget, stockByProduct } from "@/lib/fulfillment";
-import type { FulfillmentRequest, LabelTemplate, RequestStatus } from "@/lib/types";
-import { useT, type TFunc } from "@/lib/i18n";
-import { cn, nowMs } from "@/lib/utils";
+import { hasCabinetServer } from "@/lib/data/api";
+import { myStaffId } from "@/lib/operations";
+import {
+  chipCount,
+  filterRows,
+  isOverdue,
+  taskListRows,
+  type TaskChip,
+  type TaskListRow,
+} from "@/lib/taskList";
+import type { QueueProcess } from "@/lib/taskQueue";
+import { useT, type MsgKey, type TFunc } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/segmented";
-import { ScreenShell, EmptyState } from "./ScreenShell";
-import { eyebrow } from "@/components/ui/eyebrow";
 import { card } from "@/components/ui/card";
+import { TableScroll, TABLE_HEAD, TABLE_HEAD_ROW, TABLE_ROW } from "@/components/ui/table-scroll";
+import { SortTh, TableFilters, TableSearch, useDataTable } from "@/components/ui/data-table";
+import { useNow } from "@/components/workstation/useNow";
+import { ScreenShell, EmptyState } from "./ScreenShell";
 import { RequestCalendar } from "./RequestCalendar";
-import { printLabels } from "@/lib/printLabels";
-import { LabelPrint } from "./LabelPrint";
-import { WorkTasksPanel } from "./WorkTasksPanel";
-import { TaskQueue } from "./TaskQueue";
-import { ShipConfirm } from "./ShipConfirm";
 import { RequestDialog } from "./RequestDialog";
+import { NewWorkTask } from "./NewWorkTask";
+import { TaskCard, useTaskTitle } from "./TaskCard";
 
 /**
- * «Задания» (п.7.3) — общий обзор заявок продавца во ВСЕХ статусах, включая
- * выполненные. Рабочий экран для того, что уже «в работе», — «Сборка»: здесь
- * кладовщик только видит картину и берёт заявку в работу.
+ * «Задания» — один модуль на всё, что склад должен сделать (Кирилл 22.11).
  *
- * Группировка по назначению (п.5): одна машина увозит всё, что адресовано
- * одному получателю, поэтому «что едет вместе» — это назначение, а дата только
- * говорит когда. Внутри группы даты отгрузки видны в шапке, а просроченные
- * подсвечиваются.
+ * Раньше было три вкладки с тремя видами: очередь, заявки на сборку и работы
+ * склада. Теперь одна таблица: строка — задание любого процесса, чипы над ней
+ * выбирают процесс или срез («мои», «просрочено», «завершённые»), поиск и
+ * фильтр по исполнителю — общие. Карточка любого задания открывается в панели
+ * справа (`TaskCard`), документы — блоком внутри неё. Календарь заявок
+ * остался: он сужает ту же таблицу по дню машины.
+ *
+ * Состав строк — `lib/taskList.ts`: своих записей у очереди нет, открытая
+ * работа берётся из данных процессов.
  */
 
-type Section = "queue" | "requests" | "work";
+const PROCESSES: QueueProcess[] = [
+  "receiving",
+  "picking",
+  "packing",
+  "sorting",
+  "shipping",
+  "inventory",
+  "work",
+  "approvals",
+];
 
-/**
- * «Задания» — всё, что склад должен сделать: заявки на сборку и работы склада
- * (маркировка, переупаковка, свои услуги). Работы раньше жили в «Операциях и
- * услугах», и найти их там было нельзя (Кирилл 12 ноя).
- */
-export function TasksScreen() {
-  const t = useT();
-  // Сначала вся очередь склада: где копится работа — видно до того, как
-  // открыли конкретный процесс (Кирилл 13.11).
-  const [section, setSection] = useState<Section>("queue");
-  const sections = (
-    <Segmented
-      size="md"
-      className="self-start"
-      value={section}
-      onChange={setSection}
-      ariaLabel={t("tasks.title")}
-      options={[
-        { value: "queue" as const, label: t("tasks.section.queue"), icon: <ListTodo /> },
-        { value: "requests" as const, label: t("tasks.section.requests"), icon: <ClipboardList /> },
-        { value: "work" as const, label: t("tasks.section.work"), icon: <Wrench /> },
-      ]}
-    />
-  );
-  if (section === "requests") return <RequestsTasks sections={sections} />;
-  if (section === "queue") {
-    return (
-      <ScreenShell title={t("tasks.title")} subtitle={t("tasks.queueSubtitle")} wide>
-        {sections}
-        <div className="animate-tab-in">
-          <TaskQueue onSection={setSection} />
-        </div>
-      </ScreenShell>
-    );
-  }
-  return (
-    <ScreenShell title={t("tasks.title")} subtitle={t("tasks.workSubtitle")} wide>
-      {sections}
-      <div className="animate-tab-in">
-        <WorkTasksPanel />
-      </div>
-    </ScreenShell>
-  );
+function sameDay(a: number, b: number): boolean {
+  const d = (ts: number) => {
+    const x = new Date(ts);
+    x.setHours(0, 0, 0, 0);
+    return x.getTime();
+  };
+  return d(a) === d(b);
 }
 
-// Порядок = путь заявки: ждёт → собирается → собрана → уехала → отменена.
-const STATUS_ORDER: RequestStatus[] = ["new", "in_progress", "done", "shipped", "cancelled"];
+/** Сколько ждёт: минуты, часы, дни — крупнее не нужно. */
+function waited(t: TFunc, ms: number): string {
+  const min = Math.max(0, Math.round(ms / 60_000));
+  if (min < 60) return t("queue.wait.min", { n: min });
+  const h = Math.floor(min / 60);
+  if (h < 24) return t("queue.wait.h", { n: h });
+  return t("queue.wait.d", { n: Math.floor(h / 24) });
+}
 
-function RequestsTasks({ sections }: { sections: React.ReactNode }) {
-  const requests = useEditor((s) => s.requests);
-  const products = useEditor((s) => s.products);
-  const warehouse = useEditor((s) => s.warehouse);
-  const placements = useEditor((s) => s.placements);
-  const boxes = useEditor((s) => s.boxes);
-  const notify = useEditor((s) => s.notify);
-  const goToView = useEditor((s) => s.goToView);
-  const trips = useEditor((s) => s.shipments);
-  const openDoc = useEditor((s) => s.openDoc);
+export function TasksScreen() {
   const t = useT();
+  const now = useNow(60_000);
+  const title = useTaskTitle();
+  const expectedShipments = useEditor((s) => s.expectedShipments);
+  const requests = useEditor((s) => s.requests);
+  const boxes = useEditor((s) => s.boxes);
+  const outboundBoxes = useEditor((s) => s.outboundBoxes);
+  const tasks = useEditor((s) => s.tasks);
+  const disputes = useEditor((s) => s.disputes);
+  const receiving = useEditor((s) => s.receiving);
+  const staff = useEditor((s) => s.warehouse.staff);
+  const user = useEditor((s) => s.session.user);
+  const me = myStaffId(staff, user);
 
-  // Этикетка отправления: назначение, под которое печатаем. Печатная версия
-  // появляется в дереве после установки, поэтому печать запускает эффект.
-  const printer = useLabelPrinter();
-  const [labelTarget, setLabelTarget] = useState<string | null>(null);
-  const [shipAsk, setShipAsk] = useState<{ target: string; items: FulfillmentRequest[] } | null>(
-    null,
-  );
-  useEffect(() => {
-    if (labelTarget) printLabels(() => setLabelTarget(null));
-  }, [labelTarget]);
-  const labelTpl: LabelTemplate = {
-    id: "target",
-    name: "target",
-    widthMm: printer.widthMm,
-    heightMm: printer.heightMm,
-    layout: printer.widthMm >= printer.heightMm ? "horizontal" : "vertical",
-    codeType: "qr",
-    elements: ["code"],
-    codeScale: 0.6,
-    createdAt: 0,
-  };
-
-  // Смена статуса идёт через репозиторий (п.3.2.1). Здесь нет формы, которую
-  // жалко потерять, и нет окна, куда встало бы сообщение, — поэтому отказ
-  // показываем тостом, а кнопки на время команды заняты: с сетью двойное
-  // «взять в работу» по одной заявке — обычное дело.
-  const status = useCommand((id: string, next: RequestStatus) =>
-    requestsRepository.setStatus(id, next),
-  );
-  const setStatus = async (id: string, next: RequestStatus) => {
-    const res = await status.run(id, next);
-    if (!res.ok) notify("error", res.error);
-  };
-
-  const [filter, setFilter] = useState<RequestStatus | "all">("all");
-  // Список или календарь (п.10.4) — одни и те же заявки, разный взгляд.
+  const [chip, setChip] = useState<TaskChip>("open");
   const [view, setView] = useState<"list" | "calendar">("list");
-  const [creating, setCreating] = useState(false);
   const [day, setDay] = useState<number | null>(null);
+  const [creatingRequest, setCreatingRequest] = useState(false);
+  const [creatingWork, setCreatingWork] = useState(false);
+  const [openKey, setOpenKey] = useState<string | null>(null);
 
-  const stock = useMemo(() => stockByProduct(placements, boxes), [placements, boxes]);
+  const all = useMemo(
+    () =>
+      taskListRows(
+        {
+          expectedShipments,
+          requests,
+          boxes,
+          outboundBoxes: outboundBoxes ?? [],
+          tasks,
+          disputes,
+          receiving,
+        },
+        now,
+      ),
+    [expectedShipments, requests, boxes, outboundBoxes, tasks, disputes, receiving, now],
+  );
 
-  const visible = requests
-    .filter((r) => filter === "all" || r.status === filter)
-    // Выбранный в календаре день сужает тот же список, а не открывает второй.
-    .filter((r) => day == null || (r.truckDate != null && sameDay(r.truckDate, day)));
-
-  // Внутри группы сначала то, что ждёт работы; заголовки колонок меняют
-  // порядок. Сортируем и ищем ДО группировки — группировка порядок сохраняет.
+  const staffName = (id?: string) => (id ? staff?.find((p) => p.id === id)?.name : undefined);
+  const visible = useMemo(
+    () =>
+      filterRows(all, chip, now, me)
+        // Выбранный в календаре день сужает ту же таблицу, а не открывает вторую.
+        .filter((r) => day == null || r.days.some((d) => sameDay(d, day))),
+    [all, chip, now, me, day],
+  );
+  // Продавец — у строк сборки: назначение собирает заявки разных продавцов (Кирилл:
+  // склад работает на нескольких, заявки разбирают по одному).
+  const products = useEditor((s) => s.products);
   const partners = useEditor((s) => s.warehouse.partners);
-  const reqTable = useDataTable(
+  const sellerOf = (key: string) => {
+    if (!key.includes("pick:")) return undefined;
+    const target = key.slice(key.indexOf("pick:") + 5);
+    const names = new Set<string>();
+    for (const q of requests) {
+      if ((q.note?.trim() || "") !== target) continue;
+      const pid = products.find((x) => x.id === q.productId)?.partnerId;
+      const n = partners?.find((x) => x.id === pid)?.name;
+      if (n) names.add(n);
+    }
+    return names.size ? [...names].sort().join(", ") : undefined;
+  };
+  const table = useDataTable(
     visible,
     [
-      { id: "name", value: (r) => products.find((x) => x.id === r.productId)?.name },
-      { id: "qty", value: (r) => r.qty },
-      { id: "status", value: (r) => STATUS_ORDER.indexOf(r.status) * 1e13 - r.createdAt },
-      {
-        // Склад работает на нескольких продавцов — заявки разбирают по одному.
-        id: "partner",
-        value: (r) => {
-          const pid = products.find((x) => x.id === r.productId)?.partnerId;
-          return partners?.find((x) => x.id === pid)?.name;
-        },
-        facet: (v) => v,
-      },
+      { id: "title", value: (r) => title(r) },
+      { id: "process", value: (r) => t(`queue.process.${r.process}` as MsgKey) },
+      { id: "units", value: (r) => r.units },
+      { id: "since", value: (r) => r.due ?? r.since },
+      { id: "assignee", value: (r) => staffName(r.staffId), facet: (v) => v },
+      { id: "seller", value: (r) => sellerOf(r.key), facet: (v) => v },
     ],
-    [{ id: "status", desc: false }],
+    [],
   );
-  const groups = useMemo(() => groupRequestsByTarget(reqTable.rows), [reqTable.rows]);
+  const opened = openKey ? (all.find((r) => r.key === openKey) ?? null) : null;
 
-  const counts = STATUS_ORDER.map((s) => ({
-    status: s,
-    n: requests.filter((r) => r.status === s).length,
-  }));
+  const chips: { id: TaskChip; label: string }[] = [
+    { id: "open", label: t("tasks.chip.open") },
+    ...(me ? [{ id: "mine" as const, label: t("tasks.chip.mine") }] : []),
+    { id: "overdue", label: t("tasks.chip.overdue") },
+    ...PROCESSES.map((p) => ({ id: p as TaskChip, label: t(`queue.process.${p}` as MsgKey) })),
+    { id: "done", label: t("tasks.chip.done") },
+  ];
 
   return (
     <ScreenShell
       title={t("tasks.title")}
-      subtitle={t("tasks.subtitle")}
+      subtitle={t("tasks.unifiedSubtitle")}
       wide
       actions={
-        // «К сборке» на общем экране заданий сбивал с толку (Кирилл 14.11):
-        // здесь создают задание, а собирают — на рабочем месте.
-        <Button size="sm" onClick={() => setCreating(true)}>
-          <Plus className="size-3.5" />
-          {t("tasks.create")}
-        </Button>
+        <>
+          <Button size="sm" variant="outline" onClick={() => setCreatingWork(true)}>
+            <Wrench className="size-3.5" />
+            {t("tasks.newWork")}
+          </Button>
+          {/* «К сборке» на общем экране сбивал с толку (Кирилл 14.11): здесь
+              создают задание, а собирают — на рабочем месте. */}
+          <Button size="sm" onClick={() => setCreatingRequest(true)}>
+            <Plus className="size-3.5" />
+            {t("tasks.newRequest")}
+          </Button>
+        </>
       }
     >
-      {sections}
-      {creating && <RequestDialog onClose={() => setCreating(false)} />}
-      {/* Список или календарь: представления одних и тех же заявок (п.10.4).
-          self-start — иначе тело ScreenShell (flex-колонка) растянет
-          переключатель во всю ширину экрана. */}
+      {creatingRequest && <RequestDialog onClose={() => setCreatingRequest(false)} />}
+      {creatingWork && <NewWorkTask onClose={() => setCreatingWork(false)} />}
+
+      {/* Список или календарь — взгляды на одни и те же задания. self-start —
+          иначе тело ScreenShell (flex-колонка) растянет переключатель. */}
       <Segmented
         className="self-start"
         value={view}
@@ -218,288 +189,171 @@ function RequestsTasks({ sections }: { sections: React.ReactNode }) {
         ariaLabel={t("tasks.viewMode")}
         options={[
           { value: "list" as const, label: t("tasks.view.list"), icon: <List /> },
-          {
-            value: "calendar" as const,
-            label: t("tasks.view.calendar"),
-            icon: <CalendarDays />,
-          },
+          { value: "calendar" as const, label: t("tasks.view.calendar"), icon: <CalendarDays /> },
         ]}
       />
-
       {view === "calendar" && (
         <div className={card()}>
           <RequestCalendar requests={requests} selectedDay={day} onPickDay={setDay} />
         </div>
       )}
 
-      {/* Поиск и продавец — одной строкой над фильтром статуса: раньше поиск
-          переносился на отдельную строку и висел справа сам по себе. */}
+      <div className="flex flex-wrap items-center gap-1" role="group" aria-label={t("tasks.chips")}>
+        {chips.map((c) => {
+          const n = chipCount(all, c.id, now, me);
+          // Процесс без заданий не показываем чипом, но выбранный остаётся виден.
+          if (n === 0 && c.id !== chip && PROCESSES.includes(c.id as QueueProcess)) return null;
+          return (
+            <FilterChip
+              key={c.id}
+              active={chip === c.id}
+              onClick={() => setChip(c.id)}
+              label={c.label}
+              n={n}
+            />
+          );
+        })}
+      </div>
+
       <div className="flex flex-wrap items-center gap-2">
         <TableSearch
-          value={reqTable.query}
-          onChange={reqTable.setQuery}
+          value={table.query}
+          onChange={table.setQuery}
           placeholder={t("common.search")}
         />
         <TableFilters
-          facets={reqTable.facets}
-          filters={reqTable.filters}
-          onChange={reqTable.setFilter}
-          labels={{ partner: t("ops.task.partner") }}
+          facets={table.facets}
+          filters={table.filters}
+          onChange={table.setFilter}
+          labels={{ assignee: t("tasks.assignee"), seller: t("ops.task.partner") }}
           allLabel={(col) => t("common.filterAll", { col })}
         />
       </div>
-      {/* Фильтр по статусу */}
-      <div className="flex flex-wrap items-center gap-1">
-        <FilterChip
-          active={filter === "all"}
-          onClick={() => setFilter("all")}
-          label={t("tasks.filter.all")}
-          n={requests.length}
-        />
-        {counts.map((c) => (
-          <FilterChip
-            key={c.status}
-            active={filter === c.status}
-            onClick={() => setFilter(c.status)}
-            label={t(`tasks.filter.${c.status}`)}
-            n={c.n}
-          />
-        ))}
-      </div>
 
-      {requests.length === 0 ? (
+      {all.length === 0 ? (
         <EmptyState
           icon={<ClipboardList className="size-5" />}
           title={t("tasks.emptyTitle")}
           // Переключатель ролей есть только в демо: на сервере роль из сессии.
           body={t(hasCabinetServer ? "tasks.emptyBodyServer" : "tasks.emptyBody")}
         />
+      ) : table.rows.length === 0 ? (
+        // Почему пусто и что делать (правило Кирилла 21.11).
+        <EmptyState
+          icon={<ClipboardList className="size-5" />}
+          title={t("tasks.noneForFilter")}
+          body={t("tasks.noneForFilterBody")}
+          action={
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setChip("open");
+                setDay(null);
+                table.setQuery("");
+              }}
+            >
+              {t("tasks.resetFilters")}
+            </Button>
+          }
+        />
       ) : (
-        <div className="flex flex-col gap-5">
-          {groups.map((g) => (
-            <section key={g.target ?? "—"} className="flex flex-col gap-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <MapPin className="size-3.5 text-muted-foreground" />
-                <h2 className={eyebrow({ tone: "current" })}>{g.target ?? t("tasks.noTarget")}</h2>
-                <span className="text-xs text-muted-foreground">
-                  {t("tasks.groupCount", { n: g.items.length })}
-                </span>
-                {/* Даты отгрузки — подписью к назначению: их в группе может быть
-                    несколько, и просроченную видно сразу. */}
-                {g.shipDates.length === 0 ? (
-                  <span className="text-xs text-muted-foreground">{t("tasks.noShipDate")}</span>
-                ) : (
-                  g.shipDates.map((d) => (
-                    <span
-                      key={d}
-                      className={cn(
-                        "inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-2xs font-semibold",
-                        isOverdue(d)
-                          ? "bg-destructive/15 text-destructive"
-                          : "bg-muted text-muted-foreground",
-                      )}
-                    >
-                      <CalendarClock className="size-3" />
-                      {t("tasks.shipDate", { d: new Date(d).toLocaleDateString() })}
-                      {isOverdue(d) ? ` · ${t("tasks.overdue")}` : ""}
-                    </span>
-                  ))
-                )}
-                {g.target && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    title={t("tasks.printLabelHint", {
-                      size: `${printer.widthMm}×${printer.heightMm}`,
-                    })}
-                    onClick={() => setLabelTarget(g.target)}
-                  >
-                    <Printer />
-                    {t("tasks.printLabel")}
-                  </Button>
-                )}
-                {/* Погрузка: собранное по этому назначению уезжает одной
-                    машиной. Грузят за столом отгрузки — кнопка ведёт туда. */}
-                {(() => {
-                  const ready = g.items.filter((r) => r.status === "done");
-                  if (!ready.length) return null;
-                  return (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="ml-auto h-7"
-                      onClick={() =>
-                        setShipAsk({ target: g.target ?? t("tasks.noTarget"), items: ready })
-                      }
-                    >
-                      <Truck className="size-3.5" />
-                      {t("ship.action", { n: ready.length })}
-                    </Button>
-                  );
-                })()}
-              </div>
-              <TableScroll>
-                <table className="table-stack w-full border-collapse text-sm">
-                  <thead className={TABLE_HEAD}>
-                    <tr className={TABLE_HEAD_ROW}>
-                      <SortTh table={reqTable.table} id="name">
-                        {t("table.col.name")}
-                      </SortTh>
-                      <SortTh table={reqTable.table} id="qty" align="right">
-                        {t("tasks.col.qty")}
-                      </SortTh>
-                      <th className="px-3 py-2 font-medium">{t("tasks.col.where")}</th>
-                      <SortTh table={reqTable.table} id="status">
-                        {t("tasks.col.status")}
-                      </SortTh>
-                      <th className="w-32 px-3 py-2" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {g.items.map((r) => {
-                      const p = products.find((x) => x.id === r.productId);
-                      const have = stock.get(r.productId)?.qty ?? 0;
-                      return (
-                        <tr key={r.id} className={TABLE_ROW}>
-                          <td className="px-3 py-2">
-                            <div className="font-medium">{p?.name ?? "—"}</div>
-                            <div className="font-mono text-2xs text-muted-foreground">{p?.sku}</div>
-                            {/* Бронь под поставку: заявку нельзя читать как
-                                обычную — товара на складе ещё нет. */}
-                            <div className="mt-0.5 flex flex-wrap gap-1">
-                              {r.reservedShipmentId && (
-                                <span className="rounded bg-warning/15 px-1 py-0.5 text-2xs font-semibold text-warning">
-                                  {t("req.reservedBadge")}
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          <td
-                            className="px-3 py-2 text-right tabular-nums"
-                            data-label={t("tasks.col.qty")}
-                          >
-                            <span className={cn(have < r.qty && "text-destructive")}>
-                              {r.pickedQty ? `${r.pickedQty}/` : ""}
-                              {r.qty}
-                            </span>
-                            <div className="text-2xs text-muted-foreground">
-                              {t("tasks.inStock", { n: have })}
-                            </div>
-                          </td>
-                          {/* Назначение вынесено в шапку группы — в строке
-                              остаётся только адрес, если он назначен. */}
-                          <td
-                            className="px-3 py-2 text-xs text-muted-foreground"
-                            data-label={t("tasks.col.where")}
-                          >
-                            {r.targetAddress ? formatAddress(warehouse, r.targetAddress) : "—"}
-                          </td>
-                          <td className="px-3 py-2" data-label={t("tasks.col.status")}>
-                            <StatusBadge status={r.status} partial={r.partial} t={t} />
-                          </td>
-                          <td className="px-3 py-2">
-                            {r.status === "new" && (
-                              <div className="flex justify-end gap-1">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  disabled={status.pending}
-                                  onClick={() => setStatus(r.id, "in_progress")}
-                                >
-                                  <Play className="size-3" />
-                                  {t("tasks.take")}
-                                </Button>
-                                <Button
-                                  size="icon-sm"
-                                  variant="ghost"
-                                  title={t("tasks.cancel")}
-                                  aria-label={t("tasks.cancel")}
-                                  disabled={status.pending}
-                                  onClick={() => setStatus(r.id, "cancelled")}
-                                >
-                                  <X className="size-3.5" />
-                                </Button>
-                              </div>
-                            )}
-                            {/* Уехавшая заявка ведёт к накладной своего рейса:
-                                её правят и подтверждают на экране «Документы». */}
-                            {r.status === "shipped" &&
-                              (() => {
-                                const trip = trips.find((s) => s.requestIds.includes(r.id));
-                                if (!trip) return null;
-                                return (
-                                  <div className="flex justify-end">
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      onClick={() => openDoc("shipment", trip.id)}
-                                    >
-                                      <FileText className="size-3" />
-                                      {t("doc.kind.shipmentShort")}
-                                    </Button>
-                                  </div>
-                                );
-                              })()}
-                            {r.status === "in_progress" && (
-                              <div className="flex justify-end">
-                                <Button size="sm" onClick={() => goToView("workstation")}>
-                                  <ScanLine className="size-3" />
-                                  {t("tasks.pick")}
-                                </Button>
-                              </div>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </TableScroll>
-            </section>
-          ))}
-        </div>
+        <TableScroll>
+          <table className="table-stack w-full border-collapse text-sm">
+            <thead className={TABLE_HEAD}>
+              <tr className={TABLE_HEAD_ROW}>
+                <SortTh table={table.table} id="title">
+                  {t("tasks.col.task")}
+                </SortTh>
+                <SortTh table={table.table} id="process">
+                  {t("tasks.col.process")}
+                </SortTh>
+                <SortTh table={table.table} id="units" align="right">
+                  {t("tasks.col.qty")}
+                </SortTh>
+                <SortTh table={table.table} id="since">
+                  {t("tasks.col.when")}
+                </SortTh>
+                <SortTh table={table.table} id="assignee">
+                  {t("tasks.assignee")}
+                </SortTh>
+              </tr>
+            </thead>
+            <tbody>
+              {table.rows.map((r) => (
+                <Row
+                  key={r.key}
+                  row={r}
+                  now={now}
+                  title={title(r)}
+                  who={staffName(r.staffId)}
+                  onOpen={() => setOpenKey(r.key)}
+                />
+              ))}
+            </tbody>
+          </table>
+        </TableScroll>
       )}
-      {shipAsk && (
-        <ShipConfirm
-          target={shipAsk.target}
-          items={shipAsk.items}
-          onClose={() => setShipAsk(null)}
-        />
-      )}
-      {labelTarget && (
-        <LabelPrint
-          tpl={labelTpl}
-          items={[{ code: targetCode(labelTarget), headline: labelTarget }]}
-          kind="custom"
-          warehouseName=""
-        />
-      )}
+
+      {opened && <TaskCard row={opened} onClose={() => setOpenKey(null)} />}
     </ScreenShell>
   );
 }
 
-export function StatusBadge({
-  status,
-  partial,
-  t,
+function Row({
+  row,
+  now,
+  title,
+  who,
+  onOpen,
 }: {
-  status: RequestStatus;
-  partial?: boolean;
-  t: TFunc;
+  row: TaskListRow;
+  now: number;
+  title: string;
+  who?: string;
+  onOpen: () => void;
 }) {
-  const tone: Record<RequestStatus, string> = {
-    new: "bg-warning/15 text-warning",
-    in_progress: "bg-primary/10 text-primary",
-    done: "bg-success/15 text-success",
-    // Отгружено — финал пути: спокойный синий, чтобы отличать от «собрано».
-    shipped: "bg-primary/15 text-primary",
-    cancelled: "bg-muted text-muted-foreground",
-  };
+  const t = useT();
+  const late = isOverdue(row, now);
+  const state =
+    row.status === "done"
+      ? row.cancelled
+        ? t("tasks.state.cancelled")
+        : t("tasks.state.done")
+      : row.status === "active"
+        ? t("queue.active")
+        : t("queue.waiting");
   return (
-    <span className={cn("inline-block rounded px-1.5 py-0.5 text-2xs font-semibold", tone[status])}>
-      {t(`req.status.${status}`)}
-      {status === "done" && partial ? ` · ${t("req.partial")}` : ""}
-    </span>
+    <tr className={cn(TABLE_ROW, "hover:bg-accent/40")}>
+      <td className="px-3 py-2">
+        <button
+          type="button"
+          className="text-left font-medium hover:text-primary hover:underline"
+          onClick={onOpen}
+        >
+          {title}
+        </button>
+        <p className={cn("text-xs", late ? "text-destructive" : "text-muted-foreground")}>
+          {state}
+          {row.status !== "done" ? ` · ${t("queue.waits", { d: waited(t, now - row.since) })}` : ""}
+          {late ? ` · ${t("tasks.overdue")}` : ""}
+        </p>
+      </td>
+      <td className="px-3 py-2 text-muted-foreground" data-label={t("tasks.col.process")}>
+        {t(`queue.process.${row.process}` as MsgKey)}
+      </td>
+      <td className="px-3 py-2 text-right tabular-nums" data-label={t("tasks.col.qty")}>
+        {row.units > 0 ? row.units : "—"}
+      </td>
+      <td className="px-3 py-2 text-muted-foreground" data-label={t("tasks.col.when")}>
+        {row.due != null
+          ? new Date(row.due).toLocaleDateString()
+          : new Date(row.since).toLocaleDateString()}
+      </td>
+      <td className="px-3 py-2 text-muted-foreground" data-label={t("tasks.assignee")}>
+        {who ?? "—"}
+      </td>
+    </tr>
   );
 }
 
@@ -516,9 +370,11 @@ function FilterChip({
 }) {
   return (
     <button
+      type="button"
       onClick={onClick}
+      aria-pressed={active}
       className={cn(
-        "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+        "rounded-md px-2.5 py-1 text-xs font-medium transition-colors max-md:min-h-11",
         active
           ? "bg-primary text-primary-foreground"
           : "bg-muted text-muted-foreground hover:text-foreground",
@@ -527,18 +383,4 @@ function FilterChip({
       {label} <span className="tabular-nums opacity-70">{n}</span>
     </button>
   );
-}
-
-function dayStart(ts: number): number {
-  const d = new Date(ts);
-  d.setHours(0, 0, 0, 0);
-  return d.getTime();
-}
-
-function isOverdue(ts: number): boolean {
-  return ts < dayStart(nowMs());
-}
-
-function sameDay(a: number, b: number): boolean {
-  return dayStart(a) === dayStart(b);
 }
