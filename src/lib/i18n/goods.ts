@@ -54,7 +54,7 @@ export const ru = {
   "barcode.title": "Ярлык товара",
   "barcode.notEncodable": "Код не кодируется в Code128",
   "barcode.copies": "Сколько ярлыков",
-  "barcode.template": "Шаблон «{name}» со страницы «Ярлыки», код — штрихкод EAN-13",
+  "barcode.template": "Шаблон «{name}» со страницы «Ярлыки», код — штрихкод товара",
   // Карточка товара: ручное добавление/редактирование (ТЗ, разд. 2.5)
   "product.addTitle": "Новый товар",
   "product.editTitle": "Редактирование товара",
@@ -62,8 +62,14 @@ export const ru = {
   "product.namePlaceholder": "Напр. Футболка хлопковая",
   "product.sku": "Артикул",
   "product.barcode": "Штрихкод",
-  "product.barcodePlaceholder": "Введите штрихкод",
-  "product.barcodeGen": "Сгенерировать штрихкод",
+  "product.barcodePlaceholder": "Отсканируйте или введите код с товара",
+  "product.barcodeGen": "Выдать код склада, если своего нет",
+  "product.codes": "Другие коды",
+  "product.codesPlaceholder": "Через запятую",
+  "product.codesHint":
+    "Если на товаре несколько кодов: EAN, баркод WB, код Ozon. Сканер найдёт товар по любому.",
+  "product.codeShared":
+    "Такой же код у товара: {names}. Если это один товар разных продавцов — так и должно быть, сканер на приёмке возьмёт товар из поставки.",
   "product.barcodeEmpty": "Введите штрихкод — ярлык появится здесь",
   "product.partner": "Партнёр",
   "product.partnerNone": "Не указан",
@@ -271,7 +277,7 @@ export const en: Record<keyof typeof ru, string> = {
   "barcode.title": "Product label",
   "barcode.notEncodable": "This code cannot be encoded in Code128",
   "barcode.copies": "How many labels",
-  "barcode.template": 'Template "{name}" from the Labels page, EAN-13 barcode',
+  "barcode.template": 'Template "{name}" from the Labels page, product barcode',
   // Product card: manual add/edit (spec 2.5)
   "product.addTitle": "New product",
   "product.editTitle": "Edit product",
@@ -279,8 +285,14 @@ export const en: Record<keyof typeof ru, string> = {
   "product.namePlaceholder": "e.g. Cotton T-shirt",
   "product.sku": "SKU",
   "product.barcode": "Barcode",
-  "product.barcodePlaceholder": "Enter barcode",
-  "product.barcodeGen": "Generate barcode",
+  "product.barcodePlaceholder": "Scan or type the code on the product",
+  "product.barcodeGen": "Issue a warehouse code if there is none",
+  "product.codes": "Other codes",
+  "product.codesPlaceholder": "Comma-separated",
+  "product.codesHint":
+    "If the product has several codes: EAN, WB barcode, Ozon code. The scanner finds the product by any of them.",
+  "product.codeShared":
+    "The same code is on: {names}. If it is the same product from different sellers, that is fine: receiving picks the product from the shipment.",
   "product.barcodeEmpty": "Enter a barcode — the label will appear here",
   "product.partner": "Partner",
   "product.partnerNone": "Not set",

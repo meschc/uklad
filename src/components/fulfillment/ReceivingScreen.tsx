@@ -6,13 +6,7 @@ import { levelFor, signal } from "@/lib/scanSignal";
 import { fulfillmentRepository, type Result } from "@/lib/data";
 import { addressKey, formatAddress, parseAddress } from "@/lib/address";
 import { buildOccupancy, occupantsAt } from "@/lib/placement";
-import {
-  findByCode,
-  findProduct,
-  honestSignToEan13,
-  parseHonestSignMock,
-  toteByCode,
-} from "@/lib/barcode";
+import { findByCode, findProduct, codeForNewProduct, toteByCode } from "@/lib/barcode";
 import type { CellAddress, Discrepancy, ExpectedShipment, ReceivingProgress } from "@/lib/types";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { sealedUnits } from "@/lib/cargo";
@@ -184,7 +178,12 @@ export function ReceivingScreen({ staffId: badgeStaffId }: { staffId?: string } 
   // --- 5.2 скан товара -------------------------------------------------------
 
   const onScanProduct = (raw: string) => {
-    const product = findProduct(products, raw);
+    // Один EAN у товаров двух продавцов: берём товар из этой поставки.
+    const product = findProduct(
+      products,
+      raw,
+      (p) => !!shipment?.lines.some((l) => l.productId === p.id),
+    );
 
     // Код другой тары или паллеты при открытой таре — не новый товар: раньше
     // стол предлагал завести карточку «UK-BOX-29» (обход столов 15.11).
@@ -197,8 +196,9 @@ export function ReceivingScreen({ staffId: badgeStaffId }: { staffId?: string } 
     if (!product) {
       // Код не опознан ни в каталоге, ни в поставке — это неучтённый товар.
       // Считаем его кодом маркировки и заводим заготовку карточки (мок ЧЗ).
-      const scanned = parseHonestSignMock(raw);
-      setNewProductCode(honestSignToEan13(scanned));
+      // Код с товара — в карточку как есть (из DataMatrix ЧЗ — его GTIN):
+      // следующий скан того же товара найдёт её.
+      setNewProductCode(codeForNewProduct(raw));
       fail("recv.scan.unknown");
       return;
     }

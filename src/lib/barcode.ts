@@ -29,20 +29,63 @@ export function toEan13(base12: string): string {
   return digits + ean13CheckDigit(digits);
 }
 
-/** Проверка валидности готового 13-значного кода. */
-export function isValidEan13(code: string): boolean {
-  if (!/^\d{13}$/.test(code)) return false;
-  return ean13CheckDigit(code.slice(0, 12)) === code.charCodeAt(12) - 48;
-}
-
 /**
  * Сгенерировать валидный EAN-13. Префикс 460 — диапазон GS1 России, дальше
- * случайные цифры и контрольная. Для демо годится; в проде номера выдаёт GS1.
+ * случайные цифры и контрольная. Только для демо-посева: настоящему товару
+ * так нельзя, код может совпасть с чужим товаром в магазине. Товару без кода
+ * кабинет даёт внутренний код склада — `generateProductCode`.
  */
 export function generateEan13(prefix = "460"): string {
   let base = prefix.replace(/\D/g, "").slice(0, 12);
   while (base.length < 12) base += Math.floor(Math.random() * 10);
   return toEan13(base);
+}
+
+/** Самый длинный код товара: GS1 DataMatrix с серийным номером влезает. */
+export const PRODUCT_CODE_MAX = 64;
+
+/**
+ * Код товара от продавца — как есть: артикул, Code128, текст QR или
+ * DataMatrix. Без проверки на EAN-13: у многих товаров его нет вовсе.
+ * Убираются только управляющие символы (сканер шлёт GS и перевод строки) и
+ * пробелы по краям.
+ */
+export function cleanProductCode(raw: string): string {
+  return (
+    raw
+      // eslint-disable-next-line no-control-regex
+      .replace(/[\x00-\x1f\x7f]/g, "")
+      .trim()
+      .slice(0, PRODUCT_CODE_MAX)
+  );
+}
+
+// Без I, L, O, U — их путают с 1, 0 и V, когда код набирают руками.
+const CODE_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+const PRODUCT_CODE_PREFIX = "UK-P-";
+
+/**
+ * Внутренний код склада для товара без своего штрихкода: `UK-P-` и 8 знаков
+ * (около триллиона вариантов), печатается Code128, как ярлыки тары.
+ *
+ * Почему не EAN-13 с префиксом 2 (диапазон «для внутреннего использования»):
+ * этим же диапазоном пользуются магазины и площадки — Wildberries выдаёт
+ * продавцам без штрихкода коды с 20…, и наш код мог бы совпасть с баркодом WB
+ * на соседнем товаре. Префикс UK-P- не совпадёт ни с одним кодом GS1, и
+ * по нему сразу видно, что код выдал склад. `taken` — коды каталога: совпадение
+ * почти невозможно, но проверяем.
+ */
+export function generateProductCode(
+  taken: Iterable<string> = [],
+  random: () => number = Math.random,
+): string {
+  const used = new Set([...taken].map(normalizeCode));
+  for (;;) {
+    let tail = "";
+    for (let i = 0; i < 8; i++) tail += CODE_ALPHABET[Math.floor(random() * CODE_ALPHABET.length)];
+    const code = PRODUCT_CODE_PREFIX + tail;
+    if (!used.has(code)) return code;
+  }
 }
 
 // --- Code128 (подмножество B): линейный штрихкод для наклеек ------------------
@@ -318,14 +361,25 @@ export function findByCode<T extends { barcode: string }>(
   return code ? items.find((it) => normalizeCode(it.barcode) === code) : undefined;
 }
 
-/** Товар опознаётся по двум кодам: сканер даёт штрихкод, руками набирают артикул. */
-export function matchesProductCode(
-  product: { barcode: string; sku: string },
-  raw: string,
-): boolean {
+/** Коды товара, по которым его узнаёт сканер: основной штрихкод и дополнительные. */
+type Coded = { barcode: string; sku: string; codes?: readonly string[] };
+
+function hasBarcode(product: Coded, code: string): boolean {
+  return (
+    normalizeCode(product.barcode) === code ||
+    (product.codes ?? []).some((c) => normalizeCode(c) === code)
+  );
+}
+
+/**
+ * Товар опознаётся по любому своему коду: штрихкод и дополнительные коды
+ * (у одного товара бывают EAN производителя, баркод WB и артикул Ozon) —
+ * со сканера, артикул — руками.
+ */
+export function matchesProductCode(product: Coded, raw: string): boolean {
   const code = normalizeCode(raw);
   if (!code) return false;
-  return normalizeCode(product.barcode) === code || normalizeCode(product.sku) === code;
+  return hasBarcode(product, code) || normalizeCode(product.sku) === code;
 }
 
 /**
@@ -335,16 +389,44 @@ export function matchesProductCode(
  * случайно совпал с чужим штрихкодом, выиграть должен штрихкод — именно он
  * пришёл со сканера, и именно он наклеен на коробке.
  */
-export function findProduct<T extends { barcode: string; sku: string }>(
+export function findProduct<T extends Coded>(
   items: readonly T[],
   raw: string,
+  prefer?: (p: T) => boolean,
 ): T | undefined {
   const code = normalizeCode(raw);
   if (!code) return undefined;
-  return (
-    items.find((p) => normalizeCode(p.barcode) === code) ??
-    items.find((p) => normalizeCode(p.sku) === code)
-  );
+  // Один и тот же EAN производителя бывает у товаров двух продавцов: тогда
+  // берём того, кого ждём (`prefer` — товар этой поставки или её продавца).
+  const pick = (hits: T[]) => (prefer && hits.find(prefer)) || hits[0];
+  const byCode = items.filter((p) => hasBarcode(p, code));
+  if (byCode.length > 0) return pick(byCode);
+  const bySku = items.filter((p) => normalizeCode(p.sku) === code);
+  return bySku.length > 0 ? pick(bySku) : undefined;
+}
+
+/** Товары каталога с тем же кодом, кроме `self` — чтобы предупредить о совпадении. */
+export function sameCodeProducts<T extends Coded & { id: string }>(
+  items: readonly T[],
+  raw: string,
+  selfId?: string,
+): T[] {
+  const code = normalizeCode(raw);
+  if (!code) return [];
+  return items.filter((p) => p.id !== selfId && hasBarcode(p, code));
+}
+
+/**
+ * Код для карточки нового товара по отсканированному. DataMatrix «Честного
+ * знака» (01 + GTIN-14 + 21 + серийный) — это GTIN, из него EAN-13. Всё
+ * остальное — тот самый код, что на товаре: иначе следующий скан того же
+ * товара карточку не нашёл бы.
+ */
+export function codeForNewProduct(raw: string): string {
+  const clean = cleanProductCode(raw);
+  const m = /^01(\d{14})21/.exec(clean);
+  if (!m) return clean;
+  return m[1].startsWith("0") ? m[1].slice(1) : m[1];
 }
 
 // --- Мок «Честного знака» ----------------------------------------------------
@@ -405,14 +487,6 @@ export function parseHonestSignMock(raw: string): HonestSignScan {
   const gtin = String(h).padStart(14, "0").slice(-14);
   const serial = h.toString(36).toUpperCase().padStart(6, "0").slice(-6);
   return { raw: clean, gtin, serial, isMocked: true };
-}
-
-/**
- * Штрихкод товара по коду маркировки: последние 13 цифр GTIN достраиваем до
- * валидного EAN-13, чтобы заготовка карточки сразу имела печатаемый код.
- */
-export function honestSignToEan13(scan: HonestSignScan): string {
-  return toEan13(scan.gtin.slice(-12));
 }
 
 /**

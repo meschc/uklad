@@ -5,7 +5,12 @@ import { useEditor, fieldValueKey, selectRole } from "@/lib/store";
 import { catalogRepository, type Result } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
 import { cm } from "@/lib/address";
-import { generateEan13 } from "@/lib/barcode";
+import {
+  PRODUCT_CODE_MAX,
+  cleanProductCode,
+  generateProductCode,
+  sameCodeProducts,
+} from "@/lib/barcode";
 import { catLabel, useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { DialogFooter, DialogHeader, DialogShell } from "@/components/ui/dialog-shell";
@@ -24,6 +29,8 @@ import { Field, FormError } from "@/components/ui/field";
 
 /** Пустой список партнёров — стабильная ссылка, чтобы селектор не дёргался. */
 const EMPTY_PARTNERS: never[] = [];
+// Дополнительных кодов у товара — не больше: дальше это уже ошибка ввода.
+const MAX_EXTRA_CODES = 10;
 
 /** Число из строки с десятичной запятой; отрицательные и мусор → 0. */
 function num(s: string): number {
@@ -60,6 +67,8 @@ export function ProductDialog({
     // Штрихкод НЕ выдумываем: случайный код в новом товаре выглядел как
     // настоящий и попадал на ярлык. Пустое поле + кнопка генерации (п.13).
     barcode: product?.barcode ?? presetBarcode ?? "",
+    // Другие коды того же товара: EAN производителя, баркод WB, код Ozon.
+    codes: (product?.codes ?? []).join(", "),
     category: product?.category ?? categories[0] ?? "",
     partnerId: product?.partnerId ?? "",
     imageUrl: product?.imageUrl ?? "",
@@ -116,6 +125,20 @@ export function ProductDialog({
       ? "dup"
       : null;
   const valid = !nameErr && !skuErr;
+  const barcode = cleanProductCode(form.barcode);
+  const extraCodes = [
+    ...new Set(
+      form.codes
+        .split(/[\n,;]+/)
+        .map(cleanProductCode)
+        .filter((c) => c && c !== barcode),
+    ),
+  ].slice(0, MAX_EXTRA_CODES);
+  // Один код у двух товаров — не ошибка (один EAN у товара двух продавцов),
+  // но сканер тогда выбирает между ними: говорим об этом здесь.
+  const sameCode = [barcode, ...extraCodes]
+    .flatMap((c) => sameCodeProducts(products, c, product?.id ?? createdId ?? undefined))
+    .filter((p, i, all) => all.findIndex((x) => x.id === p.id) === i);
   const showNameErr = nameErr && touched.name;
   const showSkuErr = skuErr && (touched.sku || skuErr === "dup");
 
@@ -144,7 +167,8 @@ export function ProductDialog({
     const res = await save.run({
       name: form.name.trim(),
       sku: skuTrim,
-      barcode: form.barcode.trim(),
+      barcode,
+      codes: extraCodes.length > 0 ? extraCodes : undefined,
       category: form.category,
       widthCm: num(form.widthCm),
       heightCm: num(form.heightCm),
@@ -216,16 +240,21 @@ export function ProductDialog({
             <div className="relative">
               <Input
                 value={form.barcode}
-                onChange={(e) => set({ barcode: e.target.value.replace(/\D/g, "").slice(0, 13) })}
+                onChange={(e) => set({ barcode: e.target.value.slice(0, PRODUCT_CODE_MAX) })}
                 placeholder={t("product.barcodePlaceholder")}
-                inputMode="numeric"
-                maxLength={13}
+                maxLength={PRODUCT_CODE_MAX}
                 className="h-9 pr-16 font-mono"
               />
               <div className="absolute right-1 top-1/2 flex -translate-y-1/2 items-center">
                 <button
                   type="button"
-                  onClick={() => set({ barcode: generateEan13() })}
+                  onClick={() =>
+                    set({
+                      barcode: generateProductCode(
+                        products.flatMap((p) => [p.barcode, ...(p.codes ?? [])]),
+                      ),
+                    })
+                  }
                   title={t("product.barcodeGen")}
                   className="flex size-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                 >
@@ -243,6 +272,20 @@ export function ProductDialog({
             </div>
           </Field>
         </div>
+
+        <Field label={t("product.codes")} hint={t("product.codesHint")}>
+          <Input
+            value={form.codes}
+            onChange={(e) => set({ codes: e.target.value })}
+            placeholder={t("product.codesPlaceholder")}
+            className="h-9 font-mono"
+          />
+        </Field>
+        {sameCode.length > 0 && (
+          <p className="text-xs text-warning">
+            {t("product.codeShared", { names: sameCode.map((p) => p.name).join(", ") })}
+          </p>
+        )}
 
         {showBarcode &&
           (form.barcode.trim() ? (
