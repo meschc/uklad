@@ -30,3 +30,24 @@ test("память отдаёт строки только под тем же к�
   assert.equal(cache.get("b", "1|"), null);
   assert.equal(cache.get("a", "1|"), rows);
 });
+
+test("память держит не больше maxRows строк на всех, большую компанию не кладёт", () => {
+  const cache = createDeskCache(8, 5);
+  const rows = (n) =>
+    Array.from({ length: n }, (_, i) => ({ w: "", d: "requests", data: { id: i } }));
+  cache.put("a", "1|", rows(3));
+  cache.put("b", "1|", rows(2));
+  assert.equal(cache.rows(), 5);
+  // «c» не влезает рядом с «a» и «b» — вытесняется самая давняя.
+  cache.put("c", "1|", rows(2));
+  assert.equal(cache.get("a", "1|"), null);
+  assert.equal(cache.rows(), 4);
+  // Та же компания с новыми строками считается один раз.
+  cache.put("c", "2|", rows(3));
+  assert.equal(cache.rows(), 5);
+  // Больше предела целиком — не кладётся, прежние её строки убраны.
+  cache.put("b", "2|", rows(6));
+  assert.equal(cache.get("b", "2|"), null);
+  assert.equal(cache.get("b", "1|"), null);
+  assert.equal(cache.rows(), 3);
+});

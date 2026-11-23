@@ -18,12 +18,22 @@
  * транзакция иначе оставила бы строки, которых нет в базе. Несколько
  * процессов сервера безопасны: у каждого своя память, ключ сверяется с
  * базой.
+ *
+ * Память ограничена не только числом компаний, но и числом строк на всех:
+ * у API 384 МБ (`deploy/compose.yml`), а живая строка в памяти Node — около
+ * 2–3 КБ. Восемь складов по 7 000 живых заявок без предела съели бы
+ * половину и уронили процесс по памяти — на всех складах сразу. Сверх
+ * предела вытесняются самые давние компании; компания больше всего предела
+ * в память не кладётся вовсе и читается из базы, как до памяти: медленнее,
+ * но верно.
  */
 /* global module */
 "use strict";
 
 // Компаний в памяти: кабинет склада на неделю работы — десятки мегабайт.
 const MAX_ORGS = 8;
+// Строк на все компании: около 100 МБ памяти Node, четверть лимита API.
+const MAX_ROWS = 40_000;
 
 /** Ключ строк компании: версия снимка и отметка архива. */
 function cacheKey(cur) {
@@ -31,8 +41,16 @@ function cacheKey(cur) {
   return `${cur.version}|${at ? new Date(at).getTime() : ""}`;
 }
 
-function createDeskCache(max = MAX_ORGS) {
+function createDeskCache(max = MAX_ORGS, maxRows = MAX_ROWS) {
   const byOrg = new Map();
+  let total = 0;
+
+  function drop(orgId) {
+    const hit = byOrg.get(orgId);
+    if (!hit) return;
+    total -= hit.rows.length;
+    byOrg.delete(orgId);
+  }
 
   /** Строки компании под этим ключом или `null`. */
   function get(orgId, key) {
@@ -46,12 +64,14 @@ function createDeskCache(max = MAX_ORGS) {
 
   /** Строки компании после записанной операции (только после COMMIT). */
   function put(orgId, key, rows) {
-    byOrg.delete(orgId);
+    drop(orgId);
+    if (rows.length > maxRows) return;
     byOrg.set(orgId, { key, rows });
-    while (byOrg.size > max) byOrg.delete(byOrg.keys().next().value);
+    total += rows.length;
+    while (byOrg.size > max || total > maxRows) drop(byOrg.keys().next().value);
   }
 
-  return { get, put, size: () => byOrg.size };
+  return { get, put, size: () => byOrg.size, rows: () => total };
 }
 
 /** Строки раскладки кабинета (`splitRecords().items`) → строки как из базы. */
@@ -59,4 +79,4 @@ function rowsOf(items) {
   return items.map(({ w, d, data }) => ({ w, d, data }));
 }
 
-module.exports = { createDeskCache, cacheKey, rowsOf, MAX_ORGS };
+module.exports = { createDeskCache, cacheKey, rowsOf, MAX_ORGS, MAX_ROWS };
