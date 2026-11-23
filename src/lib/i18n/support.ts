@@ -41,6 +41,7 @@ export const ru = {
   "support.sum.trips": "Рейсы",
   "support.sum.tasks": "Задания",
   "support.sum.chats": "Сообщения в чате (текст скрыт)",
+  "support.preview.actions": "Последние действия руководителей склада, номерами без имён: {n}",
   "support.size": "Объём: {kb} КБ",
   "support.send": "Отправить",
   "support.sent.title": "Обращение № {id} отправлено",
@@ -90,6 +91,8 @@ export const en: Record<keyof typeof ru, string> = {
   "support.sum.trips": "Trips",
   "support.sum.tasks": "Tasks",
   "support.sum.chats": "Chat messages (text hidden)",
+  "support.preview.actions":
+    "Recent manager actions on this warehouse, as numbers without names: {n}",
   "support.size": "Size: {kb} KB",
   "support.send": "Send",
   "support.sent.title": "Report no. {id} sent",

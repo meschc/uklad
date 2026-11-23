@@ -1,5 +1,6 @@
 import { fail, ok, type Result } from "../data/result";
 import type { MsgKey } from "../i18n";
+import type { ActivityEntry } from "../activityJournal";
 import { anonymizeSnapshot, type AnonymizeStats } from "./anonymize";
 import { journal, scrubText, type JournalEntry } from "./journal";
 
@@ -34,6 +35,8 @@ export interface SupportReport {
   env: ReportEnv;
   journal: JournalEntry[];
   snapshot?: { data: unknown; stats: AnonymizeStats };
+  /** Последние действия руководителей склада (журнал действий), только id и коды. */
+  actions?: ActionLine[];
   /**
    * Ловушка для ботов, как у заявок с витрины: скрытое поле, которое человек
    * не видит, и сколько окно было открыто до отправки. Сервер отбрасывает
@@ -81,12 +84,42 @@ export function activeWarehouseOnly(state: unknown): unknown {
   return rest;
 }
 
+/** Строка действия руководителя в обращении: по `id` поддержка находит её в базе и логе. */
+export interface ActionLine {
+  id: string;
+  at: number;
+  kind: string;
+  by?: string;
+  target?: string;
+}
+
+/** Сколько последних действий кладём в обращение. */
+export const MAX_ACTIONS = 50;
+
+/**
+ * Действия руководителей для обращения: без имён (`member`, `targetName`,
+ * `roleName`) и без подробностей — они есть на сервере по `id`.
+ */
+export function actionLines(entries: ActivityEntry[]): ActionLine[] {
+  return entries
+    .filter((e) => e.source === "audit")
+    .slice(0, MAX_ACTIONS)
+    .map((e) => ({
+      id: e.id,
+      at: e.at,
+      kind: e.kind,
+      ...(e.by ? { by: e.by } : {}),
+      ...(e.target ? { target: e.target } : {}),
+    }));
+}
+
 export function buildReport(input: {
   message: string;
   env: ReportEnv;
   /** Сохранённое состояние стора — или `null`, если снимок не прикладываем. */
   state: unknown | null;
   entries?: JournalEntry[];
+  actions?: ActionLine[];
   now?: Date;
 }): SupportReport {
   const report: SupportReport = {
@@ -98,6 +131,7 @@ export function buildReport(input: {
     env: input.env,
     journal: input.entries ?? journal.read(),
   };
+  if (input.actions?.length) report.actions = input.actions.slice(0, MAX_ACTIONS);
   if (input.state != null) report.snapshot = anonymizeSnapshot(activeWarehouseOnly(input.state));
   return report;
 }

@@ -1,9 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { anonymizeSnapshot } from "../anonymize";
 import { createJournal, JOURNAL_KEY, MAX_AGE_MS, MAX_ENTRIES, scrubText } from "../journal";
+import type { ActivityEntry } from "../../activityJournal";
 import {
+  actionLines,
   activeWarehouseOnly,
   buildReport,
+  MAX_ACTIONS,
   MAX_REPORT_BYTES,
   sendReport,
   snapshotSummary,
@@ -293,5 +296,43 @@ describe("копия только открытого склада", () => {
       products: [{ id: "g1", warehouseId: "w1" }, { id: "g3" }],
       placements: { g1: "A-1" },
     });
+  });
+});
+
+describe("действия руководителей в обращении", () => {
+  const audit = (i: number): ActivityEntry => ({
+    id: `a${i}`,
+    at: 1_000 + i,
+    receivedAt: 1_000 + i,
+    source: "audit",
+    by: "cabinet",
+    staffRef: null,
+    member: { id: "m1", name: "Иванов И. И." },
+    kind: "member.invite",
+    step: "admin",
+    counted: false,
+    flagged: false,
+    target: "m2",
+    targetName: "Петрова А. А.",
+    roleName: "Кладовщик",
+    details: { role: "r1" },
+  });
+
+  it("кладёт только id и коды: без имён и подробностей", () => {
+    const desk = { ...audit(0), id: "d1", source: "desk" as const };
+    const lines = actionLines([desk, audit(1)]);
+    expect(lines).toEqual([
+      { id: "a1", at: 1_001, kind: "member.invite", by: "cabinet", target: "m2" },
+    ]);
+    const text = JSON.stringify(
+      buildReport({ message: "x", env, state: null, entries: [], actions: lines }),
+    );
+    expect(text).not.toMatch(/Иванов|Петрова|Кладовщик/);
+  });
+
+  it("не больше MAX_ACTIONS, сколько бы ни пришло", () => {
+    const many = Array.from({ length: MAX_ACTIONS * 3 }, (_, i) => audit(i));
+    expect(actionLines(many)).toHaveLength(MAX_ACTIONS);
+    expect(buildReport({ message: "x", env, state: null, entries: [] }).actions).toBeUndefined();
   });
 });

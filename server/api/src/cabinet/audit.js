@@ -101,9 +101,18 @@ async function auditRows(c, ref, { before = null, since = null, company = false,
   const { rows } = await c.query(
     `SELECT a.id, a.at, a.warehouse_ref, a.member_id, a.action, a.target, a.details,
             a.source, coalesce(a.staff_ref, mem.staff_ref) AS staff_ref,
-            mem.display_name AS name
+            mem.display_name AS name, coalesce(tm.display_name, tr.name) AS target_name,
+            rr.name AS role_name
      FROM uklad.audit_events a
      LEFT JOIN uklad.members mem ON mem.org_id = a.org_id AND mem.id = a.member_id
+     -- Имена — при чтении, а не в строке журнала: стёрли человека по просьбе
+     -- (152-ФЗ) или удалили роль — имя пропадает и из журнала.
+     LEFT JOIN uklad.members tm ON tm.org_id = a.org_id
+       AND (a.action LIKE 'member.%' OR a.action LIKE 'badge.member\\_%')
+       AND tm.id::text = a.target
+     LEFT JOIN uklad.roles tr ON tr.org_id = a.org_id AND a.action LIKE 'role.%'
+       AND tr.id::text = a.target
+     LEFT JOIN uklad.roles rr ON rr.org_id = a.org_id AND rr.id::text = a.details->>'role'
      WHERE a.org_id = uklad.current_org()
        AND (a.warehouse_ref = $1 OR ($2 AND a.warehouse_ref IS NULL))
        AND ($3::timestamptz IS NULL OR a.at <= $3)
@@ -125,6 +134,8 @@ async function auditRows(c, ref, { before = null, since = null, company = false,
     counted: false,
     flagged: false,
     ...(r.target ? { target: r.target } : {}),
+    ...(r.target_name ? { targetName: r.target_name } : {}),
+    ...(r.role_name ? { roleName: r.role_name } : {}),
     ...(r.warehouse_ref ? {} : { company: true }),
     ...(isObject(r.details) && Object.keys(r.details).length ? { details: r.details } : {}),
   }));

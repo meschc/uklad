@@ -179,7 +179,7 @@ async function cabinetRows(c, wh, f, limit) {
  * у стола к ним не относятся: с ними — пусто, как у правок кабинета с ошибкой.
  */
 async function adminRows(c, ctx, wh, f, limit) {
-  if (!f.steps?.includes("admin")) return [];
+  if (f.steps && !f.steps.includes("admin")) return [];
   if (f.errors || f.product || f.place || f.staff) return [];
   const company = ctx.can("org.manage");
   return auditRows(c, wh.id, { before: f.before, since: f.since, company, limit });

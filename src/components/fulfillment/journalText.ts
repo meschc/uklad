@@ -1,7 +1,12 @@
 import { useEditor } from "@/lib/store";
 import { formatAddress } from "@/lib/address";
 import { orderLabelCode } from "@/lib/packing";
-import { DESK_KINDS, type ActivityEntry, type JournalMove } from "@/lib/activityJournal";
+import {
+  AUDIT_KINDS,
+  DESK_KINDS,
+  type ActivityEntry,
+  type JournalMove,
+} from "@/lib/activityJournal";
 import { useT, type MsgKey } from "@/lib/i18n";
 import type { CellAddress } from "@/lib/types";
 
@@ -43,6 +48,19 @@ const DISPUTES = new Set([
 ]);
 /** Движений правки в строке: остальное — «и ещё N». */
 const MOVES_SHOWN = 3;
+
+/** Действия над сотрудником склада: цель — его `warehouse.staff[].id`. */
+const STAFF_TARGET = new Set(["badge.issue", "badge.revoke", "staff.role"]);
+/** Откуда пришло действие руководителя без человека за ним. */
+const BY_KEY: Record<string, MsgKey> = {
+  desk: "journal.by.desk",
+  pull: "journal.by.pull",
+  system: "journal.by.system",
+};
+
+const idList = (v: unknown): string[] =>
+  Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+const count = (v: unknown) => (typeof v === "number" && v > 0 ? v : 0);
 
 /** «floor/module/shelf/cell» журнала движений → адрес ячейки. */
 function parseCell(ref: string): CellAddress | null {
@@ -87,6 +105,27 @@ export function useEntryText() {
   };
 
   const staffName = (ref: string) => staff.find((m) => m.id === ref)?.name ?? t("journal.nobody");
+
+  /** Что сделал руководитель: имена товаров, сотрудник, человек, роль. */
+  const audit = (e: ActivityEntry): string => {
+    const d = e.details ?? {};
+    if (e.kind.startsWith("product.")) {
+      const ids = idList(d.ids);
+      const shown = ids.slice(0, MOVES_SHOWN).map((id) => product(id) ?? id);
+      const rest = Math.max(count(d.n), ids.length + count(d.more)) - shown.length;
+      if (rest > 0) shown.push(t("journal.moves.more", { n: rest }));
+      return shown.join(", ");
+    }
+    const subject = STAFF_TARGET.has(e.kind)
+      ? e.target && staff.find((m) => m.id === e.target)?.name
+      : e.targetName;
+    const parts = [
+      subject,
+      e.roleName && t("journal.audit.toRole", { role: e.roleName }),
+      typeof d.system === "string" && d.system,
+    ];
+    return parts.filter(Boolean).join(" · ");
+  };
   return {
     order,
     product,
@@ -94,14 +133,18 @@ export function useEntryText() {
     who: (e: ActivityEntry) =>
       e.member?.name ||
       (e.staffRef && staff.find((m) => m.id === e.staffRef)?.name) ||
-      (e.source === "cabinet" ? t("journal.cabinet") : t("journal.nobody")),
-    where: (e: ActivityEntry) =>
-      e.source === "cabinet" ? t("journal.cabinet") : (e.device?.name ?? ""),
+      (e.source === "audit" && e.by && BY_KEY[e.by] && t(BY_KEY[e.by])) ||
+      (e.source === "cabinet" || e.source === "audit" ? t("journal.cabinet") : t("journal.nobody")),
+    where: (e: ActivityEntry) => {
+      if (e.source === "audit") return t(e.company ? "journal.company" : "journal.cabinet");
+      return e.source === "cabinet" ? t("journal.cabinet") : (e.device?.name ?? "");
+    },
     reason: (e: ActivityEntry) =>
       e.reason && REASONS.has(e.reason)
         ? t(`journal.reason.${e.reason}` as MsgKey)
         : t("journal.reason"),
     what: (e: ActivityEntry): string => {
+      if (e.source === "audit") return audit(e);
       if (e.moves) {
         const shown = e.moves.slice(0, MOVES_SHOWN).map(move);
         const rest = (e.movesTotal ?? e.moves.length) - shown.length;
@@ -133,6 +176,9 @@ export function useEntryText() {
 /** Подпись действия: у упаковки и отметок смены — по виду события внутри. */
 export function actionKey(e: ActivityEntry): MsgKey {
   if (e.source === "cabinet") return "journal.cabinetEdit";
+  if (e.source === "audit") {
+    return AUDIT_KINDS.has(e.kind) ? (`journal.audit.${e.kind}` as MsgKey) : "journal.audit.other";
+  }
   const type = e.refs?.type;
   if ((e.kind === "pack_event" || e.kind === "shift_mark") && type) {
     return `ws.ev.${type}` as MsgKey;
