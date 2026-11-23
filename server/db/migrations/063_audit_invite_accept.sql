@@ -9,6 +9,9 @@
 CREATE OR REPLACE FUNCTION auth.accept_invite(p_token bytea, p_account uuid) RETURNS uuid
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = auth, uklad, pg_temp AS $$
 DECLARE i auth.invitations; v_place text;
+  -- Прежняя сессия транзакции: вернуть её, а не обнулить.
+  v_org text := current_setting('app.org_id', true);
+  v_member text := current_setting('app.member_id', true);
 BEGIN
   SELECT * INTO i FROM auth.invitations x
   WHERE x.token_hash = p_token AND x.accepted_at IS NULL AND x.revoked_at IS NULL
@@ -20,7 +23,7 @@ BEGIN
   END IF;
   PERFORM set_config('app.org_id', i.org_id::text, true);
   IF NOT auth.inviter_still_may(i.invited_by, (SELECT m.role_id FROM uklad.members m WHERE m.id = i.member_id)) THEN
-    PERFORM set_config('app.org_id', '', true);
+    PERFORM set_config('app.org_id', coalesce(v_org, ''), true);
     RETURN NULL;
   END IF;
   IF EXISTS (SELECT 1 FROM uklad.members m
@@ -31,7 +34,7 @@ BEGIN
   WHERE id = i.member_id AND org_id = i.org_id AND status = 'invited' AND deleted_at IS NULL
   RETURNING warehouse_ref INTO v_place;
   IF NOT FOUND THEN
-    PERFORM set_config('app.org_id', '', true);
+    PERFORM set_config('app.org_id', coalesce(v_org, ''), true);
     RETURN NULL;
   END IF;
   UPDATE auth.invitations SET accepted_at = now() WHERE id = i.id;
@@ -41,7 +44,7 @@ BEGIN
   INSERT INTO uklad.audit_events (org_id, warehouse_ref, member_id, action, target, source, at)
   VALUES (i.org_id, v_place, i.member_id, 'member.accept', i.member_id::text, 'cabinet',
           clock_timestamp());
-  PERFORM set_config('app.member_id', '', true);
-  PERFORM set_config('app.org_id', '', true);
+  PERFORM set_config('app.member_id', coalesce(v_member, ''), true);
+  PERFORM set_config('app.org_id', coalesce(v_org, ''), true);
   RETURN i.org_id;
 END $$;
