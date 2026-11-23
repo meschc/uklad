@@ -2,6 +2,7 @@ import { setApiOrg } from "../data/api";
 import { makeBackup } from "../backup";
 import { SECRET_INTEGRATION_FIELDS } from "../integrations";
 import { diffCabinet, splitCabinet, type Split } from "../data/cabinetRows";
+import { mergeCabinet } from "../data/cabinetMerge";
 import { deskOps } from "../data/opQueue";
 import {
   snapshotRepository,
@@ -30,9 +31,12 @@ import { nowMs } from "../utils";
  * — Новая компания начинает с пустого склада, а не с демо: демо остаётся
  *   кнопкой на экране входа без сервера.
  * — Правки уходят на сервер сами, через полторы секунды тишины. Сервер
- *   принимает запись, только если знает её версию: второе устройство с
- *   устаревшей копией не затрёт чужую работу молча — оно получит свежий
- *   снимок, а свои незаписанные правки найдёт в отложенной копии.
+ *   принимает запись, только если знает её версию. Версию двигает каждый
+ *   скан стола, поэтому на отказ кабинет берёт свежий снимок и накладывает
+ *   на него свою правку (`cabinetMerge.ts`): разные записи ложатся обе, на
+ *   одной и той же склад главнее, о не легших правках говорим. Не вышло
+ *   (нет связи, другой формат, три раза подряд) — свежий снимок, а свои
+ *   незаписанные правки человек найдёт в отложенной копии.
  * — Нет связи — работаем дальше в браузере, пометка «не записано» живёт в
  *   хранилище и переживает перезагрузку; запись повторится сама.
  * — Копия в браузере, которую нельзя признать записанной (незаписанные
@@ -79,6 +83,8 @@ const DESK_LOCAL_KEYS = [...DEVICE_KEYS, "receiving"] as const;
 const SAVE_DELAY_MS = 5000;
 /** Как часто стол спрашивает версию снимка. */
 const DESK_POLL_MS = 20_000;
+// Подряд наложить правку на свежий снимок — не больше стольких раз.
+const MAX_REBASES = 3;
 const RETRY_MS = 30_000;
 
 type Persisted = ReturnType<typeof persistedState>;
@@ -232,6 +238,9 @@ function companyPart(state: Persisted): Record<string, unknown> {
   return out;
 }
 
+/** Как стор принимает сохранённое — тем же путём кладём свежий снимок. */
+const persistMerge = () => useEditor.persist.getOptions().merge;
+
 /** Части устройства из текущего сохранения — остаются своими при замене. */
 function devicePart(state: Persisted): Record<string, unknown> {
   const out: Record<string, unknown> = {};
@@ -319,7 +328,10 @@ export function startServerSync(orgId: string): () => void {
   // Что лежит на сервере на версии `version`, разложенное по строкам: от
   // него считается правка «только изменённое». Нет его или версия другая
   // (стол сдвинул её операциями) — пишем кабинет целиком.
-  let base: { version: number; split: Split } | null = null;
+  let base: { version: number; split: Split; data: Record<string, unknown> } | null = null;
+  // Сколько раз подряд правка накладывалась на свежий снимок: столы могут
+  // успеть ещё раз, но бесконечно догонять их не будем.
+  let rebases = 0;
 
   /** Снимок не для этой роли: не пишем и не повторяем, говорим один раз. */
   /**
@@ -415,6 +427,12 @@ export function startServerSync(orgId: string): () => void {
         schedule(0);
         return false;
       }
+      if ("conflict" in res.data && !res.data.rejected && changes && rebases < MAX_REBASES) {
+        // Версию сдвинул склад (сканы) или другой руководитель: наложить свою
+        // правку на свежий снимок, а не откладывать её (`cabinetMerge.ts`).
+        rebases += 1;
+        if (await rebase(changes.data, data)) return false;
+      }
       if ("conflict" in res.data) {
         // Кто-то записал раньше нас: забираем свежее, своё откладываем.
         // Сервер не принял движение товара или удаление каталога — человеку
@@ -425,13 +443,42 @@ export function startServerSync(orgId: string): () => void {
         return false;
       }
       lastSent = text;
-      base = { version: res.data.saved, split: next };
+      base = { version: res.data.saved, split: next, data };
+      rebases = 0;
       writeMeta({ orgId, version: res.data.saved, dirty: false });
       return true;
     }).finally(() => {
       inflight = null;
     });
     return inflight;
+  };
+
+  /**
+   * Свежий снимок с сервера и поверх — своя правка с прошлой версии. Склад
+   * главнее на той же записи: такие места не легли, человеку говорим.
+   * `false` — наложить не вышло (нет связи, другой формат), пусть решает
+   * обычная перезагрузка.
+   */
+  const rebase = async (was: Record<string, unknown>, mine: Record<string, unknown>) => {
+    const res = await snapshotRepository.load();
+    if (stopped || !res.ok || !res.data || res.data.desk || res.data.viewer) return false;
+    const snap = res.data;
+    if (snap.format !== PERSIST_VERSION) return false;
+    const merged = mergeCabinet(was, mine, snap.data);
+    const keep = persistMerge();
+    if (!keep) return false;
+    const current = persistedState(useEditor.getState());
+    const persisted = {
+      ...merged.data,
+      integrations: withLocalSecrets(merged.data.integrations, current.integrations),
+      ...devicePart(current),
+    };
+    useEditor.setState(keep(persisted, useEditor.getState()), true);
+    base = { version: snap.version, split: splitCabinet(snap.data), data: snap.data };
+    writeMeta({ orgId, version: snap.version, dirty: true });
+    if (merged.lost > 0) useEditor.getState().notify("warning", "sync.rebaseLost");
+    schedule(0);
+    return true;
   };
 
   const boot = async () => {
@@ -500,7 +547,7 @@ export function startServerSync(orgId: string): () => void {
       // Незаписанное с прошлого раза сравниваем с тем, что на сервере, а не
       // с собой — иначе оно так и не уйдёт.
       lastSent = meta.dirty ? JSON.stringify(snap.data) : JSON.stringify(companyPart(current));
-      base = { version: snap.version, split: splitCabinet(snap.data) };
+      base = { version: snap.version, split: splitCabinet(snap.data), data: snap.data };
       booted = true;
       if (meta.dirty) void flush();
       return;
@@ -546,7 +593,7 @@ export function startServerSync(orgId: string): () => void {
       integrations: withLocalSecrets(snap.data.integrations, current.integrations),
       ...keep,
     };
-    const merge = useEditor.persist.getOptions().merge;
+    const merge = persistMerge();
     if (!merge) return false;
     useEditor.setState(merge(persisted, useEditor.getState()), true);
     writeMeta({ orgId, version: snap.version, dirty: false });
