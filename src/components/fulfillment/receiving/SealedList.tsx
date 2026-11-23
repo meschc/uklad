@@ -3,6 +3,7 @@ import type { SealedUnits } from "@/lib/cargo";
 import { type TFunc } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { eyebrow } from "@/components/ui/eyebrow";
+import { formatBarcode } from "@/lib/barcodeFormat";
 
 /**
  * Места поставки, принятые на грузовой приёмке и ещё не вскрытые. Нажать на
@@ -26,7 +27,7 @@ export function SealedList({
         {units.pallets.map((p) => (
           <Button key={p.id} size="sm" variant="outline" onClick={() => onOpen(p.barcode)}>
             <Layers className="size-3.5" />
-            <span className="font-mono text-xs">{p.barcode}</span>
+            <span className="font-mono text-xs">{formatBarcode(p.barcode)}</span>
           </Button>
         ))}
         {units.boxes.map((b) => (

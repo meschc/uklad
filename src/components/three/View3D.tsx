@@ -14,6 +14,7 @@ import { eyebrow } from "@/components/ui/eyebrow";
 import { Engine } from "./engine";
 import { Select } from "@/components/ui/select";
 import { FieldError } from "@/components/ui/field";
+import { formatBarcode } from "@/lib/barcodeFormat";
 
 /** Ответ «есть ли видеокарта» на вкладку один — переспрашивать нечего. */
 let webglAnswer: boolean | null = null;
@@ -392,7 +393,7 @@ function Sidebar({ productId, onClose }: { productId: string; onClose: () => voi
           <span className="font-mono text-xs">{product.sku}</span>
         </Field>
         <Field label={t("view3d.barcode")}>
-          <span className="font-mono text-xs">{product.barcode}</span>
+          <span className="font-mono text-xs">{formatBarcode(product.barcode)}</span>
         </Field>
         <Field label={t("view3d.category")}>
           <span className="inline-flex items-center gap-1.5 text-xs">

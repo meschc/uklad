@@ -5,6 +5,7 @@ import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { QrSvg } from "@/components/table/QrSvg";
 import { Code128Svg } from "@/components/table/Code128Svg";
+import { formatBarcode } from "@/lib/barcodeFormat";
 
 /**
  * Сама наклейка (п.6). Один компонент и на предпросмотр, и на печать: если бы
@@ -184,7 +185,8 @@ export function LabelCard({
   // отсюда кегль, при котором номер ровно встаёт в строку.
   if (headline && tpl.codeType !== "qr") {
     const inner = tpl.widthMm - 2 * plan.padMm;
-    const numberMm = Math.min(inner / (Math.max(code.length, 1) * 0.6), tpl.heightMm * 0.16);
+    const shown = formatBarcode(code);
+    const numberMm = Math.min(inner / (Math.max(shown.length, 1) * 0.6), tpl.heightMm * 0.16);
     return (
       <div
         className={cn(
@@ -216,7 +218,7 @@ export function LabelCard({
           className="w-full whitespace-nowrap font-mono font-bold leading-none tabular-nums"
           style={{ fontSize: MM(numberMm) }}
         >
-          {code}
+          {shown}
         </span>
       </div>
     );

@@ -20,6 +20,7 @@ import { LabelPrint } from "./LabelPrint";
 import { FitToWidth } from "./FitToWidth";
 import { LabelDesigner, type LabelDraft } from "./LabelDesigner";
 import { ScreenShell } from "./ScreenShell";
+import { formatBarcode } from "@/lib/barcodeFormat";
 
 /**
  * Наклейки тары и паллет (п.18, п.6). Тару подписывают ДО приёмки: печатают
@@ -392,7 +393,7 @@ export function LabelsScreen() {
                 {picked && !query.trim() && (
                   <div className="flex items-center justify-between rounded-md bg-primary/10 px-2.5 py-1.5 text-xs text-primary">
                     <span className="font-medium">{picked.name}</span>
-                    <span className="font-mono tabular-nums">{picked.barcode}</span>
+                    <span className="font-mono tabular-nums">{formatBarcode(picked.barcode)}</span>
                   </div>
                 )}
                 {query.trim() && found.length === 0 && (
@@ -409,7 +410,7 @@ export function LabelsScreen() {
                   >
                     <span className="truncate font-medium">{p.name}</span>
                     <span className="shrink-0 font-mono tabular-nums text-muted-foreground">
-                      {p.sku} · {p.barcode}
+                      {p.sku} · {formatBarcode(p.barcode)}
                     </span>
                   </button>
                 ))}

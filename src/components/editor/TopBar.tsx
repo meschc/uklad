@@ -25,6 +25,8 @@ export function TopBar() {
   // Продавцу печать плана не нужна: это инструмент склада.
   const isSeller = useEditor((s) => selectRole(s) === "seller");
   const setPrintPreview = useEditor((s) => s.setPrintPreview);
+  // «Сохранить» и «Распечатать план» — про план: в таблице товаров их нет (Кирилл 23.11).
+  const onPlan = mode !== "table";
   const t = useT();
 
   return (
@@ -69,8 +71,8 @@ export function TopBar() {
       {/* Справа: статус автосохранения + печать плана. Смена темы переехала в
           боковой рельс — здесь нужнее печатный план для сверки (п.9). */}
       <div className="flex items-center gap-1.5">
-        <SaveStatus />
-        {!isSeller && (
+        {onPlan && <SaveStatus />}
+        {onPlan && !isSeller && (
           <Button
             variant="ghost"
             size="icon-sm"

@@ -6,6 +6,7 @@ import { eyebrow } from "@/components/ui/eyebrow";
 import { card } from "@/components/ui/card";
 import { QtyStepper } from "../QtyStepper";
 import type { Draft } from "./types";
+import { formatBarcode } from "@/lib/barcodeFormat";
 
 /**
  * Шаг «количество»: главный шаг приёмки как сверки.
@@ -36,7 +37,7 @@ export function QtyStep({
       <div className={card()}>
         <p className="text-sm font-semibold">{draft.product.name}</p>
         <p className="mt-0.5 font-mono text-xs text-muted-foreground">
-          {draft.product.sku} · {draft.product.barcode}
+          {draft.product.sku} · {formatBarcode(draft.product.barcode)}
         </p>
         {remainder != null ? (
           <p className="mt-2 text-xs text-muted-foreground">
