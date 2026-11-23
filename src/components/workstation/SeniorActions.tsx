@@ -13,6 +13,8 @@ import { FormError } from "@/components/ui/field";
 import { Segmented } from "@/components/ui/segmented";
 import { EmbeddedShell } from "@/components/fulfillment/embeddedShell";
 import { DisputesScreen } from "./DisputesScreen";
+import { parcelCard, type ParcelCard } from "@/lib/parcelCard";
+import { ParcelCardView } from "@/components/fulfillment/ParcelCardView";
 
 /**
  * Действия старшего за столом (Кирилл 17.11): спорные и перенос тары в одной
@@ -20,7 +22,7 @@ import { DisputesScreen } from "./DisputesScreen";
  */
 export function SeniorActions() {
   const t = useT();
-  const [tab, setTab] = useState<"disputes" | "move">("disputes");
+  const [tab, setTab] = useState<"disputes" | "move" | "parcel">("disputes");
   return (
     <div className="flex flex-col gap-4">
       <Segmented
@@ -31,14 +33,17 @@ export function SeniorActions() {
         options={[
           { value: "disputes", label: t("disputes.title") },
           { value: "move", label: t("ws.move.title") },
+          { value: "parcel", label: t("parcel.tab") },
         ]}
       />
       {tab === "disputes" ? (
         <EmbeddedShell.Provider value={true}>
           <DisputesScreen />
         </EmbeddedShell.Provider>
-      ) : (
+      ) : tab === "move" ? (
         <ToteMove />
+      ) : (
+        <FoundParcel />
       )}
     </div>
   );
@@ -145,6 +150,37 @@ function ToteMove() {
           <CodeText text={t(note.key, { box: note.box ?? "" })} />
         </FormError>
       )}
+    </div>
+  );
+}
+
+/**
+ * Найденная посылка (Кирилл 23.11): старший сканирует посылку, которая лежала
+ * не на месте, и видит, чей это заказ, что внутри и что с ней делать.
+ */
+function FoundParcel() {
+  const t = useT();
+  const outboundBoxes = useEditor((s) => s.outboundBoxes);
+  const requests = useEditor((s) => s.requests);
+  const products = useEditor((s) => s.products);
+  const partners = useEditor((s) => s.warehouse.partners);
+  const [code, setCode] = useState<string | null>(null);
+  const [card, setCard] = useState<ParcelCard | null>(null);
+
+  const onScan = (raw: string) => {
+    setCode(raw.trim());
+    setCard(parcelCard(raw, { outboundBoxes, requests, products, partners: partners ?? [] }));
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      <ScanField
+        label={t("parcel.scan")}
+        status={code === null ? "idle" : card ? "ok" : "error"}
+        onSubmit={onScan}
+      />
+      {code !== null && !card && <FormError>{t("parcel.none", { code })}</FormError>}
+      {card && <ParcelCardView card={card} t={t} />}
     </div>
   );
 }

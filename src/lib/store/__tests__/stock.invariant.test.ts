@@ -52,7 +52,7 @@ function warehouse() {
   const s = () => store.getState();
   /** Книга сходится — иначе тест называет товар и все три суммы. */
   const check = (step: string) => expect(broken(s()), step).toEqual([]);
-  return { s, check };
+  return { s, check, store };
 }
 
 /** Принять и поставить на место: короб с товаром в ячейке. */
@@ -264,6 +264,38 @@ describe("товар не теряется и не двоится на пути 
     expect(s().packStart(t2.barcode)).toBeNull();
     expect(s().packScanItem("4600000000017").kind).toBe("ok");
     check("заказ пакуется из новой тары");
+  });
+
+  it("заказ отменили после упаковки: посылку вскрыли в тару, товар снова в остатке (23.11)", () => {
+    const w = warehouse();
+    const { s, check } = w;
+    stock(w, "p-a", 3, C1);
+    const r = s().createRequest({ productId: "p-a", qty: 2, note: "Тула", externalId: "OZ-1" });
+    const tote = s().createBox();
+    for (let i = 0; i < 2; i++) s().recordPick(r, "p-a", C1, tote.id);
+    s().completeRequest(r);
+    s().badgeLogin(badgeCode("s1"), "pack");
+    expect(s().packStart(tote.barcode, "UK-OUT-9")).toBeNull();
+    for (let i = 0; i < 2; i++) {
+      expect(s().packScanItem(A.barcode!).kind).toBe("ok");
+      expect(s().packScanLabel(s().packSession!.units.at(-1)!.labelCode)).toBe(true);
+      const order = pendingLabel(s().packSession!);
+      if (order) expect(s().packScanLabel(order)).toBe(true);
+    }
+    s().packFinish();
+    check("упаковано");
+    // Площадка отменила заказ (`orderCancel.js`), старший вскрыл посылку в пустую тару.
+    w.store.setState((x) => ({
+      requests: x.requests.map((q) => (q.id === r ? { ...q, status: "cancelled" as const } : q)),
+    }));
+    const empty = s().createBox();
+    const parcel = s().outboundBoxes.find((b) => b.requestIds.includes(r))!;
+    s().openParcel(parcel.id, empty.id);
+    check("посылка вскрыта в тару");
+    expect(s().boxes.find((b) => b.id === empty.id)!.lines).toEqual([{ productId: "p-a", qty: 2 }]);
+    s().placeBox(empty.id, C2);
+    check("тара на месте");
+    expect(onHand(s()).get("p-a")).toBe(3);
   });
 
   it("начатая заявка не докладывается в другую тару", () => {

@@ -14,6 +14,7 @@ import { attempt, fail, type Result } from "./result";
 import type { EditorState, ReceiveInput } from "../store/state";
 import { nowMs, uid } from "../utils";
 import { frozenBoxes } from "../inventory";
+import { openParcelCheck, parcelCard } from "../parcelCard";
 
 /** Приёмка: поставки, факты приёмки, тара и паллеты (п.0.4). */
 export interface FulfillmentRepository {
@@ -33,6 +34,8 @@ export interface FulfillmentRepository {
 
   createBox: () => Promise<Result<Box>>;
   markLabelsPrinted: (kind: "box" | "pallet", codes: string[]) => Promise<Result<void>>;
+  /** Вскрыть отменённую посылку в пустую тару: тара с товаром. */
+  openParcel: (parcelCode: string, toteCode: string) => Promise<Result<Box>>;
   placeBox: (boxId: string, addr: CellAddress) => Promise<Result<void>>;
   createPallet: () => Promise<Result<Pallet>>;
   attachBox: (boxId: string, palletId: string) => Promise<Result<void>>;
@@ -114,6 +117,24 @@ export function createFulfillmentRepository(
 
     createBox: () => attempt(() => port.get().createBox()),
     markLabelsPrinted: (kind, codes) => attempt(() => port.get().markLabelsPrinted(kind, codes)),
+    openParcel: async (parcelCode, toteCode) => {
+      const s = port.get();
+      // Стол снимок не пишет (ADR 0010): вскрытие — только из кабинета.
+      if (s.stationSession?.staffId && onServer(port)) return fail("parcel.open.cabinetOnly");
+      const card = parcelCard(parcelCode, {
+        outboundBoxes: s.outboundBoxes,
+        requests: s.requests,
+        products: s.products,
+        partners: s.warehouse.partners ?? [],
+      });
+      const check = openParcelCheck(card, s.boxes, toteCode);
+      if (!check.ok) return fail(check.error);
+      if (frozen(check.tote.id)) return fail("ws.count.frozen");
+      return attempt(() => {
+        port.get().openParcel(card!.box.id, check.tote.id);
+        return port.get().boxes.find((b) => b.id === check.tote.id)!;
+      });
+    },
     placeBox: async (boxId, addr) =>
       frozen(boxId)
         ? fail("ws.count.frozen")
