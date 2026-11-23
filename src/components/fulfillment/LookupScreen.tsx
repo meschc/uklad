@@ -21,6 +21,9 @@ import { ScanField, type ScanStatus } from "./ScanField";
 import { ScreenShell, EmptyState } from "./ScreenShell";
 import { printLabels } from "@/lib/printLabels";
 import { LabelPrint } from "./LabelPrint";
+import { parcelCard, type ParcelCard } from "@/lib/parcelCard";
+import { ParcelCardView } from "./ParcelCardView";
+import { ParcelOpen } from "./ParcelOpen";
 import { LookupBrowser } from "./LookupBrowser";
 
 /**
@@ -43,6 +46,10 @@ export function LookupScreen() {
   const placements = useEditor((s) => s.placements);
   const templates = useEditor((s) => s.labelTemplates);
   const [result, setResult] = useState<LookupResult | null>(null);
+  const outboundBoxes = useEditor((s) => s.outboundBoxes);
+  const requests = useEditor((s) => s.requests);
+  const partners = useEditor((s) => s.warehouse.partners);
+  const [parcel, setParcel] = useState<ParcelCard | null>(null);
 
   // Печать ярлыка найденной тары или паллеты тем же шаблоном, что и на экране
   // «Наклейки»: порванный ярлык перепечатывают прямо отсюда.
@@ -61,6 +68,8 @@ export function LookupScreen() {
   }, [printing]);
 
   const onScan = (code: string) => {
+    // Посылка отгрузки — по нашему ярлыку или номеру заказа на этикетке.
+    setParcel(parcelCard(code, { outboundBoxes, requests, products, partners: partners ?? [] }));
     setResult(
       lookup(code, {
         warehouse,
@@ -73,7 +82,8 @@ export function LookupScreen() {
     );
   };
 
-  const status: ScanStatus = result === null ? "idle" : result.kind === "none" ? "error" : "ok";
+  const status: ScanStatus =
+    result === null ? "idle" : result.kind === "none" && !parcel ? "error" : "ok";
 
   const field = (
     <ScanField
@@ -125,7 +135,14 @@ export function LookupScreen() {
         />
       )}
 
-      <ResultCard result={result} t={t} />
+      {parcel ? (
+        <>
+          <ParcelCardView card={parcel} t={t} />
+          {parcel.state === "cancelled" && <ParcelOpen key={parcel.box.id} card={parcel} t={t} />}
+        </>
+      ) : (
+        <ResultCard result={result} t={t} />
+      )}
       <LookupBrowser onCode={onScan} />
     </ScreenShell>
   );

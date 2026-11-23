@@ -511,6 +511,8 @@ export interface FulfillmentSlice {
   /** Отметить ярлыки напечатанными: тара или паллеты по кодам. */
   markLabelsPrinted: (kind: "box" | "pallet", codes: string[]) => void;
   /** Поставить коробку в ячейку. */
+  /** Отменённую посылку вскрыли в пустую тару (`parcelCard.ts`). */
+  openParcel: (outboundId: string, toteId: string) => void;
   placeBox: (boxId: string, addr: CellAddress) => void;
   createPallet: () => Pallet;
   attachBoxToPallet: (boxId: string, palletId: string) => void;

@@ -153,6 +153,19 @@ export const createFulfillmentSlice: SliceCreator<FulfillmentSlice> = (set, get)
     set((s) => (kind === "box" ? { boxes: s.boxes.map(mark) } : { pallets: s.pallets.map(mark) }));
   },
 
+  openParcel: (outboundId, toteId) =>
+    set((s) => {
+      const parcel = s.outboundBoxes.find((b) => b.id === outboundId && !b.shipmentId);
+      if (!parcel) return {};
+      return {
+        // Товар — в тару одной записью: посылки больше нет, остаток в таре.
+        boxes: s.boxes.map((b) =>
+          b.id === toteId ? { ...b, lines: parcel.lines.map((l) => ({ ...l })) } : b,
+        ),
+        outboundBoxes: s.outboundBoxes.filter((b) => b.id !== outboundId),
+      };
+    }),
+
   placeBox: (boxId, addr) =>
     set((s) => ({
       boxes: s.boxes.map((b) => (b.id === boxId ? { ...b, address: addr } : b)),
