@@ -153,3 +153,21 @@ test("Маркет: с группой — по кампании, без груп
   const many = Object.fromEntries(Array.from({ length: 1200 }, (_, i) => [`S${i}`, 1]));
   assert.equal(ymStockRequests(many, "group", {}).length, 3);
 });
+
+test("отменённый после упаковки заказ держит резерв, пока посылка в отгрузке (23.11)", () => {
+  const view = (shipmentId) => ({
+    boxes: [],
+    outboundBoxes: [
+      { id: "o1", requestIds: ["r1"], shipmentId, lines: [{ productId: "p", qty: 2 }] },
+    ],
+    requests: [{ id: "r1", productId: "p", qty: 2, status: "cancelled", packedAt: 5, toteId: "t" }],
+  });
+  // Посылка запечатана у старшего: свободных штук нет, площадка их не продаст.
+  assert.equal(freeStock(view(undefined)).get("p"), 0);
+  // Отменённая до упаковки — резерва нет, как и раньше.
+  const before = view(undefined);
+  before.outboundBoxes = [];
+  before.boxes = [{ lines: [{ productId: "p", qty: 2 }] }];
+  delete before.requests[0].packedAt;
+  assert.equal(freeStock(before).get("p"), 2);
+});

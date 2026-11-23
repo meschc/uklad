@@ -40,9 +40,17 @@ function freeStock(view) {
     if (!isObject(b) || b.shipmentId) continue;
     for (const l of list(b.lines)) add(l?.productId, qtyOf(l?.qty));
   }
+  // Заказ отменили после упаковки (`orderCancel.js`): посылка запечатана и
+  // лежит у старшего, в ячейках товара нет — резерв держим, пока посылка
+  // в отгрузке. Иначе площадка продаст эти штуки снова.
+  const sealed = new Set();
+  for (const b of list(view.outboundBoxes)) {
+    if (isObject(b) && !b.shipmentId) for (const id of list(b.requestIds)) sealed.add(id);
+  }
   const reserved = new Map();
   for (const r of list(view.requests)) {
-    if (!isObject(r) || r.status === "shipped" || r.status === "cancelled") continue;
+    if (!isObject(r) || r.status === "shipped") continue;
+    if (r.status === "cancelled" && !(r.packedAt && sealed.has(r.id))) continue;
     // Снятое в заявку без тары лежит «у заявки», пока она не уехала.
     if (!r.toteId) add(r.productId, qtyOf(r.pickedQty));
     reserved.set(r.productId, (reserved.get(r.productId) ?? 0) + qtyOf(r.qty));
