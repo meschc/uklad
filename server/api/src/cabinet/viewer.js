@@ -59,6 +59,7 @@ const VIEWER_HIDDEN = [
   "profile",
   "session",
   "stationSession",
+  "stationLock",
   "packSession",
   "devices",
   "thisDeviceId",
