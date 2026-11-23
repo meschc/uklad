@@ -72,6 +72,31 @@ export const ru = {
   "ws.station.inventory": "Инвентаризация",
   "ws.opCountRejected": "Сервер не принял пересчёт этой тары. Позовите старшего",
   "ws.opTaskRejected": "Сервер не принял отметку по работе. Спросите руководителя",
+  // Причина отказа сервера и что делать (правило Кирилла 21.11): экран уже
+  // обновлён серверными данными, поэтому «посмотрите, что на месте».
+  "ws.opPickStock":
+    "Штуку на этом месте уже снял другой сотрудник, или заявка уже собрана. Экран обновлён: возьмите штуку с другого места",
+  "ws.opPickTote":
+    "В эту тару собирать нельзя: она занята другой работой или в ней идёт другая заявка. Возьмите пустую тару или ту, куда уже собираете эту заявку",
+  "ws.opPickMixed":
+    "В эту тару нельзя: в ней товар другого продавца или другое назначение. Возьмите другую тару",
+  "ws.opPackStock":
+    "Эту тару уже упаковал другой сотрудник, или в ней осталось меньше, чем вы закрывали. Экран обновлён: проверьте тару и упакуйте остаток",
+  "ws.opPackMixed":
+    "В этот короб нельзя: другой продавец или другое назначение, либо заказ собран в двух тарах. Возьмите другой короб",
+  "ws.opRecvTote":
+    "Эта тара не для приёмки: она закрыта, стоит на полке или в ней идёт сборка. Возьмите другую тару",
+  "ws.opRecvStock":
+    "По этой таре открыто расхождение, пока его не решит старший, её не трогают. Возьмите другую тару",
+  "ws.opRecvMixed":
+    "В этой таре товар другого продавца. Возьмите отдельную тару для этого продавца",
+  "ws.opRecvBusy": "Ячейка уже занята другой тарой. Выберите другую ячейку",
+  "ws.opShipStock":
+    "В рейс нечего грузить: упакованное уже ушло или не готово. Экран обновлён: проверьте список рейса",
+  "ws.opShipMixed":
+    "В один рейс нельзя разные назначения или неполные заказы. Разделите рейс и повторите",
+  "ws.opTaskTaken": "Эту работу уже взял другой сотрудник. Выберите другую в списке",
+  "ws.opTaskClosed": "Работа уже закрыта или снята. Обновите список",
   "ws.task.nobody": "Работа записывается за вошедшим по бейджу — войдите заново",
   "ws.task.taken": "Эту работу уже взял другой сотрудник",
   "ws.task.closed": "Работа уже закрыта или снята",
@@ -736,6 +761,28 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.station.inventory": "Stocktake",
   "ws.opCountRejected": "The server didn't accept the count of this box. Call a senior",
   "ws.opTaskRejected": "The server didn't accept the task mark. Ask your manager",
+  "ws.opPickStock":
+    "Another employee has already taken the unit from this spot, or the request is already picked. The screen is refreshed: take a unit from another spot",
+  "ws.opPickTote":
+    "You can't pick into this tote: it is busy with other work or another request. Take an empty tote or the one you already pick this request into",
+  "ws.opPickMixed":
+    "You can't use this tote: it holds another seller's goods or another destination. Take a different tote",
+  "ws.opPackStock":
+    "Another employee has already packed this tote, or it holds less than you closed. The screen is refreshed: check the tote and pack the rest",
+  "ws.opPackMixed":
+    "You can't use this box: another seller or destination, or the order is picked into two totes. Take a different box",
+  "ws.opRecvTote":
+    "This tote is not for receiving: it is closed, on a shelf or used for picking. Take a different tote",
+  "ws.opRecvStock":
+    "This tote has an open discrepancy and stays untouched until a senior decides. Take a different tote",
+  "ws.opRecvMixed": "This tote holds another seller's goods. Take a separate tote for this seller",
+  "ws.opRecvBusy": "The cell is already taken by another tote. Choose a different cell",
+  "ws.opShipStock":
+    "Nothing to load: the packed goods have already left or are not ready. The screen is refreshed: check the run list",
+  "ws.opShipMixed":
+    "One run can't hold different destinations or incomplete orders. Split the run and try again",
+  "ws.opTaskTaken": "Another employee has already taken this task. Pick another one from the list",
+  "ws.opTaskClosed": "The task is already closed or removed. Refresh the list",
   "ws.task.nobody": "The task is saved for whoever scanned a badge: sign in again",
   "ws.task.taken": "Another employee has already taken this task",
   "ws.task.closed": "The task is already closed or removed",
