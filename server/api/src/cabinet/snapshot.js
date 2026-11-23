@@ -49,6 +49,7 @@ const {
   rowsAllowed,
   foreignCounts,
 } = require("./managerScope");
+const { logAction } = require("./audit");
 const { recordMoves, invalidWork } = require("./moves");
 const { recordStorage, loadStorage, parsePeriod } = require("./storage");
 const { loadInventoryLog, parseLogPeriod } = require("./inventoryLog");
@@ -326,13 +327,67 @@ function badChanges(b) {
   return invalidWork(assembleRecords(b.doc, b.upsert));
 }
 
+/** Живые товары компании: ref → склад и время правки (для журнала действий). */
+async function liveProducts(c) {
+  const { rows } = await c.query(
+    `SELECT ref, warehouse_ref AS w, updated_at::text AS t FROM uklad.products
+     WHERE org_id = uklad.current_org() AND deleted_at IS NULL`,
+  );
+  return new Map(rows.map((r) => [r.ref, r]));
+}
+
+/** id товаров — сколько влезет в подробности журнала, остальное — числом. */
+function idsFor(list) {
+  const ids = [];
+  for (const id of list) if (JSON.stringify([...ids, id]).length <= 1500) ids.push(id);
+  return {
+    n: list.length,
+    ids,
+    ...(ids.length < list.length ? { more: list.length - ids.length } : {}),
+  };
+}
+
+/**
+ * Журнал действий (Кирилл 22.11: «удаление товаров… все действия»): что
+ * запись каталога завела, изменила и унесла в корзину — по складу товара,
+ * одной строкой на вид. Ничего не изменилось — ничего не пишется.
+ */
+async function noteProducts(c, log, before, after) {
+  const by = new Map();
+  const add = (w, kind, ref) => {
+    const key = `${w ?? ""}|${kind}`;
+    if (!by.has(key)) by.set(key, { w: w ?? null, kind, refs: [] });
+    by.get(key).refs.push(ref);
+  };
+  for (const [ref, r] of after) {
+    const was = before.get(ref);
+    if (!was) add(r.w, "create", ref);
+    else if (was.w !== r.w) {
+      // Перенос на другой склад виден обоим: новому — пришёл, прежнему — ушёл.
+      add(r.w, "move_in", ref);
+      add(was.w, "move_out", ref);
+    } else if (was.t !== r.t) add(r.w, "update", ref);
+  }
+  for (const [ref, r] of before) if (!after.has(ref)) add(r.w, "delete", ref);
+  for (const { w, kind, refs } of by.values()) {
+    await logAction(c, log, { action: `product.${kind}`, warehouse: w, details: idsFor(refs) });
+  }
+}
+
 /** Товары из присланного снимка — в таблицу. Нет поля — товары не трогаем. */
-async function storeProducts(c, data, scope = null) {
+async function storeProducts(c, data, scope = null, log = null) {
   if (!("products" in data)) return;
   const cards = JSON.stringify(data.products);
-  if (!scope) return void (await c.query(`SELECT uklad.save_products($1::jsonb)`, [cards]));
+  const before = await liveProducts(c);
+  if (!scope) await c.query(`SELECT uklad.save_products($1::jsonb)`, [cards]);
   // Не владелец пишет каталог своего склада (миграция 059): чужой не трогается.
-  await c.query(`SELECT uklad.save_products($1::jsonb, $2, $3)`, [cards, scope.ref, scope.shared]);
+  else
+    await c.query(`SELECT uklad.save_products($1::jsonb, $2, $3)`, [
+      cards,
+      scope.ref,
+      scope.shared,
+    ]);
+  await noteProducts(c, log, before, await liveProducts(c));
 }
 
 function createSnapshot({ auth, send, log, limits = null }) {
@@ -513,7 +568,7 @@ function createSnapshot({ auth, send, log, limits = null }) {
             [format, data, ctx.memberId],
           );
           if (!rows[0]) return { conflict: true };
-          await storeProducts(c, b.data);
+          await storeProducts(c, b.data, null, log);
           await storeWarehousesLimited(c, ctx, split.warehouses);
           await storeRecords(c, split.items, split.slots);
           await recordMoves(c, {}, b.data, rows[0].version, { memberId: ctx.memberId });
@@ -533,7 +588,7 @@ function createSnapshot({ auth, send, log, limits = null }) {
         // Прежний кабинет целиком — пока строки ещё старые: по нему журнал
         // движений считает, что прибыло и убыло.
         const before = await loadRecords(c, prevDoc ?? {});
-        await storeProducts(c, b.data, catalog);
+        await storeProducts(c, b.data, catalog, log);
         // Дальше — кабинет целиком: занятости нужны товары и чужих складов.
         if (catalog) b.data = { ...b.data, products: await allProducts(c) };
         await storeWarehousesLimited(c, ctx, split.warehouses);
@@ -677,7 +732,7 @@ function createSnapshot({ auth, send, log, limits = null }) {
           [doc, b.format, ctx.memberId],
         );
         const version = upd.rows[0].version;
-        if ("products" in b) await storeProducts(c, b, catalog);
+        if ("products" in b) await storeProducts(c, b, catalog, log);
         const after = await loadRecords(c, b.doc, MOVE_LISTS);
         await recordMoves(c, before, after, version, { memberId: ctx.memberId });
         // Правка могла сдвинуть тару, отметить паллетное место или сменить
