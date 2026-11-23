@@ -52,6 +52,8 @@ export const ru = {
     "Этот бейдж выдан на другом складе компании. За этим столом работают сотрудники только его склада",
   "ws.deskNoWarehouse":
     "Этот компьютер не числится ни на одном складе: его убрали из «Устройств». Попросите руководителя заново сделать его столом",
+  "ws.badgeNoStation":
+    "У вашей роли нет права на этот процесс. Войдите за стол своего процесса или попросите руководителя добавить право в роли",
   "ws.badgeNoRole":
     "У вас нет роли на складе. Попросите руководителя назначить её в «Персонале» → «Доступ»",
   "ws.badgeNoRoleIssue":
@@ -714,6 +716,8 @@ export const en: Record<keyof typeof ru, string> = {
     "This badge was issued at another warehouse of the company. Only that warehouse's staff work at this desk",
   "ws.deskNoWarehouse":
     "This computer isn't listed at any warehouse: it was removed from Devices. Ask your manager to make it a desk again",
+  "ws.badgeNoStation":
+    "Your role has no access to this process. Use a desk of your own process or ask a manager to add the permission to the role",
   "ws.badgeNoRole":
     "You have no warehouse role yet. Ask your manager to assign one in Staff → Access",
   "ws.badgeNoRoleIssue":
