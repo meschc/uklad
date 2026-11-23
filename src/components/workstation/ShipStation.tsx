@@ -138,7 +138,10 @@ function ShipGroup({
   });
   // Повторный скан останавливает погрузку до бейджа старшего: короб, который
   // «пикнули» дважды, обычно значит, что второй, похожий, уехал не туда.
-  const [locked, setLocked] = useState<string | null>(null);
+  // Остановка живёт на устройстве: перезагрузка и новый вход её не снимают.
+  const lock = useEditor((s) => s.stationLock);
+  const locked = lock?.station === "ship" ? lock.code : null;
+  const setLocked = (code: string | null) => void workstationRepository.lockStation("ship", code);
   const timer = useRef<number | undefined>(undefined);
   useEffect(() => () => window.clearTimeout(timer.current), []);
 

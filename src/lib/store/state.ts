@@ -822,6 +822,13 @@ export interface WorkstationSlice {
    * теперь. Только на этом экране: в снимок не идёт, гаснет при новом входе.
    */
   stationTaken: { at: number; by: string | null } | null;
+  /**
+   * Остановка сортировки или погрузки после повторного скана: снимает только
+   * бейдж старшего. Хранится на устройстве — раньше её снимала перезагрузка
+   * страницы (обход столов 15.11), а выход и новый вход тоже не снимают.
+   */
+  stationLock: { station: "sort" | "ship"; code: string } | null;
+  setStationLock: (lock: { station: "sort" | "ship"; code: string } | null) => void;
   stationTakenOver: (notice: { at: number; by: string | null }) => void;
   /**
    * Заявки на смену процесса (`switchRepository`): в демо — все заявки
