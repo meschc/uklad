@@ -88,6 +88,7 @@ export const AUDIT_KINDS: ReadonlySet<string> = new Set([
   "desk.bind",
   "desk.revoke",
   "member.invite",
+  "member.accept",
   "member.place",
   "member.uninvite",
   "member.role",

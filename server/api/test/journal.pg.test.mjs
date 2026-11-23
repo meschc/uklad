@@ -440,7 +440,12 @@ test(
     // Старший склада Б: только склад Б, без действий компании и склада А.
     const own = await journal(lead, "?steps=admin");
     assert.equal(own.status, 200, JSON.stringify(own.json));
-    assert.deepEqual(kinds(own).sort(), ["connector.delete", "member.invite"]);
+    assert.deepEqual(kinds(own).sort(), ["connector.delete", "member.accept", "member.invite"]);
+    // Принял приглашение — сам принявший, его склад, без почты.
+    const accepted = own.json.entries.find((e) => e.kind === "member.accept");
+    const invitedRow = own.json.entries.find((e) => e.kind === "member.invite");
+    assert.equal(accepted.member.id, invitedRow.target);
+    assert.equal(accepted.target, invitedRow.target);
     // Имя приглашённого и роль — подставлены при чтении, в строке журнала их нет.
     const invite = own.json.entries.find((e) => e.kind === "member.invite");
     assert.equal(invite.roleName, "Старший смены");
@@ -697,3 +702,39 @@ test("путь товара: поиск по хвосту кода и лента
   );
   assert.equal(foreign.status, 404);
 });
+
+test(
+  "принятие приглашения: две вкладки одновременно — одна строка журнала",
+  { skip: SKIP },
+  async () => {
+    const c = await company("journal-accept@sklad.ru", "10.0.7.30");
+    const roles = (await call("/api/team", c.boss)).json.roles;
+    const roleId = roles.find((r) => r.name === "Старший смены" && r.warehouseRef === "wh_b").id;
+    const email = "accept-twice@sklad.ru";
+    const inv = await call("/api/team/invite", {
+      ...c.boss,
+      body: { email, roleId, warehouseRef: "wh_b" },
+    });
+    assert.equal(inv.status, 200, JSON.stringify(inv.json));
+    const token = /#invite=([A-Za-z0-9_-]{43})/.exec((await lastMail(email)).text)[1];
+    const body = { token, password: PW, consent: true };
+    const tries = await Promise.all(
+      Array.from({ length: 5 }, () => call("/api/auth/invite/accept", { body })),
+    );
+    assert.ok(
+      tries.some((r) => r.status === 200),
+      JSON.stringify(tries.map((r) => r.status)),
+    );
+    const { rows } = await db.root.query(
+      `SELECT warehouse_ref, details::text AS d FROM uklad.audit_events
+     WHERE org_id = $1 AND action = 'member.accept'`,
+      [c.org],
+    );
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].warehouse_ref, "wh_b");
+    assert.ok(!rows[0].d.includes("@"));
+    // Принятое приглашение второй раз не принять.
+    const again = await call("/api/auth/invite/accept", { body });
+    assert.notEqual(again.status, 200);
+  },
+);

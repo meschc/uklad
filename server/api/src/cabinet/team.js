@@ -537,6 +537,9 @@ function createTeam({ auth, cfg, send, log, limits = null }) {
         return { orgId, cookie: await auth.startSession(c, accountId) };
       });
       if (!out) return send(res, 404, { ok: false, error: "bad_invite" });
+      // Строку журнала пишет сама `auth.accept_invite` (063): у принятия нет
+      // сессии компании. Здесь — строка лога поддержки, без почты.
+      log?.info?.(`[uklad] действие member.accept ${JSON.stringify({ org: out.orgId })}`);
       return send(res, 200, { ok: true, orgId: out.orgId }, { "Set-Cookie": out.cookie });
     } catch (err) {
       const known = teamError(err);
