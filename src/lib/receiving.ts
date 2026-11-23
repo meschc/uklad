@@ -76,3 +76,21 @@ function resumeStep(step: ReceivingStep, hasBox: boolean): ReceivingStep {
   if (!hasBox && (target === "product" || target === "place")) return "box";
   return target;
 }
+
+/**
+ * За стол приёмки встал другой человек (обход 15.11). Его тара — его ответ:
+ * доливать в тару прошлого приёмщика нельзя, иначе товар запишется в чужую
+ * тару без её ярлыка в руках. Поставку и паллету оставляем — это общий груз
+ * на рампе; тару новый человек открывает сам.
+ */
+export function handOverReceiving(saved: ReceivingProgress, staffId: string): ReceivingProgress {
+  if (saved.staffId === staffId) return saved;
+  if (!saved.staffId) return { ...saved, staffId };
+  return {
+    ...saved,
+    staffId,
+    boxId: null,
+    received: 0,
+    step: resumeStep(saved.step, false),
+  };
+}

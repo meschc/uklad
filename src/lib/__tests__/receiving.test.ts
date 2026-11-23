@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EMPTY_RECEIVING, resumeProgress } from "../receiving";
+import { EMPTY_RECEIVING, handOverReceiving, resumeProgress } from "../receiving";
 import type { Box, ExpectedShipment, Pallet, ReceivingProgress } from "../types";
 
 /**
@@ -139,5 +139,32 @@ describe("resumeProgress", () => {
     // Assert
     expect(resumed).toEqual(EMPTY_RECEIVING);
     expect(resumeProgress(null, DATA)).toEqual(EMPTY_RECEIVING);
+  });
+});
+
+describe("handOverReceiving — за стол встал другой человек (обход 15.11)", () => {
+  const busy: ReceivingProgress = {
+    ...EMPTY_RECEIVING,
+    step: "product",
+    shipmentId: "sh-1",
+    staffId: "stf-anna",
+    palletId: "pl-1",
+    boxId: "bx-1",
+    received: 7,
+  };
+
+  it("тара прошлого приёмщика закрывается, поставка и паллета остаются", () => {
+    const next = handOverReceiving(busy, "stf-ivan");
+    expect(next).toMatchObject({ staffId: "stf-ivan", boxId: null, received: 0, step: "box" });
+    expect(next).toMatchObject({ shipmentId: "sh-1", palletId: "pl-1" });
+  });
+
+  it("тот же человек — ход не трогаем", () => {
+    expect(handOverReceiving(busy, "stf-anna")).toBe(busy);
+  });
+
+  it("первый вход за смену — только имя, тара не закрывается", () => {
+    const next = handOverReceiving({ ...busy, staffId: "" }, "stf-ivan");
+    expect(next).toMatchObject({ staffId: "stf-ivan", boxId: "bx-1", step: "product" });
   });
 });

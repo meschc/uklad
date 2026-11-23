@@ -1,6 +1,7 @@
 import { useLayoutEffect, useMemo, useState } from "react";
 import { ArrowLeft, PackageCheck, Truck } from "lucide-react";
 import { useEditor } from "@/lib/store";
+import { handOverReceiving } from "@/lib/receiving";
 import { levelFor, signal } from "@/lib/scanSignal";
 import { fulfillmentRepository, type Result } from "@/lib/data";
 import { addressKey, formatAddress, parseAddress } from "@/lib/address";
@@ -100,9 +101,11 @@ export function ReceivingScreen({ staffId: badgeStaffId }: { staffId?: string } 
     resumeReceiving();
   }, [resumeReceiving]);
 
-  // Принимает тот, кто вошёл по бейджу, — его и пишем в факты приёмки.
+  // Принимает тот, кто вошёл по бейджу, — его и пишем в факты приёмки. Сменился
+  // человек — тара прошлого приёмщика закрывается (handOverReceiving).
   useLayoutEffect(() => {
-    if (badgeStaffId && staffId !== badgeStaffId) setReceiving({ staffId: badgeStaffId });
+    if (!badgeStaffId || staffId === badgeStaffId) return;
+    setReceiving(handOverReceiving(useEditor.getState().receiving, badgeStaffId));
   }, [badgeStaffId, staffId, setReceiving]);
 
   const [draft, setDraft] = useState<Draft | null>(null);
