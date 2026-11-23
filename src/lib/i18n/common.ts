@@ -193,6 +193,8 @@ export const ru = {
   "sync.err.badData":
     "Сервер не принял запись: в таре или коробе есть строка без товара или с дробным количеством. Правки хранятся на этом устройстве. Напишите в поддержку.",
   "sync.err.tooBig": "Данные кабинета слишком большие для одной записи. Напишите в поддержку.",
+  "sync.rebaseLost":
+    "Часть правок не сохранилась: склад только что изменил те же записи. Проверьте их ещё раз.",
   "sync.conflict":
     "На сервере была более новая версия кабинета, открыли её. Ваши незаписанные правки отложены в копию на этом устройстве.",
   "sync.stockRejected":
@@ -547,6 +549,8 @@ export const en: Record<keyof typeof ru, string> = {
   "sync.err.badData":
     "The server didn't accept the save: a tote or box has a line without a product or with a fractional quantity. Your changes are kept on this device. Please contact support.",
   "sync.err.tooBig": "The cabinet data is too large for a single save. Please contact support.",
+  "sync.rebaseLost":
+    "Some of your edits were not saved: the warehouse changed the same records a moment ago. Check them again.",
   "sync.conflict":
     "The server had a newer version of the cabinet, so we opened it. Your unsaved changes were set aside in a copy on this device.",
   "sync.stockRejected":
