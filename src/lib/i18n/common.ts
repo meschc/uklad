@@ -200,7 +200,7 @@ export const ru = {
   "sync.productsRejected":
     "Сервер не удалил товары: за сутки ушла бы больше половины каталога, так выглядит сбой, а не работа. Открыли каталог с сервера, ваши правки отложены в копию на этом устройстве. Удаляйте не больше половины каталога в сутки или напишите в поддержку.",
   "sync.recordsRejected":
-    "Сервер не стёр больше половины заявок, приёмки или журнала смен одной записью: так выглядит сбой, а не работа. Открыли данные с сервера, ваши правки отложены в копию на этом устройстве.",
+    "Сервер не стёр больше половины заявок, приёмки, журнала смен или сотрудников склада одной записью: так выглядит сбой, а не работа. Открыли данные с сервера, ваши правки отложены в копию на этом устройстве.",
   "sync.warehouseRejected":
     "Склады заводит и удаляет только владелец компании, а руководитель видит только свой склад. Открыли данные с сервера, правки отложены в копию на этом устройстве. Попросите владельца.",
   "profile.logoutUnsynced":
@@ -554,7 +554,7 @@ export const en: Record<keyof typeof ru, string> = {
   "sync.productsRejected":
     "The server didn't remove the products: more than half of the catalog would go within a day, and that looks like a failure, not work. We opened the catalog from the server, and your changes were set aside in a copy on this device. Delete no more than half of the catalog per day or contact support.",
   "sync.recordsRejected":
-    "The server didn't erase more than half of the requests, receiving or shift log in one save: that looks like a failure, not work. We opened the server data, and your changes were set aside in a copy on this device.",
+    "The server didn't erase more than half of the requests, receiving, shift log or warehouse staff in one save: that looks like a failure, not work. We opened the server data, and your changes were set aside in a copy on this device.",
   "sync.warehouseRejected":
     "Only the company owner creates and deletes warehouses; a manager sees only their own warehouse. We opened the server data, and your changes were set aside in a copy on this device. Ask the owner.",
   "profile.logoutUnsynced":

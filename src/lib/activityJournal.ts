@@ -98,6 +98,7 @@ export const AUDIT_KINDS: ReadonlySet<string> = new Set([
   "role.save",
   "role.delete",
   "staff.role",
+  "staff.delete",
   "product.create",
   "product.update",
   "product.delete",
