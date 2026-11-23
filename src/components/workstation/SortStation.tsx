@@ -50,7 +50,10 @@ export function SortStation() {
     destination: string;
     point: string;
   } | null>(null);
-  const [locked, setLocked] = useState<string | null>(null);
+  // Остановка живёт на устройстве: перезагрузка и новый вход её не снимают.
+  const lock = useEditor((s) => s.stationLock);
+  const locked = lock?.station === "sort" ? lock.code : null;
+  const setLocked = (code: string | null) => void workstationRepository.lockStation("sort", code);
   const [closing, setClosing] = useState<string | null>(null);
   const [print, setPrint] = useState<PrintItem[] | null>(null);
   const [lost, setLost] = useState<UnlabeledScan | null>(null);

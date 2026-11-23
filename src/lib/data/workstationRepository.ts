@@ -77,6 +77,8 @@ export interface WorkstationRepository {
   /** Скан наклеенной этикетки. Не та этикетка — отказ `ws.label.wrong`. */
   packLabel: (code: string) => Promise<Result<void>>;
   packReject: () => Promise<Result<void>>;
+  /** Остановить стол сортировки/погрузки до бейджа старшего (`null` — снять). */
+  lockStation: (station: "sort" | "ship", code: string | null) => Promise<Result<void>>;
   /** Не та этикетка — в счётчик ошибок сессии. Только счёт: товар и сервер не трогает. */
   packLabelMistake: (code: string) => Promise<Result<void>>;
   /** Перепечатка этикетки — запись в журнал стола, без подтверждения. */
@@ -378,6 +380,8 @@ export function createWorkstationRepository(
       return res.data ? ok(undefined) : fail("ws.label.wrong");
     },
     packReject: () => attempt(() => queuePack(() => port.get().packRejectPending())),
+    lockStation: async (station, code) =>
+      attempt(() => port.get().setStationLock(code ? { station, code } : null)),
     packLabelMistake: async (code) => attempt(() => port.get().packLabelMistake(code)),
     packReprint: (code) => attempt(() => queuePack(() => port.get().packLogReprint(code))),
     // Сборка на сервере уходит операциями (`cabinet/deskPick.js`): стор уже

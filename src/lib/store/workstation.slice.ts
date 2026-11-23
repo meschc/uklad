@@ -65,6 +65,8 @@ export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get)
   switchRequests: [],
   pendingSwitch: null,
   stationTaken: null,
+  stationLock: null,
+  setStationLock: (lock) => set({ stationLock: lock }),
   devices: [],
   thisDeviceId: null,
 

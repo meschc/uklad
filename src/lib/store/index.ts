@@ -106,6 +106,7 @@ export function persistedState(s: EditorState) {
     // Удержания и премии — деньги сотрудника, терять их нельзя.
     payAdjustments: s.payAdjustments,
     stationSession: s.stationSession,
+    stationLock: s.stationLock,
     packSession: s.packSession,
     breakPolicy: s.breakPolicy,
     devices: s.devices,
