@@ -292,7 +292,7 @@ test(
       (await call("GET", `/api/cabinet/journal?warehouse=${w}&steps=admin`, who)).json.entries.map(
         (e) => `${e.kind}:${e.target ?? ""}`,
       );
-    // Начальник склада 1 заводит и удаляет роль, выключает своего человека — 1000 раз.
+    // Начальник склада 1 заводит и удаляет роль, владелец выключает человека склада 2.
     const made = await post("/api/team/roles/save", {
       ...chief,
       body: { name: "Приёмщик", permissions: ["stock.view"] },
@@ -305,16 +305,19 @@ test(
     );
     const team = (await call("GET", "/api/team", boss)).json;
     const me = team.members.find((m) => m.email === "chief-audit@example.com");
-    for (let i = 0; i < 1000; i++) {
-      await post("/api/team/disable", { ...boss, body: { memberId: other.id, disabled: true } });
-    }
+    // Двойная отправка и пачка нажатий, внутри окна склейки (10 с): 1000
+    // запросов по HTTP на CI идут дольше окна; 1000 подряд — в journal.pg.
+    const off = () =>
+      post("/api/team/disable", { ...boss, body: { memberId: other.id, disabled: true } });
+    await Promise.all(Array.from({ length: 30 }, off));
+    for (let i = 0; i < 20; i++) await off();
     const mine = await kinds(chief, WH);
     assert.ok(mine.includes(`role.create:${roleId}`), mine.join());
     assert.ok(mine.includes(`role.delete:${roleId}`), mine.join());
     assert.ok(mine.includes(`member.invite:${me.id}`), mine.join());
     // Человек склада 2 — не в журнале склада 1.
     assert.ok(!mine.some((k) => k.endsWith(other.id)), mine.join());
-    // 1000 нажатий «выключить» — одна строка в журнале склада 2.
+    // 50 нажатий «выключить», и одновременных, — одна строка в журнале склада 2.
     const theirs = await kinds(boss, "w2");
     assert.equal(theirs.filter((k) => k === `member.disable:${other.id}`).length, 1);
     // Отказ (чужой человек) в журнал не пишется.
