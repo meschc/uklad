@@ -46,6 +46,11 @@ function make({ perms = ["integrations.manage", "org.manage"], key = KEY, reply 
   const client = {
     async query(sql, params = []) {
       if (sql.includes("gen_random_uuid")) return { rows: [{ id: ID }] };
+      // Журнал действий (`audit.js`): запись — строка с id, поиск повтора — пусто.
+      if (sql.includes("pg_advisory_xact_lock")) return { rows: [] };
+      if (sql.includes("uklad.audit_events")) {
+        return { rows: sql.startsWith("INSERT") ? [{ id: "a1", org_id: "org-1" }] : [] };
+      }
       if (sql.startsWith("INSERT")) {
         const [id, , system, label, p, secret] = params;
         rows.push({ id, system, label, params: p, secret, created_at: "t", deleted_at: null });

@@ -22,7 +22,12 @@ const { createHash, randomBytes } = require("node:crypto");
 const { PlanLimitError } = require("./planLimits");
 const { createRateLimit } = require("../rateLimit");
 const { loadDeskPerms } = require("./deskPerms");
-const { staffHere } = require("./managerScope");
+const { staffHere, managerWarehouse } = require("./managerScope");
+const { logAction, staffPlace } = require("./audit");
+
+/** Склад бейджа для журнала: руководителя или, у владельца, сотрудника. */
+const badgePlace = async (c, ctx, staffRef) =>
+  (await managerWarehouse(c, ctx)) || (await staffPlace(c, staffRef));
 
 const BADGE_PREFIX = "UK-STF-";
 // 16 байт в base64url — ровно 22 знака без «=».
@@ -152,6 +157,12 @@ function createDeskBadges({ auth, send, log, limits = null }) {
         [staffRef, sha256(secret), ctx.memberId],
       );
       await room?.check();
+      // Код бейджа в журнал не идёт: только кому выпущен.
+      await logAction(c, log, {
+        action: "badge.issue",
+        warehouse: await badgePlace(c, ctx, staffRef),
+        target: staffRef,
+      });
       return true;
     }).catch((err) => {
       if (err instanceof PlanLimitError) return err;
@@ -180,6 +191,13 @@ function createDeskBadges({ auth, send, log, limits = null }) {
          WHERE org_id = uklad.current_org() AND staff_ref = $1 AND revoked_at IS NULL`,
         [staffRef, ctx.memberId],
       );
+      if (rowCount) {
+        await logAction(c, log, {
+          action: "badge.revoke",
+          warehouse: await badgePlace(c, ctx, staffRef),
+          target: staffRef,
+        });
+      }
       return { revoked: rowCount };
     });
     return reply(res, out, (r) => send(res, 200, { ok: true, revoked: r.revoked }));

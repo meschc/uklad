@@ -428,11 +428,17 @@ test(
     // Владелец: склад А и действия компании.
     const boss = await journal(c.boss, "?warehouse=wh_a&steps=admin");
     assert.equal(boss.status, 200, JSON.stringify(boss.json));
-    assert.deepEqual(kinds(boss).sort(), ["company.account", "role.save"]);
+    // Стол и бейдж склада А, заведённые в `company`, — тоже в журнале (шаг 8).
+    assert.deepEqual(kinds(boss).sort(), [
+      "badge.issue",
+      "company.account",
+      "desk.bind",
+      "role.save",
+    ]);
     // Старший склада Б: только склад Б, без действий компании и склада А.
     const own = await journal(lead, "?steps=admin");
     assert.equal(own.status, 200, JSON.stringify(own.json));
-    assert.deepEqual(kinds(own), ["connector.delete"]);
+    assert.deepEqual(kinds(own).sort(), ["connector.delete", "member.invite"]);
     assert.equal((await journal(lead, "?warehouse=wh_a&steps=admin")).status, 403);
 
     // Подписать действие чужим участником нельзя: RLS сверяет с сессией.

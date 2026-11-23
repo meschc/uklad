@@ -282,3 +282,48 @@ test(
     assert.notEqual((await issue("fresh")).status, 403);
   },
 );
+
+test(
+  "журнал: роли, люди, бейджи — с действием, кто и на каком складе",
+  { skip: SKIP },
+  async () => {
+    const { boss, chief, other } = await world("audit", "10.1.0.74");
+    const kinds = async (who, w) =>
+      (await call("GET", `/api/cabinet/journal?warehouse=${w}&steps=admin`, who)).json.entries.map(
+        (e) => `${e.kind}:${e.target ?? ""}`,
+      );
+    // Начальник склада 1 заводит и удаляет роль, выключает своего человека — 1000 раз.
+    const made = await post("/api/team/roles/save", {
+      ...chief,
+      body: { name: "Приёмщик", permissions: ["stock.view"] },
+    });
+    assert.equal(made.status, 200, JSON.stringify(made.json));
+    const roleId = made.json.roleId;
+    assert.equal(
+      (await post("/api/team/roles/delete", { ...chief, body: { roleId } })).status,
+      200,
+    );
+    const team = (await call("GET", "/api/team", boss)).json;
+    const me = team.members.find((m) => m.email === "chief-audit@example.com");
+    for (let i = 0; i < 1000; i++) {
+      await post("/api/team/disable", { ...boss, body: { memberId: other.id, disabled: true } });
+    }
+    const mine = await kinds(chief, WH);
+    assert.ok(mine.includes(`role.create:${roleId}`), mine.join());
+    assert.ok(mine.includes(`role.delete:${roleId}`), mine.join());
+    assert.ok(mine.includes(`member.invite:${me.id}`), mine.join());
+    // Человек склада 2 — не в журнале склада 1.
+    assert.ok(!mine.some((k) => k.endsWith(other.id)), mine.join());
+    // 1000 нажатий «выключить» — одна строка в журнале склада 2.
+    const theirs = await kinds(boss, "w2");
+    assert.equal(theirs.filter((k) => k === `member.disable:${other.id}`).length, 1);
+    // Отказ (чужой человек) в журнал не пишется.
+    const before = (await kinds(boss, "w2")).length;
+    assert.equal(
+      (await post("/api/team/disable", { ...chief, body: { memberId: other.id, disabled: false } }))
+        .status,
+      404,
+    );
+    assert.equal((await kinds(boss, "w2")).length, before);
+  },
+);

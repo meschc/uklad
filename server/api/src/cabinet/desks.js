@@ -59,6 +59,7 @@ const { isOp, runDeskOps, MAX_OPS } = require("./deskOps");
 const { createSwitchRoutes } = require("./deskSwitch");
 const { createLabelRoutes } = require("./deskLabel");
 const { deskPlace, deskWarehouse } = require("./deskPlace");
+const { logAction } = require("./audit");
 const { managerWarehouse } = require("./managerScope");
 
 // Стол живёт, пока его не отвяжут; срок — страховка от забытого компьютера.
@@ -512,6 +513,7 @@ function createDesks({ auth, cfg, send, log, secretKey = null, fetchImpl = fetch
         sha256(token),
         `${DESK_TTL_MS / 1000} seconds`,
       ]);
+      await logAction(c, log, { action: "desk.bind", warehouse: place.ref, target: deviceRef });
       // Вход руководителя на этом компьютере гаснет: дальше здесь стол, и
       // его пароль за столом больше никому не открыт.
       await c.query(`SELECT auth.close_session($1)`, [hash]);
@@ -604,6 +606,14 @@ function createDesks({ auth, cfg, send, log, secretKey = null, fetchImpl = fetch
       if (!ctx.accountId || !ctx.can("staff.manage")) return { status: 403 };
       if (!(await deviceHere(c, ctx, deviceRef))) return { status: 404 };
       const { rows } = await c.query(`SELECT auth.revoke_desk($1) AS n`, [deviceRef]);
+      if (rows[0].n) {
+        const place = deskPlace(await companyDoc(c), deviceRef);
+        await logAction(c, log, {
+          action: "desk.revoke",
+          warehouse: place?.ref ?? null,
+          target: deviceRef,
+        });
+      }
       return { status: 200, revoked: rows[0].n };
     });
     if (out === null) return send(res, 401, { ok: false });
