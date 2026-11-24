@@ -988,6 +988,8 @@ export interface OperationsSlice {
   setTwoStageReceiving: (on: boolean) => void;
   /** Цена за единицу; `null` стирает цену. */
   setServicePrice: (kind: ServiceKind, price: number | null) => void;
+  /** Название и описание услуги. Пустое название — подпись по умолчанию. */
+  updateService: (kind: ServiceKind, patch: { name?: string; note?: string }) => void;
   /** Своя услуга склада. Возвращает её вид (`custom:…`). */
   addCustomService: (name: string, unit: ServiceUnit) => CustomServiceKind;
   /**

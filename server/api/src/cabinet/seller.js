@@ -163,7 +163,7 @@ function forSeller(data, partnerRef) {
     serviceSettings: {
       enabled: isObject(s.enabled) ? s.enabled : {},
       prices: isObject(s.prices) ? s.prices : {},
-      ...pick(s, ["custom"]),
+      ...pick(s, ["custom", "names", "notes"]),
     },
   });
   const a = isObject(d.account) ? d.account : {};

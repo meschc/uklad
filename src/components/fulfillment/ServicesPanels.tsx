@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
 import { TableScroll, TABLE_HEAD, TABLE_HEAD_ROW, TABLE_ROW } from "@/components/ui/table-scroll";
-import { Plus, Receipt, Trash2, X } from "lucide-react";
+import { Pencil, Plus, Receipt, Trash2, X } from "lucide-react";
 import { DialogFooter, DialogHeader, DialogShell } from "@/components/ui/dialog-shell";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import type { CustomServiceKind, ServiceUnit } from "@/lib/types";
+import type { CustomServiceKind, ServiceKind, ServiceUnit } from "@/lib/types";
 import { useEditor } from "@/lib/store";
 import {
   allServices,
@@ -24,8 +24,10 @@ import { useWithArchive } from "@/lib/store/archive";
 import { ArchiveNote } from "./ArchiveNote";
 import { ReportExport } from "./ReportExport";
 import { useServiceName } from "./useServiceName";
+import { ServiceEditPanel } from "./ServiceEditPanel";
+import { serviceNote } from "./serviceNote";
+import { PriceInput } from "./PriceInput";
 import { useStorageEntries } from "./useStorageEntries";
-import { LIMITS } from "@/lib/numberLimits";
 import { Select } from "@/components/ui/select";
 import { DateRangePicker } from "@/components/ui/date-picker";
 import { toIso, type DateRange } from "@/components/ui/dates";
@@ -50,6 +52,7 @@ export function ServicesPanel() {
   const restoreCustom = useEditor((s) => s.restoreCustomService);
   const notify = useEditor((s) => s.notify);
   const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<ServiceKind | null>(null);
   const removeService = (kind: CustomServiceKind) => {
     const service = settings.custom?.find((c) => c.kind === kind);
     removeCustom(kind);
@@ -90,47 +93,48 @@ export function ServicesPanel() {
           const on = isServiceOn(settings, s.kind);
           const unit = t(`ops.unit.${s.unit}` as MsgKey);
           const price = settings.prices?.[s.kind];
+          const note = serviceNote(settings, s.kind, t);
           return (
             <li key={s.kind} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5">
               {/* На телефоне название — своей строкой, цена под ним: в одну
                   строку с полем название сжималось и уходило под цену. */}
-              <label className="flex w-full min-w-0 cursor-pointer items-center gap-2.5 sm:w-auto sm:flex-1">
+              <label className="flex w-full min-w-0 cursor-pointer items-start gap-2.5 sm:w-auto sm:flex-1">
                 <input
                   type="checkbox"
                   checked={on}
                   onChange={(e) => setEnabled(s.kind, e.target.checked)}
-                  className="size-4 accent-primary"
+                  className="mt-0.5 size-4 accent-primary"
                 />
-                <span className="text-sm">{svcName(s.kind)}</span>
-                {s.auto && (
-                  <span className="text-xs text-muted-foreground">{t("ops.services.auto")}</span>
-                )}
+                <span className="flex min-w-0 flex-col">
+                  <span className="text-sm">{svcName(s.kind)}</span>
+                  {note && <span className="text-xs text-muted-foreground">{note}</span>}
+                </span>
               </label>
-              <Input
-                max={LIMITS.price.max}
-                type="number"
-                min={0}
-                step="0.01"
-                inputMode="decimal"
-                aria-label={t("ops.services.price", { unit })}
-                placeholder={t("ops.services.noPrice")}
-                // Ключ по цене: после стирания поле должно показать пустоту,
-                // а не последнее набранное.
+              <PriceInput
                 key={`${s.kind}:${price ?? ""}`}
-                defaultValue={price ?? ""}
-                onBlur={(e) => {
-                  const raw = e.target.value.trim().replace(",", ".");
-                  const n = raw === "" ? null : Number(raw);
+                value={price}
+                label={t("ops.services.price", { unit })}
+                placeholder={t("ops.services.noPrice")}
+                onCommit={(n) => {
                   setPrice(s.kind, n);
                   // Ввод цены включает услугу: цена у выключенной — тупик,
-                  // человек не поймёт, почему услуга не идёт в счёт.
-                  if (n != null && Number.isFinite(n) && n >= 0 && !on) setEnabled(s.kind, true);
+                  // человек не поймёт, почему услуга не идёт в счёт. Выключение
+                  // цену не стирает (Кирилл 22.11).
+                  if (n != null && !on) setEnabled(s.kind, true);
                 }}
-                className="ml-[26px] w-28 text-right tabular-nums sm:ml-0"
               />
               <span className="min-w-0 flex-1 text-xs text-muted-foreground sm:w-24 sm:flex-none sm:whitespace-nowrap">
                 ₽ / {unit}
               </span>
+              <Button
+                size="icon-sm"
+                variant="ghost"
+                aria-label={t("ops.edit.title")}
+                title={t("ops.edit.title")}
+                onClick={() => setEditing(s.kind)}
+              >
+                <Pencil className="size-4" />
+              </Button>
               {isCustomKind(s.kind) ? (
                 <Button
                   size="icon-sm"
@@ -149,6 +153,7 @@ export function ServicesPanel() {
         })}
       </ul>
       {adding && <CustomServicePanel onClose={() => setAdding(false)} />}
+      {editing && <ServiceEditPanel kind={editing} onClose={() => setEditing(null)} />}
     </div>
   );
 }
@@ -234,7 +239,7 @@ type Period = "7" | "30" | "all" | "custom";
 const DAY = 24 * 60 * 60 * 1000;
 
 /** Отчёт по услугам за период — основа счёта продавцу. */
-export function ReportPanel() {
+export function ReportPanel({ onOpenServices }: { onOpenServices?: () => void } = {}) {
   const t = useT();
   const svcName = useServiceName();
   const settings = useEditor((s) => s.serviceSettings);
@@ -420,19 +425,30 @@ export function ReportPanel() {
         </TableScroll>
       )}
       {report.unpriced && (
-        <p className="text-xs text-muted-foreground">{t("ops.report.unpriced")}</p>
-      )}
-      {isServiceOn(settings, "storage_pallet") || isServiceOn(settings, "storage_box") ? (
+        // Ссылка ведёт туда, где цены задают (Кирилл 22.11: «если пишешь
+        // «на вкладке услуги» — сделай полноценную ссылку»).
         <p className="text-xs text-muted-foreground">
-          {t(
-            storage.status === "failed"
-              ? "ops.report.storageFailed"
-              : storage.status === "loading"
-                ? "ops.report.storageLoading"
-                : "ops.report.storageHint",
-          )}
+          {t("ops.report.unpriced")}{" "}
+          <button
+            type="button"
+            className="text-primary underline-offset-4 hover:underline"
+            onClick={onOpenServices}
+          >
+            {t("ops.report.toServices")}
+          </button>
         </p>
-      ) : null}
+      )}
+      {/* Как считается хранение — в описании услуги, здесь только о загрузке. */}
+      {(isServiceOn(settings, "storage_pallet") || isServiceOn(settings, "storage_box")) &&
+        storage.status !== "ready" && (
+          <p className="text-xs text-muted-foreground">
+            {t(
+              storage.status === "failed"
+                ? "ops.report.storageFailed"
+                : "ops.report.storageLoading",
+            )}
+          </p>
+        )}
     </div>
   );
 }
