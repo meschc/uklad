@@ -18,7 +18,7 @@ import { DEMO_MAX_AGE_DAYS, DEMO_SEED_KEY, DEMO_SEED_VERSION, isDemoStale } from
 
 /** Поля, которые в только что собранном демо пусты по смыслу. */
 const EMPTY_BY_DESIGN: Record<string, string> = {
-  warehouseData: "работа НЕактивных складов: у демо-складов она общая с активным",
+  warehouseData: "работа неактивных складов; в демо склад один",
   seenHints: "подсказки показываются новому человеку, посев их не гасит",
   stationSession: "вход на стол по бейджу, живёт 12 часов, не данные склада",
   packSession: "незакрытая упаковка у стола, не данные склада",
@@ -27,6 +27,8 @@ const EMPTY_BY_DESIGN: Record<string, string> = {
   layoutTemplates: "шаблоны раскладки сохраняет сам человек",
   integrations: "ключи площадок вводит сам человек; синтетику не показываем",
   chats: "переписку сеет `seedChatsOnce` при первом показе чата (ChatWatcher), не стор",
+  otherWarehouses:
+    "в демо один склад — «Складская 5» (Кирилл 24.11), второй добавляет сам посетитель",
 };
 
 /**

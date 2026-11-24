@@ -17,7 +17,6 @@ import {
   Tags,
   Users,
   type LucideIcon,
-  ShieldCheck,
 } from "lucide-react";
 import type { AppView, UserRole } from "@/lib/types";
 import type { MsgKey } from "@/lib/i18n";
@@ -66,19 +65,14 @@ const WAREHOUSE_NAV: NavEntry[] = [
   // руководителю остаются «Задания» (контроль), документы и аналитика.
   { view: "tasks", key: "nav.side.tasks", icon: ClipboardList },
   // Посекундная история склада (Кирилл 15.11): спорное разбирают по ней,
-  // поэтому рядом с «Подтверждениями».
+  // поэтому сразу под «Заданиями», где подтверждения.
   { view: "journal", key: "nav.side.journal", icon: History },
-  // Всё, что ждёт решения старшего: смена процесса, недостача, пересорт,
-  // брак, расхождения пересчёта (Кирилл 16.11). Ежедневная работа, а не
-  // настройка склада, поэтому не в «О складе». «Спорные» — внутри.
-  { view: "approvals", key: "nav.side.approvals", icon: ShieldCheck },
+  // «Подтверждения» — чипом внутри «Заданий» (Кирилл 24.11): решение старшего —
+  // тоже работа склада. Старая ссылка `approvals` открывает «Задания» на этом чипе.
   { view: "editor", key: "nav.side.plan", icon: Package },
   // Переписка с продавцами — отдельным пунктом (п.3): в неё заходят по десять
   // раз на день, в группе она стоила бы лишнего клика.
   { view: "chat", key: "nav.side.chat", icon: MessagesSquare },
-  // Продавцы склада — главный клиент фулфилмента, а не персонал (Кирилл
-  // 20.11): отдельным пунктом рядом с чатом, где с ними переписываются.
-  { view: "partners", key: "nav.side.partners", icon: Handshake },
   {
     // Всё о самом складе: какой он, кто на нём работает, чем работает, какие
     // услуги и по какой цене оказывает, с чем связан.
@@ -88,13 +82,16 @@ const WAREHOUSE_NAV: NavEntry[] = [
     items: [
       { view: "spec", key: "nav.side.spec", icon: Building2 },
       { view: "staff", key: "nav.side.staff", icon: Users },
+      // Партнёры и аналитика — в группе «Склад» (Кирилл 24.11): отдельными
+      // пунктами меню становилось слишком высоким.
+      { view: "partners", key: "nav.side.partners", icon: Handshake },
+      { view: "analytics", key: "nav.side.analytics", icon: BarChart3 },
       // Компьютеры и ТСД у столов: какой стоит где и кто за ним.
       { view: "devices", key: "nav.side.devices", icon: MonitorSmartphone },
       { view: "operations", key: "nav.side.operations", icon: ListChecks },
       { view: "integrations", key: "nav.side.integrations", icon: Plug },
     ],
   },
-  { view: "analytics", key: "nav.side.analytics", icon: BarChart3 },
   {
     // Всё, что уходит на бумагу. Наклейку и накладную печатают из одного
     // побуждения «сейчас пойду к принтеру», поэтому они рядом.
@@ -143,7 +140,8 @@ const DESK_VIEWS = ["receiving.view", "picking.view", "packing.view", "shipping.
  * руководителя: смотрящему её данные сервер и не отдаёт (`viewer.js`).
  */
 const VIEW_PERMS: Partial<Record<AppView, string[]>> = {
-  tasks: [...DESK_VIEWS, "inventory.view"],
+  // Кому открыты подтверждения, тому открыты и «Задания»: они теперь там.
+  tasks: [...DESK_VIEWS, "inventory.view", "goods.view", "goods.decide"],
   approvals: ["goods.view", "goods.decide"],
   editor: ["plan.view"],
   chat: ["chat.use"],

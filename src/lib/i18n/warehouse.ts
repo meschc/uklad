@@ -488,16 +488,7 @@ export const ru = {
     "Считается по тем же ячейкам, что и тепловая карта: учитывается и товар в коробках приёмки.",
 
   // --- Стоимость хранения (п.10.5) -----------------------------------------------
-  "an.storageCost": "Хранение за {d} дней",
-  "an.storageNoRate": "тариф не задан",
-  "an.storageRate": "Тариф",
-  "an.storageRateValue": "{n} за ячейку в сутки",
   "an.money": "{n} ₽",
-  "an.storageHint": "Задайте тариф в карточке склада, чтобы увидеть стоимость.",
-  "wh.storageRate": "Тариф хранения",
-  "wh.storageRatePlaceholder": "12",
-  "wh.storageRateHint":
-    "За занятую ячейку в сутки. Нужен для одной метрики в аналитике, а не для счетов.",
 };
 
 export const en: Record<keyof typeof ru, string> = {
@@ -985,14 +976,5 @@ export const en: Record<keyof typeof ru, string> = {
     "Counted over the same cells as the heat map: goods inside receiving boxes are included.",
 
   // --- Storage cost (10.5) ---------------------------------------------------------
-  "an.storageCost": "Storage for {d} days",
-  "an.storageNoRate": "rate is not set",
-  "an.storageRate": "Rate",
-  "an.storageRateValue": "{n} per cell/day",
   "an.money": "{n} ₽",
-  "an.storageHint": "Set the storage rate in the warehouse card to see the cost.",
-  "wh.storageRate": "Storage rate",
-  "wh.storageRatePlaceholder": "12",
-  "wh.storageRateHint":
-    "Per occupied cell per day. Used for a single dashboard metric, not for invoices.",
 };

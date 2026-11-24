@@ -1,13 +1,7 @@
 import { useMemo } from "react";
 import { AlertTriangle, Lock, ClipboardList, Gauge, PackagePlus, Timer, Truck } from "lucide-react";
 import { useEditor } from "@/lib/store";
-import {
-  formatDuration,
-  occupancyStats,
-  receivingStats,
-  requestStats,
-  storageCost,
-} from "@/lib/fulfillment";
+import { formatDuration, occupancyStats, receivingStats, requestStats } from "@/lib/fulfillment";
 import { featuresOf } from "@/lib/tariff";
 import { useT } from "@/lib/i18n";
 import { TariffLock } from "@/components/tariff/TariffLock";
@@ -25,7 +19,6 @@ import { ArchiveNote } from "./ArchiveNote";
  * второй версии расчёта в проекте быть не должно.
  */
 /** Период, за который считаем стоимость хранения (тот же, что у приёмки). */
-const STORAGE_PERIOD_DAYS = 14;
 
 export function AnalyticsScreen() {
   const t = useT();
@@ -49,7 +42,6 @@ export function AnalyticsScreen() {
   const recv = useMemo(() => receivingStats(events), [events]);
   const req = useMemo(() => requestStats(requests), [requests]);
 
-  const cost = storageCost(occ.occupied, warehouse.storageRatePerCell, STORAGE_PERIOD_DAYS);
   const openShipments = shipments.filter((s) => s.status !== "closed").length;
   const discPct = Math.round(recv.discrepancyShare * 100);
   // Доля частично закрытых считается от ВСЕХ собранных заявок — и тех, что
@@ -205,31 +197,8 @@ export function AnalyticsScreen() {
                   <FillBar key={f.floorId} label={f.name} value={f.occupied} total={f.cells} />
                 ))}
               </div>
-              {/* Стоимость хранения (п.10.5): занятые ячейки × тариф × дни.
-              Сознательно узкая метрика — не бухгалтерия. */}
-              <dl className="flex flex-col gap-1.5 border-t border-border pt-3 text-xs">
-                <div className="flex items-baseline justify-between gap-3">
-                  <dt className="text-muted-foreground">
-                    {t("an.storageCost", { d: STORAGE_PERIOD_DAYS })}
-                  </dt>
-                  <dd className="font-medium tabular-nums">
-                    {cost == null
-                      ? t("an.storageNoRate")
-                      : t("an.money", { n: Math.round(cost).toLocaleString(t.lang) })}
-                  </dd>
-                </div>
-                {cost != null && (
-                  <div className="flex items-baseline justify-between gap-3">
-                    <dt className="text-muted-foreground">{t("an.storageRate")}</dt>
-                    <dd className="tabular-nums text-muted-foreground">
-                      {t("an.storageRateValue", { n: warehouse.storageRatePerCell ?? 0 })}
-                    </dd>
-                  </div>
-                )}
-              </dl>
               <p className="border-t border-border pt-3 text-xs text-muted-foreground">
                 {t("an.occupancyNote")}
-                {cost == null ? ` ${t("an.storageHint")}` : ""}
               </p>
             </section>
           </div>

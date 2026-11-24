@@ -126,7 +126,9 @@ function toShowcase(saved: CabinetSaved, w: CabinetWarehouse): Warehouse {
     price: show(
       "prices",
       {
-        storage: w.storageRatePerCell ?? 0,
+        // Цена хранения — из «Услуг» (паллета в сутки): отдельного тарифа
+        // в настройках склада больше нет (Кирилл 24.11).
+        storage: settings.prices.storage_pallet ?? 0,
         receiving: settings.prices.cargo_box ?? 0,
         picking: settings.prices.picking ?? 0,
         marking: settings.prices.marking ?? 0,

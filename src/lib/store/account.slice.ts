@@ -1,13 +1,7 @@
 import type { Warehouse } from "../types";
 import type { AccountSlice, EditorState, SliceCreator } from "./state";
 import { swapWarehouseData } from "./warehouseData";
-import {
-  blankWarehouse,
-  seedAccount,
-  seedWarehouse,
-  seedWarehousePoor,
-  seedWarehousePremium,
-} from "./seed";
+import { blankWarehouse, seedAccount, seedWarehouse } from "./seed";
 
 /**
  * Верхний уровень: аккаунт, профиль, список складов и навигация между экранами
@@ -17,7 +11,8 @@ export const createAccountSlice: SliceCreator<AccountSlice> = (set, get) => ({
   warehouse: seedWarehouse(),
   // Три склада разного качества (п.8): активный — средний, класс B+, на нём
   // считается вся демо-история; рядом убитый класса C и образцовый A+.
-  otherWarehouses: [seedWarehousePoor(), seedWarehousePremium()],
+  // В демо один склад — «Складская 5», зато наполненный (Кирилл 24.11).
+  otherWarehouses: [],
   warehouseData: {},
   appView: "dashboard",
   account: seedAccount(),
@@ -113,11 +108,6 @@ export const createAccountSlice: SliceCreator<AccountSlice> = (set, get) => ({
         address: patch.address != null ? patch.address.trim() : w.address,
         lat: patch.lat !== undefined ? patch.lat : w.lat,
         lng: patch.lng !== undefined ? patch.lng : w.lng,
-        // Тариф хранения снимается пустым полем, поэтому смотрим на НАЛИЧИЕ
-        // ключа, а не на значение: иначе «стереть тариф» было бы невозможно, а
-        // переименование склада из другого места молча его затирало бы.
-        storageRatePerCell:
-          "storageRatePerCell" in patch ? patch.storageRatePerCell : w.storageRatePerCell,
         showOnMarket: "showOnMarket" in patch ? patch.showOnMarket : w.showOnMarket,
       });
       if (s.warehouse.id === id) return { warehouse: apply(s.warehouse) };

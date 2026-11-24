@@ -1,16 +1,13 @@
 import { useState } from "react";
-import { useIsDark } from "@/lib/useIsDark";
 import { readLocal, writeLocal } from "@/lib/safeStorage";
 import {
   ChevronDown,
   ChevronsUpDown,
   LifeBuoy,
   LogOut,
-  Moon,
   PanelLeftClose,
   PanelLeftOpen,
   Settings,
-  Sun,
   type LucideIcon,
 } from "lucide-react";
 import { selectIsOwner, selectRole, useEditor } from "@/lib/store";
@@ -120,10 +117,8 @@ export function SideNav({
   const role = useEditor(selectRole);
   // Экраны, закрытые правами роли, в меню не показываются (разделы прав, 033).
   const perms = useEditor((s) => s.session.permissions);
-  const updateProfile = useEditor((s) => s.updateProfile);
   const badgeFor = useNavBadge();
   const t = useT();
-  const dark = useIsDark();
   const [order, setOrder] = useState<NavOrder>(readOrder);
   const [drag, setDrag] = useState<Drag | null>(null);
   const [reporting, setReporting] = useState(false);
@@ -349,22 +344,6 @@ export function SideNav({
           />
         )}
         <NavRow
-          icon={LifeBuoy}
-          label={t("support.nav")}
-          collapsed={collapsed}
-          active={false}
-          badge={0}
-          onClick={() => setReporting(true)}
-        />
-        <NavRow
-          icon={dark ? Sun : Moon}
-          label={t("nav.theme")}
-          collapsed={collapsed}
-          active={false}
-          badge={0}
-          onClick={() => updateProfile({ theme: dark ? "light" : "dark" })}
-        />
-        <NavRow
           icon={Settings}
           label={t("nav.settings")}
           collapsed={collapsed}
@@ -391,9 +370,29 @@ export function SideNav({
             onClick={toggleCollapsed}
           />
         )}
-        {!collapsed && (
-          <p className="px-3 pt-1 text-xs text-menu-muted">
-            {t("nav.version", { v: APP_VERSION })}
+        {/* «Сообщить о проблеме» — мелкой строкой в самом низу, рядом с
+            версией (Кирилл 24.11: «минимально ужать»). Смена темы ушла в
+            «Настройки», там её выбирают из трёх. */}
+        {collapsed ? (
+          <button
+            type="button"
+            className="mx-auto mt-1 rounded p-1 text-menu-muted hover:text-menu-foreground"
+            title={t("support.nav")}
+            aria-label={t("support.nav")}
+            onClick={() => setReporting(true)}
+          >
+            <LifeBuoy className="size-3.5" />
+          </button>
+        ) : (
+          <p className="flex flex-col items-start gap-0.5 px-3 pt-1 text-xs text-menu-muted">
+            <span>{t("nav.version", { v: APP_VERSION })}</span>
+            <button
+              type="button"
+              className="underline-offset-2 hover:text-menu-foreground hover:underline"
+              onClick={() => setReporting(true)}
+            >
+              {t("support.nav")}
+            </button>
           </p>
         )}
       </div>

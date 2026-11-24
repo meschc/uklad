@@ -68,7 +68,7 @@ describe("меню по правам роли (разделы, 033)", () => {
     ]);
     for (const v of ["spec", "operations", "integrations", "devices"])
       expect(lead).not.toContain(v);
-    for (const v of ["tasks", "approvals", "chat", "staff", "analytics", "workstation"])
+    for (const v of ["tasks", "chat", "staff", "analytics", "workstation"])
       expect(lead).toContain(v);
   });
 

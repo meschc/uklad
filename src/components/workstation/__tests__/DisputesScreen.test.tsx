@@ -97,14 +97,16 @@ describe("DisputesScreen", () => {
 });
 
 describe("доступ к экрану по роли", () => {
-  test("«Спорные» — внутри «Подтверждений»: своего пункта в меню нет, продавцу нет и страницы", () => {
-    expect(navFor("warehouse").some((n) => n.view === "disputes")).toBe(false);
-    expect(navFor("warehouse").some((n) => n.view === "approvals")).toBe(true);
-    expect(navFor("seller").some((n) => n.view === "approvals")).toBe(false);
+  test("«Подтверждения» — чип «Заданий»: своего пункта в меню нет, продавцу нет и страницы", () => {
+    const views = navFor("warehouse").map((n) => n.view);
+    expect(views).not.toContain("disputes");
+    expect(views).not.toContain("approvals");
+    expect(views).toContain("tasks");
+    expect(navFor("seller").some((n) => n.view === "tasks")).toBe(false);
   });
 
-  test("«Подтверждения» видно с правом смотреть спорное, без права решать", () => {
+  test("с правом смотреть спорное открыты «Задания», где подтверждения", () => {
     const views = navFor("warehouse", ["goods.view"]).map((n) => n.view);
-    expect(views).toContain("approvals");
+    expect(views).toContain("tasks");
   });
 });
