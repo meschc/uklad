@@ -19,7 +19,7 @@ import { Row } from "./ProfileRow";
 export function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="flex flex-col gap-2.5">
-      <h2 className="px-1 text-sm font-semibold">{title}</h2>
+      <h2 className="text-sm font-semibold">{title}</h2>
       {children}
     </section>
   );
@@ -151,7 +151,7 @@ export function NotifySection() {
         <Row icon={<Bell className="size-4" />} label={t("profile.notify.browser")}>
           <Segmented<OnOff> value={on ? "on" : "off"} onChange={toggle} options={onOff} />
         </Row>
-        {hint && <p className="px-4 pb-3 text-xs text-muted-foreground">{hint}</p>}
+        {hint && <p className="pb-3 text-xs text-muted-foreground">{hint}</p>}
       </div>
       <div>
         <Row icon={<MessageSquareText className="size-4" />} label={t("profile.notify.preview")}>
@@ -161,7 +161,7 @@ export function NotifySection() {
             options={onOff}
           />
         </Row>
-        <p className="px-4 pb-3 text-xs text-muted-foreground">{t("profile.notify.previewHint")}</p>
+        <p className="pb-3 text-xs text-muted-foreground">{t("profile.notify.previewHint")}</p>
       </div>
     </div>
   );

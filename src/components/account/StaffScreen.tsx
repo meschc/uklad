@@ -19,15 +19,15 @@ import { eyebrow } from "@/components/ui/eyebrow";
 import { card } from "@/components/ui/card";
 import { TeamAccess } from "./TeamAccess";
 import { StaffOutput } from "./StaffOutput";
-import { PersonForm } from "./PersonForm";
+import { ManagerBlock } from "./ManagerBlock";
 import { StaffRow } from "./StaffRow";
 import { StaffViewList } from "./StaffViewList";
 import { StaffPanel } from "./StaffPanel";
 import { ArchiveNote } from "@/components/fulfillment/ArchiveNote";
 
 /**
- * Склад и персонал (п.6, 24, 25): контакты склада, ответственное лицо отдельной
- * карточкой и список сотрудников с правкой на месте, фото, маской телефона и
+ * Склад и персонал (п.6, 24, 25): контакты склада, ответственное лицо блоком
+ * вверху (выбор из сотрудников) и список сотрудников с правкой на месте, фото, маской телефона и
  * импортом/экспортом CSV.
  */
 
@@ -39,7 +39,6 @@ type StaffTab = "people" | "output" | "schedule" | "access";
 export function StaffScreen() {
   const warehouse = useEditor((s) => s.warehouse);
   const notify = useEditor((s) => s.notify);
-  const updateManager = useEditor((s) => s.updateManager);
   // Продавцу список персонала виден, но не редактируется (п.27).
   const readOnly = useEditor((s) => selectRole(s) === "seller");
   // Роль без «Персонала» смотрит список на чтение (`staff.view`): без вкладок
@@ -156,6 +155,7 @@ export function StaffScreen() {
       </div>
       {tab === "people" && (
         <>
+          <ManagerBlock staff={staff} t={t} />
           {/* Люди первыми: кто работает, по какой ставке и сколько сделал —
           одна таблица, а не список и отдельная «нагрузка» под ним. */}
           <section className="flex flex-col gap-3">
@@ -232,7 +232,7 @@ export function StaffScreen() {
                   </p>
                 )}
                 <TableScroll>
-                  <table className="table-stack w-full border-collapse text-sm">
+                  <table className="table-stack w-auto border-collapse text-sm">
                     <thead className={TABLE_HEAD}>
                       <tr className={TABLE_HEAD_ROW}>
                         <SortTh table={staffTable.table} id="name">
@@ -273,25 +273,6 @@ export function StaffScreen() {
       {tab === "schedule" && <BreakPolicyCard />}
       {tab === "output" && <StaffOutput />}
       {tab === "access" && <TeamAccess />}
-
-      {/* Ответственное лицо — тот же шаблон, что и у сотрудника (п.24) */}
-      {tab === "people" && (
-        <section className="flex flex-col gap-3">
-          <h2 className="text-sm font-semibold">{t("staff.manager")}</h2>
-          <PersonForm
-            key={warehouse.id}
-            value={{
-              name: warehouse.manager?.name ?? warehouse.contactPerson ?? "",
-              role: warehouse.manager?.role ?? "",
-              phone: warehouse.manager?.phone ?? "",
-              email: warehouse.manager?.email ?? "",
-              photoUrl: warehouse.manager?.photoUrl ?? "",
-            }}
-            onSave={(person) => updateManager(person)}
-            t={t}
-          />
-        </section>
-      )}
 
       {panel && (panel === "new" || panelMember) && (
         <StaffPanel

@@ -34,8 +34,8 @@ export function DiscrepancyAlert({
 
   return (
     <DialogShell>
-      <div className="hazard-stripes flex gap-3 bg-warning/10 px-5 py-4">
-        <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-warning/15 text-warning">
+      <div className="hazard-stripes flex gap-3 bg-warning-fill/15 px-5 py-4">
+        <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-warning-fill/25 text-warning">
           <AlertTriangle className="size-4" />
         </div>
         <div className="min-w-0">

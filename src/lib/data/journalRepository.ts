@@ -53,12 +53,19 @@ const isEntry = (v: unknown): v is ActivityEntry => {
   return typeof e.id === "string" && typeof e.at === "number" && typeof e.kind === "string";
 };
 
+/**
+ * Отказ 403 — две разные причины, и у каждой свой выход (правило «почему и как
+ * устранить»): у роли нет права или склад не свой (`no_warehouse`).
+ */
+const forbidden = (body: Record<string, unknown>) =>
+  body.error === "no_warehouse" ? "journal.otherWarehouse" : "journal.forbidden";
+
 function createJournalRepository(port: StorePort = storePort): JournalRepository {
   const get = async (path: string) => {
     const res = await attempt(() => apiRequest("GET", path));
     if (!res.ok) return res;
     const { status, body } = res.data;
-    if (status === 403) return fail("journal.forbidden");
+    if (status === 403) return fail(forbidden(body));
     if (status !== 200) return fail("data.failed");
     return ok(body);
   };
@@ -94,7 +101,7 @@ function createJournalRepository(port: StorePort = storePort): JournalRepository
       );
       if (!res.ok) return res;
       const { status, body } = res.data;
-      if (status === 403) return fail("journal.forbidden");
+      if (status === 403) return fail(forbidden(body));
       if (status !== 200 || !Array.isArray(body.entries)) return fail("data.failed");
       return ok({
         entries: (body.entries as unknown[]).filter(isEntry),

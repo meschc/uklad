@@ -300,7 +300,7 @@ function Hint({ density }: { density: { shown: number; total: number } }) {
         </span>
       </div>
       {culled && (
-        <div className="hazard-stripes rounded-md border border-warning/40 bg-warning/10 px-2 py-1 text-2xs font-medium text-warning">
+        <div className="hazard-stripes rounded-md border border-warning-fill/70 bg-warning-fill/15 px-2 py-1 text-2xs font-medium text-warning">
           {t("view3d.density", { shown: density.shown, total: density.total })}
         </div>
       )}

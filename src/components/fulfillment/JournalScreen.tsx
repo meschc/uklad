@@ -152,19 +152,7 @@ function JournalFeed({ tabs }: { tabs: ReactNode }) {
   };
 
   return (
-    <ScreenShell
-      wide
-      title={t("journal.title")}
-      subtitle={t("journal.lead")}
-      actions={
-        live ? (
-          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <span className="size-2 animate-pulse rounded-full bg-success" />
-            {t("journal.live")}
-          </span>
-        ) : undefined
-      }
-    >
+    <ScreenShell wide title={t("journal.title")} subtitle={t("journal.lead")}>
       <div>{tabs}</div>
       <div className="flex flex-wrap items-center gap-2">
         <Select
@@ -253,7 +241,7 @@ function JournalFeed({ tabs }: { tabs: ReactNode }) {
         />
       ) : (
         <TableScroll>
-          <table className="table-stack w-full border-collapse text-sm">
+          <table className="table-stack w-auto border-collapse text-sm">
             <thead className={TABLE_HEAD}>
               <tr className={TABLE_HEAD_ROW}>
                 <th className="px-3 py-2 font-medium">{t("journal.col.time")}</th>

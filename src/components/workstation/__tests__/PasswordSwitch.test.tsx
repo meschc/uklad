@@ -1,25 +1,42 @@
 // @vitest-environment jsdom
-import { describe, expect, test, vi } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { BindConfirmStep } from "../BindConfirmStep";
+import { useEditor } from "@/lib/store";
+import { workstationRepository } from "@/lib/data";
+import { BindDeviceForm } from "../BindDeviceForm";
 
 /**
- * Кирилл 22.11: пароль руководителя — не отдельный блок, а мелкая ссылка
- * «Нет бейджа? Ввести пароль» под полем бейджа; по нажатию поле меняется на
- * пароль, и можно вернуться к скану.
+ * Кирилл 22.11 и 24.11: бейдж руководителя — поле сразу под «Рабочим местом»,
+ * под ним мелкая ссылка «Нет бейджа? Ввести пароль», которая меняет поле на
+ * пароль, и одна кнопка «Привязать» внизу — без отдельного шага ниже формы.
  */
-describe("Пароль руководителя под полем бейджа", () => {
-  test("ссылка меняет поле бейджа на пароль и обратно", async () => {
-    const onConfirm = vi.fn();
-    render(<BindConfirmStep pending={false} error={null} onConfirm={onConfirm} />);
-    expect(screen.queryByLabelText(/Пароль руководителя/)).toBeNull();
+describe("Бейдж руководителя в форме привязки", () => {
+  const session = useEditor.getState().session;
+  afterEach(() => {
+    useEditor.setState({ session });
+    vi.restoreAllMocks();
+  });
+
+  test("поле бейджа сразу, ссылка меняет его на пароль, кнопка одна", async () => {
+    useEditor.setState({ session: { ...session, source: "server", permissions: undefined } });
+    const add = vi
+      .spyOn(workstationRepository, "addDevice")
+      .mockResolvedValue({ ok: true, data: undefined } as never);
+    render(<BindDeviceForm stacked />);
+
+    expect(screen.getByPlaceholderText("UK-STF-…")).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: /Привязать/ })).toHaveLength(1);
 
     await userEvent.click(screen.getByRole("button", { name: "Нет бейджа? Ввести пароль" }));
     const pass = screen.getByLabelText(/Пароль руководителя/);
     expect(pass.getAttribute("type")).toBe("password");
     await userEvent.type(pass, "secret{Enter}");
-    expect(onConfirm).toHaveBeenCalledWith(expect.objectContaining({ password: "secret" }));
+    expect(add).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({ password: "secret" }),
+    );
 
     await userEvent.click(screen.getByRole("button", { name: "Есть бейдж? Отсканировать" }));
     expect(screen.queryByLabelText(/Пароль руководителя/)).toBeNull();

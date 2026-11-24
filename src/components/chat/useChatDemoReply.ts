@@ -15,7 +15,7 @@ import { useEditor } from "@/lib/store";
  */
 const REPLY_DELAY_MS = 7000;
 
-export function useChatDemoReply() {
+export function useChatDemoReply(enabled = true) {
   const chats = useEditor((s) => s.chats);
   const role = useEditor((s) => s.session.user.role);
   const receiveDemoReply = useEditor((s) => s.receiveDemoReply);
@@ -24,6 +24,7 @@ export function useChatDemoReply() {
   const timers = useRef<Record<string, number>>({});
 
   useEffect(() => {
+    if (!enabled) return;
     if (!baseline.current) {
       baseline.current = {};
       for (const [id, messages] of Object.entries(chats)) {
@@ -44,7 +45,7 @@ export function useChatDemoReply() {
         }, REPLY_DELAY_MS);
       }
     }
-  }, [chats, role, receiveDemoReply]);
+  }, [chats, role, receiveDemoReply, enabled]);
 
   // Таймеры не должны пережить размонтирование: ответ, прилетевший в уже
   // закрытое приложение, — это ошибка в консоли и ничего больше.

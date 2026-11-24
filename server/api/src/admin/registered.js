@@ -15,7 +15,22 @@ const plans = require("./plans");
 
 function registeredAccount(db, { email, kind, company, name, orgId }, now) {
   const store = adminStore(db);
-  if (store.accountByEmail(email)) return null;
+  const known = store.accountByEmail(email);
+  if (known) {
+    // Карточка на эту почту уже была (заявка с сайта, заведена руками) — та же
+    // компания: одна почта — одна компания (Кирилл 24.11). Раньше её молча
+    // пропускали, компания оставалась без тарифа: он не переключался, а
+    // лимит складов не действовал. Связываем, только если карточка ещё ни с
+    // какой компанией не связана; чужую связь не перезаписываем. Войти в
+    // компанию до подтверждения почты кодом нельзя, так что чужая почта
+    // карточку не заберёт.
+    if (!known.org_id && orgId && !store.accountByOrg(orgId)) {
+      store.updateAccount(known.id, { org_id: orgId }, now);
+      store.log(now, null, "account_link", `account:${known.id}`, { почта: email });
+      return known.id;
+    }
+    return null;
+  }
   const id = store.addAccount(
     {
       kind: kind === "seller" ? "seller" : "warehouse",

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ChevronDown, ExternalLink, MessageCircleQuestion, ShieldAlert } from "lucide-react";
+import { ChevronDown, ExternalLink, MessageCircleQuestion, ShieldCheck } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import {
   INTEGRATIONS,
@@ -55,8 +55,10 @@ export function IntegrationsScreen() {
       }
     >
       {asking && <ReportProblemDialog preset="integration" onClose={() => setAsking(false)} />}
-      <div className="flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning">
-        <ShieldAlert className="mt-px size-3.5 shrink-0" />
+      {/* Это сведение, а не предупреждение: нейтральная подсказка ДС, а не
+          песочный warning (Кирилл 22.11 и 24.11). */}
+      <div className="flex items-start gap-2 rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
+        <ShieldCheck className="mt-px size-3.5 shrink-0 text-primary" />
         <span>{t("integr.securityNote")}</span>
       </div>
 

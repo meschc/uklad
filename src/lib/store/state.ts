@@ -751,7 +751,7 @@ export interface StaffSlice {
   updateWarehouseSpec: (id: string, patch: Partial<WarehouseSpec>) => void;
 
   /** Ответственное лицо склада — карточка по шаблону сотрудника (п.24). */
-  updateManager: (patch: Partial<Omit<StaffMember, "id">>) => void;
+  updateManager: (patch: Partial<StaffMember>) => void;
   /** Партнёры-продавцы склада (п.15). */
   addPartner: (partner: Omit<Partner, "id">) => string;
   updatePartner: (id: string, patch: Partial<Omit<Partner, "id">>) => void;

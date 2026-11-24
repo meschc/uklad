@@ -33,7 +33,14 @@ export const createViewSlice: SliceCreator<ViewSlice> = (set, get) => ({
     set({
       toasts: pushNotice(
         get().toasts,
-        { tone, key, vars: opts?.vars, undo: opts?.undo },
+        {
+          tone,
+          key,
+          vars: opts?.vars,
+          undo: opts?.undo,
+          detail: opts?.detail,
+          open: opts?.open,
+        },
         nowMs() + Math.random(),
       ),
     }),

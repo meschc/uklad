@@ -377,6 +377,27 @@ test("регистрация в кабинете видна в пользова�
   );
 });
 
+test("карточка на ту же почту связывается с компанией кабинета, чужая связь — нет", () => {
+  const { openDb } = require("../src/db");
+  const { registeredAccount } = require("../src/admin/registered");
+  const db = openDb(":memory:");
+  const store = adminStore(db.raw);
+  const now = new Date("2026-11-24T10:00:00Z");
+  // Заведена в админке до регистрации — без компании (так было у Кирилла 24.11).
+  const id = store.addAccount({ kind: "warehouse", name: "Склад", email: "a@sklad.ru" }, now);
+  assert.equal(
+    registeredAccount(db.raw, { email: "A@sklad.ru", kind: "warehouse", orgId: "org-1" }, now),
+    id,
+  );
+  assert.equal(store.account(id).org_id, "org-1");
+  // Уже связанную карточку вторая регистрация не перепривязывает.
+  assert.equal(
+    registeredAccount(db.raw, { email: "a@sklad.ru", kind: "warehouse", orgId: "org-2" }, now),
+    null,
+  );
+  assert.equal(store.account(id).org_id, "org-1");
+});
+
 test("менеджер и демо-ссылка — только после подтверждения", async (t) => {
   const app = await start();
   t.after(app.stop);

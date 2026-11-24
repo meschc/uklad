@@ -259,7 +259,7 @@ export function TasksScreen() {
         />
       ) : (
         <TableScroll>
-          <table className="table-stack w-full border-collapse text-sm">
+          <table className="table-stack w-auto border-collapse text-sm">
             <thead className={TABLE_HEAD}>
               <tr className={TABLE_HEAD_ROW}>
                 <SortTh table={table.table} id="title">

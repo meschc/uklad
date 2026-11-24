@@ -39,7 +39,7 @@ export function PartnersSection({ readOnly = false }: { readOnly?: boolean }) {
       {list.length === 0 ? (
         <p className="text-xs text-muted-foreground">{t("partners.empty")}</p>
       ) : (
-        <div className="flex flex-col divide-y divide-border/60">
+        <div className="-mx-2 flex flex-col divide-y divide-border/60">
           {/* Строки — для чтения, правка в карточке партнёра (Кирилл 12 ноя).
               Без полей и рамок в строке: контакт и телефон рядом — «кому
               звонить» читается одним взглядом. */}

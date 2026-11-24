@@ -98,7 +98,7 @@ export function BackupSection() {
       </Row>
 
       {onServer ? (
-        <p className="px-4 py-3 text-xs text-muted-foreground">{t("backup.serverNote")}</p>
+        <p className="py-3 text-xs text-muted-foreground">{t("backup.serverNote")}</p>
       ) : (
         <>
           <Row icon={<Upload className="size-4" />} label={t("backup.restore")}>
@@ -172,9 +172,9 @@ export function BackupSection() {
                 <TariffLock feature="weeklyEmailBackup" />
               )}
             </Row>
-            {weekly.error && <FieldError className="px-4 pb-3">{t(weekly.error)}</FieldError>}
+            {weekly.error && <FieldError className="pb-3">{t(weekly.error)}</FieldError>}
             {canEmail && backup.emailWeekly && (
-              <p className="px-4 pb-3 text-xs text-muted-foreground">
+              <p className="pb-3 text-xs text-muted-foreground">
                 {t("backup.emailNote", { email })}
               </p>
             )}
