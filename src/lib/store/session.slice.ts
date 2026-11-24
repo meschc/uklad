@@ -1,4 +1,5 @@
 import { nowMs, uid } from "../utils";
+import { OWNER_PERM } from "../permModules";
 import type { Session, UserRole } from "../types";
 import type { SessionSlice, SliceCreator } from "./state";
 
@@ -31,6 +32,18 @@ export function makeSession(role: UserRole, warehouseId: string): Session {
 
 /** Роль текущего пользователя — единственный правильный способ её спросить. */
 export const selectRole = (s: { session: Session }): UserRole => s.session.user.role;
+
+/**
+ * Владелец компании — единственный, кому видны все склады (Кирилл 24.11):
+ * список складов, логотип «Все склады», реквизиты и тариф. Начальник склада,
+ * старший, продавец после входа сразу в своём складе. Демо — всегда владелец;
+ * сессия без прав (старая, до первого ответа сервера) — тоже: экран не
+ * прячет, чужих складов в ней всё равно нет, их не отдаёт сервер.
+ */
+export const selectIsOwner = (s: { session: Session }): boolean =>
+  s.session.source !== "server" ||
+  !s.session.permissions ||
+  s.session.permissions.includes(OWNER_PERM);
 
 export const createSessionSlice: SliceCreator<SessionSlice> = (set, get) => ({
   // Склад проставится при первой же смене роли; на старте важна только роль.

@@ -16,11 +16,9 @@ import {
   ShieldCheck,
   User,
 } from "lucide-react";
-import { authRepository } from "@/lib/data/authRepository";
-import { leaveServerSession } from "@/lib/store/leave";
-import { flushServerSync, hasDeferredCopy } from "@/lib/store/serverSync";
-import { downloadBackup, downloadDeferredCopy } from "./backupDownload";
-import { PERSIST_KEY, selectRole, useEditor } from "@/lib/store";
+import { useLogout } from "./useLogout";
+import { LogoutConfirm } from "./LogoutConfirm";
+import { PERSIST_KEY, selectIsOwner, selectRole, useEditor } from "@/lib/store";
 import { removeSaved } from "@/lib/store/persistStorage";
 import { checkEmail, checkInn, checkKpp, checkOgrn, checkPersonName } from "@/lib/validate";
 import { companyRepository } from "@/lib/data/companyRepository";
@@ -75,32 +73,12 @@ export function Profile() {
   const updateAccount = useEditor((s) => s.updateAccount);
   const goToDashboard = useEditor((s) => s.goToDashboard);
   const goToEditor = useEditor((s) => s.goToEditor);
-  const goToLogin = useEditor((s) => s.goToLogin);
   const serverSession = useEditor((s) => s.session.source === "server");
-  // Выход с сервера стирает копию кабинета на этом компьютере. Всё записано
-  // и отложенной копии нет — выходим сразу; иначе подтверждение строкой на
-  // месте кнопки и «Скачать копию». Не дошёл до сервера — экран входа
-  // говорит, что там сессия ещё жива.
-  const [confirmLogout, setConfirmLogout] = useState(false);
-  const [deferred, setDeferred] = useState(false);
-  const logout = async () => {
-    if (!serverSession) return goToLogin();
-    // Всё записано на сервере — копия на этом компьютере больше не нужна,
-    // выходим сразу. Не всё — сначала строка с «Скачать копию».
-    if (!confirmLogout) {
-      const synced = await flushServerSync();
-      const hasDeferred = hasDeferredCopy();
-      if (!synced || hasDeferred) {
-        setDeferred(hasDeferred);
-        return setConfirmLogout(true);
-      }
-    }
-    const res = await authRepository.logout();
-    leaveServerSession(res.ok ? undefined : "offline");
-  };
+  const { logout, confirming: confirmLogout, deferred, cancel: cancelLogout } = useLogout();
   const resetHints = useEditor((s) => s.resetHints);
   const tariff = useEditor((s) => s.subscription.tariff);
   const isSeller = useEditor((s) => selectRole(s) === "seller");
+  const owner = useEditor(selectIsOwner);
   const t = useT();
 
   const [edit, setEdit] = useState<FieldId | null>(null);
@@ -108,14 +86,20 @@ export function Profile() {
   const [tab, setTab] = useState<ProfileTab>("account");
   const tabs: { value: ProfileTab; label: string; icon: React.ReactNode }[] = [
     { value: "account", label: t("profile.section.account"), icon: <User /> },
-    ...(account.type === "company"
+    // Реквизиты и тариф — только владельцу (сервер их другим не отдаёт):
+    // у начальника склада в настройках — свой аккаунт и вид (Кирилл 24.11).
+    ...(account.type === "company" && owner
       ? [{ value: "company" as const, label: t("profile.section.company"), icon: <Building2 /> }]
       : []),
-    {
-      value: "tariff",
-      label: t(isSeller ? "profile.sellerOptions.title" : "profile.tab.tariff"),
-      icon: <CreditCard />,
-    },
+    ...(owner || isSeller
+      ? [
+          {
+            value: "tariff" as const,
+            label: t(isSeller ? "profile.sellerOptions.title" : "profile.tab.tariff"),
+            icon: <CreditCard />,
+          },
+        ]
+      : []),
     { value: "settings", label: t("profile.tab.settings"), icon: <Settings /> },
   ];
 
@@ -408,7 +392,7 @@ export function Profile() {
           {/* Компания отдельно от аккаунта (Кирилл 1 ноя): человек и
               юрлицо — разные вещи, и в одном списке строк они сливались.
               ИНН — ключ, остальное приходит по нему. */}
-          {tab === "company" && account.type === "company" && (
+          {tab === "company" && account.type === "company" && owner && (
             <Section title={t("profile.section.company")}>
               <div className="flex flex-col divide-y divide-border/60">
                 <>
@@ -647,7 +631,7 @@ export function Profile() {
 
           {/* Тариф и резервные копии — обещания тарифов на сайте. Продавец
               смотрит те же данные в режиме чтения: это дело склада. */}
-          {tab === "tariff" && !isSeller && (
+          {tab === "tariff" && owner && !isSeller && (
             <>
               <Section title={t("tariff.title")}>
                 <TariffSection />
@@ -671,29 +655,12 @@ export function Profile() {
           )}
         </div>
 
-        {confirmLogout && (
-          <div className="flex flex-wrap items-center gap-2 text-sm">
-            <span className="mr-auto">
-              {t(deferred ? "profile.logoutDeferred" : "profile.logoutUnsynced")}
-            </span>
-            {deferred && (
-              <Button size="sm" variant="outline" onClick={downloadDeferredCopy}>
-                {t("profile.logoutDeferredBackup")}
-              </Button>
-            )}
-            <Button size="sm" variant="outline" onClick={() => void downloadBackup()}>
-              {t("profile.logoutBackup")}
-            </Button>
-            <Button size="sm" variant="ghost" onClick={() => setConfirmLogout(false)}>
-              {t("login.switch.cancel")}
-            </Button>
-          </div>
-        )}
+        {confirmLogout && <LogoutConfirm deferred={deferred} onCancel={cancelLogout} />}
         <div className="flex items-center">
           <Button
             size="sm"
             variant="ghost"
-            onClick={logout}
+            onClick={() => void logout()}
             className="gap-1.5 text-muted-foreground hover:text-destructive"
           >
             <LogOut className="size-4" />

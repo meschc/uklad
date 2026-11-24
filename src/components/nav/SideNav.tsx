@@ -3,14 +3,17 @@ import { useIsDark } from "@/lib/useIsDark";
 import { readLocal, writeLocal } from "@/lib/safeStorage";
 import {
   ChevronDown,
+  ChevronsUpDown,
   LifeBuoy,
+  LogOut,
   Moon,
   PanelLeftClose,
   PanelLeftOpen,
+  Settings,
   Sun,
   type LucideIcon,
 } from "lucide-react";
-import { selectRole, useEditor } from "@/lib/store";
+import { selectIsOwner, selectRole, useEditor } from "@/lib/store";
 import type { AppView } from "@/lib/types";
 import { useNavBadge } from "./useNavBadge";
 import {
@@ -29,6 +32,8 @@ import { cn } from "@/lib/utils";
 import { ReportProblemDialog } from "@/components/support/ReportProblemDialog";
 import { UkladLockup } from "@/components/brand/UkladLockup";
 import { APP_VERSION } from "@/lib/version";
+import { useLogout } from "@/components/account/useLogout";
+import { LogoutPanel } from "./LogoutPanel";
 
 /** Свёрнуто ли меню — удобство одного человека, поэтому в localStorage, а не в сторе. */
 const COLLAPSED_KEY = "uklad-nav-collapsed";
@@ -102,6 +107,14 @@ export function SideNav({
     storeGoToDashboard();
     onNavigate?.();
   };
+  const storeGoToProfile = useEditor((s) => s.goToProfile);
+  const goToProfile = () => {
+    storeGoToProfile();
+    onNavigate?.();
+  };
+  // Все склады — только у владельца; остальные работают в одном складе.
+  const owner = useEditor(selectIsOwner);
+  const leave = useLogout();
   const warehouseName = useEditor((s) => s.warehouse?.name);
   const orgLogo = useEditor((s) => s.account.orgLogo);
   const role = useEditor(selectRole);
@@ -183,6 +196,11 @@ export function SideNav({
 
   const [collapsedPref, setCollapsed] = useState(readCollapsed);
   const collapsed = !sheet && collapsedPref;
+  // В меню — название склада, где человек работает; свой логотип компании,
+  // если он загружен в профиле, заменяет знак Уклада.
+  const lockup = (
+    <UkladLockup wordless={collapsed} label={warehouseName || "Уклад"} image={orgLogo} fit onMenu />
+  );
   // Раскрытые группы — набор, а не одна: человек держит открытыми те, куда
   // ходит, как папки в проводнике.
   const [openGroups, setOpenGroups] = useState<Set<string>>(
@@ -223,29 +241,27 @@ export function SideNav({
             ),
       )}
     >
-      {/* «Мой склад» — выход в кабинет со списком складов: привычка всего веба,
-          отдельного пункта «Главная» в меню нет. */}
-      <button
-        type="button"
-        onClick={goToDashboard}
-        title={t("nav.side.toDashboard")}
-        aria-label={t("nav.side.toDashboard")}
-        className={cn(
-          // Отступ вокруг знака одинаковый со всех сторон.
-          // Скругление снаружи = скругление знака (10) + отступ (6).
-          "mb-2 flex min-h-12 cursor-pointer items-center rounded-2xl p-1.5 text-left hover:bg-menu-hover",
-        )}
-      >
-        <UkladLockup
-          wordless={collapsed}
-          // В меню — название склада, где человек работает; свой логотип
-          // компании, если он загружен в профиле, заменяет знак Уклада.
-          label={warehouseName || "Уклад"}
-          image={orgLogo}
-          fit
-          onMenu
-        />
-      </button>
+      {/* Логотип у владельца — «Все склады»: привычка всего веба, отдельного
+          пункта «Главная» нет; стрелка — это переключатель. У начальника
+          склада и остальных склад один, логотип никуда не ведёт (Кирилл 24.11). */}
+      {owner ? (
+        <button
+          type="button"
+          onClick={goToDashboard}
+          title={t("nav.side.allWarehouses")}
+          aria-label={t("nav.side.allWarehouses")}
+          className={cn(
+            // Отступ вокруг знака одинаковый со всех сторон.
+            // Скругление снаружи = скругление знака (10) + отступ (6).
+            "mb-2 flex min-h-12 cursor-pointer items-center gap-1 rounded-2xl p-1.5 text-left hover:bg-menu-hover",
+          )}
+        >
+          {lockup}
+          {!collapsed && <ChevronsUpDown className="ml-auto size-4 shrink-0 text-menu-muted" />}
+        </button>
+      ) : (
+        <div className="mb-2 flex min-h-12 items-center p-1.5">{lockup}</div>
+      )}
 
       {shown.map((entry) => {
         if (!isGroup(entry)) {
@@ -348,6 +364,23 @@ export function SideNav({
           badge={0}
           onClick={() => updateProfile({ theme: dark ? "light" : "dark" })}
         />
+        <NavRow
+          icon={Settings}
+          label={t("nav.settings")}
+          collapsed={collapsed}
+          active={appView === "profile"}
+          current={appView === "profile"}
+          badge={0}
+          onClick={goToProfile}
+        />
+        <NavRow
+          icon={LogOut}
+          label={t("profile.logout")}
+          collapsed={collapsed}
+          active={false}
+          badge={0}
+          onClick={() => void leave.logout()}
+        />
         {!sheet && (
           <NavRow
             icon={collapsed ? PanelLeftOpen : PanelLeftClose}
@@ -365,6 +398,13 @@ export function SideNav({
         )}
       </div>
       {reporting && <ReportProblemDialog onClose={() => setReporting(false)} />}
+      {leave.confirming && (
+        <LogoutPanel
+          deferred={leave.deferred}
+          onCancel={leave.cancel}
+          onConfirm={() => void leave.logout()}
+        />
+      )}
     </nav>
   );
 }

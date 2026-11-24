@@ -62,8 +62,8 @@ export function TeamAccess() {
   // Владельцу сервер отдаёт роли всех складов: здесь — только этого склада и
   // роли компании. Иначе на складе Б видны и правятся роли склада А (058).
   const roles = state.roles.filter((r) => !r.warehouseRef || r.warehouseRef === warehouseId);
-  // Люди открытого склада и владелец; кто ни к одному складу не закреплён —
-  // отдельно, чтобы его не принимали за человека этого склада (Кирилл 22.11).
+  // Люди открытого склада и владелец. Незакреплённых нет: склад обязателен
+  // в приглашении, старые записи перенесены на склад (миграция 065).
   const row = (m: TeamMember) => (
     <MemberRow
       key={m.id}
@@ -77,7 +77,6 @@ export function TeamAccess() {
   );
   const owner = (m: TeamMember) => state.ownerRoles.includes(m.roleId);
   const here = state.members.filter((m) => m.warehouseRef === warehouseId || owner(m));
-  const unplaced = state.members.filter((m) => !m.warehouseRef && !owner(m));
 
   return (
     <div className="flex flex-col gap-8">
@@ -94,16 +93,6 @@ export function TeamAccess() {
         </div>
         <MemberTable>{here.map(row)}</MemberTable>
       </section>
-
-      {unplaced.length > 0 && (
-        <section className="flex flex-col gap-3">
-          <div className="flex flex-col gap-1">
-            <h2 className="text-sm font-semibold">{t("team.unplaced")}</h2>
-            <p className="max-w-xl text-xs text-muted-foreground">{t("team.unplacedLead")}</p>
-          </div>
-          <MemberTable>{unplaced.map(row)}</MemberTable>
-        </section>
-      )}
 
       <RoleList
         roles={roles}

@@ -47,7 +47,7 @@ import { guardReadOnly } from "./readOnlyGuard";
  */
 
 export { fieldValueKey, resolveFloor, FLOOR_MAX } from "./helpers";
-export { selectRole } from "./session.slice";
+export { selectIsOwner, selectRole } from "./session.slice";
 export { boundDevice } from "./workstation.slice";
 export { countUnread, visibleChatPartners } from "./chat.slice";
 export type { EditorState } from "./state";
