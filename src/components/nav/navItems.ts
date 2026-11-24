@@ -2,7 +2,7 @@ import {
   BarChart3,
   Building2,
   Settings2,
-  Boxes,
+  Package,
   ClipboardList,
   FileText,
   Handshake,
@@ -72,7 +72,7 @@ const WAREHOUSE_NAV: NavEntry[] = [
   // брак, расхождения пересчёта (Кирилл 16.11). Ежедневная работа, а не
   // настройка склада, поэтому не в «О складе». «Спорные» — внутри.
   { view: "approvals", key: "nav.side.approvals", icon: ShieldCheck },
-  { view: "editor", key: "nav.side.plan", icon: Boxes },
+  { view: "editor", key: "nav.side.plan", icon: Package },
   // Переписка с продавцами — отдельным пунктом (п.3): в неё заходят по десять
   // раз на день, в группе она стоила бы лишнего клика.
   { view: "chat", key: "nav.side.chat", icon: MessagesSquare },
@@ -119,7 +119,7 @@ const SELLER_NAV: NavEntry[] = [
   { view: "seller", key: "nav.side.seller", icon: Store },
   { view: "chat", key: "nav.side.chat", icon: MessagesSquare },
   // План и номенклатуру продавец видит целиком, но только читает (п.26).
-  { view: "editor", key: "nav.side.plan", icon: Boxes },
+  { view: "editor", key: "nav.side.plan", icon: Package },
   // «Паспорт» и «Персонал» у продавца одной вкладкой: ему нужны характеристики
   // склада и к кому обратиться, а не список сотрудников.
   { view: "spec", key: "nav.side.about", icon: Building2 },

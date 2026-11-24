@@ -1,12 +1,5 @@
 import { Suspense, lazy, useMemo, useRef, useState } from "react";
-import {
-  AlertTriangle,
-  Loader2,
-  MapPin,
-  Trash2,
-  Warehouse as WarehouseIcon,
-  X,
-} from "lucide-react";
+import { AlertTriangle, Loader2, MapPin, Trash2, X } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { OWNER_PERM } from "@/lib/permModules";
 import { warehouseWorkCount } from "@/lib/store/warehouseData";
@@ -146,14 +139,14 @@ export function WarehouseDialog({
 
   return (
     <DialogShell size="lg" scroll onClose={onClose}>
-      <DialogHeader align="start">
-        <div className="flex items-center gap-2">
-          <WarehouseIcon className="size-4 text-muted-foreground" />
-          <p className="text-sm font-semibold">
-            {editing ? t("wh.edit.title") : t("wh.create.title")}
-          </p>
-        </div>
-        <Button variant="ghost" size="icon-sm" onClick={onClose}>
+      {/* Шапка как у остальных панелей: заголовок и крестик в одну линию по
+          центру, без значка (Кирилл 22.11: «где крестик, где название, где
+          иконка — странно выглядит»). */}
+      <DialogHeader>
+        <h2 className="text-sm font-semibold">
+          {editing ? t("wh.edit.title") : t("wh.create.title")}
+        </h2>
+        <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label={t("support.close")}>
           <X className="size-4" />
         </Button>
       </DialogHeader>

@@ -94,7 +94,17 @@ export function seedWork(
 
   const enabled: ServiceSettings["enabled"] = {};
   for (const k of EXTRA_ON) enabled[k] = true;
-  const serviceSettings: ServiceSettings = { enabled, prices: { ...PRICES } };
+  // Своё название и описание — чтобы в демо было видно, что услугу правят
+  // карандашом (Кирилл 22.11).
+  const serviceSettings: ServiceSettings = {
+    enabled,
+    prices: { ...PRICES },
+    names: { quality_check: "Проверка на брак" },
+    notes: {
+      quality_check: "Вскрываем упаковку, смотрим швы и комплектность, фото брака — в чат.",
+      kitting: "Собираем набор из товаров продавца по его схеме, до 5 позиций.",
+    },
+  };
 
   const floor = staff.filter((s) => !/управля/i.test(s.role));
   const today = new Date(now);

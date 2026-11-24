@@ -109,6 +109,14 @@ export interface ServiceSettings {
   twoStageReceiving?: boolean;
   /** Свои услуги склада — в конце каталога, в порядке добавления. */
   custom?: CustomService[];
+  /**
+   * Своё название встроенной услуги (Кирилл 22.11: «название можно
+   * редактировать»). Нет — подпись из словаря. У своей услуги название в
+   * `custom`.
+   */
+  names?: Partial<Record<ServiceKind, string>>;
+  /** Описание услуги: что входит, как считается. Видно в каталоге и продавцу. */
+  notes?: Partial<Record<ServiceKind, string>>;
 }
 
 /**
