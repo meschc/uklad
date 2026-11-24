@@ -35,6 +35,13 @@ export const ru = {
   "account.exportButton": "Скачать архив",
   "account.delete": "Удалить аккаунт",
   "account.deleteOpen": "Удалить…",
+  "account.password": "Пароль",
+  "account.passwordOpen": "Сменить…",
+  "account.passwordCurrent": "Текущий пароль",
+  "account.passwordNext": "Новый пароль, от 10 символов",
+  "account.passwordSave": "Сменить пароль",
+  "account.passwordDone": "Пароль изменён. На других устройствах вход закрыт.",
+  "account.err.samePassword": "Новый пароль совпадает с текущим. Придумайте другой.",
   "account.deleteWhat":
     "Удалим почту, пароль, имя и фото. Если в компании не останется другого руководителя, сотрём и её: склады, товары, приёмки и заявки. Перед удалением скачайте архив выше.",
   "account.deleteGrace":
@@ -394,6 +401,13 @@ export const en: Record<keyof typeof ru, string> = {
   "account.exportButton": "Download archive",
   "account.delete": "Delete account",
   "account.deleteOpen": "Delete…",
+  "account.password": "Password",
+  "account.passwordOpen": "Change…",
+  "account.passwordCurrent": "Current password",
+  "account.passwordNext": "New password, 10+ characters",
+  "account.passwordSave": "Change password",
+  "account.passwordDone": "Password changed. Other devices are signed out.",
+  "account.err.samePassword": "The new password matches the current one. Choose another.",
   "account.deleteWhat":
     "We will delete your email, password, name and photo. If no other manager is left in the company, it is erased too: warehouses, products, receipts and requests. Download the archive above first.",
   "account.deleteGrace":
