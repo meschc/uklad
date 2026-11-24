@@ -7,8 +7,7 @@ export const ru = {
   "nav.side.journal": "Журнал действий",
   "journal.title": "Журнал действий",
   "journal.lead":
-    "Каждое действие на складе по секундам: сканы, этикетки, отметки смены, решения старшего, правки в кабинете и действия руководителей: доступ, роли, площадки, товары.",
-  "journal.live": "Обновляется",
+    "Каждое действие на складе по секундам: сканы, этикетки, отметки смены, решения старшего, правки в кабинете и действия руководителей: доступ, роли, площадки, товары. Лента обновляется сама.",
   "journal.filter.step": "Процесс",
   "journal.filter.allSteps": "Все процессы",
   "journal.filter.staff": "Сотрудник",
@@ -64,7 +63,10 @@ export const ru = {
   "journal.empty.body":
     "Здесь появится каждый скан и отметка с рабочих мест этого склада и каждая правка в кабинете.",
   "journal.empty.filtered": "По этим фильтрам действий нет",
-  "journal.forbidden": "Журнал склада открывает право «Персонал: смотреть»",
+  "journal.forbidden":
+    "Вашей роли журнал закрыт. Владелец открывает его в «Доступе»: роль → «Персонал» → «Чтение».",
+  "journal.otherWarehouse":
+    "Журнал этого склада вам не открыт: вы закреплены за другим складом. Переключитесь на свой склад или попросите владельца закрепить вас здесь.",
   "journal.step.receive": "Приёмка",
   "journal.step.place": "Размещение",
   "journal.step.pick": "Сборка",
@@ -132,8 +134,7 @@ export const en: Record<keyof typeof ru, string> = {
   "nav.side.journal": "Activity log",
   "journal.title": "Activity log",
   "journal.lead":
-    "Every action in the warehouse to the second: scans, labels, shift marks, lead decisions, cabinet edits and manager actions: access, roles, marketplaces, products.",
-  "journal.live": "Live",
+    "Every action in the warehouse to the second: scans, labels, shift marks, lead decisions, cabinet edits and manager actions: access, roles, marketplaces, products. The feed updates by itself.",
   "journal.filter.step": "Process",
   "journal.filter.allSteps": "All processes",
   "journal.filter.staff": "Employee",
@@ -189,7 +190,10 @@ export const en: Record<keyof typeof ru, string> = {
   "journal.empty.body":
     "Every scan and mark from this warehouse's workstations and every edit in the cabinet shows up here.",
   "journal.empty.filtered": "No actions match these filters",
-  "journal.forbidden": "The warehouse log needs the “Staff: view” permission",
+  "journal.forbidden":
+    "Your role has no access to the log. The owner opens it in “Access”: role → “Staff” → “Read”.",
+  "journal.otherWarehouse":
+    "This warehouse's log is not open to you: you are assigned to another warehouse. Switch to yours or ask the owner to assign you here.",
   "journal.step.receive": "Receiving",
   "journal.step.place": "Put-away",
   "journal.step.pick": "Picking",

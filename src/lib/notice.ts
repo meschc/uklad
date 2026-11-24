@@ -28,6 +28,10 @@ export interface Notice {
   vars?: Record<string, string | number>;
   /** Вернуть сделанное — у действий класса `undoable` (`lib/actionRisk`). */
   undo?: () => void;
+  /** Вторая строка — чужой текст как есть (сообщение чата), без перевода. */
+  detail?: string;
+  /** Нажатие на уведомление ведёт туда, откуда оно пришло (Кирилл 24.11). */
+  open?: () => void;
   /** Сколько раз пришло то же самое подряд: повтор не плодит копии. */
   count: number;
 }
@@ -35,6 +39,8 @@ export interface Notice {
 export interface NoticeInput {
   vars?: Record<string, string | number>;
   undo?: () => void;
+  detail?: string;
+  open?: () => void;
 }
 
 /** Больше трёх уведомлений разом не читают: старые уходят. */
@@ -60,6 +66,7 @@ function same(a: Notice, b: Omit<Notice, "id" | "count">): boolean {
     a.tone === b.tone &&
     !a.undo &&
     !b.undo &&
+    a.detail === b.detail &&
     JSON.stringify(a.vars ?? {}) === JSON.stringify(b.vars ?? {})
   );
 }

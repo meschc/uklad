@@ -89,7 +89,7 @@
       },
       "warning": {
         "$type": "color",
-        "$value": "#A57703",
+        "$value": "#9B7503",
         "$description": "CSS: hsl(var(--warning))"
       },
       "warning-fill": {
@@ -204,22 +204,22 @@
       },
       "menu": {
         "$type": "color",
-        "$value": "#0B0C0F",
+        "$value": "#F3F4F6",
         "$description": "CSS: hsl(var(--menu))"
       },
       "menu-foreground": {
         "$type": "color",
-        "$value": "#FAFAFA",
+        "$value": "#1B1D22",
         "$description": "CSS: hsl(var(--menu-foreground))"
       },
       "menu-muted": {
         "$type": "color",
-        "$value": "#A0A6B0",
+        "$value": "#616875",
         "$description": "CSS: hsl(var(--menu-muted))"
       },
       "menu-border": {
         "$type": "color",
-        "$value": "#31353F",
+        "$value": "#E5E7EB",
         "$description": "CSS: hsl(var(--menu-border))"
       },
       "grid-minor": {

@@ -20,6 +20,10 @@ const ICON: Record<NoticeTone, { Icon: typeof Info; className: string }> = {
 export interface ToastCardProps extends React.HTMLAttributes<HTMLDivElement> {
   tone: NoticeTone;
   text: string;
+  /** Вторая строка — например, текст сообщения чата. */
+  detail?: string;
+  /** Нажатие на текст уведомления ведёт к источнику. */
+  open?: { label: string; onClick: () => void };
   /** Счётчик повторов («×2»), если то же пришло ещё раз. */
   repeat?: { n: number; label: string };
   undo?: { label: string; onClick: () => void };
@@ -29,7 +33,7 @@ export interface ToastCardProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 export const ToastCard = React.forwardRef<HTMLDivElement, ToastCardProps>(
-  ({ tone, text, repeat, undo, close, leaving, className, ...rest }, ref) => {
+  ({ tone, text, detail, open, repeat, undo, close, leaving, className, ...rest }, ref) => {
     const { Icon, className: iconClass } = ICON[tone];
     return (
       <div
@@ -45,15 +49,20 @@ export const ToastCard = React.forwardRef<HTMLDivElement, ToastCardProps>(
         {...rest}
       >
         <Icon className={cn("mt-0.5 size-4 shrink-0", iconClass)} aria-hidden />
-        <p className="min-w-0 flex-1 py-px font-medium leading-snug">
-          {text}
-          {repeat && repeat.n > 1 && (
-            <span className="ml-1.5 font-normal tabular-nums text-muted-foreground">
-              <span aria-hidden>×{repeat.n}</span>
-              <span className="sr-only">{repeat.label}</span>
-            </span>
-          )}
-        </p>
+        {open ? (
+          <button
+            type="button"
+            onClick={open.onClick}
+            aria-label={open.label}
+            className="min-w-0 flex-1 cursor-pointer rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <ToastText text={text} detail={detail} repeat={repeat} />
+          </button>
+        ) : (
+          <div className="min-w-0 flex-1">
+            <ToastText text={text} detail={detail} repeat={repeat} />
+          </div>
+        )}
         {undo && (
           <button
             type="button"
@@ -77,3 +86,32 @@ export const ToastCard = React.forwardRef<HTMLDivElement, ToastCardProps>(
   },
 );
 ToastCard.displayName = "ToastCard";
+
+function ToastText({
+  text,
+  detail,
+  repeat,
+}: {
+  text: string;
+  detail?: string;
+  repeat?: { n: number; label: string };
+}) {
+  return (
+    <>
+      <p className="py-px font-medium leading-snug">
+        {text}
+        {repeat && repeat.n > 1 && (
+          <span className="ml-1.5 font-normal tabular-nums text-muted-foreground">
+            <span aria-hidden>×{repeat.n}</span>
+            <span className="sr-only">{repeat.label}</span>
+          </span>
+        )}
+      </p>
+      {detail && (
+        <p className="mt-0.5 line-clamp-2 break-words leading-snug text-muted-foreground">
+          {detail}
+        </p>
+      )}
+    </>
+  );
+}

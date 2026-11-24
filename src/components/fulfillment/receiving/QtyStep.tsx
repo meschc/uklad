@@ -57,7 +57,7 @@ export function QtyStep({
             <span
               className={cn(
                 "flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium",
-                match ? "bg-success/15 text-success" : "bg-warning/15 text-warning",
+                match ? "bg-success/15 text-success" : "bg-warning-fill/25 text-warning",
               )}
             >
               {match ? <Check className="size-3.5" /> : null}

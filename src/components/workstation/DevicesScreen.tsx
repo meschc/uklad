@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { History, Power, Trash2 } from "lucide-react";
+import { History, MonitorSmartphone, Power, Trash2 } from "lucide-react";
 import { workstationRepository } from "@/lib/data";
 import { useEditor } from "@/lib/store";
 import { isSessionLive } from "@/lib/workstation";
@@ -7,21 +7,18 @@ import type { Device } from "@/lib/types";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { card } from "@/components/ui/card";
-import { eyebrow } from "@/components/ui/eyebrow";
 import { SortTh, TableFilters, TableSearch, useDataTable } from "@/components/ui/data-table";
-import { ScreenShell } from "@/components/fulfillment/ScreenShell";
+import { EmptyState, ScreenShell } from "@/components/fulfillment/ScreenShell";
 import { useNow } from "./useNow";
-import { BindDeviceForm } from "./BindDeviceForm";
 import { RevokeDevice } from "./RevokeDevice";
 import { DeviceJournal } from "./DeviceJournal";
 import { TableScroll, TABLE_HEAD, TABLE_HEAD_ROW, TABLE_ROW } from "@/components/ui/table-scroll";
 
 /**
- * Устройства склада (вид `devices`, группа «О складе»). Руководитель заводит
- * компьютер у стола, сидя за ним: браузер сразу становится рабочим местом и
- * дальше открывается только входом по бейджу. Здесь же потерянный ТСД гасят
- * одной кнопкой.
+ * Устройства склада (вид `devices`, группа «О складе»): список, журнал и
+ * отключение. Привязывают устройство на нём самом, с «Рабочего места», —
+ * отдельной формы здесь нет (Кирилл 22.11 и 24.11: «зачем привязывать
+ * компьютер со страницы устройств»). Потерянный ТСД гасят здесь одной кнопкой.
  *
  * Кто сейчас за каким столом и когда был последний скан — с сервера, по
  * договору `support/devices-contract-2026-10-25.md`. В демо известен только
@@ -37,6 +34,7 @@ export function DevicesScreen() {
   const [revoking, setRevoking] = useState<Device | null>(null);
   const [journalOf, setJournalOf] = useState<Device | null>(null);
   const notify = useEditor((s) => s.notify);
+  const goToView = useEditor((s) => s.goToView);
   const forget = async (id: string) => {
     const res = await workstationRepository.forgetDevice(id);
     if (!res.ok) notify("error", res.error);
@@ -56,14 +54,17 @@ export function DevicesScreen() {
 
   return (
     <ScreenShell title={t("devices.title")} subtitle={t("devices.lead")} wide>
-      <section className={cn(card(), "flex flex-col gap-3 p-4")}>
-        <h2 className={eyebrow()}>{t("devices.bindTitle")}</h2>
-        <p className="text-sm text-muted-foreground">{t("devices.bindHint")}</p>
-        <BindDeviceForm onBound={() => useEditor.getState().goToView("workstation")} />
-      </section>
-
       {devices.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t("devices.empty")}</p>
+        <EmptyState
+          icon={<MonitorSmartphone className="size-5" />}
+          title={t("devices.emptyTitle")}
+          body={t("devices.empty")}
+          action={
+            <Button variant="outline" size="sm" onClick={() => goToView("workstation")}>
+              {t("devices.open")}
+            </Button>
+          }
+        />
       ) : (
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center gap-2">
@@ -82,7 +83,7 @@ export function DevicesScreen() {
             />
           </div>
           <TableScroll>
-            <table className="table-stack w-full border-collapse text-sm">
+            <table className="table-stack w-auto border-collapse text-sm">
               <thead className={TABLE_HEAD}>
                 <tr className={TABLE_HEAD_ROW}>
                   <SortTh table={devTable.table} id="name">

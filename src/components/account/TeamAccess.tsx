@@ -14,6 +14,7 @@ import { RoleList } from "./RoleList";
 import { useTeam } from "./useTeam";
 import { Select } from "@/components/ui/select";
 import { FieldError } from "@/components/ui/field";
+import { TableScroll, TABLE_HEAD, TABLE_HEAD_ROW, TABLE_ROW } from "@/components/ui/table-scroll";
 
 /**
  * Вкладка «Доступ» в «Персонале»: кто входит в кабинет и с какой ролью.
@@ -58,6 +59,9 @@ export function TeamAccess() {
     if (roleId) hold(roleId, s.name || s.id);
   }
   const myPerms = new Set(state.myPermissions);
+  // Владельцу сервер отдаёт роли всех складов: здесь — только этого склада и
+  // роли компании. Иначе на складе Б видны и правятся роли склада А (058).
+  const roles = state.roles.filter((r) => !r.warehouseRef || r.warehouseRef === warehouseId);
   // Люди открытого склада и владелец; кто ни к одному складу не закреплён —
   // отдельно, чтобы его не принимали за человека этого склада (Кирилл 22.11).
   const row = (m: TeamMember) => (
@@ -65,7 +69,7 @@ export function TeamAccess() {
       key={m.id}
       m={m}
       me={state.me}
-      roles={state.roles}
+      roles={roles}
       onRole={(roleId) => run(() => teamRepository.changeRole(m.id, roleId))}
       onDisable={(off) => run(() => teamRepository.setDisabled(m.id, off))}
       onRevoke={() => run(() => teamRepository.revokeInvite(m.id))}
@@ -88,7 +92,7 @@ export function TeamAccess() {
             {t("team.invite")}
           </Button>
         </div>
-        <ul className="flex flex-col divide-y divide-border">{here.map(row)}</ul>
+        <MemberTable>{here.map(row)}</MemberTable>
       </section>
 
       {unplaced.length > 0 && (
@@ -97,12 +101,12 @@ export function TeamAccess() {
             <h2 className="text-sm font-semibold">{t("team.unplaced")}</h2>
             <p className="max-w-xl text-xs text-muted-foreground">{t("team.unplacedLead")}</p>
           </div>
-          <ul className="flex flex-col divide-y divide-border">{unplaced.map(row)}</ul>
+          <MemberTable>{unplaced.map(row)}</MemberTable>
         </section>
       )}
 
       <RoleList
-        roles={state.roles}
+        roles={roles}
         permissions={state.permissions.map((p) => p.code)}
         mine={myPerms}
         holders={holders}
@@ -112,7 +116,7 @@ export function TeamAccess() {
 
       {inviting && (
         <InvitePanel
-          roles={state.roles}
+          roles={roles}
           onClose={() => setInviting(false)}
           onDone={async (email) => {
             setInviting(false);
@@ -122,6 +126,27 @@ export function TeamAccess() {
         />
       )}
     </div>
+  );
+}
+
+/** Люди с входом — таблицей по ширине содержимого (Кирилл 24.11). */
+function MemberTable({ children }: { children: React.ReactNode }) {
+  const t = useT();
+  return (
+    <TableScroll>
+      <table className="table-stack w-auto border-collapse text-sm">
+        <thead className={TABLE_HEAD}>
+          <tr className={TABLE_HEAD_ROW}>
+            <th className="px-3 py-2 font-normal">{t("team.col.name")}</th>
+            <th className="px-3 py-2 font-normal">{t("team.col.email")}</th>
+            <th className="px-3 py-2 font-normal">{t("team.col.status")}</th>
+            <th className="px-3 py-2 font-normal">{t("team.role")}</th>
+            <th className="px-3 py-2" />
+          </tr>
+        </thead>
+        <tbody>{children}</tbody>
+      </table>
+    </TableScroll>
   );
 }
 
@@ -149,28 +174,26 @@ function MemberRow({
     ? new Date(m.inviteExpiresAt).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })
     : null;
   return (
-    <li className="flex flex-wrap items-center justify-between gap-3 py-2.5">
-      <div className="min-w-0">
-        <p className="truncate text-sm font-medium">
-          {m.name || m.email || "—"}
-          {mine && (
-            <span className="ml-2 text-xs font-normal text-muted-foreground">{t("team.you")}</span>
-          )}
-        </p>
-        <p className="truncate text-xs text-muted-foreground">
-          {[
-            m.name ? m.email : null,
-            t(STATUS_KEYS[m.status]),
-            pending && until ? t("team.invitedUntil", { date: until }) : null,
-            !m.hasLogin && !pending ? t("team.noLogin") : null,
-          ]
-            .filter(Boolean)
-            .join(" · ")}
-        </p>
-      </div>
-      <div className="flex items-center gap-2">
+    <tr className={TABLE_ROW}>
+      <td className="px-3 py-2">
+        <span className="font-medium">{m.name || m.email || "—"}</span>
+        {mine && <span className="ml-2 text-xs text-muted-foreground">{t("team.you")}</span>}
+      </td>
+      <td className="px-3 py-2" data-label={t("team.col.email")}>
+        {m.name ? m.email : null}
+      </td>
+      <td className="px-3 py-2 text-muted-foreground" data-label={t("team.col.status")}>
+        {[
+          t(STATUS_KEYS[m.status]),
+          pending && until ? t("team.invitedUntil", { date: until }) : null,
+          !m.hasLogin && !pending ? t("team.noLogin") : null,
+        ]
+          .filter(Boolean)
+          .join(" · ")}
+      </td>
+      <td className="px-3 py-2" data-label={t("team.role")}>
         {fixed ? (
-          <span className="w-44 truncate text-sm text-muted-foreground">{m.roleName}</span>
+          <span>{m.roleName}</span>
         ) : (
           <Select
             aria-label={t("team.role")}
@@ -186,6 +209,8 @@ function MemberRow({
             ))}
           </Select>
         )}
+      </td>
+      <td className="px-3 py-2">
         {pending ? (
           <Button size="sm" variant="ghost" onClick={onRevoke}>
             {t("team.revoke")}
@@ -207,8 +232,8 @@ function MemberRow({
             </Button>
           )
         )}
-      </div>
-    </li>
+      </td>
+    </tr>
   );
 }
 

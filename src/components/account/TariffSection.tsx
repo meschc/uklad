@@ -156,7 +156,7 @@ export function TariffSection() {
       </div>
 
       {pick && pick !== current && hasCabinetServer && (
-        <p className="px-1 text-xs text-muted-foreground">{t("plan.terms")}</p>
+        <p className="text-xs text-muted-foreground">{t("plan.terms")}</p>
       )}
       {pick && pick !== current && (
         <div className="flex flex-wrap items-center gap-2">
@@ -172,7 +172,7 @@ export function TariffSection() {
         </div>
       )}
       {plan?.request && (
-        <div className="flex flex-wrap items-center gap-2 px-1">
+        <div className="flex flex-wrap items-center gap-2">
           <p className="text-xs text-muted-foreground">
             {t("plan.asked", {
               plan: t(`tariff.${plan.request.tariff}`),
@@ -207,7 +207,7 @@ export function TariffSection() {
           )}
         </Row>
       </div>
-      <p className="px-1 text-xs text-muted-foreground">
+      <p className="text-xs text-muted-foreground">
         {t(hasCabinetServer ? "plan.hint" : "tariff.hint")}
       </p>
     </div>
@@ -226,8 +226,8 @@ function PlanStatus({
 }) {
   const t = useT();
   if (loading) return null;
-  if (error) return <p className="px-1 text-sm text-muted-foreground">{t(error)}</p>;
-  if (!plan) return <p className="px-1 text-sm text-muted-foreground">{t("plan.none")}</p>;
+  if (error) return <p className="text-sm text-muted-foreground">{t(error)}</p>;
+  if (!plan) return <p className="text-sm text-muted-foreground">{t("plan.none")}</p>;
   const term =
     plan.state === "trial"
       ? t("plan.state.trial", { date: day(plan.trialUntil) })
@@ -237,7 +237,7 @@ function PlanStatus({
           ? t("plan.state.overdue")
           : t("plan.state.blocked");
   return (
-    <div className="flex flex-col gap-1 px-1 text-sm">
+    <div className="flex flex-col gap-1 text-sm">
       <p>
         <span
           className={cn(

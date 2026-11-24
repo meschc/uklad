@@ -16,7 +16,7 @@ import { Select } from "@/components/ui/select";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { DialogFooter, DialogHeader, DialogShell } from "@/components/ui/dialog-shell";
 import { ImagePicker } from "./ImagePicker";
-import { RoleField } from "./PersonForm";
+import { RoleField } from "./RoleField";
 import { Field, FormError } from "@/components/ui/field";
 import { checkPerson, isEmail } from "@/lib/validate";
 import { useEditor } from "@/lib/store";

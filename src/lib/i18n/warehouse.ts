@@ -163,8 +163,8 @@ export const ru = {
   "role.seller": "Продавец",
 
   // --- Персонал и контакты склада (§6) --------------------------------------
-  "staff.title": "Склад и персонал",
-  "staff.subtitle": "Контакты склада «{name}» и список сотрудников",
+  "staff.title": "Персонал",
+  "staff.subtitle": "Сотрудники склада «{name}» и режим работы",
   "staff.manager": "Ответственное лицо",
   "staff.photoUrl": "Ссылка на фото",
   "staff.export": "Экспорт",
@@ -266,6 +266,9 @@ export const ru = {
   "team.send": "Отправить приглашение",
   "team.sent": "Приглашение отправлено на {email}",
   "team.you": "это вы",
+  "team.col.name": "Человек",
+  "team.col.email": "Почта",
+  "team.col.status": "Состояние",
   "team.status.invited": "Приглашён",
   "team.status.active": "Работает",
   "team.status.sleeping": "Давно не заходил",
@@ -658,8 +661,8 @@ export const en: Record<keyof typeof ru, string> = {
   "role.seller": "Seller",
 
   // --- Staff and warehouse contacts (§6) -------------------------------------
-  "staff.title": "Warehouse & staff",
-  "staff.subtitle": 'Contacts of "{name}" and the staff list',
+  "staff.title": "Staff",
+  "staff.subtitle": 'Staff of "{name}" and working hours',
   "staff.manager": "Person in charge",
   "staff.photoUrl": "Photo link",
   "staff.export": "Export",
@@ -759,6 +762,9 @@ export const en: Record<keyof typeof ru, string> = {
   "team.send": "Send invitation",
   "team.sent": "Invitation sent to {email}",
   "team.you": "you",
+  "team.col.name": "Person",
+  "team.col.email": "Email",
+  "team.col.status": "Status",
   "team.status.invited": "Invited",
   "team.status.active": "Active",
   "team.status.sleeping": "Not seen for a while",

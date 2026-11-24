@@ -24,8 +24,11 @@ import { digitsFor, LIMITS, type LimitName } from "@/lib/numberLimits";
  */
 
 /** Общий вид поля-невидимки: значение до клика, поле — после. */
+// Отрицательный отступ = свой отступ + рамка: текст значения стоит ровно под
+// подписью плитки, а рамка при наведении выходит наружу (Кирилл 24.11: лишние
+// отступы, значение сдвинуто правее подписи).
 const GHOST =
-  "w-full rounded-md border border-transparent bg-transparent px-1.5 py-0.5 outline-none max-md:min-h-11 transition-colors hover:border-border hover:bg-muted/50 focus:border-input focus:bg-background";
+  "-mx-[7px] w-[calc(100%+14px)] rounded-md border border-transparent bg-transparent px-1.5 py-0.5 outline-none max-md:min-h-11 transition-colors hover:border-border hover:bg-muted/50 focus:border-input focus:bg-background";
 
 // --- Каркас -------------------------------------------------------------------
 
@@ -317,7 +320,7 @@ export function ChipsValue({
     <button
       type="button"
       onClick={() => setEditing(true)}
-      className="w-full rounded-md border border-transparent px-1.5 py-0.5 text-left transition-colors hover:border-border hover:bg-muted/50 max-md:min-h-11"
+      className="-mx-[7px] w-[calc(100%+14px)] rounded-md border border-transparent px-1.5 py-0.5 text-left transition-colors hover:border-border hover:bg-muted/50 max-md:min-h-11"
     >
       {chips.length ? (
         list
@@ -383,7 +386,10 @@ export function RangeValue({
       inputMode="decimal"
       onChange={(e) => set(e.target.value.replace(/[^\d.-]/g, ""))}
       onBlur={commit}
-      className={cn(GHOST, "w-12 text-center text-lg font-semibold leading-tight tabular-nums")}
+      className={cn(
+        GHOST,
+        "mx-0 w-12 text-center text-lg font-semibold leading-tight tabular-nums",
+      )}
     />
   );
 
@@ -568,7 +574,7 @@ const CLASS_TONE: Record<WarehouseClass, string> = {
   A: "bg-success/15 text-success ring-success/30",
   "B+": "bg-primary/15 text-primary ring-primary/30",
   B: "bg-primary/15 text-primary ring-primary/30",
-  C: "bg-warning/15 text-warning ring-warning/30",
+  C: "bg-warning-fill/25 text-warning ring-warning-fill/50",
   D: "bg-destructive/15 text-destructive ring-destructive/30",
 };
 

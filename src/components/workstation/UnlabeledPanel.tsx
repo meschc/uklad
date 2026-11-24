@@ -18,7 +18,7 @@ export function UnlabeledPanel({ scan, onDone }: { scan: UnlabeledScan; onDone: 
   const t = useT();
   const { product, leads } = scan;
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-warning/40 bg-warning/10 p-4">
+    <div className="flex flex-col gap-3 rounded-xl border border-warning-fill/70 bg-warning-fill/15 p-4">
       <p className="flex items-center gap-2 text-lg font-semibold">
         <Tags className="size-5 shrink-0 text-warning" />
         <span className="line-clamp-2 min-w-0 break-words" title={product.name}>

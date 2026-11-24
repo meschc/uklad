@@ -312,6 +312,13 @@ test(
       "stf-k",
     );
     assert.equal((await journal(keeper, "?warehouse=wh_a")).status, 403);
+
+    // Начальник склада читает журнал своего склада (Кирилл 24.11: «я начальник
+    // склада и не могу смотреть журнал»).
+    const head = await invited(c.boss, "head-a@sklad.ru", "Начальник склада", "wh_a", "stf-a");
+    const mine = await journal(head, "?warehouse=wh_a");
+    assert.equal(mine.status, 200, JSON.stringify(mine.json));
+    assert.equal((await journal(head)).status, 200);
   },
 );
 

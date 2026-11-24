@@ -48,4 +48,20 @@ describe("ApprovalsScreen", () => {
     await userEvent.click(screen.getByText("Вернуть на место"));
     expect(useEditor.getState().disputes[0].resolution).toBe("returned");
   });
+
+  test("решённое — во вкладке «Решённые» таблицей, строка открывает панель", async () => {
+    const name = raise("shortage", 0);
+    render(<ApprovalsScreen />);
+    await screen.findByText(name);
+    await userEvent.click(screen.getByText("Вернуть на место"));
+
+    // Во «Ждут решения» решённого больше нет.
+    expect(screen.queryByText(name)).toBeNull();
+    const tabs = screen.getByRole("group", { name: "Заявки" });
+    await userEvent.click(within(tabs).getByText(/Решённые/));
+    await userEvent.click(screen.getByRole("button", { name }));
+    const panel = screen.getByRole("dialog");
+    expect(within(panel).getByText("Решение")).toBeTruthy();
+    expect(within(panel).getByText(/Вернули/)).toBeTruthy();
+  });
 });

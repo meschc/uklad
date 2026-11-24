@@ -34,15 +34,20 @@ export function ChatWatcher() {
   const prevUnread = useRef(unread);
   const t = useT();
 
-  useChatDemoReply();
+  // Синтетика — только в демо (правило проекта): с сервером переписка и
+  // «ответы» продавца не выдумываются. Раньше кабинет компании на сервере
+  // получал демо-чат, как только появлялся первый партнёр, и сохранял его в
+  // строки компании (Кирилл 24.11: «почему у меня не демо, а чат демо?»).
+  const demo = useEditor((s) => s.session.source !== "server");
+  useChatDemoReply(demo);
   useTabBadge(unread);
 
   // Демо-переписка раздаётся при входе в кабинет, а не при открытии чата: иначе
   // счётчик в рельсе появлялся бы только после того, как человек уже зашёл в
   // чат, — то есть никогда бы его туда и не позвал.
   useEffect(() => {
-    seedChatsOnce();
-  }, [seedChatsOnce, partnerCount]);
+    if (demo) seedChatsOnce();
+  }, [seedChatsOnce, partnerCount, demo]);
 
   useEffect(() => {
     if (unread > prevUnread.current) {
@@ -54,7 +59,14 @@ export function ChatWatcher() {
       );
       const name = partners.find((p) => p.id === newest)?.name;
       if (newest && name && !notifySystem(newest, name, t("chat.notifyHidden"))) {
-        notify("info", "chat.toast", { vars: { name } });
+        // Тот же выбор «текст сообщения», что и у системного уведомления:
+        // включён — текст под именем, выключен — только «кто написал».
+        const notice = chatNotice(name, lastText(s, newest), previewOn(s), "");
+        notify("info", "chat.toast", {
+          vars: { name },
+          detail: notice.body || undefined,
+          open: () => openThread(newest),
+        });
       }
     }
     prevUnread.current = unread;
@@ -67,17 +79,26 @@ export function ChatWatcher() {
 function notifySystem(partnerId: string, name: string, hidden: string): boolean {
   const s = useEditor.getState();
   if (!s.profile.chatNotify) return false;
+  const notice = chatNotice(name, lastText(s, partnerId), previewOn(s), hidden);
+  return showChatNotice(notice, partnerId, () => openThread(partnerId));
+}
+
+type Store = ReturnType<typeof useEditor.getState>;
+
+/** Текст последнего сообщения переписки; удалённое — пусто. */
+function lastText(s: Store, partnerId: string): string {
   const last = s.chats[partnerId]?.at(-1);
-  const notice = chatNotice(
-    name,
-    last?.deletedAt ? "" : (last?.text ?? ""),
-    s.profile.chatNotifyPreview !== false,
-    hidden,
-  );
-  return showChatNotice(notice, partnerId, () => {
-    s.goToView("chat");
-    s.openChat(partnerId);
-  });
+  return last?.deletedAt ? "" : (last?.text ?? "");
+}
+
+/** Показывать ли текст сообщения: выбор в профиле, по умолчанию да. */
+const previewOn = (s: Store) => s.profile.chatNotifyPreview !== false;
+
+/** Открыть переписку, откуда пришло уведомление. */
+function openThread(partnerId: string) {
+  const s = useEditor.getState();
+  s.goToView("chat");
+  s.openChat(partnerId);
 }
 
 /** Переписка с самым свежим сообщением из видимых — про неё и уведомляем. */

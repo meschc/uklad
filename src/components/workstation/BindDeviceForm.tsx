@@ -11,7 +11,7 @@ import { Select } from "@/components/ui/select";
 import { FormError } from "@/components/ui/field";
 import { useEditor } from "@/lib/store";
 import { OPEN_STATIONS } from "@/lib/stationSwitch";
-import { BindConfirmStep } from "./BindConfirmStep";
+import { PasswordSwitch } from "./PasswordSwitch";
 
 /**
  * Привязать этот компьютер как стол склада. Одна форма на двух экранах:
@@ -43,12 +43,27 @@ export function BindDeviceForm({
       s.session.permissions.includes("staff.manage"),
   );
 
-  // Сервер попросил подтвердить: дальше форма ждёт бейдж или пароль.
-  const [confirming, setConfirming] = useState(false);
-  const bind = async (confirm?: BindConfirm) => {
-    const res = await add.run(name, station, confirm);
+  // Бейдж руководителя — полем прямо под «Рабочим местом», пароль — по
+  // ссылке под ним, кнопка одна (Кирилл 22.11 и 24.11: шаг подтверждения
+  // уезжал вниз отдельной рамкой со своей кнопкой). Поле можно оставить
+  // пустым: вошёл паролем только что — сервер привяжет и так, вход давний —
+  // ответит «подтвердите», и подсказка встанет под полем.
+  const email = useEditor((s) => s.session.user.email);
+  const onServer = useEditor((s) => s.session.source === "server");
+  const [byPassword, setByPassword] = useState(false);
+  const [code, setCode] = useState("");
+  const [password, setPassword] = useState("");
+  const confirm = (): BindConfirm | undefined =>
+    byPassword
+      ? password
+        ? { email, password }
+        : undefined
+      : code.trim()
+        ? { code: code.trim() }
+        : undefined;
+  const bind = async () => {
+    const res = await add.run(name, station, confirm());
     if (res.ok) onBound?.();
-    else if (res.error === "devices.confirmNeeded") setConfirming(true);
   };
 
   if (!canBind) {
@@ -95,20 +110,42 @@ export function BindDeviceForm({
             ))}
           </Select>
         </label>
+        {onServer && (
+          <div className="flex flex-col gap-1 text-sm">
+            <label className="flex flex-col gap-1">
+              <span className="text-muted-foreground">
+                {byPassword ? t("devices.managerPassword", { email }) : t("devices.managerBadge")}
+              </span>
+              {byPassword ? (
+                <Input
+                  className={stacked ? "h-10" : "h-9"}
+                  type="password"
+                  // Пароль руководителя на складском компьютере не запоминаем.
+                  autoComplete="off"
+                  value={password}
+                  aria-invalid={add.error === "devices.confirmNeeded" || undefined}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              ) : (
+                <Input
+                  className={stacked ? "h-10" : "h-9"}
+                  value={code}
+                  placeholder="UK-STF-…"
+                  autoComplete="off"
+                  aria-invalid={add.error === "devices.confirmNeeded" || undefined}
+                  onChange={(e) => setCode(e.target.value)}
+                />
+              )}
+            </label>
+            <PasswordSwitch byPassword={byPassword} onChange={setByPassword} />
+          </div>
+        )}
+        {add.error && <FormError>{t(add.error)}</FormError>}
         <Button type="submit" size={stacked ? "lg" : "default"} disabled={add.pending}>
           <MonitorSmartphone />
           {t("devices.bind")}
         </Button>
       </form>
-      {confirming ? (
-        <BindConfirmStep
-          pending={add.pending}
-          error={add.error && add.error !== "devices.confirmNeeded" ? add.error : null}
-          onConfirm={(confirm) => void bind(confirm)}
-        />
-      ) : (
-        add.error && <FormError>{t(add.error)}</FormError>
-      )}
     </>
   );
 }

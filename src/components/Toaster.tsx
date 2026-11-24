@@ -8,8 +8,8 @@ import { ToastCard } from "@/components/ui/toast";
 const LEAVE_MS = 200;
 
 /**
- * Стопка уведомлений: слева внизу на компьютере (справа — панели, и тост
- * закрывал их «Сохранить», обход 15.11), на телефоне — во всю ширину
+ * Стопка уведомлений: справа внизу на компьютере, как привычно во всём вебе
+ * (23.11 их унесли влево, Кирилл 24.11 вернул вправо), на телефоне — во всю ширину
  * над нижней панелью рабочего места (иначе закрывает смену). Самое свежее —
  * снизу, не больше трёх (`lib/notice`). Сама область кликов не ловит, только
  * карточки.
@@ -20,7 +20,7 @@ export function Toaster() {
   return (
     <section
       aria-label={t("notice.region")}
-      className="pointer-events-none fixed bottom-24 left-4 right-4 z-50 flex flex-col items-stretch gap-2 md:bottom-6 md:left-6 md:right-auto md:w-[26rem]"
+      className="pointer-events-none fixed bottom-24 left-4 right-4 z-50 flex flex-col items-stretch gap-2 md:bottom-6 md:left-auto md:right-6 md:w-[26rem]"
     >
       {toasts.map((n) => (
         <ToastItem key={n.id} notice={n} />
@@ -59,6 +59,18 @@ function ToastItem({ notice }: { notice: Notice }) {
     <ToastCard
       tone={notice.tone}
       text={text}
+      detail={notice.detail}
+      open={
+        notice.open
+          ? {
+              label: t("notice.open"),
+              onClick: () => {
+                notice.open?.();
+                setLeaving(true);
+              },
+            }
+          : undefined
+      }
       leaving={leaving}
       repeat={{ n: notice.count, label: t("notice.repeat", { n: notice.count }) }}
       onMouseEnter={() => setPaused(true)}

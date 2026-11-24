@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AtSign, IdCard, Pencil, Phone, Trash2 } from "lucide-react";
+import { AtSign, Pencil, Phone, QrCode, Trash2 } from "lucide-react";
 import type { StaffMember } from "@/lib/types";
 import { useEditor } from "@/lib/store";
 import { badgeRepository, staffRepository } from "@/lib/data";
@@ -102,7 +102,7 @@ export function StaffRow({
             aria-label={t("staff.badge")}
             className="flex size-11 items-center md:size-7 justify-center rounded text-muted-foreground transition hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
           >
-            <IdCard className="size-3.5" />
+            <QrCode className="size-3.5" />
           </button>
           {badgeOpen && <BadgePanel member={m} onClose={() => setBadgeOpen(false)} t={t} />}
           {/* Правка — отдельной кнопкой: нажатие на имя неочевидно (Кирилл 13.11). */}

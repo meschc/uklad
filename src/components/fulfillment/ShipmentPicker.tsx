@@ -172,7 +172,7 @@ function ShipmentCard({
               ? "bg-primary/10 text-primary"
               : sh.status === "closed"
                 ? "bg-muted text-muted-foreground"
-                : "bg-warning/15 text-warning",
+                : "bg-warning-fill/25 text-warning",
           )}
         >
           {t(`recv.status.${sh.status}`)}

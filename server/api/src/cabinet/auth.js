@@ -127,7 +127,16 @@ function cookieValue(req, name) {
   return "";
 }
 
-function createAuth({ pool, cfg, send, readBody, log, mail, onRegister = null }) {
+function createAuth({
+  pool,
+  cfg,
+  send,
+  readBody,
+  log,
+  mail,
+  onRegister = null,
+  onVerified = null,
+}) {
   // Локально по http браузер не сохранит куку с `Secure` и `__Host-`.
   const local = !cfg.publicUrl.startsWith("https://");
   const COOKIE = local ? "uklad_session" : "__Host-uklad_session";
@@ -285,7 +294,6 @@ function createAuth({ pool, cfg, send, readBody, log, mail, onRegister = null })
           kind: b.kind,
           company,
           name: String(b.name ?? "").slice(0, 200),
-          orgId: rows[0].org_id,
         });
       } catch (e) {
         log.error("[uklad] регистрация не попала в админку:", e?.message);
@@ -372,8 +380,15 @@ function createAuth({ pool, cfg, send, readBody, log, mail, onRegister = null })
   }
 
   const verify = (req, res) =>
-    withCode(req, res, "verify", async (c, accountId) => {
+    withCode(req, res, "verify", async (c, accountId, b) => {
       const { rows } = await c.query(`SELECT auth.confirm_email($1) AS org_id`, [accountId]);
+      // Почта подтверждена — карточка админки связывается с компанией
+      // (`admin/registered.js`). Сбой записи не мешает входу.
+      try {
+        onVerified?.({ email: readEmail(b), orgId: rows[0].org_id });
+      } catch (e) {
+        log.error("[uklad] подтверждение не связало карточку админки:", e?.message);
+      }
       return { orgId: rows[0].org_id, cookie: await startPasswordSession(c, accountId) };
     });
 

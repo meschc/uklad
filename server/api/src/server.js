@@ -535,7 +535,7 @@ function main() {
     pool = new pg.Pool({ connectionString: process.env.DATABASE_URL, max: 10 });
     // Обрыв простаивающего соединения не должен ронять процесс.
     pool.on("error", (e) => console.error("[uklad] база:", e.message));
-    const { registeredAccount } = require("./admin/registered");
+    const { registeredAccount, verifiedAccount } = require("./admin/registered");
     const auth = createAuth({
       pool,
       cfg,
@@ -544,6 +544,7 @@ function main() {
       log: console,
       mail,
       onRegister: (r) => registeredAccount(db.raw, r, new Date()),
+      onVerified: (r) => verifiedAccount(db.raw, r, new Date()),
     });
     auth.purge();
     setInterval(auth.purge, DAY_MS).unref();

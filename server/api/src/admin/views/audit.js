@@ -39,6 +39,7 @@ const ACTION = {
   manager_create: "Добавлен менеджер",
   manager_edit: "Изменён менеджер",
   account_register: "Регистрация в кабинете",
+  account_link: "Карточка связана с компанией кабинета",
   demo_issue: "Выдана демо-ссылка",
   demo_revoke: "Демо-ссылка отозвана",
 };

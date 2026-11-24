@@ -37,7 +37,9 @@ export function ImagePicker({
   };
 
   return (
-    <div className={large ? "flex flex-col gap-1" : "flex flex-col items-end gap-1"}>
+    // Картинка и кнопки — у левого края строки; ошибка ниже их не сдвигает
+    // (было items-end: длинная ошибка уводила кнопку вправо, Кирилл 24.11).
+    <div className="flex flex-col items-start gap-1">
       <div className="flex items-center gap-3">
         {/* Картинка и кнопка — одной высоты 36, как поле рядом: иначе кнопка
             «Загрузить» встаёт на пару пикселей ниже имени (Кирилл 12 ноя). */}

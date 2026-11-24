@@ -61,6 +61,9 @@ export function ApprovalsScreen() {
   const [tick, setTick] = useState(0);
   const decide = useCommand(switchRepository.decide);
   const [kind, setKind] = useState<ApprovalKind | "all">("all");
+  // Вкладки «Ждут решения» / «Решённые» (Кирилл 24.11). Решённым бывает только
+  // спорный товар: смена процесса и возражения продавца после ответа уходят.
+  const [tab, setTab] = useState<"open" | "done">("open");
   const [query, setQuery] = useState("");
   const disputes = useEditor((s) => s.disputes);
   const staff = useEditor((s) => s.warehouse.staff);
@@ -91,30 +94,36 @@ export function ApprovalsScreen() {
   };
 
   const counts = useMemo(() => {
-    const open = disputes.filter((d) => !d.resolution);
+    // Метки вида считают то, что во вкладке: ждущее или решённое.
+    const inTab = disputes.filter((d) => (tab === "done") === Boolean(d.resolution));
     const out = {
-      switch: items?.length ?? 0,
-      seller: openObjections(answers).length,
+      switch: tab === "open" ? (items?.length ?? 0) : 0,
+      seller: tab === "open" ? openObjections(answers).length : 0,
     } as Record<ApprovalKind, number>;
     for (const k of Object.keys(GOODS) as GoodsKind[])
-      out[k] = open.filter((d) => GOODS[k].includes(d.kind)).length;
+      out[k] = inTab.filter((d) => GOODS[k].includes(d.kind)).length;
     return out;
-  }, [disputes, items, answers]);
-  const total = KINDS.reduce((n, k) => n + counts[k], 0);
-  const hasHistory = disputes.some((d) => d.resolution);
+  }, [disputes, items, answers, tab]);
+  const inTabTotal = KINDS.reduce((n, k) => n + counts[k], 0);
+  const total =
+    (items?.length ?? 0) +
+    openObjections(answers).length +
+    disputes.filter((d) => !d.resolution).length;
+  const doneCount = disputes.filter((d) => d.resolution).length;
+  const hasHistory = doneCount > 0;
 
   const nameOf = (id: string) => staff?.find((m) => m.id === id)?.name ?? id;
   const q = query.trim().toLowerCase();
   const switches = (items ?? []).filter((r) => !q || nameOf(r.staffId).toLowerCase().includes(q));
-  const showSwitch = maySwitch && (kind === "all" || kind === "switch");
-  const showSeller = kind === "all" || kind === "seller";
+  const showSwitch = tab === "open" && maySwitch && (kind === "all" || kind === "switch");
+  const showSeller = tab === "open" && (kind === "all" || kind === "seller");
   const goodsKinds =
     kind === "all" ? undefined : kind === "switch" || kind === "seller" ? null : GOODS[kind];
 
   // Метка фильтра — только у вида, где что-то ждёт, и у выбранного: шесть
   // пустых сегментов на телефоне не помещаются и ничего не говорят.
   const options = [
-    { value: "all" as const, label: `${t("approvals.kind.all")} ${total}` },
+    { value: "all" as const, label: `${t("approvals.kind.all")} ${inTabTotal}` },
     ...KINDS.filter((k) => (k !== "switch" || maySwitch) && (counts[k] > 0 || k === kind)).map(
       (k) => ({ value: k, label: `${t(`approvals.kind.${k}` as MsgKey)} ${counts[k]}` }),
     ),
@@ -122,18 +131,27 @@ export function ApprovalsScreen() {
 
   if (items === null)
     return (
-      <ScreenShell title={t("approvals.title")} wide>
+      <ScreenShell title={t("approvals.title")} subtitle={t("approvals.lead")} wide>
         {null}
       </ScreenShell>
     );
 
   return (
-    <ScreenShell title={t("approvals.title")} wide>
+    <ScreenShell title={t("approvals.title")} subtitle={t("approvals.lead")} wide>
       {decide.error && <FormError>{t(decide.error)}</FormError>}
       {total === 0 && !hasHistory ? (
         <EmptyState icon={<ShieldCheck className="size-5" />} title={t("approvals.emptyTitle")} />
       ) : (
         <>
+          <Segmented
+            value={tab}
+            onChange={setTab}
+            ariaLabel={t("approvals.tab")}
+            options={[
+              { value: "open", label: `${t("approvals.tab.open")} ${total}` },
+              { value: "done", label: `${t("approvals.tab.done")} ${doneCount}` },
+            ]}
+          />
           <div className="flex flex-wrap items-center gap-2">
             <TableSearch value={query} onChange={setQuery} placeholder={t("common.search")} />
             {/* На телефоне виды не помещаются в строку — листаются вбок. */}
@@ -147,7 +165,7 @@ export function ApprovalsScreen() {
               />
             </div>
           </div>
-          {total === 0 && (
+          {tab === "open" && total === 0 && (
             <EmptyState
               icon={<ShieldCheck className="size-5" />}
               title={t("approvals.emptyTitle")}
@@ -169,7 +187,7 @@ export function ApprovalsScreen() {
           {showSeller && <SellerObjections query={query} canDecide={mayDecide} />}
           {goodsKinds !== null && (
             <EmbeddedShell.Provider value={true}>
-              <DisputesScreen kinds={goodsKinds} query={query} inApprovals />
+              <DisputesScreen kinds={goodsKinds} query={query} inApprovals show={tab} />
             </EmbeddedShell.Provider>
           )}
         </>
