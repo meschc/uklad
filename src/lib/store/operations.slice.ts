@@ -98,6 +98,31 @@ export const createOperationsSlice: SliceCreator<OperationsSlice> = (set) => ({
       return { serviceSettings: { ...s.serviceSettings, custom: [...list, service] } };
     }),
 
+  updateService: (kind, { name, note }) =>
+    set((s) => {
+      const cur = s.serviceSettings;
+      const clean = (v: string | undefined) => v?.trim().slice(0, 500) || undefined;
+      const notes = { ...cur.notes };
+      const n = clean(note);
+      if (n) notes[kind] = n;
+      else delete notes[kind];
+      if (kind.startsWith("custom:")) {
+        const nm = clean(name)?.slice(0, 80);
+        return {
+          serviceSettings: {
+            ...cur,
+            notes,
+            custom: (cur.custom ?? []).map((c) => (c.kind === kind && nm ? { ...c, name: nm } : c)),
+          },
+        };
+      }
+      const names = { ...cur.names };
+      const nm = clean(name)?.slice(0, 80);
+      if (nm) names[kind] = nm;
+      else delete names[kind];
+      return { serviceSettings: { ...cur, names, notes } };
+    }),
+
   setServicePrice: (kind, price) =>
     set((s) => {
       const prices = { ...s.serviceSettings.prices };

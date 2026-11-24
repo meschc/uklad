@@ -53,7 +53,6 @@ export const ru = {
 
   "ops.services.hint":
     "Включите то, что делает ваш склад. Выключенное не появится в заданиях и в отчёте.",
-  "ops.services.auto": "считается само",
   "ops.services.price": "Цена за {unit}, ₽",
   "ops.services.noPrice": "без цены",
 
@@ -101,11 +100,16 @@ export const ru = {
   "ops.export.sheetOps": "Операции",
   "ops.export.pdfHint": "Откроется печать — выберите «Сохранить как PDF»",
   "ops.export.made": "Сформирован",
-  "ops.report.unpriced":
-    "У части услуг не задана цена — итог без них. Цены задаются на вкладке «Услуги».",
+  "ops.report.unpriced": "У части услуг не задана цена — итог без них.",
+  "ops.report.toServices": "Задать цены в «Услугах»",
+  "ops.edit.title": "Изменить услугу",
+  "ops.edit.note": "Описание",
+  "ops.edit.notePlaceholder": "Что входит в услугу и как она считается",
+  "ops.svcNote.storage_pallet":
+    "Сутки с размещения на место до ухода с полки. Паллето-место — ячейка с отметкой «паллетное место» на плане.",
+  "ops.svcNote.storage_box":
+    "Сутки с размещения на место до ухода с полки. Всё, что не на паллетном месте, — короба.",
   "ops.report.empty": "За этот период услуг не было",
-  "ops.report.storageHint":
-    "Хранение — сутки с размещения на место до ухода с полки. Паллето-место — ячейка полки с отметкой «паллетное место» на плане, остальная тара — короба.",
   "ops.report.storageLoading": "Считаем сутки хранения…",
   "ops.report.storageFailed": "Сутки хранения не загрузились — итог пока без хранения.",
   "ops.services.twoStage": "Приёмка в два этапа",
@@ -183,7 +187,6 @@ export const en: Record<keyof typeof ru, string> = {
 
   "ops.services.hint":
     "Turn on what your warehouse does. Anything off won't appear in tasks or the report.",
-  "ops.services.auto": "counted automatically",
   "ops.services.price": "Price per {unit}, ₽",
   "ops.services.noPrice": "no price",
 
@@ -230,11 +233,16 @@ export const en: Record<keyof typeof ru, string> = {
   "ops.export.sheetOps": "Operations",
   "ops.export.pdfHint": "The print dialog opens — choose “Save as PDF”",
   "ops.export.made": "Generated",
-  "ops.report.unpriced":
-    "Some services have no price — the total leaves them out. Set prices in Services.",
+  "ops.report.unpriced": "Some services have no price — the total leaves them out.",
+  "ops.report.toServices": "Set prices in Services",
+  "ops.edit.title": "Edit service",
+  "ops.edit.note": "Description",
+  "ops.edit.notePlaceholder": "What the service includes and how it is counted",
+  "ops.svcNote.storage_pallet":
+    "Per day from putaway until it leaves the shelf. A pallet place is a cell marked as a pallet place on the plan.",
+  "ops.svcNote.storage_box":
+    "Per day from putaway until it leaves the shelf. Anything not on a pallet place counts as a box.",
   "ops.report.empty": "No services in this period",
-  "ops.report.storageHint":
-    "Storage counts days from placement until the goods leave the shelf. A pallet place is a cell on a shelf marked “pallet place” on the plan; other containers count as boxes.",
   "ops.report.storageLoading": "Counting storage days…",
   "ops.report.storageFailed": "Storage days did not load — the total leaves storage out for now.",
   "ops.services.twoStage": "Two-stage receiving",

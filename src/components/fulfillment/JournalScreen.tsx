@@ -18,6 +18,8 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Segmented } from "@/components/ui/segmented";
 import { FormError } from "@/components/ui/field";
+import { DatePicker } from "@/components/ui/date-picker";
+import { TimeInput } from "@/components/ui/time-input";
 import { EmptyState, ScreenShell } from "./ScreenShell";
 import { actionKey, useEntryText } from "./journalText";
 import { GoodsPath } from "./GoodsPath";
@@ -30,9 +32,11 @@ const LIVE_MS = 5000;
  * «Журнал действий» (Кирилл 15.11): общий журнал склада для руководителя.
  * Каждый скан, этикетка, отметка смены, решение старшего и правка в кабинете —
  * строкой со временем до секунды, сотрудником и устройством. Фильтры по
- * процессу, сотруднику, товару или таре и «только ошибки»; «До момента» —
+ * процессу, сотруднику, товару или таре и «только ошибки»; «До даты» (календарь и время) —
  * посмотреть конкретную секунду, например под запись камеры.
  */
+const pad = (n: number) => String(n).padStart(2, "0");
+
 export function JournalScreen() {
   const t = useT();
   const [mode, setMode] = useState<"feed" | "path">("feed");
@@ -68,7 +72,11 @@ function JournalFeed({ tabs }: { tabs: ReactNode }) {
   const [step, setStep] = useState<JournalStep | "">("");
   const [who, setWho] = useState("");
   const [errors, setErrors] = useState<"all" | "errors">("all");
-  const [moment, setMoment] = useState("");
+  // «На момент» — календарём ДС и временем, как в остальных экранах (Кирилл
+  // 22.11: «в журнале нет нормального календаря»). Без времени — конец дня.
+  const [day, setDay] = useState("");
+  const [time, setTime] = useState(23 * 60 + 59);
+  const moment = day ? `${day}T${pad(Math.floor(time / 60))}:${pad(time % 60)}:59` : "";
   const [find, setFind] = useState("");
   const [code, setCode] = useState("");
   const [entries, setEntries] = useState<ActivityEntry[] | null>(null);
@@ -146,7 +154,8 @@ function JournalFeed({ tabs }: { tabs: ReactNode }) {
     setStep("");
     setWho("");
     setErrors("all");
-    setMoment("");
+    setDay("");
+    setTime(23 * 60 + 59);
     setFind("");
     setCode("");
   };
@@ -197,15 +206,15 @@ function JournalFeed({ tabs }: { tabs: ReactNode }) {
             if (e.key === "Enter") setCode(find.trim());
           }}
         />
-        <Input
-          type="datetime-local"
-          step={1}
-          className="h-8 w-52"
-          value={moment}
-          title={t("journal.filter.moment")}
+        <DatePicker
+          value={day}
+          onChange={setDay}
+          lang={t.lang}
+          placeholder={t("journal.filter.moment")}
           aria-label={t("journal.filter.moment")}
-          onChange={(e) => setMoment(e.target.value)}
+          className="h-8"
         />
+        {day && <TimeInput value={time} onChange={setTime} ariaLabel={t("journal.filter.time")} />}
         <Segmented
           value={errors}
           onChange={setErrors}

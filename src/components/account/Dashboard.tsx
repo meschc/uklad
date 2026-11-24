@@ -337,7 +337,17 @@ const THUMB_PAD_CELLS = 1;
 function WarehouseThumb({ warehouse: w }: { warehouse: Warehouse }) {
   const mods = w.floors[0]?.modules ?? [];
   const box = planBounds(mods, THUMB_PAD_CELLS);
-  if (!box) return null;
+  // Плана нет (у большинства складов его не будет) — обложка из ДС: синий
+  // фон и крупное название, а не пустая серая клетка (Кирилл 22.11). Фото
+  // склада — после запуска.
+  if (!box)
+    return (
+      <div className="absolute inset-0 flex items-end bg-primary p-4">
+        <span className="line-clamp-2 text-2xl font-semibold leading-tight text-primary-foreground [overflow-wrap:anywhere]">
+          {w.name}
+        </span>
+      </div>
+    );
 
   return (
     <svg

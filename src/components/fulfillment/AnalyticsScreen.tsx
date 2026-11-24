@@ -60,7 +60,7 @@ export function AnalyticsScreen() {
   const partialPct = pickedTotal ? Math.round((req.partial / pickedTotal) * 100) : 0;
 
   return (
-    <ScreenShell title={t("an.title")} subtitle={t("an.subtitle")} wide>
+    <ScreenShell title={t("an.title")} wide>
       <ArchiveNote />
       {/* Верхний ряд: четыре числа, отвечающие на четыре разных вопроса */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">

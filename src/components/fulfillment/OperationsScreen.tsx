@@ -32,7 +32,7 @@ export function OperationsScreen() {
         />
       </div>
       {tab === "services" && <ServicesPanel />}
-      {tab === "report" && <ReportPanel />}
+      {tab === "report" && <ReportPanel onOpenServices={() => setTab("services")} />}
     </ScreenShell>
   );
 }
