@@ -52,9 +52,21 @@ describe("Безопасность и данные", () => {
     expect(leave).toHaveBeenCalledWith("deleted");
   });
 
+  test("пока сервер не ответил — «Проверяем…», а не «только это устройство»", async () => {
+    // Кирилл 24.11: при входе в профиль на миг мелькало «только это
+    // устройство», хотя вход открыт и на других.
+    let answer: (v: unknown) => void = () => {};
+    repo.info.mockReturnValue(new Promise((r) => (answer = r)));
+    render(<AccountDataSection />);
+    expect(screen.getByText("Проверяем…")).toBeTruthy();
+    expect(screen.queryByText("Только это устройство")).toBeNull();
+    answer(ok({ email: "a@b.ru", deleteAt: null, otherSessions: 1 }));
+    expect(await screen.findByText("Ещё устройств со входом: 1")).toBeTruthy();
+  });
+
   test("выход на других устройствах показывает, сколько закрыто", async () => {
     render(<AccountDataSection />);
-    expect(await screen.findByText("Вход открыт ещё на 2")).toBeTruthy();
+    expect(await screen.findByText("Ещё устройств со входом: 2")).toBeTruthy();
     await userEvent.click(screen.getByRole("button", { name: /^Выйти/ }));
     expect(await screen.findByText("Вышли на других устройствах: 2")).toBeTruthy();
   });

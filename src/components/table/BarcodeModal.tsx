@@ -21,14 +21,16 @@ const MAX_COPIES = 500;
  * что штрихкод, а по факту QR; тогда не скачать PNG, а напечатать, и шаблон
  * такой же, как на странице ярлыков»).
  *
- * Шаблон — первый сохранённый на странице «Ярлыки», то есть тот же, по которому
- * склад печатает товар оттуда. Код на ярлыке товара — всегда штрихкод EAN-13:
+ * Вид у ярлыка товара свой и постоянный: 58×40 горизонтально, название,
+ * штрихкод, цифры (Кирилл 24.11). Раньше брался первый шаблон со страницы
+ * «Ярлыки», и у склада, где первым стоит короб 58×60 с маркировкой, товар
+ * печатался коробом. Код на ярлыке товара — всегда штрихкод:
  * это номер из каталога, его читает и наш сканер, и сканер маркетплейса.
  * Порядкового номера «1/12» у товара нет — это не тара.
  */
-const FALLBACK: LabelTemplate = {
+const PRODUCT_LABEL: LabelTemplate = {
   id: "product-default",
-  name: "",
+  name: "58×40",
   widthMm: 58,
   heightMm: 40,
   layout: "horizontal",
@@ -40,19 +42,13 @@ const FALLBACK: LabelTemplate = {
 
 export function BarcodeModal({ product, onClose }: { product: Product; onClose: () => void }) {
   const t = useT();
-  const templates = useEditor((s) => s.labelTemplates);
   const warehouseName = useEditor((s) => s.warehouse.name);
   const [copies, setCopies] = useState(1);
   // На ярлык — тот же код, что в карточке: по нему сканер и найдёт товар.
   // Раньше код не из 13 цифр печатался «исправленным» EAN, и напечатанный
   // ярлык товар не находил. Нет штрихкода — артикул.
   const code = product.barcode.trim() || product.sku;
-  const base = templates[0] ?? FALLBACK;
-  const tpl: LabelTemplate = {
-    ...base,
-    codeType: "barcode",
-    elements: base.elements.filter((e) => e !== "seq"),
-  };
+  const tpl = PRODUCT_LABEL;
   const n = Math.max(1, Math.min(MAX_COPIES, Math.round(copies) || 1));
 
   return createPortal(
@@ -75,9 +71,7 @@ export function BarcodeModal({ product, onClose }: { product: Product; onClose: 
             total={n}
           />
         </FitToWidth>
-        <p className="text-xs text-muted-foreground">
-          {t("barcode.template", { name: base.name || `${tpl.widthMm}×${tpl.heightMm}` })}
-        </p>
+        <p className="text-xs text-muted-foreground">{t("barcode.template", { name: tpl.name })}</p>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="barcode-copies">{t("barcode.copies")}</Label>
           <Input

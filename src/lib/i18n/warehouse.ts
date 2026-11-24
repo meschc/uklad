@@ -459,6 +459,7 @@ export const ru = {
 
   // --- Аналитика (§9) -------------------------------------------------------
   "an.title": "Аналитика склада",
+  "an.subtitle": "Склад за выбранный период",
   "an.fill": "Занятость",
   "an.fillHint": "{used} из {total} ячеек",
   "an.received": "Принято единиц",
@@ -955,6 +956,7 @@ export const en: Record<keyof typeof ru, string> = {
 
   // --- Analytics (§9) --------------------------------------------------------
   "an.title": "Warehouse analytics",
+  "an.subtitle": "The warehouse over the selected period",
   "an.fill": "Occupancy",
   "an.fillHint": "{used} of {total} cells",
   "an.received": "Units received",

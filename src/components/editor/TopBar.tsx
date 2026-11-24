@@ -6,6 +6,7 @@ import { useT, type MsgKey } from "@/lib/i18n";
 import { Segmented } from "@/components/ui/segmented";
 import { SHOW_3D } from "./constants";
 import { SaveStatus } from "./SaveStatus";
+import { cn } from "@/lib/utils";
 
 type ModeTab = { id: ViewMode; key: MsgKey; icon: typeof Layers };
 
@@ -30,7 +31,9 @@ export function TopBar() {
   const t = useT();
 
   return (
-    <header className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-card px-3">
+    // Три колонки 1fr · auto · 1fr: переключатель стоит ровно по центру и не
+    // уезжает, когда справа появляются «Сохранено» и печать (Кирилл 24.11).
+    <header className="grid h-12 shrink-0 grid-cols-[1fr_auto_1fr] items-center border-b border-border bg-card px-3">
       {/* Слева: путь склад/этаж. Логотипа тут нет — он в боковом рельсе, а
           две «Уклад» подряд читались как дубль (п.1). */}
       <div className="flex items-center gap-2.5"></div>
@@ -38,7 +41,10 @@ export function TopBar() {
       {/* Отмена / повтор живут на холсте, рядом с зумом (п.5) */}
 
       {/* По центру: режимы просмотра + тепловая карта отдельным окном (п.9) */}
-      <div className="flex items-center gap-1.5">
+      {/* Кнопка загруженности висит справа от переключателя (absolute), а не
+          в общей строке: иначе на «Плане» она расширяет середину и сдвигает
+          «Таблица / План» влево. */}
+      <div className="relative flex items-center">
         {/* План — только на компьютере: на телефоне один режим, таблица. */}
         <Segmented
           className="max-md:hidden"
@@ -55,13 +61,18 @@ export function TopBar() {
         <Button
           variant="ghost"
           size="sm"
+          // Загруженность — про план: на компьютере только на «Плане» (Кирилл
+          // 24.11). На телефоне плана нет, там кнопка остаётся (Кирилл 18.11).
           // Без строки features window.open открывает обычную новую вкладку;
           // именованный target переиспользует уже открытую карту.
           onClick={() => window.open(`${window.location.pathname}?heatmap=1`, "uklad-heatmap")}
           title={t("heat.title")}
           // Загруженность остаётся и на телефоне (Кирилл 18.11) — единственное
           // из плана, что там нужно; печать плана — только за компьютером.
-          className="gap-1.5 rounded-lg bg-muted px-2.5 text-muted-foreground hover:text-foreground [&_svg]:size-3.5"
+          className={cn(
+            "gap-1.5 rounded-lg bg-muted px-2.5 text-muted-foreground hover:text-foreground md:absolute md:left-full md:ml-1.5 [&_svg]:size-3.5",
+            !onPlan && "md:hidden",
+          )}
         >
           <Gauge />
           {t("heat.open")}
@@ -70,7 +81,7 @@ export function TopBar() {
 
       {/* Справа: статус автосохранения + печать плана. Смена темы переехала в
           боковой рельс — здесь нужнее печатный план для сверки (п.9). */}
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center justify-end gap-1.5">
         {onPlan && <SaveStatus />}
         {onPlan && !isSeller && (
           <Button

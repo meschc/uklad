@@ -48,7 +48,7 @@ describe("3D без видеокарты", () => {
     render(<View3D />);
 
     // Act
-    await user.click(screen.getByRole("button", { name: "2D-план" }));
+    await user.click(screen.getByRole("button", { name: "План" }));
 
     // Assert
     expect(useEditor.getState().mode).toBe("2d");

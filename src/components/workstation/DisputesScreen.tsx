@@ -166,7 +166,7 @@ export function DisputesScreen({
         )
       ) : (
         <TableScroll>
-          <table className="table-stack w-auto border-collapse text-sm">
+          <table className="table-stack w-full border-collapse text-sm">
             <thead className={TABLE_HEAD}>
               <tr className={TABLE_HEAD_ROW}>
                 <th className="px-3 py-2 font-normal">{t("disputes.col.product")}</th>

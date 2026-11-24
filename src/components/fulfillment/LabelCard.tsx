@@ -180,13 +180,14 @@ export function LabelCard({
     </div>
   );
 
-  // Ярлык товара со штрихкодом (Кирилл 13.11): штрихкод по центру сверху,
-  // название под ним, номер — во всю ширину. Моноширинная цифра ≈ 0,6 em,
+  // Ярлык товара со штрихкодом (Кирилл 24.11, в третий раз): сверху
+  // название, не крупнее двух строк, под ним штрихкод, под штрихкодом цифры.
+  // Штрихкод забирает всё, что осталось по высоте. Моноширинная цифра ≈ 0,6 em,
   // отсюда кегль, при котором номер ровно встаёт в строку.
   if (headline && tpl.codeType !== "qr") {
     const inner = tpl.widthMm - 2 * plan.padMm;
     const shown = formatBarcode(code);
-    const numberMm = Math.min(inner / (Math.max(shown.length, 1) * 0.6), tpl.heightMm * 0.16);
+    const numberMm = Math.min(inner / (Math.max(shown.length, 1) * 0.6), tpl.heightMm * 0.14);
     return (
       <div
         className={cn(
@@ -200,22 +201,17 @@ export function LabelCard({
           gap: MM(plan.gapMm),
         }}
       >
-        <div className="w-full shrink-0" style={{ height: MM(tpl.heightMm * 0.42) }}>
-          <Code128Svg code={code} fit />
-        </div>
         <span
-          className="line-clamp-2 min-h-0 w-full flex-1 font-bold leading-[1.1]"
-          style={{
-            fontSize: MM(
-              Math.min(Math.max(plan.headlineMm, tpl.heightMm * 0.08), tpl.heightMm * 0.11),
-            ),
-            textWrap: "balance",
-          }}
+          className="line-clamp-2 w-full shrink-0 font-semibold leading-[1.15]"
+          style={{ fontSize: MM(tpl.heightMm * 0.075), textWrap: "balance" }}
         >
           {headline}
         </span>
+        <div className="min-h-0 w-full flex-1">
+          <Code128Svg code={code} fit />
+        </div>
         <span
-          className="w-full whitespace-nowrap font-mono font-bold leading-none tabular-nums"
+          className="w-full shrink-0 whitespace-nowrap font-mono font-bold leading-none tabular-nums"
           style={{ fontSize: MM(numberMm) }}
         >
           {shown}
