@@ -203,12 +203,12 @@ test.describe("Демо WMS", () => {
     });
   });
 
-  test("логотип рельса возвращает в кабинет", async ({ page }) => {
+  test("логотип рельса у владельца открывает все склады", async ({ page }) => {
     await page.goto("/app/");
     await warehouseCards(page).first().click();
 
     const rail = page.getByRole("navigation", { name: "Разделы" });
-    await rail.getByRole("button", { name: "На главную" }).click();
+    await rail.getByRole("button", { name: "Все склады" }).click();
 
     await expect(page.getByRole("heading", { name: "Склады" })).toBeVisible();
     // Кабинет — уровень выше склада, рельса на нём быть не должно.

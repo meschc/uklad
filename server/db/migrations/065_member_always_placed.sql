@@ -21,6 +21,9 @@ ALTER TABLE uklad.roles NO FORCE ROW LEVEL SECURITY;
 
 -- Старые записи без склада: склад их роли (058), иначе первый живой склад
 -- компании. Живых компаний до запуска нет, это тестовые строки staging.
+-- На живых данных так не переносить («Безопасность продукта» 24.11): первый
+-- склад даёт человеку доступ, которого ему не выдавали; там — отключить и
+-- попросить владельца назначить склад.
 UPDATE uklad.members m SET warehouse_ref = coalesce(
   (SELECT r.warehouse_ref FROM uklad.roles r WHERE r.org_id = m.org_id AND r.id = m.role_id),
   (SELECT w.ref FROM uklad.warehouses w
