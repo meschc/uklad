@@ -54,7 +54,7 @@ export const ru = {
   "barcode.title": "Ярлык товара",
   "barcode.notEncodable": "Код не кодируется в Code128",
   "barcode.copies": "Сколько ярлыков",
-  "barcode.template": "Шаблон «{name}» со страницы «Ярлыки», код — штрихкод товара",
+  "barcode.template": "Ярлык товара {name} мм, горизонтальный: название, штрихкод, цифры",
   // Карточка товара: ручное добавление/редактирование (ТЗ, разд. 2.5)
   "product.addTitle": "Новый товар",
   "product.editTitle": "Редактирование товара",
@@ -277,7 +277,7 @@ export const en: Record<keyof typeof ru, string> = {
   "barcode.title": "Product label",
   "barcode.notEncodable": "This code cannot be encoded in Code128",
   "barcode.copies": "How many labels",
-  "barcode.template": 'Template "{name}" from the Labels page, product barcode',
+  "barcode.template": "Product label {name} mm, landscape: name, barcode, digits",
   // Product card: manual add/edit (spec 2.5)
   "product.addTitle": "New product",
   "product.editTitle": "Edit product",

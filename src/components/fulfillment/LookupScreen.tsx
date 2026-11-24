@@ -117,7 +117,7 @@ export function LookupScreen() {
     );
 
   return (
-    <ScreenShell title={t("lookup.title")} wide>
+    <ScreenShell title={t("lookup.title")} subtitle={t("lookup.subtitle")} wide>
       {field}
 
       {printable && templates[0] && (

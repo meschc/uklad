@@ -133,7 +133,7 @@ export function StaffOutput() {
       </div>
       <p className="max-w-2xl text-xs text-muted-foreground">{t("staff.out.lead")}</p>
       <TableScroll>
-        <table className="table-stack w-auto border-collapse text-sm">
+        <table className="table-stack w-full border-collapse text-sm">
           <thead className={TABLE_HEAD}>
             <tr className={TABLE_HEAD_ROW}>
               <SortTh table={table.table} id="name">

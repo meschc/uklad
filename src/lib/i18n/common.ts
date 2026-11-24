@@ -11,7 +11,7 @@
 
 export const ru = {
   // Навигация / верхний уровень
-  "nav.mode.2d": "2D-план",
+  "nav.mode.2d": "План",
   "nav.mode.table": "Таблица",
   "nav.mode.3d": "3D",
   "nav.backToDashboard": "В личный кабинет",
@@ -26,7 +26,8 @@ export const ru = {
   "dash.greetingNoName": "Здравствуйте!",
   "account.section": "Безопасность и данные",
   "account.devices": "Другие устройства",
-  "account.devicesOther": "Вход открыт ещё на {n}",
+  "account.devicesOther": "Ещё устройств со входом: {n}",
+  "account.devicesLoading": "Проверяем…",
   "account.devicesNone": "Только это устройство",
   "account.devicesClosed": "Вышли на других устройствах: {n}",
   "account.devicesRevoke": "Выйти на них",
@@ -368,7 +369,7 @@ export const ru = {
 
 export const en: Record<keyof typeof ru, string> = {
   // Navigation / top level
-  "nav.mode.2d": "2D plan",
+  "nav.mode.2d": "Plan",
   "nav.mode.table": "Table",
   "nav.mode.3d": "3D",
   "nav.backToDashboard": "Back to dashboard",
@@ -384,6 +385,7 @@ export const en: Record<keyof typeof ru, string> = {
   "account.section": "Security and data",
   "account.devices": "Other devices",
   "account.devicesOther": "Signed in on {n} more",
+  "account.devicesLoading": "Checking…",
   "account.devicesNone": "Only this device",
   "account.devicesClosed": "Signed out on other devices: {n}",
   "account.devicesRevoke": "Sign them out",

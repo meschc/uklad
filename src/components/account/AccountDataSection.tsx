@@ -30,6 +30,8 @@ import { FormError } from "@/components/ui/field";
 export function AccountDataSection() {
   const t = useT();
   const [info, setInfo] = useState<AccountInfo | null>(null);
+  /** Ответ ещё не пришёл: до него не говорим «только это устройство» (Кирилл 24.11). */
+  const [loading, setLoading] = useState(true);
   const [closed, setClosed] = useState<number | null>(null);
   const [confirm, setConfirm] = useState(false);
   const [password, setPassword] = useState("");
@@ -37,6 +39,7 @@ export function AccountDataSection() {
   useEffect(() => {
     void accountRepository.info().then((res) => {
       if (res.ok) setInfo(res.data);
+      setLoading(false);
     });
   }, []);
 
@@ -69,11 +72,13 @@ export function AccountDataSection() {
             <span className="text-sm text-muted-foreground">
               {revoke.error
                 ? t(revoke.error)
-                : closed !== null
-                  ? t("account.devicesClosed", { n: closed })
-                  : others > 0
-                    ? t("account.devicesOther", { n: others })
-                    : t("account.devicesNone")}
+                : loading
+                  ? t("account.devicesLoading")
+                  : closed !== null
+                    ? t("account.devicesClosed", { n: closed })
+                    : others > 0
+                      ? t("account.devicesOther", { n: others })
+                      : t("account.devicesNone")}
             </span>
             {others > 0 && (
               <Button size="sm" variant="outline" disabled={revoke.pending} onClick={onRevoke}>
