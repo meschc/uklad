@@ -54,6 +54,25 @@ export const accountRepository = {
     return res.data.status === 200 ? ok(undefined) : fail("account.err.network");
   },
 
+  /**
+   * Сменить пароль: старый обязателен. Сервер гасит все сессии и ставит этой
+   * новую куку — человек остаётся в кабинете, другие устройства выходят.
+   */
+  changePassword: async (password: string, next: string): Promise<Result<void>> => {
+    const res = await attempt(
+      () => apiRequest("POST", "/auth/password", { password, next }),
+      "account.err.network",
+    );
+    if (!res.ok) return res;
+    const { status, body } = res.data;
+    if (status === 200) return ok(undefined);
+    if (status === 403) return fail("account.err.password");
+    if (status === 429) return fail("account.err.tooOften");
+    if (body.error === "weak_password") return fail("login.err.weakPassword");
+    if (body.error === "same_password") return fail("account.err.samePassword");
+    return fail("account.err.network");
+  },
+
   /** Выйти на всех устройствах, кроме этого. Сколько закрыто. */
   revokeOthers: async (): Promise<Result<number>> => {
     const res = await attempt(

@@ -291,3 +291,75 @@ test(
     );
   },
 );
+
+/** Смена пароля из настроек: новая кука и тело ответа. */
+async function changePassword(who, body, ip = "10.0.2.9") {
+  const res = await fetch(base + "/api/auth/password", {
+    method: "POST",
+    headers: {
+      Origin: ORIGIN,
+      "Content-Type": "application/json",
+      "X-Forwarded-For": ip,
+      Cookie: `${cookieName}=${who.cookie}`,
+    },
+    body: JSON.stringify(body),
+  });
+  const m = new RegExp(`${cookieName}=([^;]*)`).exec(res.headers.get("set-cookie") ?? "");
+  return { status: res.status, json: await res.json().catch(() => null), cookie: m?.[1] };
+}
+
+test(
+  "смена пароля: старый обязателен, другие сессии гаснут, эта остаётся, письмо уходит",
+  { skip: SKIP },
+  async () => {
+    const email = "pw-a@sklad.ru";
+    const a = await owner(email, "10.0.2.9");
+    const other = await login(email, "10.0.2.9");
+    const NEXT = "другой-длинный-пароль";
+    // Слабый и тот же — отказ без траты попытки.
+    assert.equal(
+      (await changePassword(a, { password: PW, next: "123" })).json.error,
+      "weak_password",
+    );
+    assert.equal((await changePassword(a, { password: PW, next: PW })).json.error, "same_password");
+    assert.equal((await changePassword(a, { password: "мимо-пароль-1", next: NEXT })).status, 403);
+    // Без входа — 401.
+    assert.equal((await changePassword({ cookie: "x" }, { password: PW, next: NEXT })).status, 401);
+
+    const ok = await changePassword(a, { password: PW, next: NEXT });
+    assert.equal(ok.status, 200, JSON.stringify(ok.json));
+    assert.ok(ok.cookie, "новая кука этой сессии");
+    assert.equal((await call("/api/auth/me", { cookie: ok.cookie })).status, 200);
+    assert.equal((await call("/api/auth/me", { cookie: other.cookie })).status, 401);
+    assert.equal(
+      (await call("/api/auth/me", a)).status,
+      401,
+      "старая кука этой вкладки тоже погасла",
+    );
+    assert.ok(sent.some((m) => m.to === email && /Пароль в Укладе изменён/.test(m.subject)));
+    // Старым паролем больше не войти, новым — да.
+    assert.equal((await login(email, "10.0.2.9")).status, 401);
+    const fresh = await fetch(base + "/api/auth/login", {
+      method: "POST",
+      headers: {
+        Origin: ORIGIN,
+        "Content-Type": "application/json",
+        "X-Forwarded-For": "10.0.2.9",
+      },
+      body: JSON.stringify({ email, password: NEXT }),
+    });
+    assert.equal(fresh.status, 200);
+  },
+);
+
+test("смена пароля: 5 неудач — пауза, как на входе", { skip: SKIP }, async () => {
+  const a = await owner("pw-b@sklad.ru", "10.0.2.10");
+  const NEXT = "другой-длинный-пароль";
+  for (let i = 0; i < 5; i++) {
+    const r = await changePassword(a, { password: `мимо-${i}-пароль`, next: NEXT }, "10.0.2.10");
+    assert.equal(r.status, 403);
+  }
+  const locked = await changePassword(a, { password: PW, next: NEXT }, "10.0.2.10");
+  assert.equal(locked.status, 429, "даже верный пароль ждёт окончания паузы");
+  assert.equal((await call("/api/auth/me", a)).status, 200, "пароль не сменился");
+});

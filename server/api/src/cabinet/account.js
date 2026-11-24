@@ -12,16 +12,22 @@
  *   POST /api/auth/account/delete           — { password } → удаление через 30 дней
  *   POST /api/auth/account/restore          — отменить удаление
  *   POST /api/auth/sessions/revoke-others   — выйти на всех устройствах, кроме этого
+ *   POST /api/auth/password                 — { password, next } → новый пароль
+ *
+ * Смена пароля (Кирилл 24.11) — как у Google: старый пароль обязателен (вкладку
+ * могли оставить открытой), неудачи общие со входом, все сессии гаснут
+ * (триггер на `auth.accounts`), а эта получает новую куку — человек остаётся в
+ * кабинете. На почту — письмо: если меняли не вы, вход через «Забыли пароль».
  */
 /* global require, module */
 /* eslint-disable @typescript-eslint/no-require-imports */
-const { checkPassword } = require("./password");
+const { checkPassword, hashPassword, isAcceptable } = require("./password");
 const { createRateLimit, clientIp } = require("../rateLimit");
-const { deletionLetter } = require("./letters");
+const { deletionLetter, passwordLetter } = require("./letters");
 const { FAIL_WINDOW_MS, FAIL_PAIR, FAIL_EMAIL } = require("./auth");
 
 function createAccount({ pool, auth, send, cfg, log }) {
-  const { readJson, tokenHash, clearCookie, deliver } = auth;
+  const { readJson, tokenHash, clearCookie, deliver, tx, startSession } = auth;
   // Пароль здесь подбирать так же бессмысленно, как на входе.
   const limiter = createRateLimit({ capacity: 10, refillPerMinute: 5 });
 
@@ -41,19 +47,23 @@ function createAccount({ pool, auth, send, cfg, log }) {
     });
   }
 
-  async function remove(req, res) {
-    const b = await readJson(req, res);
-    if (!b) return;
-    if (!limiter.take(clientIp(req, cfg.trustProxy))) {
-      return send(res, 429, { ok: false }, { "Retry-After": "60" });
-    }
-    const hash = tokenHash(req);
-    const me = hash && (await mine(hash));
-    if (!me) return send(res, 401, { ok: false });
-    // Сессию могли украсть: подбор пароля здесь ограничен так же, как на
-    // входе, — 5 неудач на аккаунт с адреса за 15 минут, и неудачи общие с
-    // входом (`auth.login_failures`), а не отдельный счётчик.
+  /**
+   * Вошедший и его пароль верный — иначе ответ уже отправлен. Сессию могли
+   * украсть: подбор пароля здесь ограничен так же, как на входе, — 5 неудач
+   * на аккаунт с адреса за 15 минут, и неудачи общие с входом
+   * (`auth.login_failures`), а не отдельный счётчик.
+   */
+  async function confirmed(req, res, hash, password) {
     const ip = clientIp(req, cfg.trustProxy);
+    if (!limiter.take(ip)) {
+      send(res, 429, { ok: false }, { "Retry-After": "60" });
+      return null;
+    }
+    const me = hash && (await mine(hash));
+    if (!me) {
+      send(res, 401, { ok: false });
+      return null;
+    }
     const since = new Date(Date.now() - FAIL_WINDOW_MS);
     const { rows: f } = await pool.query(`SELECT * FROM auth.failures($1, $2, $3)`, [
       me.email,
@@ -61,12 +71,23 @@ function createAccount({ pool, auth, send, cfg, log }) {
       since,
     ]);
     if (f[0].pair >= FAIL_PAIR || f[0].email >= FAIL_EMAIL) {
-      return send(res, 429, { ok: false, error: "locked" }, { "Retry-After": "900" });
+      send(res, 429, { ok: false, error: "locked" }, { "Retry-After": "900" });
+      return null;
     }
-    if (!(await checkPassword(b.password, me.password_hash))) {
+    if (!(await checkPassword(password, me.password_hash))) {
       await pool.query(`SELECT auth.note_failure($1, $2)`, [me.email, ip]);
-      return send(res, 403, { ok: false, error: "bad_password" });
+      send(res, 403, { ok: false, error: "bad_password" });
+      return null;
     }
+    return me;
+  }
+
+  async function remove(req, res) {
+    const b = await readJson(req, res);
+    if (!b) return;
+    const hash = tokenHash(req);
+    const me = await confirmed(req, res, hash, b.password);
+    if (!me) return;
     const { rows } = await pool.query(`SELECT auth.request_deletion($1) AS at`, [hash]);
     const at = rows[0]?.at;
     if (!at) return send(res, 401, { ok: false });
@@ -98,11 +119,33 @@ function createAccount({ pool, auth, send, cfg, log }) {
     return send(res, 200, { ok: true, closed: rows[0].n });
   }
 
+  async function changePassword(req, res) {
+    const b = await readJson(req, res);
+    if (!b) return;
+    // Слабый новый — отказ до проверки старого: попытку не тратим.
+    if (!isAcceptable(b.next)) return send(res, 400, { ok: false, error: "weak_password" });
+    if (b.next === b.password) return send(res, 400, { ok: false, error: "same_password" });
+    const hash = tokenHash(req);
+    const me = await confirmed(req, res, hash, b.password);
+    if (!me) return;
+    const next = await hashPassword(b.next);
+    // Новый хэш гасит все сессии (триггер), эта получает новую в той же
+    // транзакции: не вышло одно — не вышло ничего.
+    const cookie = await tx(async (c) => {
+      await c.query(`SELECT auth.set_password($1, $2)`, [me.account_id, next]);
+      return startSession(c, me.account_id);
+    });
+    deliver(me.email, passwordLetter(cfg.publicUrl));
+    log.info?.("[uklad] пароль изменён");
+    return send(res, 200, { ok: true }, { "Set-Cookie": cookie });
+  }
+
   const routes = {
     "GET /api/auth/account": info,
     "POST /api/auth/account/delete": remove,
     "POST /api/auth/account/restore": restore,
     "POST /api/auth/sessions/revoke-others": revokeOthers,
+    "POST /api/auth/password": changePassword,
   };
 
   async function handle(req, res, url) {
