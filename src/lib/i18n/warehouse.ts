@@ -163,8 +163,8 @@ export const ru = {
   "role.seller": "Продавец",
 
   // --- Персонал и контакты склада (§6) --------------------------------------
-  "staff.title": "Склад и персонал",
-  "staff.subtitle": "Контакты склада «{name}» и список сотрудников",
+  "staff.title": "Персонал",
+  "staff.subtitle": "Сотрудники склада «{name}» и режим работы",
   "staff.manager": "Ответственное лицо",
   "staff.photoUrl": "Ссылка на фото",
   "staff.export": "Экспорт",
@@ -661,8 +661,8 @@ export const en: Record<keyof typeof ru, string> = {
   "role.seller": "Seller",
 
   // --- Staff and warehouse contacts (§6) -------------------------------------
-  "staff.title": "Warehouse & staff",
-  "staff.subtitle": 'Contacts of "{name}" and the staff list',
+  "staff.title": "Staff",
+  "staff.subtitle": 'Staff of "{name}" and working hours',
   "staff.manager": "Person in charge",
   "staff.photoUrl": "Photo link",
   "staff.export": "Export",

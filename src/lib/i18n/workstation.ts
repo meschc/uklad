@@ -276,6 +276,8 @@ export const ru = {
   "ws.kiosk.cancel": "Отмена",
   "disputes.title": "Спорные",
   "approvals.title": "Подтверждения",
+  "approvals.lead":
+    "Что ждёт решения старшего: смена процесса, возражения продавцов и спорный товар со столов",
   "approvals.emptyTitle": "Ждущих решения нет",
   "approvals.kindFilter": "Вид заявки",
   "approvals.kind.all": "Все",
@@ -978,6 +980,8 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.kiosk.cancel": "Cancel",
   "disputes.title": "Disputes",
   "approvals.title": "Approvals",
+  "approvals.lead":
+    "What waits for a lead's decision: process switches, seller objections and disputed goods from desks",
   "approvals.emptyTitle": "Nothing waiting",
   "approvals.kindFilter": "Request type",
   "approvals.kind.all": "All",

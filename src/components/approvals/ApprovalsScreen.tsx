@@ -131,13 +131,13 @@ export function ApprovalsScreen() {
 
   if (items === null)
     return (
-      <ScreenShell title={t("approvals.title")} wide>
+      <ScreenShell title={t("approvals.title")} subtitle={t("approvals.lead")} wide>
         {null}
       </ScreenShell>
     );
 
   return (
-    <ScreenShell title={t("approvals.title")} wide>
+    <ScreenShell title={t("approvals.title")} subtitle={t("approvals.lead")} wide>
       {decide.error && <FormError>{t(decide.error)}</FormError>}
       {total === 0 && !hasHistory ? (
         <EmptyState icon={<ShieldCheck className="size-5" />} title={t("approvals.emptyTitle")} />
