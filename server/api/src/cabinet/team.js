@@ -203,9 +203,18 @@ function createTeam({ auth, cfg, send, log, limits = null }) {
     // Продавец: склад и партнёр обязательны, карточки сотрудника у него нет,
     // роль выбирает сервер.
     const seller = Boolean(partnerRef);
-    const badSeller = seller && (!place?.warehouseRef || place.staffRef);
+    const badSeller = seller && place?.staffRef;
     let roleId = seller ? null : uuid(b.roleId);
-    if (!isEmail(email) || (!seller && !roleId) || !place || partnerRef === false || badSeller) {
+    // Склад обязателен всем (Кирилл 24.11): человек без склада при втором
+    // складе не мог работать вовсе, а в «Доступе» висел «Не закреплены».
+    // Роль владельца из кабинета не выдаётся, так что без склада звать некого.
+    if (
+      !isEmail(email) ||
+      (!seller && !roleId) ||
+      !place?.warehouseRef ||
+      partnerRef === false ||
+      badSeller
+    ) {
       return bad(res);
     }
     const token = randomBytes(32).toString("base64url");

@@ -253,9 +253,6 @@ export const ru = {
   "team.title": "Кто входит в кабинет",
   "team.lead":
     "Люди этого склада. Каждый входит под своей почтой и работает с правами своей роли. Права проверяет сервер.",
-  "team.unplaced": "Не закреплены за складом",
-  "team.unplacedLead":
-    "Эти люди не видят ни одного склада. Закрепите человека за складом в его карточке сотрудника или отключите вход.",
   "team.invite": "Пригласить",
   "team.inviteTitle": "Пригласить человека",
   "team.inviteHint":
@@ -748,9 +745,6 @@ export const en: Record<keyof typeof ru, string> = {
   "team.title": "Who can sign in",
   "team.lead":
     "People of this warehouse. Each signs in with their own email and works with the rights of their role. The server checks the rights.",
-  "team.unplaced": "Not assigned to a warehouse",
-  "team.unplacedLead":
-    "These people see no warehouse. Assign the person to a warehouse in their staff card or turn off their sign-in.",
   "team.invite": "Invite",
   "team.inviteTitle": "Invite a person",
   "team.inviteHint":

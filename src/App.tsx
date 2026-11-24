@@ -2,7 +2,7 @@ import { Suspense, lazy, useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { isEmbed, isHeatmapWindow } from "@/lib/appViews";
-import { boundDevice, selectRole, useEditor } from "@/lib/store";
+import { boundDevice, selectIsOwner, selectRole, useEditor } from "@/lib/store";
 import { applyTheme, systemTheme } from "@/lib/theme";
 import { useDeepLink } from "@/lib/useDeepLink";
 import { useT } from "@/lib/i18n";
@@ -220,11 +220,12 @@ export default function App() {
   // Роль ограничивает набор экранов: продавец не должен попасть в редактор
   // структуры склада, даже если состояние восстановилось из localStorage.
   // Экраны уровня аккаунта доступны всегда: их нет в рельсе (в кабинет ведёт
-  // логотип, в профиль — шапка кабинета), но выкидывать с них по «не нашёл в
+  // логотип, в настройки — низ меню), но выкидывать с них по «не нашёл в
   // списке разрешённых» нельзя — иначе кабинет стал бы недостижим.
   const perms = useEditor((s) => s.session.permissions);
-  // Смотрящему профиль не нужен: выход — на главной (Кирилл 14.11).
-  const viewer = useEditor((s) => s.session.readOnly === true);
+  // Список складов — только владельцу (Кирилл 24.11): начальник склада,
+  // старший и продавец сразу в своём складе, выход и настройки — в меню.
+  const owner = useEditor(selectIsOwner);
   const allowed = navFor(role, perms).map((n) => n.view);
   // Компьютер, привязанный к месту, — это стол, а не кабинет: он открывает
   // только рабочее место, куда бы ни вела ссылка. Отвязать его можно бейджем
@@ -243,7 +244,7 @@ export default function App() {
       ? "dashboard"
       : kiosk || legacyStation
         ? "workstation"
-        : (ACCOUNT_VIEWS.has(wanted) && !(viewer && wanted === "profile")) ||
+        : (ACCOUNT_VIEWS.has(wanted) && (owner || wanted !== "dashboard")) ||
             allowed.includes(wanted)
           ? wanted
           : (allowed[0] ?? "dashboard");

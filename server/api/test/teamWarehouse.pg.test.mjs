@@ -241,12 +241,15 @@ test("приглашение только на склад и карточку э
   assert.equal((await invite({ warehouseRef: "wh-a", staffRef: "stf-e" })).status, 404);
   assert.equal((await invite({ warehouseRef: "wh-a", staffRef: "bad ref" })).status, 400);
   assert.equal((await invite({ staffRef: "stf-k" })).status, 400);
-  // Начальнику склада («Персонал») склад не обязателен: ему виден весь кабинет.
-  const chief = await post("/api/team/invite", {
-    ...boss,
-    body: { email: "chief-check@example.com", roleId: r["Начальник склада"] },
-  });
-  assert.equal(chief.status, 200);
+  // Начальника склада тоже без склада не зовут (Кирилл 24.11): весь кабинет
+  // — только владельцу, а «незакреплённый» при втором складе не работал вовсе.
+  const chief = (body) =>
+    post("/api/team/invite", {
+      ...boss,
+      body: { email: "chief-check@example.com", roleId: r["Начальник склада"], ...body },
+    });
+  assert.equal((await chief({})).status, 400);
+  assert.equal((await chief({ warehouseRef: "wh-a" })).status, 200);
 });
 
 test(
@@ -392,6 +395,60 @@ test(
     const after = (await snap(boss)).data;
     assert.equal(after.warehouse.floors.length, 1);
     assert.equal(after.warehouse.floors[0].name, "Этаж 1");
+  },
+);
+
+test(
+  "удалили склад — его люди отключены, вход гаснет; люди другого склада работают",
+  { skip: SKIP },
+  async () => {
+    const boss = await owner("boss-drop@example.com", "10.3.0.9");
+    await writeCabinet(boss, cabinet("wh-a"));
+    const invite = async (email, wh) => {
+      const r = await roles(boss, wh);
+      const out = await post("/api/team/invite", {
+        ...boss,
+        body: { email, roleId: r["Начальник склада"], warehouseRef: wh },
+      });
+      assert.equal(out.status, 200, JSON.stringify(out.json));
+    };
+    await invite("chief-b@example.com", "wh-b");
+    await invite("chief-a@example.com", "wh-a");
+    const chiefB = await accept("chief-b@example.com", boss.ip);
+    const chiefA = await accept("chief-a@example.com", boss.ip);
+    // Ссылка, которую начальник склада Б успел разослать, тоже должна погаснуть.
+    const rb = await roles(boss, "wh-b");
+    const pending = await post("/api/team/invite", {
+      ...chiefB,
+      body: {
+        email: "late-b@example.com",
+        roleId: rb["Кладовщик / оператор"],
+        warehouseRef: "wh-b",
+      },
+    });
+    assert.equal(pending.status, 200, JSON.stringify(pending.json));
+    const lateToken = tokenIn(await lastMail("late-b@example.com"));
+    assert.equal((await snap(chiefB)).data.warehouse.id, "wh-b");
+
+    // Владелец удаляет «Логопарк»: в записи кабинета его больше нет.
+    const only = cabinet("wh-a");
+    await writeCabinet(boss, { ...only, otherWarehouses: [], warehouseData: {} });
+
+    assert.equal((await call("GET", "/api/cabinet/snapshot", chiefB)).status, 401);
+    const again = await post("/api/auth/login", {
+      body: { email: "chief-b@example.com", password: PW },
+      ip: boss.ip,
+    });
+    // Пароль верный, но компании у почты больше нет: кабинет скажет
+    // «нет действующей компании» (`login.err.noOrg`).
+    const me = await call("GET", "/api/auth/me", { cookie: cookieOf(again.res), ip: boss.ip });
+    assert.deepEqual(me.json?.orgs ?? [], []);
+    assert.equal((await post("/api/auth/invite/info", { body: { token: lateToken } })).status, 404);
+    const team = (await call("GET", "/api/team", boss)).json;
+    const b = team.members.find((m) => m.email === "chief-b@example.com");
+    assert.equal(b.status, "disabled");
+    // Начальник «Складской 5» не задет.
+    assert.equal((await snap(chiefA)).data.warehouse.id, "wh-a");
   },
 );
 
