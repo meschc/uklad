@@ -36,7 +36,7 @@ const {
 } = require("./deskReceive");
 const { applyShipRun, applyDisputeResolve } = require("./deskShip");
 const { applyInvCount, applyInvCell } = require("./deskInventory");
-const { applySortClose, applySortPlace } = require("./deskSort");
+const { applySortClose, applySortPlace, applySortUndo } = require("./deskSort");
 const { applyTaskTake, applyTaskDone } = require("./deskTasks");
 const { GOODS_DECIDE, may } = require("./deskPerms");
 const { cacheKey, rowsOf } = require("./deskCache");
@@ -62,7 +62,13 @@ const RECV_KINDS = new Set([
   "recv_cargo",
   "recv_undo",
 ]);
-const SHIP_KINDS = new Set(["ship_run", "dispute_resolve", "sort_place", "sort_close"]);
+const SHIP_KINDS = new Set([
+  "ship_run",
+  "dispute_resolve",
+  "sort_place",
+  "sort_undo",
+  "sort_close",
+]);
 const INV_KINDS = new Set(["inv_count", "inv_cell"]);
 /**
  * Работы склада (`deskTasks.js`): право зависит от вида работы, поэтому его
@@ -81,6 +87,7 @@ const OP_PERM = new Map([
   ["ship_run", "shipping.do"],
   // Сортировка — часть отгрузки: отдельного права у роли нет.
   ["sort_place", "shipping.do"],
+  ["sort_undo", "shipping.do"],
   ["sort_close", "shipping.do"],
   ["dispute_resolve", GOODS_DECIDE],
   // Тару перекладывает старший с любого стола: процесса у действия нет.
@@ -100,6 +107,7 @@ const OP_STATION = new Map([
   ...[...RECV_KINDS].map((k) => [k, "receiving"]),
   ["ship_run", "shipping"],
   ["sort_place", "sorting"],
+  ["sort_undo", "sorting"],
   ["sort_close", "sorting"],
   ["inv_count", "inventory"],
   ["inv_cell", "inventory"],
@@ -123,6 +131,7 @@ const WORK = new Map([
   ["recv_cargo", applyRecvCargo],
   ["ship_run", applyShipRun],
   ["sort_place", applySortPlace],
+  ["sort_undo", applySortUndo],
   ["sort_close", applySortClose],
   ["dispute_resolve", applyDisputeResolve],
   ["inv_count", applyInvCount],

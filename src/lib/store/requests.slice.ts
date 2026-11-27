@@ -5,7 +5,7 @@ import { nowMs, uid } from "../utils";
 import { addressKey } from "../address";
 import { planLoad, shipOutbound } from "../outbound";
 import { normalizeCode } from "../barcode";
-import { isSortClosed, placeCodes, pointParcels } from "../sorting";
+import { isSortClosed, placeCodes, planSortUndo, pointParcels } from "../sorting";
 import {
   isOrderSource,
   type Box,
@@ -420,7 +420,7 @@ export const createRequestsSlice: SliceCreator<RequestsSlice> = (set, get) => ({
     return used;
   },
 
-  sortPlace: (parcelCode, sortCode) => {
+  sortPlace: (parcelCode, sortCode, by) => {
     const code = normalizeCode(parcelCode);
     const point = normalizeCode(sortCode);
     const box = get().outboundBoxes.find(
@@ -429,10 +429,25 @@ export const createRequestsSlice: SliceCreator<RequestsSlice> = (set, get) => ({
     if (!box || box.sortCode || isSortClosed(get().outboundBoxes, point)) return false;
     set((s) => ({
       outboundBoxes: s.outboundBoxes.map((b) =>
-        b.id === box.id ? { ...b, sortCode: point, updatedAt: nowMs() } : b,
+        b.id === box.id
+          ? { ...b, sortCode: point, ...(by ? { sortedBy: by } : {}), updatedAt: nowMs() }
+          : b,
       ),
     }));
     return true;
+  },
+
+  sortUndo: (parcelCode, by) => {
+    const res = planSortUndo(get().outboundBoxes, parcelCode, by);
+    if (!res.ok) return res.problem;
+    set((s) => ({
+      outboundBoxes: s.outboundBoxes.map((b) => {
+        if (b.id !== res.box.id) return b;
+        const { sortCode: _code, sortedBy: _by, ...rest } = b;
+        return { ...rest, updatedAt: nowMs() };
+      }),
+    }));
+    return null;
   },
 
   sortClose: (sortCode, pallets, boxes) => {
