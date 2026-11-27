@@ -14,7 +14,7 @@ import { PERSIST_KEY } from "./persistStorage";
  * Правка опечатки в имени сотрудника — не повод: посетитель потеряет свои
  * правки в демо. Правило и тест покрытия — в CLAUDE.md.
  */
-export const DEMO_SEED_VERSION = 5;
+export const DEMO_SEED_VERSION = 6;
 
 /** Где у посетителя записан номер посева, под которым собрано его демо. */
 export const DEMO_SEED_KEY = "uklad-demo-seed";

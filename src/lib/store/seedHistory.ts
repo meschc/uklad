@@ -37,7 +37,7 @@ import type {
  * графики, и любое «стало хуже» было бы не с чем сравнить.
  */
 
-const DAY = 86_400_000;
+export const DAY = 86_400_000;
 
 /** Простейший детерминированный ГПСЧ (mulberry32) — одинаков от запуска к запуску. */
 export function rng(seed: number) {
@@ -50,7 +50,7 @@ export function rng(seed: number) {
   };
 }
 
-const SUPPLIERS: { title: string; source: ShipmentSource }[] = [
+export const SUPPLIERS: { title: string; source: ShipmentSource }[] = [
   { title: "Ромашка Трейд", source: "1c" },
   { title: "ТехноЛайн", source: "moysklad" },
   { title: "Северный склад", source: "1c" },
@@ -60,7 +60,7 @@ const SUPPLIERS: { title: string; source: ShipmentSource }[] = [
 ];
 
 /** Куда уезжают собранные заявки — реальные точки выдачи и магазины. */
-const DESTINATIONS = [
+export const DESTINATIONS = [
   "ПВЗ Ozon, Москва, Дмитровское ш. 100",
   "Склад WB Коледино",
   "Магазин «Ромашка», Тверская 18",
@@ -69,7 +69,7 @@ const DESTINATIONS = [
   "СДЭК, Москва, Шоссе Энтузиастов 56",
 ];
 
-const VEHICLES = [
+export const VEHICLES = [
   "А432ТК 777 · Соколов",
   "Е117МН 190 · Гаджиев",
   "К909ВР 777 · Титов",
@@ -565,13 +565,13 @@ function empty(): SeededHistory {
   };
 }
 
-function dayStart(ts: number): number {
+export function dayStart(ts: number): number {
   const d = new Date(ts);
   d.setHours(0, 0, 0, 0);
   return d.getTime();
 }
 
-function fmtDate(ts: number): string {
+export function fmtDate(ts: number): string {
   const d = new Date(ts);
   return `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
