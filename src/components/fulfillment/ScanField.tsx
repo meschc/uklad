@@ -118,6 +118,8 @@ export function ScanField({
                     : "text-muted-foreground",
             )}
           />
+          {/* Роль textbox не лишняя: у type="search" своя роль, searchbox. */}
+          {/* eslint-disable-next-line jsx-a11y/no-redundant-roles */}
           <input
             id="scan-input"
             ref={inputRef}
@@ -125,7 +127,18 @@ export function ScanField({
             enterKeyHint="done"
             value={value}
             disabled={disabled}
+            // Менеджеры паролей (Пароли iCloud, 1Password) принимали поле скана
+            // за логин и вешали подсказку поверх (разбор 27.11): поле поиска
+            // они пропускают, `autocomplete="off"` одному Safari не указ.
+            type="search"
+            // По смыслу это ввод кода, а не поиск: читалкам и тестам — поле.
+            role="textbox"
             autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            data-1p-ignore=""
+            data-lpignore="true"
+            data-form-type="other"
             spellCheck={false}
             onChange={(e) => {
               // Браузер не переключает раскладку системы, поэтому русские
@@ -144,6 +157,8 @@ export function ScanField({
             placeholder={placeholder ?? t("scan.placeholder")}
             className={cn(
               "h-11 w-full rounded-lg border bg-background pl-9 pr-3 font-mono text-sm shadow-sm transition-colors",
+              // Крестик и лупа поля поиска браузера здесь лишние.
+              "[&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none",
               "placeholder:font-sans placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               "disabled:cursor-not-allowed disabled:opacity-50",
               // Цвет рамки при фокусе — тот же, что у статуса: синяя поверх

@@ -26,7 +26,16 @@ export function useSwitchWatch() {
       const name = t(`ws.station.${pending.station}` as MsgKey);
       if (st.data.status === "approved") {
         const res = await switchRepository.apply(pending.id);
-        if (!res.ok) return;
+        if (gone) return;
+        if (!res.ok) {
+          // Нет связи — попробуем следующим опросом. Сервер отказал (заявку
+          // применить нельзя) — раньше стол молча опрашивал дальше, и решение
+          // старшего «уходило в никуда» (разбор 27.11): говорим и не ждём.
+          if (res.error === "ws.switch.offline") return;
+          switchRepository.forget();
+          notify("error", "ws.switch.applyFailed", { vars: { name } });
+          return;
+        }
         const who = staff?.find((m) => m.id === res.data)?.name;
         notify("success", who ? "ws.switch.doneBy" : "ws.switch.done", {
           vars: { name, who: who ?? "" },

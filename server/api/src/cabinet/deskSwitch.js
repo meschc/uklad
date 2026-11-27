@@ -10,6 +10,7 @@
  *   POST /api/desk/switch/apply      — стол: { id, at } разрешённую — применить
  *   POST /api/desk/switch/cancel     — стол: { id } передумал
  *   GET  /api/cabinet/switch-requests        — кабинет: заявки, ждущие решения
+ *        ?status=decided                       — решённые за смену (разрешена, применена, отклонена)
  *   POST /api/cabinet/switch-requests/decide — кабинет: { id, approve }
  *
  * Переход ложится строкой журнала операций стола `station_switch` (кто,
@@ -201,18 +202,33 @@ function createSwitchRoutes({
     return rows[0] ?? { warehouse_ref: null, staff_ref: null };
   }
 
-  /** Заявки, ждущие решения старшего, — страница «Подтверждения». */
-  async function list(req, res) {
+  /**
+   * Заявки, ждущие решения старшего, — страница «Подтверждения». С
+   * `?status=decided` — решённые за смену: разрешённая уходила из списка без
+   * следа, и старший не видел, применил ли её стол (разбор 27.11).
+   */
+  async function list(req, res, url) {
+    const decided = url?.searchParams?.get("status") === "decided";
     const out = await withSession(req, async (c, ctx) => {
       if (!ctx.can(GOODS_DECIDE)) return { status: 403 };
       const me = await memberPlace(c, ctx);
       const { rows } = await c.query(
-        `SELECT id, warehouse_ref, staff_ref, station, from_station, requested_at
-         FROM uklad.desk_switch_requests
-         WHERE org_id = uklad.current_org() AND status = 'pending'
-           AND requested_at > now() - interval '${OPEN_FOR}'
-           AND ($1::text IS NULL OR warehouse_ref = $1)
-         ORDER BY requested_at`,
+        decided
+          ? `SELECT id, warehouse_ref, staff_ref, station, from_station, requested_at,
+                    status, decided_at, decided_by
+             FROM uklad.desk_switch_requests
+             WHERE org_id = uklad.current_org()
+               AND status IN ('approved', 'declined', 'applied')
+               AND decided_at > now() - interval '${OPEN_FOR}'
+               AND ($1::text IS NULL OR warehouse_ref = $1)
+             ORDER BY decided_at DESC
+             LIMIT 100`
+          : `SELECT id, warehouse_ref, staff_ref, station, from_station, requested_at
+             FROM uklad.desk_switch_requests
+             WHERE org_id = uklad.current_org() AND status = 'pending'
+               AND requested_at > now() - interval '${OPEN_FOR}'
+               AND ($1::text IS NULL OR warehouse_ref = $1)
+             ORDER BY requested_at`,
         [me.warehouse_ref],
       );
       return { status: 200, rows };
@@ -228,6 +244,13 @@ function createSwitchRoutes({
         station: r.station,
         from: r.from_station,
         at: new Date(r.requested_at).getTime(),
+        ...(decided
+          ? {
+              status: r.status,
+              decidedAt: new Date(r.decided_at).getTime(),
+              ...(r.decided_by ? { decidedBy: r.decided_by } : {}),
+            }
+          : {}),
       })),
     });
   }

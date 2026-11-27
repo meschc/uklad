@@ -452,6 +452,10 @@ test(
     const accepted = own.json.entries.find((e) => e.kind === "member.accept");
     const invitedRow = own.json.entries.find((e) => e.kind === "member.invite");
     assert.equal(accepted.member.id, invitedRow.target);
+    // Старший — не владелец: метки владельца нет. Приглашал владелец — метка есть,
+    // по ней кабинет пишет его имя вместо «Кабинет» (разбор 27.11).
+    assert.equal(accepted.member.owner, undefined);
+    assert.equal(invitedRow.member.owner, true);
     assert.equal(accepted.target, invitedRow.target);
     // Имя приглашённого и роль — подставлены при чтении, в строке журнала их нет.
     const invite = own.json.entries.find((e) => e.kind === "member.invite");

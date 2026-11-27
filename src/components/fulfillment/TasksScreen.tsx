@@ -26,6 +26,8 @@ import { RequestDialog } from "./RequestDialog";
 import { NewWorkTask } from "./NewWorkTask";
 import { TaskCard, useTaskTitle } from "./TaskCard";
 import { ApprovalsScreen } from "@/components/approvals/ApprovalsScreen";
+import { mayDecideSwitch, usePendingSwitches } from "@/components/approvals/usePendingSwitches";
+import { openObjections } from "@/lib/supplyAct";
 import { viewAllowed } from "@/components/nav/navItems";
 
 /**
@@ -92,6 +94,11 @@ export function TasksScreen({ initialChip = "open" }: { initialChip?: TaskChip }
   const perms = useEditor((s) => s.session.permissions);
   const canApprove = viewAllowed("approvals", perms);
   const approving = chip === "approvals";
+  // Заявки на смену процесса и возражения продавцов не строки очереди, а ждут
+  // того же старшего: без них чип показывал 0 при живой заявке (разбор 27.11).
+  const switches = usePendingSwitches(canApprove && mayDecideSwitch(perms));
+  const answers = useEditor((s) => s.receivingAnswers);
+  const extraApprovals = (switches.items?.length ?? 0) + openObjections(answers).length;
   const [view, setView] = useState<"list" | "calendar">("list");
   const [day, setDay] = useState<number | null>(null);
   const [creatingRequest, setCreatingRequest] = useState(false);
@@ -210,7 +217,7 @@ export function TasksScreen({ initialChip = "open" }: { initialChip?: TaskChip }
 
       <div className="flex flex-wrap items-center gap-1" role="group" aria-label={t("tasks.chips")}>
         {chips.map((c) => {
-          const n = chipCount(all, c.id, now, me);
+          const n = chipCount(all, c.id, now, me) + (c.id === "approvals" ? extraApprovals : 0);
           // Процесс без заданий не показываем чипом, но выбранный остаётся виден.
           if (
             n === 0 &&
@@ -232,7 +239,7 @@ export function TasksScreen({ initialChip = "open" }: { initialChip?: TaskChip }
       </div>
 
       {approving ? (
-        <ApprovalsScreen embedded />
+        <ApprovalsScreen embedded switches={switches} />
       ) : (
         <>
           <div className="flex flex-wrap items-center gap-2">

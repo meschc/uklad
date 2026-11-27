@@ -137,12 +137,14 @@ async function cabinetRows(c, wh, f, limit) {
   const { rows } = await c.query(
     `SELECT max(m.at) AS at, m.member_id, m.snapshot_version,
             max(mem.display_name) AS name, max(mem.staff_ref) AS staff_ref,
+            bool_or(coalesce(mr.permissions @> ARRAY['org.manage'], false)) AS owner,
             count(*)::int AS n,
             jsonb_agg(jsonb_build_object('kind', m.place_kind, 'ref', m.place_ref,
                                          'productId', m.product_ref, 'delta', m.delta)
                       ORDER BY m.place_kind, m.place_ref, m.product_ref) AS moves
      FROM uklad.stock_moves m
      LEFT JOIN uklad.members mem ON mem.org_id = m.org_id AND mem.id = m.member_id
+     LEFT JOIN uklad.roles mr ON mr.org_id = mem.org_id AND mr.id = mem.role_id
      WHERE m.org_id = uklad.current_org() AND m.member_id IS NOT NULL
        AND (m.warehouse_ref = $1
             OR (m.warehouse_ref IS NULL AND m.place_kind = 'cell'
@@ -163,7 +165,7 @@ async function cabinetRows(c, wh, f, limit) {
     receivedAt: new Date(r.at).getTime(),
     source: "cabinet",
     staffRef: r.staff_ref ?? null,
-    member: { id: r.member_id, name: r.name ?? null },
+    member: { id: r.member_id, name: r.name ?? null, ...(r.owner ? { owner: true } : {}) },
     kind: "cabinet_edit",
     step: "cabinet",
     counted: false,

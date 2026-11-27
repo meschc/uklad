@@ -79,6 +79,11 @@ describe("заявка на смену процесса (демо — тот ж�
     expect((await repo.apply(id)).ok).toBe(true);
     expect(s.getState().stationSession).toMatchObject({ staffId: "stf-ivan", station: "sorting" });
     expect(s.getState().pendingSwitch).toBeNull();
+    // Разрешённая не уходит в никуда (разбор 27.11): она в «Решённых» и видно, что стол её применил.
+    expect((await repo.pending()).ok && (await repo.pending())).toMatchObject({ data: [] });
+    const done = await repo.decided();
+    expect(done.ok && done.data.map((r) => [r.id, r.status])).toEqual([[id, "applied"]]);
+    expect(done.ok && typeof done.data[0].decidedAt).toBe("number");
   });
 
   it("отклонённая заявка процесс не меняет, второй раз её не решить", async () => {
@@ -90,6 +95,8 @@ describe("заявка на смену процесса (демо — тот ж�
     expect(await repo.decide(id, true)).toEqual({ ok: false, error: "approvals.gone" });
     expect((await repo.apply(id)).ok).toBe(false);
     expect(s.getState().stationSession?.station).toBe("pack");
+    const done = await repo.decided();
+    expect(done.ok && done.data.map((r) => r.status)).toEqual(["declined"]);
   });
 
   it("процесс не по роли не попросить; без входа — тоже", async () => {

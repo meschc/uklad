@@ -343,6 +343,13 @@ export const ru = {
   "approvals.tab": "Заявки",
   "approvals.tab.open": "Ждут решения",
   "approvals.tab.done": "Решённые",
+  "approvals.switch.approved":
+    "Разрешили: {who} перейдёт на «{station}», как только стол примет решение",
+  "approvals.switch.declined": "Отклонили: {who} остаётся на прежнем процессе",
+  "approvals.switch.applied": "Применено на столе",
+  "approvals.switch.waiting": "Разрешено, ждёт стола",
+  "approvals.switch.wasDeclined": "Отклонено",
+  "approvals.switch.by": "решил {who}",
   "disputes.resolveFailed": "Не удалось сохранить решение, попробуйте ещё раз",
   "disputes.reason": "Причина списания",
   "disputes.confirmWriteOff": "Списать безвозвратно",
@@ -435,7 +442,7 @@ export const ru = {
   "ws.switch.only":
     "Ваша роль открывает только этот процесс. Другие процессы даёт руководитель в разделе «Персонал → Доступ».",
   "ws.switch.unsaved":
-    "Принятые сканы остаются. Незавершённое на экране, например пересчёт тары или погрузку машины, придётся начать заново.",
+    "Отсканированное сохранится. Шаг, который вы не закончили, придётся пройти заново.",
   "ws.switch.denied": "Этот процесс ваша роль не открывает. Обратитесь к руководителю.",
   "ws.switch.offline": "Нет связи с сервером: заявка не ушла. Попробуйте ещё раз.",
   "ws.switch.waitTitle": "Ждём разрешения старшего на процесс «{name}»",
@@ -445,6 +452,7 @@ export const ru = {
   "ws.switch.done": "Теперь вы на процессе «{name}»",
   "ws.switch.doneBy": "Теперь вы на процессе «{name}». Разрешение: {who}",
   "ws.switch.declined": "Старший не разрешил переход на «{name}»",
+  "ws.switch.applyFailed": "Переход на «{name}» не применился. Попросите ещё раз",
   "devices.journal.approvedBy": "разрешение: {name}",
   "devices.revoke": "Отключить",
   "devices.forget": "Убрать из списка",
@@ -1063,6 +1071,13 @@ export const en: Record<keyof typeof ru, string> = {
   "approvals.tab": "Requests",
   "approvals.tab.open": "Awaiting decision",
   "approvals.tab.done": "Resolved",
+  "approvals.switch.approved":
+    "Approved: {who} moves to “{station}” as soon as the desk picks it up",
+  "approvals.switch.declined": "Declined: {who} stays on the current process",
+  "approvals.switch.applied": "Applied at the desk",
+  "approvals.switch.waiting": "Approved, waiting for the desk",
+  "approvals.switch.wasDeclined": "Declined",
+  "approvals.switch.by": "decided by {who}",
   "disputes.resolveFailed": "Could not save the decision, please try again",
   "disputes.reason": "Write-off reason",
   "disputes.confirmWriteOff": "Write off for good",
@@ -1154,7 +1169,7 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.switch.only":
     "Your role opens only this process. A manager grants other processes under Staff → Access.",
   "ws.switch.unsaved":
-    "Accepted scans stay. Unfinished work on screen, such as a tote recount or truck loading, has to be started again.",
+    "Everything scanned is kept. A step you have not finished will have to be done again.",
   "ws.switch.denied": "Your role does not open this process. Ask a manager.",
   "ws.switch.offline": "No connection to the server: the request was not sent. Try again.",
   "ws.switch.waitTitle": "Waiting for a supervisor to approve “{name}”",
@@ -1164,6 +1179,7 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.switch.done": "You are now on “{name}”",
   "ws.switch.doneBy": "You are now on “{name}”, approved by {who}",
   "ws.switch.declined": "The senior did not approve the switch to “{name}”",
+  "ws.switch.applyFailed": "The move to “{name}” did not go through. Ask again",
   "devices.journal.approvedBy": "approved by {name}",
   "devices.revoke": "Disable",
   "devices.forget": "Remove from list",

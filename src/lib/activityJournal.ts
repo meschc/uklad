@@ -140,7 +140,8 @@ export interface ActivityEntry {
   staffRef: string | null;
   device?: { ref: string; name: string };
   /** Кто правил кабинет: участник команды. */
-  member?: { id: string; name: string | null };
+  /** `owner` — владелец компании: имя у него часто только в профиле, а не в карточке. */
+  member?: { id: string; name: string | null; owner?: boolean };
   /** Вид операции стола (`desk_ops.kind`), отметки журнала смен или `cabinet_edit`. */
   kind: string;
   step: JournalStep | "other";

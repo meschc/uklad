@@ -84,6 +84,7 @@ export function useEntryText() {
   const products = useEditor((s) => s.products);
   const boxes = useEditor((s) => s.boxes);
   const pallets = useEditor((s) => s.pallets);
+  const ownerName = useEditor((s) => s.account.name.trim());
 
   const product = (id?: string) => (id && products.find((p) => p.id === id)?.name) || id;
   const unit = (id?: string) =>
@@ -133,6 +134,8 @@ export function useEntryText() {
     who: (e: ActivityEntry) =>
       e.member?.name ||
       (e.staffRef && staff.find((m) => m.id === e.staffRef)?.name) ||
+      // Владелец без имени в карточке — имя из профиля, а не «Кабинет» (разбор 27.11).
+      (e.member?.owner && (ownerName || t("journal.owner"))) ||
       (e.source === "audit" && e.by && BY_KEY[e.by] && t(BY_KEY[e.by])) ||
       (e.source === "cabinet" || e.source === "audit" ? t("journal.cabinet") : t("journal.nobody")),
     where: (e: ActivityEntry) => {
