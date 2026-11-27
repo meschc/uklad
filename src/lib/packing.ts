@@ -583,9 +583,13 @@ export function receivingOpen(
   box: Box,
   events: readonly ReceivingEvent[],
   shipments: readonly ExpectedShipment[],
+  requests: readonly FulfillmentRequest[],
 ): boolean {
   if (box.sealed) return true;
   if (box.address) return false;
+  // Тара, в которую собраны заявки, — тара сборки, даже если когда-то в неё
+  // принимали по поставке, которая ещё открыта (многоразовая тара).
+  if (requests.some((r) => r.toteId === box.id)) return false;
   const open = new Set(
     shipments.filter((s) => s.status !== "closed").flatMap((s) => s.lines.map((l) => l.id)),
   );

@@ -414,15 +414,64 @@ test(
           fromToteId: "t2",
         },
       },
+      // Сервер закрывает посылку площадки только с этикетками её штук и
+      // этикеткой заказа (`deskPack.js`), как их шлёт стол.
+      {
+        key: "key-merge-l001",
+        kind: "pack_event",
+        body: {
+          eventId: "ev-key-merge-l001",
+          staffId: "stf-ivan",
+          type: "pack_label",
+          at: Date.now() - 150,
+          toteId: "t1",
+          code: "UK-LBL-OZ7-001",
+          orderId: "r1",
+          productId: "pr1",
+        },
+      },
+      {
+        key: "key-merge-l002",
+        kind: "pack_event",
+        body: {
+          eventId: "ev-key-merge-l002",
+          staffId: "stf-ivan",
+          type: "pack_label",
+          at: Date.now() - 150,
+          toteId: "t1",
+          code: "UK-LBL-OZ7-002",
+          orderId: "r1",
+          productId: "pr1",
+        },
+      },
+      {
+        key: "key-merge-l003",
+        kind: "pack_event",
+        body: {
+          eventId: "ev-key-merge-l003",
+          staffId: "stf-ivan",
+          type: "pack_label",
+          at: Date.now() - 150,
+          toteId: "t1",
+          code: "UK-ORD-R1",
+          orderId: "r1",
+        },
+      },
       {
         key: "key-merge-done",
         kind: "pack_done",
-        body: done("ev-d", [{ productId: "pr1", qty: 2 }], ["r1", "r2"]),
+        body: {
+          ...done("ev-d", [{ productId: "pr1", qty: 2 }], ["r1", "r2"]),
+          outboundCode: "UK-ORD-R1",
+        },
       },
     ]);
     assert.deepEqual(
       merged.json.results.map((x) => [x.status, x.reason ?? null]),
       [
+        ["applied", null],
+        ["applied", null],
+        ["applied", null],
         ["applied", null],
         ["applied", null],
       ],

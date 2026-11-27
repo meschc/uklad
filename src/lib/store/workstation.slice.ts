@@ -247,7 +247,8 @@ export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get)
     const box = findByCode(s.boxes, sourceCode);
     if (!box) return "ws.tote.unknown";
     if (toteContents(box).size === 0) return "ws.tote.empty";
-    if (receivingOpen(box, s.receivingEvents, s.expectedShipments)) return "ws.tote.receiving";
+    if (receivingOpen(box, s.receivingEvents, s.expectedShipments, s.requests))
+      return "ws.tote.receiving";
     const orders = toteOrders(s.requests, box);
     // Тара посылок (FBS): короб не выбирают, каждый заказ — своя посылка.
     const parcels = isParcelTote(orders, heldInTote(s.requests, s.boxes, box));

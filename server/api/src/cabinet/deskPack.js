@@ -106,16 +106,23 @@ function sinceClosed(events, tote, before = Infinity) {
   return events.filter((e) => Number(e.at) > from);
 }
 
-/** Этикетки, уже приклеенные к штукам этого заказа: товар → штук. */
-function labelledOf(events, ids) {
+/**
+ * Этикетки, уже приклеенные к штукам этого заказа: товар → коды. Считаются
+ * коды, а не сканы: повтор той же этикетки — та же штука, а не лишняя.
+ */
+function labelCodes(events, ids) {
   const m = new Map();
   for (const e of events) {
     if (e.type === "pack_label" && ids.has(e.orderId) && typeof e.productId === "string") {
-      m.set(e.productId, (m.get(e.productId) ?? 0) + 1);
+      const codes = m.get(e.productId) ?? new Set();
+      codes.add(normalizeCode(String(e.code ?? "")));
+      m.set(e.productId, codes);
     }
   }
   return m;
 }
+const labelledOf = (events, ids) =>
+  new Map([...labelCodes(events, ids)].map(([p, codes]) => [p, codes.size]));
 
 /**
  * Этикетка заказа на упаковке («лопата и самокат», ревизия 14.11): заказ
@@ -138,8 +145,9 @@ function labelProblem(data, body, events) {
   const need = needOf(order).get(body.productId) ?? 0;
   const ids = new Set(order.map((r) => r.id));
   const tote = list(data.boxes).find((b) => b.id === req.toteId);
-  const had = labelledOf(sinceClosed(events, tote), ids).get(body.productId) ?? 0;
-  return had + 1 > need ? "label" : null;
+  const had = labelCodes(sinceClosed(events, tote), ids).get(body.productId) ?? new Set();
+  if (had.has(normalizeCode(String(body.code ?? "")))) return null;
+  return had.size + 1 > need ? "label" : null;
 }
 
 /**
@@ -150,6 +158,9 @@ function labelProblem(data, body, events) {
 function receivingOpen(data, tote) {
   if (tote.sealed) return true;
   if (tote.address) return false;
+  // Многоразовую тару после ячейки берут под сборку: в неё собраны заявки —
+  // это тара сборки, а не приёмки, пусть старая поставка ещё открыта.
+  if (list(data.requests).some((r) => r.toteId === tote.id)) return false;
   const open = new Set();
   for (const s of list(data.expectedShipments)) {
     if (s.status === "closed") continue;

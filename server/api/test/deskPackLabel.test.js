@@ -85,7 +85,16 @@ const done = (over = {}) => ({
 test("этикетка заказа на чужой товар, лишняя или из другой тары — отказ", () => {
   // Самокат с этикеткой заказа А (в заказе только лопата).
   assert.equal(run(data(), label("ra000001", "p2", "UK-LBL-AB12-001")).flag, "label");
-  // Вторая этикетка на заказ из одной штуки.
+  // Повторный скан той же этикетки — та же штука, не лишняя.
+  assert.equal(
+    run(
+      data(),
+      label("ra000001", "p1", "UK-LBL-AB12-001"),
+      label("ra000001", "p1", "uk-lbl-ab12-001"),
+    ).flag,
+    undefined,
+  );
+  // Вторая (другая) этикетка на заказ из одной штуки.
   assert.equal(
     run(
       data(),
@@ -202,7 +211,8 @@ test("штуки, не ушедшие в посылку, после закрыт
 
 test("тара на приёмке в упаковку не берётся: не вскрыта или поставка не закрыта", () => {
   const fbo = {
-    requests: [{ id: "r1", productId: "p1", qty: 1, status: "done", toteId: "t1", note: "Тула" }],
+    // Заявка, закрытая приёмкой сразу (кроссдок), своей тары не помнит.
+    requests: [{ id: "r1", productId: "p1", qty: 1, status: "done", note: "Тула" }],
   };
   const close = done({
     outboundCode: "UK-OUT-1",
@@ -223,6 +233,18 @@ test("тара на приёмке в упаковку не берётся: не
   // Поставку закрыли — товар на учёте, тару можно паковать.
   receiving.expectedShipments[0].status = "closed";
   assert.equal(applyPackDone(receiving, close, "stf-ivan").flag, undefined);
+  // Многоразовую тару с открытой старой поставкой взяли под сборку: в неё
+  // собраны заявки — это тара сборки, её пакуют.
+  receiving.expectedShipments[0].status = "receiving";
+  const reused = {
+    ...receiving,
+    requests: [{ ...receiving.requests[0], toteId: "t1" }],
+  };
+  assert.equal(
+    applyPackDone(reused, close, "stf-ivan").flag,
+    undefined,
+    "заявки собраны в эту тару",
+  );
   // Или тару уже поставили в ячейку.
   receiving.expectedShipments[0].status = "receiving";
   receiving.boxes[0] = { ...receiving.boxes[0], address: "A-01-01" };
