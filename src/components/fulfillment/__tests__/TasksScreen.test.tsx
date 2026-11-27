@@ -28,6 +28,8 @@ beforeEach(() => {
     boxes: [],
     outboundBoxes: [],
     disputes: [],
+    switchRequests: [],
+    receivingAnswers: [],
   });
 });
 
@@ -78,5 +80,22 @@ describe("TasksScreen — единый модуль", () => {
     expect(screen.getByText("Заданий по этому фильтру нет")).toBeTruthy();
     await userEvent.click(screen.getByRole("button", { name: "Сбросить фильтр" }));
     expect(screen.getByRole("table")).toBeTruthy();
+  });
+
+  test("чип «Подтверждения» считает и заявку на смену процесса, а не 0 (разбор 27.11)", async () => {
+    useEditor.setState({
+      switchRequests: [
+        {
+          id: "sw-1",
+          staffId: "stf-ivan",
+          station: "sorting",
+          from: "pack",
+          at: Date.now(),
+          status: "pending",
+        },
+      ],
+    });
+    render(<TasksScreen />);
+    expect(await screen.findByRole("button", { name: /Подтверждения\s*1/ })).toBeTruthy();
   });
 });

@@ -1341,6 +1341,20 @@ test(
     });
     assert.deepEqual([applied.status, applied.json.station], [200, "sorting"]);
 
+    // Решённая не пропадает без следа: в «Решённых» видно, что стол её применил.
+    const open = await call("/api/cabinet/switch-requests", { cookie, org: a.org });
+    assert.deepEqual(open.json.requests, []);
+    const done = await call("/api/cabinet/switch-requests?status=decided", { cookie, org: a.org });
+    assert.equal(done.status, 200);
+    assert.deepEqual(
+      done.json.requests.map((r) => [r.id, r.status, typeof r.decidedAt]),
+      [[id, "applied", "number"]],
+    );
+    assert.ok(done.json.requests[0].decidedBy);
+    // Стол решённые заявки не читает: это кабинет.
+    const fromDesk = await call("/api/cabinet/switch-requests?status=decided", { desk });
+    assert.notEqual(fromDesk.status, 200);
+
     // Теперь сортировка — его процесс, упаковка — нет.
     const after = await ops(desk, [place("key-place-02")]);
     assert.notEqual(after.json.results[0].reason, "station");

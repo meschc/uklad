@@ -64,4 +64,27 @@ describe("ApprovalsScreen", () => {
     expect(within(panel).getByText("Решение")).toBeTruthy();
     expect(within(panel).getByText(/Вернули/)).toBeTruthy();
   });
+
+  test("разрешённая смена процесса не уходит в никуда: сказали и она в «Решённых» (разбор 27.11)", async () => {
+    const staffId = useEditor.getState().warehouse.staff?.[0]?.id ?? "stf-x";
+    useEditor.setState({
+      switchRequests: [
+        {
+          id: "sw-1",
+          staffId,
+          station: "sorting",
+          from: "pack",
+          at: Date.now(),
+          status: "pending",
+        },
+      ],
+    });
+    render(<ApprovalsScreen />);
+    await userEvent.click(await screen.findByRole("button", { name: "Разрешить" }));
+    // Тост говорит, что дальше: переход случится на столе.
+    expect(useEditor.getState().toasts.at(-1)?.key).toBe("approvals.switch.approved");
+    const tabs = screen.getByRole("group", { name: "Заявки" });
+    await userEvent.click(within(tabs).getByText(/Решённые/));
+    expect(await screen.findByText("Разрешено, ждёт стола")).toBeTruthy();
+  });
 });

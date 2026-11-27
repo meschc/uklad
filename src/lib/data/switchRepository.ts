@@ -26,6 +26,8 @@ export interface SwitchRequest {
   status: SwitchStatus;
   /** Кто решил: id сотрудника склада или `member:<id>` для входа без карточки. */
   decidedBy?: string;
+  /** Когда решили: у решённых, для вкладки «Решённые». */
+  decidedAt?: number;
 }
 
 export interface SwitchRepository {
@@ -40,6 +42,8 @@ export interface SwitchRepository {
   forget: () => void;
   /** Кабинет: заявки, ждущие решения. */
   pending: () => Promise<Result<SwitchRequest[]>>;
+  /** Кабинет: решённые за смену — разрешённые, применённые столом, отклонённые. */
+  decided: () => Promise<Result<SwitchRequest[]>>;
   /** Кабинет: разрешить или отклонить. */
   decide: (id: string, approve: boolean) => Promise<Result<void>>;
 }
@@ -47,6 +51,34 @@ export interface SwitchRepository {
 const STATIONS = new Set(["receiving", "picking", "pack", "sorting", "shipping", "inventory"]);
 const asStation = (v: unknown): WorkstationKind | undefined =>
   typeof v === "string" && STATIONS.has(v) ? (v as WorkstationKind) : undefined;
+const DECIDED = new Set<SwitchStatus>(["approved", "declined", "applied"]);
+/** Решённые показываем за смену, как сервер (`OPEN_FOR` в `deskSwitch.js`). */
+const DECIDED_FOR_MS = 12 * 60 * 60 * 1000;
+
+/** Строки заявок с сервера; кривые отбрасываем, как «похоже ли на запись». */
+function readRequests(rows: Record<string, unknown>[], decided: boolean): SwitchRequest[] {
+  const out: SwitchRequest[] = [];
+  for (const r of rows) {
+    const station = asStation(r.station);
+    if (typeof r.id !== "string" || typeof r.staffRef !== "string" || !station) continue;
+    const status =
+      decided && typeof r.status === "string" && DECIDED.has(r.status as SwitchStatus)
+        ? (r.status as SwitchStatus)
+        : "pending";
+    if (decided && status === "pending") continue;
+    out.push({
+      id: r.id,
+      staffId: r.staffRef,
+      station,
+      from: asStation(r.from),
+      at: typeof r.at === "number" ? r.at : 0,
+      status,
+      ...(typeof r.decidedBy === "string" ? { decidedBy: r.decidedBy } : {}),
+      ...(typeof r.decidedAt === "number" ? { decidedAt: r.decidedAt } : {}),
+    });
+  }
+  return out;
+}
 
 export function createSwitchRepository(port: StorePort = storePort): SwitchRepository {
   const local = () => port.get().switchRequests ?? [];
@@ -150,22 +182,26 @@ export function createSwitchRepository(port: StorePort = storePort): SwitchRepos
         if (!res.ok) return res;
         const { status, body } = res.data;
         if (status !== 200 || !Array.isArray(body.requests)) return fail("data.failed");
-        const out: SwitchRequest[] = [];
-        for (const r of body.requests as Record<string, unknown>[]) {
-          const station = asStation(r.station);
-          if (typeof r.id !== "string" || typeof r.staffRef !== "string" || !station) continue;
-          out.push({
-            id: r.id,
-            staffId: r.staffRef,
-            station,
-            from: asStation(r.from),
-            at: typeof r.at === "number" ? r.at : 0,
-            status: "pending",
-          });
-        }
-        return ok(out);
+        return ok(readRequests(body.requests as Record<string, unknown>[], false));
       }
       return ok(local().filter((r) => r.status === "pending"));
+    },
+    decided: async () => {
+      if (onServer(port)) {
+        const res = await attempt(() =>
+          apiRequest("GET", "/cabinet/switch-requests?status=decided"),
+        );
+        if (!res.ok) return res;
+        const { status, body } = res.data;
+        if (status !== 200 || !Array.isArray(body.requests)) return fail("data.failed");
+        return ok(readRequests(body.requests as Record<string, unknown>[], true));
+      }
+      const since = nowMs() - DECIDED_FOR_MS;
+      return ok(
+        local()
+          .filter((r) => DECIDED.has(r.status) && (r.decidedAt ?? r.at) > since)
+          .sort((a, b) => (b.decidedAt ?? b.at) - (a.decidedAt ?? a.at)),
+      );
     },
     decide: async (id, approve) => {
       if (onServer(port)) {
@@ -179,7 +215,7 @@ export function createSwitchRepository(port: StorePort = storePort): SwitchRepos
       }
       const r = local().find((x) => x.id === id);
       if (!r || r.status !== "pending") return fail("approvals.gone");
-      put(id, { status: approve ? "approved" : "declined" });
+      put(id, { status: approve ? "approved" : "declined", decidedAt: nowMs() });
       return ok(undefined);
     },
   };

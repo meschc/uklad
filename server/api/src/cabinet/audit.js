@@ -102,9 +102,12 @@ async function auditRows(c, ref, { before = null, since = null, company = false,
     `SELECT a.id, a.at, a.warehouse_ref, a.member_id, a.action, a.target, a.details,
             a.source, coalesce(a.staff_ref, mem.staff_ref) AS staff_ref,
             mem.display_name AS name, coalesce(tm.display_name, tr.name) AS target_name,
-            rr.name AS role_name
+            rr.name AS role_name, coalesce(mr.permissions @> ARRAY['org.manage'], false) AS owner
      FROM uklad.audit_events a
      LEFT JOIN uklad.members mem ON mem.org_id = a.org_id AND mem.id = a.member_id
+     -- Владелец часто без имени в карточке (имя у него — в профиле компании):
+     -- без этой метки журнал писал «Кабинет» вместо человека (разбор 27.11).
+     LEFT JOIN uklad.roles mr ON mr.org_id = mem.org_id AND mr.id = mem.role_id
      -- Имена — при чтении, а не в строке журнала: стёрли человека по просьбе
      -- (152-ФЗ) или удалили роль — имя пропадает и из журнала.
      LEFT JOIN uklad.members tm ON tm.org_id = a.org_id
@@ -128,7 +131,9 @@ async function auditRows(c, ref, { before = null, since = null, company = false,
     source: "audit",
     by: r.source,
     staffRef: r.staff_ref ?? null,
-    member: r.member_id ? { id: r.member_id, name: r.name ?? null } : null,
+    member: r.member_id
+      ? { id: r.member_id, name: r.name ?? null, ...(r.owner ? { owner: true } : {}) }
+      : null,
     kind: r.action,
     step: "admin",
     counted: false,
