@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Download, MonitorSmartphone, Trash2 } from "lucide-react";
+import { FileOutput, MonitorSmartphone, Trash2 } from "lucide-react";
 import { accountRepository, type AccountInfo } from "@/lib/data/accountRepository";
 import { leaveServerSession } from "@/lib/store/leave";
 import { useCommand } from "@/lib/useCommand";
@@ -92,7 +92,7 @@ export function AccountDataSection() {
           </div>
         </Row>
 
-        <Row icon={<Download className="size-4" />} label={t("account.export")}>
+        <Row icon={<FileOutput className="size-4" />} label={t("account.export")}>
           <Button size="sm" variant="outline" onClick={() => void downloadBackup()}>
             {t("account.exportButton")}
           </Button>

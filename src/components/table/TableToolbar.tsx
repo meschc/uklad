@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Upload, Plus, Search, Columns3, SlidersHorizontal, X } from "lucide-react";
+import { Columns3, FileInput, Plus, Search, SlidersHorizontal, X } from "lucide-react";
 import { catLabel, useT, type MsgKey } from "@/lib/i18n";
 import type { Partner } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -104,7 +104,7 @@ export function TableToolbar({
               {/* Главное действие экрана — загрузка товаров файлом (Кирилл 22.11):
                   склад заводит номенклатуру импортом, а не по одному. */}
               <Button size="sm" onClick={onImport}>
-                <Upload className="size-3.5" />
+                <FileInput className="size-3.5" />
                 {t("table.import")}
               </Button>
               <Button variant="outline" size="sm" onClick={onFields}>

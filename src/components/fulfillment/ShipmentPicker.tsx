@@ -2,13 +2,13 @@ import { useContext, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   Check,
-  Download,
-  FileText,
+  FileOutput,
   FileSpreadsheet,
+  FileText,
   Loader2,
   PackageSearch,
+  Paperclip,
   Plus,
-  Upload,
   X,
 } from "lucide-react";
 import { useEditor } from "@/lib/store";
@@ -346,11 +346,11 @@ function ShipmentForm({
           }}
         />
         <Button size="sm" variant="outline" onClick={() => fileInput.current?.click()}>
-          <Upload className="size-3.5" />
+          <Paperclip className="size-3.5" />
           {t("recv.form.pickFile")}
         </Button>
         <Button size="sm" variant="ghost" onClick={downloadTemplate}>
-          <Download className="size-3.5" />
+          <FileOutput className="size-3.5" />
           {t("recv.form.template")}
         </Button>
         <Button size="sm" variant="ghost" onClick={pasteExample}>

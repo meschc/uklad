@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { AlertTriangle, History, Route } from "lucide-react";
+import { AlertTriangle, History, RefreshCw, Route } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { journalRepository } from "@/lib/data";
 import {
@@ -80,6 +80,7 @@ function JournalFeed({ tabs }: { tabs: ReactNode }) {
   const [find, setFind] = useState("");
   const [code, setCode] = useState("");
   const [entries, setEntries] = useState<ActivityEntry[] | null>(null);
+  const [incoming, setIncoming] = useState<ActivityEntry[]>([]);
   const [next, setNext] = useState<number | null>(null);
   const [failed, setFailed] = useState<MsgKey | null>(null);
   const text = useEntryText();
@@ -136,9 +137,29 @@ function JournalFeed({ tabs }: { tabs: ReactNode }) {
       if (mode === "more") setFailed(res.error as MsgKey);
       return;
     }
-    setEntries((shown) => mergeEntries(shown ?? [], res.data.entries));
-    if (mode === "more") setNext(res.data.next);
+    // Свежее не вклеивается само (Кирилл 27.11: «должно быть ручное
+    // обновление журнала»): строки не прыгают под глазами, пока человек
+    // читает. Пришедшее ждёт в `incoming`, над таблицей — «Новых: N».
+    if (mode === "live") setIncoming(res.data.entries);
+    else {
+      setEntries((shown) => mergeEntries(shown ?? [], res.data.entries));
+      setNext(res.data.next);
+    }
   }, []);
+  const fresh = useMemo(() => {
+    const shown = new Set((entries ?? []).map((e) => e.id));
+    return incoming.filter((e) => !shown.has(e.id)).length;
+  }, [entries, incoming]);
+  const [refreshing, setRefreshing] = useState(false);
+  const refresh = async () => {
+    setRefreshing(true);
+    const asked = filtersRef.current;
+    const res = await journalRepository.page(asked);
+    setRefreshing(false);
+    if (asked !== filtersRef.current || !res.ok) return;
+    setEntries((shown) => mergeEntries(shown ?? [], res.data.entries));
+    setIncoming([]);
+  };
 
   const live = filters.before === undefined;
   useEffect(() => {
@@ -229,6 +250,16 @@ function JournalFeed({ tabs }: { tabs: ReactNode }) {
             {t("journal.filter.reset")}
           </Button>
         )}
+        <Button
+          variant={fresh > 0 ? "default" : "outline"}
+          size="sm"
+          className="ml-auto"
+          disabled={refreshing}
+          onClick={() => void refresh()}
+        >
+          <RefreshCw className={cn("size-3.5", refreshing && "animate-spin")} />
+          {fresh > 0 ? t("journal.refreshNew", { n: fresh }) : t("journal.refresh")}
+        </Button>
       </div>
       {found && (
         <p className="-mt-3 text-xs text-muted-foreground">

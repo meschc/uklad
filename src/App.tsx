@@ -151,10 +151,30 @@ export default function App() {
       return;
     }
     const query = window.matchMedia("(prefers-color-scheme: dark)");
-    const sync = () => applyTheme(systemTheme());
+    // Пока открыто окно печати, браузер считает схему светлой (бумага) и
+    // присылает «сменилась тема»: кабинет за окном печати перекрашивался в
+    // светлый (разбор 27.11, «с любой кнопки печатаю так происходит»).
+    // На время печати тему не трогаем, после — сверяем заново.
+    let printing = false;
+    const sync = () => {
+      if (!printing) applyTheme(systemTheme());
+    };
+    const before = () => {
+      printing = true;
+    };
+    const after = () => {
+      printing = false;
+      sync();
+    };
     sync();
     query.addEventListener("change", sync);
-    return () => query.removeEventListener("change", sync);
+    window.addEventListener("beforeprint", before);
+    window.addEventListener("afterprint", after);
+    return () => {
+      query.removeEventListener("change", sync);
+      window.removeEventListener("beforeprint", before);
+      window.removeEventListener("afterprint", after);
+    };
   }, [theme]);
   useEffect(() => {
     document.documentElement.lang = language;

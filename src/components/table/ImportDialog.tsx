@@ -1,5 +1,13 @@
 import { useMemo, useRef, useState } from "react";
-import { AlertTriangle, Check, Download, FileSpreadsheet, Loader2, Upload, X } from "lucide-react";
+import {
+  AlertTriangle,
+  Check,
+  FileOutput,
+  FileSpreadsheet,
+  Loader2,
+  Paperclip,
+  X,
+} from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { useWarehouseProducts } from "@/lib/warehouseProducts";
 import { catalogRepository } from "@/lib/data";
@@ -136,11 +144,11 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
           }}
         />
         <Button size="sm" variant="outline" onClick={() => fileInput.current?.click()}>
-          <Upload className="size-3.5" />
+          <Paperclip className="size-3.5" />
           {t("import.pickFile")}
         </Button>
         <Button size="sm" variant="ghost" onClick={downloadTemplate}>
-          <Download className="size-3.5" />
+          <FileOutput className="size-3.5" />
           {t("import.template")}
         </Button>
         <Button
