@@ -7,7 +7,8 @@
  *
  *   на складе = строки коробов и тары (`boxes`) + открытые короба отгрузки
  *               + снятое в заявку без тары, пока заявка не уехала;
- *   свободно  = на складе − штуки открытых заявок (не уехали, не отменены).
+ *   свободно  = на складе − карантин тары (брак и излишек до решения старшего)
+ *               − штуки открытых заявок (не уехали, не отменены).
  *
  * Это те же суммы, что книга остатков кабинета (`lib/store/__tests__/ledger.ts`),
  * без размещений «товар в ячейке» (`placements`): количество там не записано.
@@ -21,7 +22,10 @@
  * подключения) и всё заново раз в день. Ozon обновляет пару «товар — склад»
  * не чаще раза в 30 с; проход раз в 1,5 мин.
  */
-/* global module */
+/* eslint-disable @typescript-eslint/no-require-imports */
+/* global module, require */
+
+const { freeInBox } = require("./overageHold");
 
 const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 const list = (v) => (Array.isArray(v) ? v : []);
@@ -34,8 +38,16 @@ function freeStock(view) {
   const add = (id, n) => {
     if (typeof id === "string" && n) have.set(id, (have.get(id) ?? 0) + n);
   };
-  for (const b of list(view.boxes))
-    for (const l of list(b?.lines)) add(l?.productId, qtyOf(l?.qty));
+  // Карантин (`heldQty`): излишек с приёмки и брак до решения старшего
+  // лежат в таре, но сборка их не возьмёт — площадке их не обещаем.
+  const disputes = list(view.disputes);
+  for (const b of list(view.boxes)) {
+    if (!isObject(b)) continue;
+    const box = { id: b.id, lines: list(b.lines).filter(isObject) };
+    for (const id of new Set(box.lines.map((l) => l.productId))) {
+      add(id, freeInBox(disputes, box, id));
+    }
+  }
   for (const b of list(view.outboundBoxes)) {
     if (!isObject(b) || b.shipmentId) continue;
     for (const l of list(b.lines)) add(l?.productId, qtyOf(l?.qty));
