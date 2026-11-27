@@ -41,6 +41,8 @@ function stand(lines: Box["lines"], requests: FulfillmentRequest[] = []) {
         ],
         boxes: [{ id: "b1", barcode: "UK-BOX-000001", createdAt: 0, lines }],
         requests,
+        receivingEvents: [],
+        expectedShipments: [],
       }) as unknown as EditorState,
   );
   const s = () => store.getState();
@@ -197,6 +199,78 @@ describe("тара посылок (FBS)", () => {
     expect(out[0].code.startsWith("UK-LBL-")).toBe(true);
     expect(s().boxes[0].lines).toEqual([]);
     expect(s().requests.every((r) => r.packedAt)).toBe(true);
+  });
+});
+
+describe("сервер принимает то, что пакует стол", () => {
+  // Сервер сверяет этикетки с заказом сам (`cabinet/deskPack.js`): честная
+  // упаковка стола должна проходить его проверку без единой пометки.
+  it("посылки тары FBS: этикетки штук и заказа, закрытие — без отказов", () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const server = require("../../../server/api/src/cabinet/deskPack.js") as {
+      applyPackEvent: (d: unknown, b: unknown, who: string) => { data?: unknown; flag?: string };
+      applyPackDone: (d: unknown, b: unknown, who: string) => { data?: unknown; flag?: string };
+    };
+    const requests = [
+      req({ id: "a", note: "Коледино", productId: "p1", toteId: "b1", externalId: "1" }),
+      req({ id: "b", note: "Коледино", productId: "p1", toteId: "b1", externalId: "2" }),
+      req({ id: "b2", note: "Коледино", productId: "p2", toteId: "b1", externalId: "2" }),
+    ];
+    const lines = [
+      { productId: "p1", qty: 2 },
+      { productId: "p2", qty: 1 },
+    ];
+    const { s, packOne } = stand(lines, requests);
+    let data: unknown = {
+      products: s().products,
+      boxes: s().boxes,
+      requests,
+      outboundBoxes: [],
+      disputes: [],
+      staffEvents: [],
+    };
+    packOne("4600000000017");
+    packOne("4600000000017");
+    packOne("4600000000024");
+    expect(s().packScanLabel(s().packSession!.orderLabels[0].labelCode)).toBe(true);
+    for (const e of s().staffEvents.filter((x) => x.type.startsWith("pack_"))) {
+      const body = { ...e, eventId: e.id, toteId: "b1" };
+      const r = server.applyPackEvent(data, body, "s1");
+      expect(r.flag).toBeUndefined();
+      data = r.data;
+    }
+    for (const f of s().packFinish()!) {
+      const r = server.applyPackDone(data, f, "s1");
+      expect(r.flag).toBeUndefined();
+      data = r.data;
+    }
+    const after = data as { requests: FulfillmentRequest[] };
+    expect(after.requests.every((r) => r.packedAt)).toBe(true);
+  });
+
+  it("тару на приёмке стол упаковать не даёт", () => {
+    const store = stand([{ productId: "p1", qty: 1 }]);
+    store.s().packFinish();
+    store.store.setState({
+      expectedShipments: [
+        {
+          id: "sh1",
+          status: "receiving",
+          lines: [{ id: "l1", productId: "p1", expectedQty: 1, receivedQty: 1 }],
+        },
+      ] as unknown as EditorState["expectedShipments"],
+      receivingEvents: [
+        {
+          id: "e1",
+          productId: "p1",
+          qty: 1,
+          boxId: "b1",
+          timestamp: 0,
+          expectedShipmentLineId: "l1",
+        },
+      ],
+    });
+    expect(store.s().packStart("UK-BOX-000001", "UK-OUT-1")).toBe("ws.tote.receiving");
   });
 });
 

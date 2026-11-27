@@ -152,8 +152,11 @@ type OpFlag =
   | "busy"
   | "taken"
   | "closed"
-  // Заказ посылки отменили после упаковки (`orderCancel.js`).
-  | "cancelled";
+  // Заказ посылки отменили после упаковки (`orderCancel.js`) или пока он
+  // лежал в таре упаковки.
+  | "cancelled"
+  // Этикетка не того заказа или посылка без своих этикеток (`deskPack.js`).
+  | "label";
 
 /**
  * Причина отказа и что делать — вместо общего «позовите старшего». Ключ — вид
@@ -165,6 +168,9 @@ const REASON_KEYS: Record<string, MsgKey> = {
   "pick:mixed": "ws.opPickMixed",
   "pack:stock": "ws.opPackStock",
   "pack:mixed": "ws.opPackMixed",
+  "pack:label": "ws.opPackLabel",
+  "pack:cancelled": "ws.opPackCancelled",
+  "pack:tote": "ws.opPackTote",
   "recv:tote": "ws.opRecvTote",
   "recv:stock": "ws.opRecvStock",
   "recv:mixed": "ws.opRecvMixed",

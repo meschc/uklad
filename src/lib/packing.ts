@@ -1,6 +1,13 @@
 import { groupRequestsByTarget } from "./fulfillment";
 import { matchesProductCode, normalizeCode } from "./barcode";
-import type { Box, FulfillmentRequest, PackSession, Product } from "./types";
+import type {
+  Box,
+  ExpectedShipment,
+  FulfillmentRequest,
+  PackSession,
+  Product,
+  ReceivingEvent,
+} from "./types";
 
 /**
  * Стол упаковки от тары — чистые правила.
@@ -564,4 +571,32 @@ export function pickToteProblem(input: {
       (r.note?.trim() || "") !== target,
   );
   return other ? "tote_other_target" : null;
+}
+
+/**
+ * Тара ещё на приёмке — её товар не на учёте (ошибки 16.11, п. 2): невскрытое
+ * место или тара, куда принимают по незакрытой поставке и которую ещё не
+ * поставили в ячейку. В упаковку такую не берут; то же проверяет сервер
+ * (`receivingOpen` в `cabinet/deskPack.js`).
+ */
+export function receivingOpen(
+  box: Box,
+  events: readonly ReceivingEvent[],
+  shipments: readonly ExpectedShipment[],
+  requests: readonly FulfillmentRequest[],
+): boolean {
+  if (box.sealed) return true;
+  if (box.address) return false;
+  // Тара, в которую собраны заявки, — тара сборки, даже если когда-то в неё
+  // принимали по поставке, которая ещё открыта (многоразовая тара).
+  if (requests.some((r) => r.toteId === box.id)) return false;
+  const open = new Set(
+    shipments.filter((s) => s.status !== "closed").flatMap((s) => s.lines.map((l) => l.id)),
+  );
+  return events.some(
+    (e) =>
+      e.boxId === box.id &&
+      e.expectedShipmentLineId !== undefined &&
+      open.has(e.expectedShipmentLineId),
+  );
 }
