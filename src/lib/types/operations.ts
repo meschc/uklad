@@ -87,6 +87,8 @@ export interface WarehouseTask {
   partnerId?: string;
   /** Кто выполняет. Пусто — задание ещё никому не назначено. */
   staffId?: string;
+  /** Пришло загрузкой резервной копии (`restore.js`): на сотрудника не считается. */
+  restored?: boolean;
   note?: string;
   createdAt: number;
   startedAt?: number;

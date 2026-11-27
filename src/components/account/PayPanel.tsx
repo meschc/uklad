@@ -161,6 +161,7 @@ export function PayPanel({
                     <p className="text-xs text-muted-foreground">
                       {new Date(a.at).toLocaleDateString(t.lang)}
                       {a.by ? ` · ${a.by}` : ""}
+                      {a.restored ? ` · ${t("restore.fromBackup")}` : ""}
                     </p>
                     {faultText(a.eventId) && (
                       <p className="text-xs text-muted-foreground">{faultText(a.eventId)}</p>

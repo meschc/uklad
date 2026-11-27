@@ -43,6 +43,11 @@ export function StaffLog({ staffId, now }: { staffId: string; now: number }) {
                 {e.code && (
                   <CodeTail code={e.code} className="ml-2 text-xs text-muted-foreground" />
                 )}
+                {e.restored && (
+                  <span className="ml-2 text-xs text-muted-foreground">
+                    {t("restore.fromBackup")}
+                  </span>
+                )}
               </>
             ),
           }))}

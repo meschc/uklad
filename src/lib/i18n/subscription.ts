@@ -94,6 +94,7 @@ export const ru = {
   "backup.emailNote": "Будет приходить на {email}. Письма начнут уходить, когда подключим сервер.",
   "backup.serverNote":
     "Копию всех данных кабинета сервер сохраняет сам каждую ночь. Архив выше — для своей копии на компьютере.",
+  "restore.fromBackup": "из копии",
   "backup.serverRestoreWarn":
     "Копия от {date} заменит работу склада, товары и настройки на сервере. Люди, склады и партнёры останутся. Перед заменой кабинет скачает копию текущих данных — из неё можно вернуть как было.",
   "backup.err.serverOld":
@@ -215,6 +216,7 @@ export const en: Record<keyof typeof ru, string> = {
   "backup.emailNote": "Will be sent to {email}. Emails start once the server is connected.",
   "backup.serverNote":
     "The server saves a copy of all cabinet data every night by itself. The archive above is for your own copy on a computer.",
+  "restore.fromBackup": "from backup",
   "backup.serverRestoreWarn":
     "The backup from {date} will replace warehouse work, products and settings on the server. People, warehouses and partners stay. Before replacing, the cabinet downloads a copy of the current data, so you can go back.",
   "backup.err.serverOld":
