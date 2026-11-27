@@ -326,10 +326,17 @@ export function ReceivingScreen({ staffId: badgeStaffId }: { staffId?: string } 
         lineId: d.lineId,
         staffId: staffId || undefined,
         discrepancy: d.discrepancy,
+        ...(d.defect ? { defect: true } : {}),
       }),
     );
     if (!res.ok) return;
     addReceived(d.qty);
+    // Брак в заявки не уходит: лежит в таре на учёте, решает старший.
+    if (d.defect) {
+      nextProduct();
+      ok("recv.defect.added", { name: d.product.name, n: d.qty, code: box.barcode });
+      return;
+    }
 
     // Кроссдокинг (п.10.1): товар не поедет на полку — он тут же закрывает
     // заявки, которые его ждали. Что не разошлось по заявкам, останется в таре
@@ -560,6 +567,7 @@ export function ReceivingScreen({ staffId: badgeStaffId }: { staffId?: string } 
           remainder={remainderFor(draft.product.id)?.remainder ?? null}
           onQty={(qty) => setDraft({ ...draft, qty })}
           onConfirm={confirmQty}
+          onDefect={() => void putInBox({ ...draft, defect: true })}
           onBack={nextProduct}
           t={t}
         />

@@ -211,6 +211,7 @@ export function createFulfillmentRepository(
                   shipmentId: input.shipmentId,
                   lineId: input.lineId,
                   discrepancy: input.discrepancy,
+                  ...(input.defect ? { defect: true } : {}),
                 };
               },
             ),
