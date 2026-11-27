@@ -7,6 +7,7 @@ import type { Notice, NoticeInput, NoticeTone } from "../notice";
 import type { SwitchRequest } from "../data/switchRepository";
 import type { ItemScan, PackDoneFacts } from "../packing";
 import type { PickUndoProblem } from "../pickUndo";
+import type { RecvUndoProblem } from "../recvUndo";
 import type {
   CellCountInput,
   CellCountProblem,
@@ -502,6 +503,15 @@ export interface FulfillmentSlice {
    * подтвердил). Возвращает id события.
    */
   receiveProduct: (input: ReceiveInput) => string;
+  /**
+   * Отменить свой скан приёмки целиком (`recvUndo.ts`): штуки из тары,
+   * принятое по строке −N, в журнал — событие отмены. Ответ — id отмены или
+   * почему нельзя.
+   */
+  undoReceive: (
+    scanId: string,
+    by: string,
+  ) => { id: string; at: number } | { problem: RecvUndoProblem };
 
   /** Новая коробка со свежим ярлыком Code128. Возвращает её. */
   createBox: () => Box;

@@ -627,3 +627,57 @@ test("откат остатков уносит и брак, заведённый
   assert.ok(ids.includes("dsp-1"));
   assert.ok(!ids.includes("def-e1"));
 });
+
+test("отмена скана приёмки сходится: тара −N против отмены, лишнего не заводит", () => {
+  const cur = base();
+  const scan = {
+    id: "rx1",
+    productId: "p1",
+    qty: 2,
+    boxId: "t1",
+    staffId: "stf-ivan",
+    timestamp: 1,
+  };
+  const withScan = mergeDeskWrite(
+    cur,
+    {
+      ...withBoxes(cur, cur.boxes[0].lines, [...cur.boxes[1].lines, { productId: "p1", qty: 2 }]),
+      receivingEvents: [...(cur.receivingEvents ?? []), scan],
+    },
+    who,
+  );
+  assert.deepEqual(withScan.mismatch, []);
+  const now = withScan.data;
+  const tote = now.boxes.find((b) => b.id === "t1");
+  const undo = {
+    id: "rx2",
+    undoes: "rx1",
+    productId: "p1",
+    qty: 2,
+    boxId: "t1",
+    staffId: "stf-ivan",
+    timestamp: 2,
+  };
+  const { data, mismatch } = mergeDeskWrite(
+    now,
+    {
+      ...now,
+      boxes: now.boxes.map((b) =>
+        b === tote
+          ? {
+              ...b,
+              lines: b.lines
+                .map((l) => (l.productId === "p1" ? { ...l, qty: l.qty - 2 } : l))
+                .filter((l) => l.qty > 0),
+            }
+          : b,
+      ),
+      receivingEvents: [...now.receivingEvents, undo],
+    },
+    who,
+  );
+  assert.deepEqual(mismatch, []);
+  const ev = data.receivingEvents.find((e) => e.id === "rx2");
+  assert.equal(ev.discrepancy, undefined);
+  assert.equal((data.disputes ?? []).filter((d) => d.id === "ovr-rx2").length, 0);
+});

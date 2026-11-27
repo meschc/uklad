@@ -2,6 +2,7 @@ import { nowMs, uid } from "../utils";
 import { generateBoxBarcode, generatePalletBarcode, labelNumber } from "../barcode";
 import { EMPTY_RECEIVING, resumeProgress } from "../receiving";
 import { mergeCargo } from "../cargo";
+import { planRecvUndo, takeOut } from "../recvUndo";
 import { defectDisputeId, overageDisputeId, overReceived } from "../disputes";
 import type { Box, Dispute, ExpectedShipment, Pallet, ReceivingEvent } from "../types";
 import type { FulfillmentSlice, SliceCreator } from "./state";
@@ -145,6 +146,50 @@ export const createFulfillmentSlice: SliceCreator<FulfillmentSlice> = (set, get)
     }));
 
     return event.id;
+  },
+
+  undoReceive: (scanId, by) => {
+    const res = planRecvUndo(get(), scanId, by);
+    if (!res.ok) return { problem: res.problem };
+    const { scan, box, shipmentId } = res.plan;
+    const id = uid("recv");
+    const at = nowMs();
+    set((s) => ({
+      boxes: s.boxes.map((b) =>
+        b.id === box.id
+          ? {
+              ...b,
+              lines: takeOut(b.lines, scan.productId, scan.qty),
+            }
+          : b,
+      ),
+      expectedShipments: s.expectedShipments.map((sh) =>
+        sh.id === shipmentId
+          ? {
+              ...sh,
+              lines: sh.lines.map((l) =>
+                l.id === scan.expectedShipmentLineId
+                  ? { ...l, receivedQty: Math.max(0, l.receivedQty - scan.qty) }
+                  : l,
+              ),
+            }
+          : sh,
+      ),
+      receivingEvents: [
+        ...s.receivingEvents,
+        {
+          id,
+          undoes: scan.id,
+          productId: scan.productId,
+          qty: scan.qty,
+          boxId: box.id,
+          staffId: by,
+          timestamp: at,
+        },
+      ],
+      receiving: { ...s.receiving, received: Math.max(0, s.receiving.received - scan.qty) },
+    }));
+    return { id, at };
   },
 
   createBox: () => {

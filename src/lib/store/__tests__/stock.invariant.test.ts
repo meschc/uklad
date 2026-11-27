@@ -148,6 +148,21 @@ describe("товар не теряется и не двоится на пути 
     expect(onHand(s()).get("p-a")).toBe(2);
   });
 
+  it("отмена скана приёмки: штуки уходят из тары, учёт сходится, второй раз нельзя", () => {
+    const w = warehouse();
+    const { s, check } = w;
+    const box = s().createBox();
+    const id = s().receiveProduct({ productId: "p-a", qty: 10, boxId: box.id, staffId: "s1" });
+    expect(s().undoReceive(id, "s2")).toEqual({ problem: "not_yours" });
+    expect("id" in s().undoReceive(id, "s1")).toBe(true);
+    check("скан отменён");
+    expect(onHand(s()).get("p-a") ?? 0).toBe(0);
+    expect(s().undoReceive(id, "s1")).toEqual({ problem: "missing" });
+    s().receiveProduct({ productId: "p-a", qty: 8, boxId: box.id, staffId: "s1" });
+    check("принято верное число");
+    expect(onHand(s()).get("p-a")).toBe(8);
+  });
+
   it("кроссдок: принятое под заявку не лежит в таре второй раз", () => {
     const w = warehouse();
     const { s, check } = w;

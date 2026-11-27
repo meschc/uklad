@@ -51,6 +51,26 @@ describe("operationLog", () => {
     ]);
   });
 
+  it("отменённый скан приёмки не идёт ни в счёт, ни в выработку (принял 10, отменил, принял 8)", () => {
+    const base = { productId: "p-a", boxId: "b1", staffId: "s1" };
+    const log = operationLog(
+      facts({
+        boxes: [
+          { id: "b1", barcode: "UK-BOX-1", lines: [{ productId: "p-a", qty: 8 }], createdAt: 1 },
+        ],
+        receivingEvents: [
+          { ...base, id: "e1", qty: 10, timestamp: 10 },
+          { ...base, id: "u1", qty: 10, timestamp: 20, undoes: "e1" },
+          { ...base, id: "e2", qty: 8, timestamp: 30 },
+        ],
+      }),
+    );
+    const rcv = log.filter((e) => e.kind === "item_receiving");
+    expect(rcv.map((e) => [e.id, e.qty, e.staffId])).toEqual([["rcv:e2", 8, "s1"]]);
+    // Первое принятое место берётся по живому скану, а не по отменённому.
+    expect(log.find((e) => e.kind === "cargo_box")?.at).toBe(30);
+  });
+
   it("сборку считает по собранному, а не по заказанному, и пропускает новую", () => {
     const base = { productId: "p-a", createdAt: 1, updatedAt: 5 };
     const log = operationLog(
