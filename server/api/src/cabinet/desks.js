@@ -164,8 +164,14 @@ function keepDecisions(current, merged) {
     // от остатков зависят — после отката их не оставляем.
     return n && !d.resolution && n.resolution && !movesGoods(d, n.resolution) ? n : d;
   });
-  // Лишнее с приёмки заводится вместе с приёмкой: откатилась она — нет и его.
-  return appendOnly(kept, merged, (d) => !d.resolution && d.kind !== "receive_overage");
+  // Лишнее с приёмки и брак с приёмки или сборки (`def-…`) заводятся вместе
+  // с движением товара: откатилось оно — нет и их, иначе карантин держал бы
+  // в таре штуки, которых в ней нет.
+  return appendOnly(
+    kept,
+    merged,
+    (d) => !d.resolution && d.kind !== "receive_overage" && !String(d.id).startsWith("def-"),
+  );
 }
 
 /** Порядок статуса заявки: назад со стола — только «в работе» → «новая». */

@@ -225,6 +225,7 @@ function applyPickDone(data, body) {
 function applyPickUndo(data, body, staffRef) {
   const events = list(data.staffEvents);
   if (!isId(body.pickId)) return { flag: "bad" };
+  if (body.defect !== undefined && body.defect !== true) return { flag: "bad" };
   if (events.some((e) => e.id === body.eventId)) return { data };
   // Уже отменён (повтор, другим ключом) — снимать второй раз нечего.
   if (events.some((e) => e.type === "pick_undo" && e.undoes === body.pickId)) return { data };
@@ -283,6 +284,25 @@ function applyPickUndo(data, body, staffRef) {
       },
     ],
   };
+  // Брак на сборке (Кирилл 27.11): штука возвращается в свой короб на учёт,
+  // спорным «брак» старшему и в карантин (`heldQty`) — ни в сборку, ни
+  // площадке свободным, пока старший не решит. Сборщик берёт следующую.
+  if (body.defect) {
+    const id = `def-${body.eventId}`.slice(0, 100);
+    out.disputes = [
+      ...list(data.disputes),
+      {
+        id,
+        kind: "not_packable",
+        boxId: from.id,
+        toteCode: String(from.barcode ?? "").slice(0, 100),
+        productId: pick.productId,
+        qty: 1,
+        raisedBy: staffRef,
+        raisedAt: at,
+      },
+    ];
+  }
   const post = (merged) => ({
     ...merged,
     requests: list(merged.requests).map((r) => (r.id === req.id ? stepBack(r, picked, at) : r)),

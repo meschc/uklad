@@ -1,5 +1,5 @@
 import { frozenBoxes } from "../inventory";
-import { freeInBox } from "../disputes";
+import { defectDisputeId, freeInBox } from "../disputes";
 import { planPickUndo, stepBack } from "../pickUndo";
 import { nowMs, uid } from "../utils";
 import { addressKey } from "../address";
@@ -189,7 +189,7 @@ export const createRequestsSlice: SliceCreator<RequestsSlice> = (set, get) => ({
     return picked;
   },
 
-  undoPick: (pickId, by) => {
+  undoPick: (pickId, by, defect) => {
     const s = get();
     const res = planPickUndo(s, pickId, by);
     if (!res.ok) return { problem: res.problem };
@@ -225,6 +225,25 @@ export const createRequestsSlice: SliceCreator<RequestsSlice> = (set, get) => ({
           undoes: pick.id,
         },
       ],
+      // Брак на сборке: штука в коробе на учёте, но в карантине до решения
+      // старшего (`heldQty`). То же заводит сервер (`deskPick.js`).
+      ...(defect
+        ? {
+            disputes: [
+              ...(st.disputes ?? []),
+              {
+                id: defectDisputeId(undoId),
+                kind: "not_packable" as const,
+                boxId: from.id,
+                toteCode: from.barcode,
+                productId,
+                qty: 1,
+                raisedBy: by,
+                raisedAt: at,
+              },
+            ],
+          }
+        : {}),
     }));
     return { id: undoId };
   },

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Undo2 } from "lucide-react";
+import { Ban, Undo2 } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { formatAddress } from "@/lib/address";
 import { planPickUndo } from "@/lib/pickUndo";
@@ -15,15 +15,20 @@ import { CodeText } from "./CodeTail";
  * кладёт сам сборщик — панель говорит, куда, кнопка «Вернул в короб»
  * подтверждает. Что сделать — в заголовке, ниже простым текстом откуда и
  * сколько станет (Кирилл 16.11). Подписи «для справки» не нужны.
+ *
+ * Брак (`defect`, Кирилл 27.11) — та же отмена: штука в свой короб на учёт,
+ * но спорным «брак» старшему и в карантин, пока он не решит.
  */
 export function PickUndoPanel({
   pickId,
   staffId,
   onClose,
   onDone,
+  defect = false,
 }: {
   pickId: string;
   staffId: string;
+  defect?: boolean;
   onClose: () => void;
   onDone: (left: number, total: number) => void;
 }) {
@@ -48,7 +53,7 @@ export function PickUndoPanel({
     setPending(true);
     const total = res.plan.request.qty;
     const left = (res.plan.request.pickedQty ?? 1) - 1;
-    const out = await workstationRepository.pickUndo(pickId);
+    const out = await workstationRepository.pickUndo(pickId, defect);
     setPending(false);
     if (!out.ok) return setError(out.error);
     onDone(left, total);
@@ -58,15 +63,23 @@ export function PickUndoPanel({
     <Modal
       title={
         res.ok ? (
-          <CodeText text={t("pick.undo.put", { box: res.plan.from.barcode })} />
+          <CodeText
+            text={t(defect ? "pick.defect.put" : "pick.undo.put", { box: res.plan.from.barcode })}
+          />
         ) : (
-          t("pick.undo.title")
+          t(defect ? "pick.defect.title" : "pick.undo.title")
         )
       }
-      icon={<Undo2 className="size-4 text-muted-foreground" />}
+      icon={
+        defect ? (
+          <Ban className="size-4 text-warning" />
+        ) : (
+          <Undo2 className="size-4 text-muted-foreground" />
+        )
+      }
       onClose={onClose}
       onSubmit={() => void submit()}
-      submitLabel={t("pick.undo.confirm")}
+      submitLabel={t(defect ? "pick.defect.confirm" : "pick.undo.confirm")}
       disabled={!res.ok}
       pending={pending}
       error={error ?? problem}

@@ -218,6 +218,27 @@ describe("товар не теряется и не двоится на пути 
     expect([empty.status, empty.pickedQty, empty.toteId]).toEqual(["new", 0, undefined]);
   });
 
+  it("брак на сборке: штука в свой короб на учёт, в карантин, следующую берут другую", () => {
+    const w = warehouse();
+    const { s, check } = w;
+    stock(w, "p-a", 2, C1);
+    const r = s().createRequest({ productId: "p-a", qty: 1, note: "Тула" });
+    const tote = s().createBox();
+    s().recordPick(r, "p-a", C1, tote.id, "s1");
+    const pick = s().staffEvents.find((e) => e.type === "pick_scan")!;
+    const out = s().undoPick(pick.id, "s1", true);
+    expect("id" in out).toBe(true);
+    check("брак вернулся в короб");
+    expect(onHand(s()).get("p-a")).toBe(2);
+    const d = s().disputes.find((x) => x.kind === "not_packable")!;
+    expect([d.id, d.qty, d.raisedBy]).toEqual([`def-${"id" in out ? out.id : ""}`, 1, "s1"]);
+    // Вторая штука из того же короба снимается, бракованная — уже нет.
+    expect(s().recordPick(r, "p-a", C1, tote.id, "s1")).toBe(1);
+    const r2 = s().createRequest({ productId: "p-a", qty: 1, note: "Тула" });
+    expect(s().recordPick(r2, "p-a", C1, tote.id, "s1")).toBe(0);
+    check("карантин держит брак");
+  });
+
   it("заказ в двух тарах: вторая пересыпается в первую, уходит одной посылкой", () => {
     const w = warehouse();
     const { s, check } = w;

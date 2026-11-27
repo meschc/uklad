@@ -8,6 +8,7 @@ import {
   Package,
   ScanLine,
   Undo2,
+  Ban,
 } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { levelFor, signal } from "@/lib/scanSignal";
@@ -72,6 +73,8 @@ export function PickingScreen({ autoStart = false }: { autoStart?: boolean } = {
   // Отмена скана (`pickUndo.ts`): какой скан отменяем сейчас и какая заявка
   // только что закрылась сама — её последний скан тоже можно отменить.
   const [undoId, setUndoId] = useState<string | null>(null);
+  // Брак на сборке — та же отмена скана, но штука уходит в карантин.
+  const [defect, setDefect] = useState(false);
   const [recentId, setRecentId] = useState<string | null>(null);
   // Тара сборки живёт между заявками: сборщик идёт с одной тарой, пока она
   // подходит (тот же продавец и назначение).
@@ -243,7 +246,7 @@ export function PickingScreen({ autoStart = false }: { autoStart?: boolean } = {
 
   const afterUndo = (left: number, total: number) => {
     setUndoId(null);
-    ok("pick.undo.done", { n: left, total });
+    ok(defect ? "pick.defect.done" : "pick.undo.done", { n: left, total });
     // Отменили скан уже закрытой заявки — она снова собирается: продолжаем её.
     if (!active && recentId) {
       const r = useEditor.getState().requests.find((x) => x.id === recentId);
@@ -251,21 +254,40 @@ export function PickingScreen({ autoStart = false }: { autoStart?: boolean } = {
       if (r) {
         open(r);
         signal("ok");
-        setScan({ status: "ok", msg: t("pick.undo.done", { n: left, total }) });
+        setScan({
+          status: "ok",
+          msg: t(defect ? "pick.defect.done" : "pick.undo.done", { n: left, total }),
+        });
       }
     }
   };
 
   const undoButton = undoable && (
     // На ТСД — под палец (40 px), на столе — как остальные кнопки (32 px).
-    <Button
-      variant="outline"
-      className="h-10 self-start sm:h-8"
-      onClick={() => setUndoId(undoable.id)}
-    >
-      <Undo2 className="size-3.5" />
-      {t("pick.undo.start")}
-    </Button>
+    <div className="flex flex-wrap gap-2 self-start">
+      <Button
+        variant="outline"
+        className="h-10 sm:h-8"
+        onClick={() => {
+          setDefect(false);
+          setUndoId(undoable.id);
+        }}
+      >
+        <Undo2 className="size-3.5" />
+        {t("pick.undo.start")}
+      </Button>
+      <Button
+        variant="outline"
+        className="h-10 sm:h-8"
+        onClick={() => {
+          setDefect(true);
+          setUndoId(undoable.id);
+        }}
+      >
+        <Ban className="size-3.5" />
+        {t("pick.defect.start")}
+      </Button>
+    </div>
   );
 
   // --- рендер ----------------------------------------------------------------
@@ -308,6 +330,7 @@ export function PickingScreen({ autoStart = false }: { autoStart?: boolean } = {
           staffId={staffId}
           onClose={() => setUndoId(null)}
           onDone={afterUndo}
+          defect={defect}
         />
       )}
 
