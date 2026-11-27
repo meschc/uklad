@@ -101,6 +101,8 @@ async function openWarehouse(page: Page, role: "Склад" | "Продавец"
   await page.goto("/app/");
   if (role === "Продавец") {
     await page.getByRole("group", { name: "Роль" }).getByRole("button", { name: role }).click();
+    // Склад в демо один: продавец попадает в него сразу, без списка.
+    return;
   }
   await page
     .getByRole("button")

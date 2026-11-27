@@ -45,12 +45,15 @@ test.describe("Обход экранов кабинета", () => {
           .getByRole("button", { name: "Продавец" })
           .click();
       }
-      // Складов несколько: обе роли сначала видят список и сами открывают склад.
-      await page
-        .getByRole("button")
-        .filter({ hasText: /\d+ этаж/ })
-        .first()
-        .click();
+      // Владелец сначала видит список складов. В демо склад один, и продавец
+      // попадает в него сразу, без списка (Кирилл 24.11).
+      if (role === "Склад") {
+        await page
+          .getByRole("button")
+          .filter({ hasText: /\d+ этаж/ })
+          .first()
+          .click();
+      }
 
       const rail = page.getByRole("navigation", { name: "Разделы" });
       await expect(rail).toBeVisible();
