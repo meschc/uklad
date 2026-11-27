@@ -357,11 +357,13 @@ function Row({
         ? t("queue.active")
         : t("queue.waiting");
   return (
-    <Tr interactive>
+    <Tr onOpen={onOpen}>
       <Td>
+        {/* Карточку открывает вся строка; кнопка в названии — путь с
+            клавиатуры, поэтому ссылкой она не выглядит (Кирилл 27.11). */}
         <button
           type="button"
-          className="text-left font-medium hover:text-primary hover:underline max-md:min-h-11 max-md:min-w-11"
+          className="text-left font-medium max-md:min-h-11 max-md:min-w-11"
           onClick={onOpen}
         >
           {title}

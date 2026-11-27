@@ -117,22 +117,44 @@ export function Th({ align, max, nowrap, className, ...props }: ComponentProps<"
 const NEON_HOVER =
   "transition-colors md:hover:bg-primary/5 md:hover:shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.3)]";
 
+/** Что в строке уже само что-то делает: нажатие на него строку не открывает. */
+const OWN_ACTION = "button, a, input, select, textarea, label, [role='checkbox'], [role='switch']";
+
 /**
- * Строка. `total` — итоговая строка: линия сверху, полужирный. `interactive`
- * — строка что-то открывает или выбирает: неон при наведении.
+ * Строка. `total` — итоговая строка: линия сверху, полужирный.
+ *
+ * `onOpen` — нажатие на строку открывает её карточку справа (Кирилл 27.11:
+ * «при нажатии на строчку таблицы открывать карточку»), под курсором — неон. Кнопки и ссылки
+ * внутри строки делают своё и строку не открывают; клик из панели, что
+ * открыта порталом из строки, — тоже (React ведёт его через строку, а DOM —
+ * нет). Выделили текст мышью — тоже не открываем: человек копирует артикул.
+ * С клавиатуры карточку открывает кнопка в строке (название или карандаш),
+ * поэтому сама строка в порядок табуляции не встаёт.
  */
 export function Tr({
   className,
   total,
-  interactive,
+  onOpen,
+  onClick,
   ...props
-}: ComponentProps<"tr"> & { total?: boolean; interactive?: boolean }) {
+}: ComponentProps<"tr"> & { total?: boolean; onOpen?: () => void }) {
   return (
     <tr
       {...props}
+      onClick={(e) => {
+        onClick?.(e);
+        if (!onOpen || e.defaultPrevented) return;
+        const target = e.target as Element;
+        if (!e.currentTarget.contains(target)) return;
+        const own = target.closest(OWN_ACTION);
+        if (own && e.currentTarget.contains(own)) return;
+        if (window.getSelection()?.toString()) return;
+        onOpen();
+      }}
       className={cn(
         total ? "border-t border-border font-medium" : TABLE_ROW,
-        interactive && NEON_HOVER,
+        onOpen && NEON_HOVER,
+        onOpen && "cursor-pointer",
         className,
       )}
     />

@@ -44,7 +44,7 @@ export function StaffRow({
   const [badgeOpen, setBadgeOpen] = useState(false);
 
   return (
-    <Tr className="group">
+    <Tr className="group" onOpen={onEdit}>
       <Td>
         <button onClick={onEdit} className="flex min-w-0 items-center gap-3 text-left">
           {/* shrink-0: фото не сжимается, когда соседний текст длинный

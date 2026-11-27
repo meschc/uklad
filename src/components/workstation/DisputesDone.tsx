@@ -45,15 +45,12 @@ export function DisputesDone({
         </TableHeader>
         <tbody>
           {rows.map((d) => (
-            <Tr key={d.id} interactive className="cursor-pointer" onClick={() => setOpenId(d.id)}>
+            <Tr key={d.id} onOpen={() => setOpenId(d.id)}>
               <Td>
                 <button
                   type="button"
-                  className="text-left font-medium hover:underline"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setOpenId(d.id);
-                  }}
+                  className="text-left font-medium"
+                  onClick={() => setOpenId(d.id)}
                 >
                   {nameOf(d.productId)}
                 </button>
