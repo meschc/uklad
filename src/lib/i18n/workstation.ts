@@ -667,6 +667,11 @@ export const ru = {
   "ws.policy.holidayRow": "В праздник",
   "ws.policy.holidayTail": "% в нерабочие праздничные дни",
   "ws.run.last": "Последний товар",
+  "ws.run.undoLast": "Отменить последнюю штуку",
+  "ws.run.undone": "Последняя штука отменена: верните её в тару",
+  "ws.pack.undoNothing": "Отменять нечего: в этой таре вы ещё ничего не упаковали",
+  "ws.opPackLate":
+    "Эту штуку уже не отменить: тару закрыли, и она в коробе. Если ошиблись — отдайте короб старшему",
   "ws.run.lastHide": "Скрыть",
   "ws.run.lastNone": "Упакованных штук в этой таре ещё нет",
   "ws.chk.label_used":
@@ -715,6 +720,7 @@ export const ru = {
   "ws.ev.pack_done": "Закрыл тару",
   "ws.ev.pick_scan": "Снял с полки в тару",
   "ws.ev.pick_undo": "Отменил скан: вернул в короб",
+  "ws.ev.pack_undo": "Отменил упаковку штуки: вернул в тару",
   "ws.ev.pack_merge": "Пересыпал вторую тару заказа",
 };
 
@@ -1383,6 +1389,11 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.policy.holidayRow": "On holidays",
   "ws.policy.holidayTail": "% on public holidays",
   "ws.run.last": "Last item",
+  "ws.run.undoLast": "Undo last item",
+  "ws.run.undone": "Last item undone: put it back in the tote",
+  "ws.pack.undoNothing": "Nothing to undo: you have not packed anything from this tote yet",
+  "ws.opPackLate":
+    "This item can no longer be undone: the tote is closed and the item is in the box. If it was a mistake, hand the box to the shift lead",
   "ws.run.lastHide": "Hide",
   "ws.run.lastNone": "No units packed from this tote yet",
   "ws.chk.label_used": "This label is already on another unit. Stick on the one just printed.",
@@ -1428,5 +1439,6 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.ev.pack_done": "Closed tote",
   "ws.ev.pick_scan": "Picked into tote",
   "ws.ev.pick_undo": "Undid a scan: returned to box",
+  "ws.ev.pack_undo": "Undid a packed item: returned to tote",
   "ws.ev.pack_merge": "Merged the order's second tote",
 };

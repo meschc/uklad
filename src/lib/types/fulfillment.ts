@@ -322,6 +322,11 @@ type StaffEventType =
   | "pack_label"
   /** Этикетку штуки напечатали ещё раз: старший видит перепечатки за смену. */
   | "pack_reprint"
+  /**
+   * Упаковщик отменил свою последнюю штуку, пока тара на столе (`undoes` —
+   * её этикетка или скан): штука снова в таре, этикетка не в счёт.
+   */
+  | "pack_undo"
   | "pack_done"
   | "pick_scan"
   /** Сборщик отменил свой скан: штука вернулась из тары в короб (`undoes`). */
@@ -358,7 +363,7 @@ export interface StaffEvent {
   requestId?: string;
   boxId?: string;
   cell?: CellAddress;
-  /** Отмена (`pick_undo`): id скана, который она отменяет. */
+  /** Отмена (`pick_undo`, `pack_undo`): id скана или этикетки, которую она отменяет. */
   undoes?: string;
 }
 

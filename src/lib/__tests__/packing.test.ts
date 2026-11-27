@@ -248,6 +248,57 @@ describe("сервер принимает то, что пакует стол", (
     expect(after.requests.every((r) => r.packedAt)).toBe(true);
   });
 
+  it("отмена последней штуки: снова в таре, этикетки не в счёт, сервер принимает", () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const server = require("../../../server/api/src/cabinet/deskPack.js") as {
+      applyPackEvent: (d: unknown, b: unknown, who: string) => { data?: unknown; flag?: string };
+      applyPackDone: (d: unknown, b: unknown, who: string) => { data?: unknown; flag?: string };
+    };
+    const requests = [
+      req({ id: "b", note: "Коледино", productId: "p1", toteId: "b1", externalId: "2" }),
+      req({ id: "b2", note: "Коледино", productId: "p2", toteId: "b1", externalId: "2" }),
+    ];
+    const { s, packOne } = stand(
+      [
+        { productId: "p1", qty: 1 },
+        { productId: "p2", qty: 1 },
+      ],
+      requests,
+    );
+    let data: unknown = {
+      products: s().products,
+      boxes: s().boxes,
+      requests,
+      outboundBoxes: [],
+      disputes: [],
+      staffEvents: [],
+    };
+    packOne("4600000000017");
+    packOne("4600000000024");
+    expect(s().packScanLabel(s().packSession!.orderLabels[0].labelCode)).toBe(true);
+    // Самокат упаковали не тот: отменяем — заказ снова не собран.
+    expect(s().packUndoLast()).toBe(true);
+    expect(s().packSession!.units).toHaveLength(1);
+    expect(s().packSession!.orderLabels).toEqual([]);
+    expect(s().staffEvents.filter((e) => e.type === "pack_undo")).toHaveLength(2);
+    // Тот же товар снова: новая этикетка штуки и та же этикетка заказа.
+    packOne("4600000000024");
+    expect(s().packScanLabel(s().packSession!.orderLabels[0].labelCode)).toBe(true);
+    for (const e of s().staffEvents.filter((x) => x.type.startsWith("pack_"))) {
+      const r = server.applyPackEvent(data, { ...e, eventId: e.id, toteId: "b1" }, "s1");
+      expect(r.flag).toBeUndefined();
+      data = r.data;
+    }
+    for (const f of s().packFinish()!) {
+      const r = server.applyPackDone(data, f, "s1");
+      expect(r.flag).toBeUndefined();
+      data = r.data;
+    }
+    expect(s().boxes[0].lines).toEqual([]);
+    // Отменять больше нечего: сессия закрыта.
+    expect(s().packUndoLast()).toBe(false);
+  });
+
   it("тару на приёмке стол упаковать не даёт", () => {
     const store = stand([{ productId: "p1", qty: 1 }]);
     store.s().packFinish();

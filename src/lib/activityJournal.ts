@@ -222,6 +222,7 @@ const LOCAL_STEP: Record<StaffEvent["type"], JournalStep> = {
   pack_reject: "pack",
   pack_label: "label",
   pack_reprint: "label",
+  pack_undo: "pack",
   pack_done: "pack",
   pack_merge: "pack",
   pack_move: "pack",

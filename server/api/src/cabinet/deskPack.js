@@ -39,6 +39,8 @@ const PACK_EVENTS = new Set([
   "pack_reject",
   // Перепечатка этикетки: только запись в журнал, товар не двигается.
   "pack_reprint",
+  // Отмена своей штуки, пока тара не закрыта (`undoes` — её этикетка или скан).
+  "pack_undo",
 ]);
 /** Спорное, которое приносит скан: «нет в таре», «лишнее» и брак. */
 const SCAN_DISPUTES = new Set(["not_in_tote", "extra", "not_packable"]);
@@ -106,13 +108,39 @@ function sinceClosed(events, tote, before = Infinity) {
   return events.filter((e) => Number(e.at) > from);
 }
 
+/** События, отменённые упаковщиком (`pack_undo`): их этикетки не в счёт. */
+const undoneIds = (events) =>
+  new Set(events.filter((e) => e.type === "pack_undo").map((e) => e.undoes));
+
+/**
+ * Отмена своей штуки (`pack_undo`): только своя этикетка или свой скан, и
+ * только пока заказ не упакован — после закрытия тары штука уже в коробе.
+ * Повтор той же отмены — то же самое. Сама отменённая запись остаётся в
+ * журнале: разбор видит и ошибку, и исправление.
+ */
+function undoProblem(data, body, events, staffRef) {
+  if (!isId(body.undoes)) return "bad";
+  const target = events.find(
+    (e) => e.id === body.undoes && (e.type === "pack_label" || e.type === "pack_scan"),
+  );
+  if (!target) return "bad";
+  if (target.staffId !== staffRef) return "not_yours";
+  if (target.orderId !== undefined) {
+    const req = list(data.requests).find((r) => r.id === target.orderId);
+    if (req?.packedAt) return "late";
+  }
+  return null;
+}
+
 /**
  * Этикетки, уже приклеенные к штукам этого заказа: товар → коды. Считаются
  * коды, а не сканы: повтор той же этикетки — та же штука, а не лишняя.
  */
 function labelCodes(events, ids) {
   const m = new Map();
+  const gone = undoneIds(events);
   for (const e of events) {
+    if (gone.has(e.id)) continue;
     if (e.type === "pack_label" && ids.has(e.orderId) && typeof e.productId === "string") {
       const codes = m.get(e.productId) ?? new Set();
       codes.add(normalizeCode(String(e.code ?? "")));
@@ -185,7 +213,10 @@ function parcelProblem(all, tote, at, closing, packed, code) {
   const labelled = labelledOf(events, ids);
   if ([...need].some(([p, n]) => (labelled.get(p) ?? 0) < n)) return true;
   const units = [...need.values()].reduce((a, b) => a + b, 0);
-  const own = events.filter((e) => e.type === "pack_label" && ids.has(e.orderId));
+  const gone = undoneIds(events);
+  const own = events.filter(
+    (e) => e.type === "pack_label" && ids.has(e.orderId) && !gone.has(e.id),
+  );
   if (units === 1) return !own.some((e) => normalizeCode(String(e.code ?? "")) === code);
   return (
     !own.some((e) => e.productId === undefined && normalizeCode(String(e.code ?? "")) === code) ||
@@ -240,6 +271,7 @@ const packEvent = (body, staffRef) => ({
   ...(isId(body.productId) ? { productId: body.productId } : {}),
   ...(isId(body.orderId) ? { orderId: body.orderId } : {}),
   ...(Number.isInteger(body.ms) && body.ms >= 0 ? { ms: body.ms } : {}),
+  ...(body.type === "pack_undo" && isId(body.undoes) ? { undoes: body.undoes } : {}),
 });
 
 /**
@@ -254,6 +286,11 @@ function applyPackEvent(data, body, staffRef) {
   if (events.some((e) => e.id === body.eventId)) return { data };
   if (body.type === "pack_label") {
     const problem = labelProblem(data, body, events);
+    if (problem) return { flag: problem };
+  }
+  if (body.type === "pack_undo") {
+    if (events.some((e) => e.type === "pack_undo" && e.undoes === body.undoes)) return { data };
+    const problem = undoProblem(data, body, events, staffRef);
     if (problem) return { flag: problem };
   }
   const out = { ...data, staffEvents: [...events, packEvent(body, staffRef)] };

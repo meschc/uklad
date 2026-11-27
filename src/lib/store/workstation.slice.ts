@@ -461,6 +461,60 @@ export const createWorkstationSlice: SliceCreator<WorkstationSlice> = (set, get)
     return true;
   },
 
+  packUndoLast: () => {
+    const s = get();
+    const ps = s.packSession;
+    const unit = ps?.units.at(-1);
+    if (!ps || !unit) return false;
+    const now = nowMs();
+    const undone = new Set(
+      s.staffEvents.filter((e) => e.type === "pack_undo").map((e) => e.undoes),
+    );
+    // Только события этой сессии этого упаковщика, ещё не отменённые.
+    const mine = s.staffEvents.filter(
+      (e) => e.staffId === ps.staffId && e.at >= ps.startedAt && !undone.has(e.id),
+    );
+    const last = (match: (e: StaffEvent) => boolean) => [...mine].reverse().find(match);
+    const undo = (e: StaffEvent | undefined) =>
+      e
+        ? [
+            event({
+              staffId: ps.staffId,
+              type: "pack_undo",
+              at: now,
+              station: "pack",
+              ...(e.code ? { code: e.code } : {}),
+              ...(e.productId ? { productId: e.productId } : {}),
+              ...(e.orderId ? { orderId: e.orderId } : {}),
+              undoes: e.id,
+            }),
+          ]
+        : [];
+    const events = unit.confirmedAt
+      ? undo(last((e) => e.type === "pack_label" && e.code === unit.labelCode))
+      : undo(
+          last(
+            (e) =>
+              e.type === "pack_scan" && e.productId === unit.productId && e.at === unit.scannedAt,
+          ),
+        );
+    // Заказ из нескольких штук снова не собран: его этикетка не в счёт, при
+    // последней штуке она напечатается заново.
+    const ol = unit.orderId ? ps.orderLabels.find((l) => l.orderId === unit.orderId) : undefined;
+    if (ol?.confirmedAt) {
+      events.push(...undo(last((e) => e.type === "pack_label" && e.code === ol.labelCode)));
+    }
+    set({
+      packSession: {
+        ...ps,
+        units: ps.units.slice(0, -1),
+        orderLabels: ol ? ps.orderLabels.filter((l) => l !== ol) : ps.orderLabels,
+      },
+      staffEvents: [...s.staffEvents, ...events],
+    });
+    return true;
+  },
+
   packLogReprint: (code) => {
     const s = get();
     const ps = s.packSession;

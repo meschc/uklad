@@ -311,9 +311,11 @@ export function peaksByStaff(
   to: number,
 ): Map<string, Peaks> {
   const out = new Map<string, Peaks>();
-  // Отменённый скан сборки — не пик: штука вернулась на полку.
+  // Отменённый скан сборки или упаковки — не пик: штука вернулась на место.
   const undone = new Set(
-    events.flatMap((e) => (e.type === "pick_undo" && e.undoes ? [e.undoes] : [])),
+    events.flatMap((e) =>
+      (e.type === "pick_undo" || e.type === "pack_undo") && e.undoes ? [e.undoes] : [],
+    ),
   );
   for (const e of events) {
     if (e.at < from || e.at >= to || undone.has(e.id)) continue;
