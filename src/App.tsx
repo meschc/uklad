@@ -98,11 +98,6 @@ const DevicesScreen = lazy(() =>
     default: m.DevicesScreen,
   })),
 );
-const ApprovalsScreen = lazy(() =>
-  import("@/components/approvals/ApprovalsScreen").then((m) => ({
-    default: m.ApprovalsScreen,
-  })),
-);
 const ChatScreen = lazy(() =>
   import("@/components/chat/ChatScreen").then((m) => ({ default: m.ChatScreen })),
 );
@@ -237,7 +232,9 @@ export default function App() {
   const noWarehouse = useEditor((s) => s.warehouse.placeholder === true);
   // «Спорные» переехали в «Подтверждения» (Кирилл 16.11): старая ссылка и
   // сохранённый экран ведут туда.
-  const wanted = appView === "disputes" ? "approvals" : appView;
+  // «Подтверждения» — чип «Заданий» (Кирилл 24.11): обе старые ссылки ведут туда.
+  const toApprovals = appView === "disputes" || appView === "approvals";
+  const wanted = toApprovals ? "tasks" : appView;
   const view = locked
     ? "login"
     : noWarehouse && !ACCOUNT_VIEWS.has(appView)
@@ -291,7 +288,7 @@ export default function App() {
   // человек уходит в соседний пункт меню, а не поломка всего приложения.
   const screen = (
     <ErrorBoundary key={view} label={view}>
-      <Suspense fallback={<ScreenFallback />}>{renderView(view)}</Suspense>
+      <Suspense fallback={<ScreenFallback />}>{renderView(view, toApprovals)}</Suspense>
     </ErrorBoundary>
   );
 
@@ -367,14 +364,21 @@ function ScreenFallback() {
   );
 }
 
-function renderView(view: string) {
+function renderView(view: string, toApprovals = false) {
   switch (view) {
     case "dashboard":
       return <Dashboard />;
     case "profile":
       return <Profile />;
     case "tasks":
-      return <TasksScreen />;
+      // key: переход по ссылке «Подтверждения» с открытых «Заданий» должен
+      // переключить чип, а не оставить прежний.
+      return (
+        <TasksScreen
+          key={toApprovals ? "approvals" : "tasks"}
+          initialChip={toApprovals ? "approvals" : undefined}
+        />
+      );
     case "operations":
       return <OperationsScreen />;
     case "staff":
@@ -403,8 +407,6 @@ function renderView(view: string) {
       return <WorkstationScreen />;
     case "devices":
       return <DevicesScreen />;
-    case "approvals":
-      return <ApprovalsScreen />;
     case "login":
       return <LoginScreen />;
     default:

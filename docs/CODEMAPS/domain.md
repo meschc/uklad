@@ -21,7 +21,7 @@ ShelfConfig { id, cells, number?, pickPriority?, pickable? }  // меньше = 
 Floor { id, name, modules, number?, rows?: RowConfig[], aliasOf? }
 Warehouse { id, name, kind, address?, lat?, lng?, phone?, email?,
             contactPerson?, staff?: StaffMember[], spec?, partners?, manager?,
-            storageRatePerCell?, floors }
+            floors }
 CellAddress { floorId, moduleId, shelfIndex, cellIndex }          // индексы с 0
 AddressingConfig { useFloor?, useRows, shelfOrder, separator, configured }
 Product { id, sku, barcode, name, category, width/height/depthCm, weightKg?, url? }
@@ -151,7 +151,7 @@ shipmentSources.ts SHIPMENT_SOURCES, parseShipmentRows(source, matrix, products)
 fulfillment.ts    stockByProduct / stockAt / groupRequestsByTarget /
                   receivingStats / pickingStats / requestStats / occupancyStats
                   freeToReserve / canReserve /
-                  requestsByDay (календарь) / storageCost / staffWorkload
+                  requestsByDay (календарь) / staffWorkload
                   (в groupRequestsByTarget даты машин считаются только по
                   НЕзакрытым заявкам — иначе группа вечно «просрочена»)
 data/             репозитории (п.0.4): catalogRepository, placementRepository,

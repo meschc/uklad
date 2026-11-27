@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { ArrowRight, ShieldCheck } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { receivingAnswersRepository, switchRepository, type SwitchRequest } from "@/lib/data";
@@ -52,7 +52,11 @@ const KINDS: readonly ApprovalKind[] = [
 /** Как часто страница забирает новые заявки. */
 const POLL_MS = 5000;
 
-export function ApprovalsScreen() {
+/**
+ * `embedded` — внутри «Заданий» чипом «Подтверждения» (Кирилл 24.11: «подтверждения
+ * переноси, журнал оставляю»): без своей шапки, заголовок и подзаголовок у «Заданий».
+ */
+export function ApprovalsScreen({ embedded = false }: { embedded?: boolean } = {}) {
   const t = useT();
   const perms = useEditor((s) => s.session.permissions);
   const maySwitch = !perms || perms.includes("staff.manage") || perms.includes("goods.decide");
@@ -129,15 +133,21 @@ export function ApprovalsScreen() {
     ),
   ];
 
-  if (items === null)
-    return (
+  // Функция, а не вложенный компонент: новый тип на каждый рендер пересоздавал
+  // бы всё внутри, и поиск терял бы фокус на каждой букве.
+  const shell = (children: ReactNode) =>
+    embedded ? (
+      <div className="flex flex-col gap-5">{children}</div>
+    ) : (
       <ScreenShell title={t("approvals.title")} subtitle={t("approvals.lead")} wide>
-        {null}
+        {children}
       </ScreenShell>
     );
 
-  return (
-    <ScreenShell title={t("approvals.title")} subtitle={t("approvals.lead")} wide>
+  if (items === null) return shell(null);
+
+  return shell(
+    <>
       {decide.error && <FormError>{t(decide.error)}</FormError>}
       {total === 0 && !hasHistory ? (
         <EmptyState icon={<ShieldCheck className="size-5" />} title={t("approvals.emptyTitle")} />
@@ -192,7 +202,7 @@ export function ApprovalsScreen() {
           )}
         </>
       )}
-    </ScreenShell>
+    </>,
   );
 }
 

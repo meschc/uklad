@@ -25,6 +25,8 @@ import { RequestCalendar } from "./RequestCalendar";
 import { RequestDialog } from "./RequestDialog";
 import { NewWorkTask } from "./NewWorkTask";
 import { TaskCard, useTaskTitle } from "./TaskCard";
+import { ApprovalsScreen } from "@/components/approvals/ApprovalsScreen";
+import { viewAllowed } from "@/components/nav/navItems";
 
 /**
  * «Задания» — один модуль на всё, что склад должен сделать (Кирилл 22.11).
@@ -69,7 +71,7 @@ function waited(t: TFunc, ms: number): string {
   return t("queue.wait.d", { n: Math.floor(h / 24) });
 }
 
-export function TasksScreen() {
+export function TasksScreen({ initialChip = "open" }: { initialChip?: TaskChip } = {}) {
   const t = useT();
   const now = useNow(60_000);
   const title = useTaskTitle();
@@ -84,7 +86,12 @@ export function TasksScreen() {
   const user = useEditor((s) => s.session.user);
   const me = myStaffId(staff, user);
 
-  const [chip, setChip] = useState<TaskChip>("open");
+  const [chip, setChip] = useState<TaskChip>(initialChip);
+  // «Подтверждения» живут здесь чипом (Кирилл 24.11), а не пунктом меню.
+  // Видны тому, кому открыт этот раздел, даже когда ничего не ждёт.
+  const perms = useEditor((s) => s.session.permissions);
+  const canApprove = viewAllowed("approvals", perms);
+  const approving = chip === "approvals";
   const [view, setView] = useState<"list" | "calendar">("list");
   const [day, setDay] = useState<number | null>(null);
   const [creatingRequest, setCreatingRequest] = useState(false);
@@ -150,7 +157,10 @@ export function TasksScreen() {
     { id: "open", label: t("tasks.chip.open") },
     ...(me ? [{ id: "mine" as const, label: t("tasks.chip.mine") }] : []),
     { id: "overdue", label: t("tasks.chip.overdue") },
-    ...PROCESSES.map((p) => ({ id: p as TaskChip, label: t(`queue.process.${p}` as MsgKey) })),
+    ...PROCESSES.filter((p) => p !== "approvals" || canApprove).map((p) => ({
+      id: p as TaskChip,
+      label: t(`queue.process.${p}` as MsgKey),
+    })),
     { id: "done", label: t("tasks.chip.done") },
   ];
 
@@ -202,7 +212,13 @@ export function TasksScreen() {
         {chips.map((c) => {
           const n = chipCount(all, c.id, now, me);
           // Процесс без заданий не показываем чипом, но выбранный остаётся виден.
-          if (n === 0 && c.id !== chip && PROCESSES.includes(c.id as QueueProcess)) return null;
+          if (
+            n === 0 &&
+            c.id !== chip &&
+            c.id !== "approvals" &&
+            PROCESSES.includes(c.id as QueueProcess)
+          )
+            return null;
           return (
             <FilterChip
               key={c.id}
@@ -215,84 +231,90 @@ export function TasksScreen() {
         })}
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <TableSearch
-          value={table.query}
-          onChange={table.setQuery}
-          placeholder={t("common.search")}
-        />
-        <TableFilters
-          facets={table.facets}
-          filters={table.filters}
-          onChange={table.setFilter}
-          labels={{ assignee: t("tasks.assignee"), seller: t("ops.task.partner") }}
-          allLabel={(col) => t("common.filterAll", { col })}
-        />
-      </div>
-
-      {all.length === 0 ? (
-        <EmptyState
-          icon={<ClipboardList className="size-5" />}
-          title={t("tasks.emptyTitle")}
-          // Переключатель ролей есть только в демо: на сервере роль из сессии.
-          body={t(hasCabinetServer ? "tasks.emptyBodyServer" : "tasks.emptyBody")}
-        />
-      ) : table.rows.length === 0 ? (
-        // Почему пусто и что делать (правило Кирилла 21.11).
-        <EmptyState
-          icon={<ClipboardList className="size-5" />}
-          title={t("tasks.noneForFilter")}
-          body={t("tasks.noneForFilterBody")}
-          action={
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                setChip("open");
-                setDay(null);
-                table.setQuery("");
-              }}
-            >
-              {t("tasks.resetFilters")}
-            </Button>
-          }
-        />
+      {approving ? (
+        <ApprovalsScreen embedded />
       ) : (
-        <TableScroll>
-          <table className="table-stack w-full border-collapse text-sm">
-            <thead className={TABLE_HEAD}>
-              <tr className={TABLE_HEAD_ROW}>
-                <SortTh table={table.table} id="title">
-                  {t("tasks.col.task")}
-                </SortTh>
-                <SortTh table={table.table} id="process">
-                  {t("tasks.col.process")}
-                </SortTh>
-                <SortTh table={table.table} id="units" align="right">
-                  {t("tasks.col.qty")}
-                </SortTh>
-                <SortTh table={table.table} id="since">
-                  {t("tasks.col.when")}
-                </SortTh>
-                <SortTh table={table.table} id="assignee">
-                  {t("tasks.assignee")}
-                </SortTh>
-              </tr>
-            </thead>
-            <tbody>
-              {table.rows.map((r) => (
-                <Row
-                  key={r.key}
-                  row={r}
-                  now={now}
-                  title={title(r)}
-                  who={staffName(r.staffId)}
-                  onOpen={() => setOpenKey(r.key)}
-                />
-              ))}
-            </tbody>
-          </table>
-        </TableScroll>
+        <>
+          <div className="flex flex-wrap items-center gap-2">
+            <TableSearch
+              value={table.query}
+              onChange={table.setQuery}
+              placeholder={t("common.search")}
+            />
+            <TableFilters
+              facets={table.facets}
+              filters={table.filters}
+              onChange={table.setFilter}
+              labels={{ assignee: t("tasks.assignee"), seller: t("ops.task.partner") }}
+              allLabel={(col) => t("common.filterAll", { col })}
+            />
+          </div>
+
+          {all.length === 0 ? (
+            <EmptyState
+              icon={<ClipboardList className="size-5" />}
+              title={t("tasks.emptyTitle")}
+              // Переключатель ролей есть только в демо: на сервере роль из сессии.
+              body={t(hasCabinetServer ? "tasks.emptyBodyServer" : "tasks.emptyBody")}
+            />
+          ) : table.rows.length === 0 ? (
+            // Почему пусто и что делать (правило Кирилла 21.11).
+            <EmptyState
+              icon={<ClipboardList className="size-5" />}
+              title={t("tasks.noneForFilter")}
+              body={t("tasks.noneForFilterBody")}
+              action={
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setChip("open");
+                    setDay(null);
+                    table.setQuery("");
+                  }}
+                >
+                  {t("tasks.resetFilters")}
+                </Button>
+              }
+            />
+          ) : (
+            <TableScroll>
+              <table className="table-stack w-auto border-collapse text-sm">
+                <thead className={TABLE_HEAD}>
+                  <tr className={TABLE_HEAD_ROW}>
+                    <SortTh table={table.table} id="title">
+                      {t("tasks.col.task")}
+                    </SortTh>
+                    <SortTh table={table.table} id="process">
+                      {t("tasks.col.process")}
+                    </SortTh>
+                    <SortTh table={table.table} id="units" align="right">
+                      {t("tasks.col.qty")}
+                    </SortTh>
+                    <SortTh table={table.table} id="since">
+                      {t("tasks.col.when")}
+                    </SortTh>
+                    <SortTh table={table.table} id="assignee">
+                      {t("tasks.assignee")}
+                    </SortTh>
+                  </tr>
+                </thead>
+                <tbody>
+                  {table.rows.map((r) => (
+                    <Row
+                      key={r.key}
+                      row={r}
+                      now={now}
+                      title={title(r)}
+                      who={staffName(r.staffId)}
+                      onOpen={() => setOpenKey(r.key)}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </TableScroll>
+          )}
+        </>
       )}
 
       {opened && <TaskCard row={opened} onClose={() => setOpenKey(null)} />}

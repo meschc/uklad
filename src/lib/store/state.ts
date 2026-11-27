@@ -159,12 +159,7 @@ export interface AccountSlice {
   /** Переименовать / сменить тип / адрес — активного или любого из списка. */
   updateWarehouse: (
     id: string,
-    patch: Partial<
-      Pick<
-        Warehouse,
-        "name" | "kind" | "address" | "lat" | "lng" | "storageRatePerCell" | "showOnMarket"
-      >
-    >,
+    patch: Partial<Pick<Warehouse, "name" | "kind" | "address" | "lat" | "lng" | "showOnMarket">>,
   ) => void;
   /** Удалить склад. Нельзя удалить последний; размещения на нём — очищаются. */
   deleteWarehouse: (id: string) => void;

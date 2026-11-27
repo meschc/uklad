@@ -37,7 +37,7 @@ export function ScreenShell({
   return (
     <div className="screen-bleed h-full overflow-y-auto bg-background [scrollbar-gutter:stable] [container-type:inline-size]">
       <div
-        className={`mx-auto flex min-h-full ${wide ? "max-w-5xl" : "max-w-2xl"} flex-col gap-5 px-6 py-7`}
+        className={`mx-auto flex min-h-full ${wide ? "max-w-5xl [--screen-col:61rem]" : "max-w-2xl [--screen-col:39rem]"} flex-col gap-5 px-6 py-7`}
       >
         <header className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
           <div className="min-w-0">

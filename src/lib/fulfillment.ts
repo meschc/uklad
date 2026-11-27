@@ -370,22 +370,6 @@ export function requestsByDay(requests: FulfillmentRequest[]): CalendarDay[] {
     }));
 }
 
-// --- Стоимость хранения (п.10.5) -------------------------------------------------
-
-/**
- * Стоимость хранения за период: занятые ячейки × тариф × дни. Сознательно
- * узкая метрика, а не финансовый отчёт: счетов и платежей в прототипе нет, и
- * выдумывать их ради красивой цифры нельзя.
- */
-export function storageCost(
-  occupied: number,
-  ratePerCell: number | undefined,
-  days: number,
-): number | null {
-  if (!ratePerCell || ratePerCell <= 0) return null;
-  return occupied * ratePerCell * days;
-}
-
 // --- Нагрузка персонала -------------------------------------------------------
 
 export interface StaffWorkload {

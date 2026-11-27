@@ -47,9 +47,6 @@ export function WarehouseDialog({
   // Координаты храним как текст (чтобы удобно набирать), число выводим для карты.
   const [latText, setLatText] = useState(warehouse?.lat != null ? String(warehouse.lat) : "");
   const [lngText, setLngText] = useState(warehouse?.lng != null ? String(warehouse.lng) : "");
-  const [rateText, setRateText] = useState(
-    warehouse?.storageRatePerCell != null ? String(warehouse.storageRatePerCell) : "",
-  );
   const [geocoding, setGeocoding] = useState(false);
   const [geoErr, setGeoErr] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -118,11 +115,6 @@ export function WarehouseDialog({
     }
   };
 
-  // Тариф хранения: рублей за занятую ячейку в сутки (п.10.5). Пустое поле —
-  // тарифа нет, и метрика в аналитике честно скажет «не задан», а не покажет 0.
-  const rate =
-    rateText.trim() && !Number.isNaN(Number(rateText)) ? Math.max(0, Number(rateText)) : undefined;
-
   const submit = () => {
     if (editing)
       update(warehouse!.id, {
@@ -131,7 +123,6 @@ export function WarehouseDialog({
         address,
         lat,
         lng,
-        storageRatePerCell: rate,
       });
     else create(name, kind, address, { lat, lng });
     onClose();
@@ -166,31 +157,6 @@ export function WarehouseDialog({
             }}
           />
         </label>
-
-        {/* Тариф хранения — только у существующего склада: у нового ещё нет
-              ни ячеек, ни занятости, считать нечего. */}
-        {editing && (
-          <label className="flex flex-col gap-1.5">
-            <Label>
-              {t("wh.storageRate")}
-              <span className="ml-1.5 font-normal normal-case text-muted-foreground">
-                · {t("common.optional")}
-              </span>
-            </Label>
-            <Input
-              maxLength={12}
-              value={rateText}
-              inputMode="decimal"
-              // Тариф — деньги, а не заметка: буквы в поле не блокируются
-              // где-то в глубине при сохранении, а просто не набираются.
-              // Разрешаем цифры и один разделитель дробной части.
-              onChange={(e) => setRateText(sanitizeAmount(e.target.value))}
-              placeholder={t("wh.storageRatePlaceholder")}
-              className="max-w-40 text-right tabular-nums"
-            />
-            <span className="text-xs text-muted-foreground">{t("wh.storageRateHint")}</span>
-          </label>
-        )}
 
         {/* Адрес + поиск на карте. Адрес — метаданные, не блокирует создание. */}
         <label className="flex flex-col gap-1.5">
@@ -398,15 +364,4 @@ export function WarehouseDialog({
       </DialogFooter>
     </DialogShell>
   );
-}
-
-/**
- * Оставить в строке только денежную сумму: цифры и одна дробная часть.
- * Запятую приводим к точке — на цифровой клавиатуре русской раскладки под
- * рукой именно она, а `Number("1,5")` даёт NaN.
- */
-function sanitizeAmount(raw: string): string {
-  const cleaned = raw.replace(/,/g, ".").replace(/[^\d.]/g, "");
-  const [head, ...rest] = cleaned.split(".");
-  return rest.length ? `${head}.${rest.join("")}` : head;
 }
