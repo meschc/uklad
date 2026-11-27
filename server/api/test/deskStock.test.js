@@ -593,3 +593,37 @@ test("лишнее списывают с тары, даже если она уж
   assert.deepEqual(r.data.boxes[0].lines, [{ productId: "p1", qty: 3 }]);
   assert.equal(r.data.boxes[0].address, "A");
 });
+
+test("откат остатков уносит и брак, заведённый вместе с движением (`def-…`)", () => {
+  const cur = base();
+  const inc = {
+    ...withBoxes(cur, [{ productId: "p1", qty: 9 }], cur.boxes[1].lines),
+    disputes: [
+      ...(cur.disputes ?? []),
+      {
+        id: "def-e1",
+        kind: "not_packable",
+        boxId: "t1",
+        productId: "p1",
+        qty: 1,
+        raisedBy: "stf-ivan",
+        raisedAt: 5,
+      },
+      {
+        id: "dsp-1",
+        kind: "not_packable",
+        boxId: "t1",
+        productId: "p1",
+        qty: 1,
+        raisedBy: "stf-ivan",
+        raisedAt: 5,
+      },
+    ],
+  };
+  const { data, mismatch } = mergeDeskWrite(cur, inc, who);
+  assert.deepEqual(mismatch, ["p1"]);
+  // Брак с упаковки (свой id) от движения не зависит — остаётся.
+  const ids = (data.disputes ?? []).map((d) => d.id);
+  assert.ok(ids.includes("dsp-1"));
+  assert.ok(!ids.includes("def-e1"));
+});

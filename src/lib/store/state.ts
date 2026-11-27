@@ -611,7 +611,12 @@ export interface RequestsSlice {
    * короб, откуда её сняли, собранное −1, в журнал — `pick_undo`. Ответ —
    * id записи отмены или почему нельзя.
    */
-  undoPick: (pickId: string, by: string) => { id: string } | { problem: PickUndoProblem };
+  undoPick: (
+    pickId: string,
+    by: string,
+    /** Брак: штука в короб на учёт, спорным «брак» старшему и в карантин. */
+    defect?: boolean,
+  ) => { id: string } | { problem: PickUndoProblem };
   /** Закрыть заявку: полностью или частично (собрали меньше запрошенного). */
   completeRequest: (id: string, partial?: boolean) => void;
   /**

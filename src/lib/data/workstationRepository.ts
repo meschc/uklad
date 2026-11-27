@@ -102,7 +102,7 @@ export interface WorkstationRepository {
    * Отменить свой скан сборки: штука из тары — обратно в короб, откуда её
    * сняли. Нельзя — отказ `pick.undo.<причина>` (`pickUndo.ts`).
    */
-  pickUndo: (pickId: string) => Promise<Result<void>>;
+  pickUndo: (pickId: string, defect?: boolean) => Promise<Result<void>>;
   /** Заявка собрана: целиком или частично (меньше запрошенного, явно). */
   pickDone: (requestId: string, partial: boolean) => Promise<Result<void>>;
   /**
@@ -427,16 +427,22 @@ export function createWorkstationRepository(
       }),
     // Отмена на сервере — своя операция (`applyPickUndo`): сервер сам
     // проверит, что скан свой, штука в таре и короб на месте.
-    pickUndo: async (pickId) => {
+    pickUndo: async (pickId, defect) => {
       const by = port.get().stationSession?.staffId;
       if (!by) return fail("pick.undo.not_yours");
-      const res = await attempt(() => port.get().undoPick(pickId, by));
+      const res = await attempt(() => port.get().undoPick(pickId, by, defect));
       if (!res.ok) return res;
       const out = res.data;
       if ("problem" in out) return fail(`pick.undo.${out.problem}` as const);
       const ev = port.get().staffEvents.find((e) => e.id === out.id);
       if (ev && onServer(port)) {
-        ops.enqueue("pick_undo", { eventId: ev.id, staffId: by, at: ev.at, pickId });
+        ops.enqueue("pick_undo", {
+          eventId: ev.id,
+          staffId: by,
+          at: ev.at,
+          pickId,
+          ...(defect ? { defect: true } : {}),
+        });
       }
       return ok(undefined);
     },

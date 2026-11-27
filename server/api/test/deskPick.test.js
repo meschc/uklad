@@ -234,3 +234,24 @@ test("излишек с приёмки в карантине: из тары бе
   const third = applyPickUnit(first.data, unit({ eventId: "ev-3" }), "stf-ivan");
   assert.equal(third.data.requests[0].pickedQty, 2);
 });
+
+test("брак на сборке: штука обратно в свой короб, спорным «брак» старшему и в карантин", () => {
+  const d = applyPickUnit(data(), unit(), "stf-ivan").data;
+  assert.equal(applyPickUndo(d, undo({ defect: 1 }), "stf-ivan").flag, "bad");
+  const r = applyPickUndo(d, undo({ defect: true }), "stf-ivan");
+  assert.equal(r.flag, undefined);
+  assert.deepEqual(r.data.boxes[0].lines, [{ productId: "p1", qty: 2 }]);
+  assert.deepEqual(
+    r.data.disputes.map((x) => [x.id, x.kind, x.boxId, x.qty, x.raisedBy]),
+    [["def-ev-u", "not_packable", "b1", 1, "stf-ivan"]],
+  );
+  // Следующую штуку сборщик берёт из того же короба, но не бракованную:
+  // в коробе 2, одна в карантине — снять можно одну, вторую уже нет.
+  const after = r.post(r.data);
+  const one = applyPickUnit(after, unit({ eventId: "ev-3", at: AT + 2000 }), "stf-ivan");
+  assert.equal(one.flag, undefined);
+  const two = applyPickUnit(one.data, unit({ eventId: "ev-4", at: AT + 3000 }), "stf-ivan");
+  assert.equal(two.flag, "stock");
+  // Обычная отмена спорного не заводит.
+  assert.equal(applyPickUndo(d, undo(), "stf-ivan").data.disputes, undefined);
+});
