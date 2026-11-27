@@ -28,6 +28,12 @@
  * - **Откат** — копия текущего кабинета, которую кабинет скачивает человеку
  *   перед загрузкой (`BackupSection`), и ночные копии базы. Отдельной таблицы
  *   «как было» нет: в ней остались бы личные данные людей, удалённых позже.
+ * - **Авторство не подделать** («Безопасность» 27.11): копия — файл, его
+ *   можно править руками. Решение по спорному, которого в базе нет или оно
+ *   другое, ложится с `resolvedBy: "manager"` и `restored: true`; новая или
+ *   изменённая отметка смены — с `restored: true`. Экраны пишут «из копии»,
+ *   и журнал не покажет, что списал или отработал сотрудник, если этого не
+ *   было (`markRestored`).
  * - Загрузка пишется в журнал действий (`cabinet.restore`) и поднимает версию
  *   снимка: открытые кабинеты и столы забирают новый кабинет.
  *
@@ -91,6 +97,50 @@ function mergeWarehouses(fromCopy, current) {
   });
   const inCopy = new Set(fromCopy.map((w) => w.id));
   return [...cards, ...current.filter((w) => !inCopy.has(w.id))];
+}
+
+/** Текст значения с ключами по алфавиту: jsonb в базе хранит ключи в своём порядке. */
+function canon(v) {
+  if (Array.isArray(v)) return `[${v.map(canon).join(",")}]`;
+  if (!isObject(v)) return JSON.stringify(v) ?? "null";
+  const keys = Object.keys(v)
+    .filter((k) => v[k] !== undefined)
+    .sort();
+  return `{${keys.map((k) => `${JSON.stringify(k)}:${canon(v[k])}`).join(",")}}`;
+}
+
+/** Списки, где важно, кто сделал: решения по спорному и отметки смен. */
+const AUTHORED = ["disputes", "staffEvents"];
+
+/**
+ * Строки копии, которых нет в базе такими же, — с пометкой «из копии».
+ * Сравнение с любой строкой базы, в том числе архивной и удалённой: строка,
+ * которая уже была ровно такой, — не подделка, её не трогаем.
+ */
+async function markRestored(c, items) {
+  const own = items.filter((i) => AUTHORED.includes(i.d) && isObject(i.data));
+  if (own.length === 0) return items;
+  const { rows } = await c.query(
+    `SELECT warehouse_ref AS w, domain AS d, ref, data FROM uklad.cabinet_records
+     WHERE org_id = uklad.current_org() AND domain = ANY($1::text[]) AND ref = ANY($2::text[])`,
+    [AUTHORED, own.map((i) => i.ref)],
+  );
+  const key = (r) => `${r.w}\u0000${r.d}\u0000${r.ref}`;
+  const was = new Map(rows.map((r) => [key(r), r.data]));
+  return items.map((i) => {
+    if (!AUTHORED.includes(i.d) || !isObject(i.data)) return i;
+    const prev = was.get(key(i));
+    if (i.d === "disputes") {
+      if (typeof i.data.resolution !== "string") return i;
+      const same =
+        isObject(prev) &&
+        prev.resolution === i.data.resolution &&
+        prev.resolvedBy === i.data.resolvedBy;
+      return same ? i : { ...i, data: { ...i.data, resolvedBy: "manager", restored: true } };
+    }
+    if (isObject(prev) && canon(prev) === canon(i.data)) return i;
+    return { ...i, data: { ...i.data, restored: true } };
+  });
 }
 
 /** Проверка тела: то же, что у записи кабинета целиком, и склад обязателен. */
@@ -158,7 +208,8 @@ function createRestore({ withSession, readJson, send, log, maxBytes, helpers }) 
         );
         await storeProducts(c, b.data, null, log);
         await storeWarehousesLimited(c, ctx, cards);
-        await storeRecords(c, split.items, split.slots);
+        const items = await markRestored(c, split.items);
+        await storeRecords(c, items, split.slots);
         const after = { ...b.data, products: await allProducts(c) };
         await recordMoves(c, before, after, rows[0].version, { memberId: ctx.memberId });
         await recordStorage(c, after);
@@ -182,4 +233,4 @@ function createRestore({ withSession, readJson, send, log, maxBytes, helpers }) 
   };
 }
 
-module.exports = { createRestore, mergeWarehouses, shiftOpen, SHIFT_WINDOW_H };
+module.exports = { createRestore, mergeWarehouses, markRestored, shiftOpen, SHIFT_WINDOW_H };

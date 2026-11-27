@@ -62,6 +62,7 @@ export function DisputesDone({
               <Td data-label={t("disputes.col.result")}>{t(resKey(d))}</Td>
               <Td className="text-muted-foreground" data-label={t("disputes.col.by")}>
                 {who(d.resolvedBy!)}
+                {d.restored ? ` · ${t("restore.fromBackup")}` : ""}
               </Td>
               <Td className="tabular-nums text-muted-foreground" data-label={t("disputes.col.at")}>
                 {fmtAt(d.resolvedAt!)}
@@ -131,7 +132,8 @@ function DoneDetails({
           t("disputes.col.result"),
           <>
             {t(resKey(d))}
-            {movedTo ? ` → ${movedTo}` : ""} · {who(d.resolvedBy!)} · {fmtAt(d.resolvedAt!)}
+            {movedTo ? ` → ${movedTo}` : ""} · {who(d.resolvedBy!)}
+            {d.restored ? ` · ${t("restore.fromBackup")}` : ""} · {fmtAt(d.resolvedAt!)}
           </>,
         )}
         {d.note && fact(t("disputes.why"), d.note)}

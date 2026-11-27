@@ -241,3 +241,31 @@ test("чужую компанию копией не перезаписать", {
   const read = (await call("/api/cabinet/snapshot", a)).json.snapshot;
   assert.equal(read.version, 1);
 });
+
+test(
+  "решения и отметки смен из копии помечены «из копии», чужое авторство не ложится",
+  { skip: SKIP },
+  async () => {
+    const old = Date.now() - 3 * 24 * 60 * 60 * 1000;
+    const e1 = { id: "e1", staffId: "s1", type: "shift_start", at: old };
+    // Открытое спорное: решённым сразу кабинет его не заводит (четыре глаза).
+    const d1 = { id: "d1", kind: "shortage", qty: 1, raisedBy: "s2" };
+    const who = await cabinet("author", "10.0.3.9", { staffEvents: [e1], disputes: [d1] });
+    // В копии — решение «от имени» s3, которого на сервере не было.
+    const forged = { ...d1, resolution: "written_off", resolvedBy: "s3", resolvedAt: old };
+    const e2 = { id: "e2", staffId: "s3", type: "shift_start", at: old + 1000 };
+    const r = await call("/api/cabinet/restore", {
+      ...who,
+      body: { format: 8, data: copy({ staffEvents: [e1, e2], disputes: [forged] }) },
+    });
+    assert.equal(r.status, 200, JSON.stringify(r.json));
+    const read = (await call("/api/cabinet/snapshot", who)).json.snapshot.data;
+    const byId = (rows) => Object.fromEntries(rows.map((x) => [x.id, x]));
+    const ev = byId(read.staffEvents);
+    assert.equal(ev.e1.restored, undefined);
+    assert.equal(ev.e2.restored, true);
+    const ds = byId(read.disputes);
+    assert.equal(ds.d1.resolvedBy, "manager");
+    assert.equal(ds.d1.restored, true);
+  },
+);

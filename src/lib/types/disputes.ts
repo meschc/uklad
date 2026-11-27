@@ -56,6 +56,11 @@ export interface Dispute {
   /** Кто решил: id сотрудника или «manager» (руководитель из кабинета). */
   resolvedBy?: string;
   resolvedAt?: number;
+  /**
+   * Решение пришло загрузкой резервной копии владельцем (`restore.js`), а не
+   * от человека: `resolvedBy` тогда «manager», а экраны пишут «из копии».
+   */
+  restored?: boolean;
   resolution?: DisputeResolution;
   note?: string;
   /**
