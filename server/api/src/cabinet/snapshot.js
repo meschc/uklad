@@ -173,7 +173,47 @@ async function decisionsForbidden(c, ctx, items) {
   const inventory = (d) => d.kind === "inventory_short" || d.kind === "inventory_over";
   if (!ctx.can("goods.decide") && (await newDecision(c, items, inventory))) return true;
   const writeOff = (d) => d.resolution === "written_off";
-  return !ctx.can("goods.writeoff") && (await newDecision(c, items, writeOff));
+  if (!ctx.can("goods.writeoff") && (await newDecision(c, items, writeOff))) return true;
+  return selfDecision(c, ctx, items);
+}
+
+/** Решение, которое само меняет остаток (`changesStock` в `lib/disputes.ts`). */
+const WRITES_OFF = new Set(["shortage", "not_packable", "receive_overage", "inventory_short"]);
+const MOVES_GOODS = (d) =>
+  (d.resolution === "written_off" && WRITES_OFF.has(d.kind)) ||
+  (d.resolution === "accepted" && d.kind === "inventory_over");
+
+/**
+ * Четыре глаза в кабинете — те же, что у стола (`deskShip.js`, `desks.js`):
+ * списание и оприходование решает не тот, кто завёл спорное. Кто решает —
+ * участник по своей карточке сотрудника (`members.staff_ref`), а не строка
+ * `resolvedBy` из браузера: в ней — только «manager» или своя карточка, чужой
+ * быть не может. Кто завёл — из базы, а не из записи.
+ */
+async function selfDecision(c, ctx, items) {
+  const decided = items.filter(
+    (i) => i.d === "disputes" && isObject(i.data) && MOVES_GOODS(i.data),
+  );
+  if (decided.length === 0) return false;
+  const { rows } = await c.query(
+    `SELECT warehouse_ref AS w, ref, data->>'resolution' AS res, data->>'raisedBy' AS raised
+     FROM uklad.cabinet_records
+     WHERE org_id = uklad.current_org() AND domain = 'disputes' AND ref = ANY($1::text[])`,
+    [decided.map((i) => i.ref)],
+  );
+  const was = new Map(rows.map((r) => [`${r.w}\u0000${r.ref}`, r]));
+  const fresh = decided.filter((i) => was.get(`${i.w}\u0000${i.ref}`)?.res !== i.data.resolution);
+  if (fresh.length === 0) return false;
+  const me = await c.query(`SELECT staff_ref FROM uklad.members WHERE id = $1`, [ctx.memberId]);
+  const own = me.rows[0]?.staff_ref ?? null;
+  return fresh.some((i) => {
+    const by = i.data.resolvedBy;
+    if (by !== "manager" && (own === null || by !== own)) return true;
+    // Новое спорное сразу решённым кабинет не заводит: решать нечего.
+    const raised = was.get(`${i.w}\u0000${i.ref}`)?.raised;
+    if (raised === undefined) return true;
+    return own !== null && raised === own;
+  });
 }
 
 const mayUse = (ctx) => Boolean(ctx.accountId) && ctx.can("staff.manage");
