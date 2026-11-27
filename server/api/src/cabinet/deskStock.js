@@ -108,7 +108,8 @@ function receivedOver(shipments, events, known) {
   const got = new Map();
   const over = new Map();
   for (const e of events) {
-    if (known.has(e.id)) continue;
+    // Отмена скана — не приёмка: ни лишнего, ни расхождения у неё нет.
+    if (known.has(e.id) || e.undoes) continue;
     const line =
       typeof e.expectedShipmentLineId === "string" && lines.get(e.expectedShipmentLineId);
     if (!line || line.productId !== e.productId) {
@@ -128,7 +129,7 @@ function receivedOver(shipments, events, known) {
 function markReceived(shipments, events, known) {
   const over = receivedOver(shipments, events, known);
   return events.map((e) => {
-    if (known.has(e.id)) return e;
+    if (known.has(e.id) || e.undoes) return e;
     const rest = { ...e };
     delete rest.discrepancy;
     if (over.has(e.id)) return { ...rest, discrepancy: "overage" };
@@ -211,7 +212,11 @@ function mergeDeskStock(current, merged, people) {
   const boxNet = linesBy(list(current.boxes), linesBy(list(merged.boxes)), -1);
   const outNet = linesBy(list(current.outboundBoxes), linesBy(outboundBoxes), -1);
   const received = new Map();
-  for (const e of receivingEvents) if (!knownEvents.has(e.id)) add(received, e.productId, e.qty);
+  // Отмена скана приёмки (`recv_undo`) — минус принятого: товар ушёл из тары
+  // туда же, откуда пришёл.
+  for (const e of receivingEvents) {
+    if (!knownEvents.has(e.id)) add(received, e.productId, e.undoes ? -e.qty : e.qty);
+  }
   // Собранное без тары уходит из коробов («снято в заявку»), собранное в
   // тару остаётся в коробах: полка −1, тара +1. Поэтому второе не даёт
   // права убрать товар, а должно найтись в таре (или уже в коробе отгрузки).

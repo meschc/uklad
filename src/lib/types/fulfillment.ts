@@ -143,6 +143,12 @@ export interface ReceivingEvent {
    * сошлось или пересчитали и исправили — поля нет.
    */
   discrepancy?: Discrepancy;
+  /**
+   * Отмена скана (`recv_undo`): id отменённого события. Сама отмена — не
+   * приёмка: в счёт, выработку и акт не идут ни она, ни отменённый скан
+   * (`liveReceipts`).
+   */
+  undoes?: string;
 }
 
 /**

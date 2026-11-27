@@ -1,3 +1,4 @@
+import { liveReceipts } from "./recvUndo";
 import type { ActivityEntry } from "./activityJournal";
 import { normalizeCode } from "./barcode";
 import { orderLabelCode } from "./packing";
@@ -200,7 +201,7 @@ export function localSteps(m: PathMatch, d: LocalPathData): ActivityEntry[] {
   if (!r) return [];
   const until = r.pickedAt ?? r.startedAt ?? r.shippedAt ?? Date.now();
   const out: ActivityEntry[] = [];
-  const recv = d.receivingEvents
+  const recv = liveReceipts(d.receivingEvents)
     .filter((e) => e.productId === r.productId && e.timestamp <= until)
     .sort((a, b) => b.timestamp - a.timestamp)[0];
   if (recv) {

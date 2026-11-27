@@ -10,7 +10,7 @@ import { onServer } from "./badgeRepository";
 import { isBox, isExpectedShipment, isPallet, isReceivingEvent } from "./guards";
 import { deskOps, type DeskOpBody, type DeskOpKind, type OpQueue } from "./opQueue";
 import { pickOne, readList, storePort, type StorePort } from "./repository";
-import { attempt, fail, type Result } from "./result";
+import { attempt, fail, ok, type Result } from "./result";
 import type { EditorState, ReceiveInput } from "../store/state";
 import { nowMs, uid } from "../utils";
 import { frozenBoxes } from "../inventory";
@@ -44,6 +44,8 @@ export interface FulfillmentRepository {
   ) => Promise<Result<{ palletIds: string[]; boxIds: string[] }>>;
   openUnit: (id: string) => Promise<Result<void>>;
   receive: (input: ReceiveInput) => Promise<Result<string>>;
+  /** Отменить свой скан приёмки целиком (`recvUndo.ts`); нельзя — `recv.undo.<причина>`. */
+  receiveUndo: (scanId: string) => Promise<Result<void>>;
   /** Кроссдок (п.10.1): закрыть ждавшие заявки. Число — сколько ушло. */
   crossDock: (
     productId: string,
@@ -216,6 +218,18 @@ export function createFulfillmentRepository(
               },
             ),
           ),
+    receiveUndo: async (scanId) => {
+      const by = port.get().stationSession?.staffId ?? port.get().receiving.staffId;
+      if (!by) return fail("recv.undo.not_yours");
+      const res = await attempt(() => port.get().undoReceive(scanId, by));
+      if (!res.ok) return res;
+      const out = res.data;
+      if ("problem" in out) return fail(`recv.undo.${out.problem}` as const);
+      if (port.get().stationSession?.staffId && onServer(port)) {
+        ops.enqueue("recv_undo", { eventId: out.id, staffId: by, at: out.at, undoes: scanId });
+      }
+      return ok(undefined);
+    },
     crossDock: (productId, qty, shipmentId, boxId) =>
       attempt(() => port.get().applyCrossDock(productId, qty, shipmentId, boxId)),
   };

@@ -1,7 +1,8 @@
 import { useLayoutEffect, useMemo, useState } from "react";
-import { ArrowLeft, PackageCheck, Truck } from "lucide-react";
+import { ArrowLeft, PackageCheck, Truck, Undo2 } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { handOverReceiving } from "@/lib/receiving";
+import { lastReceipt } from "@/lib/recvUndo";
 import { levelFor, signal } from "@/lib/scanSignal";
 import { fulfillmentRepository, type Result } from "@/lib/data";
 import { addressKey, formatAddress, parseAddress } from "@/lib/address";
@@ -84,6 +85,7 @@ export function ReceivingScreen({ staffId: badgeStaffId }: { staffId?: string } 
   const { step, shipmentId, staffId, boxId, palletId, received } = useEditor((s) => s.receiving);
   const setReceiving = useEditor((s) => s.setReceiving);
   const addReceived = useEditor((s) => s.addReceived);
+  const receivingEvents = useEditor((s) => s.receivingEvents);
   const resumeReceiving = useEditor((s) => s.resumeReceiving);
 
   /**
@@ -163,6 +165,19 @@ export function ReceivingScreen({ staffId: badgeStaffId }: { staffId?: string } 
     setBusy(false);
     if (!res.ok) fail(res.error);
     return res;
+  };
+
+  const undoBy = station?.staffId ?? staffId;
+  const undoable = box && undoBy ? lastReceipt(receivingEvents, box.id, undoBy) : undefined;
+  const onUndo = async () => {
+    if (!undoable || !box) return;
+    const res = await run(() => fulfillmentRepository.receiveUndo(undoable.id));
+    if (!res.ok) return;
+    ok("recv.undo.done", {
+      name: products.find((p) => p.id === undoable.productId)?.name ?? "—",
+      n: undoable.qty,
+      code: box.barcode,
+    });
   };
 
   /** Остаток по строке поставки для товара — «сколько ещё ждём». */
@@ -559,6 +574,20 @@ export function ReceivingScreen({ staffId: badgeStaffId }: { staffId?: string } 
           onCloseBox={() => (crossDock ? void closeCrossDockBox() : go({ step: "place" }))}
           t={t}
         />
+      )}
+
+      {step === "product" && box && undoable && (
+        // Последний свой скан в эту тару — целиком (Кирилл 27.11): «принял 10,
+        // а было 8» — отменить и принять верное число заново.
+        <Button
+          variant="outline"
+          className="h-10 self-start sm:h-8"
+          disabled={busy}
+          onClick={() => void onUndo()}
+        >
+          <Undo2 className="size-3.5" />
+          {t("recv.undo.start")}
+        </Button>
       )}
 
       {step === "qty" && draft && (

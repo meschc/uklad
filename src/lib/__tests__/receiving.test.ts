@@ -168,3 +168,21 @@ describe("handOverReceiving — за стол встал другой челов
     expect(next).toMatchObject({ staffId: "stf-ivan", boxId: "bx-1", step: "product" });
   });
 });
+
+describe("liveReceipts — отменённый скан не приёмка", () => {
+  it("выпадают и скан, и его отмена; без отмен — тот же список", async () => {
+    const { liveReceipts } = await import("../recvUndo");
+    const e = (id: string, over = {}) => ({
+      id,
+      productId: "p",
+      qty: 1,
+      boxId: "b",
+      timestamp: 1,
+      ...over,
+    });
+    const all = [e("a"), e("b"), e("u", { undoes: "a" })];
+    expect(liveReceipts(all).map((x) => x.id)).toEqual(["b"]);
+    const plain = [e("a")];
+    expect(liveReceipts(plain)).toBe(plain);
+  });
+});

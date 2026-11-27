@@ -337,6 +337,13 @@ export const ru = {
   "recv.qty.confirm": "Подтвердить",
   "recv.qty.cancel": "К другому товару",
   "recv.qty.defect": "Брак",
+  "recv.undo.start": "Отменить последний скан",
+  "recv.undo.done": "Скан отменён: {name} × {n} убрано из тары {code}. Примите верное число заново",
+  "recv.undo.missing": "Этот скан уже отменён",
+  "recv.undo.not_yours": "Отменить можно только свой скан",
+  "recv.undo.late":
+    "Тара уже на месте, поставка закрыта или товар ушёл в заявки — позовите старшего",
+  "recv.undo.disputed": "По этому скану ждёт решения старший (лишнее или брак) — позовите его",
   "recv.disc.shortage": "Недостача",
   "recv.disc.overage": "Перестача",
   "recv.disc.subtitle": "Фактическое количество не сходится с ожидаемым по позиции «{name}»",
@@ -830,6 +837,14 @@ export const en: Record<keyof typeof ru, string> = {
   "recv.qty.confirm": "Confirm",
   "recv.qty.cancel": "Another product",
   "recv.qty.defect": "Defect",
+  "recv.undo.start": "Undo last scan",
+  "recv.undo.done":
+    "Scan undone: {name} × {n} removed from tote {code}. Receive the right quantity again",
+  "recv.undo.missing": "This scan is already undone",
+  "recv.undo.not_yours": "You can only undo your own scan",
+  "recv.undo.late":
+    "The tote is already placed, the shipment is closed or the goods went to requests — call the shift lead",
+  "recv.undo.disputed": "The shift lead is deciding on this scan (overage or defect) — call them",
   "recv.disc.shortage": "Shortage",
   "recv.disc.overage": "Overage",
   "recv.disc.subtitle": 'Actual quantity does not match what was expected for "{name}"',

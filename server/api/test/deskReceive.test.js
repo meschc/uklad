@@ -4,7 +4,7 @@
  * тару сборки или на полку мимо приёмки: недостача всплывёт только на
  * инвентаризации.
  */
-/* global require */
+/* global require, structuredClone */
 /* eslint-disable @typescript-eslint/no-require-imports */
 const test = require("node:test");
 const assert = require("node:assert/strict");
@@ -308,4 +308,68 @@ test("брак на приёмке: на учёт в таре, спорным «
   // Повтор той же приёмки спорное не задваивает.
   assert.equal(applyRecvUnit(r.data, unit({ defect: true }), "stf-ivan").data, r.data);
   assert.equal(applyRecvUnit(data(), unit({ defect: "yes" }), "stf-ivan").flag, "bad");
+});
+
+test("отмена своего скана приёмки: целиком из тары, строка −N, скан остаётся", () => {
+  const { applyRecvUndo } = require("../src/cabinet/deskReceive");
+  const d = {
+    products: [{ id: "p1", partnerId: "s1" }],
+    boxes: [{ id: "t1", barcode: "UK-BOX-1", lines: [{ productId: "p1", qty: 10 }] }],
+    expectedShipments: [
+      {
+        id: "sh1",
+        status: "receiving",
+        lines: [{ id: "l1", productId: "p1", expectedQty: 8, receivedQty: 10 }],
+      },
+    ],
+    receivingEvents: [
+      {
+        id: "e1",
+        productId: "p1",
+        qty: 10,
+        boxId: "t1",
+        staffId: "stf-ivan",
+        timestamp: 1,
+        expectedShipmentLineId: "l1",
+      },
+    ],
+    disputes: [],
+  };
+  const body = { eventId: "u1", at: 2, undoes: "e1" };
+  assert.equal(applyRecvUndo(d, body, "stf-olga").flag, "not_yours");
+  assert.equal(applyRecvUndo(d, { ...body, undoes: "zz" }, "stf-ivan").flag, "bad");
+  const r = applyRecvUndo(d, body, "stf-ivan");
+  assert.equal(r.flag, undefined);
+  assert.deepEqual(r.data.boxes[0].lines, []);
+  assert.equal(r.data.expectedShipments[0].lines[0].receivedQty, 0);
+  assert.deepEqual(
+    r.data.receivingEvents.map((e) => [e.id, e.undoes ?? null, e.qty]),
+    [
+      ["e1", null, 10],
+      ["u1", "e1", 10],
+    ],
+  );
+  // Повтор — то же; второй раз другим ключом — уже отменён.
+  assert.equal(applyRecvUndo(r.data, body, "stf-ivan").data, r.data);
+  assert.equal(applyRecvUndo(r.data, { ...body, eventId: "u2" }, "stf-ivan").data, r.data);
+  // Отмену не отменить.
+  assert.equal(
+    applyRecvUndo(r.data, { ...body, eventId: "u3", undoes: "u1" }, "stf-ivan").flag,
+    "bad",
+  );
+  // Тара на полке, поставка закрыта, кроссдок увёл — поздно; лишнее у старшего — к нему.
+  const placed = structuredClone(d);
+  placed.boxes[0].address = { moduleId: "m1", shelfIndex: 0, cellIndex: 0 };
+  assert.equal(applyRecvUndo(placed, body, "stf-ivan").flag, "late");
+  const closed = structuredClone(d);
+  closed.expectedShipments[0].status = "closed";
+  assert.equal(applyRecvUndo(closed, body, "stf-ivan").flag, "late");
+  const gone = structuredClone(d);
+  gone.boxes[0].lines = [{ productId: "p1", qty: 3 }];
+  assert.equal(applyRecvUndo(gone, body, "stf-ivan").flag, "late");
+  const over = structuredClone(d);
+  over.disputes = [
+    { id: "ovr-e1", kind: "receive_overage", qty: 2, raisedBy: "stf-ivan", raisedAt: 1 },
+  ];
+  assert.equal(applyRecvUndo(over, body, "stf-ivan").flag, "disputed");
 });

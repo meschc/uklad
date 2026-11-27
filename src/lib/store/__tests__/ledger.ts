@@ -65,7 +65,8 @@ function place(s: Stock, m: Map<string, Balance>) {
 function ledger(s: Stock, opening: ReadonlyMap<string, number> = new Map()) {
   const m = new Map<string, Balance>();
   for (const [p, n] of opening) add(m, p, "in", n);
-  for (const e of s.receivingEvents) add(m, e.productId, "in", e.qty);
+  // Отмена скана приёмки (`recv_undo`) — минус принятого.
+  for (const e of s.receivingEvents) add(m, e.productId, "in", e.undoes ? -e.qty : e.qty);
   place(s, m);
   return m;
 }

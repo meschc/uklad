@@ -4,6 +4,8 @@ import { hasCabinetServer } from "../data/api";
 import { groupArchive, mergeArchive, type ArchiveList, type Lists } from "../data/archiveLists";
 import { historyRepository } from "../data/historyRepository";
 import type { EditorState } from "./state";
+import type { ReceivingEvent } from "../types";
+import { liveReceipts } from "../recvUndo";
 import { useEditor } from "./index";
 
 /**
@@ -71,7 +73,14 @@ export function useWithArchive<K extends ArchiveList>(key: K): ListOf<K> {
   useEffect(() => {
     void ensureArchive();
   }, []);
-  return useMemo(() => mergeArchive(key, live, archived) as ListOf<K>, [key, live, archived]);
+  // Отменённый скан приёмки и сама отмена — не приёмка: ни в счёт, ни в
+  // выработку, ни в акт (`liveReceipts`).
+  return useMemo(() => {
+    const all = mergeArchive(key, live, archived);
+    return (
+      key === "receivingEvents" ? liveReceipts(all as unknown as ReceivingEvent[]) : all
+    ) as ListOf<K>;
+  }, [key, live, archived]);
 }
 
 /** Как идёт загрузка архива: отчёт честно говорит, что считает не всё. */
