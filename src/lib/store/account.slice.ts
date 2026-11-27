@@ -73,6 +73,11 @@ export const createAccountSlice: SliceCreator<AccountSlice> = (set, get) => ({
         profile,
         // Имя в профиле = имя пользователя; отражаем в шапке кабинета.
         account: patch.name && patch.name.trim() ? { ...s.account, name: patch.name } : s.account,
+        // Сменённая почта — и в сессии: по ней подставляется адрес на столе
+        // и при входе, другой правды о почте в браузере нет.
+        session: patch.email
+          ? { ...s.session, user: { ...s.session.user, email: patch.email } }
+          : s.session,
       };
     }),
 

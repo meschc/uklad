@@ -13,6 +13,11 @@
  *   POST /api/auth/account/restore          — отменить удаление
  *   POST /api/auth/sessions/revoke-others   — выйти на всех устройствах, кроме этого
  *   POST /api/auth/password                 — { password, next } → новый пароль
+ *   POST /api/auth/email/change             — { email, password } → код на новый адрес
+ *   POST /api/auth/email/confirm            — { code } → почта сменена
+ *
+ * Смена почты (Кирилл 24.11, миграция 066) — как у Google: пароль, код на
+ * новый адрес, после кода другие устройства выходят, на старый адрес — письмо.
  *
  * Смена пароля (Кирилл 24.11) — как у Google: старый пароль обязателен (вкладку
  * могли оставить открытой), неудачи общие со входом, все сессии гаснут
@@ -21,13 +26,23 @@
  */
 /* global require, module */
 /* eslint-disable @typescript-eslint/no-require-imports */
+const { randomInt } = require("node:crypto");
 const { checkPassword, hashPassword, isAcceptable } = require("./password");
 const { createRateLimit, clientIp } = require("../rateLimit");
-const { deletionLetter, passwordLetter } = require("./letters");
+const { isEmail } = require("../validate");
+const {
+  deletionLetter,
+  passwordLetter,
+  emailCodeLetter,
+  emailChangedLetter,
+} = require("./letters");
 const { FAIL_WINDOW_MS, FAIL_PAIR, FAIL_EMAIL } = require("./auth");
 
+// Код на новую почту живёт, как и прочие коды из писем, 15 минут.
+const EMAIL_CODE_TTL = "900 seconds";
+
 function createAccount({ pool, auth, send, cfg, log }) {
-  const { readJson, tokenHash, clearCookie, deliver, tx, startSession } = auth;
+  const { readJson, tokenHash, clearCookie, deliver, tx, startSession, codeHash } = auth;
   // Пароль здесь подбирать так же бессмысленно, как на входе.
   const limiter = createRateLimit({ capacity: 10, refillPerMinute: 5 });
 
@@ -140,8 +155,70 @@ function createAccount({ pool, auth, send, cfg, log }) {
     return send(res, 200, { ok: true }, { "Set-Cookie": cookie });
   }
 
+  /**
+   * Смена почты, шаг 1 (миграция 066): новый адрес и пароль → код на новый
+   * адрес. Пароль обязателен: украденная сессия не должна уводить аккаунт на
+   * чужую почту. До ввода кода вход — по старой почте.
+   */
+  async function requestEmail(req, res) {
+    const b = await readJson(req, res);
+    if (!b) return;
+    const next = String(b.email ?? "")
+      .trim()
+      .toLowerCase()
+      .slice(0, 320);
+    // Неверный адрес — отказ до проверки пароля: попытку не тратим.
+    if (!isEmail(next)) return send(res, 400, { ok: false, error: "bad_email" });
+    const hash = tokenHash(req);
+    const me = await confirmed(req, res, hash, b.password);
+    if (!me) return;
+    const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
+    const { rows } = await pool.query(
+      `SELECT auth.request_email_change($1, $2, $3, $4::interval) AS r`,
+      [hash, next, codeHash(me.account_id, code), EMAIL_CODE_TTL],
+    );
+    const r = rows[0]?.r;
+    if (!r) return send(res, 401, { ok: false });
+    if (r === "same") return send(res, 400, { ok: false, error: "same_email" });
+    if (r === "taken") return send(res, 409, { ok: false, error: "email_taken" });
+    if (r === "limit") {
+      return send(res, 429, { ok: false, error: "mail_limit" }, { "Retry-After": "3600" });
+    }
+    deliver(next, emailCodeLetter(code));
+    return send(res, 202, { ok: true });
+  }
+
+  /**
+   * Смена почты, шаг 2: код из письма. Верный меняет почту и закрывает вход
+   * на других устройствах; на старый адрес — письмо «почту сменили».
+   */
+  async function confirmEmail(req, res) {
+    const b = await readJson(req, res);
+    if (!b) return;
+    if (!limiter.take(clientIp(req, cfg.trustProxy))) {
+      return send(res, 429, { ok: false }, { "Retry-After": "60" });
+    }
+    const code = String(b.code ?? "").trim();
+    if (!/^\d{6}$/.test(code)) return send(res, 400, { ok: false, error: "bad_code" });
+    const hash = tokenHash(req);
+    const me = hash && (await mine(hash));
+    if (!me) return send(res, 401, { ok: false });
+    const { rows } = await pool.query(`SELECT * FROM auth.confirm_email_change($1, $2)`, [
+      hash,
+      codeHash(me.account_id, code),
+    ]);
+    const out = rows[0];
+    if (out?.status === "taken") return send(res, 409, { ok: false, error: "email_taken" });
+    if (out?.status !== "ok") return send(res, 400, { ok: false, error: "bad_code" });
+    deliver(out.old_email, emailChangedLetter(out.new_email, cfg.publicUrl));
+    log.info?.("[uklad] почта аккаунта изменена");
+    return send(res, 200, { ok: true, email: out.new_email });
+  }
+
   const routes = {
     "GET /api/auth/account": info,
+    "POST /api/auth/email/change": requestEmail,
+    "POST /api/auth/email/confirm": confirmEmail,
     "POST /api/auth/account/delete": remove,
     "POST /api/auth/account/restore": restore,
     "POST /api/auth/sessions/revoke-others": revokeOthers,

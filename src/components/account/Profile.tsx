@@ -10,17 +10,15 @@ import {
   Hash,
   ImageIcon,
   LogOut,
-  Mail,
   RotateCcw,
   Settings,
-  ShieldCheck,
   User,
 } from "lucide-react";
 import { useLogout } from "./useLogout";
 import { LogoutConfirm } from "./LogoutConfirm";
 import { PERSIST_KEY, selectIsOwner, selectRole, useEditor } from "@/lib/store";
 import { removeSaved } from "@/lib/store/persistStorage";
-import { checkEmail, checkInn, checkKpp, checkOgrn, checkPersonName } from "@/lib/validate";
+import { checkInn, checkKpp, checkOgrn, checkPersonName } from "@/lib/validate";
 import { companyRepository } from "@/lib/data/companyRepository";
 import { useCommand } from "@/lib/useCommand";
 import type { Lang } from "@/lib/types";
@@ -35,6 +33,7 @@ import { NotifySection, ProfileHero, Section, ThemeTile } from "./ProfileParts";
 import { BackupSection } from "./BackupSection";
 import { AccountDataSection } from "./AccountDataSection";
 import { BankRow } from "./BankRow";
+import { EmailRow } from "./EmailRow";
 import { FieldError } from "@/components/ui/field";
 
 /** Вкладки профиля: длинная страница из всех разделов сразу не читалась. */
@@ -50,18 +49,15 @@ type ProfileTab = "account" | "company" | "tariff" | "settings";
  * тоже больше нет. Тема и язык — исключение: это настройка отображения, её
  * видно сразу и подтверждать нечего.
  *
- * Почта меняется через подтверждение: на новый адрес «уходит» код, и до его
- * ввода старая почта остаётся рабочей. Кода в прототипе никто не присылает —
- * это честно написано в подсказке.
+ * Почта меняется через подтверждение (`EmailRow`): пароль, код на новый адрес,
+ * до его ввода старая почта остаётся рабочей.
  *
  * ИНН — ключ к реквизитам: по сохранённому номеру данные компании приходят
  * сами, отдельной кнопки «подтянуть» нет.
  */
 
-const CONFIRM_CODE_LENGTH = 6;
-
 /** Какая строка сейчас правится. */
-type FieldId = "name" | "email" | "inn" | "org" | "details";
+type FieldId = "name" | "inn" | "org" | "details";
 
 /** Выбор языка скрыт: английского кабинета пока нет. */
 const SHOW_LANGUAGE = false;
@@ -113,16 +109,12 @@ export function Profile() {
     window.location.reload();
   };
   const [draft, setDraft] = useState(() => draftOf());
-  /** Ожидающее подтверждения письмо + введённый код. */
-  const [pendingEmail, setPendingEmail] = useState<string | null>(null);
-  const [code, setCode] = useState("");
   /** Что случилось с реквизитами после сохранения ИНН. */
   const [innNote, setInnNote] = useState<string | null>(null);
 
   function draftOf() {
     return {
       name: profile.name,
-      email: profile.email,
       org: account.org ?? "",
       inn: account.inn ?? "",
       kpp: account.kpp ?? "",
@@ -145,7 +137,6 @@ export function Profile() {
   const nameErr = draft.name.trim()
     ? (checkPersonName(draft.name) ?? null)
     : ("profile.nameEmpty" as const);
-  const emailErr = draft.email.trim() ? checkEmail(draft.email) : ("valid.email" as const);
   const kppErr = checkKpp(draft.kpp);
   const ogrnErr = checkOgrn(draft.ogrn);
   const detailsErr = kppErr ?? ogrnErr;
@@ -153,16 +144,6 @@ export function Profile() {
   const saveName = () => {
     if (nameErr) return;
     updateProfile({ name: draft.name.trim() });
-    close();
-  };
-
-  // Почта меняется не сразу: сначала подтверждение нового адреса.
-  const saveEmail = () => {
-    const next = draft.email.trim();
-    if (emailErr) return;
-    if (next === profile.email) return close();
-    setPendingEmail(next);
-    setCode("");
     close();
   };
 
@@ -225,13 +206,6 @@ export function Profile() {
     close();
   };
 
-  const confirmEmail = () => {
-    if (code.replace(/\D/g, "").length !== CONFIRM_CODE_LENGTH || !pendingEmail) return;
-    updateProfile({ email: pendingEmail });
-    setPendingEmail(null);
-    setCode("");
-  };
-
   const hasDetails = !!(account.kpp || account.ogrn || account.legalAddress);
 
   return (
@@ -274,48 +248,6 @@ export function Profile() {
           tariff={isSeller ? null : t(`tariff.${tariff}`)}
         />
 
-        {/* Подтверждение новой почты */}
-        {pendingEmail && (
-          <div className="flex flex-col gap-2 rounded-xl border border-warning-fill/70 bg-warning-fill/15 p-3.5">
-            <p className="flex items-center gap-1.5 text-xs font-semibold text-warning">
-              <ShieldCheck className="size-3.5" />
-              {t("profile.emailConfirmTitle", { email: pendingEmail })}
-            </p>
-            <p className="text-xs text-warning/80">
-              {t("profile.emailConfirmBody", { n: CONFIRM_CODE_LENGTH })}
-            </p>
-            <div className="flex items-center gap-2">
-              <Input
-                value={code}
-                inputMode="numeric"
-                maxLength={CONFIRM_CODE_LENGTH}
-                onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-                placeholder="000000"
-                className="h-9 w-28 text-center font-mono tracking-widest"
-              />
-              <Button
-                size="sm"
-                className="h-9"
-                disabled={code.length !== CONFIRM_CODE_LENGTH}
-                onClick={confirmEmail}
-              >
-                {t("profile.emailConfirmApply")}
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-9"
-                onClick={() => {
-                  setPendingEmail(null);
-                  setCode("");
-                }}
-              >
-                {t("common.cancel")}
-              </Button>
-            </div>
-          </div>
-        )}
-
         <div className="flex min-w-0 flex-col gap-6">
           {tab === "account" && (
             <Section title={t("profile.section.account")}>
@@ -356,34 +288,7 @@ export function Profile() {
                   )}
                 </Row>
 
-                {/* Email */}
-                <Row icon={<Mail className="size-4" />} label={t("profile.email")}>
-                  {edit === "email" ? (
-                    <RowEditor
-                      onSave={saveEmail}
-                      onCancel={close}
-                      canSave={!emailErr}
-                      hint={
-                        emailErr && draft.email.trim()
-                          ? { text: t(emailErr), error: true }
-                          : { text: t("profile.emailNeedsConfirm") }
-                      }
-                    >
-                      <Input
-                        // eslint-disable-next-line jsx-a11y/no-autofocus -- строчный редактор открыт по клику «изменить»: фокус обязан уйти в поле
-                        autoFocus
-                        type="email"
-                        value={draft.email}
-                        onChange={(e) => set({ email: e.target.value })}
-                        placeholder={t("profile.emailPlaceholder")}
-                        aria-invalid={(!!emailErr && !!draft.email.trim()) || undefined}
-                        className="h-9 w-full"
-                      />
-                    </RowEditor>
-                  ) : (
-                    <ReadValue value={profile.email} onEdit={() => open("email")} />
-                  )}
-                </Row>
+                <EmailRow />
               </div>
             </Section>
           )}

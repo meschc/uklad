@@ -363,3 +363,118 @@ test("смена пароля: 5 неудач — пауза, как на вхо
   assert.equal(locked.status, 429, "даже верный пароль ждёт окончания паузы");
   assert.equal((await call("/api/auth/me", a)).status, 200, "пароль не сменился");
 });
+
+/** Код последнего письма на адрес (письма уходят в фоне). */
+async function lastCode(to) {
+  for (let i = 0; i < 50; i++) {
+    const m = sent.findLast((x) => x.to === to && /^\d{6}/.test(x.subject));
+    if (m) return /^(\d{6})/.exec(m.subject)[1];
+    await new Promise((r) => setTimeout(r, 10));
+  }
+  throw new Error(`нет письма на ${to}`);
+}
+
+test(
+  "смена почты: пароль, код на новый адрес, другие устройства выходят, старый адрес извещён",
+  { skip: SKIP },
+  async () => {
+    const a = await owner("mail-a@sklad.ru", "10.0.2.20");
+    const other = await login("mail-a@sklad.ru", "10.0.2.20");
+    const ask = (body) => call("/api/auth/email/change", { ...a, body, ip: "10.0.2.20" });
+
+    assert.equal((await ask({ email: "не почта", password: PW })).status, 400);
+    assert.equal((await ask({ email: "new-a@sklad.ru", password: "не-тот-пароль-1" })).status, 403);
+    assert.equal((await ask({ email: "MAIL-A@sklad.ru", password: PW })).json.error, "same_email");
+    // Без сессии — никак.
+    const anon = await call("/api/auth/email/change", {
+      body: { email: "new-a@sklad.ru", password: PW },
+      ip: "10.0.2.25",
+    });
+    assert.equal(anon.status, 401);
+
+    assert.equal((await ask({ email: "New-A@sklad.ru", password: PW })).status, 202);
+    const code = await lastCode("new-a@sklad.ru");
+    // Пока код не введён — вход по старой почте.
+    assert.equal((await login("mail-a@sklad.ru", "10.0.2.20")).status, 200);
+    assert.equal((await login("new-a@sklad.ru", "10.0.2.20")).status, 401);
+
+    const wrong = String((Number(code) + 1) % 1_000_000).padStart(6, "0");
+    const bad = await call("/api/auth/email/confirm", {
+      ...a,
+      body: { code: wrong },
+      ip: "10.0.2.26",
+    });
+    assert.equal(bad.status, 400);
+    // Чужая сессия кодом этого аккаунта не воспользуется.
+    const b = await owner("mail-b@sklad.ru", "10.0.2.21");
+    const foreign = await call("/api/auth/email/confirm", {
+      ...b,
+      body: { code },
+      ip: "10.0.2.27",
+    });
+    assert.equal(foreign.status, 400);
+
+    const ok = await call("/api/auth/email/confirm", { ...a, body: { code }, ip: "10.0.2.26" });
+    assert.equal(ok.status, 200);
+    assert.equal(ok.json.email, "new-a@sklad.ru");
+    assert.equal((await call("/api/auth/me", a)).status, 200, "эта сессия осталась");
+    assert.equal((await call("/api/auth/me", { cookie: other.cookie })).status, 401);
+    assert.equal((await login("new-a@sklad.ru", "10.0.2.20")).status, 200);
+    assert.equal((await login("mail-a@sklad.ru", "10.0.2.20")).status, 401);
+    for (
+      let i = 0;
+      i < 50 && !sent.some((m) => m.to === "mail-a@sklad.ru" && /изменена/.test(m.subject));
+      i++
+    ) {
+      await new Promise((r) => setTimeout(r, 10));
+    }
+    const notice = sent.find((m) => m.to === "mail-a@sklad.ru" && /изменена/.test(m.subject));
+    assert.ok(notice && notice.text.includes("new-a@sklad.ru"), "старый адрес извещён");
+    // Код одноразовый.
+    assert.equal(
+      (await call("/api/auth/email/confirm", { ...a, body: { code }, ip: "10.0.2.26" })).status,
+      400,
+    );
+
+    // Занятый адрес: сразу при запросе — 409, без письма.
+    const taken = await call("/api/auth/email/change", {
+      ...b,
+      body: { email: "new-a@sklad.ru", password: PW },
+      ip: "10.0.2.21",
+    });
+    assert.equal(taken.status, 409);
+  },
+);
+
+test(
+  "смена почты: адрес заняли, пока шло письмо, — 409, почта прежняя",
+  { skip: SKIP },
+  async () => {
+    const a = await owner("mail-c@sklad.ru", "10.0.2.22");
+    const r = await call("/api/auth/email/change", {
+      ...a,
+      body: { email: "race@sklad.ru", password: PW },
+      ip: "10.0.2.22",
+    });
+    assert.equal(r.status, 202);
+    const code = await lastCode("race@sklad.ru");
+    await owner("race@sklad.ru", "10.0.2.23");
+    const res = await call("/api/auth/email/confirm", { ...a, body: { code }, ip: "10.0.2.26" });
+    assert.equal(res.status, 409);
+    assert.equal((await call("/api/auth/account", a)).json.email, "mail-c@sklad.ru");
+  },
+);
+
+test("смена почты: не больше пяти писем в час", { skip: SKIP }, async () => {
+  const a = await owner("mail-d@sklad.ru", "10.0.2.24");
+  const statuses = [];
+  for (let i = 0; i < 6; i++) {
+    const r = await call("/api/auth/email/change", {
+      ...a,
+      body: { email: `spam${i}@sklad.ru`, password: PW },
+      ip: "10.0.2.24",
+    });
+    statuses.push(r.status);
+  }
+  assert.deepEqual(statuses, [202, 202, 202, 202, 202, 429]);
+});

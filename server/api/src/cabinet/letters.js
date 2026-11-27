@@ -64,6 +64,29 @@ function passwordLetter(publicUrl) {
   };
 }
 
+/** Смена почты, шаг 1: код уходит на новый адрес. */
+function emailCodeLetter(code) {
+  return {
+    subject: `${code} — код для смены почты в Укладе`,
+    text:
+      `Здравствуйте!\n\nКод, чтобы входить в Уклад с этой почтой: ${code}\n\n` +
+      `Он действует 15 минут. До ввода кода вход — по прежней почте.` +
+      tail,
+  };
+}
+
+/** Почту сменили: письмо на старый адрес — если это были не вы, видно сразу. */
+function emailChangedLetter(newEmail, publicUrl) {
+  return {
+    subject: "Почта в Укладе изменена",
+    text:
+      `Здравствуйте!\n\nВход в ваш аккаунт в Укладе теперь по почте ${newEmail}. ` +
+      `С этой почтой войти больше нельзя, вход на других устройствах закрыт.\n\n` +
+      `Если это были не вы, ответьте на это письмо — вернём доступ.\n\n` +
+      `Кабинет: ${publicUrl}/app/\n`,
+  };
+}
+
 /** Приглашение в компанию: кто зовёт, в какой роли и ссылка на 7 дней. */
 function inviteLetter({ company: rawCompany, role: rawRole, link }) {
   // Название задаёт клиент, а письмо уходит с нашего домена: без переводов
@@ -84,4 +107,12 @@ function inviteLetter({ company: rawCompany, role: rawRole, link }) {
   };
 }
 
-module.exports = { codeLetter, alreadyLetter, deletionLetter, passwordLetter, inviteLetter };
+module.exports = {
+  codeLetter,
+  alreadyLetter,
+  deletionLetter,
+  passwordLetter,
+  emailCodeLetter,
+  emailChangedLetter,
+  inviteLetter,
+};
