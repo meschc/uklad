@@ -84,6 +84,12 @@ export const ru = {
     "Эту тару уже упаковал другой сотрудник, или в ней осталось меньше, чем вы закрывали. Экран обновлён: проверьте тару и упакуйте остаток",
   "ws.opPackMixed":
     "В этот короб нельзя: другой продавец или другое назначение, либо заказ собран в двух тарах. Возьмите другой короб",
+  "ws.opPackLabel":
+    "Этикетка не от этого заказа, или у посылки не все штуки с этикеткой. Экран обновлён: проверьте этикетки и упакуйте заказ заново",
+  "ws.opPackCancelled":
+    "Заказ отменили, пока он лежал в таре. Не пакуйте его, оставьте товар в таре и отдайте старшему",
+  "ws.opPackTote":
+    "Эта тара ещё на приёмке, её товар не на учёте. Дождитесь, пока приёмку закроют или тару поставят в ячейку",
   "ws.opRecvTote":
     "Эта тара не для приёмки: она закрыта, стоит на полке или в ней идёт сборка. Возьмите другую тару",
   "ws.opRecvStock":
@@ -489,6 +495,8 @@ export const ru = {
   "ws.tote.otherSeller": "В этом коробе отгрузки товар другого продавца. Возьмите новый короб",
   "ws.tote.otherTarget": "Этот короб отгрузки едет на другое назначение. Возьмите новый короб",
   "ws.tote.targetSorted": "Этот короб уже на сортировке. Возьмите новый короб",
+  "ws.tote.receiving":
+    "Эта тара ещё на приёмке: поставка не закрыта, и товар в ней не на учёте. Дождитесь, пока приёмку закроют или тару поставят в ячейку",
   "ws.demo.title": "Демо",
   "ws.demo.hint": "нажмите на код вместо скана",
   "ws.demo.label": "этикетка напечатана",
@@ -788,6 +796,12 @@ export const en: Record<keyof typeof ru, string> = {
     "Another employee has already packed this tote, or it holds less than you closed. The screen is refreshed: check the tote and pack the rest",
   "ws.opPackMixed":
     "You can't use this box: another seller or destination, or the order is picked into two totes. Take a different box",
+  "ws.opPackLabel":
+    "The label is not from this order, or not every item of the parcel has a label. The screen is refreshed: check the labels and pack the order again",
+  "ws.opPackCancelled":
+    "The order was cancelled while it was in the tote. Do not pack it, leave the goods in the tote and hand it to the shift lead",
+  "ws.opPackTote":
+    "This tote is still at receiving, its goods are not on stock yet. Wait until receiving is closed or the tote is put in a cell",
   "ws.opRecvTote":
     "This tote is not for receiving: it is closed, on a shelf or used for picking. Take a different tote",
   "ws.opRecvStock":
@@ -1193,6 +1207,8 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.tote.otherSeller": "This outbound box already holds another seller's goods. Take a new box",
   "ws.tote.otherTarget": "This outbound box goes to another destination. Take a new box",
   "ws.tote.targetSorted": "This box is already at sorting. Take a new box",
+  "ws.tote.receiving":
+    "This tote is still at receiving: the shipment is not closed and its goods are not on stock yet. Wait until receiving is closed or the tote is put in a cell",
   "ws.demo.title": "Demo",
   "ws.demo.hint": "click a code instead of scanning",
   "ws.demo.label": "label printed",

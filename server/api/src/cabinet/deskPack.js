@@ -68,6 +68,120 @@ function cleanLines(raw) {
   return m;
 }
 
+/** Как `orderLabelCode` в `lib/packing.ts`: этикетка заказа из нескольких штук. */
+const orderLabelCode = (orderId) => normalizeCode(`UK-ORD-${String(orderId).slice(-6)}`);
+
+/** Ключ заказа площадки, как `orderKey` в `lib/packing.ts`. */
+const orderKey = (r) =>
+  r.externalId ? `${r.source ?? ""}:${String(r.externalId).trim().toLowerCase()}` : `#${r.id}`;
+
+/** Заявки того же заказа в той же таре (заказ площадки — по номеру). */
+function orderOf(requests, req) {
+  const key = orderKey(req);
+  return requests.filter((r) => r.toteId === req.toteId && orderKey(r) === key);
+}
+
+/** Товар → штук заказа (частичный — по собранному). */
+function needOf(order) {
+  const need = new Map();
+  for (const r of order) {
+    const n = r.partial ? Number(r.pickedQty) || 0 : Number(r.qty) || 0;
+    if (n > 0) need.set(r.productId, (need.get(r.productId) ?? 0) + n);
+  }
+  return need;
+}
+
+/**
+ * События упаковки этой тары с прошлого её закрытия (до `before`): штуки,
+ * не легшие в посылку, остаются в таре, и следующий заход клеит им новые
+ * этикетки — старые не в счёт. Посылки одного закрытия идут с одним временем.
+ */
+function sinceClosed(events, tote, before = Infinity) {
+  let from = -Infinity;
+  for (const e of events) {
+    if (e.type === "pack_done" && e.code === tote?.barcode && e.at < before && e.at > from) {
+      from = e.at;
+    }
+  }
+  return events.filter((e) => Number(e.at) > from);
+}
+
+/** Этикетки, уже приклеенные к штукам этого заказа: товар → штук. */
+function labelledOf(events, ids) {
+  const m = new Map();
+  for (const e of events) {
+    if (e.type === "pack_label" && ids.has(e.orderId) && typeof e.productId === "string") {
+      m.set(e.productId, (m.get(e.productId) ?? 0) + 1);
+    }
+  }
+  return m;
+}
+
+/**
+ * Этикетка заказа на упаковке («лопата и самокат», ревизия 14.11): заказ
+ * лежит в этой таре и не отменён, товар этикетки — товар этого заказа, и
+ * этикеток не больше, чем его штук. Этикетка заказа из нескольких штук —
+ * его собственный код. Раньше это проверял только стол в браузере.
+ */
+function labelProblem(data, body, events) {
+  if (body.orderId === undefined) return null;
+  const requests = list(data.requests);
+  const req = requests.find((r) => r.id === body.orderId);
+  if (!req || (body.toteId !== undefined && req.toteId !== body.toteId)) return "label";
+  if (req.status === "cancelled") return "cancelled";
+  if (req.packedAt || req.status !== "done") return "label";
+  const order = orderOf(requests, req);
+  if (order.some((r) => r.status === "cancelled")) return "cancelled";
+  if (body.productId === undefined) {
+    return normalizeCode(String(body.code ?? "")) === orderLabelCode(req.id) ? null : "label";
+  }
+  const need = needOf(order).get(body.productId) ?? 0;
+  const ids = new Set(order.map((r) => r.id));
+  const tote = list(data.boxes).find((b) => b.id === req.toteId);
+  const had = labelledOf(sinceClosed(events, tote), ids).get(body.productId) ?? 0;
+  return had + 1 > need ? "label" : null;
+}
+
+/**
+ * Тара ещё на приёмке — товар в ней не на учёте (ошибки 16.11, п. 2):
+ * невскрытое место или тара, куда принимают по незакрытой поставке и
+ * которую ещё не поставили в ячейку.
+ */
+function receivingOpen(data, tote) {
+  if (tote.sealed) return true;
+  if (tote.address) return false;
+  const open = new Set();
+  for (const s of list(data.expectedShipments)) {
+    if (s.status === "closed") continue;
+    for (const l of list(s.lines)) open.add(l.id);
+  }
+  return list(data.receivingEvents).some(
+    (e) => e.boxId === tote.id && open.has(e.expectedShipmentLineId),
+  );
+}
+
+/**
+ * Посылка заказа площадки: каждая штука заказа с этикеткой этого заказа, код
+ * посылки — его этикетка, и в посылке ровно его товар. Иначе в посылку с
+ * номером одного покупателя легло бы чужое.
+ */
+function parcelProblem(all, tote, at, closing, packed, code) {
+  if (closing.length === 0 || !closing.every((r) => r.externalId)) return false;
+  const events = sinceClosed(all, tote, at);
+  const need = needOf(closing);
+  if (packed.size !== need.size || [...need].some(([p, n]) => packed.get(p) !== n)) return true;
+  const ids = new Set(closing.map((r) => r.id));
+  const labelled = labelledOf(events, ids);
+  if ([...need].some(([p, n]) => (labelled.get(p) ?? 0) < n)) return true;
+  const units = [...need.values()].reduce((a, b) => a + b, 0);
+  const own = events.filter((e) => e.type === "pack_label" && ids.has(e.orderId));
+  if (units === 1) return !own.some((e) => normalizeCode(String(e.code ?? "")) === code);
+  return (
+    !own.some((e) => e.productId === undefined && normalizeCode(String(e.code ?? "")) === code) ||
+    ![...ids].some((id) => orderLabelCode(id) === code)
+  );
+}
+
 /** Спорное, по которому старший может списать товар из тары. */
 const WRITE_OFF = new Set(["shortage", "not_packable"]);
 
@@ -127,6 +241,10 @@ function applyPackEvent(data, body, staffRef) {
   if (!PACK_EVENTS.has(body.type)) return { flag: "bad" };
   const events = list(data.staffEvents);
   if (events.some((e) => e.id === body.eventId)) return { data };
+  if (body.type === "pack_label") {
+    const problem = labelProblem(data, body, events);
+    if (problem) return { flag: problem };
+  }
   const out = { ...data, staffEvents: [...events, packEvent(body, staffRef)] };
   const d = body.dispute;
   if (d !== undefined) {
@@ -218,12 +336,18 @@ function applyPackDone(data, body, staffRef) {
     return { flag: "bad" };
   }
   if (code === normalizeCode(String(tote.barcode ?? ""))) return { flag: "bad" };
+  if (receivingOpen(data, tote)) return { flag: "tote" };
   const have = linesOf(tote.lines);
   for (const [p, q] of packed) if ((have.get(p) ?? 0) < q) return { flag: "stock" };
 
   const requests = list(data.requests);
   const ids = Array.isArray(body.requestIds) ? body.requestIds.filter(isId) : [];
   if (ids.length > 500) return { flag: "bad" };
+  // Заказ отменили, пока он лежал в таре: стол его не упакует, а скажет об
+  // этом прямо, а не молча положит товар в короб.
+  if (requests.some((r) => ids.includes(r.id) && r.status === "cancelled")) {
+    return { flag: "cancelled" };
+  }
   const closing = requests.filter(
     (r) => ids.includes(r.id) && r.toteId === tote.id && r.status === "done" && !r.packedAt,
   );
@@ -247,6 +371,8 @@ function applyPackDone(data, body, staffRef) {
   const outs = list(data.outboundBoxes);
   const open = outs.find((b) => !b.shipmentId && normalizeCode(String(b.code ?? "")) === code);
   if (targetProblem(data, have, closing, open)) return { flag: "mixed" };
+  if (parcelProblem(list(data.staffEvents), tote, body.at, closing, packed, code))
+    return { flag: "label" };
 
   const at = body.at;
   const remaining = new Map(have);
