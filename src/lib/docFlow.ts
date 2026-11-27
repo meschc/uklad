@@ -1,3 +1,4 @@
+import { liveReceipts } from "./recvUndo";
 import { buildReceivingDoc, buildShipmentDoc, docNumber, type DocModel } from "./documents";
 import type {
   Box,
@@ -97,7 +98,8 @@ export const pickDocSources = (s: DocSources): DocSources => ({
   requests: s.requests,
   shipments: s.shipments,
   expectedShipments: s.expectedShipments,
-  receivingEvents: s.receivingEvents,
+  // Отменённый скан и его отмена в акт не идут (`liveReceipts`).
+  receivingEvents: liveReceipts(s.receivingEvents),
   boxes: s.boxes,
 });
 

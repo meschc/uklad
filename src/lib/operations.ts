@@ -1,3 +1,4 @@
+import { liveReceipts } from "./recvUndo";
 import { normalizeCode, PALLET_PREFIX } from "./barcode";
 import type {
   Box,
@@ -146,6 +147,9 @@ export function operationLog(f: OperationFacts): OperationEntry[] {
   const partnerOf = new Map(f.products.map((p) => [p.id, p.partnerId]));
   const requestById = new Map(f.requests.map((r) => [r.id, r]));
   const out: OperationEntry[] = [];
+  // Отменённый скан и сама отмена — не приёмка: ни в счёт, ни в выработку,
+  // ни в первое принятое место (`liveReceipts`).
+  const receipts = liveReceipts(f.receivingEvents);
 
   // Принятое место — то, что прошло грузовую приёмку (`shipmentId`) или в
   // которое приняли товар. Тара и паллеты, под которые ярлык напечатали
@@ -153,7 +157,7 @@ export function operationLog(f: OperationFacts): OperationEntry[] {
   // счёт как принятые короба. Продавца берём по принятому, а не по тому, что
   // лежит сейчас: упакованный короб пуст, а приёмку оплатить всё равно надо.
   const firstInto = new Map<string, ReceivingEvent>();
-  for (const e of f.receivingEvents) {
+  for (const e of receipts) {
     const seen = firstInto.get(e.boxId);
     if (!seen || e.timestamp < seen.timestamp) firstInto.set(e.boxId, e);
   }
@@ -185,7 +189,7 @@ export function operationLog(f: OperationFacts): OperationEntry[] {
       source: "auto",
     });
   }
-  for (const e of f.receivingEvents) {
+  for (const e of receipts) {
     out.push({
       id: `rcv:${e.id}`,
       kind: "item_receiving",

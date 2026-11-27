@@ -35,6 +35,7 @@ export type DeskOpKind =
   | "pick_done"
   | "pick_undo"
   | "pick_missing"
+  | "recv_undo"
   | "recv_open"
   | "recv_unit"
   | "recv_place"
@@ -60,6 +61,7 @@ const KINDS: readonly DeskOpKind[] = [
   "pick_done",
   "pick_undo",
   "pick_missing",
+  "recv_undo",
   "recv_open",
   "recv_unit",
   "recv_place",
@@ -99,6 +101,8 @@ export interface DeskOpBody {
   // Сборка (`pick_unit`, `pick_done`, `pick_undo` — `pickId` отменяемого скана).
   requestId?: string;
   pickId?: string;
+  /** Отмена скана приёмки (`recv_undo`): id отменяемого события. */
+  undoes?: string;
   cell?: { floorId: string; moduleId: string; shelfIndex: number; cellIndex: number };
   partial?: boolean;
   // Приёмка (`recv_*`).

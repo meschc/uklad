@@ -212,6 +212,104 @@ function applyRecvUnit(data, body, staffRef) {
   return { data: out };
 }
 
+/**
+ * Снять `qty` штук товара из строк тары ровно один раз: по строкам с
+ * остатком по порядку. Строк одного товара может быть две (проверки формы
+ * этого не запрещают) — вычитать из каждой значило бы снять вдвое больше.
+ */
+function takeOut(lines, productId, qty) {
+  let left = qty;
+  return lines
+    .map((l) => {
+      if (left <= 0 || l.productId !== productId) return l;
+      const n = Math.min(left, Number(l.qty) || 0);
+      left -= n;
+      return { ...l, qty: Number(l.qty) - n };
+    })
+    .filter((l) => Number(l.qty) > 0);
+}
+
+/**
+ * Отмена своего скана приёмки (`recv_undo`, Кирилл 27.11): «принял 10, а было
+ * 8» — последний скан снимается целиком, человек принимает верное число
+ * заново. Отменить можно только свой скан и только пока тара на рампе: не
+ * в ячейке, штуки ещё в ней (кроссдок не увёл), поставка не закрыта. Скан с
+ * лишним или браком, по которому старший ещё не решил, — к старшему: спорное
+ * без товара решать нечего. Сам скан из журнала не исчезает: рядом ложится
+ * событие отмены (`undoes`), сверка остатков (`deskStock.js`) считает его
+ * минусом принятого.
+ */
+function applyRecvUndo(data, body, staffRef) {
+  if (!isId(body.eventId) || !isId(body.undoes)) return { flag: "bad" };
+  const events = list(data.receivingEvents);
+  if (events.some((e) => e.id === body.eventId)) return { data };
+  if (events.some((e) => e.undoes === body.undoes)) return { data };
+  const scan = events.find((e) => e.id === body.undoes && !e.undoes);
+  if (!scan) return { flag: "bad" };
+  if (scan.staffId !== staffRef) return { flag: "not_yours" };
+  const qty = Number(scan.qty) || 0;
+  const boxes = list(data.boxes);
+  const box = boxes.find((b) => b.id === scan.boxId);
+  const have = list(box?.lines)
+    .filter((l) => l.productId === scan.productId)
+    .reduce((n, l) => n + (Number(l.qty) || 0), 0);
+  if (!box || box.address || box.sealed || have < qty || qty < 1) return { flag: "late" };
+  const shipments = list(data.expectedShipments);
+  const lineId = scan.expectedShipmentLineId;
+  const shipment =
+    typeof lineId === "string"
+      ? shipments.find((s) => list(s.lines).some((l) => l.id === lineId))
+      : null;
+  if (shipment && shipment.status === "closed") return { flag: "late" };
+  const held = list(data.disputes).some(
+    (d) =>
+      !d.resolution &&
+      (d.id === `ovr-${scan.id}`.slice(0, 100) || d.id === `def-${scan.id}`.slice(0, 100)),
+  );
+  if (held) return { flag: "disputed" };
+  if (frozenBox(data, box.id)) return { flag: "late" };
+
+  return {
+    data: {
+      ...data,
+      boxes: boxes.map((b) =>
+        b === box
+          ? {
+              ...b,
+              lines: takeOut(list(b.lines), scan.productId, qty),
+            }
+          : b,
+      ),
+      expectedShipments: shipment
+        ? shipments.map((s) =>
+            s === shipment
+              ? {
+                  ...s,
+                  lines: list(s.lines).map((l) =>
+                    l.id === lineId
+                      ? { ...l, receivedQty: Math.max(0, (Number(l.receivedQty) || 0) - qty) }
+                      : l,
+                  ),
+                }
+              : s,
+          )
+        : data.expectedShipments,
+      receivingEvents: [
+        ...events,
+        {
+          id: body.eventId,
+          undoes: scan.id,
+          productId: scan.productId,
+          qty,
+          boxId: box.id,
+          staffId: staffRef,
+          timestamp: body.at,
+        },
+      ],
+    },
+  };
+}
+
 /** Вскрыть невскрытое место (паллету или короб). Уже вскрытое — то же самое. */
 function applyRecvOpen(data, body) {
   if (!isId(body.unitId)) return { flag: "bad" };
@@ -447,6 +545,7 @@ function cargoMade(data, body) {
 
 module.exports = {
   applyRecvUnit,
+  applyRecvUndo,
   applyRecvOpen,
   applyRecvPlace,
   applyRecvAttach,

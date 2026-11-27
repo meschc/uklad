@@ -26,6 +26,7 @@ const { applyToteMerge, applyToteMove } = require("./deskMerge");
 const { applyPickUnit, applyPickDone, applyPickUndo, applyPickMissing } = require("./deskPick");
 const {
   applyRecvUnit,
+  applyRecvUndo,
   applyRecvOpen,
   applyRecvPlace,
   applyRecvAttach,
@@ -59,6 +60,7 @@ const RECV_KINDS = new Set([
   "recv_attach",
   "recv_close",
   "recv_cargo",
+  "recv_undo",
 ]);
 const SHIP_KINDS = new Set(["ship_run", "dispute_resolve", "sort_place", "sort_close"]);
 const INV_KINDS = new Set(["inv_count", "inv_cell"]);
@@ -114,6 +116,7 @@ const WORK = new Map([
   ["pick_missing", applyPickMissing],
   ["recv_open", applyRecvOpen],
   ["recv_unit", applyRecvUnit],
+  ["recv_undo", applyRecvUndo],
   ["recv_place", applyRecvPlace],
   ["recv_attach", applyRecvAttach],
   ["recv_close", applyRecvClose],

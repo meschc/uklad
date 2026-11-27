@@ -859,6 +859,8 @@ test(
         shipmentId: "s1",
         lineId: "l1",
       }),
+      // Отменить скан с лишним, по которому ждёт старший, — к старшему.
+      op("undo", "recv_undo", { undoes: "ev-recv-extra" }),
       op("place", "recv_place", { boxId: "b5", cell }),
       op("close", "recv_close", { shipmentId: "s1" }),
     ]);
@@ -870,6 +872,7 @@ test(
         ["key-recv-unit", "applied", null],
         ["key-recv-again", "applied", null],
         ["key-recv-extra", "applied", null],
+        ["key-recv-undo", "flagged", "disputed"],
         ["key-recv-place", "applied", null],
         ["key-recv-close", "applied", null],
       ],
