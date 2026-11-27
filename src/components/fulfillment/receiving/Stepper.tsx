@@ -28,14 +28,18 @@ export function Stepper({
   const steps = crossDock ? STEPS.filter((s) => s.id !== "place") : STEPS;
   const idx = steps.findIndex((s) => s.id === step);
   return (
-    <ol className="flex items-center gap-1 text-xs">
+    // На телефоне подписан только текущий шаг, остальные — значком: все шаги
+    // в одну строку, ни один не уезжает за край (разбор экранов 27.11).
+    <ol className="flex flex-wrap items-center gap-1 text-xs">
       {steps.map((s, i) => {
         // Без сверки шаг «количество» остаётся, но подписан иначе.
         const active = i === idx;
         const passed = i < idx;
+        const label = t(s.id === "qty" && !hasShipment ? "recv.step.qtyFree" : s.key);
         return (
           <li key={s.id} className="flex items-center gap-1">
             <span
+              title={label}
               className={cn(
                 "flex items-center gap-1 rounded-md px-2 py-1 font-medium transition-colors",
                 active
@@ -46,7 +50,7 @@ export function Stepper({
               )}
             >
               <s.icon className="size-3" />
-              {t(s.id === "qty" && !hasShipment ? "recv.step.qtyFree" : s.key)}
+              <span className={active ? undefined : "max-sm:sr-only"}>{label}</span>
             </span>
             {i < steps.length - 1 && <span className="text-muted-foreground">·</span>}
           </li>
