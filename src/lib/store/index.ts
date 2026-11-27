@@ -13,6 +13,7 @@ import type { EditorState } from "./state";
 import { fieldValueKey } from "./helpers";
 import { SEED_FIELD_VALUES, seedOwnProducts, seedStaff } from "./seed";
 import { seedHistory } from "./seedHistory";
+import { seedMonth } from "./seedMonth";
 import { seedWork } from "./seedWork";
 import { createAccountSlice } from "./account.slice";
 import { createIntegrationsSlice } from "./integrations.slice";
@@ -423,13 +424,20 @@ if (!HAD_PERSISTED) {
   const s = useEditor.getState();
   // История — только активного склада: свои позиции остальных демо-складов
   // (с `warehouseId`) в его поставки и заявки попасть не должны.
-  useEditor.setState(
-    seedHistory(
-      s.warehouse,
-      s.products.filter((p) => !p.warehouseId),
-      s.placements,
-    ),
-  );
+  const catalog = s.products.filter((p) => !p.warehouseId);
+  useEditor.setState(seedHistory(s.warehouse, catalog, s.placements));
+  // Рабочий месяц поверх: склад занят на ~66%, рейсы каждый будний день —
+  // демо выглядит складом в работе, а не только что открытым.
+  const h = useEditor.getState();
+  const month = seedMonth(h.warehouse, catalog, h, Date.now());
+  useEditor.setState({
+    expectedShipments: [...month.expectedShipments, ...h.expectedShipments],
+    receivingEvents: [...month.receivingEvents, ...h.receivingEvents],
+    boxes: [...h.boxes, ...month.boxes],
+    boxSeq: month.boxSeq,
+    requests: [...month.requests, ...h.requests],
+    shipments: [...month.shipments, ...h.shipments],
+  });
   // Люди склада: смены и пики, задания на услуги, прайс и столы — иначе
   // «Операции и услуги», «Устройства» и журнал смены открываются нулями.
   useEditor.setState(
