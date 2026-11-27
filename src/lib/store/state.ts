@@ -8,6 +8,7 @@ import type { SwitchRequest } from "../data/switchRepository";
 import type { ItemScan, PackDoneFacts } from "../packing";
 import type { PickUndoProblem } from "../pickUndo";
 import type { RecvUndoProblem } from "../recvUndo";
+import type { SortUndoProblem } from "../sorting";
 import type {
   CellCountInput,
   CellCountProblem,
@@ -654,7 +655,12 @@ export interface RequestsSlice {
    * Правила — `lib/sorting.ts`; здесь только запись. `false` — посылки нет
    * или она уже на месте.
    */
-  sortPlace: (parcelCode: string, sortCode: string) => boolean;
+  sortPlace: (parcelCode: string, sortCode: string, by?: string) => boolean;
+  /**
+   * Вынуть свою посылку с места сортировки, пока отгрузка не закрыта
+   * (`planSortUndo`). Нельзя — причина.
+   */
+  sortUndo: (parcelCode: string, by: string) => SortUndoProblem | null;
   /**
    * Закрыть отгрузку места сортировки: завести грузовые места (`UK-OUT-`),
    * сначала паллеты, потом коробки. `null` — места уже закрыты или пусты.

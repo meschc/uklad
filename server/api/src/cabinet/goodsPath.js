@@ -180,9 +180,12 @@ async function pathSteps(c, wh, seed) {
          AND o.at >= coalesce((SELECT min(at) FROM picks), $5 - interval '1 day')
          AND (NOT o.body ? 'orderId' OR o.body->>'orderId' = ANY ($2::text[]))
      ), sorted AS (
-       SELECT * FROM ops
-       WHERE kind = 'sort_place' AND body->>'outboundCode' = $4 AND at >= $5
-       ORDER BY at LIMIT 1
+       -- Раскладка, которую потом не вынули (sort_undo).
+       SELECT * FROM ops s
+       WHERE s.kind = 'sort_place' AND s.body->>'outboundCode' = $4 AND s.at >= $5
+         AND NOT EXISTS (SELECT 1 FROM ops u WHERE u.kind = 'sort_undo'
+                         AND u.body->>'outboundCode' = $4 AND u.at >= s.at)
+       ORDER BY s.at LIMIT 1
      ), closed AS (
        SELECT o.* FROM ops o, sorted s
        WHERE o.kind = 'sort_close' AND o.body->>'sortCode' = s.body->>'sortCode' AND o.at >= s.at

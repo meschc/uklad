@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Layers, PackageCheck, Printer } from "lucide-react";
+import { Layers, PackageCheck, Printer, Undo2 } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { workstationRepository } from "@/lib/data";
-import { classifySortScan, parseSortCode, sortPoints, unsorted } from "@/lib/sorting";
+import { classifySortScan, lastSorted, parseSortCode, sortPoints, unsorted } from "@/lib/sorting";
 import { findUnlabeled, type UnlabeledScan } from "@/lib/unlabeled";
 import { beepNotes } from "@/lib/beep";
 import { holdSignal, signal } from "@/lib/scanSignal";
@@ -24,6 +24,7 @@ import { useDemoHints } from "./useDemoHints";
 import { DestinationChip } from "./DestinationChip";
 import { PrintableLabel } from "./PrintableLabel";
 import { UnlabeledPanel } from "./UnlabeledPanel";
+import { SortUndoPanel } from "./SortUndoPanel";
 import { CodeTail, CodeText } from "@/components/fulfillment/CodeTail";
 
 type PrintItem = { code: string; lines: string[] };
@@ -45,6 +46,8 @@ export function SortStation() {
   const requests = useEditor((s) => s.requests);
   const products = useEditor((s) => s.products);
   const seniorOf = useSeniorBadge();
+  const me = useEditor((s) => s.stationSession?.staffId);
+  const [undoing, setUndoing] = useState(false);
   const [pending, setPending] = useState<{
     code: string;
     destination: string;
@@ -162,6 +165,8 @@ export function SortStation() {
     );
   }
 
+  // Свою последнюю посылку можно вынуть, пока отгрузка места не закрыта.
+  const undoable = me && !pending && !locked ? lastSorted(outbound, me) : undefined;
   // Подсказки демо: ровно то, что стол ждёт сейчас.
   const demo = pending ? [pending.point] : left.slice(0, 6).map((x) => x.box.code);
   const closingPoint = closing ? points.find((p) => p.code === closing) : undefined;
@@ -184,6 +189,27 @@ export function SortStation() {
       </ScanBanner>
 
       {lost && <UnlabeledPanel scan={lost} onDone={() => setLost(null)} />}
+
+      {undoable && (
+        <Button variant="ghost" size="sm" className="self-start" onClick={() => setUndoing(true)}>
+          <Undo2 />
+          <CodeText text={t("ws.sort.undo.button", { code: undoable.code })} />
+        </Button>
+      )}
+      {undoing && undoable?.sortCode && (
+        <SortUndoPanel
+          code={undoable.code}
+          point={undoable.sortCode}
+          onClose={() => setUndoing(false)}
+          onDone={() => {
+            setUndoing(false);
+            show(
+              "ok",
+              t("ws.sort.undo.done", { code: undoable.code, point: undoable.sortCode ?? "" }),
+            );
+          }}
+        />
+      )}
 
       {pending && (
         <div className="flex flex-col items-center gap-3 py-4 text-center">
