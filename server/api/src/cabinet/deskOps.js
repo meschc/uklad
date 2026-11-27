@@ -23,7 +23,7 @@
 
 const { applyPackEvent, applyPackDone } = require("./deskPack");
 const { applyToteMerge, applyToteMove } = require("./deskMerge");
-const { applyPickUnit, applyPickDone, applyPickUndo } = require("./deskPick");
+const { applyPickUnit, applyPickDone, applyPickUndo, applyPickMissing } = require("./deskPick");
 const {
   applyRecvUnit,
   applyRecvOpen,
@@ -51,7 +51,7 @@ const SHIFT_TYPES = new Set([
   "idle_end",
 ]);
 const PACK_KINDS = new Set(["pack_event", "pack_done", "pack_merge"]);
-const PICK_KINDS = new Set(["pick_unit", "pick_done", "pick_undo"]);
+const PICK_KINDS = new Set(["pick_unit", "pick_done", "pick_undo", "pick_missing"]);
 const RECV_KINDS = new Set([
   "recv_open",
   "recv_unit",
@@ -111,6 +111,7 @@ const WORK = new Map([
   ["pick_unit", applyPickUnit],
   ["pick_done", applyPickDone],
   ["pick_undo", applyPickUndo],
+  ["pick_missing", applyPickMissing],
   ["recv_open", applyRecvOpen],
   ["recv_unit", applyRecvUnit],
   ["recv_place", applyRecvPlace],

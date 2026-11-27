@@ -239,6 +239,27 @@ describe("товар не теряется и не двоится на пути 
     check("карантин держит брак");
   });
 
+  it("«нет на месте»: короб на пересчёт, сборка берёт из другой ячейки, учёт не двигается", () => {
+    const w = warehouse();
+    const { s, check } = w;
+    stock(w, "p-a", 2, C1);
+    stock(w, "p-a", 1, C2);
+    const r = s().createRequest({ productId: "p-a", qty: 1, note: "Тула" });
+    const tote = s().createBox();
+    expect(s().reportPickMissing("zz", "p-a", C1, "s1")).toEqual({ problem: "stock" });
+    const out = s().reportPickMissing(r, "p-a", C1, "s1");
+    expect("id" in out).toBe(true);
+    check("отметка «нет на месте»");
+    expect(onHand(s()).get("p-a")).toBe(3);
+    const d = s().disputes.find((x) => x.kind === "inventory_short")!;
+    expect([d.id.startsWith("mis-"), d.qty, d.raisedBy]).toEqual([true, 2, "s1"]);
+    // Из замороженного короба не собрать, из другой ячейки — можно.
+    expect(s().recordPick(r, "p-a", C1, tote.id, "s1")).toBe(0);
+    expect(s().reportPickMissing(r, "p-a", C1, "s1")).toEqual({ problem: "stock" });
+    expect(s().recordPick(r, "p-a", C2, tote.id, "s1")).toBe(1);
+    check("собрано из другой ячейки");
+  });
+
   it("заказ в двух тарах: вторая пересыпается в первую, уходит одной посылкой", () => {
     const w = warehouse();
     const { s, check } = w;

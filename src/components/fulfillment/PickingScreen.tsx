@@ -9,6 +9,7 @@ import {
   ScanLine,
   Undo2,
   Ban,
+  SearchX,
 } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { levelFor, signal } from "@/lib/scanSignal";
@@ -28,6 +29,7 @@ import { pickToteProblem, type PickToteProblem } from "@/lib/packing";
 import { useDemoHints } from "@/components/workstation/useDemoHints";
 import { FieldError, FormError } from "@/components/ui/field";
 import { lastPick } from "@/lib/pickUndo";
+import { pickableBoxes } from "@/lib/inventory";
 import { PickUndoPanel } from "./PickUndoPanel";
 import { CodeTail, CodeText } from "./CodeTail";
 
@@ -92,7 +94,12 @@ export function PickingScreen({ autoStart = false }: { autoStart?: boolean } = {
   // видимой, а не тихо увеличивать счётчик (п.21).
   const [seenSerials, setSeenSerials] = useState<Set<string>>(new Set());
 
-  const stock = useMemo(() => stockByProduct(placements, boxes), [placements, boxes]);
+  const disputes = useEditor((s) => s.disputes);
+  // Куда вести сборщика — только туда, откуда можно взять (`pickableBoxes`).
+  const stock = useMemo(
+    () => stockByProduct(placements, pickableBoxes(boxes, disputes ?? [])),
+    [placements, boxes, disputes],
+  );
 
   const [skipped, setSkipped] = useState<string[]>([]);
   const queue = requests.filter((r) => r.status === "new" || r.status === "in_progress");
@@ -260,6 +267,27 @@ export function PickingScreen({ autoStart = false }: { autoStart?: boolean } = {
         });
       }
     }
+  };
+
+  // «Нет на месте»: короб — старшему на пересчёт, сборщик — в другую ячейку.
+  const onMissing = async () => {
+    if (!active || !addr) return;
+    const here = stock
+      .get(active.productId)
+      ?.locations.find((l) => l.boxId && addressKey(l.addr) === addressKey(addr));
+    const res = await workstationRepository.pickMissing(active.id, active.productId, addr);
+    if (!res.ok) return fail(res.error);
+    const st = useEditor.getState();
+    const left = stockByProduct(st.placements, pickableBoxes(st.boxes, st.disputes ?? [])).get(
+      active.productId,
+    )?.locations.length;
+    signal("ok");
+    setScan({
+      status: "ok",
+      msg: t(left ? "pick.missing.done" : "pick.missing.none", { box: here?.boxBarcode ?? "" }),
+    });
+    setAddr(null);
+    setStep("place");
   };
 
   const undoButton = undoable && (
@@ -510,13 +538,15 @@ export function PickingScreen({ autoStart = false }: { autoStart?: boolean } = {
                   </div>
                 </div>
               ) : (
-                <Button
-                  variant="outline"
-                  className="self-start"
-                  onClick={() => setConfirmPartial(true)}
-                >
-                  {t("pick.partial.start")}
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="outline" onClick={() => setConfirmPartial(true)}>
+                    {t("pick.partial.start")}
+                  </Button>
+                  <Button variant="outline" onClick={() => void onMissing()}>
+                    <SearchX className="size-3.5" />
+                    {t("pick.missing.start")}
+                  </Button>
+                </div>
               )}
             </>
           )}

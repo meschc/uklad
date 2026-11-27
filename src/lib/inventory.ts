@@ -1,5 +1,5 @@
 import type { Box, CellAddress, Dispute, Pallet } from "./types";
-import { isInventoryDispute } from "./disputes";
+import { freeInBox, isInventoryDispute } from "./disputes";
 
 /**
  * Инвентаризация: слепой пересчёт тары на месте хранения.
@@ -237,4 +237,26 @@ export function frozenBoxes(disputes: readonly Dispute[]): Set<string> {
       .filter((d) => !d.resolution && isInventoryDispute(d) && d.boxId)
       .map((d) => d.boxId as string),
   );
+}
+
+/**
+ * Что сборщику можно предлагать: без замороженной тары и без карантина
+ * (брак и излишек до решения старшего, `heldQty`). Те же правила, по которым
+ * сборка снимает штуку (`recordPick`, `deskPick.js`): иначе экран вёл бы
+ * к ячейке, из которой взять нельзя.
+ */
+export function pickableBoxes(boxes: readonly Box[], disputes: readonly Dispute[]): Box[] {
+  const frozen = frozenBoxes(disputes);
+  return boxes
+    .filter((b) => !frozen.has(b.id))
+    .map((b) => {
+      if (!disputes.some((d) => d.boxId === b.id && !d.resolution)) return b;
+      const ids = [...new Set(b.lines.map((l) => l.productId))];
+      return {
+        ...b,
+        lines: ids
+          .map((productId) => ({ productId, qty: freeInBox(disputes, b, productId) }))
+          .filter((l) => l.qty > 0),
+      };
+    });
 }

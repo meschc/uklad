@@ -434,6 +434,12 @@ export const ru = {
   "pick.tote.change": "Сменить тару",
   "pick.undo.start": "Отменить последний скан",
   "pick.defect.start": "Последняя штука — брак",
+  "pick.missing.start": "Нет на месте",
+  "pick.missing.done": "Короб {box} ушёл старшему на пересчёт. Возьмите товар из другой ячейки",
+  "pick.missing.none":
+    "Короб {box} ушёл старшему на пересчёт. Больше этого товара нигде нет — закройте заявку частично",
+  "pick.missing.place": "Здесь товар без короба: отметить может только старший",
+  "pick.missing.stock": "По учёту здесь этого товара уже нет — отсканируйте другое место",
   "pick.defect.title": "Брак?",
   "pick.defect.put": "Положите брак обратно в короб {box}",
   "pick.defect.confirm": "Вернул, возьму другую",
@@ -923,6 +929,13 @@ export const en: Record<keyof typeof ru, string> = {
   "pick.tote.change": "Change tote",
   "pick.undo.start": "Undo last scan",
   "pick.defect.start": "Last unit is defective",
+  "pick.missing.start": "Not in place",
+  "pick.missing.done":
+    "Box {box} sent to the shift lead for a recount. Take the item from another cell",
+  "pick.missing.none":
+    "Box {box} sent to the shift lead for a recount. No more of this item anywhere — close the request as partial",
+  "pick.missing.place": "The item here has no box: only the shift lead can mark it",
+  "pick.missing.stock": "By the records this item is no longer here — scan another place",
   "pick.defect.title": "Defective?",
   "pick.defect.put": "Put the defective unit back into box {box}",
   "pick.defect.confirm": "Returned, I'll take another",

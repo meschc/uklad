@@ -3,7 +3,7 @@ import type { Dispute, DisputeKind, DisputeResolution } from "@/lib/types";
 import type { MsgKey } from "@/lib/i18n";
 
 /** Подписи спорного — общие для списка «Ждут решения» и таблицы решённого. */
-export const KIND_KEY: Record<DisputeKind, MsgKey> = {
+const KIND_KEY: Record<DisputeKind, MsgKey> = {
   shortage: "disputes.kind.shortage",
   not_in_tote: "disputes.kind.not_in_tote",
   extra: "disputes.kind.extra",
@@ -12,6 +12,12 @@ export const KIND_KEY: Record<DisputeKind, MsgKey> = {
   inventory_short: "disputes.kind.inventory_short",
   inventory_over: "disputes.kind.inventory_over",
 };
+
+/** Подпись вида: «нет на месте» из сборки (`mis-…`) — своей строкой. */
+export const kindKey = (d: Pick<Dispute, "id" | "kind">): MsgKey =>
+  d.kind === "inventory_short" && d.id.startsWith("mis-")
+    ? "disputes.kind.pick_missing"
+    : KIND_KEY[d.kind];
 
 const RES_KEY: Record<DisputeResolution, MsgKey> = {
   returned: "disputes.res.returned",

@@ -34,6 +34,7 @@ export type DeskOpKind =
   | "pick_unit"
   | "pick_done"
   | "pick_undo"
+  | "pick_missing"
   | "recv_open"
   | "recv_unit"
   | "recv_place"
@@ -58,6 +59,7 @@ const KINDS: readonly DeskOpKind[] = [
   "pick_unit",
   "pick_done",
   "pick_undo",
+  "pick_missing",
   "recv_open",
   "recv_unit",
   "recv_place",
