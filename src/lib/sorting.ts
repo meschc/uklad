@@ -73,6 +73,33 @@ export function currentSortPoint(list: readonly OutboundBox[], destination: stri
   return isSortClosed(list, last) ? sortPointCode(destination, max + 1) : last;
 }
 
+/** Почему нельзя вынуть посылку (`sort_undo`, `deskSort.js` `applySortUndo`). */
+export type SortUndoProblem = "missing" | "not_yours" | "late";
+
+/**
+ * Отмена своей раскладки (Кирилл 27.11): посылку, которую этот человек
+ * положил последней, можно вынуть, пока отгрузка места не закрыта. Те же
+ * правила, что у сервера.
+ */
+export function planSortUndo(
+  list: readonly OutboundBox[],
+  parcelCode: string,
+  by: string,
+): { ok: true; box: OutboundBox } | { ok: false; problem: SortUndoProblem } {
+  const box = list.find((b) => !b.place && same(b.code, parcelCode));
+  if (!box?.sortCode) return { ok: false, problem: "missing" };
+  if (box.sortedBy !== by) return { ok: false, problem: "not_yours" };
+  if (box.shipmentId || isSortClosed(list, box.sortCode)) return { ok: false, problem: "late" };
+  return { ok: true, box };
+}
+
+/** Последняя своя посылка, которую ещё можно вынуть, — её и предлагает экран. */
+export function lastSorted(list: readonly OutboundBox[], by: string): OutboundBox | undefined {
+  return list
+    .filter((b) => b.sortedBy === by && planSortUndo(list, b.code, by).ok)
+    .sort((a, b) => b.updatedAt - a.updatedAt)[0];
+}
+
 /** Открытые посылки (не грузовые места) на месте сортировки. */
 export function pointParcels(list: readonly OutboundBox[], sortCode: string): OutboundBox[] {
   return list.filter((b) => !b.shipmentId && !b.place && same(b.sortCode, sortCode));

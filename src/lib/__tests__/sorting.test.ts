@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   classifySortScan,
   currentSortPoint,
+  lastSorted,
   placeCodes,
+  planSortUndo,
   shipmentOfPlace,
   sortPointCode,
   sortPoints,
@@ -105,5 +107,23 @@ describe("classifySortScan — заказ отменили после упако
 
   it("отмена пришла, пока посылка в руках: место её не принимает", () => {
     expect(classifySortScan(list, gone, "UK-ORD-2", P1).kind).toBe("cancelled");
+  });
+});
+
+describe("planSortUndo / lastSorted — вынуть свою посылку", () => {
+  const list = [
+    box("UK-ORD-1", ["r1"], { sortCode: P1, sortedBy: "ivan", updatedAt: 1 }),
+    box("UK-ORD-2", ["r2"], { sortCode: P1, sortedBy: "ivan", updatedAt: 2 }),
+    box("UK-LBL-3", ["r3"], { sortCode: P1, sortedBy: "olga", updatedAt: 3 }),
+  ];
+  it("последняя своя, чужую не отдаёт", () => {
+    expect(lastSorted(list, "ivan")?.code).toBe("UK-ORD-2");
+    expect(planSortUndo(list, "UK-LBL-3", "ivan")).toEqual({ ok: false, problem: "not_yours" });
+    expect(planSortUndo(list, "UK-ORD-9", "ivan")).toEqual({ ok: false, problem: "missing" });
+  });
+  it("закрытая отгрузка — поздно, предлагать нечего", () => {
+    const closed = [...list, box("UK-OUT-P", [], { sortCode: P1, place: "pallet" })];
+    expect(planSortUndo(closed, "UK-ORD-2", "ivan")).toEqual({ ok: false, problem: "late" });
+    expect(lastSorted(closed, "ivan")).toBeUndefined();
   });
 });

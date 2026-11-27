@@ -133,6 +133,11 @@ export interface WorkstationRepository {
   ) => Promise<Result<{ found: number }>>;
   /** Сортировка: короб отгрузки — на паллету назначения. Правила проверяет стол. */
   sort: (parcelCode: string, sortCode: string) => Promise<Result<boolean>>;
+  /**
+   * Вынуть свою посылку с места сортировки, пока отгрузка не закрыта.
+   * Нельзя — отказ `ws.sort.undo.<причина>`.
+   */
+  sortUndo: (parcelCode: string) => Promise<Result<void>>;
   /** Закрыть отгрузку места сортировки: грузовые места (`UK-OUT-`) для ярлыков. */
   sortClose: (sortCode: string, pallets: number, boxes: number) => Promise<Result<OutboundBox[]>>;
 }
@@ -530,8 +535,8 @@ export function createWorkstationRepository(
     sort: (parcelCode, sortCode) =>
       attempt(() => {
         const s = port.get();
-        const placed = s.sortPlace(parcelCode, sortCode);
         const by = s.stationSession?.staffId;
+        const placed = s.sortPlace(parcelCode, sortCode, by);
         if (!placed || !by || !onServer(port)) return placed;
         ops.enqueue("sort_place", {
           eventId: uid("sort"),
@@ -542,6 +547,23 @@ export function createWorkstationRepository(
         });
         return placed;
       }),
+    // Сервер сам проверит, что посылку клал этот человек и место не закрыто.
+    sortUndo: async (parcelCode) => {
+      const by = port.get().stationSession?.staffId;
+      if (!by) return fail("ws.sort.undo.not_yours");
+      const res = await attempt(() => port.get().sortUndo(parcelCode, by));
+      if (!res.ok) return res;
+      if (res.data) return fail(`ws.sort.undo.${res.data}` as const);
+      if (onServer(port)) {
+        ops.enqueue("sort_undo", {
+          eventId: uid("sortu"),
+          staffId: by,
+          at: nowMs(),
+          outboundCode: parcelCode,
+        });
+      }
+      return ok(undefined);
+    },
     sortClose: async (sortCode, pallets, boxes) => {
       const res = await attempt(() => port.get().sortClose(sortCode, pallets, boxes));
       if (!res.ok) return res;

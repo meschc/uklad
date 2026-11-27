@@ -6,7 +6,7 @@
  * отгрузку закрыли: заведены грузовые места `UK-OUT-…` (паллеты, коробки).
  * Сервер сам повторяет правила стола (`src/lib/sorting.ts`): посылка открыта и
  * ещё ни в каком месте, у неё одно направление, место этого направления и
- * его отгрузка не закрыта. Товар не двигается — меняется только место
+ * его отгрузка не закрыта. `sort_undo` — свою посылку вынули обратно. Товар не двигается — меняется только место
  * посылки, а у грузовых мест товара нет вовсе.
  */
 
@@ -53,7 +53,7 @@ function hasCancelled(box, requests) {
 const isClosed = (outbound, sortCode) =>
   outbound.some((b) => b.place && code(b.sortCode) === sortCode);
 
-function applySortPlace(data, body) {
+function applySortPlace(data, body, staffRef) {
   const parcelCode = code(body.outboundCode);
   const sortCode = code(body.sortCode);
   const m = SORT_RE.exec(sortCode);
@@ -73,7 +73,42 @@ function applySortPlace(data, body) {
   return {
     data: {
       ...data,
-      outboundBoxes: outbound.map((b) => (b === box ? { ...b, sortCode, updatedAt: at } : b)),
+      outboundBoxes: outbound.map((b) =>
+        b === box
+          ? { ...b, sortCode, ...(staffRef ? { sortedBy: staffRef } : {}), updatedAt: at }
+          : b,
+      ),
+    },
+  };
+}
+
+/**
+ * Отмена своей раскладки (`sort_undo`, Кирилл 27.11): положил посылку не в то
+ * место или не ту — вынимает её обратно, пока отгрузка места не закрыта.
+ * Только свою: кто положил, пишет `sort_place` (`sortedBy`). Товар не
+ * двигается — посылка просто снова «не разложена».
+ */
+function applySortUndo(data, body, staffRef) {
+  const parcelCode = code(body.outboundCode);
+  if (!PARCEL_RE.test(parcelCode)) return { flag: "bad" };
+  const outbound = list(data.outboundBoxes);
+  const box = outbound.find((b) => !b.place && code(b.code) === parcelCode);
+  if (!box) return { flag: "bad" };
+  // Уже вынута (повтор той же отмены другим ключом) — ничего не меняем.
+  if (!box.sortCode) return { data };
+  if (!staffRef || box.sortedBy !== staffRef) return { flag: "not_yours" };
+  if (box.shipmentId || isClosed(outbound, code(box.sortCode))) return { flag: "late" };
+  const at = Number.isFinite(body.at) ? body.at : Date.now();
+  return {
+    data: {
+      ...data,
+      outboundBoxes: outbound.map((b) => {
+        if (b !== box) return b;
+        const rest = { ...b, updatedAt: at };
+        delete rest.sortCode;
+        delete rest.sortedBy;
+        return rest;
+      }),
     },
   };
 }
@@ -120,4 +155,5 @@ module.exports = {
   hasCancelled,
   applySortClose,
   applySortPlace,
+  applySortUndo,
 };

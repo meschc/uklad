@@ -711,6 +711,47 @@ test("путь товара: поиск по хвосту кода и лента
 });
 
 test(
+  "путь товара: вынутая с места посылка (sort_undo) в ленте не числится",
+  { skip: SKIP },
+  async () => {
+    const c = await company("path-undo@sklad.ru", "10.0.7.9");
+    await seedPath(c, "key-pu");
+    const { rows } = await db.root.query(
+      `SELECT desk_id, happened_at FROM uklad.desk_ops
+      WHERE org_id = $1 AND kind = 'sort_place'`,
+      [c.org],
+    );
+    const placed = rows[0].happened_at.getTime();
+    // Положил не туда, вынул, положил снова — до закрытия отгрузки (+1 мин).
+    for (const [i, kind, at] of [
+      [1, "sort_undo", placed + 10_000],
+      [2, "sort_place", placed + 20_000],
+    ]) {
+      await db.root.query(
+        `INSERT INTO uklad.desk_ops (org_id, op_key, desk_id, kind, body, status, staff_ref,
+                                   warehouse_ref, happened_at)
+       VALUES ($1, $2, $3, $4, $5::jsonb, 'applied', 'stf-a', 'wh_a', $6)`,
+        [
+          c.org,
+          `key-pu-x${i}`,
+          rows[0].desk_id,
+          kind,
+          JSON.stringify({ outboundCode: "UK-OUT-7KQ2", sortCode: "UK-SORT-1" }),
+          new Date(at),
+        ],
+      );
+    }
+    const found = await call(`/api/cabinet/goods-path?warehouse=wh_a&q=7KQ2`, c.boss);
+    const id = found.json.matches[0].id;
+    const steps = await call(`/api/cabinet/goods-path/steps?warehouse=wh_a&parcel=${id}`, c.boss);
+    const sorts = steps.json.events.filter((e) => e.kind === "sort_place");
+    assert.equal(sorts.length, 1);
+    assert.equal(new Date(sorts[0].at).getTime(), placed + 20_000);
+    assert.ok(steps.json.events.some((e) => e.kind === "sort_close"));
+  },
+);
+
+test(
   "принятие приглашения: две вкладки одновременно — одна строка журнала",
   { skip: SKIP },
   async () => {

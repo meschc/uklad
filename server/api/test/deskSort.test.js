@@ -3,11 +3,11 @@
  * положить посылку в место другого направления или в закрытую отгрузку и
  * переложить уже разложенную посылку молча.
  */
-/* global require */
+/* global require, structuredClone */
 /* eslint-disable @typescript-eslint/no-require-imports */
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { applySortClose, applySortPlace } = require("../src/cabinet/deskSort");
+const { applySortClose, applySortPlace, applySortUndo } = require("../src/cabinet/deskSort");
 
 /** Как `targetCode` стола: хеш направления. */
 function key(dest) {
@@ -83,4 +83,26 @@ test("отменённый после упаковки заказ на мест�
   assert.equal(applySortPlace(d, put("UK-ORD-1", KOL)).flag, "cancelled");
   // Соседняя посылка того же направления ложится как обычно.
   assert.ok(applySortPlace(d, put("UK-LBL-2", KOL)).data);
+});
+
+test("вынуть свою посылку: только свою и пока место не закрыто", () => {
+  const placed = applySortPlace(data(), put("UK-ORD-1", KOL), "stf-ivan").data;
+  assert.equal(placed.outboundBoxes[0].sortedBy, "stf-ivan");
+  const undo = { outboundCode: "UK-ORD-1", at: 6 };
+  assert.equal(applySortUndo(placed, undo, "stf-olga").flag, "not_yours");
+  assert.equal(applySortUndo(placed, { ...undo, outboundCode: "x" }, "stf-ivan").flag, "bad");
+  const r = applySortUndo(placed, undo, "stf-ivan");
+  assert.equal(r.data.outboundBoxes[0].sortCode, undefined);
+  assert.equal(r.data.outboundBoxes[0].sortedBy, undefined);
+  // Повтор — ничего не меняет; снова разложить можно.
+  assert.equal(applySortUndo(r.data, undo, "stf-ivan").data, r.data);
+  assert.ok(applySortPlace(r.data, put("UK-ORD-1", KOL), "stf-ivan").data);
+  // Отгрузку закрыли — поздно.
+  const close = { sortCode: KOL, pallets: 1, boxes: 0, placeIds: ["p1"], at: 9 };
+  const closed = applySortClose(placed, close).data;
+  assert.equal(applySortUndo(closed, undo, "stf-ivan").flag, "late");
+  // Разложенная до 27.11 (кто клал — неизвестно) — только старшим.
+  const old = structuredClone(placed);
+  delete old.outboundBoxes[0].sortedBy;
+  assert.equal(applySortUndo(old, undo, "stf-ivan").flag, "not_yours");
 });

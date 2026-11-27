@@ -47,6 +47,7 @@ export type DeskOpKind =
   | "inv_count"
   | "inv_cell"
   | "sort_place"
+  | "sort_undo"
   | "sort_close"
   | "task_take"
   | "task_done";
@@ -73,6 +74,7 @@ const KINDS: readonly DeskOpKind[] = [
   "inv_count",
   "inv_cell",
   "sort_place",
+  "sort_undo",
   "sort_close",
   "task_take",
   "task_done",
@@ -198,7 +200,7 @@ const areaOf = (kind: DeskOpKind): string | null =>
         ? "pack"
         : kind.startsWith("recv_")
           ? "recv"
-          : kind === "ship_run" || kind === "sort_place" || kind === "sort_close"
+          : kind === "ship_run" || kind.startsWith("sort_")
             ? "ship"
             : kind === "task_take" || kind === "task_done"
               ? "task"
@@ -451,8 +453,7 @@ async function sayFlagged(kinds: DeskOpKind[], reasons: OpFlag[]) {
   const packing = kinds.some((k) => k.startsWith("pack_"));
   const picking = kinds.some((k) => k.startsWith("pick_"));
   const receiving = kinds.some((k) => k.startsWith("recv_"));
-  const shipping =
-    kinds.includes("ship_run") || kinds.includes("sort_place") || kinds.includes("sort_close");
+  const shipping = kinds.includes("ship_run") || kinds.some((k) => k.startsWith("sort_"));
   const deciding = kinds.includes("dispute_resolve");
   const counting = kinds.includes("inv_count") || kinds.includes("inv_cell");
   const tasking = kinds.includes("task_take") || kinds.includes("task_done");
