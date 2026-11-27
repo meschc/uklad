@@ -213,6 +213,23 @@ function applyRecvUnit(data, body, staffRef) {
 }
 
 /**
+ * Снять `qty` штук товара из строк тары ровно один раз: по строкам с
+ * остатком по порядку. Строк одного товара может быть две (проверки формы
+ * этого не запрещают) — вычитать из каждой значило бы снять вдвое больше.
+ */
+function takeOut(lines, productId, qty) {
+  let left = qty;
+  return lines
+    .map((l) => {
+      if (left <= 0 || l.productId !== productId) return l;
+      const n = Math.min(left, Number(l.qty) || 0);
+      left -= n;
+      return { ...l, qty: Number(l.qty) - n };
+    })
+    .filter((l) => Number(l.qty) > 0);
+}
+
+/**
  * Отмена своего скана приёмки (`recv_undo`, Кирилл 27.11): «принял 10, а было
  * 8» — последний скан снимается целиком, человек принимает верное число
  * заново. Отменить можно только свой скан и только пока тара на рампе: не
@@ -259,11 +276,7 @@ function applyRecvUndo(data, body, staffRef) {
         b === box
           ? {
               ...b,
-              lines: list(b.lines)
-                .map((l) =>
-                  l.productId === scan.productId ? { ...l, qty: Number(l.qty) - qty } : l,
-                )
-                .filter((l) => Number(l.qty) > 0),
+              lines: takeOut(list(b.lines), scan.productId, qty),
             }
           : b,
       ),

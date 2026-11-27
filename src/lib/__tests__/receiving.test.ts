@@ -186,3 +186,18 @@ describe("liveReceipts — отменённый скан не приёмка", (
     expect(liveReceipts(plain)).toBe(plain);
   });
 });
+
+describe("takeOut — отмена скана снимает ровно N", () => {
+  it("две строки одного товара: вычитает по порядку, а не из каждой", async () => {
+    const { takeOut } = await import("../recvUndo");
+    const lines = [
+      { productId: "p", qty: 3 },
+      { productId: "q", qty: 2 },
+      { productId: "p", qty: 4 },
+    ];
+    expect(takeOut(lines, "p", 4)).toEqual([
+      { productId: "q", qty: 2 },
+      { productId: "p", qty: 3 },
+    ]);
+  });
+});

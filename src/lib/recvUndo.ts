@@ -70,3 +70,22 @@ export function planRecvUndo(
   if (held) return { ok: false, problem: "disputed" };
   return { ok: true, plan: { scan, box, ...(shipment ? { shipmentId: shipment.id } : {}) } };
 }
+
+/**
+ * Снять `qty` штук товара из строк тары ровно один раз, по строкам с остатком
+ * по порядку (как `takeOut` в `deskReceive.js`): строк одного товара может
+ * быть две, вычитать из каждой — снять вдвое больше.
+ */
+type BoxLine = Box["lines"][number];
+
+export function takeOut(lines: readonly BoxLine[], productId: string, qty: number): BoxLine[] {
+  let left = qty;
+  return lines
+    .map((l) => {
+      if (left <= 0 || l.productId !== productId) return l;
+      const n = Math.min(left, l.qty);
+      left -= n;
+      return { ...l, qty: l.qty - n };
+    })
+    .filter((l) => l.qty > 0);
+}

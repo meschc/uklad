@@ -373,3 +373,28 @@ test("отмена своего скана приёмки: целиком из �
   ];
   assert.equal(applyRecvUndo(over, body, "stf-ivan").flag, "disputed");
 });
+
+test("отмена скана: две строки одного товара в таре — снимается ровно N", () => {
+  const { applyRecvUndo } = require("../src/cabinet/deskReceive");
+  const d = {
+    products: [{ id: "p1", partnerId: "s1" }],
+    boxes: [
+      {
+        id: "t1",
+        barcode: "UK-BOX-1",
+        lines: [
+          { productId: "p1", qty: 3 },
+          { productId: "p1", qty: 4 },
+        ],
+      },
+    ],
+    expectedShipments: [],
+    receivingEvents: [
+      { id: "e1", productId: "p1", qty: 4, boxId: "t1", staffId: "stf-ivan", timestamp: 1 },
+    ],
+    disputes: [],
+  };
+  const r = applyRecvUndo(d, { eventId: "u1", at: 2, undoes: "e1" }, "stf-ivan");
+  const left = r.data.boxes[0].lines.reduce((n, l) => n + l.qty, 0);
+  assert.equal(left, 3);
+});

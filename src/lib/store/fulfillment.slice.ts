@@ -2,7 +2,7 @@ import { nowMs, uid } from "../utils";
 import { generateBoxBarcode, generatePalletBarcode, labelNumber } from "../barcode";
 import { EMPTY_RECEIVING, resumeProgress } from "../receiving";
 import { mergeCargo } from "../cargo";
-import { planRecvUndo } from "../recvUndo";
+import { planRecvUndo, takeOut } from "../recvUndo";
 import { defectDisputeId, overageDisputeId, overReceived } from "../disputes";
 import type { Box, Dispute, ExpectedShipment, Pallet, ReceivingEvent } from "../types";
 import type { FulfillmentSlice, SliceCreator } from "./state";
@@ -159,9 +159,7 @@ export const createFulfillmentSlice: SliceCreator<FulfillmentSlice> = (set, get)
         b.id === box.id
           ? {
               ...b,
-              lines: b.lines
-                .map((l) => (l.productId === scan.productId ? { ...l, qty: l.qty - scan.qty } : l))
-                .filter((l) => l.qty > 0),
+              lines: takeOut(b.lines, scan.productId, scan.qty),
             }
           : b,
       ),
