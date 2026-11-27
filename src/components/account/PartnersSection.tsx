@@ -5,6 +5,7 @@ import { useEditor } from "@/lib/store";
 import { useT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { PartnerCard } from "./PartnerCard";
+import { FloatingAction } from "@/components/ui/floating-action";
 
 /**
  * Партнёры-продавцы склада (п.15). Товар на складе принадлежит разным
@@ -29,10 +30,17 @@ export function PartnersSection({ readOnly = false }: { readOnly?: boolean }) {
           {t("partners.title")} · {list.length}
         </h2>
         {!readOnly && (
-          <Button size="sm" onClick={() => setOpenId("")}>
-            <Plus className="size-3.5" />
-            {t("partners.add")}
-          </Button>
+          <>
+            <Button size="sm" className="max-md:hidden" onClick={() => setOpenId("")}>
+              <Plus className="size-3.5" />
+              {t("partners.add")}
+            </Button>
+            <FloatingAction
+              icon={<Plus className="size-4" />}
+              label={t("partners.add")}
+              onClick={() => setOpenId("")}
+            />
+          </>
         )}
       </div>
 

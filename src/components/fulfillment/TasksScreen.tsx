@@ -29,6 +29,7 @@ import { mayDecideSwitch, usePendingSwitches } from "@/components/approvals/useP
 import { openObjections } from "@/lib/supplyAct";
 import { viewAllowed } from "@/components/nav/navItems";
 import { Table, TableHeader, Tr, Td } from "@/components/ui/table";
+import { FloatingAction } from "@/components/ui/floating-action";
 
 /**
  * «Задания» — один модуль на всё, что склад должен сделать (Кирилл 22.11).
@@ -178,16 +179,23 @@ export function TasksScreen({ initialChip = "open" }: { initialChip?: TaskChip }
       wide
       actions={
         <>
-          <Button size="sm" variant="outline" onClick={() => setCreatingWork(true)}>
-            <Wrench className="size-3.5" />
-            {t("tasks.newWork")}
-          </Button>
           {/* «К сборке» на общем экране сбивал с толку (Кирилл 14.11): здесь
-              создают задание, а собирают — на рабочем месте. */}
-          <Button size="sm" onClick={() => setCreatingRequest(true)}>
+              создают задание, а собирают — на рабочем месте. Главная — «Новая
+              работа», заявка — второй (Кирилл 27.11: «скорее задаться новое
+              задание, чем новая заявка»). На телефоне главная — плавающей. */}
+          <Button size="sm" variant="outline" onClick={() => setCreatingRequest(true)}>
             <Plus className="size-3.5" />
             {t("tasks.newRequest")}
           </Button>
+          <Button size="sm" className="max-md:hidden" onClick={() => setCreatingWork(true)}>
+            <Wrench className="size-3.5" />
+            {t("tasks.newWork")}
+          </Button>
+          <FloatingAction
+            icon={<Wrench className="size-4" />}
+            label={t("tasks.newWork")}
+            onClick={() => setCreatingWork(true)}
+          />
         </>
       }
     >

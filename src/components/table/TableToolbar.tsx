@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Segmented } from "@/components/ui/segmented";
 import type { PlaceFilter, TableFilter } from "./tableRows";
 import { Select } from "@/components/ui/select";
+import { FloatingAction } from "@/components/ui/floating-action";
 
 const PLACE_FILTERS: { id: PlaceFilter; key: MsgKey }[] = [
   { id: "all", key: "table.filter.all" },
@@ -103,17 +104,24 @@ export function TableToolbar({
             <>
               {/* Главное действие экрана — загрузка товаров файлом (Кирилл 22.11):
                   склад заводит номенклатуру импортом, а не по одному. */}
-              <Button size="sm" onClick={onImport}>
+              {/* На телефоне импорт — плавающей кнопкой внизу, остальное —
+                  значками: панель не разъезжается на три строки (разбор 27.11). */}
+              <Button size="sm" className="max-md:hidden" onClick={onImport}>
                 <FileInput className="size-3.5" />
                 {t("table.import")}
               </Button>
-              <Button variant="outline" size="sm" onClick={onFields}>
+              <FloatingAction
+                icon={<FileInput className="size-4" />}
+                label={t("table.import")}
+                onClick={onImport}
+              />
+              <Button variant="outline" size="sm" onClick={onFields} title={t("table.fields")}>
                 <Columns3 className="size-3.5" />
-                {t("table.fields")}
+                <span className="max-md:sr-only">{t("table.fields")}</span>
               </Button>
-              <Button variant="outline" size="sm" onClick={onAdd}>
+              <Button variant="outline" size="sm" onClick={onAdd} title={t("table.addProduct")}>
                 <Plus className="size-3.5" />
-                {t("table.addProduct")}
+                <span className="max-md:sr-only">{t("table.addProduct")}</span>
               </Button>
             </>
           )}
