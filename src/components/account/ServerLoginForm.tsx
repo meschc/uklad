@@ -29,7 +29,12 @@ type Step = "signIn" | "signUp" | "verify" | "reset" | "resetCode";
 
 const MIN_PASSWORD = 10;
 
-export function ServerLoginForm() {
+/**
+ * `onProbed` — проверка живой куки при открытии закончилась и не впустила:
+ * экран входа можно показывать (пока проверка идёт, он скрыт, чтобы форма не
+ * мелькала перед кабинетом, разбор 27.11).
+ */
+export function ServerLoginForm({ onProbed }: { onProbed?: () => void } = {}) {
   const t = useT();
   const startServerSession = useEditor((s) => s.startServerSession);
   // Чьи данные сохранены на этом компьютере. Есть владелец — демо не
@@ -107,9 +112,11 @@ export function ServerLoginForm() {
     if (probed.current) return;
     probed.current = true;
     // Выход не дошёл до сервера: кука, возможно, ещё жива — но человек вышел.
-    if (notice === "login.loggedOutOffline") return;
+    if (notice === "login.loggedOutOffline") return onProbed?.();
     void authRepository.me().then((me) => {
       if (me.ok && me.data) admit(me.data, lastEmail);
+      // Впустило — экран входа и так уходит; осталась форма — показать её.
+      if (useEditor.getState().appView === "login") onProbed?.();
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- одна проверка при открытии
   }, []);

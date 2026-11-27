@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import type { ShiftMark, WorkstationKind } from "@/lib/types";
+import type { WorkstationKind } from "@/lib/types";
 import {
   ArrowLeft,
   ArrowLeftRight,
@@ -24,9 +24,9 @@ import { isSessionLive, STATION_KEY_LABEL } from "@/lib/workstation";
 import { mayDecideGoods } from "@/lib/docFlow";
 import { sizeLabel, useLabelPrinter } from "@/lib/labelPrinter";
 import { useT, type MsgKey } from "@/lib/i18n";
-import { allowedMarks, parseShiftMarkCode, shiftMarkCode, shiftState } from "@/lib/workstation";
-import { QrSvg } from "@/components/table/QrSvg";
-import { lastScanAt, SCAN_EVENT, SHIFT_SCAN_EVENT } from "@/components/fulfillment/ScanField";
+import { shiftState } from "@/lib/workstation";
+import { lastScanAt, SCAN_EVENT } from "@/components/fulfillment/ScanField";
+import { ShiftCodes } from "./ShiftCodes";
 import { cn } from "@/lib/utils";
 import { clearSignal, useStationSignal } from "@/lib/scanSignal";
 import { useNetwork } from "@/lib/useNetwork";
@@ -138,7 +138,7 @@ export function WorkstationScreen() {
       {/* Высота шапки постоянная: кнопки и таймеры не должны двигать экран. */}
       {/* Фон при наведении — от цвета текста: шапка лежит на сером поле, и
           `hover:bg-accent` кнопок на нём не виден (Кирилл 13.11). */}
-      <header className="grid h-14 shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:gap-4 [&_button:not(:disabled):hover]:bg-foreground/[0.06]">
+      <header className="grid h-14 shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:gap-4 [&_button:not(:disabled):not([data-solid]):hover]:bg-foreground/[0.06]">
         <div className="flex min-w-0 items-center gap-1">
           {device ? (
             // Стол, привязанный к месту, в кабинет не уходит. Имя места и
@@ -231,10 +231,13 @@ export function WorkstationScreen() {
                 {t("ws.sessionUntil", { t: formatTime(session!.expiresAt, t.lang) })}
               </p>
             </div>
+            {/* «Выйти» — сплошная кнопка на любом цвете поля: прозрачный фон
+                при наведении пропадал на красном (разбор 27.11, «что с кнопкой?»). */}
             <Button
               variant="outline"
               size="sm"
-              className="text-foreground"
+              data-solid
+              className="border-transparent text-foreground hover:bg-background/90 hover:text-foreground"
               aria-label={t("ws.logout")}
               onClick={() =>
                 // Открытая смена — сначала спросить, закончить ли её.
@@ -518,46 +521,6 @@ function Equipment({ onPrinter, canOpen }: { onPrinter: () => void; canOpen: boo
         </ul>
       )}
     </div>
-  );
-}
-
-/**
- * Коды отметок смены внизу экрана: сканер у стола читает их прямо с монитора,
- * и смена или перерыв отмечаются без мыши. Показываем только допустимые
- * сейчас отметки; результат — уведомлением справа.
- */
-function ShiftCodes({ staffId }: { staffId: string }) {
-  const t = useT();
-  const events = useEditor((s) => s.staffEvents);
-  const marks = allowedMarks(shiftState(events, staffId)).filter((m) => m !== "idle_start");
-
-  useEffect(() => {
-    const onScan = (e: Event) => {
-      const mark = parseShiftMarkCode(String((e as CustomEvent).detail));
-      void (async () => {
-        const res = mark ? await workstationRepository.mark(mark as ShiftMark) : null;
-        useEditor
-          .getState()
-          .notify(
-            res?.ok ? "success" : "error",
-            res?.ok ? (`ws.ev.${mark}` as MsgKey) : "ws.markRejected",
-          );
-      })();
-    };
-    window.addEventListener(SHIFT_SCAN_EVENT, onScan);
-    return () => window.removeEventListener(SHIFT_SCAN_EVENT, onScan);
-  }, []);
-
-  return (
-    // На телефоне коды не нужны: смена и перерыв — в нижней панели.
-    <ul className="mt-6 hidden flex-wrap justify-center gap-6 border-t border-border pt-6 md:flex">
-      {marks.map((m) => (
-        <li key={m} className="flex flex-col items-center gap-1.5 text-xs text-muted-foreground">
-          <QrSvg code={shiftMarkCode(m)} size={72} showCode={false} />
-          {t(`ws.mark.${m}` as MsgKey)}
-        </li>
-      ))}
-    </ul>
   );
 }
 
