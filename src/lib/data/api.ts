@@ -52,6 +52,23 @@ export function setUnauthorizedHandler(handler: (() => void) | null) {
 }
 
 /** Ответ сервера: код и разобранное тело (`{}`, если тела нет или оно не JSON). */
+export interface RequestOpts {
+  /**
+   * Человек уходит со страницы: запрос должен дойти, даже если вкладку уже
+   * закрыли (`keepalive`). Браузер не пустит такой запрос больше 64 КБ —
+   * большой уходит обычным и доходит, только если страница ещё жива.
+   */
+  keepalive?: boolean;
+}
+
+/** Предел тела `keepalive` в браузере — 64 КБ на все такие запросы разом. */
+const KEEPALIVE_MAX = 60_000;
+
+/** Влезет ли тело в запрос, который переживает закрытие вкладки. */
+function canKeepAlive(text: string | undefined): boolean {
+  return new Blob([text ?? ""]).size <= KEEPALIVE_MAX;
+}
+
 export interface ApiResponse {
   status: number;
   body: Record<string, unknown>;
@@ -66,8 +83,10 @@ export async function apiRequest(
   method: "GET" | "POST",
   path: string,
   body?: Record<string, unknown>,
+  opts: RequestOpts = {},
 ): Promise<ApiResponse> {
   if (!hasCabinetServer) throw new Error("у сборки нет сервера кабинета");
+  const text = body ? JSON.stringify(body) : undefined;
   const res = await fetch(`${BASE}${path}`, {
     method,
     credentials: "same-origin",
@@ -75,7 +94,8 @@ export async function apiRequest(
       ...(body ? { "Content-Type": "application/json" } : {}),
       ...(currentOrg ? { "X-Uklad-Org": currentOrg } : {}),
     },
-    body: body ? JSON.stringify(body) : undefined,
+    body: text,
+    ...(opts.keepalive && canKeepAlive(text) ? { keepalive: true } : {}),
   });
   let parsed: Record<string, unknown> = {};
   try {

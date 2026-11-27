@@ -1,4 +1,4 @@
-import { apiRequest } from "./api";
+import { apiRequest, type RequestOpts } from "./api";
 import type { Changes } from "./cabinetRows";
 import { attempt, fail, ok, type Result } from "./result";
 
@@ -147,9 +147,10 @@ export const snapshotRepository = {
     version: number,
     format: number,
     data: Record<string, unknown>,
+    opts?: RequestOpts,
   ): Promise<Result<SaveOutcome>> => {
     const res = await attempt(
-      () => apiRequest("POST", "/cabinet/snapshot", { version, format, data }),
+      () => apiRequest("POST", "/cabinet/snapshot", { version, format, data }, opts),
       "sync.err.network",
     );
     if (!res.ok) return res;
@@ -161,9 +162,10 @@ export const snapshotRepository = {
     version: number,
     format: number,
     changes: Changes,
+    opts?: RequestOpts,
   ): Promise<Result<SaveOutcome>> => {
     const res = await attempt(
-      () => apiRequest("POST", "/cabinet/snapshot/changes", { version, format, ...changes }),
+      () => apiRequest("POST", "/cabinet/snapshot/changes", { version, format, ...changes }, opts),
       "sync.err.network",
     );
     if (!res.ok) return res;
