@@ -1,4 +1,4 @@
-import { setApiOrg } from "../data/api";
+import { setApiOrg, type RequestOpts } from "../data/api";
 import { makeBackup } from "../backup";
 import { SECRET_INTEGRATION_FIELDS } from "../integrations";
 import { diffCabinet, splitCabinet, type Split } from "../data/cabinetRows";
@@ -80,6 +80,12 @@ const DEVICE_KEYS = [
 /** Только у стола: приёмка идёт на своём устройстве, а не на компании. */
 const DESK_LOCAL_KEYS = [...DEVICE_KEYS, "receiving"] as const;
 
+/**
+ * Правки руководителя копятся столько и уходят одной записью. Закрыл вкладку
+ * раньше — запись уходит сразу при уходе (`onLeave`): иначе после закрытия
+ * склад успевал сдвинуть версию сканами, и при следующем входе правка
+ * (например, новая работа) уходила в отложенную копию, а не на сервер.
+ */
 const SAVE_DELAY_MS = 5000;
 /** Как часто стол спрашивает версию снимка. */
 const DESK_POLL_MS = 20_000;
@@ -320,6 +326,8 @@ export function startServerSync(orgId: string): () => void {
   setApiOrg(orgId);
   let stopped = false;
   let timer: ReturnType<typeof setTimeout> | undefined;
+  // Запись назначена и ещё не началась: при уходе со страницы её пора отправить.
+  let queued = false;
   let inflight: Promise<boolean> | null = null;
   let lastSent = "";
   // До сверки с сервером писать нечего и сравнивать не с чем: шум стора на
@@ -378,12 +386,14 @@ export function startServerSync(orgId: string): () => void {
   const schedule = (ms = SAVE_DELAY_MS) => {
     if (stopped) return;
     clearTimeout(timer);
+    queued = true;
     timer = setTimeout(() => void flush(), ms);
   };
 
   /** Записать на сервер. `true` — на сервере то же, что здесь. */
-  const flush = (): Promise<boolean> => {
+  const flush = (opts?: RequestOpts): Promise<boolean> => {
     if (inflight) return inflight;
+    queued = false;
     inflight = inLane(async () => {
       const meta = readMeta();
       if (stopped || !booted || !meta || meta.orgId !== orgId) return false;
@@ -407,8 +417,9 @@ export function startServerSync(orgId: string): () => void {
             meta.version,
             PERSIST_VERSION,
             diffCabinet(changes.split, next, data.products),
+            opts,
           )
-        : await snapshotRepository.save(meta.version, PERSIST_VERSION, data);
+        : await snapshotRepository.save(meta.version, PERSIST_VERSION, data, opts);
       if (!res.ok) {
         writeMeta({ ...meta, dirty: true });
         if (res.error === "sync.err.forbidden") forbid();
@@ -731,6 +742,22 @@ export function startServerSync(orgId: string): () => void {
   };
   document.addEventListener("visibilitychange", onVisible);
 
+  // Уходят со страницы (закрыли вкладку, свернули браузер на телефоне), а
+  // запись ещё ждёт своей очереди — отправляем сейчас, запросом, который
+  // переживает закрытие вкладки. Идёт запись — следом за ней.
+  const onLeave = () => {
+    if (stopped || desk || !queued) return;
+    clearTimeout(timer);
+    const leave = () => void flush({ keepalive: true });
+    if (inflight) void inflight.then(leave);
+    else leave();
+  };
+  const onHidden = () => {
+    if (document.visibilityState === "hidden") onLeave();
+  };
+  document.addEventListener("visibilitychange", onHidden);
+  window.addEventListener("pagehide", onLeave);
+
   activeFlush = flush;
   activeResync = async () => {
     if (!desk) return;
@@ -744,6 +771,8 @@ export function startServerSync(orgId: string): () => void {
     clearInterval(liveTimer);
     activeResync = null;
     document.removeEventListener("visibilitychange", onVisible);
+    document.removeEventListener("visibilitychange", onHidden);
+    window.removeEventListener("pagehide", onLeave);
     unsubscribe();
     setApiOrg(null);
     if (activeFlush === flush) activeFlush = null;

@@ -41,6 +41,21 @@ describe("snapshotRepository", () => {
     expect(await snapshotRepository.save(2, 8, {})).toMatchObject({ error: "sync.err.network" });
   });
 
+  it("при уходе со страницы запись идёт запросом, который переживает закрытие вкладки", async () => {
+    const { snapshotRepository } = await load();
+    const changes = { doc: {}, slots: [], upsert: [], remove: [] };
+    const fetch = reply(200, { ok: true, version: 4 });
+    vi.stubGlobal("fetch", fetch);
+    await snapshotRepository.saveChanges(3, 8, changes, { keepalive: true });
+    expect(fetch.mock.calls[0][1]).toMatchObject({ keepalive: true });
+    // Обычная запись — без него: браузер ограничивает такие запросы.
+    await snapshotRepository.saveChanges(3, 8, changes);
+    expect(fetch.mock.calls[1][1]).not.toHaveProperty("keepalive");
+    // Больше предела браузер такой запрос не пустит вовсе — уходит обычным.
+    await snapshotRepository.save(3, 8, { big: "x".repeat(70_000) }, { keepalive: true });
+    expect(fetch.mock.calls[2][1]).not.toHaveProperty("keepalive");
+  });
+
   it("только изменённое: свой адрес, расхождение — не конфликт, а запись целиком", async () => {
     const { snapshotRepository } = await load();
     const changes = { doc: {}, slots: [], upsert: [], remove: [] };
