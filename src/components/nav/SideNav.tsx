@@ -111,6 +111,7 @@ export function SideNav({
   };
   // Все склады — только у владельца; остальные работают в одном складе.
   const owner = useEditor(selectIsOwner);
+  const viewer = useEditor((s) => s.session.readOnly === true);
   const leave = useLogout();
   const warehouseName = useEditor((s) => s.warehouse?.name);
   const orgLogo = useEditor((s) => s.account.orgLogo);
@@ -343,15 +344,18 @@ export function SideNav({
             onClick={() => goToView("workstation")}
           />
         )}
-        <NavRow
-          icon={Settings}
-          label={t("nav.settings")}
-          collapsed={collapsed}
-          active={appView === "profile"}
-          current={appView === "profile"}
-          badge={0}
-          onClick={goToProfile}
-        />
+        {/* Смотрящему (только чтение) настроек нет — Кирилл 27.11. */}
+        {!viewer && (
+          <NavRow
+            icon={Settings}
+            label={t("nav.settings")}
+            collapsed={collapsed}
+            active={appView === "profile"}
+            current={appView === "profile"}
+            badge={0}
+            onClick={goToProfile}
+          />
+        )}
         <NavRow
           icon={LogOut}
           label={t("profile.logout")}

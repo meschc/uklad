@@ -221,6 +221,9 @@ export default function App() {
   // Список складов — только владельцу (Кирилл 24.11): начальник склада,
   // старший и продавец сразу в своём складе, выход и настройки — в меню.
   const owner = useEditor(selectIsOwner);
+  // Смотрящему (только чтение) настройки не нужны (Кирилл 27.11): выход —
+  // в меню, пароль — «Забыли пароль?» на входе.
+  const viewer = useEditor((s) => s.session.readOnly === true);
   const allowed = navFor(role, perms).map((n) => n.view);
   // Компьютер, привязанный к месту, — это стол, а не кабинет: он открывает
   // только рабочее место, куда бы ни вела ссылка. Отвязать его можно бейджем
@@ -241,7 +244,9 @@ export default function App() {
       ? "dashboard"
       : kiosk || legacyStation
         ? "workstation"
-        : (ACCOUNT_VIEWS.has(wanted) && (owner || wanted !== "dashboard")) ||
+        : (ACCOUNT_VIEWS.has(wanted) &&
+              (owner || wanted !== "dashboard") &&
+              !(viewer && wanted === "profile")) ||
             allowed.includes(wanted)
           ? wanted
           : (allowed[0] ?? "dashboard");
