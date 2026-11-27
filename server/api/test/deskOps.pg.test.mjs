@@ -764,6 +764,36 @@ test(
         ["box_at", "f1/m1/0/0#b1", -1, "stf-ivan"],
       ],
     );
+    // «Нет на месте»: короб b1 — старшему на пересчёт, из него не собирают.
+    const miss = await ops(desk, [
+      {
+        key: "key-pick-miss",
+        kind: "pick_missing",
+        body: {
+          eventId: "ev-miss-1",
+          staffId: "stf-ivan",
+          at: Date.now() - 200,
+          requestId: "r1",
+          productId: "pr1",
+          cell,
+        },
+      },
+      { ...unit(4), body: { ...unit(4).body, at: Date.now() - 100 } },
+    ]);
+    assert.deepEqual(
+      miss.json.results.map((x) => [x.status, x.reason ?? null]),
+      [
+        ["applied", null],
+        ["flagged", "stock"],
+      ],
+    );
+    const after = (await serverEvents("ops-g@sklad.ru", a.org)).snap.data;
+    assert.deepEqual(
+      after.disputes
+        .filter((d) => d.id === "mis-ev-miss-1")
+        .map((d) => [d.kind, d.boxId, d.qty, d.raisedBy]),
+      [["inventory_short", "b1", 2, "stf-ivan"]],
+    );
   },
 );
 

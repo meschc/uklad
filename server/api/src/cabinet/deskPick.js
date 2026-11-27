@@ -310,6 +310,60 @@ function applyPickUndo(data, body, staffRef) {
   return { data: out, post };
 }
 
+/**
+ * «Нет на месте» (Кирилл 27.11): по учёту товар в коробе этой ячейки, а
+ * сборщик его не нашёл. Сервер заводит на этот короб недостачу по
+ * инвентаризации (`inventory_short`, id `mis-…`) на всё свободное этого товара
+ * в коробе. Короб замораживается, как при пересчёте (`INVENTORY_KINDS`): из
+ * него больше не собирают, пока старший не пересчитает и не решит — «нашлось»
+ * или списать (два человека, `desks.js`). Сборщик идёт в другую ячейку.
+ * Остатки отметка не двигает. С прямого размещения (без короба) — `place`:
+ * количества там нет, недостачу не на что завести.
+ */
+function applyPickMissing(data, body, staffRef) {
+  const key = cellKey(body.cell);
+  if (!isId(body.eventId) || !isId(body.requestId) || !isId(body.productId) || !key) {
+    return { flag: "bad" };
+  }
+  const id = `mis-${body.eventId}`.slice(0, 100);
+  const disputes = list(data.disputes);
+  if (disputes.some((d) => d.id === id)) return { data };
+  const req = list(data.requests).find((r) => r.id === body.requestId);
+  if (!req || req.productId !== body.productId || !OPEN.has(req.status)) return { flag: "bad" };
+  const frozen = new Set(
+    disputes.filter((d) => !d.resolution && INVENTORY_KINDS.has(d.kind)).map((d) => d.boxId),
+  );
+  const from = list(data.boxes).find(
+    (b) =>
+      !frozen.has(b.id) &&
+      b.address &&
+      cellKey(b.address) === key &&
+      freeInBox(data.disputes, b, body.productId) > 0,
+  );
+  if (!from) {
+    const placements = isObject(data.placements) ? data.placements : {};
+    return { flag: cellKey(placements[body.productId]) === key ? "place" : "stock" };
+  }
+  return {
+    data: {
+      ...data,
+      disputes: [
+        ...disputes,
+        {
+          id,
+          kind: "inventory_short",
+          boxId: from.id,
+          toteCode: String(from.barcode ?? "").slice(0, 100),
+          productId: body.productId,
+          qty: freeInBox(data.disputes, from, body.productId),
+          raisedBy: staffRef,
+          raisedAt: body.at,
+        },
+      ],
+    },
+  };
+}
+
 /** Где можно отменить скан: собирается или собрана, но ещё не упакована. */
 const UNDO_OPEN = new Set(["new", "in_progress", "done"]);
 
@@ -331,4 +385,4 @@ function stepBack(r, picked, at) {
   return out;
 }
 
-module.exports = { applyPickUnit, applyPickDone, applyPickUndo, cellKey };
+module.exports = { applyPickUnit, applyPickDone, applyPickUndo, applyPickMissing, cellKey };

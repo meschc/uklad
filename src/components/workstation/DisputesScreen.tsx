@@ -14,7 +14,7 @@ import {
   resolutionsFor,
 } from "@/lib/disputes";
 import type { Dispute, DisputeKind, DisputeResolution } from "@/lib/types";
-import { KIND_KEY, fmtAt as fmt } from "./disputeLabels";
+import { kindKey, fmtAt as fmt } from "./disputeLabels";
 import { DisputesDone } from "./DisputesDone";
 import { TableScroll, TABLE_HEAD, TABLE_HEAD_ROW, TABLE_ROW } from "@/components/ui/table-scroll";
 import { useT, type MsgKey } from "@/lib/i18n";
@@ -379,7 +379,7 @@ function Line({
               : "bg-destructive text-destructive-foreground",
           )}
         >
-          {t(KIND_KEY[d.kind])}
+          {t(kindKey(d))}
         </span>
       </td>
       <td className="px-3 py-2 text-right tabular-nums" data-label={t("disputes.col.qty")}>

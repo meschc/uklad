@@ -8,7 +8,12 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { applyPickUnit, applyPickDone, applyPickUndo } = require("../src/cabinet/deskPick");
+const {
+  applyPickUnit,
+  applyPickDone,
+  applyPickUndo,
+  applyPickMissing,
+} = require("../src/cabinet/deskPick");
 
 const AT = 1_800_000_000_000;
 const CELL = { floorId: "f1", moduleId: "m1", shelfIndex: 0, cellIndex: 0 };
@@ -254,4 +259,53 @@ test("брак на сборке: штука обратно в свой коро
   assert.equal(two.flag, "stock");
   // Обычная отмена спорного не заводит.
   assert.equal(applyPickUndo(d, undo(), "stf-ivan").data.disputes, undefined);
+});
+
+const missing = (over = {}) => ({
+  eventId: "ev-m",
+  at: AT,
+  requestId: "r1",
+  productId: "p1",
+  cell: CELL,
+  ...over,
+});
+
+test("«нет на месте»: недостача на короб, короб заморожен, остатки не двигаются", () => {
+  const d = data();
+  const r = applyPickMissing(d, missing(), "stf-ivan");
+  assert.equal(r.flag, undefined);
+  assert.deepEqual(r.data.boxes, d.boxes);
+  assert.deepEqual(
+    r.data.disputes.map((x) => [x.id, x.kind, x.boxId, x.qty, x.raisedBy]),
+    [["mis-ev-m", "inventory_short", "b1", 2, "stf-ivan"]],
+  );
+  // Из замороженного короба не собрать; повтор — то же самое.
+  assert.equal(applyPickUnit(r.data, unit(), "stf-ivan").flag, "stock");
+  assert.equal(applyPickMissing(r.data, missing(), "stf-ivan").data, r.data);
+  // Второй раз по тому же коробу (другим ключом) — уже заморожен, нечего.
+  assert.equal(applyPickMissing(r.data, missing({ eventId: "ev-m2" }), "stf-ivan").flag, "stock");
+});
+
+test("«нет на месте»: только открытая своя заявка, с размещения — «place»", () => {
+  assert.equal(applyPickMissing(data(), missing({ requestId: "zz" }), "stf-ivan").flag, "bad");
+  assert.equal(applyPickMissing(data(), missing({ productId: "p9" }), "stf-ivan").flag, "bad");
+  assert.equal(applyPickMissing(data(), missing({ cell: { x: 1 } }), "stf-ivan").flag, "bad");
+  const placed = data();
+  placed.boxes[0].lines = [];
+  placed.placements = { p1: CELL };
+  assert.equal(applyPickMissing(placed, missing(), "stf-ivan").flag, "place");
+  // Карантин: брак в коробе не «пропал» — недостача только на свободное.
+  const held = data();
+  held.disputes = [
+    {
+      id: "def-1",
+      kind: "not_packable",
+      boxId: "b1",
+      productId: "p1",
+      qty: 1,
+      raisedBy: "s",
+      raisedAt: 1,
+    },
+  ];
+  assert.equal(applyPickMissing(held, missing(), "stf-ivan").data.disputes.at(-1).qty, 1);
 });

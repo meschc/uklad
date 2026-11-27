@@ -103,6 +103,12 @@ export interface WorkstationRepository {
    * сняли. Нельзя — отказ `pick.undo.<причина>` (`pickUndo.ts`).
    */
   pickUndo: (pickId: string, defect?: boolean) => Promise<Result<void>>;
+  /**
+   * «Нет на месте»: по учёту товар здесь, а сборщик не нашёл. Короб уходит
+   * старшему на пересчёт, сборщик идёт в другую ячейку. Нельзя — отказ
+   * `pick.missing.<причина>`.
+   */
+  pickMissing: (requestId: string, productId: string, addr: CellAddress) => Promise<Result<void>>;
   /** Заявка собрана: целиком или частично (меньше запрошенного, явно). */
   pickDone: (requestId: string, partial: boolean) => Promise<Result<void>>;
   /**
@@ -427,6 +433,25 @@ export function createWorkstationRepository(
       }),
     // Отмена на сервере — своя операция (`applyPickUndo`): сервер сам
     // проверит, что скан свой, штука в таре и короб на месте.
+    pickMissing: async (requestId, productId, addr) => {
+      const by = port.get().stationSession?.staffId;
+      if (!by) return fail("pick.undo.not_yours");
+      const res = await attempt(() => port.get().reportPickMissing(requestId, productId, addr, by));
+      if (!res.ok) return res;
+      const out = res.data;
+      if ("problem" in out) return fail(`pick.missing.${out.problem}` as const);
+      if (onServer(port)) {
+        ops.enqueue("pick_missing", {
+          eventId: out.eventId,
+          staffId: by,
+          at: out.at,
+          requestId,
+          productId,
+          cell: addr,
+        });
+      }
+      return ok(undefined);
+    },
     pickUndo: async (pickId, defect) => {
       const by = port.get().stationSession?.staffId;
       if (!by) return fail("pick.undo.not_yours");

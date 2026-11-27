@@ -5,6 +5,7 @@ import {
   countDiffs,
   frozenBoxes,
   normalizeCount,
+  pickableBoxes,
   planCellCount,
   type CellPlace,
   planCount,
@@ -157,6 +158,40 @@ describe("frozenBoxes", () => {
       { ...base, id: "3", kind: "shortage", boxId: "b3" },
     ];
     expect([...frozenBoxes(ds)]).toEqual(["b1"]);
+  });
+});
+
+describe("pickableBoxes — куда вести сборщика", () => {
+  it("без замороженной тары и без карантина", () => {
+    const base = { raisedBy: "s1", raisedAt: 1, productId: "p1" };
+    const boxes = [
+      box({
+        id: "b1",
+        address: ADDR,
+        lines: [
+          { productId: "p1", qty: 3 },
+          { productId: "p2", qty: 1 },
+        ],
+      }),
+      box({ id: "b2", address: ADDR, lines: [{ productId: "p1", qty: 2 }] }),
+      box({ id: "b3", address: ADDR, lines: [{ productId: "p1", qty: 1 }] }),
+    ];
+    const ds: Dispute[] = [
+      { ...base, id: "def-1", kind: "not_packable", boxId: "b1", qty: 2 },
+      { ...base, id: "mis-1", kind: "inventory_short", boxId: "b2", qty: 2 },
+      { ...base, id: "def-2", kind: "not_packable", boxId: "b3", qty: 1 },
+    ];
+    expect(pickableBoxes(boxes, ds).map((b) => [b.id, b.lines])).toEqual([
+      [
+        "b1",
+        [
+          { productId: "p1", qty: 1 },
+          { productId: "p2", qty: 1 },
+        ],
+      ],
+      ["b3", []],
+    ]);
+    expect(pickableBoxes(boxes, [])).toEqual(boxes);
   });
 });
 

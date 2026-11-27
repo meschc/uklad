@@ -8,7 +8,7 @@ import { DialogHeader, DialogShell } from "@/components/ui/dialog-shell";
 import { eyebrow } from "@/components/ui/eyebrow";
 import { TableScroll, TABLE_HEAD, TABLE_HEAD_ROW, TABLE_ROW } from "@/components/ui/table-scroll";
 import { CodeTail } from "@/components/fulfillment/CodeTail";
-import { KIND_KEY, fmtAt, resKey } from "./disputeLabels";
+import { kindKey, fmtAt, resKey } from "./disputeLabels";
 
 /**
  * Решённое спорное — таблицей, новое сверху (Кирилл 22.11 и 24.11: «в
@@ -66,7 +66,7 @@ export function DisputesDone({
                   </button>
                 </td>
                 <td className="px-3 py-2" data-label={t("disputes.col.kind")}>
-                  {t(KIND_KEY[d.kind])}
+                  {t(kindKey(d))}
                 </td>
                 <td
                   className="px-3 py-2 text-right tabular-nums"
@@ -134,7 +134,7 @@ function DoneDetails({
         </Button>
       </DialogHeader>
       <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-5 py-4">
-        {fact(t("disputes.col.kind"), t(KIND_KEY[d.kind]))}
+        {fact(t("disputes.col.kind"), t(kindKey(d)))}
         {fact(
           t("disputes.found"),
           <>

@@ -248,6 +248,44 @@ export const createRequestsSlice: SliceCreator<RequestsSlice> = (set, get) => ({
     return { id: undoId };
   },
 
+  reportPickMissing: (requestId, productId, addr, by) => {
+    const s = get();
+    const req = s.requests.find((r) => r.id === requestId);
+    if (!req || req.productId !== productId) return { problem: "stock" };
+    const key = addressKey(addr);
+    const frozen = frozenBoxes(s.disputes ?? []);
+    const box = s.boxes.find(
+      (b) =>
+        !frozen.has(b.id) &&
+        b.address &&
+        addressKey(b.address) === key &&
+        freeInBox(s.disputes ?? [], b, productId) > 0,
+    );
+    if (!box) {
+      const placed = s.placements[productId];
+      return { problem: placed && addressKey(placed) === key ? "place" : "stock" };
+    }
+    const eventId = uid("sev");
+    const at = nowMs();
+    const id = `mis-${eventId}`.slice(0, 100);
+    set((st) => ({
+      disputes: [
+        ...(st.disputes ?? []),
+        {
+          id,
+          kind: "inventory_short" as const,
+          boxId: box.id,
+          toteCode: box.barcode,
+          productId,
+          qty: freeInBox(st.disputes ?? [], box, productId),
+          raisedBy: by,
+          raisedAt: at,
+        },
+      ],
+    }));
+    return { id, eventId, at };
+  },
+
   completeRequest: (id, partial = false) => {
     set((s) => ({
       requests: s.requests.map((r) =>

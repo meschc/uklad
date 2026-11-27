@@ -617,6 +617,18 @@ export interface RequestsSlice {
     /** Брак: штука в короб на учёт, спорным «брак» старшему и в карантин. */
     defect?: boolean,
   ) => { id: string } | { problem: PickUndoProblem };
+  /**
+   * «Нет на месте» в сборке (`deskPick.js` `applyPickMissing`): на короб в этой
+   * ячейке — недостача по инвентаризации на всё свободное этого товара, короб
+   * заморожен до решения старшего. Ответ — id спорного или почему нельзя:
+   * `place` — товар на размещении без короба, `stock` — по учёту здесь нет.
+   */
+  reportPickMissing: (
+    requestId: string,
+    productId: string,
+    addr: CellAddress,
+    by: string,
+  ) => { id: string; eventId: string; at: number } | { problem: "place" | "stock" };
   /** Закрыть заявку: полностью или частично (собрали меньше запрошенного). */
   completeRequest: (id: string, partial?: boolean) => void;
   /**
