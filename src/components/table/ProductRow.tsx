@@ -200,7 +200,7 @@ export function ProductRow({
   };
 
   return (
-    <Tr className={cn("group/row transition-colors hover:bg-accent/40", picked && "bg-primary/5")}>
+    <Tr interactive className={cn("group/row", picked && "bg-primary/5")}>
       <Td className="stack-lead py-1.5">
         <RowCheck
           checked={picked}

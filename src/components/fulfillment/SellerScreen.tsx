@@ -4,13 +4,13 @@ import {
   CalendarClock,
   Check,
   ClipboardList,
-  Download,
+  FileInput,
+  FileOutput,
   MapPin,
   Package,
   PackagePlus,
   Plus,
   Truck,
-  Upload,
 } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { requestsRepository } from "@/lib/data";
@@ -114,7 +114,7 @@ function RequestsTab({ t }: { t: TFunc }) {
           {t("seller.newRequest")}
         </Button>
         <Button size="sm" variant="outline" onClick={() => setImporting(true)}>
-          <Upload className="size-3.5" />
+          <FileInput className="size-3.5" />
           {t("seller.bulk")}
         </Button>
         {/* Обратное направление: не только забрать со склада, но и привезти
@@ -336,7 +336,7 @@ function BulkRequestDialog({ onClose, t }: { onClose: () => void; t: TFunc }) {
     >
       <div className="flex flex-wrap items-center gap-2">
         <Button size="sm" variant="ghost" onClick={downloadTemplate}>
-          <Download className="size-3.5" />
+          <FileOutput className="size-3.5" />
           {t("seller.bulkTemplate")}
         </Button>
         <Button

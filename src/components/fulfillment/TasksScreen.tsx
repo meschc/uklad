@@ -349,7 +349,7 @@ function Row({
         ? t("queue.active")
         : t("queue.waiting");
   return (
-    <Tr className={cn("hover:bg-accent/40")}>
+    <Tr interactive>
       <Td>
         <button
           type="button"

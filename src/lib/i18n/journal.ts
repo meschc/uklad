@@ -7,7 +7,7 @@ export const ru = {
   "nav.side.journal": "Журнал действий",
   "journal.title": "Журнал действий",
   "journal.lead":
-    "Каждое действие на складе по секундам: сканы, этикетки, отметки смены, решения старшего, правки в кабинете и действия руководителей: доступ, роли, площадки, товары. Лента обновляется сама.",
+    "Каждое действие на складе по секундам: сканы, этикетки, отметки смены, решения старшего, правки в кабинете и действия руководителей: доступ, роли, площадки, товары. Новые записи — по кнопке «Обновить».",
   "journal.filter.step": "Процесс",
   "journal.filter.allSteps": "Все процессы",
   "journal.filter.staff": "Сотрудник",
@@ -61,6 +61,8 @@ export const ru = {
   "journal.order": "заказ {id}",
   "journal.sortTo": "на {code}",
   "journal.more": "Показать раньше",
+  "journal.refresh": "Обновить",
+  "journal.refreshNew": "Обновить · новых {n}",
   "journal.empty": "Действий нет",
   "journal.empty.body":
     "Здесь появится каждый скан и отметка с рабочих мест этого склада и каждая правка в кабинете.",
@@ -136,7 +138,7 @@ export const en: Record<keyof typeof ru, string> = {
   "nav.side.journal": "Activity log",
   "journal.title": "Activity log",
   "journal.lead":
-    "Every action in the warehouse to the second: scans, labels, shift marks, lead decisions, cabinet edits and manager actions: access, roles, marketplaces, products. The feed updates by itself.",
+    "Every action in the warehouse to the second: scans, labels, shift marks, lead decisions, cabinet edits and manager actions: access, roles, marketplaces, products. New entries appear when you press “Refresh”.",
   "journal.filter.step": "Process",
   "journal.filter.allSteps": "All processes",
   "journal.filter.staff": "Employee",
@@ -190,6 +192,8 @@ export const en: Record<keyof typeof ru, string> = {
   "journal.order": "order {id}",
   "journal.sortTo": "to {code}",
   "journal.more": "Show earlier",
+  "journal.refresh": "Refresh",
+  "journal.refreshNew": "Refresh · {n} new",
   "journal.empty": "No actions",
   "journal.empty.body":
     "Every scan and mark from this warehouse's workstations and every edit in the cabinet shows up here.",

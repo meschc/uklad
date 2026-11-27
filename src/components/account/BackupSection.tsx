@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { BellRing, Download, Mail, Upload } from "lucide-react";
+import { BellRing, FileInput, FileOutput, Mail } from "lucide-react";
 import { useEditor, PERSIST_VERSION } from "@/lib/store";
 import { backupRepository } from "@/lib/data";
 import { parseBackup } from "@/lib/backup";
@@ -78,7 +78,7 @@ export function BackupSection() {
 
   return (
     <div className="flex flex-col divide-y divide-border/60">
-      <Row icon={<Download className="size-4" />} label={t("backup.archive")}>
+      <Row icon={<FileOutput className="size-4" />} label={t("backup.archive")}>
         <div className="flex flex-wrap items-center justify-end gap-2">
           {download.error && <FieldError>{t(download.error)}</FieldError>}
           <span className="text-xs text-muted-foreground">
@@ -101,7 +101,7 @@ export function BackupSection() {
         <p className="py-3 text-xs text-muted-foreground">{t("backup.serverNote")}</p>
       ) : (
         <>
-          <Row icon={<Upload className="size-4" />} label={t("backup.restore")}>
+          <Row icon={<FileInput className="size-4" />} label={t("backup.restore")}>
             <div className="flex flex-col items-end gap-2">
               {restoreError && <FieldError>{t(restoreError)}</FieldError>}
               {pending ? (

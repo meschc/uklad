@@ -1,5 +1,13 @@
 import { useRef, useState } from "react";
-import { CalendarClock, Download, KeyRound, Plus, TrendingUp, Upload, Users } from "lucide-react";
+import {
+  CalendarClock,
+  FileInput,
+  FileOutput,
+  KeyRound,
+  Plus,
+  TrendingUp,
+  Users,
+} from "lucide-react";
 import { selectRole, useEditor } from "@/lib/store";
 import { staffRepository } from "@/lib/data";
 import { useTeam } from "./useTeam";
@@ -170,7 +178,7 @@ export function StaffScreen() {
                   disabled={staff.length === 0}
                   onClick={exportStaff}
                 >
-                  <Download className="size-3.5" />
+                  <FileOutput className="size-3.5" />
                   {t("staff.export")}
                 </Button>
                 {/* Формы у загрузки нет, терять нечего — отказ тостом, а кнопка на
@@ -181,7 +189,7 @@ export function StaffScreen() {
                   disabled={load.pending}
                   onClick={() => fileRef.current?.click()}
                 >
-                  <Upload className="size-3.5" />
+                  <FileInput className="size-3.5" />
                   {load.pending ? t("data.busy") : t("staff.import")}
                 </Button>
                 <input

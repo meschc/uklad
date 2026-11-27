@@ -449,8 +449,11 @@ function NavRow({
         "relative flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 text-left text-sm font-medium transition-colors",
         nested ? "h-8" : "h-9",
         collapsed && "justify-center px-0",
+        // Активный пункт — «неон», как адрес ячейки в таблице (Кирилл 27.11):
+        // полупрозрачная заливка, тонкая обводка и синий текст вместо
+        // сплошной синей плашки. Обводка внутренняя — пункт не меняет размер.
         active
-          ? "bg-primary text-primary-foreground"
+          ? "bg-primary/10 text-primary ring-1 ring-inset ring-primary/30"
           : "text-menu-muted hover:bg-menu-hover hover:text-menu-foreground",
       )}
     >

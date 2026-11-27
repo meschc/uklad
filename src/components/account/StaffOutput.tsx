@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Download } from "lucide-react";
+import { FileOutput } from "lucide-react";
 import { selectRole, useEditor } from "@/lib/store";
 import { useWithArchive } from "@/lib/store/archive";
 import { staffReport, staffReportCsv, type StaffOutput as OutputRow } from "@/lib/staffReport";
@@ -127,7 +127,7 @@ export function StaffOutput() {
           ]}
         />
         <Button size="sm" variant="outline" disabled={rows.length === 0} onClick={exportCsv}>
-          <Download className="size-3.5" />
+          <FileOutput className="size-3.5" />
           {t("staff.out.export")}
         </Button>
       </div>

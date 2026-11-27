@@ -108,12 +108,32 @@ export function Th({ align, max, nowrap, className, ...props }: ComponentProps<"
   );
 }
 
-/** Строка. `total` — итоговая строка: линия сверху, полужирный. */
-export function Tr({ className, total, ...props }: ComponentProps<"tr"> & { total?: boolean }) {
+/**
+ * Неон при наведении (Кирилл 27.11): полупрозрачная заливка primary и тонкая
+ * внутренняя обводка — тот же вид, что у активного пункта меню и адреса
+ * ячейки. Обводка — тенью внутрь, строка не меняет размер.
+ */
+const NEON_HOVER =
+  "transition-colors hover:bg-primary/5 hover:shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.3)]";
+
+/**
+ * Строка. `total` — итоговая строка: линия сверху, полужирный. `interactive`
+ * — строка что-то открывает или выбирает: неон при наведении.
+ */
+export function Tr({
+  className,
+  total,
+  interactive,
+  ...props
+}: ComponentProps<"tr"> & { total?: boolean; interactive?: boolean }) {
   return (
     <tr
       {...props}
-      className={cn(total ? "border-t border-border font-medium" : TABLE_ROW, className)}
+      className={cn(
+        total ? "border-t border-border font-medium" : TABLE_ROW,
+        interactive && NEON_HOVER,
+        className,
+      )}
     />
   );
 }
