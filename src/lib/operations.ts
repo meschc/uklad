@@ -122,6 +122,14 @@ export function myStaffId(
   return name ? staff?.find((m) => m.name.trim() === name)?.id : undefined;
 }
 
+/**
+ * Чья это работа для выработки и сдельной оплаты. Строка из загруженной
+ * резервной копии (`restored`, «Безопасность» 27.11) на сотрудника не
+ * считается: файл можно поправить руками, а оплату по нему — нет.
+ */
+export const workedBy = (x: { staffId?: string; restored?: boolean }): string | undefined =>
+  x.restored ? undefined : x.staffId;
+
 export interface OperationFacts {
   tasks: WarehouseTask[];
   pallets: Pallet[];
@@ -195,7 +203,7 @@ export function operationLog(f: OperationFacts): OperationEntry[] {
       kind: "item_receiving",
       qty: e.qty,
       at: e.timestamp,
-      staffId: e.staffId,
+      staffId: workedBy(e),
       partnerId: partnerOf.get(e.productId),
       source: "auto",
     });
@@ -222,7 +230,7 @@ export function operationLog(f: OperationFacts): OperationEntry[] {
       kind: t.kind,
       qty: t.qty,
       at: t.doneAt,
-      staffId: t.staffId,
+      staffId: workedBy(t),
       partnerId: t.partnerId,
       source: "task",
     });
@@ -312,7 +320,7 @@ function shipmentPlaces(
   partnerOf: Map<string, string | undefined>,
   requestById: Map<string, FulfillmentRequest>,
 ): OperationEntry[] {
-  const base = { at: s.shippedAt, staffId: s.staffId, source: "auto" as const };
+  const base = { at: s.shippedAt, staffId: workedBy(s), source: "auto" as const };
   const out: OperationEntry[] = [{ ...base, id: `trip:${s.id}`, kind: "loading", qty: 1 }];
   const reqs = s.requestIds.flatMap((id) => requestById.get(id) ?? []);
   const sellers = new Set(reqs.map((r) => partnerOf.get(r.productId)));

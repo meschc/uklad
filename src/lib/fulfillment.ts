@@ -11,6 +11,7 @@ import type {
   Warehouse,
 } from "./types";
 import { nowMs } from "./utils";
+import { workedBy } from "./operations";
 
 /**
  * Чистые расчёты по фулфилменту: где и сколько лежит товара, что показывать
@@ -409,15 +410,17 @@ export function staffWorkload(
   };
 
   for (const e of events) {
-    if (!e.staffId) continue;
-    const w = get(e.staffId);
+    const by = workedBy(e);
+    if (!by) continue;
+    const w = get(by);
     w.receipts += 1;
     w.units += e.qty;
     w.lastAt = Math.max(w.lastAt ?? 0, e.timestamp);
   }
   for (const s of shipments) {
-    if (!s.staffId) continue;
-    const w = get(s.staffId);
+    const by = workedBy(s);
+    if (!by) continue;
+    const w = get(by);
     w.trips += 1;
     w.lastAt = Math.max(w.lastAt ?? 0, s.shippedAt);
   }

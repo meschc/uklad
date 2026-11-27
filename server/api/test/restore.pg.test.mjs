@@ -269,3 +269,44 @@ test(
     assert.equal(ds.d1.restored, true);
   },
 );
+
+test(
+  "то же решение с другим количеством и новый скан приёмки из копии — «из копии»",
+  { skip: SKIP },
+  async () => {
+    const old = Date.now() - 3 * 24 * 60 * 60 * 1000;
+    const d1 = { id: "d1", kind: "shortage", qty: 2, raisedBy: "s2" };
+    const who = await cabinet("qty", "10.0.3.10", { disputes: [d1] });
+    const ver = (await call("/api/cabinet/snapshot", who)).json.snapshot;
+    // Владелец решает спорное обычной записью — на сервере решение «manager».
+    const decided = { ...d1, resolution: "returned", resolvedBy: "manager", resolvedAt: old };
+    const put = await call("/api/cabinet/snapshot", {
+      ...who,
+      body: { version: ver.version, format: 8, data: { ...ver.data, disputes: [decided] } },
+    });
+    assert.equal(put.status, 200, JSON.stringify(put.json));
+    // В копии то же решение, но «списал 200», и чужой скан приёмки.
+    const scan = {
+      id: "rc1",
+      productId: "p9",
+      qty: 50,
+      boxId: "b1",
+      staffId: "s3",
+      timestamp: old,
+    };
+    const r = await call("/api/cabinet/restore", {
+      ...who,
+      body: {
+        format: 8,
+        data: copy({ disputes: [{ ...decided, qty: 200 }], receivingEvents: [scan] }),
+      },
+    });
+    assert.equal(r.status, 200, JSON.stringify(r.json));
+    const read = (await call("/api/cabinet/snapshot", who)).json.snapshot.data;
+    assert.equal(read.disputes[0].qty, 200);
+    assert.equal(read.disputes[0].resolvedBy, "manager");
+    assert.equal(read.disputes[0].restored, true);
+    assert.equal(read.receivingEvents[0].restored, true);
+    assert.equal(read.receivingEvents[0].staffId, "s3");
+  },
+);

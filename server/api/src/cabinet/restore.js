@@ -31,9 +31,9 @@
  * - **Авторство не подделать** («Безопасность» 27.11): копия — файл, его
  *   можно править руками. Решение по спорному, которого в базе нет или оно
  *   другое, ложится с `resolvedBy: "manager"` и `restored: true`; новая или
- *   изменённая отметка смены — с `restored: true`. Экраны пишут «из копии»,
- *   и журнал не покажет, что списал или отработал сотрудник, если этого не
- *   было (`markRestored`).
+ *   изменённая отметка смены, скан приёмки, рейс, задание, начисление — с
+ *   `restored: true`. Экраны пишут «из копии», а выработка и сдельная оплата
+ *   такие строки на сотрудника не считают (`markRestored`).
  * - Загрузка пишется в журнал действий (`cabinet.restore`) и поднимает версию
  *   снимка: открытые кабинеты и столы забирают новый кабинет.
  *
@@ -109,13 +109,26 @@ function canon(v) {
   return `{${keys.map((k) => `${JSON.stringify(k)}:${canon(v[k])}`).join(",")}}`;
 }
 
-/** Списки, где важно, кто сделал: решения по спорному и отметки смен. */
-const AUTHORED = ["disputes", "staffEvents"];
+/**
+ * Списки, где важно, кто сделал: решения по спорному, отметки смен, сканы
+ * приёмки, рейсы, задания (выработка и сдельная оплата идут по `staffId`) и
+ * ручные начисления (`by`).
+ */
+const AUTHORED = [
+  "disputes",
+  "staffEvents",
+  "receivingEvents",
+  "shipments",
+  "tasks",
+  "payAdjustments",
+];
 
 /**
- * Строки копии, которых нет в базе такими же, — с пометкой «из копии».
- * Сравнение с любой строкой базы, в том числе архивной и удалённой: строка,
- * которая уже была ровно такой, — не подделка, её не трогаем.
+ * Строки копии, которых нет в базе ровно такими же, — с пометкой «из копии»
+ * (`restored: true`): количество, товар, тара или авторство поменялись, или
+ * строки не было. Решение по такому спорному записывается на «manager».
+ * Строку, которая уже была ровно такой (в том числе архивную или
+ * удалённую), не трогаем: это не подделка.
  */
 async function markRestored(c, items) {
   const own = items.filter((i) => AUTHORED.includes(i.d) && isObject(i.data));
@@ -130,16 +143,10 @@ async function markRestored(c, items) {
   return items.map((i) => {
     if (!AUTHORED.includes(i.d) || !isObject(i.data)) return i;
     const prev = was.get(key(i));
-    if (i.d === "disputes") {
-      if (typeof i.data.resolution !== "string") return i;
-      const same =
-        isObject(prev) &&
-        prev.resolution === i.data.resolution &&
-        prev.resolvedBy === i.data.resolvedBy;
-      return same ? i : { ...i, data: { ...i.data, resolvedBy: "manager", restored: true } };
-    }
     if (isObject(prev) && canon(prev) === canon(i.data)) return i;
-    return { ...i, data: { ...i.data, restored: true } };
+    const data = { ...i.data, restored: true };
+    if (i.d === "disputes" && typeof i.data.resolution === "string") data.resolvedBy = "manager";
+    return { ...i, data };
   });
 }
 

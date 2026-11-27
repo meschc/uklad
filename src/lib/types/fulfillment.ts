@@ -135,6 +135,8 @@ export interface ReceivingEvent {
   boxId: string;
   staffId?: string;
   timestamp: number;
+  /** Пришло загрузкой резервной копии (`restore.js`): на сотрудника не считается. */
+  restored?: boolean;
   /** Заполняется, если приёмка шла со сверкой. */
   expectedShipmentLineId?: string;
   /**
@@ -203,6 +205,8 @@ export interface Shipment {
   /** Кто отгрузил (id сотрудника) и когда. */
   staffId?: string;
   shippedAt: number;
+  /** Пришло загрузкой резервной копии (`restore.js`): на сотрудника не считается. */
+  restored?: boolean;
   /** Коды паллет и коробов, отсканированных при погрузке (стол отгрузки). */
   units?: string[];
 }
@@ -517,6 +521,8 @@ export interface PayAdjustment {
   /** Кто вписал — имя из профиля. */
   by?: string;
   createdAt: number;
+  /** Пришло загрузкой резервной копии (`restore.js`): экран пишет «из копии». */
+  restored?: boolean;
 }
 
 /**
