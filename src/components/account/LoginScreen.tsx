@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { isEmail } from "@/lib/validate";
 import { Lock, Mail, Store, Warehouse } from "lucide-react";
 import { useEditor } from "@/lib/store";
@@ -30,6 +30,7 @@ import { FieldError } from "@/components/ui/field";
 type Mode = "signIn" | "signUp" | "reset";
 
 const MIN_PASSWORD = 8;
+const PROBE_MS = 1500;
 
 export function LoginScreen() {
   const goToDashboard = useEditor((s) => s.goToDashboard);
@@ -50,6 +51,17 @@ export function LoginScreen() {
   const [inviteToken, setInviteToken] = useState(() =>
     hasCabinetServer ? inviteTokenFromUrl() : null,
   );
+
+  // С сервером экран сначала спрашивает, жива ли кука (после отвязки стола,
+  // после перезагрузки). Пока ответа нет, экран невидим: иначе форма входа
+  // мелькала на секунду перед кабинетом (разбор 27.11). Ответ не пришёл за
+  // PROBE_MS — показываем форму, чтобы не держать пустой экран.
+  const [probing, setProbing] = useState(() => hasCabinetServer && !inviteToken);
+  useEffect(() => {
+    if (!probing) return;
+    const id = setTimeout(() => setProbing(false), PROBE_MS);
+    return () => clearTimeout(id);
+  }, [probing]);
 
   const emailErr = !isEmail(email) ? t("login.err.email") : null;
   const passErr =
@@ -90,7 +102,10 @@ export function LoginScreen() {
   const err = (message: string | null) => (touched ? message : null);
 
   return (
-    <div className="flex h-full overflow-hidden bg-background">
+    <div
+      className={cn("flex h-full overflow-hidden bg-background", probing && "[&>*]:invisible")}
+      aria-busy={probing || undefined}
+    >
       {/* Левая половина — форма */}
       <div className="no-scrollbar flex min-w-0 flex-1 items-center justify-center overflow-y-auto px-6 py-10">
         <div className="flex w-full max-w-sm flex-col items-center gap-6">
@@ -113,7 +128,7 @@ export function LoginScreen() {
               }}
             />
           ) : hasCabinetServer ? (
-            <ServerLoginForm />
+            <ServerLoginForm onProbed={() => setProbing(false)} />
           ) : (
             <>
               <div className="w-full rounded-2xl border border-border bg-card p-5 shadow-sm">

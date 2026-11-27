@@ -76,7 +76,7 @@ export const createSessionSlice: SliceCreator<SessionSlice> = (set, get) => ({
       session: {
         ...s.session,
         source: undefined,
-        ...(email ? { user: { ...s.session.user, email } } : {}),
+        ...(email ? { user: { ...s.session.user, email }, resumeHere: true } : {}),
       },
       appView: "login",
       selection: [],
@@ -84,6 +84,7 @@ export const createSessionSlice: SliceCreator<SessionSlice> = (set, get) => ({
     })),
 
   startServerSession: (email, role, orgId, permissions, partnerId) => {
+    const resumeHere = get().session.resumeHere === true;
     set((s) => ({
       session: {
         user: { ...s.session.user, id: orgId, email },
@@ -95,6 +96,8 @@ export const createSessionSlice: SliceCreator<SessionSlice> = (set, get) => ({
       },
     }));
     get().setRole(role);
+    // Руководитель отвязал стол паролем — он в том же складе, где стол стоял.
+    if (resumeHere && role === "warehouse") get().goToEditor();
     // Продавец склада: партнёр — из учётной записи на сервере (миграция 039),
     // а не первый в списке, как в демо.
     if (role === "seller" && partnerId) {

@@ -1,7 +1,7 @@
 import { ArrowRight, Check, PackageOpen, PackagePlus } from "lucide-react";
 import { useState } from "react";
 import { useEditor } from "@/lib/store";
-import { signal } from "@/lib/scanSignal";
+import { levelFor, signal } from "@/lib/scanSignal";
 import { workstationRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
 import { findByCode } from "@/lib/barcode";
@@ -40,9 +40,10 @@ export function ToteStart() {
   const pickSource = (code: string) => {
     const box = findByCode(useEditor.getState().boxes, code);
     if (!box || toteContents(box).size === 0) {
+      const key = box ? "ws.tote.empty" : "ws.tote.unknown";
       setStatus("error");
-      signal("error");
-      setHint(t(box ? "ws.tote.empty" : "ws.tote.unknown"));
+      signal(levelFor(key));
+      setHint(t(key));
       return;
     }
     setHint(null);
@@ -50,7 +51,7 @@ export function ToteStart() {
     if (isParcelTote(toteOrders(requests, box), heldInTote(requests, boxes, box))) {
       void start.run(box.barcode).then((res) => {
         setStatus(res.ok ? "ok" : "error");
-        signal(res.ok ? "ok" : "error");
+        signal(res.ok ? "ok" : levelFor(res.error ?? ""));
         if (!res.ok && res.error) setHint(t(res.error));
       });
       return;
@@ -63,7 +64,7 @@ export function ToteStart() {
   const pickTarget = async (code: string) => {
     const res = await start.run(source!, code);
     setStatus(res.ok ? "ok" : "error");
-    signal(res.ok ? "ok" : "error");
+    signal(res.ok ? "ok" : levelFor(res.error ?? ""));
   };
 
   const makeDemo = () => {
