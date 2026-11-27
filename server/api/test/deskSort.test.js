@@ -101,7 +101,7 @@ test("вынуть свою посылку: только свою и пока м
   const close = { sortCode: KOL, pallets: 1, boxes: 0, placeIds: ["p1"], at: 9 };
   const closed = applySortClose(placed, close).data;
   assert.equal(applySortUndo(closed, undo, "stf-ivan").flag, "late");
-  // Разложенная до 27.11 (кто клал — неизвестно) — только старшим.
+  // Разложенная до 27.11 (кто клал — неизвестно) — не вынуть.
   const old = structuredClone(placed);
   delete old.outboundBoxes[0].sortedBy;
   assert.equal(applySortUndo(old, undo, "stf-ivan").flag, "not_yours");

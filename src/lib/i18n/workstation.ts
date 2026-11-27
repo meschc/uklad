@@ -205,7 +205,7 @@ export const ru = {
   "ws.sort.undo.confirm": "Вынул",
   "ws.sort.undo.done": "{code} вынута из {point}",
   "ws.sort.undo.missing": "Посылки нет на месте сортировки",
-  "ws.sort.undo.not_yours": "Посылку клал другой сотрудник — вынуть её может он или старший",
+  "ws.sort.undo.not_yours": "Посылку клал другой сотрудник — вынуть её может только он",
   "ws.sort.undo.late": "Отгрузка места уже закрыта — вынуть посылку нельзя",
   "ws.sort.points": "Места сортировки",
   "ws.sort.count": "посылок: {n}",
@@ -934,8 +934,7 @@ export const en: Record<keyof typeof ru, string> = {
   "ws.sort.undo.confirm": "Taken out",
   "ws.sort.undo.done": "{code} taken out of {point}",
   "ws.sort.undo.missing": "The parcel is not at a sorting point",
-  "ws.sort.undo.not_yours":
-    "Another employee sorted this parcel — they or a senior can take it out",
+  "ws.sort.undo.not_yours": "Another employee sorted this parcel — only they can take it out",
   "ws.sort.undo.late": "This point's shipment is already closed — the parcel can't be taken out",
   "ws.sort.points": "Sort points",
   "ws.sort.count": "parcels: {n}",
