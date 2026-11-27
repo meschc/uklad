@@ -654,6 +654,8 @@ function createAuth({
     tokenHash,
     clearCookie,
     deliver,
+    // Хэш кода из письма — смена почты (`account.js`) хранит его так же.
+    codeHash,
   };
 }
 

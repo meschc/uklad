@@ -73,6 +73,44 @@ export const accountRepository = {
     return fail("account.err.network");
   },
 
+  /**
+   * Смена почты, шаг 1: пароль и новый адрес → код на новый адрес
+   * (миграция 066). До ввода кода вход — по старой почте.
+   */
+  requestEmailChange: async (email: string, password: string): Promise<Result<void>> => {
+    const res = await attempt(
+      () => apiRequest("POST", "/auth/email/change", { email, password }),
+      "account.err.network",
+    );
+    if (!res.ok) return res;
+    const { status, body } = res.data;
+    if (status === 202) return ok(undefined);
+    if (status === 403) return fail("account.err.password");
+    if (status === 409) return fail("account.err.emailTaken");
+    if (body.error === "locked") return fail("login.err.locked");
+    // Пять писем в час — свой ответ: «подождите минуту» тут не поможет.
+    if (body.error === "mail_limit") return fail("account.err.mailLimit");
+    if (status === 429) return fail("account.err.tooOften");
+    if (body.error === "bad_email") return fail("valid.email");
+    if (body.error === "same_email") return fail("account.err.sameEmail");
+    return fail("account.err.network");
+  },
+
+  /** Смена почты, шаг 2: код из письма. Возвращает новую почту. */
+  confirmEmailChange: async (code: string): Promise<Result<string>> => {
+    const res = await attempt(
+      () => apiRequest("POST", "/auth/email/confirm", { code }),
+      "account.err.network",
+    );
+    if (!res.ok) return res;
+    const { status, body } = res.data;
+    if (status === 200 && typeof body.email === "string") return ok(body.email);
+    if (status === 409) return fail("account.err.emailTaken");
+    if (status === 429) return fail("account.err.tooOften");
+    if (status === 400) return fail("login.err.badCode");
+    return fail("account.err.network");
+  },
+
   /** Выйти на всех устройствах, кроме этого. Сколько закрыто. */
   revokeOthers: async (): Promise<Result<number>> => {
     const res = await attempt(
