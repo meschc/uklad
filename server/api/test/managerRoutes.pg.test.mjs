@@ -366,3 +366,12 @@ test(
     ]);
   },
 );
+
+test("резервную копию в кабинет грузит только владелец", { skip: SKIP }, async () => {
+  const { boss, chief } = await world("restore", "10.1.0.90");
+  const data = { warehouse: { id: WH, name: "Из копии", staff: [] }, products: [] };
+  const deny = await post("/api/cabinet/restore", { ...chief, body: { format: 8, data } });
+  assert.equal(deny.status, 403);
+  const ok = await post("/api/cabinet/restore", { ...boss, body: { format: 8, data } });
+  assert.equal(ok.status, 200, JSON.stringify(ok.json));
+});
