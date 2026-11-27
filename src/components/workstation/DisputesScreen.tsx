@@ -16,7 +16,6 @@ import {
 import type { Dispute, DisputeKind, DisputeResolution } from "@/lib/types";
 import { kindKey, fmtAt as fmt } from "./disputeLabels";
 import { DisputesDone } from "./DisputesDone";
-import { TableScroll, TABLE_HEAD, TABLE_HEAD_ROW, TABLE_ROW } from "@/components/ui/table-scroll";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -27,6 +26,7 @@ import { formatAddress } from "@/lib/address";
 import { useNow } from "./useNow";
 import { FormError } from "@/components/ui/field";
 import { CodeTail } from "@/components/fulfillment/CodeTail";
+import { Table, TableHeader, Th, Tr, Td } from "@/components/ui/table";
 
 /** Поле причины открывается под рукой: сразу в него и печатают. */
 const focusOnMount = (el: HTMLInputElement | null) => el?.focus();
@@ -165,171 +165,165 @@ export function DisputesScreen({
           />
         )
       ) : (
-        <TableScroll>
-          <table className="table-stack w-auto border-collapse text-sm">
-            <thead className={TABLE_HEAD}>
-              <tr className={TABLE_HEAD_ROW}>
-                <th className="px-3 py-2 font-normal">{t("disputes.col.product")}</th>
-                <th className="px-3 py-2 font-normal">{t("disputes.col.kind")}</th>
-                <th className="px-3 py-2 text-right font-normal">{t("disputes.col.qty")}</th>
-                <th className="px-3 py-2 font-normal">{t("disputes.found")}</th>
-                <th className="px-3 py-2" />
-              </tr>
-            </thead>
-            <tbody>
-              {open.map((d) => (
-                <tr key={d.id} className={TABLE_ROW}>
-                  <Line
-                    d={d}
-                    name={nameOf(d.productId)}
-                    who={who(d.raisedBy)}
-                    askedBy={d.writeOffRequest && who(d.writeOffRequest.by)}
-                  />
-                  <td className="px-3 py-2">
-                    {canResolve &&
-                      mayAdjust(d) &&
-                      (writing?.id === d.id && writing.resolution === "moved" ? (
-                        // Переложить — с выбором тары и подтверждением (Кирилл 13.11).
-                        <form
-                          className="flex flex-wrap items-center gap-2"
-                          onSubmit={async (e) => {
-                            e.preventDefault();
-                            if (!writing.to) return;
-                            const res = await resolve.run(d.id, "moved", by, undefined, {
-                              to: writing.to,
-                            });
-                            if (res.ok) setWriting(null);
-                          }}
+        <Table>
+          <TableHeader>
+            <Th>{t("disputes.col.product")}</Th>
+            <Th>{t("disputes.col.kind")}</Th>
+            <Th className="text-right">{t("disputes.col.qty")}</Th>
+            <Th>{t("disputes.found")}</Th>
+            <Th />
+          </TableHeader>
+          <tbody>
+            {open.map((d) => (
+              <Tr key={d.id}>
+                <Line
+                  d={d}
+                  name={nameOf(d.productId)}
+                  who={who(d.raisedBy)}
+                  askedBy={d.writeOffRequest && who(d.writeOffRequest.by)}
+                />
+                <Td>
+                  {canResolve &&
+                    mayAdjust(d) &&
+                    (writing?.id === d.id && writing.resolution === "moved" ? (
+                      // Переложить — с выбором тары и подтверждением (Кирилл 13.11).
+                      <form
+                        className="flex flex-wrap items-center gap-2"
+                        onSubmit={async (e) => {
+                          e.preventDefault();
+                          if (!writing.to) return;
+                          const res = await resolve.run(d.id, "moved", by, undefined, {
+                            to: writing.to,
+                          });
+                          if (res.ok) setWriting(null);
+                        }}
+                      >
+                        <Select
+                          className="w-64"
+                          aria-label={t("disputes.moveTo")}
+                          value={writing.to ?? ""}
+                          onChange={(e) =>
+                            setWriting({ ...writing, to: e.target.value || undefined })
+                          }
                         >
-                          <Select
-                            className="w-64"
-                            aria-label={t("disputes.moveTo")}
-                            value={writing.to ?? ""}
-                            onChange={(e) =>
-                              setWriting({ ...writing, to: e.target.value || undefined })
-                            }
-                          >
-                            <option value="">{t("disputes.moveTo")}</option>
-                            {moveTargets(boxes, d).map((b) => (
-                              <option key={b.id} value={b.id}>
-                                {b.barcode}
-                                {b.address ? ` · ${formatAddress(warehouse, b.address) ?? ""}` : ""}
-                              </option>
-                            ))}
-                          </Select>
-                          <Button type="submit" disabled={!writing.to}>
-                            {t("disputes.confirmMove")}
-                          </Button>
-                          <Button type="button" variant="ghost" onClick={() => setWriting(null)}>
-                            {t("disputes.cancel")}
-                          </Button>
-                        </form>
-                      ) : writing?.id === d.id ? (
-                        <form
-                          className="flex flex-wrap items-center gap-2"
-                          onSubmit={async (e) => {
-                            e.preventDefault();
-                            const res = await resolve.run(d.id, writing.resolution, by, reason, {
-                              request: writing.request,
-                            });
-                            if (res.ok) {
-                              setWriting(null);
-                              setReason("");
-                            }
-                          }}
+                          <option value="">{t("disputes.moveTo")}</option>
+                          {moveTargets(boxes, d).map((b) => (
+                            <option key={b.id} value={b.id}>
+                              {b.barcode}
+                              {b.address ? ` · ${formatAddress(warehouse, b.address) ?? ""}` : ""}
+                            </option>
+                          ))}
+                        </Select>
+                        <Button type="submit" disabled={!writing.to}>
+                          {t("disputes.confirmMove")}
+                        </Button>
+                        <Button type="button" variant="ghost" onClick={() => setWriting(null)}>
+                          {t("disputes.cancel")}
+                        </Button>
+                      </form>
+                    ) : writing?.id === d.id ? (
+                      <form
+                        className="flex flex-wrap items-center gap-2"
+                        onSubmit={async (e) => {
+                          e.preventDefault();
+                          const res = await resolve.run(d.id, writing.resolution, by, reason, {
+                            request: writing.request,
+                          });
+                          if (res.ok) {
+                            setWriting(null);
+                            setReason("");
+                          }
+                        }}
+                      >
+                        <Input
+                          ref={focusOnMount}
+                          className="h-9 w-64"
+                          value={reason}
+                          placeholder={t("disputes.reason")}
+                          onChange={(e) => setReason(e.target.value)}
+                        />
+                        <Button
+                          type="submit"
+                          variant={writing.resolution === "written_off" ? "destructive" : "default"}
+                          disabled={!reason.trim()}
                         >
-                          <Input
-                            ref={focusOnMount}
-                            className="h-9 w-64"
-                            value={reason}
-                            placeholder={t("disputes.reason")}
-                            onChange={(e) => setReason(e.target.value)}
-                          />
-                          <Button
-                            type="submit"
-                            variant={
-                              writing.resolution === "written_off" ? "destructive" : "default"
-                            }
-                            disabled={!reason.trim()}
-                          >
-                            {t(
-                              writing.request
-                                ? "disputes.sendWriteOffRequest"
-                                : writing.resolution === "written_off"
-                                  ? "disputes.confirmWriteOff"
-                                  : "disputes.confirmAdopt",
-                            )}
-                          </Button>
-                          <Button type="button" variant="ghost" onClick={() => setWriting(null)}>
-                            {t("disputes.cancel")}
-                          </Button>
-                        </form>
-                      ) : (
-                        <div className="flex flex-wrap gap-2 md:flex-nowrap">
-                          {resolutionsFor(d).map((r) =>
-                            r === "written_off" && d.writeOffRequest ? (
-                              // Просьба уже есть: начальник подтверждает одним
-                              // нажатием (причина — из просьбы), остальным ждать.
-                              mayWriteOff && d.writeOffRequest.by !== by ? (
-                                <Button
-                                  key={r}
-                                  variant="destructive"
-                                  onClick={() => void resolve.run(d.id, r, by)}
-                                >
-                                  {t("disputes.approveWriteOff")}
-                                </Button>
-                              ) : null
-                            ) : r === "written_off" && !mayWriteOff ? (
+                          {t(
+                            writing.request
+                              ? "disputes.sendWriteOffRequest"
+                              : writing.resolution === "written_off"
+                                ? "disputes.confirmWriteOff"
+                                : "disputes.confirmAdopt",
+                          )}
+                        </Button>
+                        <Button type="button" variant="ghost" onClick={() => setWriting(null)}>
+                          {t("disputes.cancel")}
+                        </Button>
+                      </form>
+                    ) : (
+                      <div className="flex flex-wrap gap-2 md:flex-nowrap">
+                        {resolutionsFor(d).map((r) =>
+                          r === "written_off" && d.writeOffRequest ? (
+                            // Просьба уже есть: начальник подтверждает одним
+                            // нажатием (причина — из просьбы), остальным ждать.
+                            mayWriteOff && d.writeOffRequest.by !== by ? (
                               <Button
                                 key={r}
-                                variant="outline"
-                                onClick={() => {
-                                  setReason("");
-                                  setWriting({ id: d.id, resolution: r, request: true });
-                                }}
-                              >
-                                {t("disputes.askWriteOff")}
-                              </Button>
-                            ) : r === "moved" ? (
-                              // Перекладывать можно только то, что лежит в таре.
-                              inTote(boxes, d) ? (
-                                <Button
-                                  key={r}
-                                  variant="outline"
-                                  onClick={() => setWriting({ id: d.id, resolution: r })}
-                                >
-                                  {t(actKey(d, r))}
-                                </Button>
-                              ) : null
-                            ) : needsSecondPair(d, r) ? (
-                              <Button
-                                key={r}
-                                variant={r === "written_off" ? "destructive" : "default"}
-                                onClick={() => {
-                                  setReason("");
-                                  setWriting({ id: d.id, resolution: r });
-                                }}
-                              >
-                                {t(actKey(d, r))}
-                              </Button>
-                            ) : (
-                              <Button
-                                key={r}
-                                variant="outline"
+                                variant="destructive"
                                 onClick={() => void resolve.run(d.id, r, by)}
                               >
+                                {t("disputes.approveWriteOff")}
+                              </Button>
+                            ) : null
+                          ) : r === "written_off" && !mayWriteOff ? (
+                            <Button
+                              key={r}
+                              variant="outline"
+                              onClick={() => {
+                                setReason("");
+                                setWriting({ id: d.id, resolution: r, request: true });
+                              }}
+                            >
+                              {t("disputes.askWriteOff")}
+                            </Button>
+                          ) : r === "moved" ? (
+                            // Перекладывать можно только то, что лежит в таре.
+                            inTote(boxes, d) ? (
+                              <Button
+                                key={r}
+                                variant="outline"
+                                onClick={() => setWriting({ id: d.id, resolution: r })}
+                              >
                                 {t(actKey(d, r))}
                               </Button>
-                            ),
-                          )}
-                        </div>
-                      ))}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </TableScroll>
+                            ) : null
+                          ) : needsSecondPair(d, r) ? (
+                            <Button
+                              key={r}
+                              variant={r === "written_off" ? "destructive" : "default"}
+                              onClick={() => {
+                                setReason("");
+                                setWriting({ id: d.id, resolution: r });
+                              }}
+                            >
+                              {t(actKey(d, r))}
+                            </Button>
+                          ) : (
+                            <Button
+                              key={r}
+                              variant="outline"
+                              onClick={() => void resolve.run(d.id, r, by)}
+                            >
+                              {t(actKey(d, r))}
+                            </Button>
+                          ),
+                        )}
+                      </div>
+                    ))}
+                </Td>
+              </Tr>
+            ))}
+          </tbody>
+        </Table>
       )}
       {resolve.error && <FormError>{t(resolve.error)}</FormError>}
 
@@ -362,15 +356,15 @@ function Line({
   const t = useT();
   return (
     <>
-      <td className="px-3 py-2">
+      <Td>
         <p className="font-medium">{name}</p>
         {d.writeOffRequest && (
           <p className="text-xs font-medium">
             {t("disputes.writeOffAsked", { who: askedBy ?? "—", note: d.writeOffRequest.note })}
           </p>
         )}
-      </td>
-      <td className="px-3 py-2" data-label={t("disputes.col.kind")}>
+      </Td>
+      <Td data-label={t("disputes.col.kind")}>
         <span
           className={cn(
             "whitespace-nowrap rounded-md px-1.5 py-0.5 text-xs font-semibold",
@@ -381,18 +375,18 @@ function Line({
         >
           {t(kindKey(d))}
         </span>
-      </td>
-      <td className="px-3 py-2 text-right tabular-nums" data-label={t("disputes.col.qty")}>
+      </Td>
+      <Td className="text-right tabular-nums" data-label={t("disputes.col.qty")}>
         {d.qty}
-      </td>
-      <td className="px-3 py-2 text-muted-foreground" data-label={t("disputes.found")}>
+      </Td>
+      <Td className="text-muted-foreground" data-label={t("disputes.found")}>
         {d.toteCode && (
           <span>
             <CodeTail code={d.toteCode} /> ·{" "}
           </span>
         )}
         {who} · {fmt(d.raisedAt)}
-      </td>
+      </Td>
     </>
   );
 }

@@ -23,6 +23,7 @@ import { catLabel, useT, type TFunc } from "@/lib/i18n";
 import { DialogFooter, DialogHeader, DialogShell } from "@/components/ui/dialog-shell";
 import { Button } from "@/components/ui/button";
 import { FormError } from "@/components/ui/field";
+import { Table, TableHeader, Th, Tr, Td } from "@/components/ui/table";
 
 /**
  * Импорт товаров (ТЗ, разд. 2.5). Основной путь — загрузка .xlsx (SheetJS),
@@ -260,47 +261,43 @@ function ResultView({
 
   return (
     <div className="mt-3">
-      <div className="overflow-hidden rounded-md border border-border">
-        <table className="w-full border-collapse text-xs">
-          <thead className="bg-muted/50">
-            <tr className="text-left">
-              <th className="px-2 py-1.5 font-medium">{t("import.col.status")}</th>
-              <th className="px-2 py-1.5 font-medium">{t("table.col.sku")}</th>
-              <th className="px-2 py-1.5 font-medium">{t("table.col.name")}</th>
-              <th className="px-2 py-1.5 font-medium">{t("table.col.category")}</th>
-              <th className="px-2 py-1.5 font-medium">{t("table.col.dims")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.slice(0, PREVIEW_ROWS).map((r) => (
-              <tr key={r.index} className="border-t border-border/60">
-                <td className="px-2 py-1.5">
-                  {r.ok ? (
-                    <span className="inline-flex items-center gap-1 text-success">
-                      <Check className="size-3" /> {t("import.ok")}
-                    </span>
-                  ) : (
-                    <span
-                      className="inline-flex items-center gap-1 text-destructive"
-                      title={r.errors.map((e) => t(e.key, e.vars)).join("; ")}
-                    >
-                      <AlertTriangle className="size-3" />
-                      {t(r.errors[0].key, r.errors[0].vars)}
-                      {r.errors.length > 1 ? ` +${r.errors.length - 1}` : ""}
-                    </span>
-                  )}
-                </td>
-                <td className="px-2 py-1.5 font-mono text-muted-foreground">{r.sku || "—"}</td>
-                <td className="px-2 py-1.5">{r.name || "—"}</td>
-                <td className="px-2 py-1.5">{r.category ? catLabel(t, r.category) : "—"}</td>
-                <td className="whitespace-nowrap px-2 py-1.5 tabular-nums text-muted-foreground">
-                  {[r.widthCm, r.heightCm, r.depthCm].map((v) => (v == null ? "?" : v)).join(" × ")}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <Table size="sm" fill>
+        <TableHeader>
+          <Th>{t("import.col.status")}</Th>
+          <Th>{t("table.col.sku")}</Th>
+          <Th>{t("table.col.name")}</Th>
+          <Th>{t("table.col.category")}</Th>
+          <Th>{t("table.col.dims")}</Th>
+        </TableHeader>
+        <tbody>
+          {rows.slice(0, PREVIEW_ROWS).map((r) => (
+            <Tr key={r.index}>
+              <Td>
+                {r.ok ? (
+                  <span className="inline-flex items-center gap-1 text-success">
+                    <Check className="size-3" /> {t("import.ok")}
+                  </span>
+                ) : (
+                  <span
+                    className="inline-flex items-center gap-1 text-destructive"
+                    title={r.errors.map((e) => t(e.key, e.vars)).join("; ")}
+                  >
+                    <AlertTriangle className="size-3" />
+                    {t(r.errors[0].key, r.errors[0].vars)}
+                    {r.errors.length > 1 ? ` +${r.errors.length - 1}` : ""}
+                  </span>
+                )}
+              </Td>
+              <Td className="font-mono text-muted-foreground">{r.sku || "—"}</Td>
+              <Td>{r.name || "—"}</Td>
+              <Td>{r.category ? catLabel(t, r.category) : "—"}</Td>
+              <Td className="whitespace-nowrap tabular-nums text-muted-foreground">
+                {[r.widthCm, r.heightCm, r.depthCm].map((v) => (v == null ? "?" : v)).join(" × ")}
+              </Td>
+            </Tr>
+          ))}
+        </tbody>
+      </Table>
       {rows.length > PREVIEW_ROWS && (
         <p className="mt-2 text-xs text-muted-foreground">
           {t("import.previewCut", { shown: PREVIEW_ROWS, total: rows.length })}

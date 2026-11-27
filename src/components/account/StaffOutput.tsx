@@ -13,8 +13,8 @@ import { BOM } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/segmented";
-import { TableScroll, TABLE_HEAD, TABLE_HEAD_ROW, TABLE_ROW } from "@/components/ui/table-scroll";
 import { SortTh, useDataTable } from "@/components/ui/data-table";
+import { Table, TableHeader, Tr, Td } from "@/components/ui/table";
 
 /**
  * Вкладка «Выработка»: часы, простой, пики, ошибки и брак по людям за период и
@@ -132,161 +132,145 @@ export function StaffOutput() {
         </Button>
       </div>
       <p className="max-w-2xl text-xs text-muted-foreground">{t("staff.out.lead")}</p>
-      <TableScroll>
-        <table className="table-stack w-auto border-collapse text-sm">
-          <thead className={TABLE_HEAD}>
-            <tr className={TABLE_HEAD_ROW}>
-              <SortTh table={table.table} id="name">
-                {t("staff.col.name")}
-              </SortTh>
-              <SortTh table={table.table} id="hours" align="right">
-                {t("staff.out.hours")}
-              </SortTh>
-              <SortTh table={table.table} id="idle" align="right">
-                {t("staff.out.idle")}
-              </SortTh>
-              <SortTh table={table.table} id="peaks" align="right">
-                {t("staff.out.peaks")}
-              </SortTh>
-              <SortTh table={table.table} id="errors" align="right">
-                {t("staff.out.errors")}
-              </SortTh>
-              <SortTh table={table.table} id="rejects" align="right">
-                {t("staff.out.rejects")}
-              </SortTh>
-              <SortTh table={table.table} id="reprints" align="right">
-                {t("staff.out.reprints")}
-              </SortTh>
-              <SortTh table={table.table} id="receipts" align="right">
-                {t("staff.wlUnits")}
-              </SortTh>
-              <SortTh table={table.table} id="trips" align="right">
-                {t("staff.wlTrips")}
-              </SortTh>
-              <SortTh table={table.table} id="earned" align="right">
-                {t("staff.out.earned")}
-              </SortTh>
-              <SortTh table={table.table} id="plus" align="right">
-                {t("staff.out.plus")}
-              </SortTh>
-              <SortTh table={table.table} id="minus" align="right">
-                {t("staff.out.minus")}
-              </SortTh>
-              <SortTh table={table.table} id="toPay" align="right">
-                {t("pay.toPay")}
-              </SortTh>
-            </tr>
-          </thead>
-          <tbody>
-            {table.rows.map((r) => (
-              <tr key={r.staffId} className={TABLE_ROW}>
-                <td className="px-3 py-2">
-                  <button
-                    type="button"
-                    className="text-left font-medium hover:text-primary hover:underline"
-                    onClick={() => setPanel(r.staffId)}
-                  >
-                    {r.name}
-                  </button>
-                  <p className="text-xs text-muted-foreground">{r.role}</p>
-                  {(() => {
-                    // Участок сам следует за человеком: где последний скан или
-                    // отметка в открытой смене, там он и сейчас.
-                    const cur = currentProcess(events, r.staffId);
-                    return cur ? (
-                      <p className="text-xs text-primary">
-                        {t("staff.out.now", {
-                          station: t(`ws.station.${cur.station}`),
-                          time: formatTime(cur.since, t.lang),
-                        })}
-                      </p>
-                    ) : null;
-                  })()}
-                </td>
-                <td className="px-3 py-2 text-right tabular-nums" data-label={t("staff.out.hours")}>
-                  {hoursText(r.workedMs)}
-                  {STATIONS.filter((k) => (r.byStation[k] ?? 0) > 0).map((k) => (
-                    <span key={k} className="block text-xs text-muted-foreground">
-                      {t(`ws.station.${k}`)} {hoursText(r.byStation[k] ?? 0)}
-                    </span>
-                  ))}
-                </td>
-                <td className="px-3 py-2 text-right tabular-nums" data-label={t("staff.out.idle")}>
-                  {hoursText(r.idleMs)}
-                </td>
-                <td className="px-3 py-2 text-right tabular-nums" data-label={t("staff.out.peaks")}>
-                  {r.packed + r.picked}
-                  <span className="block text-xs text-muted-foreground">
-                    {t("staff.out.split", { pack: r.packed, pick: r.picked })}
+      <Table>
+        <TableHeader>
+          <SortTh table={table.table} id="name">
+            {t("staff.col.name")}
+          </SortTh>
+          <SortTh table={table.table} id="hours" align="right">
+            {t("staff.out.hours")}
+          </SortTh>
+          <SortTh table={table.table} id="idle" align="right">
+            {t("staff.out.idle")}
+          </SortTh>
+          <SortTh table={table.table} id="peaks" align="right">
+            {t("staff.out.peaks")}
+          </SortTh>
+          <SortTh table={table.table} id="errors" align="right">
+            {t("staff.out.errors")}
+          </SortTh>
+          <SortTh table={table.table} id="rejects" align="right">
+            {t("staff.out.rejects")}
+          </SortTh>
+          <SortTh table={table.table} id="reprints" align="right">
+            {t("staff.out.reprints")}
+          </SortTh>
+          <SortTh table={table.table} id="receipts" align="right">
+            {t("staff.wlUnits")}
+          </SortTh>
+          <SortTh table={table.table} id="trips" align="right">
+            {t("staff.wlTrips")}
+          </SortTh>
+          <SortTh table={table.table} id="earned" align="right">
+            {t("staff.out.earned")}
+          </SortTh>
+          <SortTh table={table.table} id="plus" align="right">
+            {t("staff.out.plus")}
+          </SortTh>
+          <SortTh table={table.table} id="minus" align="right">
+            {t("staff.out.minus")}
+          </SortTh>
+          <SortTh table={table.table} id="toPay" align="right">
+            {t("pay.toPay")}
+          </SortTh>
+        </TableHeader>
+        <tbody>
+          {table.rows.map((r) => (
+            <Tr key={r.staffId}>
+              <Td>
+                <button
+                  type="button"
+                  className="text-left font-medium hover:text-primary hover:underline"
+                  onClick={() => setPanel(r.staffId)}
+                >
+                  {r.name}
+                </button>
+                <p className="text-xs text-muted-foreground">{r.role}</p>
+                {(() => {
+                  // Участок сам следует за человеком: где последний скан или
+                  // отметка в открытой смене, там он и сейчас.
+                  const cur = currentProcess(events, r.staffId);
+                  return cur ? (
+                    <p className="text-xs text-primary">
+                      {t("staff.out.now", {
+                        station: t(`ws.station.${cur.station}`),
+                        time: formatTime(cur.since, t.lang),
+                      })}
+                    </p>
+                  ) : null;
+                })()}
+              </Td>
+              <Td className="text-right tabular-nums" data-label={t("staff.out.hours")}>
+                {hoursText(r.workedMs)}
+                {STATIONS.filter((k) => (r.byStation[k] ?? 0) > 0).map((k) => (
+                  <span key={k} className="block text-xs text-muted-foreground">
+                    {t(`ws.station.${k}`)} {hoursText(r.byStation[k] ?? 0)}
                   </span>
-                </td>
-                <td
-                  className="px-3 py-2 text-right tabular-nums"
-                  data-label={t("staff.out.errors")}
-                >
-                  {r.errors}
-                </td>
-                <td
-                  className="px-3 py-2 text-right tabular-nums"
-                  data-label={t("staff.out.rejects")}
-                >
-                  {r.rejects}
-                </td>
-                <td
-                  className="px-3 py-2 text-right tabular-nums"
-                  data-label={t("staff.out.reprints")}
-                >
-                  {r.reprints}
-                </td>
-                <td className="px-3 py-2 text-right tabular-nums" data-label={t("staff.wlUnits")}>
-                  {workload.get(r.staffId)?.units ?? 0}
+                ))}
+              </Td>
+              <Td className="text-right tabular-nums" data-label={t("staff.out.idle")}>
+                {hoursText(r.idleMs)}
+              </Td>
+              <Td className="text-right tabular-nums" data-label={t("staff.out.peaks")}>
+                {r.packed + r.picked}
+                <span className="block text-xs text-muted-foreground">
+                  {t("staff.out.split", { pack: r.packed, pick: r.picked })}
+                </span>
+              </Td>
+              <Td className="text-right tabular-nums" data-label={t("staff.out.errors")}>
+                {r.errors}
+              </Td>
+              <Td className="text-right tabular-nums" data-label={t("staff.out.rejects")}>
+                {r.rejects}
+              </Td>
+              <Td className="text-right tabular-nums" data-label={t("staff.out.reprints")}>
+                {r.reprints}
+              </Td>
+              <Td className="text-right tabular-nums" data-label={t("staff.wlUnits")}>
+                {workload.get(r.staffId)?.units ?? 0}
+                <span className="block text-xs text-muted-foreground">
+                  {t("staff.wlReceiptsN", { n: workload.get(r.staffId)?.receipts ?? 0 })}
+                </span>
+              </Td>
+              <Td className="text-right tabular-nums" data-label={t("staff.wlTrips")}>
+                {workload.get(r.staffId)?.trips ?? 0}
+              </Td>
+              <Td className="text-right tabular-nums" data-label={t("staff.out.earned")}>
+                {r.earned == null ? "—" : `${r.earned.toLocaleString("ru-RU")} ₽`}
+                {r.earned != null && (
                   <span className="block text-xs text-muted-foreground">
-                    {t("staff.wlReceiptsN", { n: workload.get(r.staffId)?.receipts ?? 0 })}
+                    {t("staff.out.paidHours", { h: hoursText(r.paidMs) })}
                   </span>
-                </td>
-                <td className="px-3 py-2 text-right tabular-nums" data-label={t("staff.wlTrips")}>
-                  {workload.get(r.staffId)?.trips ?? 0}
-                </td>
-                <td
-                  className="px-3 py-2 text-right tabular-nums"
-                  data-label={t("staff.out.earned")}
+                )}
+              </Td>
+              <Td className="text-right tabular-nums" data-label={t("staff.out.plus")}>
+                {plusOf(r) > 0 ? `+${money(plusOf(r))}` : "—"}
+                {(r.nightPay ?? 0) > 0 && (
+                  <span className="block text-xs text-muted-foreground">
+                    {t("staff.out.nightShort", { h: hoursText(r.nightMs) })}
+                  </span>
+                )}
+              </Td>
+              <Td className="text-right tabular-nums" data-label={t("staff.out.minus")}>
+                {r.deduction > 0 ? (
+                  <span className="text-destructive">−{money(r.deduction)}</span>
+                ) : (
+                  "—"
+                )}
+              </Td>
+              <Td className="text-right" data-label={t("pay.toPay")}>
+                <button
+                  type="button"
+                  className="font-semibold tabular-nums hover:text-primary hover:underline"
+                  onClick={() => setPanel(r.staffId)}
                 >
-                  {r.earned == null ? "—" : `${r.earned.toLocaleString("ru-RU")} ₽`}
-                  {r.earned != null && (
-                    <span className="block text-xs text-muted-foreground">
-                      {t("staff.out.paidHours", { h: hoursText(r.paidMs) })}
-                    </span>
-                  )}
-                </td>
-                <td className="px-3 py-2 text-right tabular-nums" data-label={t("staff.out.plus")}>
-                  {plusOf(r) > 0 ? `+${money(plusOf(r))}` : "—"}
-                  {(r.nightPay ?? 0) > 0 && (
-                    <span className="block text-xs text-muted-foreground">
-                      {t("staff.out.nightShort", { h: hoursText(r.nightMs) })}
-                    </span>
-                  )}
-                </td>
-                <td className="px-3 py-2 text-right tabular-nums" data-label={t("staff.out.minus")}>
-                  {r.deduction > 0 ? (
-                    <span className="text-destructive">−{money(r.deduction)}</span>
-                  ) : (
-                    "—"
-                  )}
-                </td>
-                <td className="px-3 py-2 text-right" data-label={t("pay.toPay")}>
-                  <button
-                    type="button"
-                    className="font-semibold tabular-nums hover:text-primary hover:underline"
-                    onClick={() => setPanel(r.staffId)}
-                  >
-                    {r.toPay == null ? "—" : money(r.toPay)}
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </TableScroll>
+                  {r.toPay == null ? "—" : money(r.toPay)}
+                </button>
+              </Td>
+            </Tr>
+          ))}
+        </tbody>
+      </Table>
       {panelRow && (
         <PayPanel
           row={panelRow}

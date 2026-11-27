@@ -20,6 +20,7 @@ import { TableToolbar } from "./TableToolbar";
 import { buildRows, filterAndSort, type SortKey, type TableFilter } from "./tableRows";
 import { useRowPicking } from "./useRowPicking";
 import { useColumnOrder } from "./columns";
+import { Table } from "@/components/ui/table";
 
 /**
  * Номенклатура склада: таблица «товар ↔ место хранения ↔ остаток» (ТЗ, 3.6).
@@ -121,7 +122,7 @@ export function TableScreen() {
       />
 
       <div className="scrollbar-thin min-h-0 flex-1 overflow-auto">
-        <table className="table-stack table-inset w-full border-collapse text-sm">
+        <Table fill inset scroll={false}>
           <TableHead
             allPicked={pick.allVisiblePicked}
             somePicked={pick.someVisiblePicked}
@@ -149,7 +150,7 @@ export function TableScreen() {
               />
             ))}
           </tbody>
-        </table>
+        </Table>
 
         {visible.length === 0 && (
           <div className="flex flex-col items-center gap-2 py-16 text-center">

@@ -6,9 +6,9 @@ import { useT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { DialogHeader, DialogShell } from "@/components/ui/dialog-shell";
 import { eyebrow } from "@/components/ui/eyebrow";
-import { TableScroll, TABLE_HEAD, TABLE_HEAD_ROW, TABLE_ROW } from "@/components/ui/table-scroll";
 import { CodeTail } from "@/components/fulfillment/CodeTail";
 import { kindKey, fmtAt, resKey } from "./disputeLabels";
+import { Table, TableHeader, Th, Tr, Td } from "@/components/ui/table";
 
 /**
  * Решённое спорное — таблицей, новое сверху (Кирилл 22.11 и 24.11: «в
@@ -34,63 +34,49 @@ export function DisputesDone({
 
   return (
     <>
-      <TableScroll>
-        <table className="table-stack w-auto border-collapse text-sm">
-          <thead className={TABLE_HEAD}>
-            <tr className={TABLE_HEAD_ROW}>
-              <th className="px-3 py-2 font-normal">{t("disputes.col.product")}</th>
-              <th className="px-3 py-2 font-normal">{t("disputes.col.kind")}</th>
-              <th className="px-3 py-2 text-right font-normal">{t("disputes.col.qty")}</th>
-              <th className="px-3 py-2 font-normal">{t("disputes.col.result")}</th>
-              <th className="px-3 py-2 font-normal">{t("disputes.col.by")}</th>
-              <th className="px-3 py-2 font-normal">{t("disputes.col.at")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((d) => (
-              <tr
-                key={d.id}
-                className={`${TABLE_ROW} cursor-pointer hover:bg-muted/50`}
-                onClick={() => setOpenId(d.id)}
-              >
-                <td className="px-3 py-2">
-                  <button
-                    type="button"
-                    className="text-left font-medium hover:underline"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setOpenId(d.id);
-                    }}
-                  >
-                    {nameOf(d.productId)}
-                  </button>
-                </td>
-                <td className="px-3 py-2" data-label={t("disputes.col.kind")}>
-                  {t(kindKey(d))}
-                </td>
-                <td
-                  className="px-3 py-2 text-right tabular-nums"
-                  data-label={t("disputes.col.qty")}
+      <Table>
+        <TableHeader>
+          <Th>{t("disputes.col.product")}</Th>
+          <Th>{t("disputes.col.kind")}</Th>
+          <Th className="text-right">{t("disputes.col.qty")}</Th>
+          <Th>{t("disputes.col.result")}</Th>
+          <Th>{t("disputes.col.by")}</Th>
+          <Th>{t("disputes.col.at")}</Th>
+        </TableHeader>
+        <tbody>
+          {rows.map((d) => (
+            <Tr
+              key={d.id}
+              className="cursor-pointer hover:bg-muted/50"
+              onClick={() => setOpenId(d.id)}
+            >
+              <Td>
+                <button
+                  type="button"
+                  className="text-left font-medium hover:underline"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setOpenId(d.id);
+                  }}
                 >
-                  {d.qty}
-                </td>
-                <td className="px-3 py-2" data-label={t("disputes.col.result")}>
-                  {t(resKey(d))}
-                </td>
-                <td className="px-3 py-2 text-muted-foreground" data-label={t("disputes.col.by")}>
-                  {who(d.resolvedBy!)}
-                </td>
-                <td
-                  className="px-3 py-2 tabular-nums text-muted-foreground"
-                  data-label={t("disputes.col.at")}
-                >
-                  {fmtAt(d.resolvedAt!)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </TableScroll>
+                  {nameOf(d.productId)}
+                </button>
+              </Td>
+              <Td data-label={t("disputes.col.kind")}>{t(kindKey(d))}</Td>
+              <Td className="text-right tabular-nums" data-label={t("disputes.col.qty")}>
+                {d.qty}
+              </Td>
+              <Td data-label={t("disputes.col.result")}>{t(resKey(d))}</Td>
+              <Td className="text-muted-foreground" data-label={t("disputes.col.by")}>
+                {who(d.resolvedBy!)}
+              </Td>
+              <Td className="tabular-nums text-muted-foreground" data-label={t("disputes.col.at")}>
+                {fmtAt(d.resolvedAt!)}
+              </Td>
+            </Tr>
+          ))}
+        </tbody>
+      </Table>
       {opened && (
         <DoneDetails
           d={opened}

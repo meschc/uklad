@@ -17,7 +17,6 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/segmented";
 import { card } from "@/components/ui/card";
-import { TableScroll, TABLE_HEAD, TABLE_HEAD_ROW, TABLE_ROW } from "@/components/ui/table-scroll";
 import { SortTh, TableFilters, TableSearch, useDataTable } from "@/components/ui/data-table";
 import { useNow } from "@/components/workstation/useNow";
 import { ScreenShell, EmptyState } from "./ScreenShell";
@@ -29,6 +28,7 @@ import { ApprovalsScreen } from "@/components/approvals/ApprovalsScreen";
 import { mayDecideSwitch, usePendingSwitches } from "@/components/approvals/usePendingSwitches";
 import { openObjections } from "@/lib/supplyAct";
 import { viewAllowed } from "@/components/nav/navItems";
+import { Table, TableHeader, Tr, Td } from "@/components/ui/table";
 
 /**
  * «Задания» — один модуль на всё, что склад должен сделать (Кирилл 22.11).
@@ -285,41 +285,37 @@ export function TasksScreen({ initialChip = "open" }: { initialChip?: TaskChip }
               }
             />
           ) : (
-            <TableScroll>
-              <table className="table-stack w-auto border-collapse text-sm">
-                <thead className={TABLE_HEAD}>
-                  <tr className={TABLE_HEAD_ROW}>
-                    <SortTh table={table.table} id="title">
-                      {t("tasks.col.task")}
-                    </SortTh>
-                    <SortTh table={table.table} id="process">
-                      {t("tasks.col.process")}
-                    </SortTh>
-                    <SortTh table={table.table} id="units" align="right">
-                      {t("tasks.col.qty")}
-                    </SortTh>
-                    <SortTh table={table.table} id="since">
-                      {t("tasks.col.when")}
-                    </SortTh>
-                    <SortTh table={table.table} id="assignee">
-                      {t("tasks.assignee")}
-                    </SortTh>
-                  </tr>
-                </thead>
-                <tbody>
-                  {table.rows.map((r) => (
-                    <Row
-                      key={r.key}
-                      row={r}
-                      now={now}
-                      title={title(r)}
-                      who={staffName(r.staffId)}
-                      onOpen={() => setOpenKey(r.key)}
-                    />
-                  ))}
-                </tbody>
-              </table>
-            </TableScroll>
+            <Table>
+              <TableHeader>
+                <SortTh table={table.table} id="title">
+                  {t("tasks.col.task")}
+                </SortTh>
+                <SortTh table={table.table} id="process">
+                  {t("tasks.col.process")}
+                </SortTh>
+                <SortTh table={table.table} id="units" align="right">
+                  {t("tasks.col.qty")}
+                </SortTh>
+                <SortTh table={table.table} id="since">
+                  {t("tasks.col.when")}
+                </SortTh>
+                <SortTh table={table.table} id="assignee">
+                  {t("tasks.assignee")}
+                </SortTh>
+              </TableHeader>
+              <tbody>
+                {table.rows.map((r) => (
+                  <Row
+                    key={r.key}
+                    row={r}
+                    now={now}
+                    title={title(r)}
+                    who={staffName(r.staffId)}
+                    onOpen={() => setOpenKey(r.key)}
+                  />
+                ))}
+              </tbody>
+            </Table>
           )}
         </>
       )}
@@ -353,8 +349,8 @@ function Row({
         ? t("queue.active")
         : t("queue.waiting");
   return (
-    <tr className={cn(TABLE_ROW, "hover:bg-accent/40")}>
-      <td className="px-3 py-2">
+    <Tr className={cn("hover:bg-accent/40")}>
+      <Td>
         <button
           type="button"
           className="text-left font-medium hover:text-primary hover:underline max-md:min-h-11 max-md:min-w-11"
@@ -367,22 +363,22 @@ function Row({
           {row.status !== "done" ? ` · ${t("queue.waits", { d: waited(t, now - row.since) })}` : ""}
           {late ? ` · ${t("tasks.overdue")}` : ""}
         </p>
-      </td>
-      <td className="px-3 py-2 text-muted-foreground" data-label={t("tasks.col.process")}>
+      </Td>
+      <Td className="text-muted-foreground" data-label={t("tasks.col.process")}>
         {t(`queue.process.${row.process}` as MsgKey)}
-      </td>
-      <td className="px-3 py-2 text-right tabular-nums" data-label={t("tasks.col.qty")}>
+      </Td>
+      <Td className="text-right tabular-nums" data-label={t("tasks.col.qty")}>
         {row.units > 0 ? row.units : "—"}
-      </td>
-      <td className="px-3 py-2 text-muted-foreground" data-label={t("tasks.col.when")}>
+      </Td>
+      <Td className="text-muted-foreground" data-label={t("tasks.col.when")}>
         {row.due != null
           ? new Date(row.due).toLocaleDateString()
           : new Date(row.since).toLocaleDateString()}
-      </td>
-      <td className="px-3 py-2 text-muted-foreground" data-label={t("tasks.assignee")}>
+      </Td>
+      <Td className="text-muted-foreground" data-label={t("tasks.assignee")}>
         {who ?? "—"}
-      </td>
-    </tr>
+      </Td>
+    </Tr>
   );
 }
 

@@ -31,6 +31,7 @@ import { card } from "@/components/ui/card";
 import { EmptyState } from "./ScreenShell";
 import { EmbeddedShell } from "./embeddedShell";
 import { FieldError, FormError } from "@/components/ui/field";
+import { Table, TableHeader, Th, Tr, Td } from "@/components/ui/table";
 
 /**
  * Шаг 5.1 — выбор ожидаемой поставки.
@@ -413,38 +414,34 @@ function ShipmentPreview({ result, t }: { result: ShipmentParseResult; t: TFunc 
     return <FormError>{t(result.errorKey)}</FormError>;
   }
   return (
-    <div className="overflow-hidden rounded-md border border-border">
-      <table className="w-full border-collapse text-xs">
-        <thead className="bg-muted/50">
-          <tr className="text-left">
-            <th className="px-2 py-1.5 font-medium">{t("import.col.status")}</th>
-            <th className="px-2 py-1.5 font-medium">{t("table.col.sku")}</th>
-            <th className="px-2 py-1.5 font-medium">{t("table.col.name")}</th>
-            <th className="px-2 py-1.5 text-right font-medium">{t("recv.form.qty")}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {result.rows.slice(0, 30).map((r) => (
-            <tr key={r.index} className="border-t border-border/60">
-              <td className="px-2 py-1.5">
-                {r.errorKey ? (
-                  <span className="inline-flex items-center gap-1 text-destructive">
-                    <AlertTriangle className="size-3" />
-                    {t(r.errorKey)}
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 text-success">
-                    <Check className="size-3" /> {t("import.ok")}
-                  </span>
-                )}
-              </td>
-              <td className="px-2 py-1.5 font-mono text-muted-foreground">{r.code || "—"}</td>
-              <td className="px-2 py-1.5">{r.productName ?? "—"}</td>
-              <td className="px-2 py-1.5 text-right tabular-nums">{r.qty}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <Table size="sm" fill>
+      <TableHeader>
+        <Th>{t("import.col.status")}</Th>
+        <Th>{t("table.col.sku")}</Th>
+        <Th>{t("table.col.name")}</Th>
+        <Th className="text-right">{t("recv.form.qty")}</Th>
+      </TableHeader>
+      <tbody>
+        {result.rows.slice(0, 30).map((r) => (
+          <Tr key={r.index}>
+            <Td>
+              {r.errorKey ? (
+                <span className="inline-flex items-center gap-1 text-destructive">
+                  <AlertTriangle className="size-3" />
+                  {t(r.errorKey)}
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-success">
+                  <Check className="size-3" /> {t("import.ok")}
+                </span>
+              )}
+            </Td>
+            <Td className="font-mono text-muted-foreground">{r.code || "—"}</Td>
+            <Td>{r.productName ?? "—"}</Td>
+            <Td className="text-right tabular-nums">{r.qty}</Td>
+          </Tr>
+        ))}
+      </tbody>
+    </Table>
   );
 }

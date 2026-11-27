@@ -12,7 +12,7 @@ import { EmptyState, ScreenShell } from "@/components/fulfillment/ScreenShell";
 import { useNow } from "./useNow";
 import { RevokeDevice } from "./RevokeDevice";
 import { DeviceJournal } from "./DeviceJournal";
-import { TableScroll, TABLE_HEAD, TABLE_HEAD_ROW, TABLE_ROW } from "@/components/ui/table-scroll";
+import { Table, TableHeader, Th, Tr, Td } from "@/components/ui/table";
 
 /**
  * Устройства склада (вид `devices`, группа «О складе»): список, журнал и
@@ -75,94 +75,88 @@ export function DevicesScreen() {
               labels={{ station: t("devices.col.station") }}
               allLabel={(col) => t("common.filterAll", { col })}
             />
+            {/* Поиск слева, как на других экранах: фильтр мест прячется, когда
+                место одно, и поле, прижатое вправо, оставляло пустоту (разбор 27.11). */}
             <TableSearch
-              className="ml-auto"
               value={devTable.query}
               onChange={devTable.setQuery}
               placeholder={t("common.search")}
             />
           </div>
-          <TableScroll>
-            <table className="table-stack w-auto border-collapse text-sm">
-              <thead className={TABLE_HEAD}>
-                <tr className={TABLE_HEAD_ROW}>
-                  <SortTh table={devTable.table} id="name">
-                    {t("devices.col.name")}
-                  </SortTh>
-                  <SortTh table={devTable.table} id="station">
-                    {t("devices.col.station")}
-                  </SortTh>
-                  <SortTh table={devTable.table} id="who">
-                    {t("devices.col.who")}
-                  </SortTh>
-                  <SortTh table={devTable.table} id="since">
-                    {t("devices.col.since")}
-                  </SortTh>
-                  <th className="px-3 py-2" />
-                </tr>
-              </thead>
-              <tbody>
-                {devTable.rows.map((d) => (
-                  <tr key={d.id} className={cn(TABLE_ROW, d.revokedAt && "opacity-50")}>
-                    <td className="px-3 py-2">
-                      <span className="font-medium">{d.name}</span>
-                      {d.id === thisId && !d.revokedAt && (
-                        <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">
-                          {t("devices.this")}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2" data-label={t("devices.col.station")}>
-                      {t(`ws.station.${d.station}` as MsgKey)}
-                    </td>
-                    <td
-                      className="px-3 py-2 text-muted-foreground"
-                      data-label={t("devices.col.who")}
-                    >
-                      {d.revokedAt
-                        ? t("devices.revoked", {
-                            d: new Date(d.revokedAt).toLocaleDateString(t.lang),
-                          })
-                        : (who(d.id) ?? t("devices.nobody"))}
-                    </td>
-                    <td
-                      className="px-3 py-2 tabular-nums text-muted-foreground"
-                      data-label={t("devices.col.since")}
-                    >
-                      {new Date(d.createdAt).toLocaleDateString(t.lang)}
-                    </td>
-                    <td className="px-3 py-2 text-right">
-                      <Button variant="ghost" size="sm" onClick={() => setJournalOf(d)}>
-                        <History />
-                        {t("devices.journal")}
+          <Table>
+            <TableHeader>
+              <SortTh table={devTable.table} id="name">
+                {t("devices.col.name")}
+              </SortTh>
+              <SortTh table={devTable.table} id="station">
+                {t("devices.col.station")}
+              </SortTh>
+              <SortTh table={devTable.table} id="who">
+                {t("devices.col.who")}
+              </SortTh>
+              <SortTh table={devTable.table} id="since">
+                {t("devices.col.since")}
+              </SortTh>
+              <Th />
+            </TableHeader>
+            <tbody>
+              {devTable.rows.map((d) => (
+                <Tr key={d.id} className={cn(d.revokedAt && "opacity-50")}>
+                  <Td>
+                    <span className="font-medium">{d.name}</span>
+                    {d.id === thisId && !d.revokedAt && (
+                      <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">
+                        {t("devices.this")}
+                      </span>
+                    )}
+                  </Td>
+                  <Td data-label={t("devices.col.station")}>
+                    {t(`ws.station.${d.station}` as MsgKey)}
+                  </Td>
+                  <Td className="text-muted-foreground" data-label={t("devices.col.who")}>
+                    {d.revokedAt
+                      ? t("devices.revoked", {
+                          d: new Date(d.revokedAt).toLocaleDateString(t.lang),
+                        })
+                      : (who(d.id) ?? t("devices.nobody"))}
+                  </Td>
+                  <Td
+                    className="tabular-nums text-muted-foreground"
+                    data-label={t("devices.col.since")}
+                  >
+                    {new Date(d.createdAt).toLocaleDateString(t.lang)}
+                  </Td>
+                  <Td className="text-right">
+                    <Button variant="ghost" size="sm" onClick={() => setJournalOf(d)}>
+                      <History />
+                      {t("devices.journal")}
+                    </Button>
+                    {d.revokedAt ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        title={t("devices.forgetHint")}
+                        onClick={() => void forget(d.id)}
+                      >
+                        <Trash2 />
+                        {t("devices.forget")}
                       </Button>
-                      {d.revokedAt ? (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          title={t("devices.forgetHint")}
-                          onClick={() => void forget(d.id)}
-                        >
-                          <Trash2 />
-                          {t("devices.forget")}
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                          onClick={() => setRevoking(d)}
-                        >
-                          <Power />
-                          {t("devices.revoke")}
-                        </Button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </TableScroll>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        onClick={() => setRevoking(d)}
+                      >
+                        <Power />
+                        {t("devices.revoke")}
+                      </Button>
+                    )}
+                  </Td>
+                </Tr>
+              ))}
+            </tbody>
+          </Table>
         </div>
       )}
       {journalOf && (

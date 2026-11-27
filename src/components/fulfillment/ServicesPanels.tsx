@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { TableScroll, TABLE_HEAD, TABLE_HEAD_ROW, TABLE_ROW } from "@/components/ui/table-scroll";
 import { Pencil, Plus, Receipt, Trash2, X } from "lucide-react";
 import { DialogFooter, DialogHeader, DialogShell } from "@/components/ui/dialog-shell";
 import { Label } from "@/components/ui/label";
@@ -31,6 +30,7 @@ import { useStorageEntries } from "./useStorageEntries";
 import { Select } from "@/components/ui/select";
 import { DateRangePicker } from "@/components/ui/date-picker";
 import { toIso, type DateRange } from "@/components/ui/dates";
+import { Table, TableHeader, Tr, Td } from "@/components/ui/table";
 
 /**
  * Вкладки «Услуги» и «Отчёт» экрана операций. Вынесены отдельно: это
@@ -371,58 +371,48 @@ export function ReportPanel({ onOpenServices }: { onOpenServices?: () => void } 
       {report.rows.length === 0 ? (
         <EmptyState icon={<Receipt className="size-5" />} title={t("ops.report.empty")} />
       ) : (
-        <TableScroll>
-          <table className="w-full border-collapse text-sm">
-            <thead className={TABLE_HEAD}>
-              <tr className={TABLE_HEAD_ROW}>
-                <SortTh table={repTable.table} id="service" className="px-3 font-normal">
-                  {t("ops.report.service")}
-                </SortTh>
-                <SortTh table={repTable.table} id="qty" align="right" className="px-3 font-normal">
-                  {t("ops.report.qty")}
-                </SortTh>
-                <SortTh
-                  table={repTable.table}
-                  id="price"
-                  align="right"
-                  className="hidden px-3 font-normal sm:table-cell"
-                >
-                  {t("ops.report.price")}
-                </SortTh>
-                <SortTh table={repTable.table} id="sum" align="right" className="px-3 font-normal">
-                  {t("ops.report.sum")}
-                </SortTh>
-              </tr>
-            </thead>
-            <tbody className="tabular-nums">
-              {repTable.rows.map((r) => (
-                <tr key={r.kind} className={TABLE_ROW}>
-                  <td className="px-3 py-2">{svcName(r.kind)}</td>
-                  <td className="px-3 py-2 text-right">{money(r.qty, t.lang)}</td>
-                  <td className="hidden whitespace-nowrap px-3 py-2 text-right sm:table-cell">
-                    {r.price == null
-                      ? "—"
-                      : `${money(r.price, t.lang)} ₽ / ${t(`ops.unit.${r.unit}` as MsgKey)}`}
-                  </td>
-                  <td className="px-3 py-2 text-right">
-                    {r.sum == null ? "—" : `${money(r.sum, t.lang)} ₽`}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr className="border-t border-border font-medium">
-                <td className="px-3 py-2" colSpan={2}>
-                  {t("ops.report.total")}
-                </td>
-                <td className="hidden sm:table-cell" />
-                <td className="px-3 py-2 text-right tabular-nums">
-                  {money(report.total, t.lang)} ₽
-                </td>
-              </tr>
-            </tfoot>
-          </table>
-        </TableScroll>
+        <Table fill>
+          <TableHeader>
+            <SortTh table={repTable.table} id="service">
+              {t("ops.report.service")}
+            </SortTh>
+            <SortTh table={repTable.table} id="qty" align="right">
+              {t("ops.report.qty")}
+            </SortTh>
+            <SortTh
+              table={repTable.table}
+              id="price"
+              align="right"
+              className="hidden px-3 font-normal sm:table-cell"
+            >
+              {t("ops.report.price")}
+            </SortTh>
+            <SortTh table={repTable.table} id="sum" align="right">
+              {t("ops.report.sum")}
+            </SortTh>
+          </TableHeader>
+          <tbody className="tabular-nums">
+            {repTable.rows.map((r) => (
+              <Tr key={r.kind}>
+                <Td>{svcName(r.kind)}</Td>
+                <Td className="text-right">{money(r.qty, t.lang)}</Td>
+                <Td className="hidden whitespace-nowrap text-right sm:table-cell">
+                  {r.price == null
+                    ? "—"
+                    : `${money(r.price, t.lang)} ₽ / ${t(`ops.unit.${r.unit}` as MsgKey)}`}
+                </Td>
+                <Td className="text-right">{r.sum == null ? "—" : `${money(r.sum, t.lang)} ₽`}</Td>
+              </Tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <Tr total>
+              <Td colSpan={2}>{t("ops.report.total")}</Td>
+              <Td className="hidden sm:table-cell" />
+              <Td className="text-right tabular-nums">{money(report.total, t.lang)} ₽</Td>
+            </Tr>
+          </tfoot>
+        </Table>
       )}
       {report.unpriced && (
         // Ссылка ведёт туда, где цены задают (Кирилл 22.11: «если пишешь

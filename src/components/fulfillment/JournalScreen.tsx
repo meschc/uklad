@@ -23,7 +23,7 @@ import { TimeInput } from "@/components/ui/time-input";
 import { EmptyState, ScreenShell } from "./ScreenShell";
 import { actionKey, useEntryText } from "./journalText";
 import { GoodsPath } from "./GoodsPath";
-import { TableScroll, TABLE_HEAD, TABLE_HEAD_ROW, TABLE_ROW } from "@/components/ui/table-scroll";
+import { Table, TableHeader, Th, Tr, Td } from "@/components/ui/table";
 
 /** Свежие действия подтягиваются сами, пока экран открыт и смотрят «сейчас». */
 const LIVE_MS = 5000;
@@ -249,24 +249,20 @@ function JournalFeed({ tabs }: { tabs: ReactNode }) {
           body={filtered ? undefined : t("journal.empty.body")}
         />
       ) : (
-        <TableScroll>
-          <table className="table-stack w-auto border-collapse text-sm">
-            <thead className={TABLE_HEAD}>
-              <tr className={TABLE_HEAD_ROW}>
-                <th className="px-3 py-2 font-medium">{t("journal.col.time")}</th>
-                <th className="px-3 py-2 font-medium">{t("journal.col.staff")}</th>
-                <th className="px-3 py-2 font-medium">{t("journal.col.action")}</th>
-                <th className="px-3 py-2 font-medium">{t("journal.col.what")}</th>
-                <th className="px-3 py-2 font-medium">{t("journal.col.where")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {entries.map((e) => (
-                <Row key={e.id} e={e} text={text} />
-              ))}
-            </tbody>
-          </table>
-        </TableScroll>
+        <Table>
+          <TableHeader>
+            <Th>{t("journal.col.time")}</Th>
+            <Th>{t("journal.col.staff")}</Th>
+            <Th>{t("journal.col.action")}</Th>
+            <Th max="md">{t("journal.col.what")}</Th>
+            <Th>{t("journal.col.where")}</Th>
+          </TableHeader>
+          <tbody>
+            {entries.map((e) => (
+              <Row key={e.id} e={e} text={text} />
+            ))}
+          </tbody>
+        </Table>
       )}
       {next !== null && entries && entries.length > 0 && (
         <Button
@@ -294,17 +290,15 @@ function Row({ e, text }: { e: ActivityEntry; text: ReturnType<typeof useEntryTe
       second: "2-digit",
     });
   return (
-    <tr className={`${TABLE_ROW} align-top`}>
-      <td
-        className="whitespace-nowrap px-4 py-2 tabular-nums text-muted-foreground"
+    <Tr className="align-top">
+      <Td
+        className="whitespace-nowrap tabular-nums text-muted-foreground"
         title={t("journal.timeHint", { device: stamp(e.at), server: stamp(e.receivedAt) })}
       >
         {stamp(e.at)}
-      </td>
-      <td className="px-4 py-2" data-label={t("journal.col.staff")}>
-        {text.who(e)}
-      </td>
-      <td className="px-4 py-2" data-label={t("journal.col.action")}>
+      </Td>
+      <Td data-label={t("journal.col.staff")}>{text.who(e)}</Td>
+      <Td data-label={t("journal.col.action")}>
         <span className="flex flex-wrap items-center gap-1.5">
           {/* У правки кабинета процесс и действие — одно и то же: без повтора. */}
           {e.source !== "cabinet" && (
@@ -327,16 +321,15 @@ function Row({ e, text }: { e: ActivityEntry; text: ReturnType<typeof useEntryTe
         </span>
         {/* Отказ сервера — не ошибка формы: строка журнала, приглушённо под действием. */}
         {e.flagged && <p className="mt-0.5 text-xs text-muted-foreground">{text.reason(e)}</p>}
-      </td>
-      <td className="px-4 py-2 text-muted-foreground" data-label={t("journal.col.what")}>
+      </Td>
+      {/* «С чем» — длинный список кодов: ширину держим, текст переносится
+          (разбор 27.11: «здесь ширину тоже ограничить надо»). */}
+      <Td max="md" className="text-muted-foreground" data-label={t("journal.col.what")}>
         {text.what(e)}
-      </td>
-      <td
-        className="whitespace-nowrap px-4 py-2 text-muted-foreground"
-        data-label={t("journal.col.where")}
-      >
+      </Td>
+      <Td className="whitespace-nowrap text-muted-foreground" data-label={t("journal.col.where")}>
         {text.where(e)}
-      </td>
-    </tr>
+      </Td>
+    </Tr>
   );
 }
