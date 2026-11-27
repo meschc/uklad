@@ -25,8 +25,13 @@ export function ScreenShell({
     return (
       <div className="flex flex-col gap-5">
         {(subtitle || actions) && (
-          <header className="flex items-start justify-between gap-4">
-            {subtitle && <p className="min-w-0 text-xs text-muted-foreground">{subtitle}</p>}
+          // Узко — кнопки уходят под подпись, а не сжимают её в столбик.
+          <header className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+            {subtitle && (
+              <p className="min-w-[min(100%,15rem)] flex-1 text-xs text-muted-foreground">
+                {subtitle}
+              </p>
+            )}
             {actions && <div className="ml-auto flex shrink-0 items-center gap-2">{actions}</div>}
           </header>
         )}

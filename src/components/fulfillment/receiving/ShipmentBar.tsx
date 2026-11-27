@@ -28,18 +28,24 @@ export function ShipmentBar({
   return (
     <div
       className={cn(
-        "flex items-center justify-between gap-3 rounded-lg border px-3 py-2",
+        // Узко — кнопка под названием, а не название в три буквы рядом с ней.
+        "flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-lg border px-3 py-2",
         done ? "border-success/40 bg-success/10" : "border-border bg-card",
       )}
     >
-      <div className="min-w-0 text-xs">
+      <div className="min-w-[min(100%,12rem)] flex-1 text-xs">
         <p className="truncate font-medium">{shipment.title || t("recv.pick.untitled")}</p>
         <p className="text-muted-foreground">
           {t("recv.bar.progress", { got, expected })}
           {received > 0 && ` · ${t("recv.bar.session", { n: received })}`}
         </p>
       </div>
-      <Button size="sm" variant={done ? "default" : "outline"} onClick={onClose}>
+      <Button
+        size="sm"
+        className="ml-auto"
+        variant={done ? "default" : "outline"}
+        onClick={onClose}
+      >
         {t(done ? "recv.bar.finish" : "recv.bar.finishEarly")}
       </Button>
     </div>
