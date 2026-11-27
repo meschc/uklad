@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from "react";
 import { fixKeyboardLayout } from "@/lib/emailTyping";
-import { Printer, Truck } from "lucide-react";
+import { Printer, Truck, Undo2 } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { workstationRepository } from "@/lib/data";
 import { groupRequestsByTarget } from "@/lib/fulfillment";
@@ -31,6 +31,7 @@ import { ScanBanner, type BannerTone } from "./ScanBanner";
 import { useDemoHints } from "./useDemoHints";
 import { DestinationChip } from "./DestinationChip";
 import { shipmentOfPlace } from "@/lib/sorting";
+import { addLoaded, EMPTY_LOADED, undoLoaded, type Loaded } from "@/lib/loadSteps";
 import { useNetwork } from "@/lib/useNetwork";
 import { FieldError, FormError } from "@/components/ui/field";
 import { CodeTail, CodeText } from "@/components/fulfillment/CodeTail";
@@ -136,7 +137,8 @@ function ShipGroup({
   // Разные машины в одной группе не склеиваем — тогда машину сканируют.
   const named = [...new Set(items.map((r) => r.vehicle).filter(Boolean))];
   const [vehicle, setVehicle] = useState(named.length === 1 ? (named[0] as string) : "");
-  const [units, setUnits] = useState<string[]>([]);
+  const [loaded, setLoaded] = useState<Loaded>(EMPTY_LOADED);
+  const units = loaded.units;
   const [banner, setBanner] = useState<{ tone: BannerTone; text: string }>({
     tone: "idle",
     text: "",
@@ -216,9 +218,9 @@ function ShipGroup({
       const places = group.filter((b) => b.place).map((b) => b.code.toUpperCase());
       const got = places.filter((c) => c === code || units.includes(c)).length;
       const all = got === places.length;
-      setUnits((u) => [
-        ...new Set([...u, code, ...(all ? parcels.map((b) => b.code.toUpperCase()) : [])]),
-      ]);
+      setLoaded((l) =>
+        addLoaded(l, [code, ...(all ? parcels.map((b) => b.code.toUpperCase()) : [])]),
+      );
       beepNotes(destinationMark(target).notes);
       signal("ok", { quiet: true });
       return show("ok", t("ws.ship.placeOk", { code, i: got, n: places.length }));
@@ -244,7 +246,7 @@ function ShipGroup({
       case "mixed":
         return flash("error", t("ws.ship.mixed", { code: res.code }));
       case "ok":
-        setUnits((u) => [...u, res.code]);
+        setLoaded((l) => addLoaded(l, [res.code]));
         beepNotes(destinationMark(target).notes);
         signal("ok", { quiet: true });
         return show(
@@ -332,7 +334,7 @@ function ShipGroup({
             size="sm"
             onClick={() => {
               setVehicle("");
-              setUnits([]);
+              setLoaded(EMPTY_LOADED);
             }}
           >
             {t("ws.ship.change")}
@@ -382,9 +384,25 @@ function ShipGroup({
 
       {units.length > 0 && (
         <div className="flex flex-col gap-1">
-          <h4 className={eyebrow({ tone: "muted", size: "xs" })}>
-            {t("ws.ship.loaded", { n: units.length })}
-          </h4>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h4 className={eyebrow({ tone: "muted", size: "xs" })}>
+              {t("ws.ship.loaded", { n: units.length })}
+            </h4>
+            {/* Рейс ещё не ушёл: свой последний скан снимается здесь же,
+                сервер о нём не знает (Кирилл 27.11). */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                const last = loaded.steps.at(-1) ?? [];
+                setLoaded(undoLoaded);
+                show("ok", t("ws.ship.unloaded", { code: last[0] ?? "" }));
+              }}
+            >
+              <Undo2 />
+              <CodeText text={t("ws.ship.unload", { code: loaded.steps.at(-1)?.[0] ?? "" })} />
+            </Button>
+          </div>
           <ul className="flex flex-wrap gap-x-4 gap-y-1 font-mono text-sm">
             {units.map((u) => {
               const box = openOutbound(outbound ?? [], u);
