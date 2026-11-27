@@ -250,3 +250,42 @@ test("тара на приёмке в упаковку не берётся: не
   receiving.boxes[0] = { ...receiving.boxes[0], address: "A-01-01" };
   assert.equal(applyPackDone(receiving, close, "stf-ivan").flag, undefined);
 });
+
+test("отмена своей штуки: чужую и после закрытия нельзя, отменённая этикетка не в счёт", () => {
+  const l = label("ra000001", "p1", "UK-LBL-AB12-001", { eventId: "ev-lab" });
+  const d = run(data(), l).data;
+  const undo = (over = {}) => ({
+    eventId: "ev-undo",
+    staffId: "stf-ivan",
+    type: "pack_undo",
+    at: AT + 50,
+    toteId: "t1",
+    undoes: "ev-lab",
+    ...over,
+  });
+  // Чужую штуку отменить нельзя.
+  assert.equal(applyPackEvent(d, undo(), "stf-petr").flag, "not_yours");
+  assert.equal(applyPackEvent(d, undo({ undoes: "nope" }), "stf-ivan").flag, "bad");
+  const undone = applyPackEvent(d, undo(), "stf-ivan");
+  assert.equal(undone.flag, undefined);
+  assert.equal(undone.data.staffEvents.at(-1).undoes, "ev-lab");
+  // Повтор той же отмены другим ключом — то же самое.
+  assert.equal(
+    applyPackEvent(undone.data, undo({ eventId: "ev-undo2" }), "stf-ivan").data,
+    undone.data,
+  );
+  // Отменённая этикетка посылку не закрывает…
+  assert.equal(applyPackDone(undone.data, done(), "stf-ivan").flag, "label");
+  // …а новая на ту же штуку — не «лишняя».
+  const again = run(undone.data, label("ra000001", "p1", "UK-LBL-AB12-002"));
+  assert.equal(again.flag, undefined);
+  const closed = applyPackDone(again.data, done({ outboundCode: "UK-LBL-AB12-002" }), "stf-ivan");
+  assert.equal(closed.flag, undefined);
+  // Тару закрыли — штука в коробе, отменять поздно.
+  const late = applyPackEvent(
+    closed.data,
+    undo({ eventId: "ev-undo3", undoes: again.data.staffEvents.at(-1).id }),
+    "stf-ivan",
+  );
+  assert.equal(late.flag, "late");
+});

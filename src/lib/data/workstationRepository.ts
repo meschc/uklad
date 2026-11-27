@@ -78,6 +78,8 @@ export interface WorkstationRepository {
   /** Скан наклеенной этикетки. Не та этикетка — отказ `ws.label.wrong`. */
   packLabel: (code: string) => Promise<Result<void>>;
   packReject: () => Promise<Result<void>>;
+  /** Отменить свою последнюю штуку, пока тара на столе (`pack_undo`). */
+  packUndo: () => Promise<Result<void>>;
   /** Остановить стол сортировки/погрузки до бейджа старшего (`null` — снять). */
   lockStation: (station: "sort" | "ship", code: string | null) => Promise<Result<void>>;
   /** Не та этикетка — в счётчик ошибок сессии. Только счёт: товар и сервер не трогает. */
@@ -182,6 +184,7 @@ export function createWorkstationRepository(
         ...(e.productId ? { productId: e.productId } : {}),
         ...(e.orderId ? { orderId: e.orderId } : {}),
         ...(e.ms !== undefined ? { ms: Math.round(e.ms) } : {}),
+        ...(e.undoes ? { undoes: e.undoes } : {}),
         ...(raised && raised.productId === e.productId
           ? { dispute: { id: raised.id, kind: raised.kind, qty: raised.qty } }
           : {}),
@@ -389,6 +392,11 @@ export function createWorkstationRepository(
       return res.data ? ok(undefined) : fail("ws.label.wrong");
     },
     packReject: () => attempt(() => queuePack(() => port.get().packRejectPending())),
+    packUndo: async () => {
+      const res = await attempt(() => queuePack(() => port.get().packUndoLast()));
+      if (!res.ok) return res;
+      return res.data ? ok(undefined) : fail("ws.pack.undoNothing");
+    },
     lockStation: async (station, code) =>
       attempt(() => port.get().setStationLock(code ? { station, code } : null)),
     packLabelMistake: async (code) => attempt(() => port.get().packLabelMistake(code)),

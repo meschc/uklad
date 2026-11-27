@@ -171,6 +171,7 @@ const REASON_KEYS: Record<string, MsgKey> = {
   "pack:label": "ws.opPackLabel",
   "pack:cancelled": "ws.opPackCancelled",
   "pack:tote": "ws.opPackTote",
+  "pack:late": "ws.opPackLate",
   "recv:tote": "ws.opRecvTote",
   "recv:stock": "ws.opRecvStock",
   "recv:mixed": "ws.opRecvMixed",

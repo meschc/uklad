@@ -1,5 +1,15 @@
 import { useEffect, useRef, useState } from "react";
-import { Ban, Check, History, Package, Printer, Tag, TriangleAlert, UserRound } from "lucide-react";
+import {
+  Ban,
+  Check,
+  History,
+  Package,
+  Printer,
+  Tag,
+  TriangleAlert,
+  Undo2,
+  UserRound,
+} from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { workstationRepository } from "@/lib/data";
 import {
@@ -231,6 +241,24 @@ export function PackRun({
               onSubmit={(c) => void onScan(c)}
             />
           </div>
+          {/* Отмена своей последней штуки, пока тара на столе: штуку кладут
+              обратно в тару, её этикетка не в счёт (`pack_undo`). */}
+          {session.units.length > 0 && !closing && (
+            <Button
+              variant="ghost"
+              className="shrink-0 max-md:px-2.5"
+              aria-label={t("ws.run.undoLast")}
+              onClick={() =>
+                void workstationRepository.packUndo().then((r) => {
+                  if (r.ok) flashOk(t("ws.run.undone"));
+                  else flashError({ status: "error", key: r.error });
+                })
+              }
+            >
+              <Undo2 />
+              <span className="hidden md:inline">{t("ws.run.undoLast")}</span>
+            </Button>
+          )}
           {/* На телефоне — только значок: подпись съела бы поле скана. */}
           <Button
             variant="ghost"
