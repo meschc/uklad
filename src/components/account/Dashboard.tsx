@@ -87,8 +87,11 @@ export function Dashboard() {
     <div className="h-full overflow-y-auto bg-background">
       <div className="mx-auto flex max-w-5xl flex-col gap-8 px-6 py-8">
         {/* Шапка: пользователь / компания */}
-        <header className="flex items-start justify-between gap-4">
-          <div className="flex items-center gap-3">
+        {/* На телефоне — в две строки: приветствие во всю ширину, под ним роль
+            и настройки. В одну строку переключатель роли уходил за экран, а
+            приветствие и роль переносились по слову (разбор 27.11, мобилка). */}
+        <header className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-4">
+          <div className="flex min-w-0 items-center gap-3">
             {(account.type === "company" ? account.orgLogo : undefined) || account.avatar ? (
               <img
                 src={(account.type === "company" ? account.orgLogo : undefined) || account.avatar}
@@ -119,7 +122,7 @@ export function Dashboard() {
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex flex-wrap items-center gap-1.5">
             {/* Роль — здесь, а не в рельсе склада: это выбор «с чьей стороны я
                 смотрю», и он должен быть виден до входа на склад (п.5). */}
             <RoleSwitch />
@@ -139,7 +142,7 @@ export function Dashboard() {
             ) : (
               <Button variant="outline" size="sm" onClick={goToProfile}>
                 <Settings className="size-3.5" />
-                {t("dash.openProfile")}
+                <span className="max-sm:sr-only">{t("dash.openProfile")}</span>
               </Button>
             )}
           </div>

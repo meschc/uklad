@@ -32,6 +32,7 @@ import { StaffViewList } from "./StaffViewList";
 import { StaffPanel } from "./StaffPanel";
 import { ArchiveNote } from "@/components/fulfillment/ArchiveNote";
 import { Table, TableHeader, Th } from "@/components/ui/table";
+import { FloatingAction } from "@/components/ui/floating-action";
 
 /**
  * Склад и персонал (п.6, 24, 25): контакты склада, ответственное лицо блоком
@@ -203,10 +204,15 @@ export function StaffScreen() {
                     e.target.value = "";
                   }}
                 />
-                <Button size="sm" onClick={() => setPanel("new")}>
+                <Button size="sm" className="max-md:hidden" onClick={() => setPanel("new")}>
                   <Plus className="size-3.5" />
                   {t("staff.add")}
                 </Button>
+                <FloatingAction
+                  icon={<Plus className="size-4" />}
+                  label={t("staff.add")}
+                  onClick={() => setPanel("new")}
+                />
               </div>
             </div>
 

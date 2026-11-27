@@ -111,10 +111,11 @@ export function Th({ align, max, nowrap, className, ...props }: ComponentProps<"
 /**
  * Неон при наведении (Кирилл 27.11): полупрозрачная заливка primary и тонкая
  * внутренняя обводка — тот же вид, что у активного пункта меню и адреса
- * ячейки. Обводка — тенью внутрь, строка не меняет размер.
+ * ячейки. Обводка — тенью внутрь, строка не меняет размер. Только с `md`:
+ * на телефоне наведения нет, и после касания подсветка залипала.
  */
 const NEON_HOVER =
-  "transition-colors hover:bg-primary/5 hover:shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.3)]";
+  "transition-colors md:hover:bg-primary/5 md:hover:shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.3)]";
 
 /**
  * Строка. `total` — итоговая строка: линия сверху, полужирный. `interactive`
