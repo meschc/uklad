@@ -94,6 +94,13 @@ export const ru = {
   "backup.emailNote": "Будет приходить на {email}. Письма начнут уходить, когда подключим сервер.",
   "backup.serverNote":
     "Копию всех данных кабинета сервер сохраняет сам каждую ночь. Архив выше — для своей копии на компьютере.",
+  "backup.serverRestoreWarn":
+    "Копия от {date} заменит работу склада, товары и настройки на сервере. Люди, склады и партнёры останутся. Перед заменой кабинет скачает копию текущих данных — из неё можно вернуть как было.",
+  "backup.err.serverOld":
+    "Копия старого формата. Откройте её в кабинете без входа, скачайте заново и загрузите",
+  "backup.err.shiftOpen": "Сейчас открыта смена. Загрузить копию можно, когда все закончат смену",
+  "backup.err.ownerOnly": "Загрузить копию в кабинет может только владелец",
+  "backup.err.tooOften": "Копию загружали несколько раз подряд. Попробуйте через 20 минут",
   "backup.done": "Архив скачан",
 
   "backup.due.title": "Пора сделать резервную копию",
@@ -208,6 +215,14 @@ export const en: Record<keyof typeof ru, string> = {
   "backup.emailNote": "Will be sent to {email}. Emails start once the server is connected.",
   "backup.serverNote":
     "The server saves a copy of all cabinet data every night by itself. The archive above is for your own copy on a computer.",
+  "backup.serverRestoreWarn":
+    "The backup from {date} will replace warehouse work, products and settings on the server. People, warehouses and partners stay. Before replacing, the cabinet downloads a copy of the current data, so you can go back.",
+  "backup.err.serverOld":
+    "This backup is in an old format. Open it in the cabinet without signing in, download it again and upload",
+  "backup.err.shiftOpen":
+    "A shift is open now. You can upload the backup once everyone ends their shift",
+  "backup.err.ownerOnly": "Only the owner can upload a backup to the cabinet",
+  "backup.err.tooOften": "The backup was uploaded several times in a row. Try again in 20 minutes",
   "backup.done": "Archive downloaded",
 
   "backup.due.title": "Time to make a backup",

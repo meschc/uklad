@@ -240,7 +240,7 @@ function withLocalSecrets(fromServer: unknown, local: Integrations): Integration
 }
 
 /** Что уходит на сервер: всё сохранение, кроме частей устройства и секретов. */
-function companyPart(state: Persisted): Record<string, unknown> {
+export function companyPart(state: Persisted): Record<string, unknown> {
   const out: Record<string, unknown> = {
     ...state,
     integrations: withoutSecrets(state.integrations),

@@ -1,6 +1,8 @@
 import { useRef, useState } from "react";
 import { BellRing, FileInput, FileOutput, Mail } from "lucide-react";
 import { useEditor, PERSIST_VERSION } from "@/lib/store";
+import { OWNER_PERM } from "@/lib/permModules";
+import { flushServerSync } from "@/lib/store/serverSync";
 import { backupRepository } from "@/lib/data";
 import { parseBackup } from "@/lib/backup";
 import { REMIND_OPTIONS, featuresOf } from "@/lib/tariff";
@@ -18,10 +20,11 @@ import { FieldError } from "@/components/ui/field";
  * копия на почту. Восстановление стирает текущие данные, поэтому в два шага:
  * сначала файл разбирается и показывается его дата, потом подтверждение.
  *
- * С сервером — только «Скачать архив» (Кирилл 23.11): копию всех данных сервер
- * делает сам каждую ночь, напоминать о ней незачем; письма с копией сервер не
- * шлёт; а восстановление из файла заменило бы данные компании на сервере
- * старым архивом с одного устройства. Остальное живёт в демо без сервера.
+ * С сервером напоминания и письма не нужны (Кирилл 23.11): копию всех данных
+ * сервер делает сам каждую ночь. Восстановление с сервером (Кирилл 27.11:
+ * «экспорт есть, а импорта нет») — только у владельца: копия заменяет
+ * кабинет компании на сервере (`restoreOnServer`), поэтому перед заменой
+ * кабинет сам скачивает архив текущих данных — из него можно вернуть как было.
  */
 /** Предел размера архива: больше — не читаем. */
 const MAX_BACKUP_BYTES = 20 * 1024 * 1024;
@@ -34,9 +37,23 @@ export function BackupSection() {
   const update = useEditor((s) => s.updateBackupSettings);
   const fileRef = useRef<HTMLInputElement>(null);
   const onServer = useEditor((s) => s.session.source === "server");
+  const owner = useEditor(
+    (s) => !s.session.permissions || s.session.permissions.includes(OWNER_PERM),
+  );
 
   const download = useCommand(downloadBackup);
-  const restore = useCommand(backupRepository.restoreArchive, { exclusive: true });
+  const restore = useCommand(
+    async (text: string) => {
+      if (!onServer) return backupRepository.restoreArchive(text);
+      // Сначала своё незаписанное — на сервер, потом копия текущего кабинета —
+      // человеку: без неё замену не вернуть.
+      await flushServerSync();
+      const saved = await downloadBackup();
+      if (!saved.ok) return saved;
+      return backupRepository.restoreOnServer(text);
+    },
+    { exclusive: true },
+  );
   const weekly = useCommand(backupRepository.setWeeklyEmail);
 
   /** Разобранный, но ещё не подтверждённый архив. */
@@ -97,55 +114,57 @@ export function BackupSection() {
         </div>
       </Row>
 
+      {(!onServer || owner) && (
+        <Row icon={<FileInput className="size-4" />} label={t("backup.restore")}>
+          <div className="flex flex-col items-end gap-2">
+            {restoreError && <FieldError>{t(restoreError)}</FieldError>}
+            {pending ? (
+              <>
+                {/* Предупреждение отдельной строкой над кнопками: в одну линию с
+                  ними оно переносилось по слову и толкало кнопки. */}
+                <FieldError className="max-w-64 text-right">
+                  {t(onServer ? "backup.serverRestoreWarn" : "backup.restoreWarn", {
+                    date: pending.createdAt ? fmt(pending.createdAt) : "—",
+                  })}
+                </FieldError>
+                <div className="flex items-center gap-2">
+                  <Button size="sm" variant="outline" onClick={() => setPending(null)}>
+                    {t("common.cancel")}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    disabled={restore.pending}
+                    onClick={confirmRestore}
+                  >
+                    {t("backup.restoreConfirm")}
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
+                {t("backup.pick")}
+              </Button>
+            )}
+            <input
+              ref={fileRef}
+              type="file"
+              accept="application/json,.json"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                e.target.value = "";
+                if (f) void pick(f);
+              }}
+            />
+          </div>
+        </Row>
+      )}
+
       {onServer ? (
         <p className="py-3 text-xs text-muted-foreground">{t("backup.serverNote")}</p>
       ) : (
         <>
-          <Row icon={<FileInput className="size-4" />} label={t("backup.restore")}>
-            <div className="flex flex-col items-end gap-2">
-              {restoreError && <FieldError>{t(restoreError)}</FieldError>}
-              {pending ? (
-                <>
-                  {/* Предупреждение отдельной строкой над кнопками: в одну линию с
-                  ними оно переносилось по слову и толкало кнопки. */}
-                  <FieldError className="max-w-64 text-right">
-                    {t("backup.restoreWarn", {
-                      date: pending.createdAt ? fmt(pending.createdAt) : "—",
-                    })}
-                  </FieldError>
-                  <div className="flex items-center gap-2">
-                    <Button size="sm" variant="outline" onClick={() => setPending(null)}>
-                      {t("common.cancel")}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      disabled={restore.pending}
-                      onClick={confirmRestore}
-                    >
-                      {t("backup.restoreConfirm")}
-                    </Button>
-                  </div>
-                </>
-              ) : (
-                <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
-                  {t("backup.pick")}
-                </Button>
-              )}
-              <input
-                ref={fileRef}
-                type="file"
-                accept="application/json,.json"
-                className="hidden"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  e.target.value = "";
-                  if (f) void pick(f);
-                }}
-              />
-            </div>
-          </Row>
-
           <Row icon={<BellRing className="size-4" />} label={t("backup.remind")}>
             <Segmented<string>
               value={String(backup.remindEveryDays)}

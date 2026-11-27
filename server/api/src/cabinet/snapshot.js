@@ -21,6 +21,7 @@
  *   POST /api/cabinet/snapshot — { version, format, data }; version 0 — первая запись
  *   POST /api/cabinet/snapshot/changes — только изменённое поверх версии:
  *     { version, format, doc, slots, upsert, remove, products? } (`saveChanges`)
+ *   POST /api/cabinet/restore — загрузка резервной копии владельцем (`restore.js`)
  *   GET  /api/cabinet/history?after=… — архив законченной работы страницами
  *     (`history`): `{ rows: [{ w, d, ref, pos, data }], next }`
  *
@@ -61,6 +62,7 @@ const {
   WarehouseDeleteError,
 } = require("./warehouses");
 const { PlanLimitError } = require("./planLimits");
+const { createRestore } = require("./restore");
 const {
   WAREHOUSE_LISTS,
   COMPANY_LISTS,
@@ -896,8 +898,19 @@ function createSnapshot({ auth, send, log, limits = null }) {
     return send(res, 200, { ok: true, entries: out });
   }
 
+  // Загрузка резервной копии владельцем (`restore.js`): те же помощники записи.
+  const restore = createRestore({
+    withSession,
+    readJson,
+    send,
+    log,
+    maxBytes: MAX_SNAPSHOT_BYTES,
+    helpers: { storeProducts, storeWarehousesLimited, allProducts, overLimit, sendLimit },
+  });
+
   const routes = {
     "GET /api/cabinet/history": history,
+    "POST /api/cabinet/restore": restore,
     "GET /api/cabinet/storage": storage,
     "GET /api/cabinet/inventory": inventory,
     "GET /api/cabinet/snapshot": load,
