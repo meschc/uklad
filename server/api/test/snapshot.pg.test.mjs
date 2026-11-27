@@ -1094,6 +1094,65 @@ test(
 );
 
 test(
+  "четыре глаза в кабинете: своё спорное не списать, чужим именем — тоже",
+  { skip: SKIP },
+  async () => {
+    const a = await owner("snap-wo4@sklad.ru", "10.0.1.19");
+    const dispute = (id, raisedBy, extra = {}) => ({
+      id,
+      kind: "not_packable",
+      qty: 1,
+      raisedBy,
+      raisedAt: 1,
+      ...extra,
+    });
+    const save = (version, disputes) =>
+      call("/api/cabinet/snapshot", {
+        ...a,
+        body: { version, format: 8, data: { ...data("4 глаза"), disputes } },
+      });
+    const first = await save(0, [dispute("d1", "stf-1"), dispute("d2", "stf-2")]);
+    assert.equal(first.status, 200);
+    // Начальник за столом работает под карточкой stf-1: брак d1 завёл он сам.
+    await db.root.query(`UPDATE uklad.members SET staff_ref = 'stf-1' WHERE org_id = $1`, [a.org]);
+    const off = (d, by) => ({
+      ...d,
+      resolution: "written_off",
+      resolvedBy: by,
+      resolvedAt: 2,
+      note: "x",
+    });
+    const v = first.json.version;
+    assert.equal(
+      (await save(v, [off(dispute("d1", "stf-1"), "manager"), dispute("d2", "stf-2")])).status,
+      403,
+    );
+    // Чужим именем — тоже нет: решает тот, кто вошёл.
+    assert.equal(
+      (await save(v, [dispute("d1", "stf-1"), off(dispute("d2", "stf-2"), "stf-9")])).status,
+      403,
+    );
+    // Новое спорное сразу списанным кабинет не заводит.
+    assert.equal(
+      (
+        await save(v, [
+          dispute("d1", "stf-1"),
+          dispute("d2", "stf-2"),
+          off(dispute("d3", "stf-2"), "manager"),
+        ])
+      ).status,
+      403,
+    );
+    // Чужое — можно, и от себя, и как руководитель; вернуть своё — тоже.
+    const ok = await save(v, [
+      { ...dispute("d1", "stf-1"), resolution: "returned", resolvedBy: "manager", resolvedAt: 2 },
+      off(dispute("d2", "stf-2"), "stf-1"),
+    ]);
+    assert.equal(ok.status, 200, JSON.stringify(ok.json));
+  },
+);
+
+test(
   "хранение: запись снимка — сутки занятости продавца, ушёл с полок — ноль, чужая компания не видит",
   { skip: SKIP },
   async () => {
