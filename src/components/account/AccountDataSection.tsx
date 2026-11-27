@@ -10,12 +10,14 @@ import { Row } from "./ProfileRow";
 import { Section } from "./ProfileParts";
 import { downloadBackup } from "./backupDownload";
 import { FormError } from "@/components/ui/field";
+import { PasswordRow } from "./PasswordRow";
 
 /**
  * «Безопасность и данные» — то, что человек ищет в профиле любого сервиса,
  * а у нас не было (Кирилл 1 ноя: «почему не могу удалить профиль?»).
  *
- * Три строки, как у Google, Notion и Telegram:
+ * Строки, как у Google, Notion и Telegram:
+ * - сменить пароль — старым паролем, другие устройства выходят (`PasswordRow`);
  * - выйти на других устройствах — забыл выйти на складском компьютере;
  * - скачать свои данные — тот же архив, что резервная копия;
  * - удалить аккаунт — паролем и со сроком 30 дней на отмену. Пароль, а не
@@ -67,6 +69,8 @@ export function AccountDataSection() {
   return (
     <Section title={t("account.section")}>
       <div className="flex flex-col divide-y divide-border/60">
+        <PasswordRow onChanged={() => setInfo((i) => (i ? { ...i, otherSessions: 0 } : i))} />
+
         <Row icon={<MonitorSmartphone className="size-4" />} label={t("account.devices")}>
           <div className="flex min-w-0 flex-wrap items-center justify-end gap-3">
             <span className="text-sm text-muted-foreground">

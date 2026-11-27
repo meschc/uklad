@@ -53,6 +53,17 @@ function deletionLetter(at, publicUrl) {
   };
 }
 
+/** Пароль изменён из настроек: если это были не вы — как вернуть вход. */
+function passwordLetter(publicUrl) {
+  return {
+    subject: "Пароль в Укладе изменён",
+    text:
+      `Здравствуйте!\n\nПароль от вашего аккаунта в Укладе только что изменили. ` +
+      `Вход на других устройствах закрыт.\n\nЕсли это были не вы, откройте ` +
+      `${publicUrl}/app/, нажмите «Забыли пароль?» и задайте новый: код придёт на эту почту.\n`,
+  };
+}
+
 /** Приглашение в компанию: кто зовёт, в какой роли и ссылка на 7 дней. */
 function inviteLetter({ company: rawCompany, role: rawRole, link }) {
   // Название задаёт клиент, а письмо уходит с нашего домена: без переводов
@@ -73,4 +84,4 @@ function inviteLetter({ company: rawCompany, role: rawRole, link }) {
   };
 }
 
-module.exports = { codeLetter, alreadyLetter, deletionLetter, inviteLetter };
+module.exports = { codeLetter, alreadyLetter, deletionLetter, passwordLetter, inviteLetter };
