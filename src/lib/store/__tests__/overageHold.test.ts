@@ -119,3 +119,32 @@ describe("акт поставки продавцу", () => {
     expect(hasDiscrepancy({ ...shipment, status: "receiving" }, short)).toBe(false);
   });
 });
+
+describe("брак на приёмке (Кирилл 27.11)", () => {
+  it("на учёт в таре, спорным «брак» старшему и в карантин до решения", () => {
+    const line = makeShipmentLine({ id: "l1", productId: "p1", expectedQty: 5, receivedQty: 0 });
+    const store = makeFlowStore({
+      expectedShipments: [makeShipment({ id: "sh1", lines: [line] })],
+      boxes: [makeBox({ id: "b1", lines: [] })],
+      disputes: [],
+    });
+    const id = store.getState().receiveProduct({
+      productId: "p1",
+      qty: 2,
+      boxId: "b1",
+      shipmentId: "sh1",
+      lineId: "l1",
+      defect: true,
+    });
+    const s = store.getState();
+    expect(s.boxes[0].lines).toEqual([{ productId: "p1", qty: 2 }]);
+    expect(s.expectedShipments[0].lines[0].receivedQty).toBe(2);
+    expect(s.disputes.map((d) => [d.id, d.kind, d.qty])).toEqual([
+      [`def-${id}`, "not_packable", 2],
+    ]);
+    expect(freeInBox(s.disputes, s.boxes[0], "p1")).toBe(0);
+    // Старший решил «вернуть в работу» — карантин снят.
+    const done = s.disputes.map((d) => ({ ...d, resolution: "returned" as const }));
+    expect(freeInBox(done, s.boxes[0], "p1")).toBe(2);
+  });
+});

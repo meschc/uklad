@@ -18,8 +18,9 @@ function heldQty(disputes, boxId, productId) {
   return list(disputes)
     .filter(
       (d) =>
-        d.kind === "receive_overage" &&
-        typeof d.lineId === "string" &&
+        // Брак с приёмки или упаковки — тоже карантин до решения старшего.
+        ((d.kind === "receive_overage" && typeof d.lineId === "string") ||
+          d.kind === "not_packable") &&
         !d.resolution &&
         d.boxId === boxId &&
         d.productId === productId,

@@ -468,6 +468,8 @@ export interface ReceiveInput {
   staffId?: string;
   /** Проставляется, только если оператор осознанно записал расхождение. */
   discrepancy?: Discrepancy;
+  /** Брак: на учёт, спорным «брак» старшему и в карантин (`heldQty`). */
+  defect?: boolean;
 }
 
 export interface FulfillmentSlice {

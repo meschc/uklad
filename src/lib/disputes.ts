@@ -115,6 +115,8 @@ export function adoptInto(boxes: readonly Box[], d: Dispute): Box[] {
  * его не собирают и в кроссдок не отдают. Сколько штук товара в таре держит открытое «Лишнее с приёмки».
  * Решение «оставить» снимает карантин, «убрать» уводит штуки из тары.
  */
+// Брак (`not_packable`) — с приёмки или упаковки — тоже в карантине: лежит
+// в таре на учёте, но собрать или отдать в кроссдок его нельзя.
 export function heldQty(
   disputes: readonly Dispute[],
   boxId: string | undefined,
@@ -124,14 +126,16 @@ export function heldQty(
   return disputes
     .filter(
       (d) =>
-        d.kind === "receive_overage" &&
-        !!d.lineId &&
+        ((d.kind === "receive_overage" && !!d.lineId) || d.kind === "not_packable") &&
         !d.resolution &&
         d.boxId === boxId &&
         d.productId === productId,
     )
     .reduce((n, d) => n + d.qty, 0);
 }
+
+/** Спорное «брак» с приёмки: id от события приёмки — тот же, что ставит сервер. */
+export const defectDisputeId = (eventId: string): string => `def-${eventId}`.slice(0, 100);
 
 /** Сколько товара в таре можно взять в работу: всё, кроме излишка в карантине. */
 export function freeInBox(disputes: readonly Dispute[], box: Box, productId: string): number {

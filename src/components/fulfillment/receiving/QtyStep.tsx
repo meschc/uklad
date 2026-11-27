@@ -1,4 +1,4 @@
-import { Check } from "lucide-react";
+import { Ban, Check } from "lucide-react";
 import { type TFunc } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ export function QtyStep({
   remainder,
   onQty,
   onConfirm,
+  onDefect,
   onBack,
   t,
 }: {
@@ -28,6 +29,8 @@ export function QtyStep({
   remainder: number | null;
   onQty: (v: number) => void;
   onConfirm: () => void;
+  /** Принять как брак: на учёт, спорным старшему, в работу не идёт. */
+  onDefect: () => void;
   onBack: () => void;
   t: TFunc;
 }) {
@@ -72,6 +75,15 @@ export function QtyStep({
       <div className="flex items-center gap-2">
         <Button onClick={onConfirm} disabled={draft.qty < 1}>
           {t("recv.qty.confirm")}
+        </Button>
+        {/* Брак — средняя по опасности: жёлтая, как на упаковке. */}
+        <Button
+          className="bg-warning-fill text-warning-foreground shadow-sm hover:bg-warning-fill/90"
+          onClick={onDefect}
+          disabled={draft.qty < 1}
+        >
+          <Ban />
+          {t("recv.qty.defect")}
         </Button>
         <Button variant="ghost" onClick={onBack}>
           {t("recv.qty.cancel")}

@@ -278,3 +278,34 @@ test("кроссдок не отдаёт в заявки лишнее сверх
   const none = applyRecvUnit(d, unit({ lineId: undefined }), "stf-ivan").data;
   assert.equal(none.requests[0].pickedQty, 3);
 });
+
+test("брак на приёмке: на учёт в таре, спорным «брак» старшему, не в кроссдок и не в сборку", () => {
+  const { freeInBox } = require("../src/cabinet/overageHold");
+  const d = data();
+  d.expectedShipments[0].crossDock = true;
+  d.requests.push({ id: "r2", productId: "p1", qty: 2, status: "new" });
+  const r = applyRecvUnit(d, unit({ defect: true }), "stf-ivan");
+  assert.equal(r.flag, undefined);
+  // Товар на учёте: в таре, поставка получила свои штуки.
+  assert.deepEqual(r.data.boxes[0].lines, [{ productId: "p1", qty: 3 }]);
+  assert.equal(r.data.expectedShipments[0].lines[0].receivedQty, 3);
+  // Ждущую заявку брак не закрыл.
+  assert.equal(r.data.requests.find((x) => x.id === "r2").status, "new");
+  assert.deepEqual(r.data.disputes, [
+    {
+      id: "def-rv-1",
+      kind: "not_packable",
+      boxId: "b1",
+      toteCode: "UK-BOX-1",
+      productId: "p1",
+      qty: 3,
+      raisedBy: "stf-ivan",
+      raisedAt: AT,
+    },
+  ]);
+  // Собрать из этой тары нечего, пока старший не решит.
+  assert.equal(freeInBox(r.data.disputes, r.data.boxes[0], "p1"), 0);
+  // Повтор той же приёмки спорное не задваивает.
+  assert.equal(applyRecvUnit(r.data, unit({ defect: true }), "stf-ivan").data, r.data);
+  assert.equal(applyRecvUnit(data(), unit({ defect: "yes" }), "stf-ivan").flag, "bad");
+});

@@ -2,7 +2,7 @@ import { nowMs, uid } from "../utils";
 import { generateBoxBarcode, generatePalletBarcode, labelNumber } from "../barcode";
 import { EMPTY_RECEIVING, resumeProgress } from "../receiving";
 import { mergeCargo } from "../cargo";
-import { overageDisputeId, overReceived } from "../disputes";
+import { defectDisputeId, overageDisputeId, overReceived } from "../disputes";
 import type { Box, Dispute, ExpectedShipment, Pallet, ReceivingEvent } from "../types";
 import type { FulfillmentSlice, SliceCreator } from "./state";
 
@@ -69,7 +69,7 @@ export const createFulfillmentSlice: SliceCreator<FulfillmentSlice> = (set, get)
    * отмена откатывала бы приёмку по частям, а метрики дашборда ловили бы
    * промежуточное состояние.
    */
-  receiveProduct: ({ productId, qty, boxId, shipmentId, lineId, staffId, discrepancy }) => {
+  receiveProduct: ({ productId, qty, boxId, shipmentId, lineId, staffId, discrepancy, defect }) => {
     const n = Math.max(1, Math.round(qty));
     const event: ReceivingEvent = {
       id: uid("recv"),
@@ -104,6 +104,20 @@ export const createFulfillmentSlice: SliceCreator<FulfillmentSlice> = (set, get)
           },
         ]
       : [];
+    // Брак — спорным «брак» старшему: штуки на учёте в таре, но в работу не
+    // идут, пока он не решит (`heldQty`). То же заводит сервер (`deskReceive.js`).
+    if (defect) {
+      hold.push({
+        id: defectDisputeId(event.id),
+        kind: "not_packable",
+        boxId,
+        toteCode: get().boxes.find((b) => b.id === boxId)?.barcode,
+        productId,
+        qty: n,
+        raisedBy: staffId ?? "manager",
+        raisedAt: event.timestamp,
+      });
+    }
 
     set((s) => ({
       ...(hold.length ? { disputes: [...(s.disputes ?? []), ...hold] } : {}),

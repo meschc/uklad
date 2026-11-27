@@ -14,4 +14,6 @@ export interface Draft {
   lineId?: string;
   qty: number;
   discrepancy?: Discrepancy;
+  /** Брак: принимается на учёт, но в работу не идёт до решения старшего. */
+  defect?: boolean;
 }

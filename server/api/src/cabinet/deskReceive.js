@@ -105,6 +105,7 @@ function applyRecvUnit(data, body, staffRef) {
   if (!isId(body.productId) || !isId(body.boxId) || !Number.isInteger(qty)) return { flag: "bad" };
   if (qty < 1 || qty > MAX_QTY) return { flag: "bad" };
   if (body.discrepancy !== undefined && !DISCREPANCY.has(body.discrepancy)) return { flag: "bad" };
+  if (body.defect !== undefined && body.defect !== true) return { flag: "bad" };
   // Само расхождение ставит сервер при записи (`markReceived` в
   // `deskStock.js`): со стола принимается только отметка недостачи.
   if (!list(data.products).some((p) => p.id === body.productId)) return { flag: "bad" };
@@ -180,6 +181,30 @@ function applyRecvUnit(data, body, staffRef) {
   const line = list(shipment?.lines).find(
     (l) => l.id === body.lineId && l.productId === body.productId,
   );
+  // Брак: на учёт в таре, спорным «брак» старшему, в карантин (`heldQty`) —
+  // ни в сборку, ни в кроссдок, пока старший не решит.
+  if (body.defect === true) {
+    const id = `def-${body.eventId}`.slice(0, 100);
+    if (!list(out.disputes).some((d) => d.id === id)) {
+      out = {
+        ...out,
+        disputes: [
+          ...list(out.disputes),
+          {
+            id,
+            kind: "not_packable",
+            boxId: box.id,
+            ...(typeof box.barcode === "string" ? { toteCode: box.barcode } : {}),
+            productId: body.productId,
+            qty,
+            raisedBy: staffRef,
+            raisedAt: at,
+          },
+        ],
+      };
+    }
+    return { data: out };
+  }
   const free = line ? qty - overReceived(line, qty) : qty;
   if (shipment?.crossDock && free > 0) {
     out = crossDock(out, body.productId, free, shipment.id, box.id, at);

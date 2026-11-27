@@ -171,3 +171,31 @@ test("отменённый после упаковки заказ держит �
   delete before.requests[0].packedAt;
   assert.equal(freeStock(before).get("p"), 2);
 });
+
+test("карантин — брак и излишек до решения старшего — площадке свободным не обещаем", () => {
+  const dispute = (over) => ({
+    boxId: "t1",
+    productId: "a",
+    qty: 1,
+    raisedBy: "s",
+    raisedAt: 1,
+    ...over,
+  });
+  const view = (disputes) => ({
+    boxes: [{ id: "t1", lines: [{ productId: "a", qty: 5 }, null] }],
+    requests: [],
+    disputes,
+  });
+  assert.equal(freeStock(view([])).get("a"), 5);
+  const open = [
+    dispute({ id: "def-1", kind: "not_packable", qty: 2 }),
+    dispute({ id: "ovr-1", kind: "receive_overage", lineId: "l1" }),
+  ];
+  assert.equal(freeStock(view(open)).get("a"), 2);
+  // Решённое и чужая тара карантин не держат.
+  const done = [
+    dispute({ id: "def-1", kind: "not_packable", qty: 2, resolution: "returned" }),
+    dispute({ id: "def-2", kind: "not_packable", boxId: "t2" }),
+  ];
+  assert.equal(freeStock(view(done)).get("a"), 5);
+});
