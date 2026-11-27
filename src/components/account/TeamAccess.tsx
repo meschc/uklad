@@ -14,7 +14,7 @@ import { RoleList } from "./RoleList";
 import { useTeam } from "./useTeam";
 import { Select } from "@/components/ui/select";
 import { FieldError } from "@/components/ui/field";
-import { TableScroll, TABLE_HEAD, TABLE_HEAD_ROW, TABLE_ROW } from "@/components/ui/table-scroll";
+import { Table, TableHeader, Th, Tr, Td } from "@/components/ui/table";
 
 /**
  * Вкладка «Доступ» в «Персонале»: кто входит в кабинет и с какой ролью.
@@ -122,20 +122,16 @@ export function TeamAccess() {
 function MemberTable({ children }: { children: React.ReactNode }) {
   const t = useT();
   return (
-    <TableScroll>
-      <table className="table-stack w-auto border-collapse text-sm">
-        <thead className={TABLE_HEAD}>
-          <tr className={TABLE_HEAD_ROW}>
-            <th className="px-3 py-2 font-normal">{t("team.col.name")}</th>
-            <th className="px-3 py-2 font-normal">{t("team.col.email")}</th>
-            <th className="px-3 py-2 font-normal">{t("team.col.status")}</th>
-            <th className="px-3 py-2 font-normal">{t("team.role")}</th>
-            <th className="px-3 py-2" />
-          </tr>
-        </thead>
-        <tbody>{children}</tbody>
-      </table>
-    </TableScroll>
+    <Table>
+      <TableHeader>
+        <Th>{t("team.col.name")}</Th>
+        <Th>{t("team.col.email")}</Th>
+        <Th>{t("team.col.status")}</Th>
+        <Th>{t("team.role")}</Th>
+        <Th />
+      </TableHeader>
+      <tbody>{children}</tbody>
+    </Table>
   );
 }
 
@@ -163,15 +159,13 @@ function MemberRow({
     ? new Date(m.inviteExpiresAt).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })
     : null;
   return (
-    <tr className={TABLE_ROW}>
-      <td className="px-3 py-2">
+    <Tr>
+      <Td>
         <span className="font-medium">{m.name || m.email || "—"}</span>
         {mine && <span className="ml-2 text-xs text-muted-foreground">{t("team.you")}</span>}
-      </td>
-      <td className="px-3 py-2" data-label={t("team.col.email")}>
-        {m.name ? m.email : null}
-      </td>
-      <td className="px-3 py-2 text-muted-foreground" data-label={t("team.col.status")}>
+      </Td>
+      <Td data-label={t("team.col.email")}>{m.name ? m.email : null}</Td>
+      <Td className="text-muted-foreground" data-label={t("team.col.status")}>
         {[
           t(STATUS_KEYS[m.status]),
           pending && until ? t("team.invitedUntil", { date: until }) : null,
@@ -179,8 +173,8 @@ function MemberRow({
         ]
           .filter(Boolean)
           .join(" · ")}
-      </td>
-      <td className="px-3 py-2" data-label={t("team.role")}>
+      </Td>
+      <Td data-label={t("team.role")}>
         {fixed ? (
           <span>{m.roleName}</span>
         ) : (
@@ -198,8 +192,8 @@ function MemberRow({
             ))}
           </Select>
         )}
-      </td>
-      <td className="px-3 py-2">
+      </Td>
+      <Td>
         {pending ? (
           <Button size="sm" variant="ghost" onClick={onRevoke}>
             {t("team.revoke")}
@@ -221,8 +215,8 @@ function MemberRow({
             </Button>
           )
         )}
-      </td>
-    </tr>
+      </Td>
+    </Tr>
   );
 }
 

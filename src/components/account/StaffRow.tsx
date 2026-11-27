@@ -7,7 +7,7 @@ import { useCommand } from "@/lib/useCommand";
 import type { TFunc } from "@/lib/i18n";
 import { Avatar } from "@/components/ui/avatar";
 import { BadgePanel } from "./BadgePanel";
-import { TABLE_ROW } from "@/components/ui/table-scroll";
+import { Tr, Td } from "@/components/ui/table";
 
 /**
  * Строка сотрудника: просмотр и удаление. Правка — панелью справа
@@ -44,8 +44,8 @@ export function StaffRow({
   const [badgeOpen, setBadgeOpen] = useState(false);
 
   return (
-    <tr className={`group ${TABLE_ROW}`}>
-      <td className="px-3 py-2">
+    <Tr className="group">
+      <Td>
         <button onClick={onEdit} className="flex min-w-0 items-center gap-3 text-left">
           {/* shrink-0: фото не сжимается, когда соседний текст длинный
               (Кирилл 13.11: «размер фотографии уменьшается кратно»). */}
@@ -70,13 +70,13 @@ export function StaffRow({
             )}
           </span>
         </button>
-      </td>
-      <td className="px-3 py-2 text-muted-foreground" data-label={t("staff.col.role")}>
+      </Td>
+      <Td className="text-muted-foreground" data-label={t("staff.col.role")}>
         {m.role || "—"}
-      </td>
+      </Td>
       {/* Ставка видна прямо в списке: пустая клетка зовёт её задать, а
           задаётся она той же правкой строки, что имя и телефон. */}
-      <td className="px-3 py-2 text-right tabular-nums" data-label={t("staff.rate")}>
+      <Td className="text-right tabular-nums" data-label={t("staff.rate")}>
         {m.hourlyRate ? (
           t("staff.rateValue", { r: m.hourlyRate })
         ) : (
@@ -84,17 +84,17 @@ export function StaffRow({
             {t("staff.rateSet")}
           </button>
         )}
-      </td>
+      </Td>
       {roleName !== undefined && (
-        <td className="px-3 py-2" data-label={t("team.role")}>
+        <Td data-label={t("team.role")}>
           {roleName ?? (
             <span className="rounded-full bg-warning-fill px-2 py-0.5 text-xs font-medium text-warning-foreground">
               {t("team.deskNone")}
             </span>
           )}
-        </td>
+        </Td>
       )}
-      <td className="stack-head px-3 py-2">
+      <Td className="stack-head">
         <div className="flex items-center gap-1">
           <button
             onClick={() => setBadgeOpen(true)}
@@ -137,7 +137,7 @@ export function StaffRow({
             <Trash2 className="size-3.5" />
           </button>
         </div>
-      </td>
-    </tr>
+      </Td>
+    </Tr>
   );
 }

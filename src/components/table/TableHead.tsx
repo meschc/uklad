@@ -3,9 +3,9 @@ import { useState } from "react";
 import { useT, type MsgKey } from "@/lib/i18n";
 import type { ColId } from "./columns";
 import { cn } from "@/lib/utils";
-import { eyebrow } from "@/components/ui/eyebrow";
 import { RowCheck } from "./RowCheck";
 import type { SortKey } from "./tableRows";
+import { TableHeader, Th } from "@/components/ui/table";
 
 export const COLS: Record<ColId, { label: MsgKey; sort?: SortKey; className?: string }> = {
   photo: { label: "table.col.photo", className: "w-12" },
@@ -45,43 +45,41 @@ export function TableHead({
   const t = useT();
   const [drag, setDrag] = useState<ColId | null>(null);
   return (
-    <thead className="sticky top-0 z-10 bg-card">
-      <tr className="border-b border-border text-left">
-        <Th className="w-9">
-          <RowCheck
-            checked={allPicked}
-            partial={somePicked}
-            onChange={onToggleAll}
-            label={t("table.bulk.selectAll")}
-          />
-        </Th>
-        {order
-          .filter((c) => !(hidePartner && c === "partner"))
-          .map((c) => {
-            const col = COLS[c];
-            return (
-              <Th
-                key={c}
-                className={cn(col.className, drag === c && "opacity-40")}
-                sortable={!!col.sort}
-                onClick={col.sort ? () => onSort(col.sort!) : undefined}
-                drag={{
-                  onDragStart: () => setDrag(c),
-                  onDragEnd: () => setDrag(null),
-                  onDrop: () => drag && onMove(drag, c),
-                }}
-              >
-                {t(col.label)}
-              </Th>
-            );
-          })}
-        <Th className="w-10" />
-      </tr>
-    </thead>
+    <TableHeader sticky>
+      <HeadCell className="w-9">
+        <RowCheck
+          checked={allPicked}
+          partial={somePicked}
+          onChange={onToggleAll}
+          label={t("table.bulk.selectAll")}
+        />
+      </HeadCell>
+      {order
+        .filter((c) => !(hidePartner && c === "partner"))
+        .map((c) => {
+          const col = COLS[c];
+          return (
+            <HeadCell
+              key={c}
+              className={cn(col.className, drag === c && "opacity-40")}
+              sortable={!!col.sort}
+              onClick={col.sort ? () => onSort(col.sort!) : undefined}
+              drag={{
+                onDragStart: () => setDrag(c),
+                onDragEnd: () => setDrag(null),
+                onDrop: () => drag && onMove(drag, c),
+              }}
+            >
+              {t(col.label)}
+            </HeadCell>
+          );
+        })}
+      <HeadCell className="w-10" />
+    </TableHeader>
   );
 }
 
-function Th({
+function HeadCell({
   children,
   className,
   sortable,
@@ -95,12 +93,9 @@ function Th({
   drag?: { onDragStart: () => void; onDragEnd: () => void; onDrop: () => void };
 }) {
   return (
-    <th
-      className={cn(
-        eyebrow({ className: "whitespace-nowrap px-3 py-2" }),
-        sortable && "cursor-pointer select-none hover:text-foreground",
-        className,
-      )}
+    <Th
+      nowrap
+      className={cn(sortable && "cursor-pointer select-none hover:text-foreground", className)}
       onClick={onClick}
       draggable={!!drag}
       onDragStart={drag?.onDragStart}
@@ -112,6 +107,6 @@ function Th({
         {children}
         {sortable && <ArrowUpDown className="size-3 opacity-40" />}
       </span>
-    </th>
+    </Th>
   );
 }

@@ -17,7 +17,6 @@ import { requestsRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
 import { downloadSheet } from "@/lib/sheets";
 import { groupRequestsByTarget } from "@/lib/fulfillment";
-import { TableScroll, TABLE_HEAD, TABLE_HEAD_ROW, TABLE_ROW } from "@/components/ui/table-scroll";
 import { SortTh, TableFilters, TableSearch, useDataTable } from "@/components/ui/data-table";
 import { useT, type MsgKey, type TFunc } from "@/lib/i18n";
 import { isOrderSource, type RequestStatus } from "@/lib/types";
@@ -34,6 +33,7 @@ import { RequestDialog } from "./RequestDialog";
 import { StatusBadge } from "./RequestGroupCard";
 import { DatePicker } from "@/components/ui/date-picker";
 import { toIso } from "@/components/ui/dates";
+import { Table, TableHeader, Tr, Td } from "@/components/ui/table";
 
 /**
  * Кабинет продавца (п.7). Те же локальные данные, другой набор экранов и без
@@ -174,75 +174,68 @@ function RequestsTab({ t }: { t: TFunc }) {
                 </span>
               ))}
             </div>
-            <TableScroll>
-              <table className="table-stack w-auto border-collapse text-sm">
-                <thead className={TABLE_HEAD}>
-                  <tr className={TABLE_HEAD_ROW}>
-                    <SortTh table={reqTable.table} id="name">
-                      {t("table.col.name")}
-                    </SortTh>
-                    <SortTh table={reqTable.table} id="qty" align="right">
-                      {t("tasks.col.qty")}
-                    </SortTh>
-                    <SortTh table={reqTable.table} id="ship">
-                      {t("seller.col.shipDate")}
-                    </SortTh>
-                    <SortTh table={reqTable.table} id="status">
-                      {t("tasks.col.status")}
-                    </SortTh>
-                  </tr>
-                </thead>
-                <tbody>
-                  {g.items.map((r) => {
-                    const p = products.find((x) => x.id === r.productId);
-                    return (
-                      <tr key={r.id} className={TABLE_ROW}>
-                        <td className="px-3 py-2">
-                          <div className="font-medium">{p?.name ?? "—"}</div>
-                          <div className="font-mono text-2xs text-muted-foreground">{p?.sku}</div>
-                        </td>
-                        <td
-                          className="px-3 py-2 text-right tabular-nums"
-                          data-label={t("tasks.col.qty")}
-                        >
-                          {r.pickedQty ? `${r.pickedQty}/` : ""}
-                          {r.qty}
-                        </td>
-                        <td
-                          className="px-3 py-2 text-xs text-muted-foreground"
-                          data-label={t("seller.col.shipDate")}
-                        >
-                          {r.truckDate ? new Date(r.truckDate).toLocaleDateString() : "—"}
-                        </td>
-                        <td className="px-3 py-2" data-label={t("tasks.col.status")}>
-                          <StatusBadge status={r.status} partial={r.partial} t={t} />
-                          {r.source && (
-                            <div className="mt-0.5 text-2xs text-muted-foreground">
-                              {isOrderSource(r.source)
-                                ? t(`order.source.${r.source}` as MsgKey)
-                                : r.source}
-                              {r.externalId ? ` · ${r.externalId}` : ""}
-                            </div>
-                          )}
-                          {/* Продавцу важно не «собрано», а «уехало»: под
+            <Table>
+              <TableHeader>
+                <SortTh table={reqTable.table} id="name">
+                  {t("table.col.name")}
+                </SortTh>
+                <SortTh table={reqTable.table} id="qty" align="right">
+                  {t("tasks.col.qty")}
+                </SortTh>
+                <SortTh table={reqTable.table} id="ship">
+                  {t("seller.col.shipDate")}
+                </SortTh>
+                <SortTh table={reqTable.table} id="status">
+                  {t("tasks.col.status")}
+                </SortTh>
+              </TableHeader>
+              <tbody>
+                {g.items.map((r) => {
+                  const p = products.find((x) => x.id === r.productId);
+                  return (
+                    <Tr key={r.id}>
+                      <Td>
+                        <div className="font-medium">{p?.name ?? "—"}</div>
+                        <div className="font-mono text-2xs text-muted-foreground">{p?.sku}</div>
+                      </Td>
+                      <Td className="text-right tabular-nums" data-label={t("tasks.col.qty")}>
+                        {r.pickedQty ? `${r.pickedQty}/` : ""}
+                        {r.qty}
+                      </Td>
+                      <Td
+                        className="text-xs text-muted-foreground"
+                        data-label={t("seller.col.shipDate")}
+                      >
+                        {r.truckDate ? new Date(r.truckDate).toLocaleDateString() : "—"}
+                      </Td>
+                      <Td data-label={t("tasks.col.status")}>
+                        <StatusBadge status={r.status} partial={r.partial} t={t} />
+                        {r.source && (
+                          <div className="mt-0.5 text-2xs text-muted-foreground">
+                            {isOrderSource(r.source)
+                              ? t(`order.source.${r.source}` as MsgKey)
+                              : r.source}
+                            {r.externalId ? ` · ${r.externalId}` : ""}
+                          </div>
+                        )}
+                        {/* Продавцу важно не «собрано», а «уехало»: под
                               статусом показываем дату вывоза и машину. */}
-                          {r.status === "shipped" && (
-                            <div className="mt-0.5 text-2xs text-muted-foreground">
-                              {t("seller.shippedAt", {
-                                d: new Date(r.shippedAt ?? r.updatedAt).toLocaleDateString(),
-                              })}
-                              {shipmentOf(r.shipmentId)?.vehicle
-                                ? ` · ${shipmentOf(r.shipmentId)!.vehicle}`
-                                : ""}
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </TableScroll>
+                        {r.status === "shipped" && (
+                          <div className="mt-0.5 text-2xs text-muted-foreground">
+                            {t("seller.shippedAt", {
+                              d: new Date(r.shippedAt ?? r.updatedAt).toLocaleDateString(),
+                            })}
+                            {shipmentOf(r.shipmentId)?.vehicle
+                              ? ` · ${shipmentOf(r.shipmentId)!.vehicle}`
+                              : ""}
+                          </div>
+                        )}
+                      </Td>
+                    </Tr>
+                  );
+                })}
+              </tbody>
+            </Table>
           </section>
         ))
       )}
@@ -373,12 +366,12 @@ function BulkRequestDialog({ onClose, t }: { onClose: () => void; t: TFunc }) {
         />
       </Field>
       {parsed.length > 0 && (
-        <div className="max-h-40 overflow-y-auto rounded-md border border-border">
-          <table className="w-full border-collapse text-xs">
+        <div className="scrollbar-thin max-h-40 overflow-y-auto">
+          <Table size="sm" fill scroll={false}>
             <tbody>
               {parsed.map((r) => (
-                <tr key={r.index} className="border-b border-border/60 last:border-0">
-                  <td className="px-2 py-1">
+                <Tr key={r.index}>
+                  <Td>
                     {r.ok ? (
                       <span className="inline-flex items-center gap-1 text-success">
                         <Check className="size-3" />
@@ -386,14 +379,14 @@ function BulkRequestDialog({ onClose, t }: { onClose: () => void; t: TFunc }) {
                     ) : (
                       <span className="text-destructive">×</span>
                     )}
-                  </td>
-                  <td className="px-2 py-1 font-mono text-muted-foreground">{r.code}</td>
-                  <td className="px-2 py-1">{r.product?.name ?? t("seller.unknownSku")}</td>
-                  <td className="px-2 py-1 text-right tabular-nums">{r.qty}</td>
-                </tr>
+                  </Td>
+                  <Td className="font-mono text-muted-foreground">{r.code}</Td>
+                  <Td>{r.product?.name ?? t("seller.unknownSku")}</Td>
+                  <Td className="text-right tabular-nums">{r.qty}</Td>
+                </Tr>
               ))}
             </tbody>
-          </table>
+          </Table>
         </div>
       )}
       <p className="flex items-center gap-1.5 text-xs text-muted-foreground">

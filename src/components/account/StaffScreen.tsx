@@ -8,7 +8,6 @@ import { telHref } from "@/lib/phone";
 import { csvToStaff, staffToCsv } from "@/lib/staffIO";
 import { BOM } from "@/lib/utils";
 import type { StaffMember } from "@/lib/types";
-import { TableScroll, TABLE_HEAD, TABLE_HEAD_ROW } from "@/components/ui/table-scroll";
 import { SortTh, TableFilters, TableSearch, useDataTable } from "@/components/ui/data-table";
 import { useT, type TFunc } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
@@ -24,6 +23,7 @@ import { StaffRow } from "./StaffRow";
 import { StaffViewList } from "./StaffViewList";
 import { StaffPanel } from "./StaffPanel";
 import { ArchiveNote } from "@/components/fulfillment/ArchiveNote";
+import { Table, TableHeader, Th } from "@/components/ui/table";
 
 /**
  * Склад и персонал (п.6, 24, 25): контакты склада, ответственное лицо блоком
@@ -231,40 +231,36 @@ export function StaffScreen() {
                     })}
                   </p>
                 )}
-                <TableScroll>
-                  <table className="table-stack w-auto border-collapse text-sm">
-                    <thead className={TABLE_HEAD}>
-                      <tr className={TABLE_HEAD_ROW}>
-                        <SortTh table={staffTable.table} id="name">
-                          {t("staff.col.name")}
-                        </SortTh>
-                        <SortTh table={staffTable.table} id="role">
-                          {t("staff.col.role")}
-                        </SortTh>
-                        <SortTh table={staffTable.table} id="rate" align="right">
-                          {t("staff.rate")}
-                        </SortTh>
-                        {team.state && (
-                          <SortTh table={staffTable.table} id="access">
-                            {t("team.role")}
-                          </SortTh>
-                        )}
-                        <th className="w-20 px-3 py-2" />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {staffTable.rows.map((m) => (
-                        <StaffRow
-                          key={m.id}
-                          member={m}
-                          roleName={team.state ? roleName(m.id) : undefined}
-                          onEdit={() => setPanel(m.id)}
-                          t={t}
-                        />
-                      ))}
-                    </tbody>
-                  </table>
-                </TableScroll>
+                <Table>
+                  <TableHeader>
+                    <SortTh table={staffTable.table} id="name">
+                      {t("staff.col.name")}
+                    </SortTh>
+                    <SortTh table={staffTable.table} id="role">
+                      {t("staff.col.role")}
+                    </SortTh>
+                    <SortTh table={staffTable.table} id="rate" align="right">
+                      {t("staff.rate")}
+                    </SortTh>
+                    {team.state && (
+                      <SortTh table={staffTable.table} id="access">
+                        {t("team.role")}
+                      </SortTh>
+                    )}
+                    <Th className="w-20" />
+                  </TableHeader>
+                  <tbody>
+                    {staffTable.rows.map((m) => (
+                      <StaffRow
+                        key={m.id}
+                        member={m}
+                        roleName={team.state ? roleName(m.id) : undefined}
+                        onEdit={() => setPanel(m.id)}
+                        t={t}
+                      />
+                    ))}
+                  </tbody>
+                </Table>
               </>
             )}
           </section>

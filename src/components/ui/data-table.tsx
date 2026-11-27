@@ -11,10 +11,11 @@ import { ArrowDown, ArrowUp, ChevronsUpDown, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "./input";
 import { Select } from "@/components/ui/select";
+import { Th } from "./table";
 
 /**
  * Сортировка и поиск для любой таблицы кабинета — на TanStack Table (MIT,
- * без своей вёрстки). Экран оставляет свою разметку `<table>`, а строки
+ * без своей вёрстки). Вёрстка — общая таблица ДС (`ui/table`), строки экран
  * берёт отсюда (`rows`).
  *
  * Колонка — это id и значение для сортировки и поиска. Значение — строка или
@@ -185,12 +186,9 @@ export function SortTh<T>({
   const dir = col?.getIsSorted();
   const Icon = dir === "asc" ? ArrowUp : dir === "desc" ? ArrowDown : ChevronsUpDown;
   return (
-    <th
-      className={cn(
-        "px-3 py-2 font-medium",
-        align === "right" ? "text-right" : "text-left",
-        className,
-      )}
+    <Th
+      align={align}
+      className={className}
       aria-sort={dir === "asc" ? "ascending" : dir === "desc" ? "descending" : undefined}
     >
       <button
@@ -205,7 +203,7 @@ export function SortTh<T>({
         {children}
         <Icon className={cn("size-3", !dir && "opacity-40")} />
       </button>
-    </th>
+    </Th>
   );
 }
 

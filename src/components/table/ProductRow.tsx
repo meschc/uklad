@@ -10,6 +10,7 @@ import type { ColId } from "./columns";
 import { cloneElement, Fragment, type ReactElement } from "react";
 import { COLS } from "./TableHead";
 import { formatBarcode } from "@/lib/barcodeFormat";
+import { Tr, Td } from "@/components/ui/table";
 
 /** URL только с безопасной схемой (http/https), иначе ссылку не рисуем. */
 function safeUrl(url?: string): string | undefined {
@@ -93,13 +94,13 @@ export function ProductRow({
   const url = safeUrl(p.url);
   const cells: Record<ColId, ReactElement<{ "data-label"?: string }>> = {
     photo: (
-      <td className="stack-lead px-3 py-1.5">
+      <Td className="stack-lead py-1.5">
         <ProductThumb product={p} />
-      </td>
+      </Td>
     ),
-    sku: <td className="px-3 py-1.5 font-mono text-xs text-muted-foreground">{p.sku}</td>,
+    sku: <Td className="py-1.5 font-mono text-xs text-muted-foreground">{p.sku}</Td>,
     name: (
-      <td className="stack-title px-3 py-1.5 font-medium">
+      <Td className="stack-title py-1.5 font-medium">
         <span className="inline-flex items-center gap-1.5">
           {p.name}
           {url && (
@@ -115,10 +116,10 @@ export function ProductRow({
             </a>
           )}
         </span>
-      </td>
+      </Td>
     ),
     barcode: (
-      <td className="px-3 py-1.5 font-mono text-xs text-muted-foreground max-md:!hidden">
+      <Td nowrap className="py-1.5 font-mono text-xs text-muted-foreground max-md:!hidden">
         <button
           type="button"
           onClick={onBarcode}
@@ -128,36 +129,31 @@ export function ProductRow({
           {formatBarcode(p.barcode)}
           <Barcode className="size-3.5 opacity-0 transition-opacity group-hover/row:opacity-50 group-hover/bc:opacity-100" />
         </button>
-      </td>
+      </Td>
     ),
     category: (
-      <td className="px-3 py-1.5 max-md:!hidden">
+      <Td className="py-1.5 max-md:!hidden">
         <span className="rounded bg-muted px-1.5 py-0.5 text-xs">{catLabel(t, p.category)}</span>
-      </td>
+      </Td>
     ),
-    partner: <td className="px-3 py-1.5 text-xs text-muted-foreground">{partner || "—"}</td>,
+    partner: <Td className="py-1.5 text-xs text-muted-foreground">{partner || "—"}</Td>,
     dims: (
-      <td className="whitespace-nowrap px-3 py-1.5 tabular-nums text-muted-foreground max-md:!hidden">
+      <Td className="whitespace-nowrap py-1.5 tabular-nums text-muted-foreground max-md:!hidden">
         {cm(p.widthCm)} × {cm(p.heightCm)} × {cm(p.depthCm)}
-      </td>
+      </Td>
     ),
     weight: (
-      <td className="px-3 py-1.5 tabular-nums text-muted-foreground max-md:!hidden">
+      <Td className="py-1.5 tabular-nums text-muted-foreground max-md:!hidden">
         {p.weightKg != null ? cm(p.weightKg) : "—"}
-      </td>
+      </Td>
     ),
     qty: (
-      <td
-        className={cn(
-          "px-3 py-1.5 tabular-nums",
-          qty > 0 ? "font-medium" : "text-muted-foreground",
-        )}
-      >
+      <Td className={cn("py-1.5 tabular-nums", qty > 0 ? "font-medium" : "text-muted-foreground")}>
         {qty}
-      </td>
+      </Td>
     ),
     place: (
-      <td className="px-3 py-1.5">
+      <Td className="py-1.5">
         {readOnly ? (
           place ? (
             /* Продавцу адрес нужен не как текст, а как место: клик открывает
@@ -199,25 +195,20 @@ export function ProductRow({
             {t("table.assignBtn")}
           </button>
         )}
-      </td>
+      </Td>
     ),
   };
 
   return (
-    <tr
-      className={cn(
-        "group/row border-b border-border/60 transition-colors hover:bg-accent/40",
-        picked && "bg-primary/5",
-      )}
-    >
-      <td className="stack-lead px-3 py-1.5">
+    <Tr className={cn("group/row transition-colors hover:bg-accent/40", picked && "bg-primary/5")}>
+      <Td className="stack-lead py-1.5">
         <RowCheck
           checked={picked}
           onChange={onPick}
           label={p.name}
           title={t("table.bulk.shiftHint")}
         />
-      </td>
+      </Td>
       {order
         .filter((c) => !(readOnly && c === "partner"))
         .map((c) => (
@@ -231,7 +222,7 @@ export function ProductRow({
               : cloneElement(cells[c], { "data-label": t(COLS[c].label) })}
           </Fragment>
         ))}
-      <td className="stack-head px-2 py-1.5">
+      <Td className="stack-head px-2 py-1.5">
         <div className="flex items-center justify-end gap-1">
           {/* Продавцу из таблицы нужна ровно одна операция — набрать заявку
               на отгрузку (п.3). */}
@@ -252,7 +243,7 @@ export function ProductRow({
             <Pencil className="size-3.5" />
           </button>
         </div>
-      </td>
-    </tr>
+      </Td>
+    </Tr>
   );
 }

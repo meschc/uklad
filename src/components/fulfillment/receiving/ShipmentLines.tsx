@@ -2,6 +2,7 @@ import { useEditor } from "@/lib/store";
 import type { ExpectedShipment } from "@/lib/types";
 import { type TFunc } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { Table, TableHeader, Th, Tr, Td } from "@/components/ui/table";
 
 /**
  * Строки поставки под полем скана: что ещё не добрано.
@@ -13,39 +14,30 @@ import { cn } from "@/lib/utils";
 export function ShipmentLines({ shipment, t }: { shipment: ExpectedShipment; t: TFunc }) {
   const products = useEditor((s) => s.products);
   return (
-    <div className="overflow-hidden rounded-lg border border-border">
-      <table className="w-full border-collapse text-xs">
-        <thead className="bg-muted/50">
-          <tr className="text-left">
-            <th className="px-2.5 py-1.5 font-medium">{t("table.col.name")}</th>
-            <th className="px-2.5 py-1.5 text-right font-medium">{t("recv.lines.expected")}</th>
-            <th className="px-2.5 py-1.5 text-right font-medium">{t("recv.lines.received")}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {shipment.lines.map((l) => {
-            const p = products.find((x) => x.id === l.productId);
-            const full = l.receivedQty >= l.expectedQty;
-            return (
-              <tr key={l.id} className="border-t border-border/60">
-                <td className="px-2.5 py-1.5">
-                  {p?.name ?? "—"}{" "}
-                  <span className="font-mono text-2xs text-muted-foreground">{p?.sku}</span>
-                </td>
-                <td className="px-2.5 py-1.5 text-right tabular-nums">{l.expectedQty}</td>
-                <td
-                  className={cn(
-                    "px-2.5 py-1.5 text-right font-medium tabular-nums",
-                    full && "text-success",
-                  )}
-                >
-                  {l.receivedQty}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+    <Table size="sm" fill>
+      <TableHeader>
+        <Th>{t("table.col.name")}</Th>
+        <Th className="text-right">{t("recv.lines.expected")}</Th>
+        <Th className="text-right">{t("recv.lines.received")}</Th>
+      </TableHeader>
+      <tbody>
+        {shipment.lines.map((l) => {
+          const p = products.find((x) => x.id === l.productId);
+          const full = l.receivedQty >= l.expectedQty;
+          return (
+            <Tr key={l.id}>
+              <Td>
+                {p?.name ?? "—"}{" "}
+                <span className="font-mono text-2xs text-muted-foreground">{p?.sku}</span>
+              </Td>
+              <Td className="text-right tabular-nums">{l.expectedQty}</Td>
+              <Td className={cn("text-right font-medium tabular-nums", full && "text-success")}>
+                {l.receivedQty}
+              </Td>
+            </Tr>
+          );
+        })}
+      </tbody>
+    </Table>
   );
 }

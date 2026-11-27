@@ -29,6 +29,56 @@ import prettier from "eslint-config-prettier";
 const PALETTE =
   "/\\b(bg|text|border|ring|fill|stroke|from|to|via|outline|divide|decoration|accent)-(red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose|slate|gray|zinc|neutral|stone)-[0-9]/";
 
+const DS_RULES = [
+  {
+    selector: `Literal[value=${PALETTE}], TemplateElement[value.raw=${PALETTE}]`,
+    message:
+      "Цвет палитры Tailwind мимо токенов. Берите токен по роли: primary, success, warning, destructive, muted-foreground (src/index.css).",
+  },
+  {
+    // Ошибки форм (Кирилл 13 ноя: «рядом с полем должно быть отображение
+    // ошибки, это общее правило»): один вид на весь Уклад.
+    selector:
+      "JSXAttribute[name.name='className'] Literal[value=/(^|\\s)text-(xs|sm)(\\s+leading-\\S+)?\\s+text-destructive(\\s|$)/]",
+    message:
+      "Свой текст ошибки. Ошибка поля — FieldError (или Field error=…), отказ формы — FormError из ui/field.",
+  },
+  {
+    selector: "Literal[value=/\\bbg-muted p-0\\.5\\b/]",
+    message: "Свой набор кнопок-табов. Переключатель — только ui/segmented.",
+  },
+  {
+    // Пределы чисел (Кирилл 12 ноя: «уже не в первый раз»): числовое
+    // поле без предела принимает 34223413242134 камер. Предел — из
+    // lib/numberLimits (`max={LIMITS.small.max}`) или явный `max`.
+    selector:
+      'JSXOpeningElement[name.name=/^(input|Input)$/]:has(JSXAttribute[name.name="type"][value.value="number"]):not(:has(JSXAttribute[name.name="max"])):not(:has(JSXSpreadAttribute))',
+    message: "Числовое поле без предела. Добавьте max={LIMITS.…max} из lib/numberLimits.",
+  },
+  {
+    selector:
+      'JSXOpeningElement[name.name=/^(input|Input)$/]:has(JSXAttribute[name.name="inputMode"][value.value=/^(numeric|decimal)$/]):not(:has(JSXAttribute[name.name=/^(max|maxLength)$/])):not(:has(JSXSpreadAttribute))',
+    message: "Числовое текстовое поле без maxLength. Возьмите digitsFor(…) из lib/numberLimits.",
+  },
+  {
+    selector:
+      'JSXOpeningElement[name.name=/^(input|Input)$/]:matches(:has(JSXAttribute[name.name=/^(type|inputMode)$/][value.value="tel"]), :has(CallExpression[callee.name="formatPhone"])):not(:has(JSXAttribute[name.name="maxLength"]))',
+    message: "Телефон без maxLength. Возьмите PHONE_MAX_LENGTH из lib/phone.",
+  },
+  {
+    selector: 'MemberExpression[object.name="localStorage"]',
+    message:
+      "localStorage напрямую. Настройки устройства — readLocal/writeLocal (lib/safeStorage), данные — через репозиторий.",
+  },
+  {
+    // Кирилл 13 ноя: «почему до сих пор нет элемента дропдауна».
+    // Витрина (src/site) на паузе и свои списки пока держит.
+    selector: 'JSXOpeningElement[name.name="select"]',
+    message:
+      "Системный <select>. Выпадающий список — ui/select (<Select>): те же value, <option> и onChange.",
+  },
+];
+
 export default tseslint.config(
   {
     // Собранное, отчёты и зависимости линтеру показывать незачем.
@@ -110,55 +160,33 @@ export default tseslint.config(
       "src/components/table/Code128Svg.tsx",
     ],
     rules: {
+      "no-restricted-syntax": ["error", ...DS_RULES],
+    },
+  },
+
+  {
+    // Одна таблица на весь кабинет (Кирилл 27.11: «все таблицы один элемент
+    // имеют, разные конфигурации»): экран собирает таблицу из ui/table, а не
+    // пишет свой <table>. Витрина (src/site) на паузе и свои таблицы пока
+    // держит. Бумажные формы печатаются чёрным по белому — свой вид.
+    files: ["src/components/**/*.tsx"],
+    ignores: [
+      "src/components/ui/**",
+      "**/__tests__/**",
+      "src/components/fulfillment/DocumentSheet.tsx",
+      "src/components/fulfillment/InventorySheet.tsx",
+      "src/components/fulfillment/ReportExport.tsx",
+      "src/components/fulfillment/LabelCard.tsx",
+      "src/components/table/Code128Svg.tsx",
+    ],
+    rules: {
       "no-restricted-syntax": [
         "error",
+        ...DS_RULES,
         {
-          selector: `Literal[value=${PALETTE}], TemplateElement[value.raw=${PALETTE}]`,
+          selector: "JSXOpeningElement[name.name=/^(table|thead|th|tr|td)$/]",
           message:
-            "Цвет палитры Tailwind мимо токенов. Берите токен по роли: primary, success, warning, destructive, muted-foreground (src/index.css).",
-        },
-        {
-          // Ошибки форм (Кирилл 13 ноя: «рядом с полем должно быть отображение
-          // ошибки, это общее правило»): один вид на весь Уклад.
-          selector:
-            "JSXAttribute[name.name='className'] Literal[value=/(^|\\s)text-(xs|sm)(\\s+leading-\\S+)?\\s+text-destructive(\\s|$)/]",
-          message:
-            "Свой текст ошибки. Ошибка поля — FieldError (или Field error=…), отказ формы — FormError из ui/field.",
-        },
-        {
-          selector: "Literal[value=/\\bbg-muted p-0\\.5\\b/]",
-          message: "Свой набор кнопок-табов. Переключатель — только ui/segmented.",
-        },
-        {
-          // Пределы чисел (Кирилл 12 ноя: «уже не в первый раз»): числовое
-          // поле без предела принимает 34223413242134 камер. Предел — из
-          // lib/numberLimits (`max={LIMITS.small.max}`) или явный `max`.
-          selector:
-            'JSXOpeningElement[name.name=/^(input|Input)$/]:has(JSXAttribute[name.name="type"][value.value="number"]):not(:has(JSXAttribute[name.name="max"])):not(:has(JSXSpreadAttribute))',
-          message: "Числовое поле без предела. Добавьте max={LIMITS.…max} из lib/numberLimits.",
-        },
-        {
-          selector:
-            'JSXOpeningElement[name.name=/^(input|Input)$/]:has(JSXAttribute[name.name="inputMode"][value.value=/^(numeric|decimal)$/]):not(:has(JSXAttribute[name.name=/^(max|maxLength)$/])):not(:has(JSXSpreadAttribute))',
-          message:
-            "Числовое текстовое поле без maxLength. Возьмите digitsFor(…) из lib/numberLimits.",
-        },
-        {
-          selector:
-            'JSXOpeningElement[name.name=/^(input|Input)$/]:matches(:has(JSXAttribute[name.name=/^(type|inputMode)$/][value.value="tel"]), :has(CallExpression[callee.name="formatPhone"])):not(:has(JSXAttribute[name.name="maxLength"]))',
-          message: "Телефон без maxLength. Возьмите PHONE_MAX_LENGTH из lib/phone.",
-        },
-        {
-          selector: 'MemberExpression[object.name="localStorage"]',
-          message:
-            "localStorage напрямую. Настройки устройства — readLocal/writeLocal (lib/safeStorage), данные — через репозиторий.",
-        },
-        {
-          // Кирилл 13 ноя: «почему до сих пор нет элемента дропдауна».
-          // Витрина (src/site) на паузе и свои списки пока держит.
-          selector: 'JSXOpeningElement[name.name="select"]',
-          message:
-            "Системный <select>. Выпадающий список — ui/select (<Select>): те же value, <option> и onChange.",
+            "Своя таблица. Таблица кабинета — ui/table: <Table>, <TableHeader>, <Th>, <Tr>, <Td> (размер, ширина, перенос — пропсами).",
         },
       ],
     },
