@@ -7,7 +7,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { readBody, shortOf, requestId } = require("../src/cabinet/sellerRequests");
+const { readBody, shortOf, requestId, cancelProblem } = require("../src/cabinet/sellerRequests");
 const { UNPAID_ALLOWED } = require("../src/cabinet/planLimits");
 
 const NOW = 1_800_000_000_000;
@@ -68,4 +68,20 @@ test("повтор с тем же ключом даёт те же id; неопл
   assert.equal(requestId("key-12345678", 0), requestId("key-12345678", 0));
   assert.notEqual(requestId("key-12345678", 0), requestId("key-12345678", 1));
   assert.ok(!UNPAID_ALLOWED.some((re) => re.test("/api/requests")));
+});
+
+test("отмена: «новая» с тарой, посылкой или началом сборки — уже начата", () => {
+  const r = { by: "seller", status: "new" };
+  assert.equal(cancelProblem(r), null);
+  for (const over of [
+    { toteId: "box-1" },
+    { startedAt: 1 },
+    { packedAt: 1 },
+    { shipmentId: "s" },
+  ]) {
+    assert.equal(cancelProblem({ ...r, ...over }), "started");
+  }
+  assert.equal(cancelProblem({ ...r, pickedQty: 1 }), "started");
+  assert.equal(cancelProblem({ ...r, reservedShipmentId: "exp" }), "reserved");
+  assert.equal(cancelProblem({ ...r, by: undefined }), "not_yours");
 });

@@ -161,6 +161,8 @@ function readCancel(b) {
 function cancelProblem(r) {
   if (r.by !== "seller") return "not_yours";
   if (r.status !== "new" || (Number(r.pickedQty) || 0) > 0) return "started";
+  // Статус ещё «новая», а тару уже сняли или посылку собрали — тоже начата.
+  if (r.startedAt || r.toteId || r.packedAt || r.shipmentId) return "started";
   if (r.reservedShipmentId) return "reserved";
   return null;
 }

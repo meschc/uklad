@@ -38,6 +38,7 @@ describe("отмена заявки продавцом", () => {
       req({ status: "in_progress" }),
       req({ pickedQty: 1 }),
       req({ reservedShipmentId: "exp-1" }),
+      req({ toteId: "box-1" }),
     ]) {
       const { container, unmount } = render(<SellerCancel request={r} />);
       expect(container.textContent).toBe("");

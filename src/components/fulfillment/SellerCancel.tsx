@@ -8,7 +8,11 @@ import { Button } from "@/components/ui/button";
 
 /** Можно ли продавцу отменить заявку сам: своя, новая, ничего не снято, без брони. */
 const sellerMayCancel = (r: FulfillmentRequest) =>
-  r.by === "seller" && r.status === "new" && !r.pickedQty && !r.reservedShipmentId;
+  r.by === "seller" &&
+  r.status === "new" &&
+  !r.pickedQty &&
+  !r.reservedShipmentId &&
+  !(r.startedAt || r.toteId || r.packedAt || r.shipmentId);
 
 /**
  * Отмена своей заявки продавцом — в строке, без окна: первое нажатие
