@@ -10,10 +10,13 @@
  *
  * Закрыто совсем: персонал и журнал смен, задания склада с исполнителями,
  * спорное (кроме лишнего с приёмки по своему товару — `ownOverage`),
- * документы склада, переписка, подключения, реквизиты, тариф, другие
- * склады и остальные продавцы. Цены услуг открыты: это цены продавцу.
+ * документы склада, чужая переписка, подключения, реквизиты, тариф, другие
+ * склады и остальные продавцы. Цены услуг открыты: это цены продавцу. Своя
+ * переписка со складом открыта (`sellerChat.js`).
  */
-/* global module */
+/* global module, require */
+/* eslint-disable @typescript-eslint/no-require-imports */
+const { sellerChats } = require("./sellerChat");
 
 const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 const list = (v) => (Array.isArray(v) ? v : []);
@@ -156,7 +159,8 @@ function forSeller(data, partnerRef) {
     disputes: ownOverage(d.disputes, mine),
     docRecords: [],
     staffEvents: [],
-    chats: {},
+    // Переписка — только своя, без отметки, кто из людей писал (`sellerChat.js`).
+    chats: sellerChats(d.chats, partnerRef),
     integrations: {},
     otherWarehouses: [],
     warehouseData: {},

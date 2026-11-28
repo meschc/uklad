@@ -1,7 +1,8 @@
 import type { ChatMessage, ChatTopic } from "../types";
 import { isChatMessage } from "./guards";
 import { readList, storePort, type StorePort } from "./repository";
-import { attempt, type Result } from "./result";
+import { attempt, ok, type Result } from "./result";
+import { sellerOnServer, sellerPost } from "./sellerServer";
 
 /**
  * Переписка склада с продавцами (п.0.4, п.3).
@@ -36,17 +37,47 @@ export interface ChatRepository {
   markRead: (partnerId: string) => Promise<Result<void>>;
 }
 
+/**
+ * Продавец на сервере ленту кабинета не пишет: шлёт операцию, а сообщение в
+ * ленту кладёт сервер (`sellerChat.js`) — автором продавца из сессии и в
+ * переписку его партнёра, какой бы `partnerId` ни пришёл отсюда.
+ */
+const done = async (r: Promise<Result<unknown>>): Promise<Result<void>> => {
+  const res = await r;
+  return res.ok ? ok(undefined) : res;
+};
+
 export function createChatRepository(port: StorePort = storePort): ChatRepository {
+  const seller = () => sellerOnServer(port);
   return {
     thread: (partnerId) =>
       readList(() => port.get().chats[partnerId] ?? [], isChatMessage, `chats/${partnerId}`),
-    send: (partnerId, text, replyTo, topic) =>
-      attempt(() => port.get().sendChatMessage(partnerId, text, replyTo, topic)),
+    send: (partnerId, text, replyTo, topic) => {
+      if (!seller()) {
+        return attempt(() => port.get().sendChatMessage(partnerId, text, replyTo, topic));
+      }
+      const body = text.trim();
+      if (!body) return Promise.resolve(ok(undefined));
+      return done(
+        sellerPost("/seller-chat/send", { key: crypto.randomUUID(), text: body, replyTo, topic }),
+      );
+    },
     edit: (partnerId, messageId, text) =>
-      attempt(() => port.get().editChatMessage(partnerId, messageId, text)),
+      seller()
+        ? done(sellerPost("/seller-chat/edit", { id: messageId, text: text.trim() }))
+        : attempt(() => port.get().editChatMessage(partnerId, messageId, text)),
     remove: (partnerId, messageId) =>
-      attempt(() => port.get().deleteChatMessage(partnerId, messageId)),
-    markRead: (partnerId) => attempt(() => port.get().markChatRead(partnerId)),
+      seller()
+        ? done(sellerPost("/seller-chat/delete", { id: messageId }))
+        : attempt(() => port.get().deleteChatMessage(partnerId, messageId)),
+    markRead: (partnerId) => {
+      if (!seller()) return attempt(() => port.get().markChatRead(partnerId));
+      // Нечего отмечать — на сервер не ходим: лента открыта, опрос идёт часто.
+      const waiting = (port.get().chats[partnerId] ?? []).some(
+        (m) => m.from !== "seller" && !m.readAt,
+      );
+      return waiting ? done(sellerPost("/seller-chat/read", {})) : Promise.resolve(ok(undefined));
+    },
   };
 }
 
