@@ -37,6 +37,11 @@
         "$value": "#2463EB",
         "$description": "CSS: hsl(var(--primary))"
       },
+      "primary-text": {
+        "$type": "color",
+        "$value": "#2463EB",
+        "$description": "CSS: hsl(var(--primary-text))"
+      },
       "primary-foreground": {
         "$type": "color",
         "$value": "#FFFFFF",
@@ -76,6 +81,11 @@
         "$type": "color",
         "$value": "#CE2222",
         "$description": "CSS: hsl(var(--destructive))"
+      },
+      "destructive-text": {
+        "$type": "color",
+        "$value": "#CE2222",
+        "$description": "CSS: hsl(var(--destructive-text))"
       },
       "destructive-foreground": {
         "$type": "color",
@@ -324,6 +334,11 @@
         "$value": "#156BF4",
         "$description": "CSS: hsl(var(--primary))"
       },
+      "primary-text": {
+        "$type": "color",
+        "$value": "#5996F7",
+        "$description": "CSS: hsl(var(--primary-text))"
+      },
       "primary-foreground": {
         "$type": "color",
         "$value": "#FFFFFF",
@@ -363,6 +378,11 @@
         "$type": "color",
         "$value": "#D02F2F",
         "$description": "CSS: hsl(var(--destructive))"
+      },
+      "destructive-text": {
+        "$type": "color",
+        "$value": "#E07676",
+        "$description": "CSS: hsl(var(--destructive-text))"
       },
       "destructive-foreground": {
         "$type": "color",

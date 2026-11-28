@@ -71,14 +71,14 @@ export function CookieBar() {
     >
       <div className="wh cookie-in flex flex-col gap-4 rounded-[20px] bg-[var(--wh-tile)] p-5 shadow-[0_18px_50px_-12px_rgba(16,24,40,0.25),0_0_0_1px_rgba(16,24,40,0.06)] dark:shadow-[0_18px_50px_-12px_rgba(0,0,0,0.6),0_0_0_1px_rgba(255,255,255,0.08)]">
         <div className="flex items-start gap-3">
-          <Cookie className="cookie-bite size-6 shrink-0 text-[hsl(var(--primary))]" />
+          <Cookie className="cookie-bite size-6 shrink-0 text-primary" />
           <p className="pt-0.5 text-[15px] leading-snug text-[var(--wh-ink)]">
             {t(T.text)}{" "}
             {/* Баннер остаётся на экране: человек ушёл читать политику именно
                 затем, чтобы решить, и кнопки выбора должны ждать его там же. */}
             <a
               href={href("/legal/cookies")}
-              className="text-[hsl(var(--primary))] transition-opacity hover:opacity-75"
+              className="text-primary transition-opacity hover:opacity-75"
             >
               {t(T.more)}
             </a>

@@ -9,6 +9,20 @@ export default {
       screens: { "2xl": "1400px" },
     },
     extend: {
+      // Текст синим и красным — свой оттенок (28.11): в тёмной теме он
+      // светлее заливки, иначе на тёмном фоне 2,9–3,8:1 вместо 4,5:1. В
+      // светлой теме это тот же цвет, что заливка. Заливки, рамки и обводки
+      // (`bg-`, `border-`, `ring-`) берут сам `--primary` / `--destructive`.
+      textColor: {
+        primary: {
+          DEFAULT: "hsl(var(--primary-text))",
+          foreground: "hsl(var(--primary-foreground))",
+        },
+        destructive: {
+          DEFAULT: "hsl(var(--destructive-text))",
+          foreground: "hsl(var(--destructive-foreground))",
+        },
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
