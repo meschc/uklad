@@ -1,6 +1,6 @@
 import { AlertTriangle, Check } from "lucide-react";
 import { dimsText } from "@/lib/address";
-import { IMPORT_FIELDS, type ColumnMap, type FieldKey, type ImportRow } from "@/lib/importProducts";
+import { type ColumnMap, type FieldKey, type ImportRow } from "@/lib/importProducts";
 import { catLabel, type TFunc } from "@/lib/i18n";
 import { Select } from "@/components/ui/select";
 import { FormError } from "@/components/ui/field";
@@ -17,9 +17,12 @@ export function ColumnPicker({
   sample,
   columns,
   headerLine,
+  fields,
   onChange,
   t,
 }: {
+  /** Что можно выбрать: поля карточки, а начальнику ещё количество и ячейку. */
+  fields: readonly FieldKey[];
   headers: string[];
   /** Первая строка данных — подсказка, что в колонке. */
   sample: string[];
@@ -51,7 +54,7 @@ export function ColumnPicker({
               onChange={(e) => pick(i, (e.target.value || null) as FieldKey | null)}
             >
               <option value="">{t("import.columns.skip")}</option>
-              {IMPORT_FIELDS.map((f) => (
+              {fields.map((f) => (
                 <option key={f} value={f}>
                   {t(`field.${f}`)}
                 </option>
@@ -96,7 +99,16 @@ function Status({ row, t }: { row: ImportRow; t: TFunc }) {
   );
 }
 
-export function ImportPreview({ rows, t }: { rows: ImportRow[]; t: TFunc }) {
+export function ImportPreview({
+  rows,
+  stock,
+  t,
+}: {
+  rows: ImportRow[];
+  /** Показать колонку начального остатка. */
+  stock: boolean;
+  t: TFunc;
+}) {
   return (
     <section className="mt-4">
       <Table size="sm" fill>
@@ -107,6 +119,7 @@ export function ImportPreview({ rows, t }: { rows: ImportRow[]; t: TFunc }) {
           <Th>{t("table.col.name")}</Th>
           <Th>{t("table.col.category")}</Th>
           <Th>{t("table.col.dims")}</Th>
+          {stock && <Th>{t("import.col.stock")}</Th>}
         </TableHeader>
         <tbody>
           {rows.slice(0, PREVIEW_ROWS).map((r) => (
@@ -127,6 +140,15 @@ export function ImportPreview({ rows, t }: { rows: ImportRow[]; t: TFunc }) {
               <Td className="whitespace-nowrap tabular-nums text-muted-foreground">
                 {dimsText(r) ?? "—"}
               </Td>
+              {stock && (
+                <Td className="whitespace-nowrap tabular-nums text-muted-foreground">
+                  {!r.qty
+                    ? "—"
+                    : r.cellText
+                      ? t("import.stockAt", { qty: r.qty, cell: r.cellText })
+                      : t("import.stockNoCell", { qty: r.qty })}
+                </Td>
+              )}
             </Tr>
           ))}
         </tbody>

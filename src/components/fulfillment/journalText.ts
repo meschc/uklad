@@ -110,6 +110,14 @@ export function useEntryText() {
   /** Что сделал руководитель: имена товаров, сотрудник, человек, роль. */
   const audit = (e: ActivityEntry): string => {
     const d = e.details ?? {};
+    if (e.kind === "stock.opening") {
+      // Ввод начальных остатков: сколько штук и каких товаров.
+      const ids = idList(d.ids);
+      const shown = ids.slice(0, MOVES_SHOWN).map((id) => product(id) ?? id);
+      const rest = ids.length + count(d.more) - shown.length;
+      if (rest > 0) shown.push(t("journal.moves.more", { n: rest }));
+      return [t("journal.audit.openingQty", { qty: count(d.qty) }), ...shown].join(", ");
+    }
     if (e.kind.startsWith("product.")) {
       const ids = idList(d.ids);
       const shown = ids.slice(0, MOVES_SHOWN).map((id) => product(id) ?? id);

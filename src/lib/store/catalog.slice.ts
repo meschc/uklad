@@ -3,6 +3,7 @@ import { fieldValueKey } from "./helpers";
 import type { CatalogSlice, SliceCreator } from "./state";
 import { PRODUCT_CATEGORIES, type Product } from "../types";
 import { seedCategoryFields, seedProducts } from "./seed";
+import { openingStock } from "../openingStock";
 
 /**
  * Номенклатура и конструктор доп.полей категорий (ТЗ, разд. 2.5, 3.8).
@@ -159,7 +160,7 @@ export const createCatalogSlice: SliceCreator<CatalogSlice> = (set, get) => ({
   // вкладка или повторная загрузка того же файла иначе дали бы двойники.
   // Правки — только товарам этого склада; новые категории — в список, без
   // повторов по регистру. Всё одной записью: файл загружается целиком.
-  importProducts: (items, updates = [], categories = []) =>
+  importProducts: (items, updates = [], categories = [], opening = []) =>
     set((s) => {
       const own = (p: Product) => !p.warehouseId || p.warehouseId === s.warehouse.id;
       const taken = new Set(s.products.filter(own).map((p) => p.sku));
@@ -169,15 +170,24 @@ export const createCatalogSlice: SliceCreator<CatalogSlice> = (set, get) => ({
       const added = categories
         .map((c) => c.trim())
         .filter((c) => c && !known.has(c.toLowerCase()) && known.add(c.toLowerCase()));
+      const products = [
+        ...s.products.map((p) => {
+          const patch = own(p) ? patches.get(p.id) : undefined;
+          return patch ? { ...p, ...patch } : p;
+        }),
+        ...fresh.map((p) => ({ ...p, id: uid("prod"), warehouseId: s.warehouse.id })),
+      ];
+      const stock = openingStock(products.filter(own), opening, s.boxSeq);
       return {
         categories: added.length ? [...s.categories, ...added] : s.categories,
-        products: [
-          ...s.products.map((p) => {
-            const patch = own(p) ? patches.get(p.id) : undefined;
-            return patch ? { ...p, ...patch } : p;
-          }),
-          ...fresh.map((p) => ({ ...p, id: uid("prod"), warehouseId: s.warehouse.id })),
-        ],
+        products,
+        ...(stock.boxes.length
+          ? {
+              boxes: [...s.boxes, ...stock.boxes],
+              boxSeq: stock.boxSeq,
+              receivingEvents: [...s.receivingEvents, ...stock.events],
+            }
+          : {}),
       };
     }),
 });

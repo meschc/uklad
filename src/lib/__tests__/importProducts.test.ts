@@ -155,4 +155,68 @@ describe("импорт товаров: что если", () => {
     const res = buildRows(m.matrix, 0, ["sku", "name", null], ctx());
     expect(res.ok && res.rows[0]).toMatchObject({ sku: "1", name: "Куртка", action: "create" });
   });
+
+  describe("начальные остатки", () => {
+    const stock = (onHand: [string, number][] = []): ImportContext["stock"] => ({
+      cell: (text) =>
+        text
+          .trim()
+          .split(/[\s.\-/]+/)
+          .join("-") === "1-1-1-1"
+          ? { addr: { floorId: "f", moduleId: "m", shelfIndex: 0, cellIndex: 0 }, text: "1-1-1-1" }
+          : null,
+      onHand: new Map(onHand),
+    });
+    const file = (...rows: string[]) => ["Артикул;Название;Количество;Ячейка", ...rows].join("\n");
+
+    test("количество «10 шт» и ячейка «1 1 1 1» — понятны; «-5», «2,5» и чужая ячейка — нет", () => {
+      const res = parse(
+        file(
+          "A1;x;10 шт;1 1 1 1",
+          "A2;x;3;",
+          "A3;x;-5;",
+          "A4;x;2,5;",
+          "A5;x;1;9-9-9-9",
+          "A6;x;;1-1-1-1",
+          "A7;x;0;",
+        ),
+        ctx({ stock: stock() }),
+      );
+      if (!res.ok) throw new Error("ожидали строки");
+      expect(
+        res.rows.map((r) => [r.qty ?? null, r.cellText ?? null, r.errors[0]?.key ?? null]),
+      ).toEqual([
+        [10, "1-1-1-1", null],
+        [3, null, null],
+        [null, null, "import.row.badQty"],
+        [null, null, "import.row.badQty"],
+        [null, null, "import.row.badCell"],
+        [null, null, "import.row.cellNoQty"],
+        [null, null, null],
+      ]);
+      expect(res.units).toBe(13);
+    });
+
+    test("повтор файла не удваивает: у товара уже есть остаток — ошибка строки", () => {
+      const products = [{ id: "p1", sku: "A1", barcode: "" }];
+      const res = parse(file("A1;x;5;"), ctx({ products, stock: stock([["p1", 5]]) }));
+      expect(res.ok && res.rows[0].errors[0]?.key).toBe("import.row.hasStock");
+    });
+
+    test("остаток к уже заведённому товару без остатка — в план, карточка пропущена", () => {
+      const products = [{ id: "p1", sku: "A1", barcode: "" }];
+      const res = parse(file("A1;x;5;1-1-1-1"), ctx({ products, stock: stock() }));
+      if (!res.ok) throw new Error("ожидали строки");
+      expect(res.rows[0].action).toBe("skip");
+      const plan = importPlan(res.rows);
+      expect(plan.create).toEqual([]);
+      expect(plan.opening).toEqual([{ sku: "A1", qty: 5, cell: res.rows[0].cell }]);
+    });
+
+    test("без права на остатки колонки количества и ячейки не читаются вовсе", () => {
+      const res = parse(file("A1;x;-5;где-то"));
+      expect(res.ok && res.rows[0]).toMatchObject({ action: "create", errors: [] });
+      expect(importPlan(res.ok ? res.rows : []).opening).toEqual([]);
+    });
+  });
 });

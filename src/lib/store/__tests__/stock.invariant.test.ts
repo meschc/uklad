@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { create, type StateCreator } from "zustand";
+import { createCatalogSlice } from "../catalog.slice";
 import { createDisputesSlice } from "../disputes.slice";
 import { createFulfillmentSlice } from "../fulfillment.slice";
 import { createRequestsSlice } from "../requests.slice";
@@ -10,6 +11,7 @@ import { pendingLabel } from "../../packing";
 import { makeProduct } from "../../__tests__/fixtures";
 import type { CellAddress } from "../../types";
 import { broken, onHand } from "./ledger";
+import { liveReceipts } from "../../recvUndo";
 
 /**
  * Сохранность товара на всём пути склада (просьба Кирилла 7.11.2026: «чтобы
@@ -22,14 +24,15 @@ import { broken, onHand } from "./ledger";
 
 type Slice = StateCreator<EditorState, [], [], object>;
 const slices = [
+  createCatalogSlice,
   createFulfillmentSlice,
   createRequestsSlice,
   createWorkstationSlice,
   createDisputesSlice,
 ] as unknown as Slice[];
 
-const A = makeProduct({ id: "p-a", partnerId: "seller", barcode: "4600000000017" });
-const B = makeProduct({ id: "p-b", partnerId: "seller", barcode: "4600000000024" });
+const A = makeProduct({ id: "p-a", sku: "A", partnerId: "seller", barcode: "4600000000017" });
+const B = makeProduct({ id: "p-b", sku: "B", partnerId: "seller", barcode: "4600000000024" });
 const C1: CellAddress = { floorId: "f1", moduleId: "m1", shelfIndex: 0, cellIndex: 0 };
 const C2: CellAddress = { floorId: "f1", moduleId: "m1", shelfIndex: 0, cellIndex: 1 };
 
@@ -42,6 +45,7 @@ function warehouse() {
         placements: {},
         notify: () => {},
         warehouse: {
+          id: "w1",
           staff: [
             { id: "s1", name: "Упаковщик", role: "Упаковщик" },
             { id: "s2", name: "Старший", role: "Старший смены" },
@@ -64,6 +68,39 @@ function stock(w: ReturnType<typeof warehouse>, productId: string, qty: number, 
 }
 
 describe("товар не теряется и не двоится на пути склада", () => {
+  it("ввод начальных остатков: пришло без приёмки, сборка берёт из этой тары, счёт не видит", () => {
+    const w = warehouse();
+    const { s, check } = w;
+    s().importProducts(
+      [],
+      [],
+      [],
+      [
+        { sku: A.sku, qty: 5, cell: C1 },
+        { sku: B.sku, qty: 3, cell: C1 },
+        { sku: A.sku, qty: 2 },
+        { sku: "нет-такого", qty: 9 },
+        { sku: B.sku, qty: -4 },
+      ],
+    );
+    check("ввели остатки");
+    expect(onHand(s()).get("p-a")).toBe(7);
+    expect(onHand(s()).get("p-b")).toBe(3);
+    // Одна тара на ячейку, строка без ячейки — своя тара, ждёт размещения.
+    expect(s().boxes.map((b) => [b.address ?? null, b.lines.length])).toEqual([
+      [C1, 2],
+      [null, 1],
+    ]);
+    expect(liveReceipts(s().receivingEvents)).toEqual([]);
+
+    const r = s().createRequest({ productId: "p-a", qty: 1, note: "Тула" });
+    s().recordPick(r, "p-a", C1);
+    s().completeRequest(r);
+    s().shipRequests([r], { vehicle: "А123ВС" });
+    check("собрали и отгрузили из введённого");
+    expect(onHand(s()).get("p-a")).toBe(6);
+  });
+
   it("приёмка → место → сборка в тару → упаковка с браком → старший → рейс", () => {
     const w = warehouse();
     const { s, check } = w;
