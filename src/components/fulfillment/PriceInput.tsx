@@ -30,7 +30,7 @@ export function PriceInput({
       value={text}
       onChange={(e) => setText(formatPrice(e.target.value))}
       onBlur={() => onCommit(parsePrice(text))}
-      className="ml-[26px] w-28 text-right tabular-nums sm:ml-0"
+      className="w-28 text-right tabular-nums"
     />
   );
 }

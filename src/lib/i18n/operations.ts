@@ -55,6 +55,9 @@ export const ru = {
     "Включите то, что делает ваш склад. Выключенное не появится в заданиях и в отчёте.",
   "ops.services.price": "Цена за {unit}, ₽",
   "ops.services.noPrice": "без цены",
+  "ops.services.col.name": "Услуга",
+  "ops.services.col.price": "Цена, ₽",
+  "ops.services.col.unit": "За что",
 
   "ops.task.new": "Новое задание",
   "ops.task.kind": "Операция",
@@ -189,6 +192,9 @@ export const en: Record<keyof typeof ru, string> = {
     "Turn on what your warehouse does. Anything off won't appear in tasks or the report.",
   "ops.services.price": "Price per {unit}, ₽",
   "ops.services.noPrice": "no price",
+  "ops.services.col.name": "Service",
+  "ops.services.col.price": "Price, ₽",
+  "ops.services.col.unit": "Per",
 
   "ops.task.new": "New task",
   "ops.task.kind": "Operation",

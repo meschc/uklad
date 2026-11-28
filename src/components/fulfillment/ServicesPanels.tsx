@@ -30,7 +30,7 @@ import { useStorageEntries } from "./useStorageEntries";
 import { Select } from "@/components/ui/select";
 import { DateRangePicker } from "@/components/ui/date-picker";
 import { toIso, type DateRange } from "@/components/ui/dates";
-import { Table, TableHeader, Tr, Td } from "@/components/ui/table";
+import { Table, TableHeader, Th, Tr, Td } from "@/components/ui/table";
 
 /**
  * Вкладки «Услуги» и «Отчёт» экрана операций. Вынесены отдельно: это
@@ -53,6 +53,11 @@ export function ServicesPanel() {
   const notify = useEditor((s) => s.notify);
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<ServiceKind | null>(null);
+  // Без начальной сортировки: порядок каталога — порядок работы склада.
+  const svcTable = useDataTable(allServices(settings), [
+    { id: "name", value: (s) => svcName(s.kind) },
+    { id: "price", value: (s) => settings.prices?.[s.kind] },
+  ]);
   const removeService = (kind: CustomServiceKind) => {
     const service = settings.custom?.find((c) => c.kind === kind);
     removeCustom(kind);
@@ -88,70 +93,95 @@ export function ServicesPanel() {
           <Plus /> {t("ops.custom.add")}
         </Button>
       </div>
-      <ul className={cn(card({ pad: "none" }), "divide-y divide-border")}>
-        {allServices(settings).map((s) => {
-          const on = isServiceOn(settings, s.kind);
-          const unit = t(`ops.unit.${s.unit}` as MsgKey);
-          const price = settings.prices?.[s.kind];
-          const note = serviceNote(settings, s.kind, t);
-          return (
-            <li key={s.kind} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5">
-              {/* На телефоне название — своей строкой, цена под ним: в одну
-                  строку с полем название сжималось и уходило под цену. */}
-              <label className="flex w-full min-w-0 cursor-pointer items-start gap-2.5 sm:w-auto sm:flex-1">
-                <input
-                  type="checkbox"
-                  checked={on}
-                  onChange={(e) => setEnabled(s.kind, e.target.checked)}
-                  className="mt-0.5 size-4 accent-primary"
-                />
-                <span className="flex min-w-0 flex-col">
-                  <span className="text-sm">{svcName(s.kind)}</span>
-                  {note && <span className="text-xs text-muted-foreground">{note}</span>}
-                </span>
-              </label>
-              <PriceInput
-                key={`${s.kind}:${price ?? ""}`}
-                value={price}
-                label={t("ops.services.price", { unit })}
-                placeholder={t("ops.services.noPrice")}
-                onCommit={(n) => {
-                  setPrice(s.kind, n);
-                  // Ввод цены включает услугу: цена у выключенной — тупик,
-                  // человек не поймёт, почему услуга не идёт в счёт. Выключение
-                  // цену не стирает (Кирилл 22.11).
-                  if (n != null && !on) setEnabled(s.kind, true);
-                }}
-              />
-              <span className="min-w-0 flex-1 text-xs text-muted-foreground sm:w-24 sm:flex-none sm:whitespace-nowrap">
-                ₽ / {unit}
-              </span>
-              <Button
-                size="icon-sm"
-                variant="ghost"
-                aria-label={t("ops.edit.title")}
-                title={t("ops.edit.title")}
-                onClick={() => setEditing(s.kind)}
-              >
-                <Pencil className="size-4" />
-              </Button>
-              {isCustomKind(s.kind) ? (
-                <Button
-                  size="icon-sm"
-                  variant="ghost"
-                  aria-label={t("ops.custom.remove")}
-                  title={t("ops.custom.remove")}
-                  onClick={() => isCustomKind(s.kind) && removeService(s.kind)}
+      {/* Каталог — той же таблицей ДС, что и остальные экраны (Кирилл 28.11:
+          «и на пк, и на мобилке такую же таблицу, для консистентности»).
+          Строка открывает правку услуги; флажок, цена и кнопки — свои. */}
+      <Table>
+        <TableHeader>
+          <SortTh table={svcTable.table} id="name">
+            {t("ops.services.col.name")}
+          </SortTh>
+          <SortTh table={svcTable.table} id="price" align="right">
+            {t("ops.services.col.price")}
+          </SortTh>
+          <Th>{t("ops.services.col.unit")}</Th>
+          <Th />
+        </TableHeader>
+        <tbody>
+          {svcTable.rows.map((s) => {
+            const on = isServiceOn(settings, s.kind);
+            const unit = t(`ops.unit.${s.unit}` as MsgKey);
+            const price = settings.prices?.[s.kind];
+            const note = serviceNote(settings, s.kind, t);
+            return (
+              <Tr key={s.kind} onOpen={() => setEditing(s.kind)}>
+                <Td>
+                  <label className="flex min-w-0 cursor-pointer items-start gap-2.5">
+                    <input
+                      type="checkbox"
+                      checked={on}
+                      onChange={(e) => setEnabled(s.kind, e.target.checked)}
+                      className="mt-0.5 size-4 shrink-0 accent-primary"
+                    />
+                    <span className="flex min-w-0 flex-col">
+                      <span className="text-sm">{svcName(s.kind)}</span>
+                      {note && <span className="text-xs text-muted-foreground">{note}</span>}
+                    </span>
+                  </label>
+                </Td>
+                <Td align="right" data-label={t("ops.services.price", { unit })}>
+                  <PriceInput
+                    key={`${s.kind}:${price ?? ""}`}
+                    value={price}
+                    label={t("ops.services.price", { unit })}
+                    placeholder={t("ops.services.noPrice")}
+                    onCommit={(n) => {
+                      setPrice(s.kind, n);
+                      // Ввод цены включает услугу: цена у выключенной — тупик,
+                      // человек не поймёт, почему услуга не идёт в счёт. Выключение
+                      // цену не стирает (Кирилл 22.11).
+                      if (n != null && !on) setEnabled(s.kind, true);
+                    }}
+                  />
+                </Td>
+                <Td
+                  nowrap
+                  className="text-muted-foreground max-md:!hidden"
+                  data-label={t("ops.services.col.unit")}
                 >
-                  <Trash2 className="size-4" />
-                </Button>
-              ) : (
-                <span className="hidden w-8 sm:block" aria-hidden />
-              )}
-            </li>
-          );
-        })}
-      </ul>
+                  ₽ / {unit}
+                </Td>
+                {/* На телефоне правку открывает нажатие на карточку — карандаш
+                    своей строкой там лишний; остаётся только «удалить» у своих. */}
+                <Td align="right" nowrap className={cn(!isCustomKind(s.kind) && "max-md:!hidden")}>
+                  <Button
+                    size="icon-sm"
+                    variant="ghost"
+                    className="max-md:hidden"
+                    aria-label={t("ops.edit.title")}
+                    title={t("ops.edit.title")}
+                    onClick={() => setEditing(s.kind)}
+                  >
+                    <Pencil className="size-4" />
+                  </Button>
+                  {isCustomKind(s.kind) && (
+                    <Button
+                      size="icon-sm"
+                      variant="ghost"
+                      tone="destructive"
+                      aria-label={t("ops.custom.remove")}
+                      title={t("ops.custom.remove")}
+                      onClick={() => isCustomKind(s.kind) && removeService(s.kind)}
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  )}
+                </Td>
+              </Tr>
+            );
+          })}
+        </tbody>
+      </Table>
       {adding && <CustomServicePanel onClose={() => setAdding(false)} />}
       {editing && <ServiceEditPanel kind={editing} onClose={() => setEditing(null)} />}
     </div>
