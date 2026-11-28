@@ -110,6 +110,8 @@ const sellerMay = (req) => {
     // Ответ на акт приёмки (миграция 048): своё сервер проверяет сам.
     path === "/api/receiving/answers" ||
     // Заявка на отгрузку, её отмена и «Везу товар» (`sellerRequests.js`): товар и склад сервер берёт свои.
+    // История своего товара (`sellerJournal.js`): товар сервер проверяет сам.
+    (path === "/api/seller/journal" && req.method === "GET") ||
     (["/api/requests", "/api/requests/cancel", "/api/supplies", ...SELLER_CHAT_PATHS].includes(
       path,
     ) &&

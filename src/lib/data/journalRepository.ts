@@ -34,6 +34,12 @@ export interface JournalRepository {
   pathFind: (search: PathSearch) => Promise<Result<PathMatch[]>>;
   /** Лента одной посылки или заказа от приёмки до рейса, по порядку. */
   pathSteps: (match: PathMatch) => Promise<Result<ActivityEntry[]>>;
+  /**
+   * Продавец: история своего товара на складе, новые сверху. На сервере —
+   * `GET /api/seller/journal` (`sellerJournal.js`): только свой товар и без
+   * людей склада; в демо — журнал смен браузера по этому товару.
+   */
+  productStory: (productId: string, before?: number) => Promise<Result<JournalPage>>;
 }
 
 const isMatch = (v: unknown): v is PathMatch => {
@@ -60,7 +66,7 @@ const isEntry = (v: unknown): v is ActivityEntry => {
 const forbidden = (body: Record<string, unknown>) =>
   body.error === "no_warehouse" ? "journal.otherWarehouse" : "journal.forbidden";
 
-function createJournalRepository(port: StorePort = storePort): JournalRepository {
+export function createJournalRepository(port: StorePort = storePort): JournalRepository {
   const get = async (path: string) => {
     const res = await attempt(() => apiRequest("GET", path));
     if (!res.ok) return res;
@@ -88,6 +94,24 @@ function createJournalRepository(port: StorePort = storePort): JournalRepository
       if (!res.ok) return res;
       if (!Array.isArray(res.data.events)) return fail("data.failed");
       return ok((res.data.events as unknown[]).filter(isEntry));
+    },
+    productStory: async (productId, before) => {
+      if (!onServer(port)) {
+        const entries = localJournal(port.get().staffEvents, { product: productId, before });
+        return ok({ entries, next: null });
+      }
+      const p = new URLSearchParams({ product: productId });
+      if (before) p.set("before", String(before));
+      const res = await attempt(() => apiRequest("GET", `/seller/journal?${p.toString()}`));
+      if (!res.ok) return res;
+      const { status, body } = res.data;
+      if (status === 404) return fail("seller.err.notMine");
+      if (status === 429) return fail("seller.err.rate");
+      if (status !== 200 || !Array.isArray(body.entries)) return fail("data.failed");
+      return ok({
+        entries: (body.entries as unknown[]).filter(isEntry),
+        next: typeof body.next === "number" ? body.next : null,
+      });
     },
     page: async (filters, before) => {
       if (!onServer(port)) {

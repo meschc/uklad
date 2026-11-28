@@ -20,6 +20,7 @@ import { eyebrow } from "@/components/ui/eyebrow";
 import { QrSvg } from "./QrSvg";
 import { Select } from "@/components/ui/select";
 import { Field, FormError } from "@/components/ui/field";
+import { SellerProductHistory } from "@/components/fulfillment/SellerProductHistory";
 
 /**
  * Ручное добавление и редактирование товара (ТЗ, разд. 2.5): артикул, штрихкод,
@@ -58,7 +59,8 @@ export function ProductDialog({
   const fieldValues = useEditor((s) => s.fieldValues);
   // Правка карточки продавцу доступна, а удаление из номенклатуры — нет:
   // товар лежит на складе физически, и вычёркивать его из базы решает склад.
-  const canDelete = useEditor((s) => selectRole(s) !== "seller");
+  const seller = useEditor((s) => selectRole(s) === "seller");
+  const canDelete = !seller;
   const t = useT();
 
   const [form, setForm] = useState(() => ({
@@ -438,6 +440,9 @@ export function ProductDialog({
       {error && (
         <FormError className="shrink-0 border-t border-border px-5 py-2.5">{t(error)}</FormError>
       )}
+
+      {/* Продавцу — что с этим товаром делали на складе (п. 2.1г). */}
+      {product && seller && <SellerProductHistory productId={product.id} />}
 
       <DialogFooter spread>
         {product && canDelete ? (

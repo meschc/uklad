@@ -26,6 +26,7 @@ before(async () => {
   const { createTeam } = require("../src/cabinet/team.js");
   const { createSnapshot } = require("../src/cabinet/snapshot.js");
   const { createSellerRequests } = require("../src/cabinet/sellerRequests.js");
+  const { createSellerJournal } = require("../src/cabinet/sellerJournal.js");
   db = await helpers.setupDb();
   const cfg = { publicUrl: ORIGIN, allowedOrigins: [ORIGIN], trustProxy: true };
   const quiet = { error() {}, warn() {} };
@@ -34,13 +35,15 @@ before(async () => {
   const team = createTeam({ auth, cfg, send, log: quiet });
   const snapshot = createSnapshot({ auth, send, log: quiet });
   const requests = createSellerRequests({ auth, send, log: quiet });
+  const journal = createSellerJournal({ auth, send, log: quiet });
   cookieName = auth.cookieName;
   const cabinet = {
     handle: async (req, res, url) =>
       (await auth.handle(req, res, url)) ||
       (await team.handle(req, res, url)) ||
       (await snapshot.handle(req, res, url)) ||
-      (await requests.handle(req, res, url)),
+      (await requests.handle(req, res, url)) ||
+      (await journal.handle(req, res, url)),
   };
   server = http.createServer(
     createApp({
@@ -446,4 +449,90 @@ test("продавец пишет складу только в свою пере
 
   // Склад этим маршрутом не пишет: у него правка кабинета.
   assert.equal((await say(boss, "send", { key: "k-boss-0002", text: "a" })).status, 403);
+});
+
+test("продавец видит историю только своего товара и без людей склада", { skip: SKIP }, async () => {
+  const boss = await owner("boss-journal@example.com", "10.6.0.5");
+  await writeCabinet(boss, cabinet());
+  const romashka = await invite(boss, "romashka-j@example.com", "ptr-r");
+  const member = (
+    await db.root.query(
+      `SELECT id FROM uklad.members WHERE org_id = $1 ORDER BY created_at LIMIT 1`,
+      [boss.org],
+    )
+  ).rows[0].id;
+  const desk = (
+    await db.root.query(
+      `INSERT INTO auth.desk_sessions (token_hash, org_id, device_ref, name, created_by, expires_at)
+       VALUES (decode(repeat('ab', 32), 'hex'), $1, 'dev-1', 'ТСД Петрова', $2, now() + interval '1 day')
+       RETURNING id`,
+      [boss.org, member],
+    )
+  ).rows[0].id;
+  const t0 = Date.now() - 3_600_000;
+  const put = (key, kind, status, body, i) =>
+    db.root.query(
+      `INSERT INTO uklad.desk_ops (org_id, op_key, desk_id, kind, body, status, staff_ref,
+                                   warehouse_ref, happened_at)
+       VALUES ($1, $2, $3, $4, $5::jsonb, $6, 'stf-petrov', 'wh-a', $7)`,
+      [boss.org, key, desk, kind, JSON.stringify(body), status, new Date(t0 + i * 60_000)],
+    );
+  const cell = { floorId: "fl-wh-a", moduleId: "m1", shelfIndex: 0, cellIndex: 2 };
+  await put("key-sj-0001", "recv_place", "applied", { productId: "p-r", qty: 10, cell }, 1);
+  await put("key-sj-0002", "recv_place", "applied", { productId: "p-l", qty: 5, cell }, 2);
+  await put("key-sj-0003", "recv_place", "flagged", { productId: "p-r", qty: 99, cell }, 3);
+  await put(
+    "key-sj-0004",
+    "pack_event",
+    "applied",
+    {
+      type: "pack_done",
+      toteId: "t-1",
+      lines: [
+        { productId: "p-r", qty: 2 },
+        { productId: "p-l", qty: 7 },
+      ],
+    },
+    4,
+  );
+  const story = (who, q) => call("GET", `/api/seller/journal?${q}`, who);
+
+  // Чужой товар, свой товар другого склада и плохой запрос.
+  assert.deepEqual([(await story(romashka, "product=p-l")).json.error], ["not_found"]);
+  assert.equal((await story(romashka, "product=p-rb")).status, 404);
+  assert.equal((await story(romashka, "product=../x")).status, 400);
+  assert.equal((await story(romashka, "product=p-r&before=abc")).status, 400);
+
+  const r = await story(romashka, "product=p-r");
+  assert.equal(r.status, 200, JSON.stringify(r.json));
+  const desks = r.json.entries.filter((e) => e.step !== "cabinet");
+  // Принятое — со штуками и ячейкой, отклонённое — нет, общая тара — без чужих штук.
+  assert.deepEqual(
+    desks.map((e) => [e.kind, e.refs.qty]),
+    [
+      ["pack_event", undefined],
+      ["recv_place", 10],
+    ],
+  );
+  const text = JSON.stringify(r.json);
+  for (const leak of ["stf-petrov", "ТСД Петрова", "dev-1", "t-1", '"qty":7', '"qty":99']) {
+    assert.ok(!text.includes(leak), leak);
+  }
+  // Правка остатка складом — только движения этого товара, без человека.
+  const edits = r.json.entries.filter((e) => e.step === "cabinet");
+  assert.ok(edits.length > 0);
+  for (const e of edits) {
+    assert.ok(e.moves.length > 0);
+    assert.ok(e.moves.every((m) => m.productId === "p-r" && typeof m.delta === "number"));
+    assert.ok(!("member" in e) && e.staffRef === null);
+  }
+  assert.ok(!text.includes("boss-journal"));
+  // Ни имени, ни id людей склада — даже внутри id строки правки.
+  const { rows: people } = await db.root.query(`SELECT id FROM uklad.members WHERE org_id = $1`, [
+    boss.org,
+  ]);
+  for (const p of people) assert.ok(!text.includes(p.id), "id человека склада");
+
+  // Склад этим маршрутом не ходит: у него свой журнал.
+  assert.equal((await story(boss, "product=p-r")).status, 403);
 });
