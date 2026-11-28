@@ -31,6 +31,7 @@ export default {
         warning: {
           DEFAULT: "hsl(var(--warning))",
           fill: "hsl(var(--warning-fill))",
+          ink: "hsl(var(--warning-ink))",
           foreground: "hsl(var(--warning-foreground))",
         },
         muted: {

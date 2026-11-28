@@ -208,7 +208,7 @@ export function RequestGroupCard({ target, closed }: { target: string | null; cl
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      tone="destructive"
                       disabled={status.pending}
                       onClick={() => setStatus(r.id, "cancelled")}
                     >

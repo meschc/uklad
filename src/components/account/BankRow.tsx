@@ -118,7 +118,7 @@ export function BankRow() {
             )}
           </ReadValue>
           {note && (
-            <span className={note.warn ? "text-xs text-warning" : "text-xs text-muted-foreground"}>
+            <span className={note.warn ? "text-xs warn-chip" : "text-xs text-muted-foreground"}>
               {note.text}
             </span>
           )}

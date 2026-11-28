@@ -109,7 +109,7 @@ export function PartnerRequisites({
         <p
           role="status"
           className={
-            note.tone === "warning" ? "text-xs text-warning" : "text-xs text-muted-foreground"
+            note.tone === "warning" ? "text-xs warn-chip" : "text-xs text-muted-foreground"
           }
         >
           {t(note.key)}

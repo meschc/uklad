@@ -35,7 +35,7 @@ export function DiscrepancyAlert({
   return (
     <DialogShell>
       <div className="hazard-stripes flex gap-3 bg-warning-fill/15 px-5 py-4">
-        <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-warning-fill/25 text-warning">
+        <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-warning-fill/25 text-warning-ink">
           <AlertTriangle className="size-4" />
         </div>
         <div className="min-w-0">
@@ -79,7 +79,7 @@ function Cell({ label, value, tone }: { label: string; value: number; tone?: boo
       <span className={eyebrow({ size: "xs", weight: "normal" })}>{label}</span>
       <span
         className={
-          tone ? "text-xl font-bold tabular-nums text-warning" : "text-xl font-bold tabular-nums"
+          tone ? "text-xl font-bold tabular-nums warn-chip" : "text-xl font-bold tabular-nums"
         }
       >
         {value}

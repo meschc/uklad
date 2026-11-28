@@ -168,7 +168,7 @@ function Cell({
         className={cn(
           "text-sm font-semibold tabular-nums",
           muted && "font-normal text-muted-foreground",
-          tone === "amber" && "text-warning",
+          tone === "amber" && "warn-chip",
           tone === "green" && "text-success",
         )}
       >

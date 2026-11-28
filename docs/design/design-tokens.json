@@ -74,7 +74,7 @@
       },
       "destructive": {
         "$type": "color",
-        "$value": "#DC2828",
+        "$value": "#CE2222",
         "$description": "CSS: hsl(var(--destructive))"
       },
       "destructive-foreground": {
@@ -89,8 +89,13 @@
       },
       "warning": {
         "$type": "color",
-        "$value": "#9B7503",
+        "$value": "#FAC114",
         "$description": "CSS: hsl(var(--warning))"
+      },
+      "warning-ink": {
+        "$type": "color",
+        "$value": "#171717",
+        "$description": "CSS: hsl(var(--warning-ink))"
       },
       "warning-fill": {
         "$type": "color",
@@ -371,8 +376,13 @@
       },
       "warning": {
         "$type": "color",
-        "$value": "#FBBD23",
+        "$value": "#FAC114",
         "$description": "CSS: hsl(var(--warning))"
+      },
+      "warning-ink": {
+        "$type": "color",
+        "$value": "#FAC114",
+        "$description": "CSS: hsl(var(--warning-ink))"
       },
       "warning-fill": {
         "$type": "color",

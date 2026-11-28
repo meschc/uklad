@@ -252,7 +252,7 @@ export function RequestDialog({
             className="h-9"
           />
           {duplicate && (
-            <p role="alert" className="mt-1 text-xs text-warning">
+            <p role="alert" className="mt-1 text-xs warn-chip">
               {t("seller.externalIdDuplicate")}
             </p>
           )}

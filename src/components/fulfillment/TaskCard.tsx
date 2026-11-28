@@ -236,12 +236,7 @@ function WorkTaskBody({ taskId }: { taskId: string }) {
             <Button size="sm" onClick={() => set("done")}>
               <Check /> {t("ops.task.done")}
             </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-              onClick={() => set("cancelled")}
-            >
+            <Button size="sm" variant="ghost" tone="destructive" onClick={() => set("cancelled")}>
               <X /> {t("ops.task.cancel")}
             </Button>
           </>

@@ -344,7 +344,8 @@ export function WarehouseDialog({
           <Button
             variant="ghost"
             size="sm"
-            className="text-muted-foreground hover:text-destructive"
+            tone="destructive"
+            className="text-muted-foreground"
             onClick={() => setConfirmDelete(true)}
           >
             <Trash2 className="size-3.5" />

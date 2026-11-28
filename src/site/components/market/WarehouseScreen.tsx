@@ -420,7 +420,7 @@ export function WarehouseScreen({ id }: { id?: string }) {
               <p
                 className={cn(
                   "mt-4 flex items-start gap-2 text-sm leading-relaxed",
-                  fresh === "stale" ? "text-warning" : "text-[var(--wh-muted)]",
+                  fresh === "stale" ? "warn-chip" : "text-[var(--wh-muted)]",
                 )}
               >
                 <Clock className="mt-0.5 size-4 shrink-0" />

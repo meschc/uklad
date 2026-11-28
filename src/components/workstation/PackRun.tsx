@@ -365,10 +365,7 @@ export function PackRun({
                 />
                 {parcel && <PlatformLabel key={parcel.requestId} {...parcel} />}
                 {/* Брак — средняя по опасности: жёлтая, красная оставлена для необратимого. */}
-                <Button
-                  className="bg-warning-fill text-warning-foreground shadow-sm hover:bg-warning-fill/90"
-                  onClick={() => setRejecting(true)}
-                >
+                <Button variant="warning" onClick={() => setRejecting(true)}>
                   <Ban />
                   {t("ws.run.defect")}
                 </Button>
@@ -431,7 +428,7 @@ export function PackRun({
           <h3 className={eyebrow({ tone: "muted", size: "xs" })}>{t("ws.run.orders")}</h3>
           {/* Заказ, ждущий вторую тару: где остальное — сразу видно. */}
           {held.map((h) => (
-            <p key={h.id} className="text-sm text-warning">
+            <p key={h.id} className="text-sm warn-chip">
               <CodeText
                 text={
                   h.rest.length
@@ -552,10 +549,7 @@ export function PackRun({
           </p>
           <Button
             size="lg"
-            variant={summary.shortage > 0 ? "outline" : "default"}
-            className={cn(
-              summary.shortage > 0 && "border-0 bg-warning text-white hover:bg-warning/90",
-            )}
+            variant={summary.shortage > 0 ? "warning" : "default"}
             disabled={!!label}
             onClick={() => {
               // Недостача: сначала старшему, потом закрытие.

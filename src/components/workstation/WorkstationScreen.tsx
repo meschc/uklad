@@ -205,7 +205,7 @@ export function WorkstationScreen() {
                 <Gavel />
                 <span className="hidden lg:inline">{t("ws.senior.button")}</span>
                 {openDisputes > 0 && (
-                  <span className="rounded-full bg-warning px-1.5 text-xs font-semibold text-white tabular-nums">
+                  <span className="rounded-full bg-warning-fill px-1.5 text-xs font-semibold text-warning-foreground tabular-nums">
                     {openDisputes}
                   </span>
                 )}
@@ -571,7 +571,7 @@ function PendingOps() {
   if (count === 0 || since == null || now - since < STUCK_MS) return null;
   return (
     <p
-      className="flex items-center gap-1.5 text-sm font-medium text-warning"
+      className="flex items-center gap-1.5 text-sm font-medium warn-chip"
       title={t("ws.opPendingHint")}
       role="status"
     >

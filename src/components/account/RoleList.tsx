@@ -207,7 +207,7 @@ function RoleEditor({
         {role && (
           <Button
             variant="ghost"
-            className="text-destructive hover:text-destructive"
+            tone="destructive"
             disabled={del.pending}
             onClick={async () => {
               if ((await del.run()).ok) onDone();

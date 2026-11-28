@@ -282,7 +282,7 @@ export function ProductDialog({
           />
         </Field>
         {sameCode.length > 0 && (
-          <p className="text-xs text-warning">
+          <p className="text-xs warn-chip">
             {t("product.codeShared", { names: sameCode.map((p) => p.name).join(", ") })}
           </p>
         )}
@@ -461,7 +461,8 @@ export function ProductDialog({
             <Button
               variant="ghost"
               size="sm"
-              className="text-muted-foreground hover:text-destructive"
+              tone="destructive"
+              className="text-muted-foreground"
               onClick={() => setConfirmDel(true)}
             >
               <Trash2 className="size-3.5" />
