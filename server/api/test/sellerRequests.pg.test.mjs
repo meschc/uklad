@@ -260,3 +260,48 @@ test(
     assert.equal(codes.at(-1), 429);
   },
 );
+
+test("продавец отменяет только свою новую заявку", { skip: SKIP }, async () => {
+  const boss = await owner("boss-cancel@example.com", "10.6.1.1");
+  const data = cabinet();
+  data.requests.push(
+    { id: "req-wh", productId: "p-r", qty: 1, status: "new", createdAt: 1, updatedAt: 1 },
+    {
+      id: "req-going",
+      productId: "p-r",
+      qty: 2,
+      by: "seller",
+      status: "in_progress",
+      pickedQty: 1,
+      createdAt: 1,
+      updatedAt: 1,
+    },
+  );
+  await writeCabinet(boss, data);
+  const romashka = await invite(boss, "romashka-c@example.com", "ptr-r");
+  const lyutik = await invite(boss, "lyutik-c@example.com", "ptr-l");
+  const cancel = (who, id) => post("/api/requests/cancel", { ...who, body: { id } });
+
+  const made = await post("/api/requests", {
+    ...romashka,
+    body: { key: "k-cancel-0001", items: [{ productId: "p-r", qty: 2 }] },
+  });
+  assert.equal(made.status, 200, JSON.stringify(made.json));
+  const id = made.json.requests[0].id;
+
+  // Чужой продавец заявку не видит и не отменит; склад этим маршрутом — тоже.
+  assert.equal((await cancel(lyutik, id)).status, 404);
+  assert.equal((await cancel(boss, id)).status, 403);
+  // Заведённую складом и начатую сборщиком продавец не отменяет.
+  assert.equal((await cancel(romashka, "req-wh")).json.error, "not_yours");
+  assert.equal((await cancel(romashka, "req-going")).json.error, "started");
+  assert.equal((await cancel(romashka, "../x")).status, 400);
+
+  const done = await cancel(romashka, id);
+  assert.equal(done.status, 200, JSON.stringify(done.json));
+  assert.equal(done.json.request.status, "cancelled");
+  // Повтор — тот же ответ, не ошибка.
+  assert.equal((await cancel(romashka, id)).status, 200);
+  const seen = (await snap(boss)).data.requests.find((x) => x.id === id);
+  assert.deepEqual([seen.status, typeof seen.cancelledBy], ["cancelled", "string"]);
+});

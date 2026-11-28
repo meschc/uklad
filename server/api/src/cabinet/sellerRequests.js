@@ -152,6 +152,19 @@ const toSeller = (r) => {
   return out;
 };
 
+/** Тело отмены → `{ id }` или `null` (400). */
+function readCancel(b) {
+  return isObject(b) && typeof b.id === "string" && ID_RE.test(b.id) ? { id: b.id } : null;
+}
+
+/** Можно ли продавцу отменить заявку: `null` — можно, иначе причина отказа. */
+function cancelProblem(r) {
+  if (r.by !== "seller") return "not_yours";
+  if (r.status !== "new" || (Number(r.pickedQty) || 0) > 0) return "started";
+  if (r.reservedShipmentId) return "reserved";
+  return null;
+}
+
 /** Проверки до записи: `null` — можно, иначе отказ `{ status, error, … }`. */
 /**
  * Номера заказов площадки в заявках на свой товар этого склада: чужой номер
@@ -209,25 +222,42 @@ function createSellerRequests({ auth, send, log, now = () => Date.now() }) {
     return view ? { full, view, ref } : { status: 403, error: "no_warehouse" };
   }
 
-  async function create(req, res) {
+  /**
+   * Продавец и его склад под блокировкой снимка: `{ full, view, ref, own }`
+   * или отказ `{ status, error }`. Общее для заведения и отмены.
+   */
+  async function asSeller(c, ctx) {
+    const p = ctx.accountId ? await place(c) : null;
+    const seller = typeof p?.partner_ref === "string" ? p.partner_ref : null;
+    if (!seller) return { status: 403 };
+    if (!limiter.take(`${ctx.orgId}:${ctx.memberId}`)) return { status: 429, error: "rate" };
+    const at0 = await sellerView(c, p);
+    if (at0.status) return at0;
+    const mine = forSeller(at0.view, seller);
+    // Склад убрал продавца из партнёров — заявок от него больше не ждёт.
+    if (!list(mine.warehouse?.partners).length) return { status: 403, error: "partner" };
+    return { ...at0, own: new Set(mine.products.map((x) => x.id)) };
+  }
+
+  /** Тело и транзакция → ответ: общий конверт обоих маршрутов. */
+  async function run(req, res, parse, fn) {
     const raw = await readJson(req, res);
     if (!raw) return;
     const at = now();
-    const b = readBody(raw, at);
+    const b = parse(raw, at);
     if (!b) return send(res, 400, { ok: false, error: "bad_request" });
     const out = await withSession(req, async (c, ctx) => {
-      const p = ctx.accountId ? await place(c) : null;
-      const seller = typeof p?.partner_ref === "string" ? p.partner_ref : null;
-      if (!seller) return { status: 403 };
-      if (!limiter.take(`${ctx.orgId}:${ctx.memberId}`)) return { status: 429, error: "rate" };
-      const at0 = await sellerView(c, p);
-      if (at0.status) return at0;
-      const { full, view, ref } = at0;
-      const mine = forSeller(view, seller);
-      // Склад убрал продавца из партнёров — заявок от него больше не ждёт.
-      if (!list(mine.warehouse?.partners).length) return { status: 403, error: "partner" };
+      const me = await asSeller(c, ctx);
+      return me.status ? me : fn(c, ctx, me, b, at);
+    });
+    if (out === null) return send(res, 401, { ok: false });
+    const { status, ...rest } = out;
+    if (status !== 200) return send(res, status, { ok: false, ...rest });
+    return send(res, 200, { ok: true, ...rest });
+  }
 
-      const own = new Set(mine.products.map((x) => x.id));
+  const create = (req, res) =>
+    run(req, res, readBody, async (c, ctx, { full, view, ref, own }, b, at) => {
       const ids = b.lines.map((_, i) => requestId(b.key, i));
       const before = await known(c, view, ids);
       if (before.length) {
@@ -235,33 +265,44 @@ function createSellerRequests({ auth, send, log, now = () => Date.now() }) {
         if (!before.every((r) => isObject(r) && own.has(r.productId))) {
           return { status: 409, error: "key_taken" };
         }
-        return { status: 200, requests: before, duplicate: true };
+        return { status: 200, requests: before.map(toSeller), duplicate: true };
       }
       const no = refusal(view, own, b);
       if (no) return no;
-
       const made = newRequests(b, at, ctx.memberId);
       const next = { ...view, requests: [...made, ...list(view.requests)] };
       const bad = await writeView(c, full, next, ref);
       if (bad) return { status: 409, error: bad.error };
-      return { status: 200, requests: made };
+      return { status: 200, requests: made.map(toSeller) };
     });
-    if (out === null) return send(res, 401, { ok: false });
-    if (out.status !== 200) {
-      const { status, ...rest } = out;
-      return send(res, status, { ok: false, ...rest });
-    }
-    return send(res, 200, {
-      ok: true,
-      requests: out.requests.map(toSeller),
-      ...(out.duplicate ? { duplicate: true } : {}),
+
+  /**
+   * Отмена своей заявки (Кирилл, вопрос 1 треда 28.11 — рекомендация): только
+   * заведённой продавцом, пока она «новая» и сборщик ничего не снял. Взятую в
+   * работу, с бронью под поставку, площадочную и заведённую складом отменяет
+   * склад. Уже отменённая — повтор, ответ тот же.
+   */
+  const cancel = (req, res) =>
+    run(req, res, readCancel, async (c, ctx, { full, view, ref, own }, b, at) => {
+      const r = list(view.requests).find((x) => isObject(x) && x.id === b.id);
+      if (!r || !own.has(r.productId)) return { status: 404, error: "not_found" };
+      if (r.status === "cancelled") return { status: 200, request: toSeller(r) };
+      const problem = cancelProblem(r);
+      if (problem) return { status: 409, error: problem };
+      const done = { ...r, status: "cancelled", updatedAt: at, cancelledBy: ctx.memberId };
+      const next = { ...view, requests: list(view.requests).map((x) => (x === r ? done : x)) };
+      const bad = await writeView(c, full, next, ref);
+      if (bad) return { status: 409, error: bad.error };
+      return { status: 200, request: toSeller(done) };
     });
-  }
+
+  const routes = { "/api/requests": create, "/api/requests/cancel": cancel };
 
   async function handle(req, res, url) {
-    if (req.method !== "POST" || url.pathname !== "/api/requests") return false;
+    const route = req.method === "POST" ? routes[url.pathname] : undefined;
+    if (!route) return false;
     try {
-      await create(req, res);
+      await route(req, res);
     } catch (err) {
       // Отказ продавцу на чужой маршрут (`SellerForbidden`) — 403, а не сбой.
       if (err.httpStatus) {
@@ -277,4 +318,4 @@ function createSellerRequests({ auth, send, log, now = () => Date.now() }) {
   return { handle };
 }
 
-module.exports = { createSellerRequests, readBody, shortOf, requestId };
+module.exports = { createSellerRequests, readBody, readCancel, cancelProblem, shortOf, requestId };
