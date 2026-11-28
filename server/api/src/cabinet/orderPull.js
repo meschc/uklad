@@ -29,14 +29,13 @@
  * Найти подключение, которому пора, поверх компаний умеет только
  * `auth.connector_pull_claim` — и отдаёт она лишь компанию, номер и площадку.
  */
-/* global require, module, setInterval, fetch, Buffer */
+/* global require, module, setInterval, fetch */
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { randomUUID } = require("node:crypto");
 const { allowed, askPlatform, createSealer, queryString } = require("./connectors");
 const { warehousesOf, focusWarehouse, ofWarehouse } = require("./viewerPlace");
-const { restore } = require("./deskPlace");
-const { loadCabinet, splitCabinet, MAX_SNAPSHOT_BYTES } = require("./snapshot");
-const { storeRecords } = require("./records");
+const { loadCabinet } = require("./snapshot");
+const { writeView } = require("./viewWrite");
 const { fetchCancelled, openOrders, cancelRequests } = require("./orderCancel");
 const stock = require("./stockPush");
 
@@ -531,22 +530,6 @@ function createOrderPull({
     );
     return (productId) => by.get(productId) ?? null;
   };
-
-  /** Записать склад `next` в снимок компании: версия +1, строки — как у стола. */
-  async function writeView(c, full, next, ref) {
-    const split = splitCabinet(restore(full, next, ref));
-    const payload = JSON.stringify(split.doc);
-    if (Buffer.byteLength(payload) > MAX_SNAPSHOT_BYTES) return { error: "too_large" };
-    await c.query(
-      `UPDATE uklad.cabinet_snapshots
-       SET previous = data, data = $1::jsonb, version = version + 1,
-           updated_at = now(), updated_by = NULL, updated_by_desk = NULL
-       WHERE org_id = uklad.current_org()`,
-      [payload],
-    );
-    if (split.items) await storeRecords(c, split.items, split.slots);
-    return null;
-  }
 
   /**
    * Отменённые площадкой заказы → заявки «отменена» (`orderCancel.js`).

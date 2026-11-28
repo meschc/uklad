@@ -358,6 +358,8 @@ export function seedHistory(
         note: destination,
         truckDate,
         vehicle: rand() < 0.5 ? pick(VEHICLES) : undefined,
+        // Машину через три дня завёл продавец из своего кабинета: склад видит отметку.
+        ...(group.status === "new" && group.daysAhead === 3 ? { by: "seller" as const } : {}),
         status: group.status,
         createdAt,
         updatedAt: now - between(1, 20) * 3_600_000,
