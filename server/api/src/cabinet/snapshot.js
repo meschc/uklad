@@ -51,6 +51,7 @@ const {
   foreignCounts,
 } = require("./managerScope");
 const { logAction } = require("./audit");
+const { checkOpening } = require("./openingLog");
 const { recordMoves, invalidWork } = require("./moves");
 const { recordStorage, loadStorage, parsePeriod } = require("./storage");
 const { loadInventoryLog, parseLogPeriod } = require("./inventoryLog");
@@ -606,6 +607,8 @@ function createSnapshot({ auth, send, log, limits = null }) {
         // Архив не переписывается: копия забирает свежие данные.
         if (await archivedChanged(c, split.items)) return { conflict: true };
         if (await decisionsForbidden(c, ctx, split.items)) return FORBIDDEN;
+        // Ввод начальных остатков — в журнал; отметку записанного не трогают.
+        if (!(await checkOpening(c, log, split.items))) return FORBIDDEN;
         // Список, лежавший строками, пропал вовсе (ключа нет, не список) —
         // кабинет показал бы пустоту, а массовое удаление этого не увидело бы.
         const prev = await c.query(
@@ -764,6 +767,7 @@ function createSnapshot({ auth, send, log, limits = null }) {
         if (await massRemoved(c, b.remove)) return { conflict: true, error: "records_mass_delete" };
         if (await archivedChanged(c, b.upsert)) return { conflict: true };
         if (await decisionsForbidden(c, ctx, b.upsert)) return FORBIDDEN;
+        if (!(await checkOpening(c, log, b.upsert))) return FORBIDDEN;
         const before = await loadRecords(c, cur.data, MOVE_LISTS);
         await c.query(`SAVEPOINT changes`);
         await upsertRecords(c, b.upsert);

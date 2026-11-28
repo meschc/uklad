@@ -247,6 +247,8 @@ export interface CatalogSlice {
     items: Omit<Product, "id">[],
     updates?: { id: string; patch: Partial<Omit<Product, "id">> }[],
     categories?: string[],
+    /** Начальные остатки по артикулу (Кирилл 28.11): тара + событие `opening`. */
+    opening?: { sku: string; qty: number; cell?: CellAddress }[],
   ) => void;
 }
 

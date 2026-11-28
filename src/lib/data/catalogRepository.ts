@@ -1,4 +1,4 @@
-import type { FieldType, Product, ProductCategory } from "../types";
+import type { CellAddress, FieldType, Product, ProductCategory } from "../types";
 import type { MsgKey } from "../i18n";
 import { isProduct } from "./guards";
 import { pickOne, readList, storePort, type Repository, type StorePort } from "./repository";
@@ -34,6 +34,8 @@ export interface CatalogRepository extends Repository<Product> {
     create: Omit<Product, "id">[];
     update: { id: string; patch: Partial<Omit<Product, "id">> }[];
     categories: string[];
+    /** Начальные остатки — только тому, кто пишет работу склада. */
+    opening?: { sku: string; qty: number; cell?: CellAddress }[];
   }) => Promise<Result<void>>;
   setCategory: (ids: string[], category: ProductCategory) => Promise<Result<void>>;
   setPartner: (ids: string[], partnerId: string | undefined) => Promise<Result<void>>;
@@ -67,7 +69,9 @@ export function createCatalogRepository(port: StorePort = storePort): CatalogRep
     update: (id, patch) => attempt(() => port.get().updateProduct(id, patch)),
     remove: (ids) => attempt(() => port.get().deleteProducts(ids)),
     importMany: (plan) =>
-      attempt(() => port.get().importProducts(plan.create, plan.update, plan.categories)),
+      attempt(() =>
+        port.get().importProducts(plan.create, plan.update, plan.categories, plan.opening),
+      ),
     setCategory: (ids, category) => attempt(() => port.get().setProductsCategory(ids, category)),
     setPartner: (ids, partnerId) => attempt(() => port.get().setProductsPartner(ids, partnerId)),
     setFields: (productId, values) =>

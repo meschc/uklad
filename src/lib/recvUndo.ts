@@ -27,11 +27,15 @@ export interface RecvUndoPlan {
 const undone = (events: readonly ReceivingEvent[], id: string) =>
   events.some((e) => e.undoes === id);
 
-/** Скан и его отмена из счёта выпадают оба: приёмки не было. */
+/**
+ * Настоящие приёмки: скан и его отмена из счёта выпадают оба (приёмки не
+ * было), ввод начальных остатков (`opening`) — тоже: товар не принимали, он
+ * уже лежал на складе.
+ */
 export function liveReceipts<T extends ReceivingEvent>(events: readonly T[]): T[] {
   const gone = new Set(events.filter((e) => e.undoes).map((e) => e.undoes));
-  if (gone.size === 0) return events as T[];
-  return events.filter((e) => !e.undoes && !gone.has(e.id));
+  if (gone.size === 0 && !events.some((e) => e.opening)) return events as T[];
+  return events.filter((e) => !e.undoes && !e.opening && !gone.has(e.id));
 }
 
 /** Последний свой неотменённый скан в эту тару — его и предлагает отменить экран. */

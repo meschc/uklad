@@ -12,6 +12,7 @@ import type {
 } from "./types";
 import { nowMs } from "./utils";
 import { workedBy } from "./operations";
+import { liveReceipts } from "./recvUndo";
 
 /**
  * Чистые расчёты по фулфилменту: где и сколько лежит товара, что показывать
@@ -116,7 +117,7 @@ function dayLabel(ts: number): string {
  */
 export function receivingStats(events: ReceivingEvent[], days = 14, now = nowMs()): ReceivingStats {
   const from = dayStart(now) - (days - 1) * 86_400_000;
-  const recent = events.filter((e) => e.timestamp >= from);
+  const recent = liveReceipts(events).filter((e) => e.timestamp >= from);
 
   const buckets = new Map<number, number>();
   for (let i = 0; i < days; i++) {

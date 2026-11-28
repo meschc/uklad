@@ -17,6 +17,8 @@ import {
   EXAMPLE_ROWS,
   IMPORT_EXAMPLE,
   TEMPLATE_HEADERS,
+  IMPORT_FIELDS,
+  STOCK_FIELDS,
   buildRows,
   findHeaderRow,
   guessColumns,
@@ -26,6 +28,8 @@ import {
   type ImportPlan,
 } from "@/lib/importProducts";
 import { useT } from "@/lib/i18n";
+import { formatAddress, parseAddress } from "@/lib/address";
+import { onHandByProduct } from "@/lib/openingStock";
 import { DialogFooter, DialogHeader, DialogShell } from "@/components/ui/dialog-shell";
 import { Button } from "@/components/ui/button";
 import { FormError } from "@/components/ui/field";
@@ -46,6 +50,16 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
   const categories = useEditor((s) => s.categories);
   const partners = useEditor((s) => s.warehouse.partners ?? EMPTY_ARRAY);
   const notify = useEditor((s) => s.notify);
+  const warehouse = useEditor((s) => s.warehouse);
+  const boxes = useEditor((s) => s.boxes);
+  // Остатки вводит тот, кто пишет работу склада (Кирилл 28.11: начальник и
+  // владелец). Сервер иначе отклонит запись целиком; в демо прав нет — можно.
+  const canStock = useEditor(
+    (s) =>
+      s.session.source !== "server" ||
+      !s.session.permissions ||
+      s.session.permissions.includes("staff.manage"),
+  );
   const t = useT();
 
   const [text, setText] = useState("");
@@ -66,13 +80,30 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
     () => (picked && picked.of === matrix ? picked.columns : guessColumns(headers)),
     [picked, matrix, headers],
   );
+  const stock = useMemo(
+    () =>
+      canStock
+        ? {
+            cell: (text: string) => {
+              const addr = parseAddress(warehouse, text);
+              const canon = addr && formatAddress(warehouse, addr);
+              return addr && canon ? { addr, text: canon } : null;
+            },
+            onHand: onHandByProduct(boxes),
+          }
+        : undefined,
+    [canStock, warehouse, boxes],
+  );
   const result = useMemo(
-    () => (matrix ? buildRows(matrix, headerRow, columns, { products, categories, mode }) : null),
-    [matrix, headerRow, columns, products, categories, mode],
+    () =>
+      matrix ? buildRows(matrix, headerRow, columns, { products, categories, mode, stock }) : null,
+    [matrix, headerRow, columns, products, categories, mode, stock],
   );
   const rows = result?.ok ? result.rows : [];
   const counts = result?.ok ? result.counts : null;
-  const ready = counts ? counts.create + counts.update : 0;
+  // Остаток к товару, который уже есть (карточку пропускаем), — тоже работа загрузки.
+  const stockOnly = rows.filter((r) => r.action === "skip" && r.qty).length;
+  const ready = counts ? counts.create + counts.update + stockOnly : 0;
   const hasExisting = rows.some((r) => r.existingId);
 
   const onFile = async (file: File) => {
@@ -206,6 +237,7 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
             sample={matrix[headerRow + 1] ?? []}
             columns={columns}
             headerLine={headerRow + 1}
+            fields={canStock ? [...IMPORT_FIELDS, ...STOCK_FIELDS] : IMPORT_FIELDS}
             onChange={(next) => setPicked({ of: matrix, columns: next })}
             t={t}
           />
@@ -259,7 +291,12 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
         {result?.ok === false && result.kind === "format" && (
           <ImportAlert title={t("import.err.format.title")}>{t(result.reasonKey)}</ImportAlert>
         )}
-        {result?.ok && <ImportPreview rows={rows} t={t} />}
+        {result?.ok && result.units > 0 && (
+          <p className="mt-3 text-xs text-muted-foreground">{t("import.stockHint")}</p>
+        )}
+        {result?.ok && (
+          <ImportPreview rows={rows} stock={!!stock && columns.includes("qty")} t={t} />
+        )}
       </div>
 
       {/* Отказ отдельной строкой над подвалом: слева в подвале стоит счётчик
@@ -279,7 +316,8 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
                 update: counts.update,
                 skip: counts.skip,
                 errors: counts.error,
-              })
+              }) +
+              (result?.ok && result.units ? t("import.footerStock", { units: result.units }) : "")
             : " "}
         </span>
         <div className="flex items-center gap-2">

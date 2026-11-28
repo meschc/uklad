@@ -194,6 +194,12 @@ export const ru = {
   "import.newCategory": "{cat} · новая",
   "import.footer": "Новых {create} · обновить {update} · пропустить {skip} · с ошибками {errors}",
   "import.doImport": "Загрузить {n}",
+  "import.col.stock": "Остаток",
+  "import.stockAt": "{qty} шт · {cell}",
+  "import.stockNoCell": "{qty} шт · ждёт размещения",
+  "import.stockHint":
+    "Остаток ляжет в новую тару в ячейке, без ячейки — в тару «ждёт размещения». Это ввод остатков, не приёмка: в счёт продавцу и выработку не идёт.",
+  "import.footerStock": " · остаток {units} шт",
 
   // Сообщения парсера импорта
   "import.msg.binary":
@@ -222,6 +228,10 @@ export const ru = {
   "import.row.badDepth": "глубина — не число",
   "import.row.partialDims": "нужны все три габарита или ни одного",
   "import.row.badWeight": "вес — не число",
+  "import.row.badQty": "количество — не целое число",
+  "import.row.cellNoQty": "ячейка есть, количества нет",
+  "import.row.badCell": "ячейки «{cell}» нет на плане",
+  "import.row.hasStock": "остаток уже есть — правьте инвентаризацией",
   // Поля товара (для несовпадения колонок)
   "field.sku": "Артикул",
   "field.barcode": "Штрихкод",
@@ -231,6 +241,8 @@ export const ru = {
   "field.heightCm": "Высота",
   "field.depthCm": "Глубина",
   "field.weightKg": "Вес",
+  "field.qty": "Количество",
+  "field.cell": "Ячейка",
 
   // --- Прочее ---------------------------------------------------------------
   "assign.occupied.more": "и ещё {n}",
@@ -463,6 +475,12 @@ export const en: Record<keyof typeof ru, string> = {
   "import.newCategory": "{cat} · new",
   "import.footer": "New {create} · update {update} · skip {skip} · with errors {errors}",
   "import.doImport": "Load {n}",
+  "import.col.stock": "Stock",
+  "import.stockAt": "{qty} pcs · {cell}",
+  "import.stockNoCell": "{qty} pcs · awaiting putaway",
+  "import.stockHint":
+    "Stock goes into a new tote in the cell, without a cell into a tote awaiting putaway. This is opening stock, not receiving: it isn’t billed to the seller or counted as work.",
+  "import.footerStock": " · stock {units} pcs",
 
   // Import parser messages
   "import.msg.binary":
@@ -490,6 +508,10 @@ export const en: Record<keyof typeof ru, string> = {
   "import.row.badDepth": "depth — not a number",
   "import.row.partialDims": "all three dimensions or none",
   "import.row.badWeight": "weight — not a number",
+  "import.row.badQty": "quantity — not a whole number",
+  "import.row.cellNoQty": "cell given, quantity missing",
+  "import.row.badCell": "no cell “{cell}” on the plan",
+  "import.row.hasStock": "stock already there — fix it with a stock count",
   // Product fields (for column mismatch)
   "field.sku": "SKU",
   "field.barcode": "Barcode",
@@ -499,6 +521,8 @@ export const en: Record<keyof typeof ru, string> = {
   "field.heightCm": "Height",
   "field.depthCm": "Depth",
   "field.weightKg": "Weight",
+  "field.qty": "Quantity",
+  "field.cell": "Cell",
 
   // --- Misc ------------------------------------------------------------------
   "assign.occupied.more": "and {n} more",

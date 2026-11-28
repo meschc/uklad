@@ -107,6 +107,7 @@ export const AUDIT_KINDS: ReadonlySet<string> = new Set([
   "product.delete",
   "product.move_in",
   "product.move_out",
+  "stock.opening",
 ]);
 
 export interface JournalMove {

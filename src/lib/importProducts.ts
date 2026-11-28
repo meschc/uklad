@@ -1,5 +1,5 @@
 import { MAX_IMPORT_ROWS } from "./importSheet";
-import { PRODUCT_CATEGORIES, type Product, type ProductCategory } from "./types";
+import { PRODUCT_CATEGORIES, type CellAddress, type Product, type ProductCategory } from "./types";
 import type { MsgKey } from "./i18n";
 
 /**
@@ -15,7 +15,16 @@ import type { MsgKey } from "./i18n";
  */
 
 export type FieldKey =
-  "sku" | "barcode" | "name" | "category" | "widthCm" | "heightCm" | "depthCm" | "weightKg";
+  | "sku"
+  | "barcode"
+  | "name"
+  | "category"
+  | "widthCm"
+  | "heightCm"
+  | "depthCm"
+  | "weightKg"
+  | "qty"
+  | "cell";
 
 /** Поля в порядке списка «Эта колонка — …». */
 export const IMPORT_FIELDS: readonly FieldKey[] = [
@@ -29,6 +38,12 @@ export const IMPORT_FIELDS: readonly FieldKey[] = [
   "weightKg",
 ];
 
+/**
+ * Начальные остатки (Кирилл 28.11): сколько лежит и где. Предлагаются только
+ * тому, кто пишет работу склада (начальник, владелец), — `ImportContext.stock`.
+ */
+export const STOCK_FIELDS: readonly FieldKey[] = ["qty", "cell"];
+
 const REQUIRED: readonly FieldKey[] = ["sku", "name"];
 
 /** Синонимы заголовков колонок (в нормализованном виде). */
@@ -41,7 +56,11 @@ const FIELD_SYNONYMS: Record<FieldKey, string[]> = {
   heightCm: ["высота", "в", "height", "h"],
   depthCm: ["глубина", "длина", "г", "depth", "length", "d", "l"],
   weightKg: ["вес", "масса", "weight", "вес брутто"],
+  qty: ["количество", "кол-во", "остаток", "qty", "quantity", "кол во", "остаток на складе"],
+  cell: ["ячейка", "адрес", "место", "cell", "location", "адрес ячейки", "место хранения"],
 };
+
+const ALL_FIELDS: readonly FieldKey[] = [...IMPORT_FIELDS, ...STOCK_FIELDS];
 
 /** Что значит каждая колонка файла: поле Уклада или `null` — не загружать. */
 export type ColumnMap = (FieldKey | null)[];
@@ -74,6 +93,11 @@ export interface ImportRow {
   errors: RowError[];
   /** Для `update` и `skip` — товар склада с тем же артикулом. */
   existingId?: string;
+  /** Начальный остаток: штук и в какой ячейке (нет ячейки — тара ждёт размещения). */
+  qty?: number;
+  cell?: CellAddress;
+  /** Адрес, как его понял Уклад (`formatAddress`), — для предпросмотра. */
+  cellText?: string;
 }
 
 export type ImportMode = "skip" | "update";
@@ -83,12 +107,29 @@ export interface ImportContext {
   products: readonly Pick<Product, "id" | "sku" | "barcode">[];
   categories: readonly string[];
   mode: ImportMode;
+  /**
+   * Можно вводить начальные остатки. Нет — колонки количества и ячейки не
+   * читаются вовсе: запись работы склада сервер такой роли не примет, и
+   * отказ унёс бы с собой и карточки.
+   */
+  stock?: {
+    /** Текст ячейки → адрес на плане и его каноническая запись; нет такой — `null`. */
+    cell: (text: string) => { addr: CellAddress; text: string } | null;
+    /** Сколько товара уже лежит на складе, по id товара. */
+    onHand: ReadonlyMap<string, number>;
+  };
 }
 
 export type BuildResult =
   | { ok: false; kind: "columns"; missing: FieldKey[] }
   | { ok: false; kind: "format"; reasonKey: MsgKey }
-  | { ok: true; rows: ImportRow[]; counts: Record<RowAction, number> };
+  | {
+      ok: true;
+      rows: ImportRow[];
+      counts: Record<RowAction, number>;
+      /** Штук начального остатка в годных строках. */
+      units: number;
+    };
 
 function norm(h: string): string {
   const base = h
@@ -107,7 +148,7 @@ function norm(h: string): string {
 function matchField(header: string): { field: FieldKey; rank: number } | null {
   const n = norm(header);
   if (!n) return null;
-  for (const field of IMPORT_FIELDS) {
+  for (const field of ALL_FIELDS) {
     const rank = FIELD_SYNONYMS[field].indexOf(n);
     if (rank >= 0) return { field, rank };
   }
@@ -174,6 +215,32 @@ const DIMS = [
   ["heightCm", "import.row.badHeight"],
   ["depthCm", "import.row.badDepth"],
 ] as const;
+
+/** Количество и ячейка строки; ошибки — в `errors`. */
+function readStock(
+  qtyRaw: string,
+  cellRaw: string,
+  stock: NonNullable<ImportContext["stock"]>,
+  errors: RowError[],
+): Pick<ImportRow, "qty" | "cell" | "cellText"> {
+  const qty = num(qtyRaw);
+  if (qty === undefined || qty === 0) {
+    // Ноль в выгрузке остатков — «нет на складе», а не ошибка.
+    if (cellRaw && qty === undefined) errors.push({ key: "import.row.cellNoQty" });
+    return {};
+  }
+  if (!Number.isInteger(qty) || qty < 0) {
+    errors.push({ key: "import.row.badQty" });
+    return {};
+  }
+  if (!cellRaw) return { qty };
+  const cell = stock.cell(cellRaw);
+  if (!cell) {
+    errors.push({ key: "import.row.badCell", vars: { cell: cellRaw } });
+    return {};
+  }
+  return { qty, cell: cell.addr, cellText: cell.text };
+}
 
 /** Строки файла (после заголовка) → решения по каждой. */
 export function buildRows(
@@ -245,6 +312,13 @@ export function buildRows(
       errors.push({ key: "import.row.badWeight" });
     }
 
+    const stock = ctx.stock ? readStock(get("qty"), get("cell"), ctx.stock, errors) : {};
+    if (stock.qty && existing && (ctx.stock?.onHand.get(existing.id) ?? 0) > 0) {
+      // Повтор того же файла не удваивает остаток: что уже лежит — правит
+      // инвентаризация, а не второй ввод.
+      errors.push({ key: "import.row.hasStock" });
+    }
+
     if (sku) seenSku.add(sku);
     if (bc) seenBarcode.add(bc);
 
@@ -267,13 +341,18 @@ export function buildRows(
       action,
       errors,
       existingId: existing?.id,
+      ...stock,
     });
   });
 
   if (!rows.length) return { ok: false, kind: "format", reasonKey: "import.msg.noRows" };
   const counts: Record<RowAction, number> = { create: 0, update: 0, skip: 0, error: 0 };
-  for (const r of rows) counts[r.action] += 1;
-  return { ok: true, rows, counts };
+  let units = 0;
+  for (const r of rows) {
+    counts[r.action] += 1;
+    if (r.action !== "error") units += r.qty ?? 0;
+  }
+  return { ok: true, rows, counts, units };
 }
 
 export interface ImportPlan {
@@ -282,13 +361,24 @@ export interface ImportPlan {
   update: { id: string; patch: Partial<Omit<Product, "id">> }[];
   /** Новые категории — в список склада до товаров. */
   categories: string[];
+  /** Начальные остатки по артикулу: товар может завестись этой же загрузкой. */
+  opening: OpeningLine[];
+}
+
+interface OpeningLine {
+  sku: string;
+  qty: number;
+  cell?: CellAddress;
 }
 
 /** Решения по строкам → что завести, что поправить и какие категории добавить. */
 export function importPlan(rows: readonly ImportRow[], partnerId?: string): ImportPlan {
-  const plan: ImportPlan = { create: [], update: [], categories: [] };
+  const plan: ImportPlan = { create: [], update: [], categories: [], opening: [] };
   const fresh = new Set<string>();
   for (const r of rows) {
+    if (r.action !== "error" && r.qty) {
+      plan.opening.push({ sku: r.sku, qty: r.qty, ...(r.cell ? { cell: r.cell } : {}) });
+    }
     if (r.action !== "create" && r.action !== "update") continue;
     if (r.newCategory && !fresh.has(r.category.toLowerCase())) {
       fresh.add(r.category.toLowerCase());
