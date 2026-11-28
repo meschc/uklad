@@ -37,9 +37,14 @@ export interface Product {
   codes?: string[];
   name: string;
   category: ProductCategory;
-  widthCm: number;
-  heightCm: number;
-  depthCm: number;
+  /**
+   * Габариты, см. Нет — товар ещё не измерен (импорт из выгрузки, где их не
+   * было): в таблице прочерк, влезание в ячейку не проверяется. Не ноль:
+   * ноль и «не измеряли» — разные вещи.
+   */
+  widthCm?: number;
+  heightCm?: number;
+  depthCm?: number;
   weightKg?: number;
   /** Ссылка на карточку товара (сайт/1С). Необязательна. */
   url?: string;

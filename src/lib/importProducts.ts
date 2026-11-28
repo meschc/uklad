@@ -1,42 +1,50 @@
-import { readSheetMatrix } from "./sheets";
+import { MAX_IMPORT_ROWS } from "./importSheet";
 import { PRODUCT_CATEGORIES, type Product, type ProductCategory } from "./types";
-import { BOM } from "./utils";
 import type { MsgKey } from "./i18n";
 
 /**
- * Импорт товаров (ТЗ, разд. 2.5: «импорт Excel/1С»).
+ * Импорт товаров: матрица файла → какие колонки что значат → строки к
+ * загрузке (ТЗ, разд. 2.5; решение Кирилла 27.11 — сопоставление колонок).
  *
- * Читаем настоящие книги .xlsx через SheetJS, плюс CSV/TSV как вторичный путь
- * (вставка текстом / выгрузка 1С). Оба входа сводятся к матрице `string[][]`,
- * которую валидирует общее ядро `parseRows`. Здесь живут два алерта (ТЗ, разд. 4):
- *   — ошибка формата файла;
- *   — несовпадение колонок.
- *
- * Саму книгу читает `lib/sheets`: SheetJS грузится по требованию, поэтому разбор
- * файла асинхронный, а разбор текста — нет.
+ * Колонки Уклад угадывает по заголовку (`guessColumns`), а человек правит
+ * сам: «эта колонка — артикул». Обязательны только артикул и название —
+ * в выгрузках склада категории и габаритов обычно нет. Товар без габаритов
+ * заводится «не измерен» (полей нет, а не ноль), категория из файла, которой
+ * нет в списке, заводится новой. Артикул, который на складе уже есть, —
+ * пропустить или обновить, по выбору.
  */
 
-/** Строк в одном файле: больше — предпросмотр и один запрос к серверу не потянут. */
-export const MAX_IMPORT_ROWS = 10_000;
-/** Размер файла, байт: книга на 50 000 строк весит больше и до разбора не доходит. */
-export const MAX_IMPORT_BYTES = 8 * 1024 * 1024;
-
-type FieldKey =
+export type FieldKey =
   "sku" | "barcode" | "name" | "category" | "widthCm" | "heightCm" | "depthCm" | "weightKg";
+
+/** Поля в порядке списка «Эта колонка — …». */
+export const IMPORT_FIELDS: readonly FieldKey[] = [
+  "sku",
+  "name",
+  "barcode",
+  "category",
+  "widthCm",
+  "heightCm",
+  "depthCm",
+  "weightKg",
+];
+
+const REQUIRED: readonly FieldKey[] = ["sku", "name"];
 
 /** Синонимы заголовков колонок (в нормализованном виде). */
 const FIELD_SYNONYMS: Record<FieldKey, string[]> = {
-  sku: ["артикул", "sku", "код", "код товара"],
-  barcode: ["штрихкод", "barcode", "ean", "шк"],
-  name: ["название", "наименование", "name", "товар", "имя"],
-  category: ["категория", "category", "группа"],
+  sku: ["артикул", "sku", "код", "код товара", "артикул продавца", "offer_id", "vendor code"],
+  barcode: ["штрихкод", "barcode", "ean", "шк", "баркод", "штрих-код"],
+  name: ["название", "наименование", "name", "товар", "имя", "номенклатура"],
+  category: ["категория", "category", "группа", "вид номенклатуры"],
   widthCm: ["ширина", "ш", "width", "w"],
   heightCm: ["высота", "в", "height", "h"],
-  depthCm: ["глубина", "г", "depth", "d"],
-  weightKg: ["вес", "масса", "weight"],
+  depthCm: ["глубина", "длина", "г", "depth", "length", "d", "l"],
+  weightKg: ["вес", "масса", "weight", "вес брутто"],
 };
 
-const REQUIRED: FieldKey[] = ["sku", "name", "category", "widthCm", "heightCm", "depthCm"];
+/** Что значит каждая колонка файла: поле Уклада или `null` — не загружать. */
+export type ColumnMap = (FieldKey | null)[];
 
 /** Ошибка строки: ключ i18n + подстановки (перевод — в UI). */
 interface RowError {
@@ -44,319 +52,273 @@ interface RowError {
   vars?: Record<string, string | number>;
 }
 
-/** Готовая к предпросмотру строка: разобранные поля + список ошибок. */
+/** Что импорт сделает со строкой. */
+type RowAction = "create" | "update" | "skip" | "error";
+
+/** Готовая к предпросмотру строка: разобранные поля + решение. */
 export interface ImportRow {
-  index: number; // номер строки данных, с 1
+  /** Номер строки в файле, с 1 — как в Excel. */
+  line: number;
   sku: string;
   barcode: string;
   name: string;
-  category?: ProductCategory;
+  /** Пусто — колонки нет или ячейка пустая. */
+  category: string;
+  /** Категории нет в списке склада: импорт её заведёт. */
+  newCategory: boolean;
   widthCm?: number;
   heightCm?: number;
   depthCm?: number;
   weightKg?: number;
+  action: RowAction;
   errors: RowError[];
-  /** Валидна и не дубль — годна к импорту. */
-  ok: boolean;
+  /** Для `update` и `skip` — товар склада с тем же артикулом. */
+  existingId?: string;
 }
 
-export type ParseResult =
-  | { ok: false; kind: "empty" }
+export type ImportMode = "skip" | "update";
+
+export interface ImportContext {
+  /** Товары этого склада: тот же артикул на соседнем складе — не дубль. */
+  products: readonly Pick<Product, "id" | "sku" | "barcode">[];
+  categories: readonly string[];
+  mode: ImportMode;
+}
+
+export type BuildResult =
+  | { ok: false; kind: "columns"; missing: FieldKey[] }
   | { ok: false; kind: "format"; reasonKey: MsgKey }
-  | {
-      ok: false;
-      kind: "columns";
-      /** Ключи недостающих обязательных полей (перевод — в UI). */
-      missing: FieldKey[];
-      headers: string[];
-    }
-  | {
-      ok: true;
-      headers: string[];
-      rows: ImportRow[];
-      validCount: number;
-      /** Колонки файла, которых Уклад не знает: они пропущены, а не потеряны молча. */
-      ignored: string[];
-    };
+  | { ok: true; rows: ImportRow[]; counts: Record<RowAction, number> };
 
 function norm(h: string): string {
-  return h
+  const base = h
     .trim()
     .toLowerCase()
-    .replace(/["']/g, "")
-    .replace(/[\s,;]*(?:см|мм|cm|mm|кг|kg)\.?$/i, "")
+    .replace(/ё/g, "е")
+    .replace(/["'*]/g, "")
+    .replace(/\(.*\)$/, "")
     .replace(/\s+/g, " ")
     .trim();
+  // «Ширина, см», «Вес кг» → «ширина», «вес». Сама буква «г» (глубина) — не единица.
+  return base.replace(/[\s,;]*(?:см|мм|cm|mm|кг|kg|г)\.?$/i, "").trim() || base;
 }
 
-function matchField(header: string): FieldKey | null {
+/** Поле колонки и насколько уверенно: меньше — ближе к началу списка синонимов. */
+function matchField(header: string): { field: FieldKey; rank: number } | null {
   const n = norm(header);
-  for (const key of Object.keys(FIELD_SYNONYMS) as FieldKey[]) {
-    if (FIELD_SYNONYMS[key].includes(n)) return key;
+  if (!n) return null;
+  for (const field of IMPORT_FIELDS) {
+    const rank = FIELD_SYNONYMS[field].indexOf(n);
+    if (rank >= 0) return { field, rank };
   }
   return null;
 }
 
-function detectDelim(header: string): string | null {
-  const cands = ["\t", ";", ","];
-  let best: string | null = null;
+/**
+ * Строка заголовка: из первых 20 та, где узналось больше всего колонок.
+ * 1С сверху кладёт шапку отчёта («Остатки товаров на 01.12»), и первая
+ * строка заголовком не будет. Не узналось ничего — первая строка.
+ */
+export function findHeaderRow(matrix: readonly string[][]): number {
+  let best = 0;
   let bestN = 0;
-  for (const d of cands) {
-    const n = header.split(d).length - 1;
+  matrix.slice(0, 20).forEach((row, i) => {
+    const n = new Set(row.map((c) => matchField(c)?.field).filter(Boolean)).size;
     if (n > bestN) {
       bestN = n;
-      best = d;
+      best = i;
     }
-  }
-  return bestN > 0 ? best : null;
+  });
+  return best;
 }
 
 /**
- * Разбор строки CSV. Кавычка — спецсимвол только в начале поля (как в Excel);
- * кавычка в середине значения (напр. `Планшет 11"`) — обычный символ.
+ * Догадка по заголовкам; одно поле — одна колонка. Из двух подходящих берём
+ * ту, что ближе к началу списка синонимов: у 1С есть и «Код», и «Артикул»,
+ * артикул — это «Артикул».
  */
-function splitLine(line: string, delim: string): string[] {
-  const out: string[] = [];
-  let cur = "";
-  let quoted = false;
-  let atStart = true;
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
-    if (quoted) {
-      if (ch === '"') {
-        if (line[i + 1] === '"') {
-          cur += '"';
-          i++;
-        } else quoted = false;
-      } else cur += ch;
-    } else if (ch === '"' && atStart) {
-      quoted = true;
-      atStart = false;
-    } else if (ch === delim) {
-      out.push(cur);
-      cur = "";
-      atStart = true;
-    } else {
-      cur += ch;
-      atStart = false;
-    }
-  }
-  out.push(cur);
-  return out.map((s) => s.trim());
+export function guessColumns(headers: readonly string[]): ColumnMap {
+  const best = new Map<FieldKey, { i: number; rank: number }>();
+  headers.forEach((h, i) => {
+    const m = matchField(h);
+    if (!m) return;
+    const was = best.get(m.field);
+    if (!was || m.rank < was.rank) best.set(m.field, { i, rank: m.rank });
+  });
+  const out: ColumnMap = headers.map(() => null);
+  for (const [field, { i }] of best) out[i] = field;
+  return out;
 }
 
-function num(s: string): number {
-  // Дефис стоит последним в наборе и потому означает сам себя — экранировать
-  // его там не нужно.
-  const v = parseFloat(s.replace(",", ".").replace(/[^\d.-]/g, ""));
+/**
+ * Число из ячейки: «2,5», «10 см», «1 200». Пусто — `undefined`, мусор — NaN.
+ * Дефис стоит последним в наборе и потому означает сам себя.
+ */
+function num(s: string): number | undefined {
+  if (!s) return undefined;
+  const clean = s
+    .replace(/\s+/g, "")
+    .replace(",", ".")
+    .replace(/[^\d.-]/g, "");
+  const v = parseFloat(clean);
   return Number.isFinite(v) ? v : NaN;
 }
 
-function matchCategory(s: string): ProductCategory | null {
-  const n = s.trim().toLowerCase();
-  return PRODUCT_CATEGORIES.find((c) => c.toLowerCase() === n) ?? null;
-}
-
-/** Похоже ли на бинарный/не-текстовый ввод (вставленный .xlsx и т.п.). */
-function looksBinary(s: string): boolean {
-  if (s.startsWith("PK")) return true; // zip-сигнатура .xlsx
-  const probe = s.slice(0, 4000);
-  for (let i = 0; i < probe.length; i++) {
-    const c = probe.charCodeAt(i);
-    // управляющие символы, кроме таб/CR/LF
-    if (c < 9 || (c > 13 && c < 32)) return true;
-  }
-  return false;
-}
-
-/**
- * Байты CSV → текст. Выгрузка 1С и старого Excel — windows-1251: прочитанная
- * как UTF-8, она превращается в «����» и все колонки не узнаются. Строгий
- * UTF-8 не прошёл — читаем как 1251.
- */
-export function decodeImportText(buf: ArrayBuffer): string {
-  try {
-    return new TextDecoder("utf-8", { fatal: true }).decode(buf);
-  } catch {
-    return new TextDecoder("windows-1251").decode(buf);
-  }
-}
-
-/** CSV/TSV-текст (вставка / выгрузка 1С) → матрица → общее ядро. */
-export function parseImportText(
-  text: string,
-  existingSkus: Set<string>,
-  existingBarcodes: Set<string> = new Set(),
-): ParseResult {
-  // Выгрузка из 1С и Excel начинается с BOM — срезаем, иначе первая колонка
-  // заголовка не совпадёт ни с одним ожидаемым именем.
-  const clean = (text.startsWith(BOM) ? text.slice(BOM.length) : text).trim();
-  if (!clean) return { ok: false, kind: "empty" };
-
-  if (looksBinary(clean)) {
-    return { ok: false, kind: "format", reasonKey: "import.msg.binary" };
-  }
-
-  const lines = clean.split(/\r?\n/).filter((l) => l.trim() !== "");
-  if (lines.length < 2) {
-    return { ok: false, kind: "format", reasonKey: "import.msg.needTwoLines" };
-  }
-
-  const delim = detectDelim(lines[0]);
-  if (!delim) {
-    return { ok: false, kind: "format", reasonKey: "import.msg.noDelimiter" };
-  }
-
-  const matrix = lines.map((l) => splitLine(l, delim));
-  return parseRows(matrix, existingSkus, existingBarcodes);
-}
-
-/** Бинарная книга .xlsx/.xls через SheetJS → матрица → общее ядро. */
-export async function parseImportFile(
-  buf: ArrayBuffer,
-  existingSkus: Set<string>,
-  existingBarcodes: Set<string> = new Set(),
-): Promise<ParseResult> {
-  let matrix: string[][] | null;
-  try {
-    matrix = await readSheetMatrix(buf);
-  } catch {
-    // Сюда попадают и битый файл, и недоступная библиотека. Разделять их в
-    // сообщении не за чем: обе беды человек чинит одним и тем же — повторить
-    // или выгрузить CSV, а второй путь работает и без SheetJS.
-    return { ok: false, kind: "format", reasonKey: "import.msg.unreadable" };
-  }
-  if (!matrix) {
-    return { ok: false, kind: "format", reasonKey: "import.msg.noSheet" };
-  }
-
-  if (matrix.length < 2) {
-    return { ok: false, kind: "format", reasonKey: "import.msg.needTwoLines" };
-  }
-  return parseRows(matrix, existingSkus, existingBarcodes);
-}
-
-/** Штрихкод для сверки: цифры без пробелов — «4600 0510 70012» и «4600051070012» один код. */
+/** Штрихкод для сверки: «4600 0510 70012» и «4600051070012» — один код. */
 function barcodeKey(s: string): string {
   return s.replace(/\s+/g, "");
 }
 
-/** Ядро: матрица (заголовок + строки) → маппинг колонок + валидация строк. */
-function parseRows(
-  matrix: string[][],
-  existingSkus: Set<string>,
-  existingBarcodes: Set<string>,
-): ParseResult {
-  const headers = (matrix[0] ?? []).map((h) => (h ?? "").trim());
-  const colField = headers.map(matchField);
-  const present = new Set(colField.filter((f): f is FieldKey => f !== null));
+const DIMS = [
+  ["widthCm", "import.row.badWidth"],
+  ["heightCm", "import.row.badHeight"],
+  ["depthCm", "import.row.badDepth"],
+] as const;
 
+/** Строки файла (после заголовка) → решения по каждой. */
+export function buildRows(
+  matrix: readonly string[][],
+  headerRow: number,
+  columns: ColumnMap,
+  ctx: ImportContext,
+): BuildResult {
+  const present = new Set(columns.filter((f): f is FieldKey => f !== null));
   const missing = REQUIRED.filter((f) => !present.has(f));
-  if (missing.length) {
-    return { ok: false, kind: "columns", missing, headers };
-  }
+  if (missing.length) return { ok: false, kind: "columns", missing };
 
-  if (matrix.length - 1 > MAX_IMPORT_ROWS) {
+  const body = matrix.slice(headerRow + 1);
+  if (body.length > MAX_IMPORT_ROWS) {
     return { ok: false, kind: "format", reasonKey: "import.msg.tooMany" };
   }
 
-  const ignored = headers.filter((h, i) => h !== "" && colField[i] === null);
-  const seen = new Set<string>();
-  const seenBarcodes = new Set<string>();
+  const bySku = new Map(ctx.products.map((p) => [p.sku, p]));
+  const byBarcode = new Map(
+    ctx.products.filter((p) => p.barcode).map((p) => [barcodeKey(p.barcode), p.sku]),
+  );
+  const categories = new Map(ctx.categories.map((c) => [c.trim().toLowerCase(), c]));
+  const seenSku = new Set<string>();
+  const seenBarcode = new Set<string>();
   const rows: ImportRow[] = [];
+  const at = new Map(columns.map((f, i) => [f, i]));
 
-  for (let r = 1; r < matrix.length; r++) {
-    const cells = matrix[r];
-    if (!cells || cells.every((c) => (c ?? "").trim() === "")) continue;
-    const get = (field: FieldKey): string => {
-      const i = colField.indexOf(field);
-      return i >= 0 ? (cells[i] ?? "").trim() : "";
+  body.forEach((cells, r) => {
+    const get = (f: FieldKey): string => {
+      const i = at.get(f);
+      return i == null ? "" : (cells[i] ?? "").trim();
     };
-
     const errors: RowError[] = [];
     const sku = get("sku");
     const name = get("name");
-    const categoryRaw = get("category");
-    const category = matchCategory(categoryRaw);
-    const widthCm = num(get("widthCm"));
-    const heightCm = num(get("heightCm"));
-    const depthCm = num(get("depthCm"));
-    const weightRaw = get("weightKg");
-    const weightKg = weightRaw ? num(weightRaw) : undefined;
+    const existing = sku ? bySku.get(sku) : undefined;
 
     if (!sku) errors.push({ key: "import.row.noSku" });
-    else if (existingSkus.has(sku) || seen.has(sku)) errors.push({ key: "import.row.dupSku" });
+    else if (seenSku.has(sku)) errors.push({ key: "import.row.dupInFile" });
+    if (!name && !existing) errors.push({ key: "import.row.noName" });
+
     const barcode = get("barcode");
     const bc = barcodeKey(barcode);
-    if (bc && (existingBarcodes.has(bc) || seenBarcodes.has(bc)))
+    const owner = bc ? byBarcode.get(bc) : undefined;
+    if (bc && (seenBarcode.has(bc) || (owner !== undefined && owner !== sku))) {
       errors.push({ key: "import.row.dupBarcode" });
-    if (!name) errors.push({ key: "import.row.noName" });
-    if (!category)
-      errors.push(
-        categoryRaw
-          ? { key: "import.row.badCategory", vars: { cat: categoryRaw } }
-          : { key: "import.row.noCategory" },
-      );
-    for (const [key, v] of [
-      ["import.row.badWidth", widthCm],
-      ["import.row.badHeight", heightCm],
-      ["import.row.badDepth", depthCm],
-    ] as const) {
-      if (!Number.isFinite(v) || v <= 0) errors.push({ key });
     }
-    if (weightRaw && (!Number.isFinite(weightKg!) || weightKg! < 0))
+
+    const rawCategory = get("category");
+    const known = categories.get(rawCategory.toLowerCase());
+    const category = known ?? rawCategory;
+
+    const dims: Partial<Record<"widthCm" | "heightCm" | "depthCm", number>> = {};
+    let given = 0;
+    for (const [f, key] of DIMS) {
+      const v = num(get(f));
+      if (v === undefined) continue;
+      given += 1;
+      if (Number.isFinite(v) && v > 0) dims[f] = v;
+      else errors.push({ key });
+    }
+    // Один-два габарита из трёх — не «не измерен» и не измерен: ячейку по
+    // ним не проверишь, а молча выкинуть указанное — хуже, чем спросить.
+    if (given > 0 && given < 3 && !errors.some((e) => e.key.startsWith("import.row.bad"))) {
+      errors.push({ key: "import.row.partialDims" });
+    }
+    const weightKg = num(get("weightKg"));
+    if (weightKg !== undefined && (!Number.isFinite(weightKg) || weightKg < 0)) {
       errors.push({ key: "import.row.badWeight" });
+    }
 
-    if (sku) seen.add(sku);
-    if (bc) seenBarcodes.add(bc);
+    if (sku) seenSku.add(sku);
+    if (bc) seenBarcode.add(bc);
 
+    const action: RowAction = errors.length
+      ? "error"
+      : !existing
+        ? "create"
+        : ctx.mode === "update"
+          ? "update"
+          : "skip";
     rows.push({
-      index: r,
+      line: headerRow + r + 2,
       sku,
       barcode,
       name,
-      category: category ?? undefined,
-      widthCm: Number.isFinite(widthCm) ? widthCm : undefined,
-      heightCm: Number.isFinite(heightCm) ? heightCm : undefined,
-      depthCm: Number.isFinite(depthCm) ? depthCm : undefined,
-      weightKg: weightKg != null && Number.isFinite(weightKg) ? weightKg : undefined,
+      category,
+      newCategory: !!rawCategory && !known,
+      ...(given === 3 ? dims : {}),
+      weightKg: weightKg !== undefined && Number.isFinite(weightKg) ? weightKg : undefined,
+      action,
       errors,
-      ok: errors.length === 0,
+      existingId: existing?.id,
     });
-  }
+  });
 
-  if (!rows.length) {
-    return { ok: false, kind: "format", reasonKey: "import.msg.noRows" };
-  }
-
-  return {
-    ok: true,
-    headers,
-    rows,
-    validCount: rows.filter((r) => r.ok).length,
-    ignored,
-  };
+  if (!rows.length) return { ok: false, kind: "format", reasonKey: "import.msg.noRows" };
+  const counts: Record<RowAction, number> = { create: 0, update: 0, skip: 0, error: 0 };
+  for (const r of rows) counts[r.action] += 1;
+  return { ok: true, rows, counts };
 }
 
-/** Штрихкоды склада для сверки дублей в `parseImport*`. */
-export function barcodeSet(products: readonly { barcode: string }[]): Set<string> {
-  return new Set(products.map((p) => barcodeKey(p.barcode)).filter(Boolean));
+export interface ImportPlan {
+  create: Omit<Product, "id">[];
+  /** Только поля из непустых ячеек: пустая ячейка файла ничего не стирает. */
+  update: { id: string; patch: Partial<Omit<Product, "id">> }[];
+  /** Новые категории — в список склада до товаров. */
+  categories: string[];
 }
 
-/** Годные строки → черновики товаров для добавления в номенклатуру. */
-export function rowsToProducts(rows: ImportRow[]): Omit<Product, "id">[] {
-  return rows
-    .filter((r) => r.ok && r.category)
-    .map((r) => ({
-      sku: r.sku,
-      barcode: r.barcode,
-      name: r.name,
-      category: r.category!,
-      widthCm: r.widthCm!,
-      heightCm: r.heightCm!,
-      depthCm: r.depthCm!,
-      weightKg: r.weightKg,
-    }));
+/** Решения по строкам → что завести, что поправить и какие категории добавить. */
+export function importPlan(rows: readonly ImportRow[], partnerId?: string): ImportPlan {
+  const plan: ImportPlan = { create: [], update: [], categories: [] };
+  const fresh = new Set<string>();
+  for (const r of rows) {
+    if (r.action !== "create" && r.action !== "update") continue;
+    if (r.newCategory && !fresh.has(r.category.toLowerCase())) {
+      fresh.add(r.category.toLowerCase());
+      plan.categories.push(r.category);
+    }
+    const dims =
+      r.widthCm !== undefined
+        ? { widthCm: r.widthCm, heightCm: r.heightCm, depthCm: r.depthCm }
+        : {};
+    if (r.action === "create") {
+      plan.create.push({
+        sku: r.sku,
+        barcode: r.barcode,
+        name: r.name,
+        category: r.category,
+        ...dims,
+        ...(r.weightKg !== undefined ? { weightKg: r.weightKg } : {}),
+        ...(partnerId ? { partnerId } : {}),
+      });
+      continue;
+    }
+    const patch: Partial<Omit<Product, "id">> = { ...dims };
+    if (r.name) patch.name = r.name;
+    if (r.barcode) patch.barcode = r.barcode;
+    if (r.category) patch.category = r.category;
+    if (r.weightKg !== undefined) patch.weightKg = r.weightKg;
+    if (partnerId) patch.partnerId = partnerId;
+    if (Object.keys(patch).length) plan.update.push({ id: r.existingId!, patch });
+  }
+  return plan;
 }
 
 /** Заголовки шаблона (для «Скачать шаблон .xlsx»). */
@@ -371,12 +333,16 @@ export const TEMPLATE_HEADERS = [
   "Вес, кг",
 ];
 
+const [CLOTHES, ELECTRONICS, APPLIANCES, TOOLS] = [0, 1, 2, 4].map(
+  (i) => PRODUCT_CATEGORIES[i] as ProductCategory,
+);
+
 /** Строки примера (без заголовка) — для шаблона и кнопки «Вставить пример». */
 export const EXAMPLE_ROWS: (string | number)[][] = [
-  ["УК-7001", "4600051070012", "Кроссовки беговые", "Одежда", 30, 12, 20, 0.8],
-  ["УК-7002", "4600051070029", 'Планшет 11"', "Электроника", 25.5, 17.8, 0.7, 0.5],
-  ["УК-7003", "4600051070036", "Блендер погружной", "Бытовая техника", 7, 40, 7, 1.4],
-  ["УК-7004", "4600051070043", "Гантели 5 кг", "Инструменты", 15, 15, 30, 5],
+  ["УК-7001", "4600051070012", "Кроссовки беговые", CLOTHES, 30, 12, 20, 0.8],
+  ["УК-7002", "4600051070029", 'Планшет 11"', ELECTRONICS, 25.5, 17.8, 0.7, 0.5],
+  ["УК-7003", "4600051070036", "Блендер погружной", APPLIANCES, 7, 40, 7, 1.4],
+  ["УК-7004", "4600051070043", "Гантели 5 кг", TOOLS, "", "", "", 5],
 ];
 
 /** Пример корректной выгрузки CSV (1С-стиль: разделитель «;», запятая в дробях). */

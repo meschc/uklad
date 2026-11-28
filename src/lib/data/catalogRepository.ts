@@ -29,7 +29,12 @@ export interface CatalogRepository extends Repository<Product> {
   update: (id: string, patch: Partial<Omit<Product, "id">>) => Promise<Result<void>>;
   remove: (ids: string[]) => Promise<Result<void>>;
   /** Загрузка из файла отдельным методом: сервер примет её одним запросом. */
-  importMany: (items: Omit<Product, "id">[]) => Promise<Result<void>>;
+  /** Файл импорта целиком: новые товары, правки существующих, новые категории. */
+  importMany: (plan: {
+    create: Omit<Product, "id">[];
+    update: { id: string; patch: Partial<Omit<Product, "id">> }[];
+    categories: string[];
+  }) => Promise<Result<void>>;
   setCategory: (ids: string[], category: ProductCategory) => Promise<Result<void>>;
   setPartner: (ids: string[], partnerId: string | undefined) => Promise<Result<void>>;
   /**
@@ -61,7 +66,8 @@ export function createCatalogRepository(port: StorePort = storePort): CatalogRep
     create: (input) => attempt(() => port.get().addProduct(input)),
     update: (id, patch) => attempt(() => port.get().updateProduct(id, patch)),
     remove: (ids) => attempt(() => port.get().deleteProducts(ids)),
-    importMany: (items) => attempt(() => port.get().importProducts(items)),
+    importMany: (plan) =>
+      attempt(() => port.get().importProducts(plan.create, plan.update, plan.categories)),
     setCategory: (ids, category) => attempt(() => port.get().setProductsCategory(ids, category)),
     setPartner: (ids, partnerId) => attempt(() => port.get().setProductsPartner(ids, partnerId)),
     setFields: (productId, values) =>

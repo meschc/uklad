@@ -1,4 +1,4 @@
-import { addressKey, cellDimsCm, type CellDims } from "./address";
+import { addressKey, cellDimsCm, hasDims, type CellDims } from "./address";
 import {
   DEFAULT_PICK_PRIORITY,
   type Box,
@@ -77,6 +77,9 @@ export interface FitResult {
 /** Влезет ли товар в ячейку. Без переворота: Ш→Ш, В→В, Г→Г. */
 export function checkFit(product: Product, cell: CellDims): FitResult {
   const failed: FitAxis[] = [];
+  // Не измерен (импорт без габаритов) — проверять нечем: пускаем, а не
+  // запрещаем. Измерят — проверка вернётся.
+  if (!hasDims(product)) return { fits: true, failed };
   if (product.widthCm > cell.widthCm + EPS) failed.push("width");
   if (product.heightCm > cell.heightCm + EPS) failed.push("height");
   if (product.depthCm > cell.depthCm + EPS) failed.push("depth");

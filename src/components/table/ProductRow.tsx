@@ -1,5 +1,5 @@
 import { Barcode, ExternalLink, MapPin, Pencil, Truck } from "lucide-react";
-import { cm } from "@/lib/address";
+import { cm, dimsText } from "@/lib/address";
 import { catLabel, useT } from "@/lib/i18n";
 import type { Product } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -139,7 +139,7 @@ export function ProductRow({
     partner: <Td className="py-1.5 text-xs text-muted-foreground">{partner || "—"}</Td>,
     dims: (
       <Td className="whitespace-nowrap py-1.5 tabular-nums text-muted-foreground max-md:!hidden">
-        {cm(p.widthCm)} × {cm(p.heightCm)} × {cm(p.depthCm)}
+        {dimsText(p) ?? "—"}
       </Td>
     ),
     weight: (

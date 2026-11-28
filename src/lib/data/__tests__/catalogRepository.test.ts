@@ -89,7 +89,11 @@ describe("createCatalogRepository", () => {
     );
 
     // Act
-    const res = await repo.importMany([{ sku: "УК-1" } as never]);
+    const res = await repo.importMany({
+      create: [{ sku: "УК-1" } as never],
+      update: [],
+      categories: [],
+    });
 
     // Assert
     expect(res).toEqual({ ok: false, error: "data.failed" });

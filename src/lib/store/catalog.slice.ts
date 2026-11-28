@@ -1,7 +1,7 @@
 import { uid } from "../utils";
 import { fieldValueKey } from "./helpers";
 import type { CatalogSlice, SliceCreator } from "./state";
-import { PRODUCT_CATEGORIES } from "../types";
+import { PRODUCT_CATEGORIES, type Product } from "../types";
 import { seedCategoryFields, seedProducts } from "./seed";
 
 /**
@@ -157,17 +157,25 @@ export const createCatalogSlice: SliceCreator<CatalogSlice> = (set, get) => ({
 
   // Артикул, который на этом складе уже есть, второй раз не заводим: вторая
   // вкладка или повторная загрузка того же файла иначе дали бы двойники.
-  importProducts: (items) =>
+  // Правки — только товарам этого склада; новые категории — в список, без
+  // повторов по регистру. Всё одной записью: файл загружается целиком.
+  importProducts: (items, updates = [], categories = []) =>
     set((s) => {
-      const taken = new Set(
-        s.products
-          .filter((p) => !p.warehouseId || p.warehouseId === s.warehouse.id)
-          .map((p) => p.sku),
-      );
+      const own = (p: Product) => !p.warehouseId || p.warehouseId === s.warehouse.id;
+      const taken = new Set(s.products.filter(own).map((p) => p.sku));
       const fresh = items.filter((p) => !taken.has(p.sku) && taken.add(p.sku));
+      const patches = new Map(updates.map((u) => [u.id, u.patch]));
+      const known = new Set(s.categories.map((c) => c.toLowerCase()));
+      const added = categories
+        .map((c) => c.trim())
+        .filter((c) => c && !known.has(c.toLowerCase()) && known.add(c.toLowerCase()));
       return {
+        categories: added.length ? [...s.categories, ...added] : s.categories,
         products: [
-          ...s.products,
+          ...s.products.map((p) => {
+            const patch = own(p) ? patches.get(p.id) : undefined;
+            return patch ? { ...p, ...patch } : p;
+          }),
           ...fresh.map((p) => ({ ...p, id: uid("prod"), warehouseId: s.warehouse.id })),
         ],
       };

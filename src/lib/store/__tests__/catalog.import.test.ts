@@ -34,4 +34,27 @@ describe("importProducts", () => {
     useEditor.getState().importProducts([item("A1")]);
     expect(useEditor.getState().products).toHaveLength(2);
   });
+
+  test("правка — только товару этого склада, категории без повторов по регистру", () => {
+    useEditor.setState({
+      categories: ["Одежда"],
+      products: [
+        { ...item("A1"), id: "mine" },
+        { ...item("A1"), id: "foreign", warehouseId: "other-warehouse" },
+      ],
+    });
+    useEditor.getState().importProducts(
+      [{ ...item("B1"), category: "Посуда" }],
+      [
+        { id: "mine", patch: { name: "Новое имя" } },
+        { id: "foreign", patch: { name: "Чужое" } },
+      ],
+      ["Посуда", "посуда", "одежда"],
+    );
+    const s = useEditor.getState();
+    expect(s.categories).toEqual(["Одежда", "Посуда"]);
+    expect(s.products.find((p) => p.id === "mine")?.name).toBe("Новое имя");
+    expect(s.products.find((p) => p.id === "foreign")?.name).toBe("A1");
+    expect(s.products.map((p) => p.sku)).toContain("B1");
+  });
 });

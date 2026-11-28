@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { fulfillmentRepository } from "@/lib/data";
-import { cm, formatAddress } from "@/lib/address";
+import { cm, dimsText, formatAddress } from "@/lib/address";
 import { lookup, type LookupLine, type LookupResult } from "@/lib/lookup";
 import { catLabel, useT, type TFunc } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
@@ -219,7 +219,7 @@ function ProductResult({
           { label: t("table.col.partner"), value: partner?.name ?? "—" },
           {
             label: t("table.col.dims"),
-            value: `${cm(p.widthCm)} × ${cm(p.heightCm)} × ${cm(p.depthCm)}`,
+            value: dimsText(p) ?? "—",
           },
           {
             label: t("table.col.weight"),

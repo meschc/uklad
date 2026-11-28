@@ -3,7 +3,7 @@ import { Maximize, Minus, MousePointerClick, Plus, Search, X } from "lucide-reac
 import { fieldValueKey, resolveFloor, useEditor } from "@/lib/store";
 import { catalogRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
-import { cellDimsCm, cm, formatAddress } from "@/lib/address";
+import { cellDimsCm, cm, dimsText, formatAddress } from "@/lib/address";
 import { CATEGORY_COLOR, buildScene } from "@/lib/scene3d";
 import type { CategoryField, Floor } from "@/lib/types";
 import { catLabel, useT } from "@/lib/i18n";
@@ -403,7 +403,7 @@ function Sidebar({ productId, onClose }: { productId: string; onClose: () => voi
         </Field>
         <Field label={t("view3d.dimsWHD")}>
           <span className="tabular-nums text-xs">
-            {cm(product.widthCm)} × {cm(product.heightCm)} × {cm(product.depthCm)} {t("unit.cm")}
+            {dimsText(product) ? `${dimsText(product)} ${t("unit.cm")}` : "—"}
           </span>
         </Field>
         <Field label={t("view3d.weight")}>

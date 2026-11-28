@@ -242,6 +242,14 @@ describe("suggestCell", () => {
 });
 
 describe("checkFit", () => {
+  it("не измеренный товар (импорт без габаритов) не запирается: проверять нечем", () => {
+    const product = makeProduct({ widthCm: undefined, heightCm: undefined, depthCm: undefined });
+    expect(checkFit(product, { widthCm: 1, heightCm: 1, depthCm: 1 })).toEqual({
+      fits: true,
+      failed: [],
+    });
+  });
+
   it("перечисляет все оси, по которым товар не проходит", () => {
     // Arrange: интерфейс показывает пользователю именно список осей, а не
     // общее «не влезает» — иначе непонятно, что мерить заново.
