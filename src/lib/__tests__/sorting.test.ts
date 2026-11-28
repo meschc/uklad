@@ -120,6 +120,8 @@ describe("planSortUndo / lastSorted — вынуть свою посылку", (
     expect(lastSorted(list, "ivan")?.code).toBe("UK-ORD-2");
     expect(planSortUndo(list, "UK-LBL-3", "ivan")).toEqual({ ok: false, problem: "not_yours" });
     expect(planSortUndo(list, "UK-ORD-9", "ivan")).toEqual({ ok: false, problem: "missing" });
+    // Старший — любую (Кирилл 27.11).
+    expect(planSortUndo(list, "UK-LBL-3", "ivan", true).ok).toBe(true);
   });
   it("закрытая отгрузка — поздно, предлагать нечего", () => {
     const closed = [...list, box("UK-OUT-P", [], { sortCode: P1, place: "pallet" })];

@@ -2,7 +2,15 @@ import { useEffect, useRef, useState } from "react";
 import { Layers, PackageCheck, Printer, Undo2 } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { workstationRepository } from "@/lib/data";
-import { classifySortScan, lastSorted, parseSortCode, sortPoints, unsorted } from "@/lib/sorting";
+import {
+  classifySortScan,
+  lastSorted,
+  parseSortCode,
+  planSortUndo,
+  sortPoints,
+  unsorted,
+} from "@/lib/sorting";
+import { mayDecideGoods } from "@/lib/docFlow";
 import { findUnlabeled, type UnlabeledScan } from "@/lib/unlabeled";
 import { beepNotes } from "@/lib/beep";
 import { holdSignal, signal } from "@/lib/scanSignal";
@@ -46,8 +54,13 @@ export function SortStation() {
   const requests = useEditor((s) => s.requests);
   const products = useEditor((s) => s.products);
   const seniorOf = useSeniorBadge();
-  const me = useEditor((s) => s.stationSession?.staffId);
-  const [undoing, setUndoing] = useState(false);
+  const session = useEditor((s) => s.stationSession);
+  const me = session?.staffId;
+  const meMember = useEditor((s) => s.warehouse.staff?.find((m) => m.id === me));
+  const onServer = useEditor((s) => s.session.source === "server");
+  // Старший вынимает любую посылку (Кирилл 27.11): в журнал ляжет под ним.
+  const senior = mayDecideGoods(session, meMember, onServer);
+  const [undoing, setUndoing] = useState<{ code: string; point: string } | null>(null);
   const [pending, setPending] = useState<{
     code: string;
     destination: string;
@@ -120,6 +133,11 @@ export function SortStation() {
       case "no_destination":
         return show("error", t("ws.sort.noDestination", { code: res.code }));
       case "dup":
+        // Старший за столом: повтор — не остановка, а вопрос «вынуть?».
+        if (me && senior && planSortUndo(outbound, res.code, me, true).ok) {
+          setUndoing({ code: res.code, point: res.point });
+          return show("warn", t("ws.sort.undo.senior", { code: res.code, point: res.point }));
+        }
         setLocked(res.code);
         return show("error", t("ws.sort.locked", { code: res.code }));
       case "point_first":
@@ -191,22 +209,24 @@ export function SortStation() {
       {lost && <UnlabeledPanel scan={lost} onDone={() => setLost(null)} />}
 
       {undoable && (
-        <Button variant="ghost" size="sm" className="self-start" onClick={() => setUndoing(true)}>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="self-start"
+          onClick={() => setUndoing({ code: undoable.code, point: undoable.sortCode ?? "" })}
+        >
           <Undo2 />
           <CodeText text={t("ws.sort.undo.button", { code: undoable.code })} />
         </Button>
       )}
-      {undoing && undoable?.sortCode && (
+      {undoing && (
         <SortUndoPanel
-          code={undoable.code}
-          point={undoable.sortCode}
-          onClose={() => setUndoing(false)}
+          code={undoing.code}
+          point={undoing.point}
+          onClose={() => setUndoing(null)}
           onDone={() => {
-            setUndoing(false);
-            show(
-              "ok",
-              t("ws.sort.undo.done", { code: undoable.code, point: undoable.sortCode ?? "" }),
-            );
+            setUndoing(null);
+            show("ok", t("ws.sort.undo.done", undoing));
           }}
         />
       )}

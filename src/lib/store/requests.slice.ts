@@ -437,8 +437,8 @@ export const createRequestsSlice: SliceCreator<RequestsSlice> = (set, get) => ({
     return true;
   },
 
-  sortUndo: (parcelCode, by) => {
-    const res = planSortUndo(get().outboundBoxes, parcelCode, by);
+  sortUndo: (parcelCode, by, senior) => {
+    const res = planSortUndo(get().outboundBoxes, parcelCode, by, senior);
     if (!res.ok) return res.problem;
     set((s) => ({
       outboundBoxes: s.outboundBoxes.map((b) => {

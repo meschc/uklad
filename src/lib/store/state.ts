@@ -660,7 +660,7 @@ export interface RequestsSlice {
    * Вынуть свою посылку с места сортировки, пока отгрузка не закрыта
    * (`planSortUndo`). Нельзя — причина.
    */
-  sortUndo: (parcelCode: string, by: string) => SortUndoProblem | null;
+  sortUndo: (parcelCode: string, by: string, senior?: boolean) => SortUndoProblem | null;
   /**
    * Закрыть отгрузку места сортировки: завести грузовые места (`UK-OUT-`),
    * сначала паллеты, потом коробки. `null` — места уже закрыты или пусты.

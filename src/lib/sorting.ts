@@ -77,18 +77,19 @@ export function currentSortPoint(list: readonly OutboundBox[], destination: stri
 export type SortUndoProblem = "missing" | "not_yours" | "late";
 
 /**
- * Отмена своей раскладки (Кирилл 27.11): посылку, которую этот человек
- * положил последней, можно вынуть, пока отгрузка места не закрыта. Те же
- * правила, что у сервера.
+ * Отмена раскладки (Кирилл 27.11): свою посылку можно вынуть, пока отгрузка
+ * места не закрыта; старший — любую. Те же правила, что у сервера.
  */
 export function planSortUndo(
   list: readonly OutboundBox[],
   parcelCode: string,
   by: string,
+  senior = false,
 ): { ok: true; box: OutboundBox } | { ok: false; problem: SortUndoProblem } {
   const box = list.find((b) => !b.place && same(b.code, parcelCode));
   if (!box?.sortCode) return { ok: false, problem: "missing" };
-  if (box.sortedBy !== by) return { ok: false, problem: "not_yours" };
+  // Старший вынимает любую (Кирилл 27.11): действие ляжет в журнал под ним.
+  if (box.sortedBy !== by && !senior) return { ok: false, problem: "not_yours" };
   if (box.shipmentId || isSortClosed(list, box.sortCode)) return { ok: false, problem: "late" };
   return { ok: true, box };
 }
