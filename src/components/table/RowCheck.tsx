@@ -1,4 +1,4 @@
-import { Check } from "lucide-react";
+import { Check, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -36,11 +36,14 @@ export function RowCheck({
           : "border-input hover:border-primary/60",
       )}
     >
+      {/* Значок — всегда svg одного размера, пустой — невидим: у кнопки без
+          значка или с полоской-span другая базовая линия, и шапка таблицы
+          прыгала на 1–3 px при первой отметке («дёргается кнопка», разбор 27.11). */}
       {partial ? (
-        <span className="h-0.5 w-2 rounded-full bg-current" />
-      ) : checked ? (
-        <Check className="size-3" />
-      ) : null}
+        <Minus className="size-3" strokeWidth={3} />
+      ) : (
+        <Check className={cn("size-3", !checked && "invisible")} />
+      )}
     </button>
   );
 }
