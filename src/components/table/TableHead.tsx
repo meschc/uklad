@@ -7,14 +7,19 @@ import { RowCheck } from "./RowCheck";
 import type { SortKey } from "./tableRows";
 import { TableHeader, Th } from "@/components/ui/table";
 
+/**
+ * Нижняя граница ширины у колонок, где текст разной длины: без неё браузер
+ * считал ширину по оставшимся строкам, и при вводе в поиск колонки ехали на
+ * 10–40 px (разбор 27.11). Остаток места забирает «Название».
+ */
 export const COLS: Record<ColId, { label: MsgKey; sort?: SortKey; className?: string }> = {
   photo: { label: "table.col.photo", className: "w-12" },
-  sku: { label: "table.col.sku", sort: "sku" },
-  name: { label: "table.col.name", sort: "name" },
-  barcode: { label: "table.col.barcode" },
-  category: { label: "table.col.category", sort: "category" },
-  partner: { label: "table.col.partner", sort: "partner" },
-  dims: { label: "table.col.dims" },
+  sku: { label: "table.col.sku", sort: "sku", className: "min-w-24" },
+  name: { label: "table.col.name", sort: "name", className: "min-w-40" },
+  barcode: { label: "table.col.barcode", className: "min-w-40" },
+  category: { label: "table.col.category", sort: "category", className: "min-w-36" },
+  partner: { label: "table.col.partner", sort: "partner", className: "min-w-44" },
+  dims: { label: "table.col.dims", className: "min-w-40" },
   weight: { label: "table.col.weight", sort: "weight" },
   qty: { label: "table.col.qty", sort: "qty" },
   place: { label: "table.col.place", sort: "place" },
