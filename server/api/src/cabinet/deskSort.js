@@ -10,8 +10,11 @@
  * посылки, а у грузовых мест товара нет вовсе.
  */
 
-/* global module */
+/* global module, require */
+/* eslint-disable @typescript-eslint/no-require-imports */
 "use strict";
+
+const { GOODS_DECIDE, may } = require("./deskPerms");
 
 const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 const list = (v) => (Array.isArray(v) ? v.filter(isObject) : []);
@@ -85,10 +88,12 @@ function applySortPlace(data, body, staffRef) {
 /**
  * Отмена своей раскладки (`sort_undo`, Кирилл 27.11): положил посылку не в то
  * место или не ту — вынимает её обратно, пока отгрузка места не закрыта.
- * Только свою: кто положил, пишет `sort_place` (`sortedBy`). Товар не
- * двигается — посылка просто снова «не разложена».
+ * Свою — кто положил, пишет `sort_place` (`sortedBy`); любую — старший
+ * (`goods.decide`, Кирилл 27.11: «старший может делать с товаром всё, главное
+ * чтобы действия его в журнале были»). В журнале операция ложится под тем, кто
+ * за столом. Товар не двигается — посылка просто снова «не разложена».
  */
-function applySortUndo(data, body, staffRef) {
+function applySortUndo(data, body, staffRef, who) {
   const parcelCode = code(body.outboundCode);
   if (!PARCEL_RE.test(parcelCode)) return { flag: "bad" };
   const outbound = list(data.outboundBoxes);
@@ -96,7 +101,8 @@ function applySortUndo(data, body, staffRef) {
   if (!box) return { flag: "bad" };
   // Уже вынута (повтор той же отмены другим ключом) — ничего не меняем.
   if (!box.sortCode) return { data };
-  if (!staffRef || box.sortedBy !== staffRef) return { flag: "not_yours" };
+  const mine = !!staffRef && box.sortedBy === staffRef;
+  if (!mine && !may(who, staffRef, GOODS_DECIDE)) return { flag: "not_yours" };
   if (box.shipmentId || isClosed(outbound, code(box.sortCode))) return { flag: "late" };
   const at = Number.isFinite(body.at) ? body.at : Date.now();
   return {

@@ -101,8 +101,24 @@ test("вынуть свою посылку: только свою и пока м
   const close = { sortCode: KOL, pallets: 1, boxes: 0, placeIds: ["p1"], at: 9 };
   const closed = applySortClose(placed, close).data;
   assert.equal(applySortUndo(closed, undo, "stf-ivan").flag, "late");
-  // Разложенная до 27.11 (кто клал — неизвестно) — не вынуть.
+  // Разложенная до 27.11 (кто клал — неизвестно) — исполнителю не вынуть.
   const old = structuredClone(placed);
   delete old.outboundBoxes[0].sortedBy;
   assert.equal(applySortUndo(old, undo, "stf-ivan").flag, "not_yours");
+});
+
+test("старший вынимает любую посылку, исполнитель — только свою", () => {
+  const placed = applySortPlace(data(), put("UK-ORD-1", KOL), "stf-ivan").data;
+  const undo = { outboundCode: "UK-ORD-1", at: 6 };
+  const who = { perms: { "stf-boss": ["goods.decide"], "stf-olga": ["shipping.do"] } };
+  assert.equal(applySortUndo(placed, undo, "stf-olga", who).flag, "not_yours");
+  const r = applySortUndo(placed, undo, "stf-boss", who);
+  assert.equal(r.data.outboundBoxes[0].sortCode, undefined);
+  // И разложенную до 27.11 (кто клал — неизвестно), но не в закрытой отгрузке.
+  const old = structuredClone(placed);
+  delete old.outboundBoxes[0].sortedBy;
+  assert.ok(applySortUndo(old, undo, "stf-boss", who).data);
+  const close = { sortCode: KOL, pallets: 1, boxes: 0, placeIds: ["p1"], at: 9 };
+  const closed = applySortClose(placed, close).data;
+  assert.equal(applySortUndo(closed, undo, "stf-boss", who).flag, "late");
 });

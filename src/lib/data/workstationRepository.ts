@@ -23,6 +23,7 @@ import { readList, storePort, type StorePort } from "./repository";
 import { attempt, fail, ok, type Result } from "./result";
 import { nowMs, uid } from "../utils";
 import { stationsFor } from "../stationSwitch";
+import { mayDecideGoods } from "../docFlow";
 
 /**
  * Рабочее место и журнал сотрудника (п.0.4). Здесь появится сеть: вход по
@@ -551,7 +552,14 @@ export function createWorkstationRepository(
     sortUndo: async (parcelCode) => {
       const by = port.get().stationSession?.staffId;
       if (!by) return fail("ws.sort.undo.not_yours");
-      const res = await attempt(() => port.get().sortUndo(parcelCode, by));
+      // Старший (`goods.decide`) вынимает любую посылку — сервер проверит сам.
+      const s = port.get();
+      const senior = mayDecideGoods(
+        s.stationSession,
+        s.warehouse.staff?.find((m) => m.id === by),
+        onServer(port),
+      );
+      const res = await attempt(() => port.get().sortUndo(parcelCode, by, senior));
       if (!res.ok) return res;
       if (res.data) return fail(`ws.sort.undo.${res.data}` as const);
       if (onServer(port)) {
