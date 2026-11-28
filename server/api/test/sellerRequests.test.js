@@ -85,3 +85,36 @@ test("отмена: «новая» с тарой, посылкой или нач
   assert.equal(cancelProblem({ ...r, reservedShipmentId: "exp" }), "reserved");
   assert.equal(cancelProblem({ ...r, by: undefined }), "not_yours");
 });
+
+test("поставка: строк во всех ждущих — не больше 5000; продавцу — только поля ожидания", () => {
+  const { supplyRefusal, toSellerSupply } = require("../src/cabinet/sellerSupplies");
+  const own = new Set(["p-1"]);
+  const big = (n) => ({
+    by: "seller",
+    status: "pending",
+    lines: Array.from({ length: n }, () => ({ productId: "p-1" })),
+  });
+  const b = (n) => ({ lines: Array.from({ length: n }, () => ({ productId: "p-1", qty: 1 })) });
+  assert.equal(supplyRefusal({ expectedShipments: [big(4900)] }, own, b(100)), null);
+  assert.deepEqual(supplyRefusal({ expectedShipments: [big(4900)] }, own, b(101)), {
+    status: 409,
+    error: "too_many",
+  });
+  const s = toSellerSupply(
+    {
+      id: "s",
+      status: "pending",
+      countedBy: "st-1",
+      lines: [
+        { id: "l1", productId: "p-1", expectedQty: 2, receivedQty: 0, by: "st-1" },
+        { id: "l2", productId: "p-2", expectedQty: 1, receivedQty: 0 },
+      ],
+    },
+    own,
+  );
+  assert.deepEqual(s, {
+    id: "s",
+    status: "pending",
+    lines: [{ id: "l1", productId: "p-1", expectedQty: 2, receivedQty: 0 }],
+  });
+});

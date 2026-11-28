@@ -32,7 +32,13 @@ const { forSeller } = require("./seller");
 const { freeStock } = require("./stockPush");
 const { createRateLimit } = require("../rateLimit");
 const { writeView } = require("./viewWrite");
-const { readSupply, supplyId, supplyRefusal, newSupply } = require("./sellerSupplies");
+const {
+  readSupply,
+  supplyId,
+  supplyRefusal,
+  newSupply,
+  toSellerSupply,
+} = require("./sellerSupplies");
 
 const KEY_RE = /^[A-Za-z0-9-]{8,64}$/;
 const ID_RE = /^[A-Za-z0-9_-]{1,100}$/;
@@ -312,7 +318,7 @@ function createSellerRequests({ auth, send, log, now = () => Date.now() }) {
             isObject(s) && s.by === "seller" && list(s.lines).every((l) => own.has(l?.productId)),
         );
         return mine
-          ? { status: 200, supply: before[0], duplicate: true }
+          ? { status: 200, supply: toSellerSupply(before[0], own), duplicate: true }
           : { status: 409, error: "key_taken" };
       }
       const no = supplyRefusal(view, own, b);
@@ -321,7 +327,7 @@ function createSellerRequests({ auth, send, log, now = () => Date.now() }) {
       const next = { ...view, expectedShipments: [made, ...list(view.expectedShipments)] };
       const bad = await writeView(c, full, next, ref);
       if (bad) return { status: 409, error: bad.error };
-      return { status: 200, supply: made };
+      return { status: 200, supply: toSellerSupply(made, own) };
     });
 
   const routes = {

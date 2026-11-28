@@ -21,6 +21,8 @@ const MAX_QTY = 1_000_000;
 const MAX_TITLE = 120;
 /** Ждущих поставок продавца на складе: дальше — 409, снимок не растёт без конца. */
 const MAX_PENDING = 300;
+/** Строк во всех ждущих поставках продавца вместе (разбор «Безопасности» к #330). */
+const MAX_PENDING_LINES = 5000;
 
 const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 const list = (v) => (Array.isArray(v) ? v : []);
@@ -59,7 +61,11 @@ function supplyRefusal(view, own, b) {
       s.status === "pending" &&
       list(s.lines).some((l) => isObject(l) && own.has(l.productId)),
   );
-  return pending.length >= MAX_PENDING ? { status: 409, error: "too_many" } : null;
+  const lines = pending.reduce((n, s) => n + list(s.lines).length, 0);
+  if (pending.length >= MAX_PENDING || lines + b.lines.length > MAX_PENDING_LINES) {
+    return { status: 409, error: "too_many" };
+  }
+  return null;
 }
 
 /** Ожидаемая поставка из тела — в той же форме, что `createExpectedShipment`. */
@@ -82,4 +88,21 @@ function newSupply(b, at, memberId) {
   };
 }
 
-module.exports = { readSupply, supplyId, supplyRefusal, newSupply };
+/**
+ * Поставка глазами продавца: только поля ожидания и свои строки. Кто
+ * принимал и что решил склад — не продавцу, даже если в поставку это
+ * когда-нибудь допишут.
+ */
+const SUPPLY_KEYS = ["id", "source", "title", "createdAt", "status", "closedAt", "by"];
+const LINE_KEYS = ["id", "productId", "expectedQty", "receivedQty"];
+const pick = (o, keys) => Object.fromEntries(keys.filter((k) => k in o).map((k) => [k, o[k]]));
+function toSellerSupply(s, own) {
+  return {
+    ...pick(s, SUPPLY_KEYS),
+    lines: list(s.lines)
+      .filter((l) => isObject(l) && own.has(l.productId))
+      .map((l) => pick(l, LINE_KEYS)),
+  };
+}
+
+module.exports = { readSupply, supplyId, supplyRefusal, newSupply, toSellerSupply };
