@@ -68,16 +68,17 @@ export function TopBar() {
           variant="ghost"
           size="sm"
           // Загруженность — про план: на компьютере только на «Плане» (Кирилл
-          // 24.11). На телефоне плана нет, там кнопка остаётся (Кирилл 18.11).
+          // 24.11).
           // Без строки features window.open открывает обычную новую вкладку;
           // именованный target переиспользует уже открытую карту.
           onClick={() => window.open(`${window.location.pathname}?heatmap=1`, "uklad-heatmap")}
           title={t("heat.title")}
-          // Загруженность остаётся и на телефоне (Кирилл 18.11) — единственное
-          // из плана, что там нужно; печать плана — только за компьютером.
+          // На телефоне загруженность — только на рабочем месте, в шаге
+          // размещения приёмки (Кирилл 28.11, заменяет «оставить на телефоне» 18.11).
           className={cn(
             "gap-1.5 rounded-lg bg-muted px-2.5 text-muted-foreground hover:text-foreground md:absolute md:left-full md:ml-1.5 [&_svg]:size-3.5",
             !onPlan && "md:hidden",
+            phone && "hidden",
           )}
         >
           <Gauge />

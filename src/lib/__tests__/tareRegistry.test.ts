@@ -60,6 +60,8 @@ describe("реестр тары", () => {
       boxCount: 2,
       positions: 2,
       units: 8,
+      // Главный товар (больше штук) — первым: его видно в строке реестра.
+      productIds: ["p1", "p2"],
     });
     expect(rows.find((r) => r.id === "pl2")!.state).toBe("unprinted");
     expect(tareContents(p, boxes, pallets)).toEqual([

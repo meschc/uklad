@@ -34,12 +34,21 @@ export interface TareRow {
   units: number;
   /** Коробок на паллете; у коробки — 0. */
   boxCount: number;
+  /** Товары внутри (видимые пользователю), больше штук — раньше. */
+  productIds: string[];
   /** Паллета, на которой стоит коробка. */
   palletId?: string;
   address?: Box["address"];
   createdAt: number;
   printedAt?: number;
   printCount: number;
+}
+
+/** Товары по убыванию штук: в строке реестра первым виден главный. */
+function byQty(lines: Box["lines"]): string[] {
+  const sum = new Map<string, number>();
+  for (const l of lines) sum.set(l.productId, (sum.get(l.productId) ?? 0) + l.qty);
+  return [...sum].sort((a, b) => b[1] - a[1]).map(([id]) => id);
 }
 
 function boxState(b: Box, lines: Box["lines"]): TareState {
@@ -77,6 +86,7 @@ export function buildTareRows(
       positions: new Set(lines.map((l) => l.productId)).size,
       units: lines.reduce((s, l) => s + l.qty, 0),
       boxCount: 0,
+      productIds: byQty(lines),
       palletId: b.palletId,
       address: b.address,
       createdAt: b.createdAt,
@@ -106,6 +116,7 @@ export function buildTareRows(
       positions: new Set(lines.map((l) => l.productId)).size,
       units: lines.reduce((s, l) => s + l.qty, 0),
       boxCount: mine.length,
+      productIds: byQty(lines),
       address: p.address,
       createdAt: p.createdAt,
       printedAt: p.printedAt,
