@@ -285,6 +285,8 @@ export interface FulfillmentRequest {
   by?: "seller";
   /** Кто из людей продавца завёл (id участника на сервере). */
   byMember?: string;
+  /** Кто из людей продавца отменил свою заявку (id участника на сервере). */
+  cancelledBy?: string;
   createdAt: number;
   updatedAt: number;
   /** Когда заявку взяли в работу — нужно для метрики времени сборки. */

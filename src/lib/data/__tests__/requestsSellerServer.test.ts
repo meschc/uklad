@@ -90,3 +90,27 @@ describe("заявка продавца через сервер", () => {
     expect(apiRequest).not.toHaveBeenCalled();
   });
 });
+
+describe("отмена своей заявки продавцом через сервер", () => {
+  it("отмена уходит на сервер, другие статусы продавцу закрыты", async () => {
+    const { repo } = port("server", "seller");
+    apiRequest.mockResolvedValue({ status: 200, body: { ok: true, request: {} } });
+    expect(await repo.setStatus("req_s1", "cancelled")).toEqual({ ok: true, data: undefined });
+    expect(apiRequest.mock.calls[0].slice(0, 3)).toEqual([
+      "POST",
+      "/requests/cancel",
+      { id: "req_s1" },
+    ]);
+    expect(resyncDesk).toHaveBeenCalledOnce();
+    expect(await repo.setStatus("req_s1", "done")).toEqual({ ok: false, error: "data.failed" });
+  });
+
+  it("начатую сборщиком отменяет склад — понятный отказ", async () => {
+    const { repo } = port("server", "seller");
+    apiRequest.mockResolvedValue({ status: 409, body: { ok: false, error: "started" } });
+    expect(await repo.setStatus("req_s1", "cancelled")).toEqual({
+      ok: false,
+      error: "seller.err.started",
+    });
+  });
+});
