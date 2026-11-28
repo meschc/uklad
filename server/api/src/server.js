@@ -615,6 +615,8 @@ function main() {
     // Заявка продавца на отгрузку — операцией, склад и товар решает сервер.
     const { createSellerRequests } = require("./cabinet/sellerRequests");
     const sellerRequests = createSellerRequests({ auth, send, log: console });
+    const { createSellerJournal } = require("./cabinet/sellerJournal");
+    const sellerJournal = createSellerJournal({ auth, send, log: console });
     const { createTeam } = require("./cabinet/team");
     const team = createTeam({ auth, cfg, send, log: console, limits });
     const { createDeskBadges } = require("./cabinet/deskBadges");
@@ -668,6 +670,7 @@ function main() {
         (await goodsPath.handle(req, res, url)) ||
         (await receivingAnswers.handle(req, res, url)) ||
         (await sellerRequests.handle(req, res, url)) ||
+        (await sellerJournal.handle(req, res, url)) ||
         (await deskBadges.handle(req, res, url)) ||
         (await company.handle(req, res, url)) ||
         (await orgName.handle(req, res, url)) ||

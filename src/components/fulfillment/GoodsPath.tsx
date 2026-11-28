@@ -256,7 +256,11 @@ function PathPanel({
   );
 }
 
-function Step({ e, text }: { e: ActivityEntry; text: Text }) {
+/**
+ * Шаг ленты: процесс, действие, что и где, время и кто. `by` — подпись
+ * вместо человека (история товара продавцу: «Склад», без имён).
+ */
+export function Step({ e, text, by }: { e: ActivityEntry; text: Text; by?: string }) {
   const t = useT();
   const error = isJournalError(e);
   const what = text.what(e);
@@ -280,7 +284,7 @@ function Step({ e, text }: { e: ActivityEntry; text: Text }) {
         </p>
       )}
       <p className="mt-0.5 text-xs tabular-nums text-muted-foreground">
-        {stamp(t.lang, e.at)} · {text.who(e)}
+        {stamp(t.lang, e.at)} · {by ?? text.who(e)}
       </p>
       {e.flagged && <p className="mt-0.5 text-xs text-muted-foreground">{text.reason(e)}</p>}
     </li>

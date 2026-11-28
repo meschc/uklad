@@ -244,4 +244,4 @@ function createJournal({ auth, send, log }) {
   return { handle };
 }
 
-module.exports = { createJournal, readFilters, journalPlace, mayRead };
+module.exports = { createJournal, readFilters, journalPlace, mayRead, deskRows, cabinetRows };
