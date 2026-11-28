@@ -31,6 +31,7 @@ const SELLER_ERRORS: Record<string, MsgKey> = {
   duplicate_order: "seller.err.duplicateOrder",
   too_many: "seller.err.tooMany",
   partner: "seller.err.noPartner",
+  rate: "seller.err.rate",
 };
 
 /**

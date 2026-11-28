@@ -67,6 +67,8 @@ describe("заявка продавца через сервер", () => {
     expect(await repo.create([line])).toEqual({ ok: false, error: "plan.err.unpaid" });
     apiRequest.mockResolvedValue({ status: 404, body: { ok: false, error: "not_found" } });
     expect(await repo.create([line])).toEqual({ ok: false, error: "seller.err.notMine" });
+    apiRequest.mockResolvedValue({ status: 429, body: { ok: false, error: "rate" } });
+    expect(await repo.create([line])).toEqual({ ok: false, error: "seller.err.rate" });
     expect(resyncDesk).not.toHaveBeenCalled();
   });
 
