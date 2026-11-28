@@ -114,3 +114,37 @@ describe("отмена своей заявки продавцом через с�
     });
   });
 });
+
+describe("«Везу товар» продавца через сервер", () => {
+  it("поставка уходит на сервер с ключом повтора, стор не трогает", async () => {
+    const { createFulfillmentRepository } = await import("../fulfillmentRepository");
+    const createExpectedShipment = vi.fn(() => "ship-local");
+    const state = {
+      session: { source: "server", user: { role: "seller" } },
+      createExpectedShipment,
+    } as unknown as EditorState;
+    const repo = createFulfillmentRepository({ get: () => state, set: () => {} });
+    apiRequest.mockResolvedValue({
+      status: 200,
+      body: {
+        ok: true,
+        supply: { id: "ship_s1", source: "manual", status: "pending", createdAt: 1, lines: [] },
+      },
+    });
+    const res = await repo.createShipment(
+      "manual",
+      [{ productId: "p-1", expectedQty: 40 }],
+      " П1 ",
+    );
+    expect(res).toEqual({ ok: true, data: "ship_s1" });
+    expect(createExpectedShipment).not.toHaveBeenCalled();
+    const [, path, body] = apiRequest.mock.calls[0];
+    expect(path).toBe("/supplies");
+    expect(body).toMatchObject({ title: "П1", items: [{ productId: "p-1", qty: 40 }] });
+    apiRequest.mockResolvedValue({ status: 404, body: { ok: false, error: "not_found" } });
+    expect(await repo.createShipment("manual", [{ productId: "p-2", expectedQty: 1 }])).toEqual({
+      ok: false,
+      error: "seller.err.notMine",
+    });
+  });
+});

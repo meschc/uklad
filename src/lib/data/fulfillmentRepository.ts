@@ -14,7 +14,26 @@ import { attempt, fail, ok, type Result } from "./result";
 import type { EditorState, ReceiveInput } from "../store/state";
 import { nowMs, uid } from "../utils";
 import { frozenBoxes } from "../inventory";
+import { sellerOnServer, sellerPost } from "./sellerServer";
 import { openParcelCheck, parcelCard } from "../parcelCard";
+
+/** «Везу товар» продавца на сервере (`POST /api/supplies`): ключ повтора — один на нажатие. */
+async function createSupplyOnServer(
+  lines: { productId: string; expectedQty: number }[],
+  title: string | undefined,
+): Promise<Result<string>> {
+  const items = lines
+    .filter((l) => l.productId && l.expectedQty > 0)
+    .map((l) => ({ productId: l.productId, qty: Math.max(1, Math.round(l.expectedQty)) }));
+  if (!items.length) return fail("data.failed");
+  const res = await sellerPost("/supplies", {
+    key: crypto.randomUUID(),
+    title: title?.trim() || undefined,
+    items,
+  });
+  if (!res.ok) return res;
+  return isExpectedShipment(res.data.supply) ? ok(res.data.supply.id) : fail("data.failed");
+}
 
 /** Приёмка: поставки, факты приёмки, тара и паллеты (п.0.4). */
 export interface FulfillmentRepository {
@@ -101,8 +120,11 @@ export function createFulfillmentRepository(
   return {
     listShipments: shipments,
     getShipment: (id) => pickOne(shipments, (s) => s.id === id),
-    createShipment: (source, lines, title, opts) =>
-      attempt(() => port.get().createExpectedShipment(source, lines, title, opts)),
+    createShipment: async (source, lines, title, opts) => {
+      // Продавец на сервере «Везу товар» шлёт операцией: поставку собирает сервер.
+      if (sellerOnServer(port)) return createSupplyOnServer(lines, title);
+      return attempt(() => port.get().createExpectedShipment(source, lines, title, opts));
+    },
     closeShipment: (id) =>
       attempt(() =>
         atDesk(
