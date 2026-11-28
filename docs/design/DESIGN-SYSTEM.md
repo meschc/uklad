@@ -50,7 +50,13 @@ https://claude.ai/artifact/Tadqydujk1gJrKcysRePzm.
 плашка `warn-chip` (заливка `bg-warning/25`, текст `warning-ink`): на светлом
 фоне текст тёмный (16:1), на тёмном — жёлтый (11:1). Плашка-блок —
 `bg-warning-fill/25` + `border-warning-fill/70` + `text-warning-ink`.
-Одиночный значок — `text-warning`. Парами `amber-600` +
+Одиночный значок — `text-warning`.
+
+Синий и красный текст — свой оттенок (`--primary-text`, `--destructive-text`,
+28.11): в светлой теме он равен заливке, в тёмной светлее (66–67%), иначе на
+тёмном фоне было 2,9–3,8:1. Tailwind берёт его для `text-primary` и
+`text-destructive` сам (`theme.extend.textColor`); заливки, рамки и обводки —
+`--primary` / `--destructive`. Весь текст в обеих темах — не ниже 4,5:1. Парами `amber-600` +
 `dark:amber-400` больше не пишется. В кабинете ещё встречается `emerald-*` в
 роли успеха; новое так не пишется — только `success`.
 
