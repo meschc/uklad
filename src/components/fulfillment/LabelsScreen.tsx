@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Check, Eye, Layers, Loader2, Package, Printer, Search, Tag } from "lucide-react";
 import { useEditor } from "@/lib/store";
 import { fulfillmentRepository } from "@/lib/data";
@@ -82,7 +82,14 @@ export function LabelsScreen() {
   const saveTemplate = useEditor((s) => s.saveLabelTemplate);
   const removeTemplate = useEditor((s) => s.removeLabelTemplate);
 
-  const [mode, setMode] = useState<Mode>("box");
+  // «Напечатать ещё раз» из реестра тары приходит готовой пачкой: берём её
+  // при открытии экрана и очищаем в эффекте (инициализатор состояния в
+  // StrictMode вызывается дважды — очистка в нём съела бы пачку).
+  const [pick] = useState(() => useEditor.getState().labelsPick);
+  useEffect(() => {
+    useEditor.getState().takeLabelsPick();
+  }, []);
+  const [mode, setMode] = useState<Mode>(pick?.kind ?? "box");
   const kind: TareKind = mode === "pallet" ? "pallet" : "box";
   const isProduct = mode === "product";
   const products = useWarehouseProducts();
@@ -93,7 +100,7 @@ export function LabelsScreen() {
   const [to, setTo] = useState("");
   const [rangeErr, setRangeErr] = useState<MsgKey | null>(null);
   /** Коды текущей пачки — то, что уйдёт на печать. */
-  const [taraBatch, setBatch] = useState<string[]>([]);
+  const [taraBatch, setBatch] = useState<string[]>(pick?.codes ?? []);
   const n = Math.max(1, Math.min(MAX_BATCH, Math.round(count)));
   // Этикетки товара не создают номеров: это один и тот же штрихкод n раз.
   const batch = useMemo(

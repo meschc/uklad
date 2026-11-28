@@ -13,7 +13,7 @@ import type { EditorState } from "./state";
 import { fieldValueKey } from "./helpers";
 import { SEED_FIELD_VALUES, seedOwnProducts, seedStaff } from "./seed";
 import { seedHistory } from "./seedHistory";
-import { seedMonth } from "./seedMonth";
+import { seedMonth, seedSpareTare } from "./seedMonth";
 import { seedWork } from "./seedWork";
 import { createAccountSlice } from "./account.slice";
 import { createIntegrationsSlice } from "./integrations.slice";
@@ -430,11 +430,12 @@ if (!HAD_PERSISTED) {
   // демо выглядит складом в работе, а не только что открытым.
   const h = useEditor.getState();
   const month = seedMonth(h.warehouse, catalog, h, Date.now());
+  const spare = seedSpareTare(month.boxSeq, Date.now());
   useEditor.setState({
     expectedShipments: [...month.expectedShipments, ...h.expectedShipments],
     receivingEvents: [...month.receivingEvents, ...h.receivingEvents],
-    boxes: [...h.boxes, ...month.boxes],
-    boxSeq: month.boxSeq,
+    boxes: [...h.boxes, ...month.boxes, ...spare.boxes],
+    boxSeq: spare.boxSeq,
     requests: [...month.requests, ...h.requests],
     shipments: [...month.shipments, ...h.shipments],
   });

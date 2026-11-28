@@ -135,6 +135,8 @@ export function seedMonth(
             id: uid("box"),
             barcode: generateBoxBarcode(out.boxSeq),
             createdAt: ts,
+            printedAt: ts,
+            printCount: 1,
             lines: [{ productId: line.productId, qty }],
             address,
           };
@@ -211,4 +213,25 @@ export function seedMonth(
     }
   }
   return out;
+}
+
+/**
+ * Запас тары — последние номера: реестр тары на «Товарах» показывает всё
+ * выпущенное, и пустые коробки, напечатанные впрок, и номера, печать которых
+ * оборвалась. Без них в демо было бы видно только «с товаром».
+ */
+export function seedSpareTare(boxSeq: number, now: number): { boxes: Box[]; boxSeq: number } {
+  const boxes: Box[] = [];
+  for (let i = 0; i < 6; i++) {
+    boxSeq += 1;
+    const ts = now - (6 - i) * 3_600_000;
+    boxes.push({
+      id: uid("box"),
+      barcode: generateBoxBarcode(boxSeq),
+      createdAt: ts,
+      ...(i < 4 ? { printedAt: ts, printCount: i === 0 ? 2 : 1 } : {}),
+      lines: [],
+    });
+  }
+  return { boxes, boxSeq };
 }

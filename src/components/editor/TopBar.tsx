@@ -1,6 +1,7 @@
-import { Gauge, Layers, Printer, Table2, Box } from "lucide-react";
+import { Gauge, Layers, Printer, Table2, Box, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { selectRole, useEditor } from "@/lib/store";
+import { usePhone } from "@/lib/usePhone";
 import type { ViewMode } from "@/lib/types";
 import { useT, type MsgKey } from "@/lib/i18n";
 import { Segmented } from "@/components/ui/segmented";
@@ -18,16 +19,22 @@ const MODES: ModeTab[] = [
   // словаря компилятор уже не проверит.
   ...(SHOW_3D ? ([{ id: "3d", key: "nav.mode.3d", icon: Box }] satisfies ModeTab[]) : []),
   { id: "2d", key: "nav.mode.2d", icon: Layers },
+  // Реестр выпущенной тары и паллет (разбор экранов 27.11).
+  { id: "tare", key: "nav.mode.tare", icon: Package },
 ];
+
+/** На телефоне плана нет (Кирилл 18.11): только таблица товаров и тара. */
+const onPhone = (m: ViewMode) => m === "table" || m === "tare";
 
 export function TopBar() {
   const mode = useEditor((s) => s.mode);
+  const phone = usePhone();
   const setMode = useEditor((s) => s.setMode);
   // Продавцу печать плана не нужна: это инструмент склада.
   const isSeller = useEditor((s) => selectRole(s) === "seller");
   const setPrintPreview = useEditor((s) => s.setPrintPreview);
   // «Сохранить» и «Распечатать план» — про план: в таблице товаров их нет (Кирилл 23.11).
-  const onPlan = mode !== "table";
+  const onPlan = mode === "2d" || mode === "3d";
   const t = useT();
 
   return (
@@ -45,12 +52,11 @@ export function TopBar() {
           в общей строке: иначе на «Плане» она расширяет середину и сдвигает
           «Таблица / План» влево. */}
       <div className="relative flex items-center">
-        {/* План — только на компьютере: на телефоне один режим, таблица. */}
+        {/* План — только на компьютере: на телефоне таблица и тара. */}
         <Segmented
-          className="max-md:hidden"
-          value={mode}
+          value={phone && !onPhone(mode) ? "table" : mode}
           onChange={setMode}
-          options={MODES.map((m) => ({
+          options={MODES.filter((m) => !phone || onPhone(m.id)).map((m) => ({
             value: m.id,
             label: t(m.key),
             icon: <m.icon />,

@@ -202,6 +202,9 @@ export function seedHistory(
           id: uid("box"),
           barcode: generateBoxBarcode(boxSeq),
           createdAt: ts,
+          // Ярлык печатают при выпуске номера; изредка — повторно (порвался).
+          printedAt: ts,
+          printCount: rand() < 0.1 ? 2 : 1,
           lines: [],
         };
       }
@@ -250,6 +253,8 @@ export function seedHistory(
       createdAt: chunk[0].createdAt,
       boxIds: chunk.map((b) => b.id),
       address: chunk[0].address,
+      printedAt: chunk[0].createdAt,
+      printCount: 1,
     };
     for (const b of chunk) b.palletId = pallet.id;
     pallets.push(pallet);
