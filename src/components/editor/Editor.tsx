@@ -3,6 +3,7 @@ import { Loader2 } from "lucide-react";
 import { useShortcuts } from "@/lib/useShortcuts";
 import { usePhone } from "@/lib/usePhone";
 import { selectRole, useEditor } from "@/lib/store";
+import { TareScreen } from "@/components/table/TareScreen";
 import { TableScreen } from "@/components/table/TableScreen";
 import { SHOW_3D } from "./constants";
 import { TopBar } from "./TopBar";
@@ -43,7 +44,7 @@ export function Editor() {
   // План на телефоне не нужен вовсе (Кирилл 18.11): только таблица товаров, а
   // загруженность — отдельной кнопкой в шапке. Выбранный режим не трогаем:
   // на компьютере человек вернётся в свой план.
-  const mode = phone ? "table" : stored;
+  const mode = phone && stored !== "tare" ? "table" : stored;
 
   // Приветственная подсказка обучения — при первом входе в редактор. Один раз
   // (showHint помнит показанные); «Пройти обучение заново» её возвращает.
@@ -58,6 +59,8 @@ export function Editor() {
       <div key={mode} className="flex min-h-0 flex-1 animate-fade-in flex-col">
         {mode === "table" ? (
           <TableScreen />
+        ) : mode === "tare" ? (
+          <TareScreen />
         ) : mode === "3d" && View3D ? (
           <Suspense
             fallback={

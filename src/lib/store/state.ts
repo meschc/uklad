@@ -422,6 +422,14 @@ export interface PrintSlice {
   /** Открыт ли предпросмотр печати плана (п.6). */
   printPreviewOpen: boolean;
   setPrintPreview: (open: boolean) => void;
+  /**
+   * Номера тары, которые «Наклейки» откроют готовой пачкой: «Напечатать ещё
+   * раз» из реестра тары. Экран читает их при открытии и очищает. Не
+   * персистится — это переход между экранами, а не данные склада.
+   */
+  labelsPick: { kind: "box" | "pallet"; codes: string[] } | null;
+  printTare: (kind: "box" | "pallet", codes: string[]) => void;
+  takeLabelsPick: () => { kind: "box" | "pallet"; codes: string[] } | null;
 }
 
 /**

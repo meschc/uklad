@@ -12,9 +12,19 @@ const ZOOM_HI = 4;
  * Предпросмотр печати — часть экранного состояния, а не домена: он не
  * персистится и живёт рядом с режимом просмотра.
  */
-export const createPrintSlice: SliceCreator<PrintSlice> = (set) => ({
+export const createPrintSlice: SliceCreator<PrintSlice> = (set, get) => ({
   printPreviewOpen: false,
   setPrintPreview: (open) => set({ printPreviewOpen: open }),
+  labelsPick: null,
+  printTare: (kind, codes) => {
+    set({ labelsPick: { kind, codes } });
+    get().goToView("labels");
+  },
+  takeLabelsPick: () => {
+    const pick = get().labelsPick;
+    if (pick) set({ labelsPick: null });
+    return pick;
+  },
 });
 
 export const createViewSlice: SliceCreator<ViewSlice> = (set, get) => ({

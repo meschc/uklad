@@ -10,7 +10,7 @@ export type ModuleType = "section" | "aisle" | "stairs" | "elevator";
 export type Tool = "select" | "pan" | ModuleType;
 
 /** Экран склада: 2D-план / Таблица / 3D (ТЗ, разд. 3.5–3.7). */
-export type ViewMode = "2d" | "table" | "3d";
+export type ViewMode = "2d" | "table" | "3d" | "tare";
 
 /** Клетка/точка плана в координатах сетки. */
 export interface XY {
