@@ -32,6 +32,13 @@ const { forSeller } = require("./seller");
 const { freeStock } = require("./stockPush");
 const { createRateLimit } = require("../rateLimit");
 const { writeView } = require("./viewWrite");
+const {
+  readSupply,
+  supplyId,
+  supplyRefusal,
+  newSupply,
+  toSellerSupply,
+} = require("./sellerSupplies");
 
 const KEY_RE = /^[A-Za-z0-9-]{8,64}$/;
 const ID_RE = /^[A-Za-z0-9_-]{1,100}$/;
@@ -201,13 +208,13 @@ function createSellerRequests({ auth, send, log, now = () => Date.now() }) {
   const place = async (c) => (await c.query(`SELECT * FROM auth.actor_place()`)).rows[0] ?? null;
 
   /** Заявки с этими id уже есть (в любом статусе, в архиве, в корзине)? */
-  async function known(c, view, ids) {
-    const live = list(view.requests).filter((r) => isObject(r) && ids.includes(r.id));
+  async function known(c, view, ids, domain = "requests") {
+    const live = list(view[domain]).filter((r) => isObject(r) && ids.includes(r.id));
     if (live.length) return live;
     const { rows } = await c.query(
       `SELECT data FROM uklad.cabinet_records
-       WHERE org_id = uklad.current_org() AND domain = 'requests' AND ref = ANY($1::text[])`,
-      [ids],
+       WHERE org_id = uklad.current_org() AND domain = $2 AND ref = ANY($1::text[])`,
+      [ids, domain],
     );
     return rows.map((r) => r.data);
   }
@@ -298,7 +305,36 @@ function createSellerRequests({ auth, send, log, now = () => Date.now() }) {
       return { status: 200, request: toSeller(done) };
     });
 
-  const routes = { "/api/requests": create, "/api/requests/cancel": cancel };
+  /**
+   * «Везу товар» (`sellerSupplies.js`): ожидаемая поставка своего товара на
+   * свой склад. Повтор с тем же ключом — та же поставка; ключ чужой — 409.
+   */
+  const supply = (req, res) =>
+    run(req, res, readSupply, async (c, ctx, { full, view, ref, own }, b, at) => {
+      const before = await known(c, view, [supplyId(b.key)], "expectedShipments");
+      if (before.length) {
+        const mine = before.every(
+          (s) =>
+            isObject(s) && s.by === "seller" && list(s.lines).every((l) => own.has(l?.productId)),
+        );
+        return mine
+          ? { status: 200, supply: toSellerSupply(before[0], own), duplicate: true }
+          : { status: 409, error: "key_taken" };
+      }
+      const no = supplyRefusal(view, own, b);
+      if (no) return no;
+      const made = newSupply(b, at, ctx.memberId);
+      const next = { ...view, expectedShipments: [made, ...list(view.expectedShipments)] };
+      const bad = await writeView(c, full, next, ref);
+      if (bad) return { status: 409, error: bad.error };
+      return { status: 200, supply: toSellerSupply(made, own) };
+    });
+
+  const routes = {
+    "/api/requests": create,
+    "/api/requests/cancel": cancel,
+    "/api/supplies": supply,
+  };
 
   async function handle(req, res, url) {
     const route = req.method === "POST" ? routes[url.pathname] : undefined;

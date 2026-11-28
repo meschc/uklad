@@ -305,3 +305,56 @@ test("продавец отменяет только свою новую зая�
   const seen = (await snap(boss)).data.requests.find((x) => x.id === id);
   assert.deepEqual([seen.status, typeof seen.cancelledBy], ["cancelled", "string"]);
 });
+
+test(
+  "продавец сообщает «Везу товар»: только свой товар, повтор не задваивает",
+  { skip: SKIP },
+  async () => {
+    const boss = await owner("boss-supply@example.com", "10.6.2.1");
+    await writeCabinet(boss, cabinet());
+    const romashka = await invite(boss, "romashka-s@example.com", "ptr-r");
+    const lyutik = await invite(boss, "lyutik-s@example.com", "ptr-l");
+    const bring = (who, body) => post("/api/supplies", { ...who, body });
+    const body = {
+      key: "k-supply-0001",
+      title: " Партия 1 ",
+      items: [{ productId: "p-r", qty: 40 }],
+      status: "closed",
+      crossDock: true,
+    };
+
+    assert.equal(
+      (await bring(romashka, { ...body, items: [{ productId: "p-r", qty: 0 }] })).status,
+      400,
+    );
+    const foreign = await bring(romashka, {
+      ...body,
+      key: "k-supply-0002",
+      items: [{ productId: "p-l", qty: 1 }],
+    });
+    assert.deepEqual([foreign.status, foreign.json.error], [404, "not_found"]);
+
+    const made = await bring(romashka, body);
+    assert.equal(made.status, 200, JSON.stringify(made.json));
+    const s = made.json.supply;
+    assert.deepEqual(
+      [s.status, s.by, s.title, s.crossDock, s.lines[0].expectedQty, s.lines[0].receivedQty],
+      ["pending", "seller", "Партия 1", undefined, 40, 0],
+    );
+    const again = await bring(romashka, body);
+    assert.deepEqual([again.status, again.json.duplicate, again.json.supply.id], [200, true, s.id]);
+    assert.equal(
+      (await bring(lyutik, { ...body, items: [{ productId: "p-l", qty: 1 }] })).json.error,
+      "key_taken",
+    );
+
+    // Склад видит одну поставку продавца; Лютик — нет.
+    const at = (await snap(boss)).data.expectedShipments.filter((x) => x.by === "seller");
+    assert.deepEqual(
+      at.map((x) => x.id),
+      [s.id],
+    );
+    assert.ok(!(await snap(lyutik)).data.expectedShipments.some((x) => x.id === s.id));
+    assert.equal((await bring(boss, { ...body, key: "k-supply-0003" })).status, 403);
+  },
+);
