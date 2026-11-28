@@ -355,7 +355,7 @@ function StatusChip({ status, label }: { status: Status; label: string }) {
       className={cn(
         "rounded-full px-1.5 py-px",
         status === "confirmed" && "bg-success/10 text-success",
-        status === "draft" && "bg-warning-fill/15 text-warning",
+        status === "draft" && "bg-warning-fill/25 text-warning-ink",
         status === "working" && "bg-muted",
       )}
     >

@@ -35,7 +35,7 @@ export function ShiftGate({ staffId, children }: { staffId: string; children: Re
   };
   return (
     <div className="flex flex-col items-center gap-4 py-10 text-center">
-      <span className="grid size-12 place-items-center rounded-full bg-warning-fill/25 text-warning">
+      <span className="grid size-12 place-items-center rounded-full bg-warning-fill/25 text-warning-ink">
         <Icon className="size-6" />
       </span>
       <p className="max-w-sm text-base font-medium">{t(gate.text)}</p>

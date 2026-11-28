@@ -177,7 +177,8 @@ export function MultiInspector({ selected, t }: { selected: PlacedModule[]; t: T
           <Button
             variant="outline"
             size="sm"
-            className="flex-1 text-destructive hover:bg-destructive/10 hover:text-destructive"
+            tone="destructive"
+            className="flex-1"
             onClick={deleteSelection}
           >
             <Trash2 className="size-3.5" />

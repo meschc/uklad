@@ -61,11 +61,7 @@ export function SellerSupplies({ mine }: { mine: ReadonlySet<string> }) {
           <span className="truncate">{s.title ?? t("supply.noName")}</span>
           <span className="flex shrink-0 items-center gap-2 tabular-nums text-muted-foreground">
             {flagged && (
-              <Button
-                size="sm"
-                className="border-0 bg-warning-fill text-warning-foreground hover:bg-warning-fill/90"
-                onClick={() => setOpenId(s.id)}
-              >
+              <Button size="sm" variant="warning" onClick={() => setOpenId(s.id)}>
                 <FileWarning className="size-3.5" />
                 {t("supply.act.flag")}
               </Button>

@@ -178,7 +178,8 @@ export function SingleInspector({ module: m, t }: { module: PlacedModule; t: TFu
           <Button
             variant="outline"
             size="sm"
-            className="flex-1 text-destructive hover:bg-destructive/10 hover:text-destructive"
+            tone="destructive"
+            className="flex-1"
             onClick={deleteSelection}
           >
             <Trash2 className="size-3.5" />

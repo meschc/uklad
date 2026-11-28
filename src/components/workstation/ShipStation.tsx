@@ -427,10 +427,7 @@ function ShipGroup({
           disabled={
             offline || !vehicle || units.length === 0 || plan.split || plan.going.length === 0
           }
-          className={cn(
-            (short > 0 || missing.length > 0) &&
-              "border-0 bg-warning-fill text-warning-foreground hover:bg-warning-fill/90",
-          )}
+          variant={short > 0 || missing.length > 0 ? "warning" : "default"}
           onClick={finish}
         >
           <Truck />

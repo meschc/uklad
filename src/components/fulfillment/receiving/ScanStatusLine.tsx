@@ -21,7 +21,7 @@ export function ScanStatusLine({ status, msg }: { status: ScanStatus; msg?: stri
         good
           ? "border-success/40 bg-success/10 text-success"
           : status === "warn"
-            ? "border-warning-fill/70 bg-warning-fill/15 text-warning"
+            ? "border-warning-fill/70 bg-warning-fill/25 text-warning-ink"
             : "border-destructive/40 bg-destructive/10 text-destructive",
       )}
       role="status"

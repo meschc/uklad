@@ -574,7 +574,7 @@ const CLASS_TONE: Record<WarehouseClass, string> = {
   A: "bg-success/15 text-success ring-success/30",
   "B+": "bg-primary/15 text-primary ring-primary/30",
   B: "bg-primary/15 text-primary ring-primary/30",
-  C: "bg-warning-fill/25 text-warning ring-warning-fill/50",
+  C: "bg-warning-fill/25 text-warning-ink ring-warning-fill/50",
   D: "bg-destructive/15 text-destructive ring-destructive/30",
 };
 

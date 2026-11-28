@@ -145,7 +145,7 @@ export function DevicesScreen() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        tone="destructive"
                         onClick={() => setRevoking(d)}
                       >
                         <Power />

@@ -158,7 +158,7 @@ export function PartnerCard({
         {current && (
           <Button
             variant="ghost"
-            className="text-destructive hover:text-destructive"
+            tone="destructive"
             onClick={() => {
               // Класс `undoable`: убираем сразу, вернуть можно из тоста.
               const index = (useEditor.getState().warehouse.partners ?? []).findIndex(

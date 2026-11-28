@@ -566,7 +566,8 @@ export function Profile() {
             size="sm"
             variant="ghost"
             onClick={() => void logout()}
-            className="gap-1.5 text-muted-foreground hover:text-destructive"
+            tone="destructive"
+            className="gap-1.5 text-muted-foreground"
           >
             <LogOut className="size-4" />
             {t(confirmLogout ? "profile.logoutConfirm" : "profile.logout")}

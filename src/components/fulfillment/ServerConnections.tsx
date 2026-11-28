@@ -243,7 +243,7 @@ export function ServerConnections({ spec, t }: { spec: IntegrationSpec; t: TFunc
               </Button>
               {!r.warehouseId && stores.length > 1 && (
                 <span className="flex w-full flex-wrap items-center gap-2 text-xs">
-                  <span className="text-warning">{t("integr.noWarehouse")}</span>
+                  <span className="warn-chip">{t("integr.noWarehouse")}</span>
                   {owner && (
                     <Select
                       aria-label={t("integr.pickWarehouse")}

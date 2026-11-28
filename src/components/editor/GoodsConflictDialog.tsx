@@ -45,7 +45,7 @@ export function GoodsConflictDialog() {
           {/* Шапка в едином языке алертов: штриховка hazard-stripes + иконка.
                 Список ниже оставляем на чистом фоне — не спорит с текстом. */}
           <div className="hazard-stripes flex gap-3 bg-warning-fill/15 px-5 py-4">
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-warning-fill/25 text-warning">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-warning-fill/25 text-warning-ink">
               <AlertTriangle className="size-4" />
             </div>
             <div className="min-w-0">
@@ -121,7 +121,7 @@ function ResultView({
           className={
             ok
               ? "flex size-9 shrink-0 items-center justify-center rounded-full bg-success/15 text-success"
-              : "flex size-9 shrink-0 items-center justify-center rounded-full bg-warning-fill/25 text-warning"
+              : "flex size-9 shrink-0 items-center justify-center rounded-full bg-warning-fill/25 text-warning-ink"
           }
         >
           {ok ? <Check className="size-4" /> : <AlertTriangle className="size-4" />}

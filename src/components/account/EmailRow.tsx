@@ -143,12 +143,12 @@ export function EmailRow() {
       </Row>
 
       {pending && (
-        <div className="flex flex-col gap-2 rounded-xl border border-warning-fill/70 bg-warning-fill/15 p-3.5">
-          <p className="flex items-center gap-1.5 text-xs font-semibold text-warning">
+        <div className="flex flex-col gap-2 rounded-xl border border-warning-fill/70 bg-warning-fill/25 p-3.5">
+          <p className="flex items-center gap-1.5 text-xs font-semibold text-warning-ink">
             <ShieldCheck className="size-3.5" />
             {t("profile.emailConfirmTitle", { email: pending })}
           </p>
-          <p className="text-xs text-warning/80">
+          <p className="text-xs text-warning-ink/80">
             {t(server ? "profile.emailConfirmBody" : "profile.emailDemoCode", { n: CODE_LENGTH })}
           </p>
           <div className="flex flex-wrap items-center gap-2">

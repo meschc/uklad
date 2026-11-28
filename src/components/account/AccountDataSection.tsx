@@ -100,12 +100,7 @@ export function AccountDataSection() {
 
         <Row icon={<Trash2 className="size-4" />} label={t("account.delete")}>
           {!confirm && (
-            <Button
-              size="sm"
-              variant="ghost"
-              className="text-destructive hover:text-destructive"
-              onClick={() => setConfirm(true)}
-            >
+            <Button size="sm" variant="ghost" tone="destructive" onClick={() => setConfirm(true)}>
               {t("account.deleteOpen")}
             </Button>
           )}

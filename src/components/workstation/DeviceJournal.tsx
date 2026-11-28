@@ -204,7 +204,7 @@ function Stint({
         </span>
       </button>
       {stint.flagged > 0 && (
-        <p className="pl-8 text-xs text-warning">
+        <p className="pl-8 text-xs warn-chip">
           {t("devices.journal.flagged", { n: stint.flagged })}
         </p>
       )}

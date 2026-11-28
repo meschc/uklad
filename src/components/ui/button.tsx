@@ -13,18 +13,40 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90",
-        destructive: "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
-        outline:
-          "border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground",
-        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
+        // Сплошные — с тонкой обводкой внутрь чуть светлее заливки (Кирилл
+        // 28.11: «к акцентным кнопкам тонкую обводку чуть светлее»): кнопка
+        // читается объёмной, размер не меняется. При наведении обводка ярче.
+        default:
+          "bg-primary text-primary-foreground shadow-sm ring-1 ring-inset ring-white/25 hover:bg-primary/90 hover:ring-white/40",
+        destructive:
+          "bg-destructive text-destructive-foreground shadow-sm ring-1 ring-inset ring-white/25 hover:bg-destructive/90 hover:ring-white/40",
+        // «Брак» и «Проверить» — средняя опасность, жёлтая заливка, текст тёмный.
+        warning:
+          "bg-warning-fill text-warning-foreground shadow-sm ring-1 ring-inset ring-white/40 hover:bg-warning-fill/90 hover:ring-white/60",
+        // Неон при наведении (Кирилл 27.11, «все кнопки»): полупрозрачная
+        // заливка, тонкая обводка внутрь и текст цвета роли — как у активного
+        // пункта меню и строки таблицы. Цвет роли задаёт `tone` (ниже).
+        outline: "border border-input bg-background shadow-sm",
+        secondary: "bg-secondary text-secondary-foreground hover:ring-1 hover:ring-inset",
+        // Без фона — всё равно с тонкой обводкой (Кирилл 28.11: «иначе висят в
+        // воздухе»). Обводка внутрь: размер тот же, что у остальных.
+        ghost: "ring-1 ring-inset ring-border",
         link: "text-primary underline-offset-4 hover:underline",
         // На синей заливке (первый экран, выбранный тариф витрины): белая
         // кнопка и белая обводка. Цвета те же токены, что у основной.
         inverse: "bg-primary-foreground text-primary shadow-sm hover:bg-primary-foreground/90",
         "inverse-outline":
           "text-primary-foreground ring-1 ring-inset ring-primary-foreground hover:bg-primary-foreground/10",
+      },
+      // Цвет неона у тихих кнопок (Кирилл 28.11: «к другим цветам также»).
+      // Синий — по умолчанию; красный — удалить, отменить, отозвать (текст
+      // красный и в покое); зелёный — принять; жёлтый — внимание. Сплошным
+      // кнопкам `tone` не нужен: их цвет — сам `variant`.
+      tone: {
+        primary: "",
+        destructive: "",
+        success: "",
+        warning: "",
       },
       // На телефоне (уже `md`) любая кнопка — 44 px, под палец: минимум у
       // Apple 44 pt, у Material 48 dp (Кирилл 17.11: «размеры кнопок на
@@ -37,9 +59,45 @@ const buttonVariants = cva(
         "icon-sm": "h-8 w-8 max-md:min-h-11 max-md:min-w-11",
       },
     },
+    compoundVariants: [
+      {
+        variant: ["outline", "secondary", "ghost"],
+        tone: "primary",
+        class:
+          "hover:border-primary/40 hover:bg-primary/10 hover:text-primary hover:ring-primary/30",
+      },
+      {
+        variant: ["outline", "secondary", "ghost"],
+        tone: "destructive",
+        class:
+          "text-destructive hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive hover:ring-destructive/30",
+      },
+      {
+        variant: ["outline", "secondary", "ghost"],
+        tone: "success",
+        class:
+          "text-success hover:border-success/40 hover:bg-success/10 hover:text-success hover:ring-success/30",
+      },
+      {
+        // Жёлтый один на всё (Кирилл 28.11: «избавься от песочного»); тихая
+        // кнопка — жёлтая плашка с тёмным текстом (вариант 2, 28.11):
+        // жёлтый текст на белом не читается. В тёмной теме текст жёлтый.
+        variant: ["secondary", "ghost"],
+        tone: "warning",
+        class:
+          "bg-warning/25 text-warning-ink ring-1 ring-inset ring-warning/70 hover:bg-warning/45 hover:text-warning-ink hover:ring-warning",
+      },
+      {
+        variant: "outline",
+        tone: "warning",
+        class:
+          "border-warning/70 bg-warning/25 text-warning-ink hover:border-warning hover:bg-warning/45 hover:text-warning-ink",
+      },
+    ],
     defaultVariants: {
       variant: "default",
       size: "default",
+      tone: "primary",
     },
   },
 );
@@ -50,10 +108,14 @@ interface ButtonProps
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
+  ({ className, variant, size, tone, asChild = false, ...props }, ref) => {
     const Comp = asChild ? Slot : "button";
     return (
-      <Comp className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props} />
+      <Comp
+        className={cn(buttonVariants({ variant, size, tone, className }))}
+        ref={ref}
+        {...props}
+      />
     );
   },
 );

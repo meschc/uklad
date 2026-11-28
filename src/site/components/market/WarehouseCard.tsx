@@ -257,7 +257,7 @@ function ReputationMark({ warehouse: w }: { warehouse: Warehouse }) {
         </>
       )}
       {openComplaints > 0 && (
-        <span className="mt-1 flex items-center justify-end gap-1 text-xs text-warning">
+        <span className="mt-1 flex items-center justify-end gap-1 text-xs warn-chip">
           <AlertTriangle className="size-3 shrink-0" />
           {openComplaints > 1 ? t(T.complaints, { n: openComplaints }) : t(T.complaint)}
         </span>

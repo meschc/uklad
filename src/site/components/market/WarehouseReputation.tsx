@@ -112,7 +112,7 @@ export function WarehouseReputation({ warehouse: w }: { warehouse: Warehouse }) 
             {t(T.complaintsTitle)}
           </h3>
           {w.reputation.demoted && (
-            <p className="mb-3 flex items-start gap-2 text-xs font-medium leading-relaxed text-warning">
+            <p className="mb-3 flex items-start gap-2 text-xs font-medium leading-relaxed warn-chip">
               <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
               {t(T.demoted, { n: w.reputation.confirmedComplaints })}
             </p>

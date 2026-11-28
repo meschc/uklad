@@ -169,7 +169,7 @@ export function AssignDialog({ product, onClose }: { product: Product; onClose: 
     return (
       <Shell product={product} onClose={onClose} t={t}>
         <div className="flex flex-col items-center gap-3 px-5 py-10 text-center">
-          <div className="flex size-10 items-center justify-center rounded-full bg-warning-fill/25 text-warning">
+          <div className="flex size-10 items-center justify-center rounded-full bg-warning-fill/25 text-warning-ink">
             <AlertTriangle className="size-5" />
           </div>
           <p className="text-sm font-medium">{t("assign.noPlan.title")}</p>
@@ -350,7 +350,7 @@ export function AssignDialog({ product, onClose }: { product: Product; onClose: 
                       : !fits
                         ? "border-destructive/40 bg-destructive/10 text-destructive"
                         : busy
-                          ? "border-warning-fill/70 bg-warning-fill/15 text-warning"
+                          ? "border-warning-fill/70 bg-warning-fill/25 text-warning-ink"
                           : "border-success/40 bg-success/10 text-success",
                     selected && "ring-2 ring-ring ring-offset-1",
                   )}
@@ -465,7 +465,8 @@ export function AssignDialog({ product, onClose }: { product: Product; onClose: 
             variant="ghost"
             size="sm"
             disabled={busy}
-            className="text-muted-foreground hover:text-destructive"
+            tone="destructive"
+            className="text-muted-foreground"
             onClick={unplace}
           >
             {drop.pending ? (
@@ -549,7 +550,7 @@ function Alert({ tone, children }: { tone: "warn" | "danger"; children: React.Re
       className={cn(
         "flex gap-2 rounded-md border p-2.5 text-xs leading-relaxed",
         tone === "warn"
-          ? "border-warning-fill/70 bg-warning-fill/15 text-warning"
+          ? "border-warning-fill/70 bg-warning-fill/25 text-warning-ink"
           : "border-destructive/40 bg-destructive/10 text-destructive",
       )}
     >

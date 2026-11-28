@@ -40,7 +40,7 @@ export function ShipConfirm({
       <p className="text-sm">{t("ship.subtitle", { n: items.length })}</p>
       <p className="text-sm text-muted-foreground">{t("ship.units", { n: qty })}</p>
       {short > 0 && (
-        <p role="alert" className="text-sm font-medium text-warning">
+        <p role="alert" className="text-sm font-medium warn-chip">
           {t("ship.short", { n: short })}
         </p>
       )}

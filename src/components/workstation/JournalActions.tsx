@@ -25,7 +25,7 @@ export function JournalActions({ items }: { items: readonly JournalAction[] }) {
           <span
             className={cn(
               a.tone === "error" && "text-destructive",
-              a.tone === "warn" && "text-warning",
+              a.tone === "warn" && "warn-chip",
             )}
           >
             {a.label}
