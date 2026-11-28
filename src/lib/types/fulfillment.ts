@@ -278,6 +278,11 @@ export interface FulfillmentRequest {
   source?: OrderSource;
   externalId?: string;
   status: RequestStatus;
+  /**
+   * Кто завёл: `seller` — продавец из своего кабинета (на сервере, `POST
+   * /api/requests`). Пусто — склад или подкачка площадки.
+   */
+  by?: "seller";
   createdAt: number;
   updatedAt: number;
   /** Когда заявку взяли в работу — нужно для метрики времени сборки. */

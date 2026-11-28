@@ -65,6 +65,8 @@ export const createRequestsSlice: SliceCreator<RequestsSlice> = (set, get) => ({
         // заказа живёт только вместе с принятой площадкой и не длиннее 64
         // знаков: он уходит в снимок компании и в localStorage.
         ...orderOrigin(it.source, it.externalId),
+        // Демо: продавец заводит заявку сам — склад видит ту же отметку, что на сервере.
+        ...(get().session?.user.role === "seller" ? { by: "seller" as const } : {}),
         truckDate,
         status: "new",
         createdAt: now,

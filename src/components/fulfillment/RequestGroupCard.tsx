@@ -186,6 +186,8 @@ export function RequestGroupCard({ target, closed }: { target: string | null; cl
                 </span>
                 <span>{t("tasks.inStock", { n: have })}</span>
                 {r.targetAddress && <span>{formatAddress(warehouse, r.targetAddress)}</span>}
+                {/* Завёл продавец из своего кабинета: склад знает, с кем уточнять. */}
+                {r.by === "seller" && <span>{t("req.bySeller")}</span>}
                 {/* Бронь под поставку: заявку нельзя читать как обычную — товара ещё нет. */}
                 {r.reservedShipmentId && (
                   <span className="rounded bg-warning-fill px-1 py-0.5 text-2xs font-semibold text-warning-foreground">

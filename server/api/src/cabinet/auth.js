@@ -107,7 +107,9 @@ const sellerMay = (req) => {
     path.startsWith("/api/auth/") ||
     (path === "/api/cabinet/snapshot" && req.method === "GET") ||
     // Ответ на акт приёмки (миграция 048): своё сервер проверяет сам.
-    path === "/api/receiving/answers"
+    path === "/api/receiving/answers" ||
+    // Заявка на отгрузку (`sellerRequests.js`): товар и склад сервер берёт свои.
+    (path === "/api/requests" && req.method === "POST")
   );
 };
 

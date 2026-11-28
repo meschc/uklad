@@ -612,6 +612,9 @@ function main() {
     // Ответ продавца на акт расхождений приёмки (миграция 047).
     const { createReceivingAnswers } = require("./cabinet/receivingAnswers");
     const receivingAnswers = createReceivingAnswers({ auth, send, log: console });
+    // Заявка продавца на отгрузку — операцией, склад и товар решает сервер.
+    const { createSellerRequests } = require("./cabinet/sellerRequests");
+    const sellerRequests = createSellerRequests({ auth, send, log: console });
     const { createTeam } = require("./cabinet/team");
     const team = createTeam({ auth, cfg, send, log: console, limits });
     const { createDeskBadges } = require("./cabinet/deskBadges");
@@ -664,6 +667,7 @@ function main() {
         (await journal.handle(req, res, url)) ||
         (await goodsPath.handle(req, res, url)) ||
         (await receivingAnswers.handle(req, res, url)) ||
+        (await sellerRequests.handle(req, res, url)) ||
         (await deskBadges.handle(req, res, url)) ||
         (await company.handle(req, res, url)) ||
         (await orgName.handle(req, res, url)) ||
