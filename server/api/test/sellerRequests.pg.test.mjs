@@ -388,6 +388,10 @@ test("продавец пишет складу только в свою пере
   const topic = { kind: "product", productId: "p-l" };
   const foreign = await say(romashka, "send", { key: "k-chat-0002", text: "a", topic });
   assert.equal(foreign.json.error, "not_found");
+  // Тема по чужой заявке — тоже «нет такого».
+  const byReq = { kind: "request", refId: "req-ozon-lyutik" };
+  const notMine = await say(romashka, "send", { key: "k-chat-0003", text: "a", topic: byReq });
+  assert.equal(notMine.json.error, "not_found");
 
   // Своё: автор — продавец из сессии, партнёр — из сессии, а не из тела.
   const sent1 = await say(romashka, "send", {

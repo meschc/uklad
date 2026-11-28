@@ -236,28 +236,33 @@ function createSellerRequests({ auth, send, log, now = () => Date.now() }) {
    * Продавец и его склад под блокировкой снимка: `{ full, view, ref, own }`
    * или отказ `{ status, error }`. Общее для заведения и отмены.
    */
-  async function asSeller(c, ctx) {
+  async function asSeller(c, ctx, bucket) {
     const p = ctx.accountId ? await place(c) : null;
     const seller = typeof p?.partner_ref === "string" ? p.partner_ref : null;
     if (!seller) return { status: 403 };
-    if (!limiter.take(`${ctx.orgId}:${ctx.memberId}`)) return { status: 429, error: "rate" };
+    if (!limiter.take(`${ctx.orgId}:${ctx.memberId}${bucket}`)) {
+      return { status: 429, error: "rate" };
+    }
     const at0 = await sellerView(c, p);
     if (at0.status) return at0;
     const mine = forSeller(at0.view, seller);
     // Склад убрал продавца из партнёров — заявок от него больше не ждёт.
     if (!list(mine.warehouse?.partners).length) return { status: 403, error: "partner" };
-    return { ...at0, partner: seller, own: new Set(mine.products.map((x) => x.id)) };
+    return { ...at0, partner: seller, mine, own: new Set(mine.products.map((x) => x.id)) };
   }
 
-  /** Тело и транзакция → ответ: общий конверт обоих маршрутов. */
-  async function run(req, res, parse, fn) {
+  /**
+   * Тело и транзакция → ответ: общий конверт операций продавца. `bucket` —
+   * отдельный счётчик частоты (отметка «прочитано» не съедает лимит заявок).
+   */
+  async function run(req, res, parse, fn, bucket = "") {
     const raw = await readJson(req, res);
     if (!raw) return;
     const at = now();
     const b = parse(raw, at);
     if (!b) return send(res, 400, { ok: false, error: "bad_request" });
     const out = await withSession(req, async (c, ctx) => {
-      const me = await asSeller(c, ctx);
+      const me = await asSeller(c, ctx, bucket);
       return me.status ? me : fn(c, ctx, me, b, at);
     });
     if (out === null) return send(res, 401, { ok: false });

@@ -44,6 +44,18 @@ test("отказ отправки: ответ вне ленты, чужой то
   assert.equal(sendRefusal(feed, own, { topic: { productId: "p-2" } }).error, "not_found");
   const full = Array.from({ length: MAX_MESSAGES }, (_, i) => ({ id: `m${i}` }));
   assert.equal(sendRefusal(full, own, {}).error, "too_many");
+  // По байтам: лента ~1 МБ — отказ, хотя сообщений мало.
+  const heavy = Array.from({ length: 260 }, (_, i) => ({ id: `m${i}`, text: "я".repeat(2000) }));
+  assert.equal(sendRefusal(heavy, own, { text: "a" }).error, "too_many");
+  // Тема по заявке — только своей.
+  const mine = {
+    requests: [{ id: "req-1" }],
+    shipments: [],
+    expectedShipments: [{ id: "ship-1" }],
+  };
+  assert.equal(sendRefusal(feed, own, { topic: { refId: "req-1" } }, mine), null);
+  assert.equal(sendRefusal(feed, own, { topic: { refId: "ship-1" } }, mine), null);
+  assert.equal(sendRefusal(feed, own, { topic: { refId: "req-x" } }, mine).error, "not_found");
 });
 
 test("продавцу — только своя лента и без отметки автора", () => {

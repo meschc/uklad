@@ -24,7 +24,7 @@
  * Имён людей склада в ленте нет вовсе (`from` — роль), так что продавец видит
  * «Склад», а не того, кто ответил (вопрос 2 треда 28.11 — рекомендация).
  */
-/* global module */
+/* global module, Buffer */
 
 const KEY_RE = /^[A-Za-z0-9-]{8,64}$/;
 const ID_RE = /^[A-Za-z0-9_-]{1,100}$/;
@@ -33,6 +33,12 @@ const MAX_TEXT = 4000;
 const MAX_LABEL = 200;
 /** Сообщений в одной ленте: дальше — 409, строка ленты не растёт без конца. */
 const MAX_MESSAGES = 5000;
+/**
+ * Байт в ленте (разбор «Безопасности продукта» 28.11): 5000 сообщений по
+ * 4000 знаков — до 20 МБ в одной строке, и каждая отправка переписывает её
+ * под блокировкой снимка. Дальше 1 МБ — 409, как переполнение.
+ */
+const MAX_BYTES = 1_000_000;
 const KINDS = new Set(["product", "request", "receiving", "shipment", "other"]);
 
 const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
@@ -100,13 +106,30 @@ function sellerChats(chats, partnerRef) {
   return messages.length ? { [partnerRef]: messages } : {};
 }
 
-/** Отказ отправки или `null`. */
-function sendRefusal(messages, own, b) {
+/** Заявки, рейсы и поставки, которые видит продавец (`forSeller`), — их id. */
+const ownRefs = (mine) =>
+  new Set(
+    ["requests", "shipments", "expectedShipments"].flatMap((k) =>
+      list(mine?.[k])
+        .filter(isObject)
+        .map((x) => x.id),
+    ),
+  );
+
+/** Отказ отправки или `null`. `mine` — копия кабинета продавца (`forSeller`). */
+function sendRefusal(messages, own, b, mine) {
   if (messages.length >= MAX_MESSAGES) return { status: 409, error: "too_many" };
+  const size = Buffer.byteLength(JSON.stringify(messages)) + Buffer.byteLength(b.text ?? "");
+  if (size > MAX_BYTES) return { status: 409, error: "too_many" };
   if (b.replyTo && !messages.some((m) => isObject(m) && m.id === b.replyTo)) {
     return { status: 404, error: "not_found" };
   }
   if (b.topic?.productId && !own.has(b.topic.productId)) {
+    return { status: 404, error: "not_found" };
+  }
+  // Тема «по заявке, поставке, рейсу» — только своей: иначе склад увидит в
+  // ленте ссылку на чужую работу.
+  if (b.topic?.refId && !ownRefs(mine).has(b.topic.refId)) {
     return { status: 404, error: "not_found" };
   }
   return null;
@@ -151,7 +174,7 @@ function chatRoutes({ run, writeView }) {
           ? { status: 200, message: toSellerMessage(before), duplicate: true }
           : { status: 409, error: "key_taken" };
       }
-      const no = sendRefusal(messages, me.own, b);
+      const no = sendRefusal(messages, me.own, b, me.mine);
       if (no) return no;
       const made = newMessage(b, at, ctx.memberId);
       return save(c, me, [...messages, made], { message: toSellerMessage(made) });
@@ -174,14 +197,20 @@ function chatRoutes({ run, writeView }) {
 
   /** Прочитано всё входящее от склада. Нечего отмечать — снимок не трогаем. */
   const read = (req, res) =>
-    run(req, res, readNothing, async (c, ctx, me, b, at) => {
-      const messages = thread(me);
-      const unread = (m) => isObject(m) && m.from !== "seller" && !m.readAt;
-      const marked = messages.filter(unread).length;
-      if (!marked) return { status: 200, marked: 0 };
-      const next = messages.map((m) => (unread(m) ? { ...m, readAt: at } : m));
-      return save(c, me, next, { marked });
-    });
+    run(
+      req,
+      res,
+      readNothing,
+      async (c, ctx, me, b, at) => {
+        const messages = thread(me);
+        const unread = (m) => isObject(m) && m.from !== "seller" && !m.readAt;
+        const marked = messages.filter(unread).length;
+        if (!marked) return { status: 200, marked: 0 };
+        const next = messages.map((m) => (unread(m) ? { ...m, readAt: at } : m));
+        return save(c, me, next, { marked });
+      },
+      ":read",
+    );
 
   return {
     "/api/seller-chat/send": send,

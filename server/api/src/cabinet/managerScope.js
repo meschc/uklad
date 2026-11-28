@@ -118,12 +118,18 @@ function foreignWarehouses(after, ref) {
 /**
  * Списки компании, где каждая запись — чья-то со склада: журнал смен и
  * корректировки — человека (`staffId`), размещения «товар → ячейка» — этажа
- * склада (`floorId`). Руководитель видит и пишет только записи своего склада;
- * остальные общие списки (категории, шаблоны) — общие для компании.
+ * склада (`floorId`), переписка с продавцом (`chats`, ключ — партнёр) —
+ * партнёра склада: с 28.11 в ней настоящие сообщения продавцов
+ * (`sellerChat.js`), начальник склада Б переписку склада А не читает и не
+ * пишет. Руководитель видит и пишет только записи своего склада; остальные
+ * общие списки (категории, шаблоны) — общие для компании.
  */
 const PEOPLE = ["staffEvents", "payAdjustments"];
 const PLACES = "placements";
-const SCOPED = new Set([...PEOPLE, PLACES]);
+const CHATS = "chats";
+/** Словари «ключ → значение»: чьё — по значению (ячейка) или по ключу (партнёр). */
+const MAPS = [PLACES, CHATS];
+const SCOPED = new Set([...PEOPLE, ...MAPS]);
 
 /** Люди и этажи склада `ref` — по базе, а не по присланному. */
 async function ownScope(c, ref) {
@@ -142,31 +148,50 @@ async function ownScope(c, ref) {
                     jsonb_array_elements(CASE jsonb_typeof(w.card->'floors')
                       WHEN 'array' THEN w.card->'floors' ELSE '[]' END) f
              WHERE w.org_id = uklad.current_org() AND w.ref = $1
-               AND w.deleted_at IS NULL) AS floors`,
+               AND w.deleted_at IS NULL) AS floors,
+       ARRAY(SELECT p.ref FROM uklad.partners p
+             WHERE p.org_id = uklad.current_org() AND p.warehouse_ref = $1
+               AND p.deleted_at IS NULL
+             UNION
+             SELECT e->>'id' FROM uklad.warehouses w,
+                    jsonb_array_elements(CASE jsonb_typeof(w.card->'partners')
+                      WHEN 'array' THEN w.card->'partners' ELSE '[]' END) e
+             WHERE w.org_id = uklad.current_org() AND w.ref = $1
+               AND w.deleted_at IS NULL AND NOT w.partner_rows) AS partners`,
     [ref],
   );
-  return { staff: new Set(rows[0].staff), floors: new Set(rows[0].floors) };
+  return {
+    staff: new Set(rows[0].staff),
+    floors: new Set(rows[0].floors),
+    partners: new Set(rows[0].partners),
+  };
+}
+
+/** Пара словаря `key` (`id → value`) — со склада руководителя. */
+function ownEntry(scope, key, id, value) {
+  if (key === CHATS) return scope.partners.has(id);
+  return isObject(value) && scope.floors.has(value.floorId);
 }
 
 /** Запись списка `key` — со склада руководителя. */
 function owns(scope, key, item) {
   if (!isObject(item)) return false;
-  if (key === PLACES) return isObject(item.value) && scope.floors.has(item.value.floorId);
+  if (MAPS.includes(key)) return ownEntry(scope, key, item.id, item.value);
   return scope.staff.has(item.staffId);
 }
 
-const ownAddr = (scope, addr) => isObject(addr) && scope.floors.has(addr.floorId);
+/** Пары словаря `map`, свои (`mine`) или чужие. */
+const entries = (scope, key, map, mine) =>
+  Object.fromEntries(Object.entries(map).filter(([id, v]) => ownEntry(scope, key, id, v) === mine));
 
-/** Вид руководителя: из списков людей и размещений — только своё. */
+/** Вид руководителя: из списков людей, размещений и переписки — только своё. */
 function scopeRoot(data, scope) {
   const out = { ...data };
   for (const key of PEOPLE) {
     if (Array.isArray(data[key])) out[key] = data[key].filter((x) => owns(scope, key, x));
   }
-  if (isObject(data[PLACES])) {
-    out[PLACES] = Object.fromEntries(
-      Object.entries(data[PLACES]).filter(([, addr]) => ownAddr(scope, addr)),
-    );
+  for (const key of MAPS) {
+    if (isObject(data[key])) out[key] = entries(scope, key, data[key], true);
   }
   return out;
 }
@@ -197,15 +222,14 @@ function mergeRoot(full, after, scope) {
       ...sent.filter((x) => owns(scope, key, x)),
     ];
   }
-  const base = isObject(full?.[PLACES]) ? full[PLACES] : {};
-  const sent = isObject(after?.[PLACES]) ? after[PLACES] : null;
-  if (!sent) {
-    if (PLACES in (full ?? {})) out[PLACES] = full[PLACES];
-  } else {
-    out[PLACES] = {
-      ...Object.fromEntries(Object.entries(base).filter(([, a]) => !ownAddr(scope, a))),
-      ...Object.fromEntries(Object.entries(sent).filter(([, a]) => ownAddr(scope, a))),
-    };
+  for (const key of MAPS) {
+    const base = isObject(full?.[key]) ? full[key] : {};
+    const sent = isObject(after?.[key]) ? after[key] : null;
+    if (!sent) {
+      if (key in (full ?? {})) out[key] = full[key];
+      continue;
+    }
+    out[key] = { ...entries(scope, key, base, false), ...entries(scope, key, sent, true) };
   }
   return out;
 }
@@ -213,7 +237,7 @@ function mergeRoot(full, after, scope) {
 /**
  * «Только изменённое» от руководителя: строки чужого склада — отказ; строки
  * общих списков компании (`w = ""`) можно, но из журнала смен, корректировок
- * и размещений — только записи своего склада, и новая, и та, что была.
+ * размещений и переписки — только записи своего склада, и новая, и та, что была.
  */
 async function rowsAllowed(c, ref, scope, upsert, remove) {
   const all = [...upsert, ...remove];
@@ -238,7 +262,7 @@ async function rowsAllowed(c, ref, scope, upsert, remove) {
 
 /**
  * Архив для руководителя склада `ref`: строки своего склада и общих списков
- * компании, а из журнала смен, корректировок и размещений — только свои.
+ * компании, а из журнала смен, корректировок, размещений и переписки — только свои.
  */
 function archiveFor(ref, scope, rows) {
   return rows.filter(
