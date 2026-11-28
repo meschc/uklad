@@ -365,7 +365,7 @@ export interface ImportPlan {
   opening: OpeningLine[];
 }
 
-export interface OpeningLine {
+interface OpeningLine {
   sku: string;
   qty: number;
   cell?: CellAddress;
