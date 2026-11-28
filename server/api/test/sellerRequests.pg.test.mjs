@@ -207,6 +207,8 @@ test(
       [r.productId, r.qty, r.status, r.by, r.note, r.pickedQty],
       ["p-r", 3, "new", "seller", "Коледино", undefined],
     );
+    // Кто из людей продавца завёл — в заявке.
+    assert.equal(typeof r.byMember, "string");
 
     // Повтор с тем же ключом — те же заявки, второй не заводится.
     const again = await ask(romashka, one("p-r", 3));
@@ -233,6 +235,13 @@ test(
       externalId: "oz-77",
     });
     assert.deepEqual([dup.status, dup.json.error], [409, "duplicate_order"]);
+    // Тот же номер у другого продавца — его заказ, не «уже есть».
+    const hers = await ask(lyutik, {
+      ...one("p-l", 1, "k-ozon-0002"),
+      source: "ozon",
+      externalId: "OZ-77",
+    });
+    assert.equal(hers.status, 200, JSON.stringify(hers.json));
 
     // Продавец видит свою заявку в своём кабинете, Лютик — нет.
     const mine = (await snap(romashka)).data.requests.map((x) => x.id);
@@ -241,5 +250,13 @@ test(
 
     // Склад этим маршрутом не пишет: у него правка кабинета.
     assert.equal((await ask(boss, one("p-r", 1, "k-boss-0001"))).status, 403);
+
+    // Частота: не больше 30 заявок в минуту на человека, дальше 429.
+    const codes = [];
+    for (let i = 0; i < 31; i++) {
+      const key = `k-rate-${String(i).padStart(4, "0")}`;
+      codes.push((await ask(lyutik, one("p-l", 1, key))).status);
+    }
+    assert.equal(codes.at(-1), 429);
   },
 );

@@ -30,7 +30,7 @@ const { loadCabinet } = require("./snapshot");
 const { placeRef, focusWarehouse } = require("./viewerPlace");
 const { forSeller } = require("./seller");
 const { freeStock } = require("./stockPush");
-const { knownIn } = require("./orderPull");
+const { createRateLimit } = require("../rateLimit");
 const { writeView } = require("./viewWrite");
 
 const KEY_RE = /^[A-Za-z0-9-]{8,64}$/;
@@ -46,6 +46,12 @@ const MAX_EXTERNAL_ID = 64;
 /** Открытых заявок продавца на складе: дальше — 409, снимок не растёт без конца. */
 const MAX_OPEN = 2000;
 const SOURCES = new Set(["ozon", "wildberries", "yandex-market"]);
+/**
+ * Заявок в минуту на человека продавца (разбор «Безопасности продукта» 28.11):
+ * каждая берёт снимок компании под блокировку и будит все кабинеты и столы,
+ * тысяча подряд затормозила бы склад. Повтор с тем же ключом тоже считается.
+ */
+const PER_MINUTE = 30;
 const DAY_MS = 24 * 3_600_000;
 
 const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
@@ -121,7 +127,7 @@ function shortOf(lines, free) {
 }
 
 /** Заявки из тела: по одной на строку, как `createRequests` в кабинете. */
-function newRequests(b, at) {
+function newRequests(b, at, memberId) {
   return b.lines.map((l, i) => ({
     id: requestId(b.key, i),
     productId: l.productId,
@@ -131,6 +137,8 @@ function newRequests(b, at) {
     ...(b.truckDate !== undefined ? { truckDate: b.truckDate } : {}),
     ...(b.source ? { source: b.source, externalId: b.externalId } : {}),
     by: "seller",
+    // Кто из людей продавца завёл: спор «я этого не заказывал» решается по журналу.
+    ...(memberId ? { byMember: memberId } : {}),
     status: "new",
     createdAt: at,
     updatedAt: at,
@@ -145,13 +153,27 @@ const toSeller = (r) => {
 };
 
 /** Проверки до записи: `null` — можно, иначе отказ `{ status, error, … }`. */
-function refusal(full, view, own, b) {
+/**
+ * Номера заказов площадки в заявках на свой товар этого склада: чужой номер
+ * не проверяем — ответ «уже есть» выдал бы, что такой заказ есть у другого.
+ */
+function ownOrders(view, own, source) {
+  const out = new Set();
+  for (const r of list(view.requests)) {
+    if (isObject(r) && r.source === source && own.has(r.productId) && r.externalId) {
+      out.add(String(r.externalId).trim().toLowerCase());
+    }
+  }
+  return out;
+}
+
+function refusal(view, own, b) {
   if (b.lines.some((l) => !own.has(l.productId))) return { status: 404, error: "not_found" };
   const open = list(view.requests).filter(
     (r) => isObject(r) && r.by === "seller" && r.status === "new" && own.has(r.productId),
   );
   if (open.length + b.lines.length > MAX_OPEN) return { status: 409, error: "too_many" };
-  if (b.source && knownIn(full, b.source).has(b.externalId.toLowerCase())) {
+  if (b.source && ownOrders(view, own, b.source).has(b.externalId.toLowerCase())) {
     return { status: 409, error: "duplicate_order" };
   }
   const short = shortOf(b.lines, freeStock(view));
@@ -160,6 +182,7 @@ function refusal(full, view, own, b) {
 
 function createSellerRequests({ auth, send, log, now = () => Date.now() }) {
   const { withSession, readJson } = auth;
+  const limiter = createRateLimit({ capacity: PER_MINUTE, refillPerMinute: PER_MINUTE, now });
   const place = async (c) => (await c.query(`SELECT * FROM auth.actor_place()`)).rows[0] ?? null;
 
   /** Заявки с этими id уже есть (в любом статусе, в архиве, в корзине)? */
@@ -196,6 +219,7 @@ function createSellerRequests({ auth, send, log, now = () => Date.now() }) {
       const p = ctx.accountId ? await place(c) : null;
       const seller = typeof p?.partner_ref === "string" ? p.partner_ref : null;
       if (!seller) return { status: 403 };
+      if (!limiter.take(`${ctx.orgId}:${ctx.memberId}`)) return { status: 429, error: "rate" };
       const at0 = await sellerView(c, p);
       if (at0.status) return at0;
       const { full, view, ref } = at0;
@@ -213,10 +237,10 @@ function createSellerRequests({ auth, send, log, now = () => Date.now() }) {
         }
         return { status: 200, requests: before, duplicate: true };
       }
-      const no = refusal(full, view, own, b);
+      const no = refusal(view, own, b);
       if (no) return no;
 
-      const made = newRequests(b, at);
+      const made = newRequests(b, at, ctx.memberId);
       const next = { ...view, requests: [...made, ...list(view.requests)] };
       const bad = await writeView(c, full, next, ref);
       if (bad) return { status: 409, error: bad.error };

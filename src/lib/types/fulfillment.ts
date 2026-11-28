@@ -283,6 +283,8 @@ export interface FulfillmentRequest {
    * /api/requests`). Пусто — склад или подкачка площадки.
    */
   by?: "seller";
+  /** Кто из людей продавца завёл (id участника на сервере). */
+  byMember?: string;
   createdAt: number;
   updatedAt: number;
   /** Когда заявку взяли в работу — нужно для метрики времени сборки. */
