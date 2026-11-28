@@ -1,85 +1,96 @@
 import { useMemo, useRef, useState } from "react";
-import {
-  AlertTriangle,
-  Check,
-  FileOutput,
-  FileSpreadsheet,
-  Loader2,
-  Paperclip,
-  X,
-} from "lucide-react";
+import { FileOutput, FileSpreadsheet, Loader2, Paperclip, X } from "lucide-react";
 import { useEditor } from "@/lib/store";
+import { EMPTY_ARRAY } from "@/lib/utils";
 import { useWarehouseProducts } from "@/lib/warehouseProducts";
 import { catalogRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
-import type { Product } from "@/lib/types";
 import { downloadSheet } from "@/lib/sheets";
+import {
+  MAX_IMPORT_BYTES,
+  decodeImportText,
+  fileToMatrix,
+  textToMatrix,
+  type MatrixResult,
+} from "@/lib/importSheet";
 import {
   EXAMPLE_ROWS,
   IMPORT_EXAMPLE,
-  MAX_IMPORT_BYTES,
   TEMPLATE_HEADERS,
-  barcodeSet,
-  decodeImportText,
-  parseImportFile,
-  parseImportText,
-  rowsToProducts,
-  type ImportRow,
-  type ParseResult,
+  buildRows,
+  findHeaderRow,
+  guessColumns,
+  importPlan,
+  type ColumnMap,
+  type ImportMode,
+  type ImportPlan,
 } from "@/lib/importProducts";
-import { catLabel, useT, type TFunc } from "@/lib/i18n";
+import { useT } from "@/lib/i18n";
 import { DialogFooter, DialogHeader, DialogShell } from "@/components/ui/dialog-shell";
 import { Button } from "@/components/ui/button";
 import { FormError } from "@/components/ui/field";
-import { Table, TableHeader, Th, Tr, Td } from "@/components/ui/table";
+import { Select } from "@/components/ui/select";
+import { Segmented } from "@/components/ui/segmented";
+import { ColumnPicker, ImportAlert, ImportPreview } from "./ImportParts";
 
 /**
- * Импорт товаров (ТЗ, разд. 2.5). Основной путь — загрузка .xlsx (SheetJS),
- * вторичный — вставка CSV/TSV. Два алерта §4: ошибка формата и несовпадение
- * колонок; плюс построчная валидация в предпросмотре.
+ * Импорт товаров (ТЗ, разд. 2.5; Кирилл 27.11 — сопоставление колонок).
+ * Основной путь — загрузка .xlsx (SheetJS), вторичный — вставка CSV/TSV.
+ * Уклад сам находит строку заголовка и угадывает колонки, человек правит;
+ * артикул, который уже есть, — пропустить или обновить; весь файл можно
+ * отдать одному продавцу.
  */
 export function ImportDialog({ onClose }: { onClose: () => void }) {
   // Дубли ищем среди товаров этого склада: тот же артикул на соседнем складе — не дубль.
   const products = useWarehouseProducts();
+  const categories = useEditor((s) => s.categories);
+  const partners = useEditor((s) => s.warehouse.partners ?? EMPTY_ARRAY);
   const notify = useEditor((s) => s.notify);
   const t = useT();
 
   const [text, setText] = useState("");
-  const [fileResult, setFileResult] = useState<ParseResult | null>(null);
+  const [fileMatrix, setFileMatrix] = useState<MatrixResult | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [picked, setPicked] = useState<{ of: string[][]; columns: ColumnMap } | null>(null);
+  const [mode, setMode] = useState<ImportMode>("skip");
+  const [partnerId, setPartnerId] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
 
-  const existingSkus = useMemo(() => new Set(products.map((p) => p.sku)), [products]);
-  const existingBarcodes = useMemo(() => barcodeSet(products), [products]);
-
   // Файл имеет приоритет; иначе разбираем вставленный текст.
-  const result: ParseResult = useMemo(() => {
-    if (fileResult) return fileResult;
-    return parseImportText(text, existingSkus, existingBarcodes);
-  }, [fileResult, text, existingSkus, existingBarcodes]);
+  const source = useMemo(() => fileMatrix ?? textToMatrix(text), [fileMatrix, text]);
+  const matrix = source.ok ? source.matrix : null;
+  const headerRow = useMemo(() => (matrix ? findHeaderRow(matrix) : 0), [matrix]);
+  const headers = useMemo(() => matrix?.[headerRow] ?? [], [matrix, headerRow]);
+  // Правка колонок держится, пока не сменился файл: новый файл — новая догадка.
+  const columns = useMemo(
+    () => (picked && picked.of === matrix ? picked.columns : guessColumns(headers)),
+    [picked, matrix, headers],
+  );
+  const result = useMemo(
+    () => (matrix ? buildRows(matrix, headerRow, columns, { products, categories, mode }) : null),
+    [matrix, headerRow, columns, products, categories, mode],
+  );
+  const rows = result?.ok ? result.rows : [];
+  const counts = result?.ok ? result.counts : null;
+  const ready = counts ? counts.create + counts.update : 0;
+  const hasExisting = rows.some((r) => r.existingId);
 
   const onFile = async (file: File) => {
     setFileName(file.name);
     setText("");
     if (file.size > MAX_IMPORT_BYTES) {
-      setFileResult({ ok: false, kind: "format", reasonKey: "import.msg.tooBig" });
+      setFileMatrix({ ok: false, kind: "format", reasonKey: "import.msg.tooBig" });
       return;
     }
     const buf = await file.arrayBuffer();
     // .csv/.txt/.tsv — как текст; остальное (в т.ч. .xlsx) — через SheetJS.
+    // Ошибки разбора приходят результатом, а не исключением.
     const isText = /\.(csv|tsv|txt)$/i.test(file.name);
-    setFileResult(
-      isText
-        ? parseImportText(decodeImportText(buf), existingSkus, existingBarcodes)
-        : // Книгу читает библиотека, которая грузится по требованию: разбор
-          // ждёт её и потому асинхронный. Ошибки разбора приходят результатом,
-          // а не исключением, — ловить здесь нечего.
-          await parseImportFile(buf, existingSkus, existingBarcodes),
-    );
+    setFileMatrix(isText ? textToMatrix(decodeImportText(buf)) : await fileToMatrix(buf));
   };
 
   const clearFile = () => {
-    setFileResult(null);
+    setFileMatrix(null);
     setFileName(null);
     if (fileInput.current) fileInput.current.value = "";
   };
@@ -96,23 +107,20 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
     }
   };
 
-  const rows = result.ok ? result.rows : [];
-  const validCount = result.ok ? result.validCount : 0;
-
   /**
    * Загрузка идёт через репозиторий (п.3.2.1) одним вызовом на весь файл:
    * сервер примет её одним запросом, а не тысячей. При отказе окно НЕ
    * закрывается — разобранный файл остаётся на экране вместе с предпросмотром,
    * и повтор не требует выбирать файл заново.
    */
-  const load = useCommand((items: Omit<Product, "id">[]) => catalogRepository.importMany(items), {
+  const load = useCommand((plan: ImportPlan) => catalogRepository.importMany(plan), {
     // Двойной щелчок раньше, чем кнопка погасла, не должен завести товары дважды.
     exclusive: true,
   });
 
   const doImport = async () => {
-    if (!result.ok) return;
-    const res = await load.run(rowsToProducts(result.rows));
+    if (!result?.ok) return;
+    const res = await load.run(importPlan(result.rows, partnerId || undefined));
     if (res.ok) onClose();
   };
 
@@ -186,7 +194,72 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
           />
         )}
 
-        <ResultView result={result} rows={rows} validCount={validCount} t={t} />
+        {source.ok === false && source.kind === "empty" && (
+          <p className="mt-3 text-center text-xs text-muted-foreground">{t("import.emptyHint")}</p>
+        )}
+        {source.ok === false && source.kind === "format" && (
+          <ImportAlert title={t("import.err.format.title")}>{t(source.reasonKey)}</ImportAlert>
+        )}
+        {matrix && (
+          <ColumnPicker
+            headers={headers}
+            sample={matrix[headerRow + 1] ?? []}
+            columns={columns}
+            headerLine={headerRow + 1}
+            onChange={(next) => setPicked({ of: matrix, columns: next })}
+            t={t}
+          />
+        )}
+        {(hasExisting || partners.length > 0) && (
+          <div className="mt-4 flex flex-wrap items-end gap-x-6 gap-y-3">
+            {hasExisting && (
+              <div>
+                <p className="mb-1 text-xs text-muted-foreground">{t("import.mode.label")}</p>
+                <Segmented
+                  value={mode}
+                  onChange={setMode}
+                  options={[
+                    { value: "skip", label: t("import.mode.skip") },
+                    {
+                      value: "update",
+                      label: t("import.mode.update"),
+                      title: t("import.mode.updateHint"),
+                    },
+                  ]}
+                />
+              </div>
+            )}
+            {partners.length > 0 && (
+              <div>
+                <p className="mb-1 text-xs text-muted-foreground">{t("import.partner.label")}</p>
+                <Select
+                  size="sm"
+                  className="w-56"
+                  value={partnerId}
+                  onChange={(e) => setPartnerId(e.target.value)}
+                >
+                  <option value="">{t("import.partner.none")}</option>
+                  {partners.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            )}
+          </div>
+        )}
+        {result?.ok === false && result.kind === "columns" && (
+          <ImportAlert title={t("import.err.columns.title")}>
+            {t("import.err.columns.missing", {
+              missing: result.missing.map((k) => t(`field.${k}`)).join(", "),
+            })}
+          </ImportAlert>
+        )}
+        {result?.ok === false && result.kind === "format" && (
+          <ImportAlert title={t("import.err.format.title")}>{t(result.reasonKey)}</ImportAlert>
+        )}
+        {result?.ok && <ImportPreview rows={rows} t={t} />}
       </div>
 
       {/* Отказ отдельной строкой над подвалом: слева в подвале стоит счётчик
@@ -200,11 +273,12 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
       {/* Действия */}
       <DialogFooter spread>
         <span className="text-xs text-muted-foreground">
-          {result.ok
+          {counts
             ? t("import.footer", {
-                found: rows.length,
-                ready: validCount,
-                errors: rows.length - validCount,
+                create: counts.create,
+                update: counts.update,
+                skip: counts.skip,
+                errors: counts.error,
               })
             : " "}
         </span>
@@ -212,124 +286,16 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
           <Button variant="ghost" size="sm" onClick={onClose}>
             {t("common.cancel")}
           </Button>
-          <Button
-            size="sm"
-            disabled={!result.ok || validCount === 0 || load.pending}
-            onClick={doImport}
-          >
+          <Button size="sm" disabled={ready === 0 || load.pending} onClick={doImport}>
             {load.pending && <Loader2 className="animate-spin" />}
             {load.pending
               ? t("data.busy")
               : load.error
                 ? t("data.retry")
-                : t("import.doImport", { n: validCount > 0 ? validCount : "" })}
+                : t("import.doImport", { n: ready > 0 ? ready : "" })}
           </Button>
         </div>
       </DialogFooter>
     </DialogShell>
-  );
-}
-
-/** Строк в предпросмотре: остальные тоже грузятся, просто не рисуются. */
-const PREVIEW_ROWS = 200;
-
-function ResultView({
-  result,
-  rows,
-  validCount,
-  t,
-}: {
-  result: ParseResult;
-  rows: ImportRow[];
-  validCount: number;
-  t: TFunc;
-}) {
-  if (result.ok === false && result.kind === "empty") {
-    return (
-      <p className="mt-3 text-center text-xs text-muted-foreground">{t("import.emptyHint")}</p>
-    );
-  }
-
-  if (result.ok === false && result.kind === "format") {
-    return <Alert title={t("import.err.format.title")}>{t(result.reasonKey)}</Alert>;
-  }
-
-  if (result.ok === false && result.kind === "columns") {
-    const missing = result.missing.map((k) => t(`field.${k}`)).join(", ");
-    const found = result.headers.filter(Boolean).join(", ") || "—";
-    return (
-      <Alert title={t("import.err.columns.title")}>
-        <span className="block">{t("import.err.columns.missing", { missing })}</span>
-        <span className="mt-1 block text-muted-foreground">
-          {t("import.err.columns.found", { headers: found })}
-        </span>
-      </Alert>
-    );
-  }
-
-  return (
-    <div className="mt-3">
-      <Table size="sm" fill>
-        <TableHeader>
-          <Th>{t("import.col.status")}</Th>
-          <Th>{t("table.col.sku")}</Th>
-          <Th>{t("table.col.name")}</Th>
-          <Th>{t("table.col.category")}</Th>
-          <Th>{t("table.col.dims")}</Th>
-        </TableHeader>
-        <tbody>
-          {rows.slice(0, PREVIEW_ROWS).map((r) => (
-            <Tr key={r.index}>
-              <Td>
-                {r.ok ? (
-                  <span className="inline-flex items-center gap-1 text-success">
-                    <Check className="size-3" /> {t("import.ok")}
-                  </span>
-                ) : (
-                  <span
-                    className="inline-flex items-center gap-1 text-destructive"
-                    title={r.errors.map((e) => t(e.key, e.vars)).join("; ")}
-                  >
-                    <AlertTriangle className="size-3" />
-                    {t(r.errors[0].key, r.errors[0].vars)}
-                    {r.errors.length > 1 ? ` +${r.errors.length - 1}` : ""}
-                  </span>
-                )}
-              </Td>
-              <Td className="font-mono text-muted-foreground">{r.sku || "—"}</Td>
-              <Td>{r.name || "—"}</Td>
-              <Td>{r.category ? catLabel(t, r.category) : "—"}</Td>
-              <Td className="whitespace-nowrap tabular-nums text-muted-foreground">
-                {[r.widthCm, r.heightCm, r.depthCm].map((v) => (v == null ? "?" : v)).join(" × ")}
-              </Td>
-            </Tr>
-          ))}
-        </tbody>
-      </Table>
-      {rows.length > PREVIEW_ROWS && (
-        <p className="mt-2 text-xs text-muted-foreground">
-          {t("import.previewCut", { shown: PREVIEW_ROWS, total: rows.length })}
-        </p>
-      )}
-      {result.ok && result.ignored.length > 0 && (
-        <p className="mt-2 text-xs text-muted-foreground">
-          {t("import.ignored", { cols: result.ignored.join(", ") })}
-        </p>
-      )}
-      {validCount < rows.length && (
-        <p className="mt-2 text-xs text-muted-foreground">
-          {t("import.onlyOk", { valid: validCount, total: rows.length })}
-        </p>
-      )}
-    </div>
-  );
-}
-
-function Alert({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <FormError className="mt-3">
-      <span className="font-semibold">{title}</span>
-      <span className="mt-0.5 block text-xs leading-relaxed">{children}</span>
-    </FormError>
   );
 }

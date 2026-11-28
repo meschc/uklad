@@ -14,7 +14,7 @@ import {
 import { useEditor } from "@/lib/store";
 import { catalogRepository, placementRepository, type Result } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
-import { cm } from "@/lib/address";
+import { dimsText } from "@/lib/address";
 import { catLabel, useT, type TFunc } from "@/lib/i18n";
 import { cn, EMPTY_ARRAY } from "@/lib/utils";
 import { DialogFooter, DialogShell } from "@/components/ui/dialog-shell";
@@ -330,7 +330,7 @@ export function PlaceFailedAlert({
           <li key={p.id} className="flex justify-between gap-3 py-1">
             <span className="truncate">{p.name}</span>
             <span className="shrink-0 font-mono text-muted-foreground">
-              {cm(p.widthCm)}×{cm(p.heightCm)}×{cm(p.depthCm)}
+              {dimsText(p, "×") ?? "—"}
             </span>
           </li>
         ))}

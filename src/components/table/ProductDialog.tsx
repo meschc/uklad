@@ -39,6 +39,11 @@ function num(s: string): number {
   return Number.isFinite(n) && n >= 0 ? n : 0;
 }
 
+/** Габарит: пусто или ноль — «не измерен» (поля нет), а не ноль сантиметров. */
+function dim(s: string): number | undefined {
+  return num(s) || undefined;
+}
+
 export function ProductDialog({
   product,
   presetBarcode,
@@ -74,9 +79,9 @@ export function ProductDialog({
     category: product?.category ?? categories[0] ?? "",
     partnerId: product?.partnerId ?? "",
     imageUrl: product?.imageUrl ?? "",
-    widthCm: product ? cm(product.widthCm) : "",
-    heightCm: product ? cm(product.heightCm) : "",
-    depthCm: product ? cm(product.depthCm) : "",
+    widthCm: product?.widthCm ? cm(product.widthCm) : "",
+    heightCm: product?.heightCm ? cm(product.heightCm) : "",
+    depthCm: product?.depthCm ? cm(product.depthCm) : "",
     weightKg: product?.weightKg != null ? cm(product.weightKg) : "",
     url: product?.url ?? "",
   }));
@@ -172,9 +177,9 @@ export function ProductDialog({
       barcode,
       codes: extraCodes.length > 0 ? extraCodes : undefined,
       category: form.category,
-      widthCm: num(form.widthCm),
-      heightCm: num(form.heightCm),
-      depthCm: num(form.depthCm),
+      widthCm: dim(form.widthCm),
+      heightCm: dim(form.heightCm),
+      depthCm: dim(form.depthCm),
       weightKg: form.weightKg.trim() ? num(form.weightKg) : undefined,
       url: form.url.trim() || undefined,
       imageUrl: form.imageUrl.trim() || undefined,

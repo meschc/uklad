@@ -243,7 +243,11 @@ export interface CatalogSlice {
   renameCategory: (from: ProductCategory, to: string) => boolean;
   /** Удалить категорию: товары переезжают в первую оставшуюся. */
   removeCategory: (name: ProductCategory) => void;
-  importProducts: (items: Omit<Product, "id">[]) => void;
+  importProducts: (
+    items: Omit<Product, "id">[],
+    updates?: { id: string; patch: Partial<Omit<Product, "id">> }[],
+    categories?: string[],
+  ) => void;
 }
 
 // --- Размещение товара и конфликты (ТЗ, разд. 3.6, 4) ------------------------

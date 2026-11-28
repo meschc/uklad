@@ -201,3 +201,20 @@ function round1(n: number): number {
 export function cm(n: number): string {
   return round1(n).toString().replace(".", ",");
 }
+
+/** Измерен ли товар: все три габарита — положительные числа. */
+export function hasDims(p: { widthCm?: number; heightCm?: number; depthCm?: number }): p is {
+  widthCm: number;
+  heightCm: number;
+  depthCm: number;
+} {
+  return [p.widthCm, p.heightCm, p.depthCm].every((v) => typeof v === "number" && v > 0);
+}
+
+/** «30 × 12 × 20» или `null`, если товар не измерен (в таблице — прочерк). */
+export function dimsText(
+  p: { widthCm?: number; heightCm?: number; depthCm?: number },
+  sep = " × ",
+): string | null {
+  return hasDims(p) ? [p.widthCm, p.heightCm, p.depthCm].map(cm).join(sep) : null;
+}

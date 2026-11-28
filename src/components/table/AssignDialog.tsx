@@ -3,7 +3,7 @@ import { AlertTriangle, Check, Lightbulb, Loader2, Trash2, X } from "lucide-reac
 import { useEditor } from "@/lib/store";
 import { placementRepository } from "@/lib/data";
 import { useCommand } from "@/lib/useCommand";
-import { cellDimsCm, cm, formatAddress, parseAddress } from "@/lib/address";
+import { cellDimsCm, cm, dimsText, formatAddress, parseAddress } from "@/lib/address";
 import {
   buildOccupancy,
   checkFit,
@@ -378,8 +378,7 @@ export function AssignDialog({ product, onClose }: { product: Product; onClose: 
             <div className="mt-1 flex items-center justify-between">
               <span className="text-muted-foreground">{t("assign.rowProduct")}</span>
               <span className="tabular-nums text-muted-foreground">
-                {cm(product.widthCm)} × {cm(product.heightCm)} × {cm(product.depthCm)}{" "}
-                {t("unit.cm")}
+                {dimsText(product) ? `${dimsText(product)} ${t("unit.cm")}` : "—"}
               </span>
             </div>
             <div
@@ -561,7 +560,7 @@ function Alert({ tone, children }: { tone: "warn" | "danger"; children: React.Re
 }
 
 function sizeOf(p: Product, ax: FitAxis): number {
-  return ax === "width" ? p.widthCm : ax === "height" ? p.heightCm : p.depthCm;
+  return (ax === "width" ? p.widthCm : ax === "height" ? p.heightCm : p.depthCm) ?? 0;
 }
 
 function cellSizeOf(
