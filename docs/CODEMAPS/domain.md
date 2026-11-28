@@ -145,7 +145,8 @@ buildReceivingDoc(shipment, events, products, warehouse, boxes)
 ```
 catalog.ts        buildCatalog(makeId) -> Product[]         // демо-номенклатура
 autoPlace.ts      autoPlace(warehouse, products, existing) -> placements
-importProducts.ts parseImportText / parseImportFile / parseRows / rowsToProducts
+importSheet.ts    textToMatrix / fileToMatrix / decodeImportText (файл → матрица)
+importProducts.ts findHeaderRow / guessColumns / buildRows / importPlan (колонки → строки → план)
                   TEMPLATE_HEADERS, EXAMPLE_ROWS, IMPORT_EXAMPLE
 shipmentSources.ts SHIPMENT_SOURCES, parseShipmentRows(source, matrix, products)
 fulfillment.ts    stockByProduct / stockAt / groupRequestsByTarget /
