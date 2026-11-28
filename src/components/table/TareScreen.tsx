@@ -57,6 +57,25 @@ export function TareScreen() {
   );
   const rows = useMemo(() => buildTareRows(boxes, pallets, visible), [boxes, pallets, visible]);
   const codeOf = useMemo(() => new Map(pallets.map((p) => [p.id, p.barcode])), [pallets]);
+  const allProducts = useEditor((s) => s.products);
+  const productOf = useMemo(() => new Map(allProducts.map((p) => [p.id, p])), [allProducts]);
+  // Главный товар строки и «и ещё N»: что лежит в таре, видно без карточки.
+  const goods = (r: TareRow): string => {
+    const first = productOf.get(r.productIds[0] ?? "")?.name;
+    if (!first) return "";
+    const rest = r.productIds.length - 1;
+    return rest > 0 ? `${first} ${t("tare.more", { n: rest })}` : first;
+  };
+  // Поиск по товару внутри: название, артикул, штрихкод — найдётся вся тара
+  // с ним (Кирилл 28.11: «поиск по товару в таре»).
+  const searchText = (r: TareRow): string =>
+    [
+      r.code,
+      ...r.productIds.flatMap((id) => {
+        const p = productOf.get(id);
+        return p ? [p.name, p.sku, p.barcode] : [];
+      }),
+    ].join(" ");
 
   const where = (r: TareRow): string => {
     if (r.address) return formatAddress(warehouse, r.address) ?? t("tare.where.gone");
@@ -74,7 +93,7 @@ export function TareScreen() {
       { id: "units", value: (r) => r.units },
       { id: "where", value: (r) => where(r) },
       { id: "printed", value: (r) => r.printedAt },
-      { id: "search", value: (r) => r.code },
+      { id: "search", value: searchText },
     ],
     [{ id: "code", desc: true }],
   );
@@ -114,7 +133,7 @@ export function TareScreen() {
           <SortTh table={reg.table} id="state">
             {t("tare.col.state")}
           </SortTh>
-          <SortTh table={reg.table} id="units" align="right">
+          <SortTh table={reg.table} id="units">
             {t("tare.col.inside")}
           </SortTh>
           <SortTh table={reg.table} id="where">
@@ -142,8 +161,9 @@ export function TareScreen() {
                   {t(`tare.state.${r.state}` as MsgKey)}
                 </span>
               </Td>
-              <Td align="right" className="tabular-nums" data-label={t("tare.col.inside")}>
-                {inside(r, t)}
+              <Td data-label={t("tare.col.inside")}>
+                {goods(r) && <span className="block max-w-72 truncate">{goods(r)}</span>}
+                <span className="text-sm tabular-nums text-muted-foreground">{inside(r, t)}</span>
               </Td>
               <Td className="text-muted-foreground" data-label={t("tare.col.where")}>
                 {where(r) || "—"}

@@ -226,7 +226,8 @@ export const ru = {
   "assign.occupied.more": "и ещё {n}",
   "product.scanTitle": "Новый товар по скану",
   // Реестр тары и паллет (вкладка «Тара» в «Товарах»)
-  "tare.search": "Номер тары или паллеты",
+  "tare.search": "Номер тары, товар, артикул или штрихкод",
+  "tare.more": "и ещё {n}",
   "tare.count": "Показано {n} из {total}",
   "tare.col.code": "Номер",
   "tare.col.kind": "Вид",
@@ -483,7 +484,8 @@ export const en: Record<keyof typeof ru, string> = {
   "assign.occupied.more": "and {n} more",
   "product.scanTitle": "New product from a scan",
   // Реестр тары и паллет (вкладка «Тара» в «Товарах»)
-  "tare.search": "Container or pallet number",
+  "tare.search": "Container number, product, SKU or barcode",
+  "tare.more": "+{n} more",
   "tare.count": "Showing {n} of {total}",
   "tare.col.code": "Number",
   "tare.col.kind": "Type",

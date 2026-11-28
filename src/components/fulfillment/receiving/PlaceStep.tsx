@@ -1,4 +1,8 @@
+import { useContext } from "react";
+import { Gauge } from "lucide-react";
+import { EmbeddedShell } from "../embeddedShell";
 import type { Box } from "@/lib/types";
+import { Button } from "@/components/ui/button";
 import { type TFunc } from "@/lib/i18n";
 import { QrSvg } from "@/components/table/QrSvg";
 import { card } from "@/components/ui/card";
@@ -28,6 +32,7 @@ export function PlaceStep({
   onScan: (raw: string) => void;
   t: TFunc;
 }) {
+  const atStation = useContext(EmbeddedShell);
   return (
     <div className="flex flex-col gap-4">
       <div className={card({ className: "flex flex-col items-center gap-2" })}>
@@ -41,6 +46,18 @@ export function PlaceStep({
         minLength={ADDRESS_MIN}
         onSubmit={onScan}
       />
+      {/* Загруженность склада — на рабочем месте, когда ищут свободную
+          ячейку: на телефоне это единственное место, где она есть (Кирилл 28.11). */}
+      {atStation && (
+        <Button
+          variant="outline"
+          className="self-center"
+          onClick={() => window.open(`${window.location.pathname}?heatmap=1`, "uklad-heatmap")}
+        >
+          <Gauge />
+          {t("heat.open")}
+        </Button>
+      )}
     </div>
   );
 }
