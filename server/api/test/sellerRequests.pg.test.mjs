@@ -527,6 +527,11 @@ test("продавец видит историю только своего то�
     assert.ok(!("member" in e) && e.staffRef === null);
   }
   assert.ok(!text.includes("boss-journal"));
+  // Ни имени, ни id людей склада — даже внутри id строки правки.
+  const { rows: people } = await db.root.query(`SELECT id FROM uklad.members WHERE org_id = $1`, [
+    boss.org,
+  ]);
+  for (const p of people) assert.ok(!text.includes(p.id), "id человека склада");
 
   // Склад этим маршрутом не ходит: у него свой журнал.
   assert.equal((await story(boss, "product=p-r")).status, 403);

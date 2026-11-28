@@ -24,6 +24,7 @@ const { placeRef, focusWarehouse } = require("./viewerPlace");
 const { forSeller } = require("./seller");
 const { deskRows, cabinetRows } = require("./journal");
 const { createRateLimit } = require("../rateLimit");
+const { createHmac, randomBytes } = require("node:crypto");
 
 const ID_RE = /^[A-Za-z0-9_-]{1,100}$/;
 const PAGE = 100;
@@ -77,12 +78,26 @@ function deskEntry(r, product) {
   });
 }
 
+/**
+ * Соль id правок на время жизни сервера (разбор «Безопасности продукта»
+ * 28.11): id строки журнала склада — `v<версия>-<id человека>`, и продавцу он
+ * выдал бы постоянную метку человека склада. Хэш с солью сервера стабилен
+ * между страницами одной сессии, но человека по нему не узнать.
+ */
+const SALT = randomBytes(32);
+const cabinetId = (id) =>
+  `c${createHmac("sha256", SALT).update(String(id)).digest("base64url").slice(0, 22)}`;
+
 /** Правка остатка складом: только движения этого товара, без человека. */
 function cabinetEntry(r, product) {
   const moves = list(r.moves)
     .filter((m) => isObject(m) && m.productId === product)
     .map((m) => ({ kind: m.kind, ref: m.ref, productId: product, delta: m.delta }));
-  return entry(r, "cabinet", { kind: "cabinet_edit", step: "cabinet", moves });
+  return entry({ ...r, id: cabinetId(r.id) }, "cabinet", {
+    kind: "cabinet_edit",
+    step: "cabinet",
+    moves,
+  });
 }
 
 /** Ленты новых сверху → одна страница и граница следующей. */
