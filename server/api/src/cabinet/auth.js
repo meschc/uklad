@@ -35,6 +35,7 @@ const { createRateLimit, clientIp } = require("../rateLimit");
 const { codeLetter, alreadyLetter } = require("./letters");
 const { logAction } = require("./audit");
 const { managerWarehouse, memberHere } = require("./managerScope");
+const { SELLER_CHAT_PATHS } = require("./sellerChat");
 
 /**
  * Бейдж человеку команды (старый путь): руководитель — только своим людям и на
@@ -109,7 +110,9 @@ const sellerMay = (req) => {
     // Ответ на акт приёмки (миграция 048): своё сервер проверяет сам.
     path === "/api/receiving/answers" ||
     // Заявка на отгрузку, её отмена и «Везу товар» (`sellerRequests.js`): товар и склад сервер берёт свои.
-    (["/api/requests", "/api/requests/cancel", "/api/supplies"].includes(path) &&
+    (["/api/requests", "/api/requests/cancel", "/api/supplies", ...SELLER_CHAT_PATHS].includes(
+      path,
+    ) &&
       req.method === "POST")
   );
 };

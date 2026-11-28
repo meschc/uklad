@@ -358,3 +358,88 @@ test(
     assert.equal((await bring(boss, { ...body, key: "k-supply-0003" })).status, 403);
   },
 );
+
+test("продавец пишет складу только в свою переписку", { skip: SKIP }, async () => {
+  const boss = await owner("boss-chat@example.com", "10.6.0.4");
+  await writeCabinet(boss, {
+    ...cabinet(),
+    chats: {
+      "ptr-r": [{ id: "m-r", from: "warehouse", text: "Здравствуйте", at: 1 }],
+      "ptr-l": [{ id: "m-l", from: "warehouse", text: "Лютику: тариф", at: 2 }],
+    },
+  });
+  const romashka = await invite(boss, "romashka-chat@example.com", "ptr-r");
+  const colleague = await invite(boss, "romashka-chat2@example.com", "ptr-r");
+  const lyutik = await invite(boss, "lyutik-chat@example.com", "ptr-l");
+  const say = (who, path, body) => post(`/api/seller-chat/${path}`, { ...who, body });
+
+  // В своей копии — только своя переписка.
+  assert.deepEqual(Object.keys((await snap(romashka)).data.chats), ["ptr-r"]);
+
+  // Плохое тело — 400: без ключа, пустой текст, чужой вид темы.
+  assert.equal((await say(romashka, "send", { text: "a" })).status, 400);
+  assert.equal((await say(romashka, "send", { key: KEY, text: "   " })).status, 400);
+  const badTopic = { key: KEY, text: "a", topic: { kind: "zzz" } };
+  assert.equal((await say(romashka, "send", badTopic)).status, 400);
+
+  // Ответ на сообщение чужой переписки и тема по чужому товару — «нет такого».
+  const reply = await say(romashka, "send", { key: "k-chat-0001", text: "a", replyTo: "m-l" });
+  assert.deepEqual([reply.status, reply.json.error], [404, "not_found"]);
+  const topic = { kind: "product", productId: "p-l" };
+  const foreign = await say(romashka, "send", { key: "k-chat-0002", text: "a", topic });
+  assert.equal(foreign.json.error, "not_found");
+
+  // Своё: автор — продавец из сессии, партнёр — из сессии, а не из тела.
+  const sent1 = await say(romashka, "send", {
+    key: KEY,
+    text: " Когда приёмка? ",
+    replyTo: "m-r",
+    from: "warehouse",
+    partnerId: "ptr-l",
+  });
+  assert.equal(sent1.status, 200, JSON.stringify(sent1.json));
+  const m = sent1.json.message;
+  assert.deepEqual(
+    [m.from, m.text, m.replyTo, m.byMember],
+    ["seller", "Когда приёмка?", "m-r", undefined],
+  );
+  // Повтор с тем же ключом — то же сообщение.
+  const again = await say(romashka, "send", { key: KEY, text: "Когда приёмка?" });
+  assert.deepEqual([again.json.duplicate, again.json.message.id], [true, m.id]);
+
+  // Чужое не правится и не удаляется: ни склада, ни коллеги продавца.
+  for (const [who, id] of [
+    [romashka, "m-r"],
+    [colleague, m.id],
+  ]) {
+    const r = await say(who, "edit", { id, text: "подмена" });
+    assert.deepEqual([r.status, r.json.error], [409, "not_yours"]);
+  }
+  assert.equal((await say(lyutik, "delete", { id: m.id })).json.error, "not_found");
+
+  // Своё правится и удаляется; удалённое больше не правится.
+  assert.equal((await say(romashka, "edit", { id: m.id, text: "Во сколько?" })).status, 200);
+  assert.equal((await say(romashka, "delete", { id: m.id })).status, 200);
+  const late = await say(romashka, "edit", { id: m.id, text: "ещё" });
+  assert.deepEqual([late.status, late.json.error], [409, "deleted"]);
+
+  // Прочитано — только входящее своей переписки.
+  assert.equal((await say(romashka, "read", {})).json.marked, 1);
+  assert.equal((await say(romashka, "read", {})).json.marked, 0);
+
+  // Склад видит у себя: своё прочитано, сообщение продавца удалено, Лютик не тронут.
+  const chats = (await snap(boss)).data.chats;
+  assert.equal(typeof chats["ptr-r"][0].readAt, "number");
+  const mine = chats["ptr-r"][1];
+  assert.deepEqual([mine.from, mine.text, typeof mine.deletedAt], ["seller", "", "number"]);
+  assert.equal(typeof mine.byMember, "string");
+  assert.deepEqual(chats["ptr-l"], [
+    { id: "m-l", from: "warehouse", text: "Лютику: тариф", at: 2 },
+  ]);
+  // Отметка, кто из людей писал, продавцу не приходит.
+  const seen = (await snap(colleague)).data.chats["ptr-r"];
+  assert.ok(seen.every((x) => !("byMember" in x)));
+
+  // Склад этим маршрутом не пишет: у него правка кабинета.
+  assert.equal((await say(boss, "send", { key: "k-boss-0002", text: "a" })).status, 403);
+});

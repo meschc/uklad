@@ -39,6 +39,7 @@ const {
   newSupply,
   toSellerSupply,
 } = require("./sellerSupplies");
+const { chatRoutes } = require("./sellerChat");
 
 const KEY_RE = /^[A-Za-z0-9-]{8,64}$/;
 const ID_RE = /^[A-Za-z0-9_-]{1,100}$/;
@@ -245,7 +246,7 @@ function createSellerRequests({ auth, send, log, now = () => Date.now() }) {
     const mine = forSeller(at0.view, seller);
     // Склад убрал продавца из партнёров — заявок от него больше не ждёт.
     if (!list(mine.warehouse?.partners).length) return { status: 403, error: "partner" };
-    return { ...at0, own: new Set(mine.products.map((x) => x.id)) };
+    return { ...at0, partner: seller, own: new Set(mine.products.map((x) => x.id)) };
   }
 
   /** Тело и транзакция → ответ: общий конверт обоих маршрутов. */
@@ -334,6 +335,8 @@ function createSellerRequests({ auth, send, log, now = () => Date.now() }) {
     "/api/requests": create,
     "/api/requests/cancel": cancel,
     "/api/supplies": supply,
+    // Переписка со складом (`sellerChat.js`): тот же конверт и та же частота.
+    ...chatRoutes({ run, writeView }),
   };
 
   async function handle(req, res, url) {
